@@ -289,7 +289,12 @@ function ModelCard({ model, isActive, onClick, onDelete }: {
   if (model.status === 'ready') {
     statusLabel = t('bim.status_ready', { defaultValue: 'Ready' });
   } else if (model.status === 'degraded') {
-    statusLabel = t('bim.status_degraded', { defaultValue: 'Imported (no quantities)' });
+    // error_code="converter_absent" means the DDC converter is missing but
+    // IfcElementQuantity / Qto_* data WAS extracted — geometry is placeholder
+    // boxes only. Show "no 3D" instead of the misleading "no quantities".
+    statusLabel = model.error_code === 'converter_absent'
+      ? t('bim.status_degraded_no3d', { defaultValue: 'Imported (no 3D)' })
+      : t('bim.status_degraded', { defaultValue: 'Imported (no quantities)' });
   } else if (model.status === 'needs_converter') {
     statusLabel = t('bim.status_needs_converter', { defaultValue: 'Needs Converter' });
   } else if (model.status === 'processing') {
@@ -1757,7 +1762,9 @@ function LandingPage({ projectId, onUploadComplete: _onUploadComplete, breadcrum
 
               let statusText: string = m.status;
               if (isReady) statusText = t('bim.status_ready', { defaultValue: 'Ready' });
-              else if (isDegraded) statusText = t('bim.status_degraded', { defaultValue: 'Imported (no quantities)' });
+              else if (isDegraded) statusText = m.error_code === 'converter_absent'
+                ? t('bim.status_degraded_no3d', { defaultValue: 'Imported (no 3D)' })
+                : t('bim.status_degraded', { defaultValue: 'Imported (no quantities)' });
               else if (isProcessing) statusText = t('bim.status_processing', { defaultValue: 'Processing' });
 
               return (
