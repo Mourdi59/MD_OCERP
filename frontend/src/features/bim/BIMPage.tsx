@@ -97,6 +97,7 @@ import {
   fetchBIMModel,
   fetchBIMElements,
   fetchBIMElementProgress,
+  fetchBIMModelBOQLinks,
   fetchBIMConverters,
   deleteBIMModel,
   deleteLink,
@@ -106,6 +107,7 @@ import {
   retryBIMModelProcessing,
   type BIMElementGroup,
 } from './api';
+import type { BIMBOQLinkBrief } from '@/shared/ui/BIMViewer/ElementManager';
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
@@ -2081,15 +2083,11 @@ export function BIMPage() {
     // with the existing converter-absent warning banner.
     enabled: !!activeModelId && (activeModel?.status === 'ready' || activeModel?.status === 'degraded'),
   });
-  const elements: BIMElementData[] = elementsQuery.data?.items ?? [];
   const elementsTotal: number = elementsQuery.data?.total ?? 0;
 
   // BOQ progress per element — fetched ONLY while the "By progress" colour
-  // mode is active (the skeleton element list carries no BOQ links, so
-  // progress comes from the enriched listing's `current_pct`). Gated on the
-  // mode so we never pay the extra round trip(s) for users who don't open
-  // the overlay. React Query caches the result, so toggling the mode back
-  // on is instant within the stale window.
+  // mode is active. Gated on the mode so we never pay the extra round trip(s)
+  // for users who don't open the overlay.
   const progressQuery = useQuery({
     queryKey: ['bim-element-progress', activeModelId],
     queryFn: () => fetchBIMElementProgress(activeModelId!),
@@ -2108,10 +2106,6 @@ export function BIMPage() {
     }
     return out;
   }, [progressQuery.data]);
-  // Parallel map of the headline progress entry's recorded ISO date, keyed
-  // by element id — drives the "as of <date>" line in the selected-element
-  // info panel. Kept separate from the numeric map so the 3D colour ramp
-  // stays a pure number lookup.
   const progressDateByElementId: Record<string, string> = useMemo(() => {
     const out: Record<string, string> = {};
     for (const row of progressQuery.data?.items ?? []) {
@@ -2121,6 +2115,48 @@ export function BIMPage() {
     }
     return out;
   }, [progressQuery.data]);
+
+  // Elements load in skeleton mode (no boq_links join, ~10× faster). Pull the
+  // model-wide link aggregate and stitch a per-element brief back onto the list.
+  const modelLinksQuery = useQuery({
+    queryKey: ['bim-model-boq-links', activeModelId],
+    queryFn: () => fetchBIMModelBOQLinks(activeModelId!),
+    enabled: !!activeModelId && (activeModel?.status === 'ready' || activeModel?.status === 'degraded'),
+    staleTime: 30_000,
+  });
+
+  const linksByElementId = useMemo(() => {
+    const map = new Map<string, BIMBOQLinkBrief[]>();
+    for (const agg of modelLinksQuery.data?.items ?? []) {
+      const brief: BIMBOQLinkBrief = {
+        id: agg.boq_position_id,
+        boq_position_id: agg.boq_position_id,
+        boq_position_ordinal: agg.boq_position_ordinal,
+        boq_position_description: agg.boq_position_description,
+        boq_position_quantity: agg.boq_position_quantity,
+        boq_position_unit: agg.boq_position_unit,
+        boq_position_unit_rate: agg.boq_position_unit_rate,
+        boq_position_total: agg.boq_position_total,
+        link_type: (agg.link_type as BIMBOQLinkBrief['link_type']) ?? 'manual',
+        confidence: agg.confidence,
+      };
+      for (const elementId of agg.element_ids) {
+        const existing = map.get(elementId);
+        if (existing) existing.push(brief);
+        else map.set(elementId, [brief]);
+      }
+    }
+    return map;
+  }, [modelLinksQuery.data]);
+
+  const elements: BIMElementData[] = useMemo(() => {
+    const raw = elementsQuery.data?.items ?? [];
+    if (linksByElementId.size === 0) return raw;
+    return raw.map((el) => {
+      const links = linksByElementId.get(el.id);
+      return links ? { ...el, boq_links: links } : el;
+    });
+  }, [elementsQuery.data, linksByElementId]);
 
   // Apply the deep-link element selection as soon as the elements list
   // resolves.  Strips the query param afterwards so a refresh doesn't
