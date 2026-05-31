@@ -107,10 +107,10 @@ interface BIMFilterPanelProps {
   onClose?: () => void;
   onElementClick?: (elementId: string) => void;
   /** When set, the panel shows a "Link to BOQ" button that opens the
-   *  AddToBOQ modal populated with the current visible subset. Receives the
-   *  same isolation-aware `visibleElements` the button counts, so the linked
-   *  set matches the count and what Save-as-group / CSV export act on. */
-  onQuickTakeoff?: (visibleElements: BIMElementData[]) => void;
+   *  AddToBOQ modal populated with the current filtered subset. Receives the
+   *  exact `visibleElements` (isolation ∩ storey ∩ type ∩ search) the button
+   *  count reflects, so the export matches what the user sees. */
+  onQuickTakeoff?: (subset: BIMElementData[]) => void;
   /** Current visible-element count from the parent (after applyFilter). */
   visibleElementCount?: number | null;
   /** When set, the panel shows a "Save as group" button that opens the
