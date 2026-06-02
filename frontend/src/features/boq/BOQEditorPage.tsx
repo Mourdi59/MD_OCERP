@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 // lucide-react icons used by sub-components (BOQToolbar, BOQGrid, etc.) — none needed directly here
-import { Database, Download, ExternalLink, X, Sparkles, AlertTriangle as WarnTriangle, Lock, Copy, Wallet, Keyboard, GitCompare, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Database, Download, ExternalLink, X, Sparkles, AlertTriangle as WarnTriangle, Lock, Copy, Wallet, Keyboard, GitCompare, RefreshCw, ShieldCheck, BookOpen } from 'lucide-react';
 import { Button, Badge, Breadcrumb, ModuleHelpButton, ConfirmDialog, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useProgressStore } from '@/shared/ui/GlobalProgress';
@@ -41,6 +41,7 @@ import { VersionHistoryDrawer } from './VersionHistoryDrawer';
 import { ModelLinkPanel } from './ModelLinkPanel';
 import { ModelLinkReviewPanel } from './ModelLinkReviewPanel';
 import { BOQCompareDrawer } from './BOQCompareDrawer';
+import { BordereauDrawer } from './BordereauDrawer';
 import { CostBreakdownPanel } from './CostBreakdownPanel';
 import { EstimateClassification } from './EstimateClassification';
 import { ResourceSummary } from './ResourceSummary';
@@ -394,6 +395,10 @@ export function BOQEditorPage() {
 
   /* ── Mutations ─────────────────────────────────────────────────────── */
 
+  // Ref so invalidateAll can reach bordereauId without a TDZ error — the
+  // state is declared later in the file; refs can be written before read.
+  const bordereauIdRef = useRef<string | null>(null);
+
   /** Invalidate all BOQ-related queries after any data change. */
   const invalidateAll = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['boq', boqId] });
@@ -401,6 +406,9 @@ export function BOQEditorPage() {
     queryClient.invalidateQueries({ queryKey: ['boq-resource-summary', boqId] });
     queryClient.invalidateQueries({ queryKey: ['boq-markups', boqId] });
     queryClient.invalidateQueries({ queryKey: ['boq-activity', boqId] });
+    // Bordereau lines may change when positions are added/updated (price seeding).
+    const bid = bordereauIdRef.current;
+    if (bid) queryClient.invalidateQueries({ queryKey: ['bordereau', bid] });
   }, [queryClient, boqId]);
 
   /**
@@ -2259,6 +2267,17 @@ export function BOQEditorPage() {
   // ── Feature 2: estimate baseline / line-level compare ──────────────────
   const [compareOpen, setCompareOpen] = useState(false);
 
+  // ── Bordereau de prix drawer ────────────────────────────────────────────
+  const [bordereauOpen, setBordereauOpen] = useState(false);
+  const [bordereauId, setBordereauId] = useState<string | null>(boq?.bordereau_id ?? null);
+  // Keep the ref in sync so invalidateAll (declared earlier) can reach bordereauId.
+  bordereauIdRef.current = bordereauId;
+  // Sync state when BOQ data loads/changes
+  useEffect(() => {
+    setBordereauId(boq?.bordereau_id ?? null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boq?.bordereau_id]);
+
   const unlinkMutation = useMutation({
     mutationFn: (positionId: string) => boqApi.unlinkPosition(positionId),
     onSuccess: (updated) => {
@@ -3997,6 +4016,18 @@ export function BOQEditorPage() {
             <Button
               variant="ghost"
               size="sm"
+              onClick={() => setBordereauOpen(true)}
+              title={t('bordereau.openBordereau')}
+            >
+              <BookOpen size={14} className="mr-1" />
+              {t('bordereau.openBordereau')}
+              {bordereauId && (
+                <span className="ml-1 inline-block w-2 h-2 rounded-full bg-indigo-500" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setCompareOpen(true)}
               title={t('boq.compare_btn_hint', {
                 defaultValue: 'Compare this estimate against another BOQ',
@@ -4513,6 +4544,21 @@ export function BOQEditorPage() {
           isOpen={modelReviewOpen}
           onClose={() => setModelReviewOpen(false)}
           onApplied={() => invalidateAll()}
+        />
+      )}
+
+      {/* ── Bordereau de prix ────────────────────────────────────────── */}
+      {boqId && boq?.project_id && (
+        <BordereauDrawer
+          boqId={boqId}
+          projectId={boq.project_id}
+          bordereauId={bordereauId}
+          isOpen={bordereauOpen}
+          onClose={() => setBordereauOpen(false)}
+          onBordereauChanged={(bid) => {
+            setBordereauId(bid);
+            invalidateAll();
+          }}
         />
       )}
 

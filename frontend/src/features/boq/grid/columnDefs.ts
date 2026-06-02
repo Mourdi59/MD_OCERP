@@ -315,6 +315,8 @@ export function getColumnDefs(context: BOQColumnContext): ColDef[] {
       width: 130,
       editable: (params) => {
         if (params.data?._isSection || params.data?._isFooter) return false;
+        // Price is derived from the bordereau — only editable via the price schedule.
+        if (params.data?.bordereau_line_id) return false;
         // Position rate is the sum of resource subtotals — never editable
         // when the position carries resources. Variant rate edits happen
         // on the synthetic VARIANT row inside the resource panel and
@@ -336,6 +338,8 @@ export function getColumnDefs(context: BOQColumnContext): ColDef[] {
       cellRenderer: 'unitRateCellRenderer',
       cellClass: (params) => {
         let base = 'text-right tabular-nums text-xs !pr-2 !pl-2';
+        // Derived from bordereau — subtle indigo tint to signal read-only source
+        if (params.data?.bordereau_line_id) base = `${base} text-indigo-600 dark:text-indigo-400`;
         const res = params.data?.metadata?.resources;
         if (Array.isArray(res) && res.length > 0) base = `${base} text-content-tertiary`;
         const ctx = params.context as { expandedPositions?: Set<string> } | undefined;
@@ -345,6 +349,9 @@ export function getColumnDefs(context: BOQColumnContext): ColDef[] {
       headerClass: 'ag-right-aligned-header',
       type: 'numericColumn',
       tooltipValueGetter: (params) => {
+        if (params.data?.bordereau_line_id) {
+          return t('bordereau.derivedPriceTooltip');
+        }
         const res = params.data?.metadata?.resources;
         if (Array.isArray(res) && res.length > 0) {
           return t('boq.rate_from_resources', { defaultValue: 'Rate is calculated from resources. Edit individual resources to change.' });
