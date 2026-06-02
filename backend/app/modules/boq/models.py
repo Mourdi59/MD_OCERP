@@ -82,6 +82,14 @@ class BOQ(Base):
         server_default="{}",
     )
 
+    # ── Bordereau de prix link ─────────────────────────────────────────
+    bordereau_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_bordereau_bordereau.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Relationships
     positions: Mapped[list["Position"]] = relationship(
         back_populates="boq",
@@ -252,6 +260,14 @@ class Position(Base):
     # reader from before these columns keeps working.
     norm_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     norm_work_key: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+    # ── Bordereau de prix line link ────────────────────────────────────
+    bordereau_line_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_bordereau_line.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
