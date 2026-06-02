@@ -55,6 +55,14 @@ class BOQ(Base):
         server_default="{}",
     )
 
+    # ── Bordereau de prix link ─────────────────────────────────────────
+    bordereau_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_bordereau_bordereau.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Relationships
     positions: Mapped[list["Position"]] = relationship(
         back_populates="boq",
@@ -179,6 +187,14 @@ class Position(Base):
     # Additive nullable link to the cost line this position rolls up into.
     # Written by the spine generator; NULL on positions not yet wired.
     cost_line_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
+
+    # ── Bordereau de prix line link ────────────────────────────────────
+    bordereau_line_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_bordereau_line.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",

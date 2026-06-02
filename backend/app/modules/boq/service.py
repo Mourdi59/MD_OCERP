@@ -1781,6 +1781,94 @@ class BOQService:
             )
         return boq
 
+    async def _auto_link_bordereau(
+        self,
+        position: "Position",
+        boq: "BOQ",
+    ) -> "Position":
+        """Auto-link a newly created position to the BOQ's bordereau (Phase 2).
+
+        If the BOQ has a bordereau attached (``boq.bordereau_id`` is set),
+        resolve or create a bordereau line matching this position's
+        designation + unit (or reference_code), then stamp
+        ``bordereau_line_id`` + override ``unit_rate``/``total`` from
+        the canonical line price.
+
+        Non-fatal: any error is logged and the original position returned
+        unchanged so a bordereau misconfiguration never blocks position
+        creation.
+        """
+        bordereau_id = getattr(boq, "bordereau_id", None)
+        if not bordereau_id:
+            return position
+
+        # ── Snapshot all ORM attributes into plain Python values BEFORE the
+        # first await. update_fields() ends with session.expire_all() which
+        # expires every ORM instance in the unit of work; accessing an expired
+        # attribute outside a greenlet raises MissingGreenlet. Snapshots
+        # are plain str/int/UUID — never re-read from the ORM after writes.
+        boq_id_snap = boq.id
+        pos_id = position.id
+        pos_description = position.description or ""
+        pos_unit = position.unit or ""
+        pos_quantity = position.quantity
+        pos_unit_rate = position.unit_rate
+        pos_version = int(position.version or 0)
+        pos_reference_code = getattr(position, "reference_code", None)
+
+        # Only price lines (non-section, non-empty description+unit) go into
+        # the bordereau. Section headers have no unit price to manage.
+        from app.modules.bordereau.service import BordereauService, _is_bordereau_eligible
+        if not _is_bordereau_eligible(pos_description, pos_unit):
+            return position
+
+        try:
+
+            b_svc = BordereauService(self.session)
+            line, _ = await b_svc.resolve_line(
+                bordereau_id,
+                reference_code=pos_reference_code,
+                designation=pos_description,
+                unit=pos_unit,
+            )
+
+            # Snapshot the line fields we need before any write that expires them.
+            line_id = line.id
+            line_version = line.version or 0
+            line_rate = str(line.unit_rate)
+
+            if _to_decimal(line_rate) == Decimal("0"):
+                # Line was just created with rate=0: seed it from the position.
+                new_rate = _quantize_money_str(pos_unit_rate)
+                await b_svc.line_repo.update_fields(
+                    line_id,
+                    unit_rate=new_rate,
+                    version=line_version + 1,
+                )
+                line_rate = new_rate
+
+            new_total = _compute_total(pos_quantity, line_rate)
+            await self.position_repo.update_fields(
+                pos_id,
+                bordereau_line_id=line_id,
+                unit_rate=line_rate,
+                total=new_total,
+                version=pos_version + 1,
+            )
+            # Re-fetch the live position so the caller gets updated fields.
+            refreshed = await self.position_repo.get_by_id(pos_id)
+            return refreshed if refreshed is not None else position
+
+        except Exception:  # noqa: BLE001 — never block position creation
+            logger.warning(
+                "bordereau auto-link failed for position %s (boq %s, bordereau %s)",
+                pos_id,
+                boq_id_snap,
+                bordereau_id,
+                exc_info=True,
+            )
+            return position
+
     async def _validate_parent_id(
         self,
         *,
@@ -2622,7 +2710,7 @@ class BOQService:
             HTTPException 422 if ``cost_item_id`` was supplied but does not
                 reference an active CostItem (Issue #79).
         """
-        await self._ensure_not_locked(data.boq_id)
+        _boq = await self._ensure_not_locked(data.boq_id)
 
         # ── Issue #127: reuse-by-code (linked instance) ──────────────────
         # If a reusable code was supplied AND a master/owner of that code
@@ -2830,6 +2918,10 @@ class BOQService:
                     exc_info=True,
                 )
 
+        # ── Phase 2: auto-link to bordereau ──────────────────────────────
+        # Non-fatal: a bordereau misconfiguration never blocks creation.
+        position = await self._auto_link_bordereau(position, _boq)
+
         await _safe_publish(
             "boq.position.created",
             {
@@ -2938,6 +3030,58 @@ class BOQService:
             link_role=link_role,
             reference_code=reference_code,
         )
+
+        # ── Phase 2: auto-link to bordereau ──────────────────────────────
+        # Snapshot new_position fields NOW — _clone_subtree calls
+        # position_repo.create() which runs session.refresh(), but subsequent
+        # update_fields calls below will expire all ORM instances.
+        np_id = new_position.id
+        np_version = int(new_position.version or 0)
+        np_qty = new_position.quantity
+
+        target_boq_obj = await self.boq_repo.get_by_id(target_boq)
+        if target_boq_obj is not None:
+            # Snapshot master fields before any write expires them.
+            _src = live_master or master
+            master_line_id = getattr(_src, "bordereau_line_id", None)
+            if (
+                master_line_id is not None
+                and target_boq_obj.bordereau_id is not None
+            ):
+                try:
+                    from app.modules.bordereau.service import BordereauService
+
+                    b_svc = BordereauService(self.session)
+                    master_line = await b_svc.line_repo.get_by_id(master_line_id)
+                    if (
+                        master_line is not None
+                        and str(master_line.bordereau_id) == str(target_boq_obj.bordereau_id)
+                    ):
+                        # Same bordereau: reuse the same line directly.
+                        ml_rate = str(master_line.unit_rate)
+                        ml_id = master_line.id
+                        new_total = _compute_total(np_qty, ml_rate)
+                        await self.position_repo.update_fields(
+                            np_id,
+                            bordereau_line_id=ml_id,
+                            unit_rate=ml_rate,
+                            total=new_total,
+                            version=np_version + 1,
+                        )
+                        refreshed = await self.position_repo.get_by_id(np_id)
+                        if refreshed is not None:
+                            new_position = refreshed
+                    else:
+                        # Different bordereau: general resolve path.
+                        new_position = await self._auto_link_bordereau(new_position, target_boq_obj)
+                except Exception:  # noqa: BLE001
+                    logger.warning(
+                        "bordereau auto-link failed in _create_reused_position for %s",
+                        np_id,
+                        exc_info=True,
+                    )
+            elif target_boq_obj.bordereau_id is not None:
+                new_position = await self._auto_link_bordereau(new_position, target_boq_obj)
 
         await _safe_publish(
             "boq.position.created",

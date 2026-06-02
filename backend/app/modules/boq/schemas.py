@@ -187,6 +187,9 @@ class BOQResponse(BaseModel):
     approved_by: str | None = None
     approved_at: str | None = None
 
+    # Bordereau de prix
+    bordereau_id: UUID | None = None
+
     # BUG-MATH04: defence-in-depth strip of any residual HTML on output.
     # Input validators only block the *dangerous* subset; legacy rows
     # written before that fix may still contain ``<b>`` etc. Stripping at
@@ -805,6 +808,8 @@ class PositionResponse(BaseModel):
     # Only populated for masters: how many OTHER positions reuse this code
     # (linked instances) project-wide. None for instances / standalone.
     linked_instance_count: int | None = None
+    # ── Bordereau de prix (read-only) ─────────────────────────────────
+    bordereau_line_id: UUID | None = None
 
     # BUG-MATH04: response-side HTML strip. Position descriptions are the
     # most-rendered free-text field in the product (BOQ grid, exports,

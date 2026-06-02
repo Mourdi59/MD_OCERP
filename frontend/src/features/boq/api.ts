@@ -19,6 +19,8 @@ export interface BOQ {
   parent_estimate_id?: string | null;
   created_at: string;
   updated_at: string;
+  /** Bordereau de prix attached to this BOQ, if any. */
+  bordereau_id?: string | null;
 }
 
 /**
@@ -72,6 +74,11 @@ export interface Position {
   /** Backend returns `metadata_` (aliased) — normalize to `metadata` in fetch layer */
   metadata: Record<string, unknown>;
   metadata_?: Record<string, unknown>;
+  /**
+   * Bordereau de prix line ID. When set, the position's `unit_rate` is
+   * derived from the bordereau and is not directly editable in the grid.
+   */
+  bordereau_line_id?: string | null;
 }
 
 /**
