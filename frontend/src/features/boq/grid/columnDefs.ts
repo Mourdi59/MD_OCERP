@@ -809,6 +809,8 @@ export function getColumnDefs(context: BOQColumnContext): ColDef[] {
       width: 130,
       editable: (params) => {
         if (params.data?._isSection || params.data?._isFooter) return false;
+        // Price is derived from the bordereau — only editable via the price schedule.
+        if (params.data?.bordereau_line_id) return false;
         // Position rate is the sum of resource subtotals — never editable
         // when the position is resource-DRIVEN (carries a resource with a
         // non-zero quantity). A position with only blank / zero-quantity
@@ -851,6 +853,8 @@ export function getColumnDefs(context: BOQColumnContext): ColDef[] {
       cellRenderer: 'unitRateCellRenderer',
       cellClass: (params) => {
         let base = 'text-right tabular-nums text-xs !pr-2 !pl-2';
+        // Derived from bordereau — subtle indigo tint to signal read-only source
+        if (params.data?.bordereau_line_id) base = `${base} text-indigo-600 dark:text-indigo-400`;
         // Grey the rate only when it is genuinely derived from resources
         // (a contributing, non-zero-quantity resource) — a manually typed
         // rate on a line with only blank resource rows reads as normal.
@@ -867,6 +871,9 @@ export function getColumnDefs(context: BOQColumnContext): ColDef[] {
       headerClass: 'ag-right-aligned-header',
       type: 'numericColumn',
       tooltipValueGetter: (params) => {
+        if (params.data?.bordereau_line_id) {
+          return t('bordereau.derivedPriceTooltip');
+        }
         if (hasContributingResources(params.data?.metadata?.resources)) {
           const buildup = rateBuildupTooltip(
             params.data as Record<string, unknown>,
