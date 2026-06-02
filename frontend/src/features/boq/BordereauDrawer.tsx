@@ -32,7 +32,6 @@ import { assembliesApi } from '@/features/assemblies/api';
 import type { AssemblyWithComponents } from '@/features/assemblies/api';
 import {
   bordereauApi,
-  type Bordereau,
   type BordereauLine,
   type CreateLineData,
   type UpdateLineData,
@@ -240,7 +239,7 @@ export function BordereauDrawer({
               {t('bordereau.title')}
             </span>
             {bordereau && (
-              <Badge variant="outline" className="text-xs">{bordereau.name}</Badge>
+              <Badge variant="neutral" className="text-xs">{bordereau.name}</Badge>
             )}
           </div>
           <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
@@ -306,7 +305,7 @@ export function BordereauDrawer({
                     <Button size="sm" variant="ghost" onClick={() => setShowCreate(false)}>{t('common.cancel')}</Button>
                   </div>
                 ) : (
-                  <Button size="sm" variant="outline" onClick={() => setShowCreate(true)} className="text-xs">
+                  <Button size="sm" variant="secondary" onClick={() => setShowCreate(true)} className="text-xs">
                     <Plus className="w-3.5 h-3.5 mr-1" />
                     {t('bordereau.createNew')}
                   </Button>
@@ -550,7 +549,7 @@ interface ComponentEditorProps {
   onSave: (comps: CreateComponentData[]) => void;
   isSaving: boolean;
   projectId: string;
-  onToast: ReturnType<typeof useToastStore>['addToast'];
+  onToast: ReturnType<typeof useToastStore.getState>['addToast'];
 }
 
 function ComponentEditor({ line, isLocked, onSave, isSaving, projectId, onToast }: ComponentEditorProps) {
