@@ -35643,7 +35643,19 @@ const resource = {
     "bordereau.errors.createLineFailed": "Failed to create line",
     "bordereau.errors.updateLineFailed": "Failed to update line",
     "bordereau.errors.deleteLineFailed": "Failed to delete line",
-    "bordereau.errors.staleVersion": "Version conflict — refresh and retry"
+    "bordereau.errors.staleVersion": "Version conflict — refresh and retry",
+    "bordereau.addAsAssembly": "Assembly (decomposed)",
+    "bordereau.importFromAssembly": "Import from assembly",
+    "bordereau.assembly.pickTitle": "Select an assembly",
+    "bordereau.assembly.search": "Search…",
+    "bordereau.assembly.noResults": "No results",
+    "bordereau.assembly.loading": "Loading…",
+    "bordereau.assembly.import": "Import components",
+    "bordereau.assembly.importedFrom": "Components imported from « {{name}} »",
+    "bordereau.component.resourceType": "Type",
+    "bordereau.component.delete": "Delete",
+    "bordereau.component.runningTotal": "Subtotal",
+    "bordereau.component.qty": "Qty"
   }
 } as { translation: Record<string, string> };
 

@@ -41193,7 +41193,19 @@ const resource = {
     "bordereau.errors.createLineFailed": "Erreur lors de la création de la ligne",
     "bordereau.errors.updateLineFailed": "Erreur lors de la mise à jour",
     "bordereau.errors.deleteLineFailed": "Erreur lors de la suppression",
-    "bordereau.errors.staleVersion": "Conflit de version — rechargez et réessayez"
+    "bordereau.errors.staleVersion": "Conflit de version — rechargez et réessayez",
+    "bordereau.addAsAssembly": "Assembly (décomposé)",
+    "bordereau.importFromAssembly": "Importer depuis l'assembly",
+    "bordereau.assembly.pickTitle": "Sélectionner une assembly",
+    "bordereau.assembly.search": "Rechercher…",
+    "bordereau.assembly.noResults": "Aucun résultat",
+    "bordereau.assembly.loading": "Chargement…",
+    "bordereau.assembly.import": "Importer les composants",
+    "bordereau.assembly.importedFrom": "Composants importés depuis « {{name}} »",
+    "bordereau.component.resourceType": "Type",
+    "bordereau.component.delete": "Supprimer",
+    "bordereau.component.runningTotal": "Sous-total",
+    "bordereau.component.qty": "Qté"
   }
 } as { translation: Record<string, string> };
 
