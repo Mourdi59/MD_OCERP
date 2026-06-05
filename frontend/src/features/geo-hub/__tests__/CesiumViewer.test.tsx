@@ -18,6 +18,34 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CesiumViewer } from '../CesiumViewer';
 import type { MapConfig } from '../types';
 
+// ── Deterministic cesium mock ────────────────────────────────────────
+//
+// Previously each test called ``vi.doMock('cesium', () => ...)`` and the
+// suite relied on ``vi.resetModules()`` in ``afterEach`` to swap the mock.
+// Under the FULL suite (heavy files running in parallel) that race was lost
+// often enough that the REAL ~3 MB ``@cesium/engine`` package leaked in,
+// whose ``new Viewer()`` throws a slow WebGL ``RuntimeError`` and pushed the
+// degraded-mode assertion past its timeout — a hard-to-reproduce flake.
+//
+// A single HOISTED ``vi.mock('cesium')`` deterministically intercepts the
+// dynamic import for every test in this file (the real package is never
+// imported). Each test sets the module shape it wants via ``setCesiumMock``
+// before rendering.
+//
+// The factory returns ONE stable object (``cesiumExports``); ``setCesiumMock``
+// MUTATES that same object in place (clear + copy) rather than reassigning a
+// new reference. This matters because vitest snapshots the namespace proxy
+// from the object the factory returned: production reads ``mod.Viewer`` off
+// the live namespace, so the keys must exist on that exact object. Reassigning
+// a fresh object would leave the already-imported namespace pointing at the
+// old (empty) one — hence the "No Viewer export" errors.
+const cesiumExports = vi.hoisted(() => ({}) as Record<string, unknown>);
+vi.mock('cesium', () => cesiumExports);
+function setCesiumMock(mod: Record<string, unknown>): void {
+  for (const k of Object.keys(cesiumExports)) delete cesiumExports[k];
+  Object.assign(cesiumExports, mod);
+}
+
 // Build a fresh stub per test so destroy() / fromUrl() spies are isolated.
 function makeCesiumStub() {
   const flyTo = vi.fn();
@@ -31,13 +59,18 @@ function makeCesiumStub() {
   }));
   // Constructor for a Cesium ``Resource`` — records the url + headers the
   // viewer attaches so the tileset test can assert on the resolved route.
-  const Resource = vi.fn().mockImplementation(
-    (opts: { url?: string; headers?: Record<string, string> }) => ({
-      url: opts?.url,
-      headers: opts?.headers,
-      _isResource: true,
-    }),
-  );
+  // Vitest 4 only treats a mock as constructible when its implementation is a
+  // real ``function``/``class``; an arrow returning an object throws "is not a
+  // constructor" at the ``new cesium.Resource(...)`` call site. Use a
+  // ``function`` so ``new`` works while still spying on the args.
+  const Resource = vi.fn(function (
+    this: Record<string, unknown>,
+    opts: { url?: string; headers?: Record<string, string> },
+  ) {
+    this.url = opts?.url;
+    this.headers = opts?.headers;
+    this._isResource = true;
+  });
   // Minimal canvas + camera-event stubs so the live-HUD wiring exercises
   // its setInputAction / camera.changed branches without throwing.
   // Listeners are kept in arrays so individual tests can introspect or
@@ -46,11 +79,13 @@ function makeCesiumStub() {
   const cameraListeners: Array<() => void> = [];
   const canvas = document.createElement('canvas');
   const ssehDestroy = vi.fn();
-  const ScreenSpaceEventHandler = vi.fn().mockImplementation(() => ({
-    setInputAction: vi.fn((cb, type) => inputActions.set(type, cb)),
-    removeInputAction: vi.fn((type) => inputActions.delete(type)),
-    destroy: ssehDestroy,
-  }));
+  // ``function`` constructor (not an arrow factory) so ``new
+  // cesium.ScreenSpaceEventHandler(canvas)`` is constructible under vitest 4.
+  const ScreenSpaceEventHandler = vi.fn(function (this: Record<string, unknown>) {
+    this.setInputAction = vi.fn((cb, type) => inputActions.set(type, cb));
+    this.removeInputAction = vi.fn((type) => inputActions.delete(type));
+    this.destroy = ssehDestroy;
+  });
   return {
     flyTo,
     destroy,
@@ -63,9 +98,14 @@ function makeCesiumStub() {
     ScreenSpaceEventHandler,
     ssehDestroy,
     module: {
-      Viewer: vi.fn().mockImplementation(() => ({
-        destroy,
-        camera: {
+      // ``function`` constructor (not an arrow factory): vitest 4 only treats a
+      // mock as ``new``-able when its implementation is a real function/class.
+      // An arrow ``mockImplementation(() => ({...}))`` throws "is not a
+      // constructor" inside the viewer init, which silently degrades to the
+      // "init failed" alert and makes every flyTo/destroy assertion fail.
+      Viewer: vi.fn(function (this: Record<string, unknown>) {
+        this.destroy = destroy;
+        this.camera = {
           flyTo,
           heading: 0,
           positionCartographic: { longitude: 0, latitude: 0, height: 1000 },
@@ -82,20 +122,20 @@ function makeCesiumStub() {
               if (idx >= 0) cameraListeners.splice(idx, 1);
             },
           },
-        },
-        scene: {
+        };
+        this.scene = {
           primitives: { add },
           canvas,
           pickPosition: vi.fn(() => ({ x: 1, y: 2, z: 3 })),
-        },
-        entities: {
+        };
+        this.entities = {
           add: vi.fn((e) => e),
           remove: vi.fn(() => true),
           removeAll: vi.fn(),
           values: [],
-        },
-        shadows: false,
-      })),
+        };
+        this.shadows = false;
+      }),
       Cartesian3: {
         fromDegrees: vi.fn((lon, lat, alt) => ({ lon, lat, alt })),
       },
@@ -129,9 +169,14 @@ function makeCesiumStub() {
       // wraps the artifact route in a Resource that carries the bearer token.
       Resource,
       // Per-tile colour/opacity styling — feature-detected by the viewer.
-      Cesium3DTileStyle: vi
-        .fn()
-        .mockImplementation((opts: Record<string, unknown>) => ({ ...opts })),
+      // ``function`` constructor so ``new cesium.Cesium3DTileStyle(opts)`` is
+      // constructible under vitest 4 (arrow factories are not ``new``-able).
+      Cesium3DTileStyle: vi.fn(function (
+        this: Record<string, unknown>,
+        opts: Record<string, unknown>,
+      ) {
+        Object.assign(this, opts);
+      }),
       // Sphere math for the "Fit to data" auto-zoom.
       BoundingSphere: {
         fromPoints: vi.fn(() => ({ center: { x: 0, y: 0, z: 0 }, radius: 100 })),
@@ -154,13 +199,20 @@ function makeCesiumStub() {
 }
 
 afterEach(() => {
-  vi.resetModules();
+  // Unmount first so any in-flight async viewer-init from this test is
+  // disposed before the next test mutates the shared cesium mock. We do NOT
+  // call ``vi.resetModules()``: the hoisted ``vi.mock('cesium')`` returns one
+  // stable object that ``setCesiumMock`` mutates in place, so the cached
+  // ``import('cesium')`` namespace already tracks the current shape. Resetting
+  // the registry forced a re-import that could race a prior test's still
+  // pending init and intermittently read the wrong stub.
   cleanup();
+  setCesiumMock({});
 });
 
 describe('CesiumViewer', () => {
   it('renders a Cesium container element', async () => {
-    vi.doMock('cesium', () => ({}));
+    setCesiumMock({});
     render(<CesiumViewer mode="global" />);
     const container = await screen.findByTestId('geo-hub-cesium-container');
     expect(container).toBeTruthy();
@@ -173,13 +225,24 @@ describe('CesiumViewer', () => {
     //     ``npm install cesium``.
     //   - cesium present but ``new Viewer()`` throwing under jsdom's missing
     //     WebGL, which is how CI runs: the init-failed hint with Retry.
-    // Forcing the absent branch with ``vi.doMock('cesium', () => ({}))`` is
-    // not reliable once cesium is installed (CI), so we assert the real
-    // contract instead of one branch's exact copy: the viewer surfaces an
-    // actionable alert rather than hanging on a blank canvas. Both states
-    // render ``role="alert"`` and neither can reach ``loaded`` here (there is
-    // no working Viewer to load), so this is deterministic in every env.
-    vi.doMock('cesium', () => ({}));
+    // Both states render ``role="alert"``.
+    //
+    // Mocking with an EMPTY module (``vi.doMock('cesium', () => ({}))``) is
+    // NOT deterministic under the full suite: when several heavy files run in
+    // parallel the empty mock occasionally loses the race and the REAL ~3 MB
+    // cesium package is imported instead, whose ``new Viewer()`` throws a slow
+    // WebGL ``RuntimeError`` only after the dynamic import settles — pushing
+    // the alert past the test's timeout and flaking the run.
+    //
+    // Force the ``init_failed`` branch deterministically and fast: provide a
+    // ``Viewer`` that is a real (so ``loadCesium`` accepts it as a function)
+    // constructor which throws synchronously, exactly mimicking the
+    // WebGL-blocked path without ever touching the real runtime.
+    setCesiumMock({
+      Viewer: vi.fn(function () {
+        throw new Error('WebGL unavailable (test stub)');
+      }),
+    });
     render(<CesiumViewer mode="global" />);
     const alert = await screen.findByRole('alert', {}, { timeout: 4000 });
     expect(alert).toHaveTextContent(/cesium|3d globe/i);
@@ -187,7 +250,7 @@ describe('CesiumViewer', () => {
 
   it('flies to the anchor when mapConfig has one', async () => {
     const stub = makeCesiumStub();
-    vi.doMock('cesium', () => stub.module);
+    setCesiumMock(stub.module);
     const cfg: MapConfig = {
       project_id: 'p1',
       anchor: {
@@ -219,7 +282,7 @@ describe('CesiumViewer', () => {
 
   it('attempts to load every ready tileset', async () => {
     const stub = makeCesiumStub();
-    vi.doMock('cesium', () => stub.module);
+    setCesiumMock(stub.module);
     const cfg: MapConfig = {
       project_id: 'p1',
       anchor: null,
@@ -288,7 +351,7 @@ describe('CesiumViewer', () => {
 
   it('destroys the viewer on unmount', async () => {
     const stub = makeCesiumStub();
-    vi.doMock('cesium', () => stub.module);
+    setCesiumMock(stub.module);
     const { unmount } = render(<CesiumViewer mode="global" />);
     await waitFor(() => {
       expect(stub.module.Viewer).toHaveBeenCalled();
@@ -305,9 +368,11 @@ describe('CesiumViewer', () => {
     // the camera.
     const stub = makeCesiumStub();
     // Patch the viewer factory to seed heading + altitude on the camera.
-    stub.module.Viewer = vi.fn().mockImplementation(() => ({
-      destroy: stub.destroy,
-      camera: {
+    // ``function`` constructor (not an arrow factory) so it stays
+    // ``new``-able under vitest 4.
+    stub.module.Viewer = vi.fn(function (this: Record<string, unknown>) {
+      this.destroy = stub.destroy;
+      this.camera = {
         flyTo: stub.flyTo,
         heading: Math.PI / 2,
         positionCartographic: { longitude: 0, latitude: 0, height: 750 },
@@ -321,21 +386,21 @@ describe('CesiumViewer', () => {
           },
           removeEventListener: vi.fn(),
         },
-      },
-      scene: {
+      };
+      this.scene = {
         primitives: { add: stub.add },
         canvas: stub.canvas,
         pickPosition: vi.fn(() => ({ x: 1, y: 2, z: 3 })),
-      },
-      entities: {
+      };
+      this.entities = {
         add: vi.fn((e) => e),
         remove: vi.fn(() => true),
         removeAll: vi.fn(),
         values: [],
-      },
-      shadows: false,
-    }));
-    vi.doMock('cesium', () => stub.module);
+      };
+      this.shadows = false;
+    });
+    setCesiumMock(stub.module);
     const onCameraChange = vi.fn();
     render(
       <CesiumViewer mode="global" onCameraChange={onCameraChange} />,
@@ -354,7 +419,7 @@ describe('CesiumViewer', () => {
     // directly with a synthetic endPosition then assert the throttled
     // rAF flush delivers a {lat, lon, altitudeM} to the parent.
     const stub = makeCesiumStub();
-    vi.doMock('cesium', () => stub.module);
+    setCesiumMock(stub.module);
     const onMouseMove = vi.fn();
     render(
       <CesiumViewer mode="global" onMouseMove={onMouseMove} />,
@@ -382,7 +447,7 @@ describe('CesiumViewer', () => {
     // input-handler destroy spy + the camera-listener array, then
     // assert both are zeroed after unmount.
     const stub = makeCesiumStub();
-    vi.doMock('cesium', () => stub.module);
+    setCesiumMock(stub.module);
     const { unmount } = render(
       <CesiumViewer
         mode="global"
@@ -409,7 +474,7 @@ describe('CesiumViewer', () => {
     // would wipe the user's camera state and re-download the 3 MB
     // runtime every 30 s.
     const stub = makeCesiumStub();
-    vi.doMock('cesium', () => stub.module);
+    setCesiumMock(stub.module);
     const makeCfg = (): MapConfig => ({
       project_id: 'p1',
       anchor: {

@@ -536,7 +536,23 @@ class _StubContractRepo:
                 setattr(obj, k, v)
 
 
+class _StubLineRepo:
+    """SoV line lookup for the compliance gate. Empty by default."""
+
+    def __init__(self, lines: list[Any] | None = None) -> None:
+        self.lines = lines or []
+
+    async def list_for_contract(self, _contract_id: uuid.UUID) -> list[Any]:
+        return list(self.lines)
+
+
 class _StubSession:
+    def __init__(self, project: Any | None = None) -> None:
+        self._project = project
+
+    async def get(self, _model: Any, _pk: Any) -> Any:
+        return self._project
+
     async def refresh(self, obj: Any) -> None:
         pass
 
@@ -545,6 +561,7 @@ def _stub_service() -> ContractsService:
     svc = ContractsService.__new__(ContractsService)
     svc.session = _StubSession()
     svc.contract_repo = _StubContractRepo()
+    svc.line_repo = _StubLineRepo()
     return svc
 
 
@@ -582,6 +599,7 @@ async def test_transition_contract_emits_signed_event() -> None:
         total_value=Decimal("0"),
         status="draft",
         signed_at=None,
+        metadata_={},
     )
     mock_publish = MagicMock()
     with patch.object(contracts_service.event_bus, "publish_detached", mock_publish):

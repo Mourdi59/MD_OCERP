@@ -25,6 +25,7 @@ import {
   Button,
   Card,
   Badge,
+  DismissibleInfo,
   EmptyState,
   Breadcrumb,
   RecoveryCard,
@@ -316,6 +317,16 @@ export function BidManagementPage() {
           </Button>
         </div>
       </div>
+
+      <DismissibleInfo
+        storageKey="bid-management"
+        title={t('info.bid-management.title', { defaultValue: 'About Bid Management' })}
+      >
+        {t('info.bid-management.body', {
+          defaultValue:
+            'Run tendering end to end: bundle scope into bid packages, invite subcontractors, collect priced submissions, and level them side by side before awarding. Packages can draw on your project BOQ, and an award flows straight into Contracts.',
+        })}
+      </DismissibleInfo>
 
       <PipelineBanner
         intro={t('bid_management.pipeline_intro', {

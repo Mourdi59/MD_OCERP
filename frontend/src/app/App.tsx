@@ -222,12 +222,17 @@ const BuyerPortalPage = lazy(() =>
     default: m.BuyerPortalPage,
   }))
 );
-// Field-worker mobile shell — DESIGN-STAGE SKELETON. See
+// Field-worker mobile shell + PIN-redemption auth. See
 // docs/architecture/FIELD_WORKER_MOBILE_DESIGN.md. Lazy-loaded in its
 // own chunk so the desktop bundle is unaffected.
 const FieldShellPage = lazy(() =>
   import('@/features/field/FieldShellPage').then((m) => ({
     default: m.FieldShellPage,
+  }))
+);
+const FieldAuthPage = lazy(() =>
+  import('@/features/field/FieldAuthPage').then((m) => ({
+    default: m.FieldAuthPage,
   }))
 );
 const SnapshotsPage = lazy(() =>
@@ -548,7 +553,14 @@ function GlobalShortcuts() {
 
   const openGlobalSearch = useGlobalSearchStore((s) => s.openModal);
   const toggleGlobalSearch = useGlobalSearchStore((s) => s.toggleModal);
+  const closeGlobalSearch = useGlobalSearchStore((s) => s.closeModal);
 
+  // The command palette (Ctrl+K, local state) and the global semantic search
+  // modal (Ctrl+Shift+K, zustand) are two separate launcher surfaces that both
+  // render at z-[60]. The palette uses createPortal to document.body and sits
+  // later in the DOM, so when both are open it paints on top of the search
+  // modal. Keep them mutually exclusive: opening one closes the other in both
+  // directions.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
@@ -562,6 +574,12 @@ function GlobalShortcuts() {
       // estimators can trigger semantic search while editing a BOQ row.
       if (mod && e.shiftKey && (e.key === 'K' || e.key === 'k')) {
         e.preventDefault();
+        // If the search is currently closed it is about to open, so close the
+        // command palette to keep the two launchers mutually exclusive. Read
+        // the live store state since toggleModal() does not return the result.
+        if (!useGlobalSearchStore.getState().open) {
+          setPaletteOpen(false);
+        }
         toggleGlobalSearch();
         return;
       }
@@ -570,16 +588,23 @@ function GlobalShortcuts() {
 
       if (mod && e.key === 'k') {
         e.preventDefault();
-        setPaletteOpen((prev) => !prev);
+        setPaletteOpen((prev) => {
+          const next = !prev;
+          // Opening the palette closes the global search modal.
+          if (next) closeGlobalSearch();
+          return next;
+        });
       }
       if (e.key === '/' && !mod) {
         e.preventDefault();
+        // Opening the palette closes the global search modal.
+        closeGlobalSearch();
         setPaletteOpen(true);
       }
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [toggleGlobalSearch, openGlobalSearch]);
+  }, [toggleGlobalSearch, openGlobalSearch, closeGlobalSearch]);
 
   return (
     <>
@@ -729,20 +754,27 @@ export default function App() {
         <Route path="/portal/payments" element={<PortalPaymentsPage />} />
 
         {/* Field-worker mobile shell — bottom-nav layout, no desktop sidebar.
-            Skeleton route gated behind VITE_FIELD_PILOT until the pilot adds
-            the `/field/{token}` PIN entry and the four tab bodies. Off by
-            default so the placeholder shell is never reachable in a normal
-            build. See docs/architecture/FIELD_WORKER_MOBILE_DESIGN.md */}
-        {import.meta.env.VITE_FIELD_PILOT === '1' && (
-          <Route
-            path="/field"
-            element={
-              <Suspense fallback={<LoadingScreen />}>
-                <FieldShellPage />
-              </Suspense>
-            }
-          />
-        )}
+            `/field/{token}` is the SMS magic-link PIN-redemption screen; it
+            consumes the link and routes to `/field`, the four-tab shell.
+            Both are session-driven (no JWT) and degrade gracefully to a
+            signed-out hint when no field session is present.
+            See docs/architecture/FIELD_WORKER_MOBILE_DESIGN.md */}
+        <Route
+          path="/field/:token"
+          element={
+            <Suspense fallback={<LoadingScreen />}>
+              <FieldAuthPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/field"
+          element={
+            <Suspense fallback={<LoadingScreen />}>
+              <FieldShellPage />
+            </Suspense>
+          }
+        />
 
         {/* Auth — public */}
         <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />

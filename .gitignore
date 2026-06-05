@@ -297,6 +297,11 @@ data/connectors/
 /_i18n_*.py
 /_i18n_*.js
 /_i18n_*.json
+/_i18n_new_*.txt
+/_qa_tsc_out.txt
 backend/_qa_tmp_*
 
 frontend/_qa_tmp_*
+frontend/tsc_result.txt
+frontend/tsc_out.txt
+frontend/_final_tsc.txt

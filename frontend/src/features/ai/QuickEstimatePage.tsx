@@ -44,7 +44,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import clsx from 'clsx';
-import { Card, CardContent, Button, Badge, AIDisclaimerBanner } from '@/shared/ui';
+import { Card, CardContent, Button, Badge, AIDisclaimerBanner, DismissibleInfo } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { aiApi, type QuickEstimateRequest, type EstimateJobResponse, type EstimateItem, type CadExtractResponse, type EnrichResult, type EnrichedItem, type CostMatch, type CadColumnsResponse, type CadGroupResponse, type CadDynamicGroup, type CadGroupElementsResponse } from './api';
@@ -2229,6 +2229,16 @@ export function QuickEstimatePage() {
           )}
         </div>
       </header>
+
+      <DismissibleInfo
+        storageKey="ai-estimate"
+        title={t('info.ai-estimate.title', { defaultValue: 'AI Estimate' })}
+      >
+        {t('info.ai-estimate.body', {
+          defaultValue:
+            'Turn text, photos, PDFs, spreadsheets, or CAD and BIM files into a structured cost estimate with quantities, units, and rates. Match lines against the cost database and save the result as a BOQ on any project.',
+        })}
+      </DismissibleInfo>
 
       {!isCadRoute && <AIDisclaimerBanner />}
 

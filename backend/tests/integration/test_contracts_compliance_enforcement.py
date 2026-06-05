@@ -7,8 +7,9 @@ to validation rule sets) against the contract's schedule of values before the
 ``draft → active`` transition is allowed. These tests pin down:
 
 1. A contract whose SoV has blocking compliance errors (a zero-quantity work
-   line) is refused with HTTP 422 and stays in ``draft`` — and the blocking
-   outcome is recorded on ``contract.metadata_["compliance_validation"]``.
+   line) is refused with HTTP 422 and stays in ``draft``. The blocking audit is
+   written through a separate, isolated session, so the request session is left
+   untouched and the 422 is not masked by a rollback-time 500.
 2. A contract whose SoV is clean signs successfully, gets ``signed_at`` stamped
    and an audit trail with ``blocked=false`` recorded.
 3. The gate maps SoV parent (roll-up) lines to ``section`` so the leaf-only
@@ -146,13 +147,13 @@ async def test_sign_blocked_on_compliance_errors() -> None:
     # Contract must NOT have transitioned.
     assert contract.status == "draft"
     assert contract.signed_at is None
-    # Blocking audit trail recorded + persisted.
-    assert svc.session.committed is True
-    audit = contract.metadata_.get("compliance_validation")
-    assert audit is not None
-    assert audit["blocked"] is True
-    assert audit["status"] == "errors"
-    assert "universal" in audit["rule_packs"]
+    # The blocking audit is persisted via a SEPARATE, isolated session
+    # (async_session_factory) so the request session that the get_session
+    # dependency rolls back on the raised 422 stays untouched. If we committed
+    # the request session here and then raised, the dependency's rollback of an
+    # already-committed transaction surfaced a misleading 500 instead of the
+    # 422. So the request session must NOT be committed by the gate.
+    assert svc.session.committed is False
 
 
 # ── 2. Clean SoV → signs, signed_at + passing audit ──────────────────────

@@ -419,5 +419,22 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}', 'tests/**/*.test.{ts,tsx}'],
     css: false,
+    // Public-asset imports (`import url from '/brand/x.webp'`) are resolved by
+    // Vite against ``publicDir`` at runtime, but under vitest the public dir is
+    // not served — ``vite:import-analysis`` fails with "Failed to resolve
+    // import /brand/...", and a bare Node resolve throws "The argument
+    // 'filename' must be a file URL object ...". Alias these binary image
+    // assets to a tiny string-URL stub so resolution is deterministic and the
+    // default export is a URL string, matching Vite's runtime contract.
+    //
+    // The regex matches the full leading-slash specifier (anchored on the
+    // ``/brand/`` public path) because a bare extension-suffix alias is
+    // applied too late to intercept the public-asset code path.
+    alias: [
+      {
+        find: /^\/.*\.(webp|png|jpe?g|gif|avif|ico)$/,
+        replacement: path.resolve(__dirname, './src/test/assetStub.ts'),
+      },
+    ],
   },
 });

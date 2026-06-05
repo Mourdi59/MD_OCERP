@@ -74,6 +74,7 @@ import { Badge } from '@/shared/ui/Badge';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { MiniGeometryPreview } from '@/shared/ui/MiniGeometryPreview';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
+import { DismissibleInfo } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { useToastStore } from '@/stores/useToastStore';
@@ -1886,6 +1887,18 @@ export function ClashDetectionPage() {
           </Button>
         </div>
       </div>
+
+      <DismissibleInfo
+        storageKey="clash"
+        title={t('info.clash.title', {
+          defaultValue: 'Clash detection',
+        })}
+      >
+        {t('info.clash.body', {
+          defaultValue:
+            'Run geometric interference and clearance checks across the canonical BIM models in this project, then triage each clash by discipline, status and severity. Resolved issues link straight into the 3D viewer and export to BCF for coordination with the rest of the platform.',
+        })}
+      </DismissibleInfo>
 
       {/* ── Selectable CAD-BIM model cards ──────────────────────────────
             One card per BIM model in the project. Clicking a card toggles

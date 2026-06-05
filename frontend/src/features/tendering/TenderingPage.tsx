@@ -20,7 +20,7 @@ import {
   FileText,
   AlertTriangle,
 } from 'lucide-react';
-import { Button, Card, Badge, EmptyState, RecoveryCard, Skeleton, InfoHint, SkeletonTable, Breadcrumb, ConfirmDialog } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, RecoveryCard, Skeleton, DismissibleInfo, SkeletonTable, Breadcrumb, ConfirmDialog } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import {
   WideModal,
@@ -1370,7 +1370,16 @@ export function TenderingPage() {
       </div>
 
       {/* Workflow explanation */}
-      <InfoHint className="mb-6" text={t('tendering.workflow_desc', { defaultValue: 'Tendering workflow: Draft (prepare package) → Issued (send to bidders) → Collecting (receive bids) → Evaluating (compare offers side-by-side) → Awarded (select winner). Create a package from a BOQ, add subcontractor bids, then use the comparison table to identify the best offer. Add 2+ bids to see a side-by-side analysis.' })} />
+      <DismissibleInfo
+        storageKey="tendering"
+        className="mb-6"
+        title={t('info.tendering.title', { defaultValue: 'About Tendering' })}
+      >
+        {t('info.tendering.body', {
+          defaultValue:
+            'Build bid packages from a BOQ, send them to subcontractors, and compare the offers you receive side by side. The workflow runs Draft, Issued, Collecting, Evaluating, Awarded. Awarding a winner writes the agreed rates back to the BOQ and prepares a draft purchase order in Procurement.',
+        })}
+      </DismissibleInfo>
 
       {/* Project selector + New package button */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end">

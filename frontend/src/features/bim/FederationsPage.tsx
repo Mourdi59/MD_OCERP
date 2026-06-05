@@ -36,6 +36,7 @@ import {
   CardContent,
   CardHeader,
   ConfirmDialog,
+  DismissibleInfo,
   EmptyState,
   Input,
   WideModal,
@@ -968,6 +969,18 @@ export function FederationsPage() {
           </div>
         </div>
       </header>
+
+      <DismissibleInfo
+        storageKey="bim-federations"
+        title={t('info.bim-federations.title', {
+          defaultValue: 'BIM federations',
+        })}
+      >
+        {t('info.bim-federations.body', {
+          defaultValue:
+            'Group related BIM models that share an origin, such as architectural, structural and MEP, into one coordinated set. From a federation you can manage members and open each model in the 3D viewer, keeping the canonical model consistent across disciplines for takeoff, BOQ and cost work.',
+        })}
+      </DismissibleInfo>
 
       <section className="min-h-[60vh]">
         {!projectId ? (

@@ -760,6 +760,45 @@ async def _seed_demo_account() -> None:
                     logger.info("Flagship seed: %s", fl_result)
             except Exception:
                 logger.warning("Flagship seed skipped (non-fatal)", exc_info=True)
+
+            # Equipment & fleet demo - a representative fleet with 90 days of
+            # telemetry so the predictive Health & Analytics tab and Fleet
+            # Intelligence panel arrive populated (gauge, anomalies, forecast,
+            # underutilised units, savings) rather than empty. Idempotent: the
+            # seed skips when EQ-0001 already exists.
+            try:
+                from app.modules.equipment.seed import seed_equipment_demo
+
+                async with async_session_factory() as eq_session:
+                    eq_counts = await seed_equipment_demo(eq_session)
+                    await eq_session.commit()
+                    if any(eq_counts.values()):
+                        logger.info("Equipment demo seed: %s", eq_counts)
+            except Exception:
+                logger.warning("Equipment demo seed skipped (non-fatal)", exc_info=True)
+
+            # Subcontractor demo - 50 firms with varied prequalification states
+            # and 24 months of rating rollups for the top 10, plus agreements on
+            # the flagship project. Feeds the vendor scorecard (rating dials +
+            # period history) and the procurement prequalification badges /
+            # award gate. Idempotent: skips when any subcontractor exists.
+            try:
+                from sqlalchemy import select as _select
+
+                from app.modules.projects.models import Project as _Project
+                from app.modules.subcontractors.seed import seed_subcontractors_demo
+
+                async with async_session_factory() as sub_session:
+                    # Attach agreements to whatever demo project exists (the
+                    # flagship is installed above); None just skips agreements,
+                    # leaving the subs + ratings the scorecard needs.
+                    _proj_id = (await sub_session.execute(_select(_Project.id).limit(1))).scalars().first()
+                    sub_counts = await seed_subcontractors_demo(sub_session, project_id=_proj_id)
+                    await sub_session.commit()
+                    if any(sub_counts.values()):
+                        logger.info("Subcontractor demo seed: %s", sub_counts)
+            except Exception:
+                logger.warning("Subcontractor demo seed skipped (non-fatal)", exc_info=True)
     except Exception:
         logger.exception("Failed to seed demo account (non-fatal)")
 

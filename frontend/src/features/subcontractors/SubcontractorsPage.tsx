@@ -28,6 +28,7 @@ import {
   Button,
   Card,
   Badge,
+  DismissibleInfo,
   EmptyState,
   Breadcrumb,
   SkeletonTable,
@@ -260,6 +261,18 @@ export function SubcontractorsPage() {
           {t('subcontractors.new', { defaultValue: 'New Subcontractor' })}
         </Button>
       </div>
+
+      <DismissibleInfo
+        storageKey="subcontractors"
+        title={t('info.subcontractors.title', {
+          defaultValue: 'Subcontractor register',
+        })}
+      >
+        {t('info.subcontractors.body', {
+          defaultValue:
+            'Track your prequalified supply chain here: insurance and certificate status, subcontract scopes, payment applications, retention and performance ratings. Approved firms can be invited to bid packages and bound by contracts, with prequalification and lien waivers gating award and payment.',
+        })}
+      </DismissibleInfo>
 
       <PipelineBanner
         intro={t('subcontractors.pipeline_intro', {

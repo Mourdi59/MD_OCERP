@@ -16,6 +16,7 @@ import logging
 import uuid
 from datetime import UTC, datetime
 from datetime import date as _date
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +25,25 @@ from app.modules.bi_dashboards import kpis as kpi_registry
 from app.modules.project_controls import thresholds as threshold_rules
 
 logger = logging.getLogger(__name__)
+
+# EVM ratio KPIs (CPI / SPI) are EV / AC and EV / PV respectively. When a
+# project carries no earned-value basis yet (EV == 0 — no task progress /
+# percent-complete recorded), these ratios collapse to exactly 0. A literal
+# 0 is not a real "performance has cratered" reading: it just means there is
+# no earned value to divide. We treat that case as "no data" so the tile shows
+# a neutral dash instead of a misleading red 0, and we suppress the false
+# alert. A genuinely computed CPI/SPI on real data is essentially never 0.
+_EVM_RATIO_CODES = {"cpi", "spi"}
+
+
+def _to_decimal_or_none(value: Any) -> Decimal | None:
+    if value is None:
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return None
+
 
 # The executive spine: ordered domains, each with its KPI codes + a label.
 # Codes resolve against the shared bi_dashboards.kpis registry.
@@ -95,6 +115,29 @@ _DEEP_LINK_TEMPLATES: dict[str, str] = {
     "purchase_order": "/procurement?id={id}",
     "project": "/projects/{id}",
 }
+
+
+def _fmt_value(value: Any, unit: str, breakdown: dict[str, Any] | None) -> str:
+    """Render a KPI value for an alert message without scientific notation.
+
+    Currency values carry their ISO code (never blended); ratios / counts /
+    percents / days get a short suffix. Falls back to the raw value when it
+    cannot be parsed as a number.
+    """
+    dec = _to_decimal_or_none(value)
+    if dec is None:
+        return f"{value} {unit}".strip()
+    # Normalise so Decimal("0E+1") prints as "0", and trim trailing zeros.
+    normalised = dec.quantize(Decimal(1)) if dec == dec.to_integral_value() else dec.normalize()
+    num = f"{normalised:f}"
+    if unit == "currency":
+        code = str((breakdown or {}).get("currency") or "").strip().upper()
+        return f"{code} {num}".strip() if code else num
+    if unit == "percent":
+        return f"{num}%"
+    if unit == "days":
+        return f"{num}d"
+    return num
 
 
 def _label_for(code: str) -> str:
@@ -180,17 +223,33 @@ class ProjectControlsService:
                     multi_currency = True
                 if not currency and comp.unit == "currency":
                     currency = str(breakdown.get("currency") or "")
-                status = threshold_rules.band_status(
-                    code,
-                    comp.value,
-                    overrides=thresholds,
-                )
-                if status != "green" and comp.source_record_count > 0:
+
+                # EVM ratio with no earned-value basis -> treat as no data so
+                # the tile shows a neutral dash, not a misleading red 0.
+                record_count = comp.source_record_count
+                no_evm_basis = False
+                if code in _EVM_RATIO_CODES:
+                    ev = _to_decimal_or_none(breakdown.get("ev"))
+                    if (ev is None or ev == 0) and (_to_decimal_or_none(comp.value) == 0):
+                        no_evm_basis = True
+                        record_count = 0
+
+                if no_evm_basis:
+                    status = "green"
+                else:
+                    status = threshold_rules.band_status(
+                        code,
+                        comp.value,
+                        overrides=thresholds,
+                    )
+                if status != "green" and record_count > 0:
                     alerts.append(
                         {
                             "kpi_code": code,
                             "severity": "critical" if status == "red" else "warning",
-                            "message": f"{_label_for(code)} is {status} ({comp.value} {comp.unit}).",
+                            "message": (
+                                f"{_label_for(code)} is {status} ({_fmt_value(comp.value, comp.unit, breakdown)})."
+                            ),
                         }
                     )
                 kpi_tiles.append(
@@ -200,7 +259,7 @@ class ProjectControlsService:
                         "value": str(comp.value),
                         "unit": comp.unit,
                         "status": status,
-                        "source_record_count": comp.source_record_count,
+                        "source_record_count": record_count,
                         "breakdown": breakdown,
                         "drill_url": _drill_url(code, project_id),
                     }

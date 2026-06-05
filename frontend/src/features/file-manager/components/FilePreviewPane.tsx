@@ -852,6 +852,47 @@ function VersionHistorySection({
    request is in flight we render a spinner and disable the trigger. */
 const CDE_ORDER: CdeState[] = ['wip', 'shared', 'published', 'archived'];
 
+// Map a raw backend error message for a blocked ISO 19650 CDE transition onto
+// a clear, translatable i18n key. The Documents PATCH path enforces the
+// forward-only lifecycle plus role / signature / suitability gates, and a
+// rejected promotion comes back as an English ``detail`` string
+// ("Invalid CDE state transition: ...", "Insufficient role: ...",
+// "Gate B (SHARED -> PUBLISHED) requires approver_signature",
+// "Suitability code 'A1' is not allowed in state 'shared' ..."). Rather than
+// dump that raw text in a toast, classify it so the user sees a localized,
+// actionable message. Returns ``null`` when the error is not a known
+// CDE-transition error so the caller can fall back to the generic message.
+function cdeTransitionErrorKey(message: string): string | null {
+  const m = message.toLowerCase();
+  if (m.includes('not allowed in state') || m.includes('suitability code')) {
+    return 'files.status.error_suitability_invalid';
+  }
+  if (m.includes('requires approver_signature') || m.includes('approver signature')) {
+    return 'files.status.error_signature_required';
+  }
+  if (m.includes('insufficient role') || m.includes('cannot pass gate')) {
+    return 'files.status.error_role_denied';
+  }
+  if (m.includes('invalid cde state transition') || m.includes('is not allowed. allowed')) {
+    return 'files.status.error_transition_blocked';
+  }
+  return null;
+}
+
+// English fallbacks for the classified CDE-transition error messages. Kept
+// alongside the classifier so the control is self-contained; the keys are also
+// in the locale files for translation into every shipped language.
+const CDE_ERROR_FALLBACK: Record<string, string> = {
+  'files.status.error_transition_blocked':
+    'This is not a valid ISO 19650 transition. Documents move forward only: WIP to Shared to Published to Archived, and Archived is final.',
+  'files.status.error_role_denied':
+    'Your role cannot make this transition. Sharing needs a task team manager, publishing needs a lead appointed party, and archiving needs an administrator.',
+  'files.status.error_signature_required':
+    'Publishing a document requires an approver signature.',
+  'files.status.error_suitability_invalid':
+    'That suitability code is not valid for this state. ISO 19650 codes are state-scoped: S0 in WIP, S1 to S7 in Shared, A1 to A5 in Published, AR in Archived.',
+};
+
 function CdeStatusControl({
   projectId,
   documentId,
@@ -897,12 +938,29 @@ function CdeStatusControl({
           });
         },
         onError: (err: unknown) => {
+          // A rejected ISO 19650 CDE state change (forward-only lifecycle,
+          // role gate, signature gate, or out-of-state suitability code) comes
+          // back as a 400 with an English detail string. Classify it so the
+          // user sees a clear, localized reason instead of the raw backend
+          // text; fall back to the generic toast for anything else.
+          const raw = err instanceof Error ? err.message : String(err);
+          const key = cdeTransitionErrorKey(raw);
+          if (key) {
+            addToast({
+              type: 'error',
+              title: t('files.status.transition_not_allowed', {
+                defaultValue: 'Transition not allowed',
+              }),
+              message: t(key, { defaultValue: CDE_ERROR_FALLBACK[key] ?? raw }),
+            });
+            return;
+          }
           addToast({
             type: 'error',
             title: t('files.status.change_failed', {
               defaultValue: 'Could not change status',
             }),
-            message: err instanceof Error ? err.message : String(err),
+            message: raw,
           });
         },
       },
@@ -953,18 +1011,37 @@ function CdeStatusControl({
           {CDE_ORDER.map((key) => {
             const cfg = CDE_BADGE[key]!;
             const isActive = key === current;
+            // ISO 19650 is forward-only: WIP -> Shared -> Published ->
+            // Archived. A null/unset state is treated as WIP. Only the current
+            // state or the immediate next one is selectable; backward and
+            // skip-ahead options are disabled so the UI mirrors the backend
+            // lifecycle and never offers a guaranteed-reject transition.
+            const curIdx = CDE_ORDER.indexOf((current as CdeState) ?? 'wip');
+            const keyIdx = CDE_ORDER.indexOf(key);
+            const selectable = keyIdx === curIdx || keyIdx === curIdx + 1;
             return (
               <button
                 key={key}
                 type="button"
                 role="option"
                 aria-selected={isActive}
-                onClick={() => handlePick(key)}
+                disabled={!selectable}
+                title={
+                  selectable
+                    ? undefined
+                    : t('files.status.forward_only_hint', {
+                        defaultValue:
+                          'Documents move forward only: WIP to Shared to Published to Archived.',
+                      })
+                }
+                onClick={() => selectable && handlePick(key)}
                 className={clsx(
                   'flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-[11px] transition-colors',
                   isActive
                     ? 'bg-oe-blue/10 text-oe-blue font-medium'
-                    : 'text-content-secondary hover:bg-surface-secondary',
+                    : selectable
+                      ? 'text-content-secondary hover:bg-surface-secondary'
+                      : 'text-content-quaternary opacity-50 cursor-not-allowed',
                 )}
               >
                 <span className="inline-flex items-center gap-1.5">

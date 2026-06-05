@@ -586,9 +586,15 @@ async def test_return_rental_happy_path() -> None:
     svc = _make_service()
     rental = SimpleNamespace(
         id=uuid.uuid4(),
+        equipment_id=uuid.uuid4(),
+        project_id=uuid.uuid4(),
         start_date="2026-01-01",
         end_date=None,
         status="active",
+        internal_rate_per_day=Decimal("100"),
+        internal_rate_per_hour=Decimal("0"),
+        currency="EUR",
+        metadata_={},
     )
     svc.rental_repo.get_by_id = AsyncMock(return_value=rental)
     captured: dict[str, Any] = {}
@@ -598,7 +604,8 @@ async def test_return_rental_happy_path() -> None:
 
     svc.rental_repo.update_fields = AsyncMock(side_effect=_capture)
 
-    await svc.return_rental(rental.id, end_date="2026-06-01")
+    with patch("app.modules.equipment.service.event_bus.publish_detached"):
+        await svc.return_rental(rental.id, end_date="2026-06-01")
     assert captured["status"] == "returned"
     assert captured["end_date"] == "2026-06-01"
 

@@ -14,17 +14,20 @@
  * external subcontractors), mirroring features/buyer-portal.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import { Loader2, AlertCircle, KeyRound } from 'lucide-react';
+import clsx from 'clsx';
+import { Loader2, AlertCircle, KeyRound, Receipt, FileText } from 'lucide-react';
 import { Card, EmptyState } from '@/shared/ui';
 import { PaymentApplicationList } from './PaymentApplicationList';
 import { PaymentApplicationForm } from './PaymentApplicationForm';
 import { PaymentApplicationDetailModal } from './PaymentApplicationDetailModal';
+import { PortalProgressReportsTab } from './PortalProgressReportsTab';
 import { consumePortalMagicLink, getPortalSessionToken } from './api';
 
 type View = 'list' | 'form';
+type Tab = 'payments' | 'progress';
 
 export function PortalPaymentsPage() {
   const { t } = useTranslation();
@@ -34,35 +37,52 @@ export function PortalPaymentsPage() {
   const [authed, setAuthed] = useState<boolean>(() => !!getPortalSessionToken());
   const [authError, setAuthError] = useState<string | null>(null);
   const [consuming, setConsuming] = useState<boolean>(!!magicToken);
+  const [tab, setTab] = useState<Tab>('payments');
   const [view, setView] = useState<View>('list');
   const [openId, setOpenId] = useState<string | null>(null);
 
+  // Guards the magic-link consume against React StrictMode's double-invoke
+  // (and any other remount). Without this the effect fires twice: the first
+  // call consumes the one-time link and opens a session, the second races in
+  // and gets "Magic link already consumed", flipping the UI to a false
+  // "Sign-in failed" even though a valid session token was just stored. We
+  // remember the token we already started consuming and short-circuit a
+  // repeat for the same token.
+  const consumedTokenRef = useRef<string | null>(null);
+
   // Consume a magic-link token if present in the URL, then clean the URL.
+  // The ref dedupe guarantees the one-time link is consumed exactly once even
+  // under StrictMode's double-invoke, so the state updates here run
+  // unconditionally (no per-invocation "cancelled" guard — that previously
+  // left the page stuck on "Signing you in…" when the duplicate effect was
+  // short-circuited and never reached the finally).
   useEffect(() => {
     if (!magicToken) return;
-    let cancelled = false;
+    if (consumedTokenRef.current === magicToken) return;
+    consumedTokenRef.current = magicToken;
     setConsuming(true);
     setAuthError(null);
     consumePortalMagicLink(magicToken)
       .then(() => {
-        if (cancelled) return;
         setAuthed(true);
       })
       .catch((err: unknown) => {
-        if (cancelled) return;
+        // If a valid session token already landed (e.g. a duplicated consume
+        // where the first call succeeded), trust it rather than showing an
+        // error for the losing duplicate request.
+        if (getPortalSessionToken()) {
+          setAuthed(true);
+          return;
+        }
         setAuthError(err instanceof Error ? err.message : 'Sign-in failed');
       })
       .finally(() => {
-        if (cancelled) return;
         setConsuming(false);
         // Strip the one-time token from the address bar.
         const next = new URLSearchParams(params);
         next.delete('token');
         setParams(next, { replace: true });
       });
-    return () => {
-      cancelled = true;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [magicToken]);
 
@@ -107,8 +127,48 @@ export function PortalPaymentsPage() {
   // Authenticated surface.
   return (
     <CenteredShell>
-      <div className="w-full max-w-2xl">
-        {view === 'form' ? (
+      <div className="w-full max-w-2xl space-y-4">
+        {/* Tabs — only shown on the list view so the submit form is full-bleed. */}
+        {view === 'list' ? (
+          <nav className="flex gap-1 border-b border-border-light">
+            {(
+              [
+                {
+                  id: 'payments',
+                  label: t('payportal.tab_payments', { defaultValue: 'Payments' }),
+                  icon: Receipt,
+                },
+                {
+                  id: 'progress',
+                  label: t('payportal.tab_progress', { defaultValue: 'Progress Reports' }),
+                  icon: FileText,
+                },
+              ] as { id: Tab; label: string; icon: React.ElementType }[]
+            ).map((it) => {
+              const Icon = it.icon;
+              return (
+                <button
+                  key={it.id}
+                  type="button"
+                  onClick={() => setTab(it.id)}
+                  className={clsx(
+                    '-mb-px flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors',
+                    tab === it.id
+                      ? 'border-oe-blue text-oe-blue'
+                      : 'border-transparent text-content-secondary hover:text-content-primary',
+                  )}
+                >
+                  <Icon size={14} />
+                  {it.label}
+                </button>
+              );
+            })}
+          </nav>
+        ) : null}
+
+        {tab === 'progress' ? (
+          <PortalProgressReportsTab />
+        ) : view === 'form' ? (
           <PaymentApplicationForm
             onCancel={() => setView('list')}
             onDone={() => setView('list')}

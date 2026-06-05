@@ -33,7 +33,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import { DateDisplay } from '@/shared/ui/DateDisplay';
-import { BetaBanner, EmptyState, RecoveryCard } from '@/shared/ui';
+import { BetaBanner, DismissibleInfo, EmptyState, RecoveryCard } from '@/shared/ui';
 import { useActiveProjectProfile } from '@/features/projects/useProjectProfile';
 import { projectsApi } from '@/features/projects/api';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -434,6 +434,18 @@ export function CoordinationHubPage() {
             </div>
           </div>
         </header>
+
+        <DismissibleInfo
+          storageKey="coordination"
+          title={t('info.coordination.title', {
+            defaultValue: 'Model coordination hub',
+          })}
+        >
+          {t('info.coordination.body', {
+            defaultValue:
+              'This dashboard rolls up your federated BIM models, clash results, rule pack checks and BCF activity for the active project into one health view. Use the quick actions to triage clashes, manage federations or run compliance rules, all linked back to the canonical model.',
+          })}
+        </DismissibleInfo>
 
         {hasError ? (
           <div data-testid="coordination-error">

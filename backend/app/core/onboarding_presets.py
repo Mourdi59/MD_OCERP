@@ -59,18 +59,26 @@ _CORE_MODULES: list[str] = [
 _ESTIMATION = ["boq", "validation", "cost_match", "match"]
 _TAKEOFF = ["takeoff", "dwg_takeoff", "cad"]
 _BIM = ["bim_hub", "bim_requirements", "match_elements", "opencde_api"]
-_AI = ["ai", "erp_chat", "compliance_ai"]
+_AI = ["ai", "erp_chat", "compliance_ai", "ai_agents"]
 _PLANNING = ["schedule", "schedule_advanced", "tasks", "costmodel", "eac"]
 _FINANCE = ["finance", "procurement", "tendering", "changeorders"]
-_COMMERCIAL = ["bid_management", "contracts", "variations", "crm", "supplier_catalogs", "property_dev"]
+_COMMERCIAL = [
+    "bid_management",
+    "contracts",
+    "variations",
+    "crm",
+    "supplier_catalogs",
+    "property_dev",
+    "moc",
+]
 _OPERATIONS = ["service", "equipment", "resources", "daily_diary", "subcontractors", "portal"]
 _COMMUNICATION = ["meetings", "rfi", "submittals", "transmittals", "correspondence"]
 _DOCUMENTS = ["documents", "cde", "markups"]
 _QUALITY = ["inspections", "ncr", "safety", "punchlist", "risk", "hse_advanced"]
 _QMS = ["qms", "compliance", "compliance_docs", "requirements"]
-_FIELD = ["fieldreports", "collaboration"]
+_FIELD = ["fieldreports", "collaboration", "field_diary", "payroll"]
 _ESG = ["carbon"]
-_BI = ["bi_dashboards", "reporting"]
+_BI = ["bi_dashboards", "reporting", "project_controls"]
 _ENTERPRISE = ["enterprise_workflows", "full_evm", "rfq_bidding", "integrations"]
 
 # Region-specific packs are chosen on the onboarding region step / via partner
@@ -176,6 +184,8 @@ COMPANY_PRESETS: dict[str, CompanyPreset] = {
             "resources",
             "daily_diary",
             "subcontractors",
+            "payroll",
+            "field_diary",
             "meetings",
             "rfi",
             "submittals",
@@ -188,8 +198,11 @@ COMPANY_PRESETS: dict[str, CompanyPreset] = {
             "safety",
             "punchlist",
             "risk",
+            "qms",
+            "moc",
             "fieldreports",
             "reporting",
+            "project_controls",
         ],
     ),
     "estimator": CompanyPreset(
@@ -269,6 +282,8 @@ COMPANY_PRESETS: dict[str, CompanyPreset] = {
             "ncr",
             "punchlist",
             "risk",
+            "qms",
+            "moc",
             "finance",
             "procurement",
             "changeorders",
@@ -276,11 +291,14 @@ COMPANY_PRESETS: dict[str, CompanyPreset] = {
             "variations",
             "fieldreports",
             "daily_diary",
+            "field_diary",
+            "payroll",
             "boq",
             "costs",
             "requirements",
             "reporting",
             "bi_dashboards",
+            "project_controls",
         ],
     ),
     "real_estate_developer": CompanyPreset(
@@ -331,6 +349,8 @@ COMPANY_PRESETS: dict[str, CompanyPreset] = {
             "schedule",
             "tasks",
             "daily_diary",
+            "field_diary",
+            "payroll",
             "resources",
             "equipment",
             "fieldreports",
@@ -354,6 +374,7 @@ COMPANY_PRESETS: dict[str, CompanyPreset] = {
         enabled_modules=[
             "reporting",
             "bi_dashboards",
+            "project_controls",
             "documents",
             "cde",
             "meetings",

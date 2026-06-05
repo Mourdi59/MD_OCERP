@@ -186,6 +186,13 @@ export function useToggleFavorite(projectId: string | null | undefined) {
 export function useSetDocumentCdeState(projectId: string | null | undefined) {
   const qc = useQueryClient();
   return useMutation({
+    // A rejected ISO 19650 CDE transition (forward-only lifecycle, role gate,
+    // signature gate, out-of-state suitability) is handled by the caller's
+    // onError, which classifies the raw backend string into a clear, localized
+    // toast. Suppress the global "Operation failed" toast (main.tsx
+    // MutationCache) so the user does not also see the raw, untranslated
+    // backend message alongside the friendly one.
+    meta: { suppressGlobalErrorToast: true },
     mutationFn: (vars: { documentId: string; cdeState: CdeState }) =>
       setDocumentCdeState(vars.documentId, vars.cdeState),
     onSuccess: () => {

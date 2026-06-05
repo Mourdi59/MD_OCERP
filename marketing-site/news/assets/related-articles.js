@@ -14,6 +14,15 @@
   // for "draw the on-brand SVG placeholder".
   var ARTICLES = [
     {
+      slug: 'v6-10-0',
+      href: '/news/v6-10-0.html',
+      title: 'v6.10.0 - Field payroll, project controls, compliance gates.',
+      date: '2026-06-05',
+      tag: 'Release',
+      tagClass: 'release',
+      thumb: null
+    },
+    {
       slug: 'open-erp-own-your-stack',
       href: '/news/open-erp-own-your-stack.html',
       title: 'An open construction ERP for teams who want to own their stack.',

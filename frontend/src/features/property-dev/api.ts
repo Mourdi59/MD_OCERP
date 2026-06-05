@@ -4,7 +4,7 @@
  * Backed by /api/v1/property-dev/ — see backend/app/modules/property_dev/router.py
  */
 
-import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete, getAuthToken } from '@/shared/lib/api';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -873,15 +873,10 @@ export function deleteHandoverDoc(id: string): Promise<void> {
 export async function exportHandoverPackage(
   handoverId: string,
 ): Promise<{ blob: Blob; filename: string }> {
-  const token = (() => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
-      const { useAuthStore } = require('@/stores/useAuthStore');
-      return useAuthStore.getState().accessToken as string | null;
-    } catch {
-      return null;
-    }
-  })();
+  // Use the shared ESM accessor. The previous CommonJS `require(...)` resolved
+  // to `undefined` at runtime under Vite/ESM, so no token was ever attached
+  // and every export 401'd.
+  const token = getAuthToken();
   const headers: Record<string, string> = { Accept: 'application/zip' };
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`/api${BASE}/handovers/${handoverId}/export`, {
@@ -1069,17 +1064,7 @@ export function warrantyClaimPdfUrl(id: string): string {
  */
 export async function downloadWarrantyClaimPdf(id: string): Promise<Blob> {
   const url = warrantyClaimPdfUrl(id);
-  const token = (() => {
-    try {
-      // Lazy-load to avoid a circular import; the store is already
-      // initialised by the time any download is triggered.
-      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
-      const { useAuthStore } = require('@/stores/useAuthStore');
-      return useAuthStore.getState().accessToken as string | null;
-    } catch {
-      return null;
-    }
-  })();
+  const token = getAuthToken();
   const headers: Record<string, string> = { Accept: 'application/pdf' };
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(url, { method: 'GET', headers });
@@ -3025,9 +3010,7 @@ export async function uploadCustomDocumentTemplate(opts: {
   // Multipart needs the browser to set Content-Type with its own boundary,
   // so we can't reuse the apiPost JSON wrapper — issue the fetch directly
   // and attach the JWT manually.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
-  const { useAuthStore } = require('@/stores/useAuthStore');
-  const token = useAuthStore.getState().accessToken as string | null;
+  const token = getAuthToken();
   const headers: Record<string, string> = { 'X-DDC-Client': 'OE/1.0' };
   if (token) headers.Authorization = `Bearer ${token}`;
 
@@ -3233,17 +3216,7 @@ export async function downloadPropDevDocument(
   // Bypass the JSON-parsing default of the typed helpers — the server
   // returns ``application/pdf`` here, not JSON.
   const url = `/api${BASE}/documents/${doc_type}?${qs.toString()}`;
-  const token = (() => {
-    try {
-      // Lazy-load to avoid a circular import; the store is already
-      // initialised by the time any document download is triggered.
-      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
-      const { useAuthStore } = require('@/stores/useAuthStore');
-      return useAuthStore.getState().accessToken as string | null;
-    } catch {
-      return null;
-    }
-  })();
+  const token = getAuthToken();
   const headers: Record<string, string> = { Accept: 'application/pdf' };
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(url, { method: 'GET', headers });

@@ -62,6 +62,8 @@ from app.modules.portal.schemas import (
     PortalChangeOrderList,
     PortalProgressReportEntry,
     PortalProgressReportList,
+    PortalProjectSummary,
+    PortalProjectSummaryList,
     PortalSelfPatch,
     PortalTicketCreate,
     PortalTicketList,
@@ -683,6 +685,26 @@ def _report_period(snapshot: dict | None) -> str | None:
         if progress.get("as_of_date"):
             return str(progress["as_of_date"])
     return None
+
+
+@router.get(
+    "/me/projects",
+    response_model=PortalProjectSummaryList,
+)
+async def portal_me_projects(
+    user: RequirePortalSession,
+    service: PortalService = Depends(_get_service),
+) -> PortalProjectSummaryList:
+    """List the projects the caller can see, by name.
+
+    Backs the portal Progress Reports tab so a client / subcontractor can pick
+    a project by name instead of pasting a UUID. Scoped server-side to the
+    caller's non-expired ``project`` access rules - it never reveals a project
+    the user was not explicitly granted.
+    """
+    projects = await service.list_accessible_projects(user.id)
+    items = [PortalProjectSummary(id=p.id, name=p.name, project_code=p.project_code) for p in projects]
+    return PortalProjectSummaryList(items=items, total=len(items))
 
 
 @router.get(

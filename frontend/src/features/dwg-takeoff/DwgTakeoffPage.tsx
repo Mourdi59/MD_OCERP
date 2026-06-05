@@ -55,7 +55,7 @@ import {
   RotateCcw,
   GitCompare,
 } from 'lucide-react';
-import { Badge, ConfirmDialog, ElementInfoPopover, type DWGElementPayload } from '@/shared/ui';
+import { Badge, ConfirmDialog, DismissibleInfo, ElementInfoPopover, type DWGElementPayload } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -2768,6 +2768,15 @@ export function DwgTakeoffPage() {
               </div>
 
               <div className="relative z-10 max-w-7xl mx-auto pt-20 pb-4 w-full">
+                <DismissibleInfo
+                  storageKey="dwg-takeoff"
+                  title={t('info.dwg-takeoff.title', { defaultValue: 'DWG Takeoff' })}
+                >
+                  {t('info.dwg-takeoff.body', {
+                    defaultValue:
+                      'Upload DWG or DXF drawings to view their entities, toggle layers, and measure areas, lengths, and counts directly on the plan. Link measurements to BOQ positions so quantities flow into your cost estimate alongside BIM and the canonical model.',
+                  })}
+                </DismissibleInfo>
                 <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-8 items-stretch">
                   {/* LEFT · Upload card (gets the larger half) */}
                   <div className="flex flex-col">

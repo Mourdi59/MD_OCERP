@@ -37,8 +37,25 @@ import { ActivityDrawer, type ActivityEvent } from './ActivityDrawer';
 
 const DOCUMENT_ID = 'doc-abc';
 
-function isoMinusHours(h: number): string {
-  return new Date(Date.now() - h * 3600 * 1000).toISOString();
+/* The component buckets events relative to *local* midnight
+   (``new Date(y, m, d)``), so a fixed offset like "1 hour ago" lands in
+   "yesterday" whenever the suite runs just after midnight — the exact
+   flake we're fixing. Anchor each fixture to the local start-of-day
+   instead so it falls in its intended bucket regardless of the wall
+   clock at run time:
+     - today    → local noon today (always >= start-of-today)
+     - yesterday→ local noon yesterday
+     - earlier  → local noon three days ago
+*/
+function localStartOfToday(): number {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+}
+
+function isoForBucket(daysAgo: number): string {
+  // Noon of (today - daysAgo) in local time. Noon keeps us comfortably
+  // away from both midnight boundaries so DST shifts can't tip the bucket.
+  return new Date(localStartOfToday() - daysAgo * 24 * 3600 * 1000 + 12 * 3600 * 1000).toISOString();
 }
 
 /* Three events spanning Today / Yesterday / Earlier so the bucket
@@ -50,7 +67,7 @@ const SAMPLE_EVENTS: ActivityEvent[] = [
     user_id: 'user-1@example.com',
     action: 'renamed',
     meta: { old: 'a.pdf', new: 'b.pdf' },
-    created_at: isoMinusHours(1),
+    created_at: isoForBucket(0),
   },
   {
     id: 'ev-2',
@@ -58,7 +75,7 @@ const SAMPLE_EVENTS: ActivityEvent[] = [
     user_id: 'user-2@example.com',
     action: 'uploaded',
     meta: { name: 'a.pdf' },
-    created_at: isoMinusHours(28),
+    created_at: isoForBucket(1),
   },
   {
     id: 'ev-3',
@@ -66,7 +83,7 @@ const SAMPLE_EVENTS: ActivityEvent[] = [
     user_id: 'user-2@example.com',
     action: 'cde_state_changed',
     meta: { old: 'wip', new: 'shared' },
-    created_at: isoMinusHours(96),
+    created_at: isoForBucket(3),
   },
 ];
 

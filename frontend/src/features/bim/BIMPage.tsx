@@ -57,7 +57,7 @@ import {
   Palette,
   Footprints,
 } from 'lucide-react';
-import { Badge, EmptyState, Breadcrumb, ConfirmDialog, ModuleHelpButton } from '@/shared/ui';
+import { Badge, EmptyState, Breadcrumb, ConfirmDialog, ModuleHelpButton, DismissibleInfo } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { BIMViewer } from '@/shared/ui/BIMViewer';
 import type { BIMElementData, BIMModelData } from '@/shared/ui/BIMViewer';
@@ -3359,6 +3359,20 @@ export function BIMPage() {
           )}
         </div>
       </div>
+
+      {/* ── Page intro / help banner — explains what the BIM viewer does and
+            how it ties into BOQ and the canonical model. Collapses to a
+            one-line header (remembered per page in localStorage). ── */}
+      <DismissibleInfo
+        storageKey="bim"
+        className="mx-3 mt-2"
+        title={t('info.bim.title', { defaultValue: 'BIM model viewer' })}
+      >
+        {t('info.bim.body', {
+          defaultValue:
+            'Explore converted CAD and BIM models in 3D, inspect element properties and quantities, and filter by storey, category or discipline. Link elements to BOQ positions to drive takeoff, cost and schedule from the canonical model.',
+        })}
+      </DismissibleInfo>
 
       {/* ── Converter status banner — surfaces any missing DDC
             converters so the user can one-click install them before

@@ -54,6 +54,7 @@ import { projectsApi, type Project } from '@/features/projects/api';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { BIMModelPicker } from '@/shared/ui/BIMModelPicker';
+import { DismissibleInfo } from '@/shared/ui';
 
 import {
   matchElementsApi,
@@ -757,6 +758,16 @@ export function MatchWizardFlow() {
           </p>
         </div>
       </div>
+
+      <DismissibleInfo
+        storageKey="match-elements"
+        title={t('info.match-elements.title', { defaultValue: 'Match elements to cost' })}
+      >
+        {t('info.match-elements.body', {
+          defaultValue:
+            'Price a BIM or CAD model by matching its elements against a regional cost catalogue, then write the result straight into the project as a bill of quantities. The wizard groups elements, ranks cost candidates with semantic search, and lets you confirm matches before they become real BOQ positions with quantities and rates.',
+        })}
+      </DismissibleInfo>
 
       {/* Beta · feedback-wanted banner. /match-elements is the newest
           top-level feature and still has rough edges (catalogue install

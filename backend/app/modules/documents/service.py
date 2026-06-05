@@ -1279,17 +1279,9 @@ class PhotoService:
             if not uid:
                 # No user → fall back to the deterministic heuristic directly
                 # (the AI path needs a user to resolve provider keys).
-                from app.modules.ai.service import heuristic_photo_category
+                from app.modules.ai.service import heuristic_photo_suggestion
 
-                heuristic = heuristic_photo_category(filename=filename, caption=caption, tags=tags)
-                if heuristic is None:
-                    return None
-                category, confidence = heuristic
-                return {
-                    "suggested_category": category,
-                    "confidence": confidence,
-                    "source": "heuristic",
-                }
+                return heuristic_photo_suggestion(filename=filename, caption=caption, tags=tags)
 
             ai_service = AIService(self.session)
             return await ai_service.suggest_photo_category(

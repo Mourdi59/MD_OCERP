@@ -16,6 +16,20 @@ export interface FieldSession {
   userId: string;
 }
 
+/** Persist a freshly-minted field session into sessionStorage (set by the
+ * PIN-redemption screen after a successful `/auth/consume/`). The field shell
+ * reads these exact keys via {@link readFieldSession}. */
+export function persistFieldSession(session: FieldSession): void {
+  try {
+    sessionStorage.setItem('oe_field_session_token', session.token);
+    sessionStorage.setItem('oe_field_session_pin', session.pin);
+    sessionStorage.setItem('oe_field_session_project', session.projectId);
+    sessionStorage.setItem('oe_field_session_user', session.userId);
+  } catch {
+    /* storage unavailable - the shell will show the signed-out state */
+  }
+}
+
 /** Read the live field session from sessionStorage, or null when absent. */
 export function readFieldSession(): FieldSession | null {
   try {

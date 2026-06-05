@@ -146,11 +146,11 @@ export default function GlobalSearchModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 backdrop-blur-lg pt-[10vh] px-4"
+      className="fixed inset-0 z-[60] flex items-start justify-center bg-black/70 backdrop-blur-lg pt-[8vh] px-3 sm:px-4 pb-4"
       onClick={closeModal}
     >
       <div
-        className="w-full max-w-3xl bg-surface-primary rounded-xl shadow-2xl border border-border-light flex flex-col max-h-[80vh]"
+        className="w-full max-w-3xl bg-surface-primary rounded-2xl shadow-2xl ring-1 ring-black/5 border border-border-light flex flex-col max-h-[85vh] min-h-0 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search input */}
@@ -179,10 +179,16 @@ export default function GlobalSearchModal() {
           </button>
         </div>
 
-        {/* Filter row — type chips + scope toggle */}
-        <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-border-light shrink-0 overflow-x-auto">
-          <div className="flex items-center gap-1.5">
-            <Filter size={11} className="text-content-quaternary" />
+        {/* Filter row — type chips (horizontal scroller) + pinned scope toggle.
+            The chips live in their own min-w-0 overflow-x-auto track so a long
+            chip list never squashes/wraps; the scope toggle is shrink-0 and
+            stays pinned on the right, separated by a border. */}
+        <div className="flex items-stretch gap-2 ps-4 pe-3 py-2 border-b border-border-light shrink-0">
+          <Filter
+            size={11}
+            className="text-content-tertiary shrink-0 self-center"
+          />
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-x-auto scrollbar-none py-0.5">
             {(typesQuery.data?.types ?? []).map((typeMeta) => {
               const isActive = selectedTypes.includes(typeMeta.short);
               const facetCount = facets[typeMeta.name] ?? 0;
@@ -191,7 +197,8 @@ export default function GlobalSearchModal() {
                   key={typeMeta.name}
                   type="button"
                   onClick={() => toggleType(typeMeta.short)}
-                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded border transition-colors ${
+                  aria-pressed={isActive}
+                  className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap px-2 py-1 text-[11px] font-medium rounded-full border transition-colors ${
                     isActive
                       ? 'bg-oe-blue text-white border-oe-blue'
                       : `${FACET_COLOR[typeMeta.name] ?? 'bg-surface-secondary text-content-secondary border-border-light'} hover:opacity-80`
@@ -210,18 +217,18 @@ export default function GlobalSearchModal() {
               <button
                 type="button"
                 onClick={clearTypes}
-                className="text-[10px] text-oe-blue hover:underline ms-1"
+                className="shrink-0 whitespace-nowrap text-[11px] text-oe-blue-text hover:underline ms-1"
               >
                 {t('common.clear', { defaultValue: 'Clear' })}
               </button>
             )}
           </div>
-          <label className="flex items-center gap-1 text-[10px] text-content-tertiary cursor-pointer select-none whitespace-nowrap">
+          <label className="flex items-center gap-1.5 shrink-0 self-center ps-2 border-s border-border-light text-[11px] text-content-secondary cursor-pointer select-none whitespace-nowrap">
             <input
               type="checkbox"
               checked={scopeProject}
               onChange={(e) => setScopeProject(e.target.checked)}
-              className="h-3 w-3 accent-oe-blue"
+              className="h-3.5 w-3.5 accent-oe-blue"
             />
             {t('global_search.scope_project', {
               defaultValue: 'Current project only',
@@ -229,8 +236,9 @@ export default function GlobalSearchModal() {
           </label>
         </div>
 
-        {/* Results */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Results — the single flex-grow scroll region. Header/input above and
+            footer below stay pinned; only this area scrolls. */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           {debouncedQuery.length < 2 && (
             <div className="flex flex-col items-center justify-center py-16 text-content-tertiary">
               <Sparkles size={28} className="text-amber-400 mb-2" />
@@ -264,16 +272,17 @@ export default function GlobalSearchModal() {
             )}
 
           {totalHits > 0 && (
-            <div className="p-2 space-y-3">
+            <div className="p-2 space-y-4">
               {Object.entries(grouped).map(([collection, hits]) => (
                 <div key={collection}>
-                  <div className="flex items-center gap-1.5 px-2 py-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-content-tertiary">
+                  <div className="sticky top-0 z-10 flex items-center gap-2 px-2 py-1.5 bg-surface-primary/95 backdrop-blur-sm">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-content-secondary">
                       {collectionLabel(collection)}
                     </span>
-                    <span className="text-[10px] text-content-quaternary tabular-nums">
+                    <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-surface-secondary text-[10px] font-semibold text-content-secondary tabular-nums">
                       {hits.length}
                     </span>
+                    <span className="flex-1 h-px bg-border-light" />
                   </div>
                   <ul className="space-y-0.5">
                     {hits.map((hit) => (
@@ -281,25 +290,25 @@ export default function GlobalSearchModal() {
                         <button
                           type="button"
                           onClick={() => handleHitClick(hit)}
-                          className="w-full flex items-start gap-2 px-2 py-1.5 rounded text-start hover:bg-oe-blue/5 border border-transparent hover:border-oe-blue/30 transition-colors group"
+                          className="w-full flex items-start gap-2 px-2.5 py-2 rounded-lg text-start hover:bg-oe-blue/5 focus-visible:bg-oe-blue/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue/40 border border-transparent hover:border-oe-blue/30 transition-colors group"
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-medium text-content-primary truncate">
+                              <span className="text-[13px] font-medium text-content-primary truncate">
                                 {hit.title || hit.id}
                               </span>
-                              <span className="text-[9px] text-content-quaternary tabular-nums shrink-0">
+                              <span className="text-[10px] text-content-tertiary tabular-nums shrink-0">
                                 {Math.round(hit.score * 100)}%
                               </span>
                             </div>
                             {hit.snippet && (
-                              <div className="text-[10px] text-content-tertiary line-clamp-2 mt-0.5">
+                              <div className="text-[11px] text-content-tertiary line-clamp-2 mt-0.5 leading-snug">
                                 {hit.snippet}
                               </div>
                             )}
                           </div>
                           <ArrowUpRight
-                            size={11}
+                            size={13}
                             className="text-content-quaternary group-hover:text-oe-blue shrink-0 mt-0.5"
                           />
                         </button>

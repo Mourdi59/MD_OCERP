@@ -206,6 +206,37 @@ _CATEGORY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
 )
 
 
+# Defect keywords ranked by how serious the visible problem usually is, so a
+# text-only heuristic can still offer an ADVISORY severity (low/medium/high)
+# when no vision model is configured. This is intentionally conservative — it
+# is a hint the user confirms, never an auto-applied rating.
+_DEFECT_SEVERITY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "high",
+        (
+            "structural",
+            "collapse",
+            "spall",
+            "corrosion",
+            "rust",
+            "leak",
+            "leakage",
+            "broken",
+            "schaden",
+            "fissure",
+        ),
+    ),
+    (
+        "medium",
+        ("crack", "damage", "damaged", "fault", "riss", "defaut", "defecto", "deficien"),
+    ),
+    (
+        "low",
+        ("snag", "snagging", "stain", "mould", "mold", "punch", "rework", "mangel"),
+    ),
+)
+
+
 def heuristic_photo_category(
     *,
     filename: str = "",
@@ -227,6 +258,52 @@ def heuristic_photo_category(
         if any(kw in text for kw in keywords):
             return category, 0.55
     return None
+
+
+def heuristic_photo_suggestion(
+    *,
+    filename: str = "",
+    caption: str = "",
+    tags: list[str] | None = None,
+) -> dict[str, Any] | None:
+    """Richer heuristic suggestion dict, mirroring the AI path's shape.
+
+    Builds on :func:`heuristic_photo_category` and, for a ``defect`` match,
+    additionally derives an advisory ``defect_severity`` and the matched
+    keywords as ``suggested_tags`` from the same textual signal — so the
+    severity and auto-tag chips work even with no vision model configured.
+    Everything here is a hint the user confirms; nothing is auto-applied.
+
+    Returns ``{suggested_category, confidence, source="heuristic", ...}`` or
+    ``None`` when nothing matches.
+    """
+    base = heuristic_photo_category(filename=filename, caption=caption, tags=tags)
+    if base is None:
+        return None
+    category, confidence = base
+    result: dict[str, Any] = {
+        "suggested_category": category,
+        "confidence": confidence,
+        "source": "heuristic",
+    }
+    if category != "defect":
+        return result
+
+    text = " ".join([filename or "", caption or "", *(tags or [])]).lower()
+    # Auto-tags: the defect keywords actually present, normalised + de-duped.
+    defect_keywords = next((kw for cat, kw in _CATEGORY_KEYWORDS if cat == "defect"), ())
+    matched: list[str] = []
+    for kw in defect_keywords:
+        if kw in text and kw not in matched:
+            matched.append(kw)
+    if matched:
+        result["suggested_tags"] = matched[:6]
+    # Advisory severity from the highest-tier severity keyword present.
+    for severity, sev_keywords in _DEFECT_SEVERITY_KEYWORDS:
+        if any(kw in text for kw in sev_keywords):
+            result["defect_severity"] = severity
+            break
+    return result
 
 
 def _coerce_suggested_category(value: Any) -> str | None:
@@ -1050,15 +1127,12 @@ class AIService:
                 if ai_result is not None:
                     return ai_result
 
-        # 2. Deterministic fallback — clearly labelled as a heuristic.
-        heuristic = heuristic_photo_category(filename=filename, caption=caption, tags=tags)
+        # 2. Deterministic fallback — clearly labelled as a heuristic. For a
+        #    defect match this also carries an advisory severity + matched
+        #    keyword tags so those chips work without a vision model.
+        heuristic = heuristic_photo_suggestion(filename=filename, caption=caption, tags=tags)
         if heuristic is not None:
-            category, confidence = heuristic
-            return {
-                "suggested_category": category,
-                "confidence": confidence,
-                "source": "heuristic",
-            }
+            return heuristic
 
         # 3. No signal at all.
         return None

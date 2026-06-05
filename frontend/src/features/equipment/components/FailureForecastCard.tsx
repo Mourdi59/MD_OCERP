@@ -87,7 +87,7 @@ export function FailureForecastCard({ equipmentId }: { equipmentId: string }) {
             {fc.predicted_failure_date ? (
               <DateDisplay value={fc.predicted_failure_date} format="date" />
             ) : (
-              '—'
+              '-'
             )}
           </p>
           {fc.days_to_failure != null && (

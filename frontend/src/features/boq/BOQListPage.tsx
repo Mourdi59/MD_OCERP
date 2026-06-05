@@ -7,7 +7,7 @@ import {
   Search, ArrowUpDown, ChevronDown, GitCompareArrows, X, Loader2,
   ShieldCheck, Wallet,
 } from 'lucide-react';
-import { Card, Badge, EmptyState, Skeleton, Button, Breadcrumb, FileTypeChips } from '@/shared/ui';
+import { Card, Badge, EmptyState, Skeleton, Button, Breadcrumb, FileTypeChips, DismissibleInfo } from '@/shared/ui';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { apiGet } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
@@ -741,6 +741,17 @@ export function BOQListPage() {
           </Button>
         </div>
       </div>
+
+      <DismissibleInfo
+        storageKey="boq"
+        title={t('info.boq.title', { defaultValue: 'About estimates' })}
+        className="mb-4"
+      >
+        {t('info.boq.body', {
+          defaultValue:
+            'A Bill of Quantities lists every work item with its quantity and rate, rolling up to the project total. Estimates here draw on the cost database and BIM takeoff quantities, and feed validation, the budget, and tender packages downstream.',
+        })}
+      </DismissibleInfo>
 
       {/* Cross-module links */}
       <div className="flex flex-wrap gap-1.5 mb-4">

@@ -28,7 +28,7 @@ import {
   GitCompare,
 } from 'lucide-react';
 
-import { Button, Card, Badge, Input, Skeleton } from '@/shared/ui';
+import { Button, Card, Badge, Input, Skeleton, DismissibleInfo } from '@/shared/ui';
 import { PdfCompareDrawer } from './PdfCompareDrawer';
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { formatFileSize } from '@/shared/lib/formatters';
@@ -1797,6 +1797,16 @@ export function TakeoffPage() {
       {/* Header removed — the page title is already in the left sidebar
           nav, and the subtitle was purely decorative. Saves ~80px of
           vertical space so the main workspace fits in one viewport. */}
+
+      <DismissibleInfo
+        storageKey="takeoff"
+        title={t('info.takeoff.title', { defaultValue: 'PDF Takeoff' })}
+      >
+        {t('info.takeoff.body', {
+          defaultValue:
+            'Upload PDF drawings to measure areas, lengths and counts, or let AI extract elements with quantities. Selected items flow straight into your BOQ and stay linked to the project cost and schedule.',
+        })}
+      </DismissibleInfo>
 
       {/* Tabs — Measurements primary (first), AI second. Lower radius
           for a sharper, more "tool-like" feel; no ring-halo. The Compare

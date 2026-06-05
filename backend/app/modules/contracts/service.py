@@ -1157,14 +1157,42 @@ class ContractsService:
                 blocked=blocked,
             )
             if blocked:
-                # Persist the blocking outcome BEFORE raising so the failed
-                # attempt is auditable (the request session commits on the
-                # 422 response path's rollback? — no; we flush+commit the
-                # audit explicitly so the trail survives the raised error).
+                # Persist the blocking outcome so the failed attempt is
+                # auditable, then raise a structured 422 the ComplianceGate UI
+                # renders verbatim.
+                #
+                # The audit is written in a SEPARATE, independent session that
+                # commits on its own. Committing the *request* session here and
+                # then raising used to corrupt the request lifecycle: the
+                # ``get_session`` dependency rolls back on the raised
+                # HTTPException, and rolling back a request session whose
+                # transaction was already explicitly committed left the
+                # connection in a state where the unwind raised a *second*
+                # exception. That secondary error hit the catch-all handler and
+                # the client saw a misleading ``500 Internal server error``
+                # instead of the 422 violation list (even though the sign was,
+                # correctly, blocked). Using an isolated session keeps the
+                # request transaction untouched so the HTTPException reaches the
+                # client cleanly.
                 meta = dict(contract.metadata_ or {})
                 meta["compliance_validation"] = audit_entry
-                await self.contract_repo.update_fields(contract_id, metadata_=meta)
-                await self.session.commit()
+                try:
+                    from app.database import async_session_factory
+
+                    async with async_session_factory() as audit_session:
+                        await ContractRepository(audit_session).update_fields(
+                            contract_id,
+                            metadata_=meta,
+                        )
+                        await audit_session.commit()
+                except Exception:
+                    # The audit trail is best-effort: never let a failure to
+                    # record the blocked attempt mask the real reason (the 422).
+                    logger.warning(
+                        "Failed to persist compliance-gate audit for contract %s",
+                        contract.code,
+                        exc_info=True,
+                    )
                 logger.info(
                     "Compliance gate BLOCKED contract %s (%d errors, packs=%s)",
                     contract.code,

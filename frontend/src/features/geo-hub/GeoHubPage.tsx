@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 
 import { ApiError } from '@/shared/lib/api';
-import { BetaBanner, ModuleHelpButton } from '@/shared/ui';
+import { BetaBanner, DismissibleInfo, ModuleHelpButton } from '@/shared/ui';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
 
@@ -850,6 +850,17 @@ export function GeoHubPage() {
           <ModuleHelpButton tourId="geo" />
         </div>
       </header>
+
+      <DismissibleInfo
+        storageKey="geo"
+        className="mx-5 mt-3"
+        title={t('info.geo.title', { defaultValue: 'Geo Hub' })}
+      >
+        {t('info.geo.body', {
+          defaultValue:
+            'See all your projects pinned on a shared 3D globe. Anchor a project by address or coordinates, then jump from its map location into its BOQ, BIM models, and the rest of the canonical project data.',
+        })}
+      </DismissibleInfo>
 
       {/* Stale-backend banner — distinct from the generic fetch-failed
           banner because the user fix is different: restart / update the

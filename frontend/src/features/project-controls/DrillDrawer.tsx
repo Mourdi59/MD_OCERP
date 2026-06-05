@@ -7,6 +7,35 @@ import { SideDrawer, EmptyState } from '@/shared/ui';
 import type { ControlsKPI } from './api';
 import { useControlsDrill } from './api';
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Humanise a snake_case field key, e.g. ``planned_value`` -> ``Planned value``. */
+function humanizeKey(key: string): string {
+  const spaced = key.replace(/_/g, ' ').trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+/** Title for a drill record. Prefers a real label; never shows a bare UUID. */
+function recordTitle(
+  fields: Record<string, unknown>,
+  kind: string,
+  idx: number,
+): string {
+  const named =
+    (fields['title'] as string) ||
+    (fields['name'] as string) ||
+    (fields['code'] as string) ||
+    (fields['po_number'] as string) ||
+    (fields['ncr_number'] as string) ||
+    (fields['incident_number'] as string);
+  if (named && named.trim()) return named;
+  // Fall back to a humanised "kind #n" rather than leaking a raw UUID, so a
+  // row whose owning module didn't supply a display name still reads cleanly.
+  const kindLabel = kind ? humanizeKey(kind) : 'Record';
+  return `${kindLabel} #${idx + 1}`;
+}
+
 /**
  * Opens on tile click and fetches the underlying source rows behind a KPI.
  * Each row that maps to an owning module renders a deep link so a click
@@ -57,14 +86,8 @@ export function DrillDrawer({
         <div className="flex flex-col gap-2 p-1">
           {records.map((rec, idx) => {
             const fields = rec.fields;
-            const title =
-              (fields['title'] as string) ||
-              (fields['name'] as string) ||
-              (fields['code'] as string) ||
-              (fields['ncr_number'] as string) ||
-              (fields['incident_number'] as string) ||
-              (fields['id'] as string) ||
-              `#${idx + 1}`;
+            const kind = String(fields['kind'] ?? '');
+            const title = recordTitle(fields, kind, idx);
             return (
               <div
                 key={(fields['id'] as string) ?? idx}
@@ -87,11 +110,21 @@ export function DrillDrawer({
                 </div>
                 <dl className="mt-1.5 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5 text-2xs text-content-tertiary">
                   {Object.entries(fields)
-                    .filter(([k]) => k !== 'id' && k !== 'kind' && k !== 'project_id')
+                    .filter(
+                      ([k, v]) =>
+                        k !== 'id' &&
+                        k !== 'kind' &&
+                        k !== 'project_id' &&
+                        // Hide empty values and any bare UUID id-like field so
+                        // the row stays readable instead of dumping raw keys.
+                        v != null &&
+                        String(v).trim() !== '' &&
+                        !UUID_RE.test(String(v)),
+                    )
                     .map(([k, v]) => (
                       <div key={k} className="contents">
-                        <dt className="font-medium">{k}</dt>
-                        <dd className="truncate tabular-nums">{String(v ?? '')}</dd>
+                        <dt className="font-medium">{humanizeKey(k)}</dt>
+                        <dd className="truncate tabular-nums">{String(v)}</dd>
                       </div>
                     ))}
                 </dl>

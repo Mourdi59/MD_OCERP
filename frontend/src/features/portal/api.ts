@@ -402,6 +402,94 @@ export function listMyPaymentAgreements(): Promise<PortalAgreementSummaryList> {
   return portalFetch<PortalAgreementSummaryList>(`${PORTAL_ME_BASE}/payment-agreements`);
 }
 
+/* ── Portal-user-facing (session-token) progress reports ───────────────────
+ *
+ * The client / subcontractor sees the progress reports for any project they
+ * hold a `project` access rule on. Project resolution and the report list are
+ * both RLS-scoped server-side; a project the caller was not granted 404s.
+ */
+
+export interface PortalProjectSummary {
+  id: string;
+  name: string;
+  project_code: string | null;
+}
+
+export interface PortalProjectSummaryList {
+  items: PortalProjectSummary[];
+  total: number;
+}
+
+export interface PortalProgressReport {
+  id: string;
+  title: string;
+  generated_at: string;
+  report_type: string;
+  format: string;
+  period: string | null;
+  has_content: boolean;
+}
+
+export interface PortalProgressReportList {
+  items: PortalProgressReport[];
+  total: number;
+}
+
+/**
+ * List the projects the portal caller can see, by name. Falls back to the
+ * always-present `/me/accessible/project` (UUID-only) endpoint when the named
+ * variant is not deployed yet, so the tab still renders on older backends.
+ */
+export async function listMyProjects(): Promise<PortalProjectSummary[]> {
+  try {
+    const named = await portalFetch<PortalProjectSummaryList>(`${PORTAL_ME_BASE}/projects`);
+    return named.items;
+  } catch (err) {
+    // 404 = endpoint not deployed; anything else (e.g. 401) must bubble up so
+    // the session-expiry path still fires.
+    if (err instanceof PortalUnauthorizedError) throw err;
+    const ids = await portalFetch<string[]>(`${PORTAL_ME_BASE}/accessible/project`);
+    return ids.map((id) => ({ id, name: id, project_code: null }));
+  }
+}
+
+/** List the progress reports the caller can see for one accessible project. */
+export function listMyProgressReports(projectId: string): Promise<PortalProgressReportList> {
+  return portalFetch<PortalProgressReportList>(
+    `/api/v1/portal/projects/${encodeURIComponent(projectId)}/progress-reports`,
+  );
+}
+
+/**
+ * Fetch the rendered HTML body of one progress report with the session token.
+ * Returns the HTML string, or null when the body is not available (410).
+ */
+export async function fetchMyProgressReportHtml(
+  projectId: string,
+  reportId: string,
+): Promise<string | null> {
+  const token = getPortalSessionToken();
+  if (!token) throw new PortalUnauthorizedError('No portal session');
+  const res = await fetch(
+    `/api/v1/portal/projects/${encodeURIComponent(projectId)}/progress-reports/${encodeURIComponent(
+      reportId,
+    )}/content`,
+    { headers: { Authorization: `Bearer ${token}`, Accept: 'text/html' } },
+  );
+  if (res.status === 401) {
+    clearPortalSessionToken();
+    throw new PortalUnauthorizedError();
+  }
+  if (res.status === 410) return null;
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: unknown };
+    const detail =
+      typeof body.detail === 'string' ? body.detail : `Could not open report (${res.status})`;
+    throw new Error(detail);
+  }
+  return res.text();
+}
+
 /** Consume a magic-link token, persist the session, and return it. */
 export async function consumePortalMagicLink(
   token: string,

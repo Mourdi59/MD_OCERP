@@ -206,6 +206,19 @@ class _StubMagicRepo(_BaseStubRepo):
             for k, v in fields.items():
                 setattr(row, k, v)
 
+    async def consume(self, link_id: uuid.UUID, *, consumed_at: datetime) -> bool:
+        """Atomically flip ``consumed_at`` only when still NULL.
+
+        Mirrors ``PortalMagicLinkRepository.consume`` conditional-UPDATE
+        semantics: returns ``True`` if this call consumed a previously
+        unconsumed link, ``False`` if it was already consumed (or missing).
+        """
+        row = self.rows.get(link_id)
+        if row is None or getattr(row, "consumed_at", None) is not None:
+            return False
+        row.consumed_at = consumed_at
+        return True
+
 
 class _StubNotifRepo(_BaseStubRepo):
     async def create(self, notif: Any) -> Any:

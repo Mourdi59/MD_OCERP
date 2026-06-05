@@ -147,18 +147,46 @@ async def seed_equipment_demo(session: AsyncSession) -> dict[str, int]:
             code_idx += 1
     await session.flush()
 
-    # 3. Telemetry — 90 days, 1 reading/day per unit
+    # 3. Telemetry - 90 days, 1 reading/day per unit.
+    #
+    # The hour-meter and odometer are cumulative meters: they must rise
+    # monotonically over time (a reading that goes backwards is, correctly,
+    # flagged as a fault by the predictive engine). We therefore build each
+    # series forward from the oldest reading by accumulating small positive
+    # daily increments that land on the unit's current meter, rather than
+    # subtracting an independent random amount per day (which produced a
+    # jagged, frequently-decreasing series and dozens of spurious
+    # "meter went backwards" anomalies).
     today = date.today()
     for e in equipment_units:
-        for day_offset in range(89, -1, -1):
+        cur_hours = int(e.hour_meter)
+        cur_km = int(e.odometer_km)
+
+        # Per-day increments over the 90-day window. Each is non-negative so
+        # the cumulative meter never decreases; occasional zero-use days
+        # (idle/parked) keep the trend realistic.
+        hour_steps = [rng.randint(0, 6) for _ in range(90)]
+        km_steps = [rng.randint(0, 60) for _ in range(90)]
+        total_hours_used = sum(hour_steps)
+        total_km_used = sum(km_steps)
+        # Oldest reading = current meter minus everything accrued since (floored
+        # at zero so a low-hour machine never shows a negative meter).
+        start_hours = max(0, cur_hours - total_hours_used)
+        start_km = max(0, cur_km - total_km_used)
+
+        running_hours = start_hours
+        running_km = start_km
+        for i, day_offset in enumerate(range(89, -1, -1)):
             day = today - timedelta(days=day_offset)
             recorded = datetime.combine(day, datetime.min.time()).replace(tzinfo=UTC)
+            running_hours += hour_steps[i]
+            running_km += km_steps[i]
             r = TelemetryReading(
                 equipment_id=e.id,
                 recorded_at=recorded,
                 fuel_level=Decimal(rng.randint(10, 100)),
-                hour_meter=Decimal(int(e.hour_meter) - day_offset * rng.randint(1, 6)),
-                odometer_km=Decimal(int(e.odometer_km) - day_offset * rng.randint(5, 60)),
+                hour_meter=Decimal(running_hours),
+                odometer_km=Decimal(running_km),
                 lat=e.location_lat,
                 lng=e.location_lng,
                 engine_status=rng.choice(("running", "idle", "off")),

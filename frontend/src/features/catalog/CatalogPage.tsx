@@ -30,7 +30,7 @@ import {
   AlertTriangle,
   type LucideIcon,
 } from 'lucide-react';
-import { Button, Card, Badge, ConfirmDialog, EmptyState, Skeleton, InfoHint, CountryFlag } from '@/shared/ui';
+import { Button, Card, Badge, ConfirmDialog, EmptyState, Skeleton, DismissibleInfo, CountryFlag } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
@@ -1695,14 +1695,16 @@ export function CatalogPage() {
         </div>
       </div>
 
-      {/* What is catalog info hint */}
-      <InfoHint
-        className="mb-4"
-        text={t('catalog.what_is_catalog', {
+      {/* What is catalog info banner */}
+      <DismissibleInfo
+        storageKey="catalog"
+        title={t('info.catalog.title', { defaultValue: 'Resource Catalog' })}
+      >
+        {t('info.catalog.body', {
           defaultValue:
-            'Resource Catalog contains atomic building blocks for estimates: individual materials, labor rates, and equipment costs. Use it to manage and update prices across all your projects -- apply inflation adjustments, regional coefficients, or group-level price changes.',
+            'Browse and price the atomic building blocks for estimates - individual materials, labor rates, and equipment costs - sourced from CWICR regional databases or your own imports. Maintain these rates here and they feed assemblies, BOQ unit rates, and cost matching across every project, with bulk inflation, regional, and group-level price adjustments in one place.',
         })}
-      />
+      </DismissibleInfo>
 
       {/* Region Import Grid (expandable) */}
       {(showImportGrid || (!hasAnyRegions && totalCount === 0)) && (

@@ -9,7 +9,7 @@ import {
   Upload, Tag, Eye, Share2, LayoutGrid, Table2, ArrowUpDown, BarChart3, AlertCircle,
   CheckSquare, Square as SquareIcon, Library,
 } from 'lucide-react';
-import { Button, Card, Badge, EmptyState, InfoHint, SkeletonGrid } from '@/shared/ui';
+import { Button, Card, Badge, DismissibleInfo, EmptyState, SkeletonGrid } from '@/shared/ui';
 import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
 import { copyToClipboard } from '@/shared/lib/browser';
@@ -103,7 +103,6 @@ export function AssembliesPage() {
   const [showAiGenerate, setShowAiGenerate] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [tagFilter, setTagFilter] = useState('');
-  const [showHelp, setShowHelp] = useState(false);
 
   // Sort, view, multi-select state
   const [sortKey, setSortKey] = useState<SortKey>('updated_at');
@@ -473,6 +472,26 @@ export function AssembliesPage() {
         </div>
       </div>
 
+      {/* Intro / help banner — collapsible, remembers its state per page.
+          Explains the assembly recipe metaphor and how it ties into the
+          BOQ on first visit, then folds to a one-line header for returners. */}
+      <DismissibleInfo
+        storageKey="assemblies"
+        className="mb-3"
+        title={t('info.assemblies.title', { defaultValue: 'About assemblies' })}
+        links={[
+          {
+            label: t('assemblies.browse_library', { defaultValue: 'Browse Library' }),
+            onClick: () => navigate('/assemblies/library'),
+          },
+        ]}
+      >
+        {t('info.assemblies.body', {
+          defaultValue:
+            'Assemblies are reusable cost recipes that bundle materials, labour and equipment into a single composite rate, for example a reinforced concrete wall combining concrete, rebar, formwork and labour. Apply an assembly to a BOQ position to auto-populate its component costs and keep rates consistent across the project.',
+        })}
+      </DismissibleInfo>
+
       {/* Stats banner — surfaces aggregated insight from /stats/ + the
           full-set fetch so the list feels like an estimating tool, not a
           plain table. Five tiles: total, total components, avg rate, top
@@ -610,20 +629,6 @@ export function AssembliesPage() {
         </div>
       )}
 
-      {/* Explanation — collapsible. The full assemblies recipe metaphor
-          is helpful on first visit but turns into chrome on every return;
-          gated behind a tiny "What are assemblies?" toggle so it doesn't
-          eat ~80px on every page load. */}
-      {showHelp && (
-        <InfoHint
-          className="mb-3"
-          text={t('assemblies.what_are_assemblies', {
-            defaultValue:
-              'Assemblies are reusable cost recipes that combine multiple resources (materials, labor, equipment) into a single composite rate. For example, a "Reinforced Concrete Wall" assembly includes concrete, rebar, formwork, and labor. Apply assemblies to BOQ positions to auto-populate component costs.',
-          })}
-        />
-      )}
-
       {/* Search & Filters — flat toolbar (was a Card with internal p-4
           giving a card-in-card look). 32px less vertical chrome. */}
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end">
@@ -759,19 +764,6 @@ export function AssembliesPage() {
             </button>
           </div>
 
-          {/* "What are assemblies?" toggle — sits inline with the filter
-              row so the help banner is one click away without taking
-              up vertical space by default. */}
-          <button
-            type="button"
-            onClick={() => setShowHelp((v) => !v)}
-            className="h-10 px-3 text-xs rounded-lg border border-border-light text-content-tertiary hover:border-content-tertiary hover:text-content-secondary transition-colors inline-flex items-center gap-1.5 shrink-0"
-            title={t('assemblies.what_are_assemblies_toggle', { defaultValue: 'What are assemblies?' })}
-          >
-            {showHelp
-              ? t('common.hide_help', { defaultValue: 'Hide help' })
-              : t('assemblies.what_are_assemblies_toggle', { defaultValue: 'What are assemblies?' })}
-          </button>
       </div>
 
       {/* Bulk-action bar — slides in when 1+ items selected. Sticky-ish

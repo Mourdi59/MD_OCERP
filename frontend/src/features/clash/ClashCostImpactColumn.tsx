@@ -18,14 +18,28 @@ import { apiGet } from '@/shared/lib/api';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 
 /** Backend response shape — kept in lock-step with
- *  ``backend/app/modules/clash_cost_impact/schemas.py``. */
+ *  ``backend/app/modules/clash_cost_impact/schemas.py``.
+ *
+ *  NOTE: ``rework_subtotal`` and ``labour_subtotal`` are emitted as decimal
+ *  *strings* on the wire (Pydantic ``field_serializer`` narrows Decimal to a
+ *  string to avoid float-rounding drift). The other money fields are plain
+ *  numbers. We type them as ``number | string`` and normalise with
+ *  {@link toNum} before any arithmetic so a string never reaches
+ *  ``Number.prototype.toFixed`` (which would throw and break the row). */
 export interface ClashCostImpactComponents {
-  rework_positions_total: number;
-  rework_factor_pct: number;
-  rework_subtotal: number;
-  labour_hours: number;
-  blended_rate: number;
-  labour_subtotal: number;
+  rework_positions_total: number | string;
+  rework_factor_pct: number | string;
+  rework_subtotal: number | string;
+  labour_hours: number | string;
+  blended_rate: number | string;
+  labour_subtotal: number | string;
+}
+
+/** Coerce a wire value (number or decimal string) to a finite number;
+ *  falls back to 0 for null / undefined / unparseable input. */
+function toNum(v: number | string | null | undefined): number {
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
 }
 
 export interface ClashCostImpactPayload {
@@ -123,10 +137,10 @@ export function ClashCostImpactColumn({
   const c = impact.components;
 
   const tooltip =
-    `Rework: ${c.rework_positions_total.toFixed(2)} ${displayCurrency} × ` +
-    `${c.rework_factor_pct}% = ${c.rework_subtotal.toFixed(2)} ${displayCurrency}\n` +
-    `Labour: ${c.labour_hours}h × ${c.blended_rate.toFixed(2)} ${displayCurrency} = ` +
-    `${c.labour_subtotal.toFixed(2)} ${displayCurrency}\n` +
+    `Rework: ${toNum(c.rework_positions_total).toFixed(2)} ${displayCurrency} × ` +
+    `${toNum(c.rework_factor_pct)}% = ${toNum(c.rework_subtotal).toFixed(2)} ${displayCurrency}\n` +
+    `Labour: ${toNum(c.labour_hours)}h × ${toNum(c.blended_rate).toFixed(2)} ${displayCurrency} = ` +
+    `${toNum(c.labour_subtotal).toFixed(2)} ${displayCurrency}\n` +
     `Confidence: ${impact.confidence}`;
 
   return (

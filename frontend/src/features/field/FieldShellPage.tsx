@@ -130,8 +130,8 @@ export function FieldShellPage() {
             </p>
             <p className="text-xs text-slate-400">
               {online
-                ? t('field.online', { defaultValue: 'Online - changes sync automatically.' })
-                : t('field.offline', { defaultValue: 'Offline - changes are saved and will sync.' })}
+                ? t('field.sync_online', { defaultValue: 'Online - changes sync automatically.' })
+                : t('field.sync_offline', { defaultValue: 'Offline - changes are saved and will sync.' })}
             </p>
           </div>
         )}

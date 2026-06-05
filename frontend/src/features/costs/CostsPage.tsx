@@ -31,7 +31,7 @@ import {
   TrendingUp,
   Trash2,
 } from 'lucide-react';
-import { Button, Card, Badge, EmptyState, InfoHint, SkeletonTable, CountryFlag, Breadcrumb, ConfirmDialog } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, InfoHint, SkeletonTable, CountryFlag, Breadcrumb, ConfirmDialog, DismissibleInfo } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet, apiPost, apiDelete, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
@@ -940,6 +940,16 @@ export function CostsPage() {
           </Button>
         </div>
       </div>
+
+      <DismissibleInfo
+        storageKey="costs"
+        title={t('info.costs.title', { defaultValue: 'Cost Database' })}
+      >
+        {t('info.costs.body', {
+          defaultValue:
+            'Browse unit rates and composite prices for materials, labor, and equipment across regional catalogues like CWICR, BKI, and RSMeans, or add your own. Rates carry their currency and classification, so items you pull into a BOQ feed straight into the cost and schedule rollup.',
+        })}
+      </DismissibleInfo>
 
       {/* Escalation Calculator (collapsible) */}
       {showEscalation && (

@@ -32,6 +32,7 @@ import {
   Breadcrumb,
   RecoveryCard,
   SkeletonTable,
+  DismissibleInfo,
 } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import {
@@ -359,6 +360,16 @@ export function ContractsPage() {
             : t('contracts.new_contract', { defaultValue: 'New Contract' })}
         </Button>
       </div>
+
+      <DismissibleInfo
+        storageKey="contracts"
+        title={t('info.contracts.title', { defaultValue: 'About contracts' })}
+      >
+        {t('info.contracts.body', {
+          defaultValue:
+            'Manage the commercial agreements behind your projects, from a won bid through to the final account. Each contract carries its own type-aware schedule of values, retention and progress claims, and links to variations, BOQ and the cost spine so the contract sum stays in step with the rest of the platform.',
+        })}
+      </DismissibleInfo>
 
       <PipelineBanner
         intro={t('contracts.pipeline_intro', {

@@ -29,6 +29,7 @@ import {
   RecoveryCard,
   SkeletonTable,
   ConfirmDialog,
+  DismissibleInfo,
 } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import {
@@ -523,6 +524,16 @@ export function VariationsPage() {
           </Button>
         </div>
       </div>
+
+      <DismissibleInfo
+        storageKey="variations"
+        title={t('info.variations.title', { defaultValue: 'About Variations' })}
+      >
+        {t('info.variations.body', {
+          defaultValue:
+            'Manage contractual changes on a live project: variation notices, priced requests, agreed orders, daywork sheets and extension-of-time claims. Approved orders carry their cost and schedule impact through to the contract final account and roll up into Finance.',
+        })}
+      </DismissibleInfo>
 
       <PipelineBanner
         intro={t('variations.pipeline_intro', {

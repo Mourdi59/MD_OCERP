@@ -24,32 +24,36 @@ const mockGetTextWidth = vi.fn(() => 40);
 let mockPageNumber = 3;
 
 vi.mock('jspdf', () => {
-  return {
-    default: vi.fn().mockImplementation(() => ({
-      internal: {
-        pageSize: { getWidth: () => 210, getHeight: () => 297 },
-        getNumberOfPages: () => mockPageNumber,
-        getCurrentPageInfo: () => ({ pageNumber: mockPageNumber }),
-      },
-      save: mockSave,
-      text: mockText,
-      rect: mockRect,
-      line: mockLine,
-      addPage: mockAddPage,
-      setPage: mockSetPage,
-      roundedRect: mockRoundedRect,
-      setFont: mockSetFont,
-      setFontSize: mockSetFontSize,
-      setFillColor: mockSetFillColor,
-      setTextColor: mockSetTextColor,
-      setDrawColor: mockSetDrawColor,
-      setLineWidth: mockSetLineWidth,
-      splitTextToSize: mockSplitTextToSize,
-      getTextWidth: mockGetTextWidth,
-      setProperties: vi.fn(),
-      lastAutoTable: { finalY: 100 },
-    })),
-  };
+  // Vitest 4 requires a mock used with `new` to be backed by a real
+  // constructor (`function`/`class`), not an arrow returning an object —
+  // an arrow factory throws "is not a constructor" at the `new jsPDF(...)`
+  // call site. Use a `function` constructor so `new jsPDF(...)` works while
+  // still wiring the shared spies onto every instance.
+  const jsPDFMock = vi.fn(function (this: Record<string, unknown>) {
+    this.internal = {
+      pageSize: { getWidth: () => 210, getHeight: () => 297 },
+      getNumberOfPages: () => mockPageNumber,
+      getCurrentPageInfo: () => ({ pageNumber: mockPageNumber }),
+    };
+    this.save = mockSave;
+    this.text = mockText;
+    this.rect = mockRect;
+    this.line = mockLine;
+    this.addPage = mockAddPage;
+    this.setPage = mockSetPage;
+    this.roundedRect = mockRoundedRect;
+    this.setFont = mockSetFont;
+    this.setFontSize = mockSetFontSize;
+    this.setFillColor = mockSetFillColor;
+    this.setTextColor = mockSetTextColor;
+    this.setDrawColor = mockSetDrawColor;
+    this.setLineWidth = mockSetLineWidth;
+    this.splitTextToSize = mockSplitTextToSize;
+    this.getTextWidth = mockGetTextWidth;
+    this.setProperties = vi.fn();
+    this.lastAutoTable = { finalY: 100 };
+  });
+  return { default: jsPDFMock };
 });
 
 vi.mock('jspdf-autotable', () => ({

@@ -342,6 +342,21 @@ class ProjectCreate(BaseModel):
     client_id: str | None = Field(default=None, max_length=36)
     parent_project_id: UUID | None = None
     address: dict[str, Any] | None = None
+    country_code: str | None = Field(
+        default=None,
+        max_length=2,
+        description="ISO 3166-1 alpha-2 country code (e.g. US, CA, AU, DE, GB). "
+        "Drives the AIA G702/G703 payment-application gate (US/CA/AU only).",
+    )
+
+    @field_validator("country_code", mode="after")
+    @classmethod
+    def _normalise_country_code(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        cc = v.strip().upper()
+        return cc or None
+
     contract_value: str | None = Field(default=None, max_length=50)
     planned_start_date: str | None = Field(default=None, max_length=20)
     planned_end_date: str | None = Field(default=None, max_length=20)
@@ -467,6 +482,21 @@ class ProjectUpdate(BaseModel):
     client_id: str | None = Field(default=None, max_length=36)
     parent_project_id: UUID | None = None
     address: dict[str, Any] | None = None
+    country_code: str | None = Field(
+        default=None,
+        max_length=2,
+        description="ISO 3166-1 alpha-2 country code (e.g. US, CA, AU, DE, GB). "
+        "Drives the AIA G702/G703 payment-application gate (US/CA/AU only).",
+    )
+
+    @field_validator("country_code", mode="after")
+    @classmethod
+    def _normalise_country_code(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        cc = v.strip().upper()
+        return cc or None
+
     contract_value: str | None = Field(default=None, max_length=50)
     planned_start_date: str | None = Field(default=None, max_length=20)
     planned_end_date: str | None = Field(default=None, max_length=20)

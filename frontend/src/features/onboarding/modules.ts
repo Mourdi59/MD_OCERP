@@ -92,6 +92,7 @@ export const ALL_MODULES: ModuleDef[] = [
   { key: 'project_intelligence', labelKey: 'nav.project_intelligence', descriptionKey: 'onboarding.mod_pci_desc', group: 'ai', core: true },
   { key: 'erp_chat', labelKey: 'onboarding.mod_erp_chat', descriptionKey: 'onboarding.mod_erp_chat_desc', group: 'ai' },
   { key: 'compliance_ai', labelKey: 'onboarding.mod_compliance_ai', descriptionKey: 'onboarding.mod_compliance_ai_desc', group: 'ai' },
+  { key: 'ai_agents', labelKey: 'nav.ai_agents', descriptionKey: 'onboarding.mod_ai_agents_desc', group: 'ai' },
 
   // ── Planning ─────────────────────────────────────────────────────────
   { key: 'schedule', labelKey: 'schedule.title', descriptionKey: 'onboarding.mod_schedule_desc', group: 'planning' },
@@ -113,6 +114,7 @@ export const ALL_MODULES: ModuleDef[] = [
   { key: 'crm', labelKey: 'onboarding.mod_crm', descriptionKey: 'onboarding.mod_crm_desc', group: 'commercial' },
   { key: 'supplier_catalogs', labelKey: 'onboarding.mod_supplier_catalogs', descriptionKey: 'onboarding.mod_supplier_catalogs_desc', group: 'commercial' },
   { key: 'property_dev', labelKey: 'onboarding.mod_property_dev', descriptionKey: 'onboarding.mod_property_dev_desc', group: 'commercial' },
+  { key: 'moc', labelKey: 'moc.title', descriptionKey: 'onboarding.mod_moc_desc', group: 'commercial' },
 
   // ── Operations ───────────────────────────────────────────────────────
   { key: 'service', labelKey: 'onboarding.mod_service', descriptionKey: 'onboarding.mod_service_desc', group: 'operations' },
@@ -152,6 +154,8 @@ export const ALL_MODULES: ModuleDef[] = [
   // ── Field ────────────────────────────────────────────────────────────
   { key: 'fieldreports', labelKey: 'nav.field_reports', descriptionKey: 'onboarding.mod_field_reports_desc', group: 'field' },
   { key: 'collaboration', labelKey: 'nav.collaboration', descriptionKey: 'onboarding.mod_collaboration_desc', group: 'field' },
+  { key: 'field_diary', labelKey: 'onboarding.mod_field_diary', descriptionKey: 'onboarding.mod_field_diary_desc', group: 'field' },
+  { key: 'payroll', labelKey: 'nav.payroll', descriptionKey: 'onboarding.mod_payroll_desc', group: 'field' },
 
   // ── Sustainability / ESG ────────────────────────────────────────────
   { key: 'carbon', labelKey: 'onboarding.mod_carbon', descriptionKey: 'onboarding.mod_carbon_desc', group: 'sustainability_esg' },
@@ -159,6 +163,7 @@ export const ALL_MODULES: ModuleDef[] = [
   // ── BI & Analytics ──────────────────────────────────────────────────
   { key: 'bi_dashboards', labelKey: 'onboarding.mod_bi_dashboards', descriptionKey: 'onboarding.mod_bi_dashboards_desc', group: 'bi_analytics' },
   { key: 'reporting', labelKey: 'nav.reporting', descriptionKey: 'onboarding.mod_reporting_desc', group: 'bi_analytics' },
+  { key: 'project_controls', labelKey: 'nav.project_controls', descriptionKey: 'onboarding.mod_project_controls_desc', group: 'bi_analytics' },
 
   // ── Enterprise ──────────────────────────────────────────────────────
   { key: 'enterprise_workflows', labelKey: 'onboarding.mod_enterprise_workflows', descriptionKey: 'onboarding.mod_enterprise_workflows_desc', group: 'enterprise' },

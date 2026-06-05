@@ -809,9 +809,10 @@ class ProcurementService:
             )
         # Re-check the hard block at issue time (TOP-30 #20): a vendor that was
         # blocked AFTER the PO was created must not receive live work. A
-        # non-prequalified (but not blocked) vendor still issues - the warning
-        # was already surfaced at create time.
-        await self._enforce_vendor_gate(po.vendor_contact_id)
+        # non-prequalified (but not blocked) vendor still issues - we re-surface
+        # the warning on the issue response so the buyer sees it at the moment
+        # the PO actually goes out, not only at create time.
+        vendor_warnings = await self._enforce_vendor_gate(po.vendor_contact_id)
         await self.po_repo.update(po_id, status="issued")
 
         # FSM audit row — PO lifecycle is closely tied to the RFQ FSM (see
@@ -852,6 +853,7 @@ class ProcurementService:
             },
         )
 
+        updated.vendor_warnings = vendor_warnings  # type: ignore[attr-defined]
         logger.info("PO issued: %s", po.po_number)
         return updated
 

@@ -337,6 +337,26 @@ class PortalProgressReportList(BaseModel):
     total: int = 0
 
 
+class PortalProjectSummary(BaseModel):
+    """A project the portal caller can see, with just enough to label it.
+
+    Backs the portal Progress Reports tab so the client can pick a project by
+    name instead of pasting a UUID. Scoped to the caller's non-expired
+    ``project`` access rules.
+    """
+
+    id: UUID
+    name: str
+    project_code: str | None = None
+
+
+class PortalProjectSummaryList(BaseModel):
+    """List of projects the portal caller can see."""
+
+    items: list[PortalProjectSummary] = Field(default_factory=list)
+    total: int = 0
+
+
 # ── Portal-side payment-application submission ────────────────────────────
 
 

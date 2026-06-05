@@ -5,6 +5,33 @@ All notable changes to OpenConstructionERP are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.10.0] - 2026-06-05
+
+### Added
+
+- Field time and attendance with a real payroll lifecycle. A crew lead records hours on site, those hours roll into a payroll batch, and the batch moves through draft, submitted, approved and posted as guarded steps. Posting writes to the general ledger once and only once: a replayed or retried post lands on the same journal entry rather than booking the cost twice. Labour cost is rolled up against budget so a project can see committed and actual crew cost against what was planned, by trade. The field app captures all of this offline and syncs later through a durable ledger that records every entry with its own id, so a phone that reconnects and replays its queue cannot double-count a shift it already sent.
+- A cross-module project-controls dashboard. One screen pulls the health of cost, schedule, quality, safety, risk and changes into a row of traffic-light KPIs, each with a drill-down into the records behind it. Instead of opening six modules to answer "is this project in trouble", a controls manager reads the colour, clicks the amber tile and lands on the overruns, the slipping activities or the open high-risk items that turned it amber.
+- Compliance enforced at the points where it matters rather than as a separate report. Compliance rule packs run at the contract signing gate, so a contract cannot be signed while a required pack is failing. Documents are checked against ISO 19650 CDE suitability when their state changes, so a file cannot move to a suitability it has not earned. Inspection and test plans carry hold points that stop the work until the point is released. Vendor scorecards feed a prequalification gate on purchase orders, a hard-blocked vendor cannot receive an order and a vendor with a lapsed or rejected prequalification raises a clear warning on the order.
+- AIA G702 and G703 payment applications for owner billing, with the application and continuation sheet generated from the schedule of values, retention handled, and the lifecycle tracked. These are gated to US, Canada and Australia projects, where the AIA format is the norm, and stay out of the way everywhere else.
+- A wave of AI features, all opt-in and human-confirmed. A progress-report narrative agent drafts the written summary of a reporting period for a person to review and edit, never auto-sends. The no-code agent builder gained event and schedule triggers so an agent can run when something happens or on a cadence, with a run monitor that shows each execution and its result. Jobsite photo intelligence reads the EXIF capture date off an uploaded photo, suggests tags and flags a likely defect with a severity. A project-document semantic assistant answers questions over a project's documents and points back at the source.
+- A subcontractor payment-application portal and a client progress-reports tab. A subcontractor submits a payment application through a magic-link portal scoped to their own agreement, and a client reads their project's progress reports through their own link. Both are protected by row-level security per agreement, so a portal user only ever sees the rows that belong to them.
+
+### Fixed
+
+- Scheduled reports now actually email their recipients on the cadence they were set to. The schedule existed but never dispatched, so a weekly report that someone configured simply never arrived. It now sends on time to the recipients on the report.
+- Backup restore no longer runs a destructive replace when merge was chosen. Choosing merge is meant to add the restored rows alongside what is already there, but the restore quietly fell through to the replace path and cleared existing data first. Merge now merges and replace still replaces, each doing only what was asked.
+- The user-invite flow honours the role chosen in the invite. An invite sent for a specific role was landing the new user on a default role instead, so an admin had to fix the role by hand after the person joined. The chosen role is now applied when the invite is accepted.
+- Closed a cross-project access leak in the chat assistant's search tools. The tools that let the assistant look across a project's records were not scoped to the current project, so a question could surface rows from another project the user was not working in. They now filter to the project in context.
+
+### Security
+
+- Bumped vitest to 4.1.8, which clears the critical Dependabot alert and the vulnerable nested copies of vite and esbuild that it carried. Updated react-router-dom to 6.30.4 and the Rust tar crate to 0.4.46. The npm audit is clean after this. Two remaining transitive Rust advisories (rand and glib) are pinned by the current Tauri toolchain with no resolver-reachable patched version and no runtime exposure on the Windows desktop build; they are left for a future Tauri upgrade.
+
+### Changed
+
+- The desktop app survives a long PostgreSQL crash recovery and shows what it is doing while it starts. The embedded database can need WAL crash recovery after an unclean shutdown, and on a real cluster of any size that can take more than two minutes. The old startup budget gave up after about twenty-four seconds and the app exited with no window and no message, so the user saw nothing. The boot loop now waits out recovery within a generous deadline, clears stale pidfiles from dead postmasters and probes the real database port instead of trusting a half-written pidfile. The launcher writes its log from the very first instruction and drives a six-step boot checklist on the splash screen, launcher, backend, database, migrations, server and open, so a launch that fails turns the failed step red with the error inline, the log path and a copy button, and a stuck start is finally diagnosable. Verified against a forced unclean shutdown on a 25,000-row cluster where recovery took 213 seconds and every row survived.
+- The marketing-site partner program is simplified to a single deal rather than a tiered set of offers, so the page is shorter and the terms are easier to act on.
+
 ## [6.9.0] - 2026-06-05
 
 ### Added
