@@ -306,3 +306,4 @@ frontend/_qa_tmp_*
 frontend/tsc_result.txt
 frontend/tsc_out.txt
 frontend/_final_tsc.txt
+frontend/qa-*.mjs

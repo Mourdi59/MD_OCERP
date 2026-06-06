@@ -17,7 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.ai_estimator.models import (
     AiEstimatorGroup,
-    AiEstimatorIntake,
     AiEstimatorRun,
     AiEstimatorStep,
 )
@@ -162,43 +161,6 @@ class AiEstimatorGroupRepository:
         stmt = (
             update(AiEstimatorGroup)
             .where(AiEstimatorGroup.id == group_id)
-            .values(**fields)
-            .execution_options(synchronize_session="evaluate")
-        )
-        await self.session.execute(stmt)
-        await self.session.flush()
-
-
-class AiEstimatorIntakeRepository:
-    """CRUD-style helpers for :class:`AiEstimatorIntake` (the v2 intake row)."""
-
-    def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    async def create(self, intake: AiEstimatorIntake) -> AiEstimatorIntake:
-        """Insert a new intake row and flush so it has an id."""
-        self.session.add(intake)
-        await self.session.flush()
-        return intake
-
-    async def get_for_run(self, run_id: uuid.UUID) -> AiEstimatorIntake | None:
-        """Return the 1:1 intake row for a run, or None."""
-        stmt = select(AiEstimatorIntake).where(AiEstimatorIntake.run_id == run_id)
-        return (await self.session.execute(stmt)).scalar_one_or_none()
-
-    async def update_fields(self, intake_id: uuid.UUID, **fields: object) -> None:
-        """Patch fields on an intake row (ASM-013 convention).
-
-        Uses ``synchronize_session="evaluate"`` so the changed columns are
-        written onto the matching in-memory :class:`AiEstimatorIntake` without
-        expiring it (see the run/group repositories for the full rationale -
-        this avoids the MissingGreenlet that ``expire_all()`` caused).
-        """
-        if not fields:
-            return
-        stmt = (
-            update(AiEstimatorIntake)
-            .where(AiEstimatorIntake.id == intake_id)
             .values(**fields)
             .execution_options(synchronize_session="evaluate")
         )
