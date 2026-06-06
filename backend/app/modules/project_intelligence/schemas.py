@@ -19,6 +19,13 @@ class BOQStateResponse(BaseModel):
     validation_errors: int = 0
     export_ready: bool = False
     completion_pct: float = 0.0
+    # Scope-drift metric: count of priced leaf positions ("position_count")
+    # versus the captured scope baseline ("baseline_position_count"). The
+    # Estimation Dashboard's Scope-coverage widget reads these directly; the
+    # field names are kept stable for that contract.
+    position_count: int = 0
+    baseline_position_count: int = 0
+    baseline_source: str = "none"  # "metadata" | "snapshot" | "current" | "none"
 
 
 class ScheduleStateResponse(BaseModel):
@@ -31,6 +38,13 @@ class ScheduleStateResponse(BaseModel):
     start_date: str | None = None
     end_date: str | None = None
     completion_pct: float = 0.0
+    # Real progress signals for the dashboard Schedule-health KPI. Both are
+    # 0..100. ``baseline_adherence_pct`` is the share of activities tracking
+    # on or ahead of their planned (time-elapsed) progress; ``progress_pct``
+    # is the mean actual percent-complete across activities. The KPI card
+    # reads these field names directly.
+    progress_pct: float = 0.0
+    baseline_adherence_pct: float = 0.0
 
 
 class TakeoffStateResponse(BaseModel):
@@ -50,6 +64,14 @@ class ValidationStateResponse(BaseModel):
     passed_rules: int = 0
     total_rules: int = 0
     completion_pct: float = 0.0
+    # Stable aliases consumed by the dashboard's Real-time validation widget.
+    # They mirror the canonical fields above (rules_passed == passed_rules,
+    # rules_total == total_rules, errors == critical_errors) so the widget
+    # renders the real last-validation report instead of falling back to
+    # anomaly-derived counts.
+    rules_passed: int = 0
+    rules_total: int = 0
+    errors: int = 0
 
 
 class RiskStateResponse(BaseModel):
@@ -188,6 +210,14 @@ class ActionDefinitionResponse(BaseModel):
     confirmation_message: str = ""
     navigate_to: str | None = None
     has_backend_action: bool = False
+
+
+class ScopeBaselineResponse(BaseModel):
+    """Result of capturing the current BOQ scope as the project baseline."""
+
+    project_id: str
+    baseline_position_count: int
+    captured_at: str
 
 
 # ── Forecast alerts (TOP-30 #19) ──────────────────────────────────────────

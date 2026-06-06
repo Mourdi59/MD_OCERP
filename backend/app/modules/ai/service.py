@@ -50,7 +50,9 @@ from app.modules.ai.schemas import (
     AISettingsUpdate,
     CreateBOQFromEstimateRequest,
     EstimateItem,
+    EstimateJobListResponse,
     EstimateJobResponse,
+    EstimateJobSummary,
     QuickEstimateRequest,
 )
 
@@ -550,6 +552,144 @@ def _build_job_response(job: AIEstimateJob) -> EstimateJobResponse:
         created_at=job.created_at,
         updated_at=job.updated_at,
     )
+
+
+def _build_job_summary(job: AIEstimateJob) -> EstimateJobSummary:
+    """Build a lightweight history summary (no full items payload).
+
+    Recomputes ``grand_total`` from the stored line totals and reads the
+    resolved currency from the first priced line - the same contract as
+    :func:`_build_job_response` but without echoing the per-item rows.
+    """
+    from decimal import Decimal
+
+    grand_total: Decimal = Decimal("0")
+    currency = ""
+    items_count = 0
+    if job.result and isinstance(job.result, list):
+        for item_data in job.result:
+            if not isinstance(item_data, dict):
+                continue
+            items_count += 1
+            try:
+                grand_total += Decimal(str(item_data.get("total", 0) or 0))
+            except (ValueError, ArithmeticError):
+                pass
+            if not currency:
+                cur = item_data.get("currency")
+                if isinstance(cur, str) and cur.strip():
+                    currency = cur.strip()
+
+    return EstimateJobSummary(
+        id=job.id,
+        project_id=job.project_id,
+        input_type=job.input_type,
+        input_text=job.input_text,
+        input_filename=job.input_filename,
+        status=job.status,
+        items_count=items_count,
+        currency=currency,
+        grand_total=grand_total.quantize(Decimal("0.01")),
+        model_used=job.model_used,
+        tokens_used=job.tokens_used,
+        cost_usd_estimate=Decimal(str(getattr(job, "cost_usd_estimate", 0.0) or 0.0)),
+        duration_ms=job.duration_ms,
+        error_message=job.error_message,
+        created_at=job.created_at,
+    )
+
+
+async def _match_cost_items(
+    session: AsyncSession,
+    *,
+    description: str,
+    item_unit: str,
+    region: str,
+    limit: int = 5,
+) -> list[dict[str, Any]]:
+    """Find cost-DB matches for one estimate line (vector first, text fallback).
+
+    Returns a ranked list of ``{code, description, unit, rate, currency,
+    region, score}`` dicts (best first). This is the single source of truth
+    for both the ``/enrich`` endpoint preview and the persisted
+    ``apply_enriched`` BOQ-creation path, so what the user sees matched in the
+    table is exactly what gets saved. Degrades gracefully: a missing
+    embedder / vector DB silently falls back to SQL keyword search, and any
+    error yields an empty match list rather than raising.
+    """
+    from sqlalchemy import or_, select
+
+    from app.modules.costs.models import CostItem
+
+    matches: list[dict[str, Any]] = []
+
+    # 1. Vector similarity search (best signal when the embedder is present).
+    try:
+        from app.core.vector import encode_texts, vector_search
+
+        query_vec = encode_texts([description])[0]
+        for m in vector_search(query_vec, region=region or None, limit=limit):
+            matches.append(
+                {
+                    "code": m.get("code", ""),
+                    "description": m.get("description", ""),
+                    "unit": m.get("unit", ""),
+                    "rate": float(m.get("rate", 0) or 0),
+                    "currency": m.get("currency", ""),
+                    "region": m.get("region", ""),
+                    "score": float(m.get("score", 0) or 0),
+                }
+            )
+    except Exception:
+        logger.debug("Vector search unavailable for enrich; falling back to text", exc_info=True)
+
+    # 2. Text keyword fallback (one OR query, optional region retry).
+    if not matches:
+        stop = {"the", "and", "for", "with", "from", "into", "per", "all"}
+        keywords = [w for w in description.lower().split() if len(w) > 2 and w not in stop][:5]
+        if keywords:
+            try:
+                conditions = [CostItem.description.ilike(f"%{kw}%") for kw in keywords]
+
+                async def _kw_search(use_region: bool) -> list[CostItem]:
+                    stmt = select(CostItem).where(CostItem.is_active.is_(True), or_(*conditions))
+                    if use_region and region:
+                        stmt = stmt.where(CostItem.region == region)
+                    stmt = stmt.limit(15)
+                    res = await session.execute(stmt)
+                    return list(res.scalars().all())
+
+                kw_results = await _kw_search(use_region=True)
+                if not kw_results and region:
+                    kw_results = await _kw_search(use_region=False)
+
+                for ci in kw_results:
+                    if any(m["code"] == ci.code for m in matches):
+                        continue
+                    desc_lower = (ci.description or "").lower()
+                    kw_hits = sum(1 for k in keywords if k in desc_lower)
+                    score = min(0.9, 0.3 + kw_hits * 0.15)
+                    matches.append(
+                        {
+                            "code": ci.code,
+                            "description": (ci.description or "")[:200],
+                            "unit": ci.unit or "",
+                            "rate": float(ci.rate) if ci.rate else 0.0,
+                            "currency": ci.currency or "",
+                            "region": ci.region or "",
+                            "score": score,
+                        }
+                    )
+            except Exception:
+                logger.warning("Text search failed during enrich for %r", description[:40], exc_info=True)
+
+    # 3. Prefer same-unit matches, then sort best-first and cap.
+    if item_unit:
+        for m in matches:
+            if m["unit"].lower() == item_unit.lower():
+                m["score"] = min(1.0, m["score"] + 0.05)
+    matches.sort(key=lambda m: m["score"], reverse=True)
+    return matches[:limit]
 
 
 class AIService:
@@ -1530,6 +1670,38 @@ class AIService:
 
         return _build_job_response(job)
 
+    # ── Estimate history (server-side job list) ──────────────────────────
+
+    async def list_estimates(
+        self,
+        user_id: str,
+        *,
+        project_id: uuid.UUID | None = None,
+        status_filter: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> EstimateJobListResponse:
+        """Return the current user's estimate jobs, newest first, paginated.
+
+        Backs the "Recent estimates" panel so a user's runs survive a reload
+        / device switch instead of living only in browser localStorage. The
+        repository always scopes by ``user_id`` so this is tenant-safe.
+        """
+        uid = uuid.UUID(user_id)
+        rows, total = await self.job_repo.list_for_user(
+            uid,
+            project_id=project_id,
+            status=status_filter,
+            limit=limit,
+            offset=offset,
+        )
+        return EstimateJobListResponse(
+            items=[_build_job_summary(j) for j in rows],
+            total=total,
+            limit=max(1, min(limit, 100)),
+            offset=max(0, offset),
+        )
+
     # ── Create BOQ from estimate ─────────────────────────────────────────
 
     async def create_boq_from_estimate(
@@ -1595,19 +1767,36 @@ class AIService:
         boq_repo = BOQRepository(self.session)
         position_repo = PositionRepository(self.session)
 
+        # Resolved estimate currency (first priced line). When applying
+        # enriched rates we only fold in a CWICR match that shares this
+        # currency - never blend currencies into one persisted total (v3 §10).
+        estimate_currency = ""
+        for item_data in job.result:
+            if isinstance(item_data, dict):
+                cur = item_data.get("currency")
+                if isinstance(cur, str) and cur.strip():
+                    estimate_currency = cur.strip()
+                    break
+
         # Create the BOQ
         boq = BOQ(
             project_id=request.project_id,
             name=request.boq_name,
             description=f"Generated by AI from {job.input_type} input",
             status="draft",
-            metadata_={"ai_job_id": str(job_id), "ai_model": job.model_used or ""},
+            metadata_={
+                "ai_job_id": str(job_id),
+                "ai_model": job.model_used or "",
+                "ai_rates_enriched": bool(request.apply_enriched),
+                "ai_enrich_region": request.region or "",
+            },
         )
         boq = await boq_repo.create(boq)
 
         # Create positions from estimated items
         grand_total = 0.0
         positions_created = 0
+        enriched_count = 0
 
         for sort_idx, item_data in enumerate(job.result):
             if not isinstance(item_data, dict):
@@ -1619,6 +1808,47 @@ class AIService:
 
             quantity = float(item_data.get("quantity", 0))
             unit_rate = float(item_data.get("unit_rate", 0))
+            unit = str(item_data.get("unit", "m2"))
+            classification = dict(item_data.get("classification", {}) or {})
+            position_metadata: dict[str, Any] = {
+                "ai_job_id": str(job_id),
+                "category": str(item_data.get("category", "")),
+            }
+            position_source = "ai_estimate"
+
+            # ── Optional cost-DB enrichment: replace the AI rate with the best
+            #    same-currency CWICR match the user reviewed in the table. The
+            #    match code is recorded on the position so the persisted rate
+            #    is traceable to the catalogue, not an opaque AI guess.
+            if request.apply_enriched:
+                cost_matches = await _match_cost_items(
+                    self.session,
+                    description=description,
+                    item_unit=unit,
+                    region=request.region or "",
+                    limit=1,
+                )
+                best = cost_matches[0] if cost_matches else None
+                if best:
+                    match_currency = (best.get("currency") or "").strip()
+                    same_currency = match_currency == "" or match_currency == estimate_currency
+                    applied = bool(same_currency and best.get("rate"))
+                    position_metadata["cwicr_match"] = {
+                        "code": best.get("code", ""),
+                        "rate": best.get("rate", 0.0),
+                        "currency": match_currency,
+                        "region": best.get("region", ""),
+                        "score": round(float(best.get("score", 0) or 0), 4),
+                        "applied": applied,
+                    }
+                    if applied:
+                        unit_rate = float(best["rate"])
+                        position_source = "ai_estimate_cwicr"
+                        enriched_count += 1
+                        code = best.get("code", "")
+                        if code:
+                            classification = {**classification, "cwicr": code}
+
             total = round(quantity * unit_rate, 2)
             grand_total += total
 
@@ -1632,19 +1862,16 @@ class AIService:
                 parent_id=None,
                 ordinal=str(item_data.get("ordinal", str(sort_idx + 1))),
                 description=description,
-                unit=str(item_data.get("unit", "m2")),
+                unit=unit,
                 quantity=str(quantity),
                 unit_rate=str(unit_rate),
                 total=str(total),
-                classification=item_data.get("classification", {}),
-                source="ai_estimate",
+                classification=classification,
+                source=position_source,
                 confidence=confidence_str,
                 cad_element_ids=[],
                 validation_status="pending",
-                metadata_={
-                    "ai_job_id": str(job_id),
-                    "category": str(item_data.get("category", "")),
-                },
+                metadata_=position_metadata,
                 sort_order=sort_idx,
             )
             await position_repo.create(position)
@@ -1663,15 +1890,17 @@ class AIService:
         )
 
         logger.info(
-            "BOQ created from AI estimate: boq=%s, job=%s, positions=%d, total=%.2f",
+            "BOQ created from AI estimate: boq=%s, job=%s, positions=%d, enriched=%d, total=%.2f",
             boq.id,
             job_id,
             positions_created,
+            enriched_count,
             grand_total,
         )
 
         return {
             "boq_id": str(boq.id),
             "positions_created": positions_created,
+            "positions_enriched": enriched_count,
             "grand_total": round(grand_total, 2),
         }

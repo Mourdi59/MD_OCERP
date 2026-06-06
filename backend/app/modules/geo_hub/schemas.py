@@ -102,11 +102,19 @@ class GeoAnchorUpdate(BaseModel):
 
 
 class GeoAnchorResponse(BaseModel):
-    """Anchor returned from the API."""
+    """Anchor returned from the API.
+
+    ``id`` is ``None`` for a *transient* anchor synthesised from a
+    project's address coordinates (a project that pins on the global map
+    via ``address.lat``/``lng`` but has no persisted ``GeoAnchor`` row).
+    The ``metadata.persisted`` flag (``False`` on transient anchors) is
+    the explicit signal the frontend checks before offering "Save this
+    location"; every real, DB-backed anchor carries a UUID ``id``.
+    """
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    id: UUID
+    id: UUID | None = None
     project_id: UUID
     lat: Decimal
     lon: Decimal
@@ -789,6 +797,58 @@ class DiaryPhotoPinResponse(BaseModel):
     lon: float
 
 
+# ── Map layer summary (project-scoped legend) ───────────────────────────
+
+
+class MapLayerSummary(BaseModel):
+    """Counts + breakdown for one toggleable map layer.
+
+    Powers the project-map layer legend: how many features the layer
+    carries and, where it helps the user triage, a small breakdown
+    keyed by a domain dimension (HSE severity, punch priority, tileset
+    status). ``total`` of 0 lets the frontend render a muted "nothing
+    pinned yet" row with a deep-link to the source module instead of an
+    invisible empty layer.
+    """
+
+    model_config = ConfigDict()
+
+    total: int = 0
+    # Open-ended bucket map (e.g. ``{"high": 3, "low": 1}``). Empty when a
+    # breakdown does not apply to the layer (diary photos, viewpoints).
+    breakdown: dict[str, int] = Field(default_factory=dict)
+
+
+class MapSummaryResponse(BaseModel):
+    """Aggregate of everything visible on a project's map.
+
+    One round-trip the frontend uses to render the layer legend (counts
+    per layer + status breakdowns) and to decide which layers are worth
+    showing a toggle for. Computed server-side so the legend stays
+    correct even when individual pin layers are lazily fetched, and so a
+    user with hundreds of pins isn't forced to download every row just to
+    learn the count.
+    """
+
+    model_config = ConfigDict()
+
+    project_id: UUID
+    has_anchor: bool = False
+    # ``True`` when the anchor is synthesised from address coords (not a
+    # persisted GeoAnchor) so the legend can nudge the user to confirm it.
+    anchor_is_derived: bool = False
+    tilesets: MapLayerSummary = Field(default_factory=MapLayerSummary)
+    overlays: MapLayerSummary = Field(default_factory=MapLayerSummary)
+    raster_overlays: MapLayerSummary = Field(default_factory=MapLayerSummary)
+    viewpoints: MapLayerSummary = Field(default_factory=MapLayerSummary)
+    hse_pins: MapLayerSummary = Field(default_factory=MapLayerSummary)
+    punchlist_pins: MapLayerSummary = Field(default_factory=MapLayerSummary)
+    diary_pins: MapLayerSummary = Field(default_factory=MapLayerSummary)
+    active_jobs: int = 0
+    # Total feature count across every layer - the legend's headline number.
+    total_features: int = 0
+
+
 __all__ = [
     "AnchorFromAddressRequest",
     "AnchorFromAddressResponse",
@@ -818,6 +878,8 @@ __all__ = [
     "ImageryLayerUpdate",
     "KMLImportRequest",
     "MapConfigResponse",
+    "MapLayerSummary",
+    "MapSummaryResponse",
     "PunchlistPinResponse",
     "TerrainSourceCreate",
     "TerrainSourceResponse",

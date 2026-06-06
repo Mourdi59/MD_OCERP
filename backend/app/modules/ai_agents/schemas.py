@@ -346,3 +346,67 @@ class EventTriggerDescriptor(BaseModel):
     label: str
     description: str
     available: bool = False
+
+
+# ── BOQ proposals: extract + apply (human-confirmed) ──────────────────────────
+
+
+class PositionProposalSchema(BaseModel):
+    """One structured BOQ-position proposal recovered from a completed run.
+
+    The drafter's ``create_position`` tool produces these during the loop;
+    money is carried as Decimal-as-string with its ISO 4217 ``currency`` so a
+    priced proposal round-trips losslessly and is never read without its
+    currency code.
+    """
+
+    description: str
+    unit: str
+    qty: float
+    unit_rate: str
+    currency: str
+    total: str
+
+
+class RunProposalsResponse(BaseModel):
+    """The applyable BOQ proposals a run produced (``GET /runs/{id}/proposals``).
+
+    ``mixed_currency`` is true when the proposals span more than one currency;
+    the UI surfaces that the lines cannot be combined into one total and that
+    off-currency lines will be skipped on apply (currencies are never blended).
+    """
+
+    run_id: str
+    project_id: str | None = None
+    count: int = 0
+    currencies: list[str] = Field(default_factory=list)
+    mixed_currency: bool = False
+    proposals: list[PositionProposalSchema] = Field(default_factory=list)
+
+
+class ApplyProposalsRequest(BaseModel):
+    """Request body for ``POST /runs/{id}/apply``.
+
+    The user reviewed the proposals and picked the BOQ to write them into. This
+    is the explicit human confirmation - nothing is ever applied automatically.
+    """
+
+    boq_id: UUID = Field(..., description="UUID of the BOQ to apply the proposals to")
+
+
+class ApplyProposalsResponse(BaseModel):
+    """Outcome of applying a run's proposals (``POST /runs/{id}/apply``).
+
+    ``created`` real positions were added to the BOQ; ``skipped`` lines were not
+    (each with a human-readable reason - typically a currency mismatch or an
+    un-priced line). ``currency`` is the currency the created lines were applied
+    in.
+    """
+
+    run_id: str
+    boq_id: str
+    created: int = 0
+    skipped: int = 0
+    currency: str | None = None
+    created_ordinals: list[str] = Field(default_factory=list)
+    skipped_reasons: list[str] = Field(default_factory=list)

@@ -47,6 +47,7 @@ from app.modules.geo_hub.schemas import (
     ImageryLayerUpdate,
     KMLImportRequest,
     MapConfigResponse,
+    MapSummaryResponse,
     PunchlistPinResponse,
     RasterOverlayUploadResponse,
     TerrainSourceCreate,
@@ -863,11 +864,34 @@ async def import_kml(
 async def export_geojson(
     project_id: uuid.UUID = Query(...),
     kind: str | None = Query(default=None),
+    include: str | None = Query(
+        default=None,
+        description=(
+            "Comma-separated layers to fold into the export: overlays, anchor, "
+            "hse, punchlist, diary. Defaults to all when omitted."
+        ),
+    ),
     service: GeoHubService = Depends(_svc),
     payload: CurrentUserPayload = None,  # type: ignore[assignment]
     _perm: None = Depends(RequirePermission("geo_hub.read")),
 ) -> dict[str, Any]:
-    return await service.export_geojson(project_id, payload=payload, kind=kind)
+    """Export a project's whole map as one GeoJSON FeatureCollection.
+
+    Folds vector overlays, the anchor point and the HSE / punchlist /
+    diary pin layers into a single collection, each feature tagged with
+    an ``oe:layer`` property. Unknown ``include`` tokens are ignored so a
+    typo degrades to "export nothing for that token" rather than a 422.
+    """
+    allowed = {"overlays", "anchor", "hse", "punchlist", "diary"}
+    include_set: set[str] | None = None
+    if include is not None:
+        include_set = {tok.strip() for tok in include.split(",") if tok.strip() in allowed}
+    return await service.export_geojson(
+        project_id,
+        payload=payload,
+        kind=kind,
+        include=include_set,
+    )
 
 
 # ── Raster overlays (PDF / DWG / image pinned on the globe) ─────────────
@@ -1121,6 +1145,26 @@ async def get_map_config(
         development_id=development_id,
     )
     return MapConfigResponse.model_validate(bundle)
+
+
+@router.get("/map-summary/{project_id}", response_model=MapSummaryResponse)
+async def get_map_summary(
+    project_id: uuid.UUID,
+    service: GeoHubService = Depends(_svc),
+    payload: CurrentUserPayload = None,  # type: ignore[assignment]
+    _perm: None = Depends(RequirePermission("geo_hub.read")),
+) -> MapSummaryResponse:
+    """Aggregate counts + breakdowns for the project-map layer legend.
+
+    One round-trip that returns per-layer feature counts (tilesets,
+    overlays, raster overlays, viewpoints, HSE / punchlist / diary pins)
+    plus small domain breakdowns (HSE severity, punch priority, tileset
+    status). The frontend renders this as a layer legend with toggles
+    and deep-links to the source module for any layer that is empty.
+    Cross-tenant access collapses to 404 via the service IDOR helper.
+    """
+    summary = await service.map_summary(project_id, payload=payload)
+    return MapSummaryResponse.model_validate(summary)
 
 
 # ── Cross-module geo pin layers ──────────────────────────────────────────

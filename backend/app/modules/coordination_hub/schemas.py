@@ -117,13 +117,27 @@ class CoordinationDashboardResponse(BaseModel):
 
 
 class TradeMatrixCell(BaseModel):
-    """One discipline-pair cell in the trade matrix."""
+    """One discipline-pair cell in the trade matrix.
+
+    ``cost_impact`` is the summed open cost-impact (rework + labour) of the
+    OPEN clashes in this discipline pair, computed via the
+    :mod:`clash_cost_impact` kernel. It lets the heat-map weight a cell by
+    money rather than raw count - a single high-severity Structural x MEP
+    clash through a chiller can outweigh fifty cosmetic Arch x Arch ones.
+    Emitted as a decimal string (v3 money convention); ``0`` when the
+    cost-impact module is unavailable or the pair has no priced rework.
+    """
 
     row: str
     col: str
     count: int = 0
     open: int = 0
     resolved: int = 0
+    cost_impact: Decimal = Decimal("0")
+
+    @field_serializer("cost_impact", when_used="json")
+    def _ser_cost_impact(self, v: Decimal) -> str | None:
+        return _serialise_money(v)
 
 
 class TradeMatrixResponse(BaseModel):
@@ -132,6 +146,16 @@ class TradeMatrixResponse(BaseModel):
     project_id: uuid.UUID
     trades: list[str]
     cells: list[TradeMatrixCell]
+    # Project display currency for the cost-weighted view; empty string
+    # when the project carries no currency (no hard-coded EUR fallback).
+    currency: str = ""
+    # Sum of every cell's ``cost_impact`` - lets the UI render a "weighted
+    # by EUR 1.2M open impact" caption without re-summing client-side.
+    total_cost_impact: Decimal = Decimal("0")
+
+    @field_serializer("total_cost_impact", when_used="json")
+    def _ser_total_cost_impact(self, v: Decimal) -> str | None:
+        return _serialise_money(v)
 
 
 # ── Timeline ───────────────────────────────────────────────────────────────

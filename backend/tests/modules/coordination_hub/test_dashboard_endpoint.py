@@ -385,3 +385,67 @@ async def test_timeline_endpoint_validates_days(client: AsyncClient, auth: dict[
         headers=auth,
     )
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_trade_matrix_endpoint_carries_cost_fields(
+    client: AsyncClient, auth: dict[str, str], project_id: str
+):
+    """The matrix payload exposes per-cell + total cost_impact (string)."""
+    _invalidate_cache()
+    await _seed_clash(project_id, a_disc="Architectural", b_disc="Structural")
+    resp = await client.get(
+        f"/api/v1/coordination/projects/{project_id}/trade-matrix",
+        headers=auth,
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert "total_cost_impact" in body
+    assert isinstance(body["total_cost_impact"], str)
+    assert body.get("currency") == "EUR"
+    for cell in body["cells"]:
+        assert "cost_impact" in cell
+        assert isinstance(cell["cost_impact"], str)
+
+
+@pytest.mark.asyncio
+async def test_export_csv_endpoint_returns_attachment(
+    client: AsyncClient, auth: dict[str, str], project_id: str
+):
+    """The export endpoint streams a text/csv attachment with the section
+    header and the three logical blocks."""
+    _invalidate_cache()
+    await _seed_clash(project_id, a_disc="Architectural", b_disc="Structural")
+    resp = await client.get(
+        f"/api/v1/coordination/projects/{project_id}/export.csv",
+        headers=auth,
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.headers["content-type"].startswith("text/csv")
+    assert "attachment" in resp.headers.get("content-disposition", "")
+    text = resp.text
+    assert text.splitlines()[0] == "section,key,value,detail,currency"
+    assert "kpi,open_clashes" in text
+    assert "alert," in text
+
+
+@pytest.mark.asyncio
+async def test_export_csv_endpoint_404_when_project_missing(
+    client: AsyncClient, auth: dict[str, str]
+):
+    bogus = uuid.uuid4()
+    resp = await client.get(
+        f"/api/v1/coordination/projects/{bogus}/export.csv",
+        headers=auth,
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_export_csv_endpoint_401_when_unauthenticated(
+    client: AsyncClient, project_id: str
+):
+    resp = await client.get(
+        f"/api/v1/coordination/projects/{project_id}/export.csv"
+    )
+    assert resp.status_code in (401, 403)

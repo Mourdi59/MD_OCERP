@@ -34,12 +34,15 @@ from app.modules.ai_agents.schemas import (
     AgentRunResponse,
     AgentStepResponse,
     AgentToolsResponse,
+    ApplyProposalsRequest,
+    ApplyProposalsResponse,
     CreateAgentRunRequest,
     CustomAgentCreateRequest,
     CustomAgentResponse,
     CustomAgentUpdateRequest,
     EventTriggerDescriptor,
     GuidedAgentSpec,
+    RunProposalsResponse,
     SetScheduleRequest,
     SetToolsRequest,
     SetTriggersRequest,
@@ -859,6 +862,92 @@ async def get_run(
         raise HTTPException(status_code=403, detail="You can only view your own runs")
     steps = await service.get_run_steps(run_id)
     return _serialise_run(run, steps=steps)
+
+
+# ── BOQ proposals: extract + apply (human-confirmed) ──────────────────────
+
+
+@router.get(
+    "/runs/{run_id}/proposals",
+    response_model=RunProposalsResponse,
+    dependencies=[Depends(RequirePermission("ai_agents.read"))],
+)
+async def get_run_proposals(
+    run_id: uuid.UUID,
+    user_id: CurrentUserId,
+    service: AgentService = Depends(_get_service),
+) -> RunProposalsResponse:
+    """Return the structured BOQ-position proposals a completed run produced.
+
+    The drafter emits each line as a ``create_position`` observation during the
+    loop, but the run's final answer is markdown - so the proposals would
+    otherwise be lost. This recovers them so the UI can offer a real
+    "apply to BOQ" action. An empty ``proposals`` list is a valid
+    "nothing to apply" state (the run was advisory, not a draft).
+    """
+    uid = uuid.UUID(user_id)
+    payload = await service.get_run_proposals(run_id=run_id, user_id=uid)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+    return RunProposalsResponse(**payload)
+
+
+@router.post(
+    "/runs/{run_id}/apply",
+    response_model=ApplyProposalsResponse,
+    dependencies=[
+        Depends(RequirePermission("ai_agents.run")),
+        Depends(RequirePermission("boq.create")),
+    ],
+)
+async def apply_run_proposals(
+    run_id: uuid.UUID,
+    request: ApplyProposalsRequest,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: AgentService = Depends(_get_service),
+) -> ApplyProposalsResponse:
+    """Apply a completed run's BOQ proposals to a BOQ as real positions.
+
+    The human-confirmed step: the user reviewed the proposals and chose the
+    target BOQ. We create real positions through the BOQ module's own service
+    (so locking, ordinal uniqueness, totals and provenance all behave exactly
+    as a manual add) and tag each line back to the run. Currencies are never
+    blended - off-currency or un-priced lines are skipped with a reason.
+
+    403 unless the caller can access the BOQ's project; 404 when the run or BOQ
+    does not exist; 422 when the run produced no proposals.
+    """
+    uid = uuid.UUID(user_id)
+
+    # Resolve the BOQ and verify project access BEFORE doing any work, so a
+    # caller can never apply proposals into a project they cannot see.
+    from app.modules.boq.service import BOQService
+
+    boq_service = BOQService(session)
+    try:
+        boq = await boq_service.get_boq(request.boq_id)
+    except HTTPException:
+        raise
+    if boq is None:
+        raise HTTPException(status_code=404, detail="BOQ not found")
+    await _assert_project_access(session, boq.project_id, uid)
+
+    try:
+        result = await service.apply_run_proposals(
+            run_id=run_id,
+            user_id=uid,
+            boq_id=request.boq_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+    await session.commit()
+    return ApplyProposalsResponse(**result)
 
 
 # ── Serialisation helper ─────────────────────────────────────────────────

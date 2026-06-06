@@ -48,6 +48,7 @@ from app.modules.ai.schemas import (
     AISettingsResponse,
     AISettingsUpdate,
     CreateBOQFromEstimateRequest,
+    EstimateJobListResponse,
     EstimateJobResponse,
     QuickEstimateRequest,
 )
@@ -720,14 +721,14 @@ async def enrich_estimate(
             "total_items": 0,
         }
 
-    # 4. Enrich each item.
+    # 4. Enrich each item via the shared matcher so the preview the user
+    #    reviews here is exactly what ``apply_enriched`` persists at BOQ
+    #    creation time (single source of truth - service._match_cost_items).
     #
     # Cap the number of items we enrich so a pathologically large estimate
     # can't issue an unbounded number of cost-DB queries. Items beyond the
     # cap are still returned (unmatched) so the caller sees the full list.
-    from sqlalchemy import or_, select
-
-    from app.modules.costs.models import CostItem
+    from app.modules.ai.service import _match_cost_items
 
     MAX_ENRICH_ITEMS = 200
 
@@ -735,13 +736,14 @@ async def enrich_estimate(
     total_matched = 0
 
     for idx, item in enumerate(items):
+        ai_rate = item.get("unit_rate", 0.0) or item.get("rate", 0.0) or 0.0
         if idx >= MAX_ENRICH_ITEMS:
             enriched_items.append(
                 {
                     "index": idx,
                     "description": item.get("description", ""),
                     "unit": item.get("unit", ""),
-                    "ai_rate": float(item.get("unit_rate", 0.0) or item.get("rate", 0.0) or 0.0),
+                    "ai_rate": float(ai_rate),
                     "matches": [],
                     "best_match": None,
                 }
@@ -749,91 +751,15 @@ async def enrich_estimate(
             continue
         description = item.get("description", "")
         item_unit = item.get("unit", "")
-        ai_rate = item.get("unit_rate", 0.0) or item.get("rate", 0.0) or 0.0
 
-        matches: list[dict[str, Any]] = []
+        matches = await _match_cost_items(
+            session,
+            description=description,
+            item_unit=item_unit,
+            region=region or "",
+            limit=5,
+        )
 
-        # 5a. Try vector search first
-        try:
-            from app.core.vector import encode_texts, vector_search
-
-            query_vec = encode_texts([description])[0]
-            raw_matches = vector_search(query_vec, region=region or None, limit=5)
-            for m in raw_matches:
-                matches.append(
-                    {
-                        "code": m.get("code", ""),
-                        "description": m.get("description", ""),
-                        "unit": m.get("unit", ""),
-                        "rate": float(m.get("rate", 0)),
-                        "currency": m.get("currency", ""),
-                        "region": m.get("region", ""),
-                        "score": float(m.get("score", 0)),
-                    }
-                )
-        except Exception as vec_err:
-            logger.debug("Vector search unavailable for item %d: %s", idx, vec_err)
-
-        # 5b. If vector search returned nothing, fall back to text search.
-        #     Batch all keywords into ONE OR query per item (mirroring
-        #     advisor_chat) instead of one query per keyword - keeps the
-        #     query count at 1 (or 2 when a region retry is needed) per item.
-        if not matches:
-            try:
-                # Extract meaningful keywords (skip short/common words)
-                stop = {"the", "and", "for", "with", "from", "into", "per", "all"}
-                keywords = [w for w in description.lower().split() if len(w) > 2 and w not in stop][:5]
-
-                if keywords:
-                    conditions = [CostItem.description.ilike(f"%{kw}%") for kw in keywords]
-
-                    async def _kw_search(use_region: bool) -> list[CostItem]:
-                        stmt = select(CostItem).where(CostItem.is_active.is_(True), or_(*conditions))
-                        if use_region and region:
-                            stmt = stmt.where(CostItem.region == region)
-                        stmt = stmt.limit(15)
-                        res = await session.execute(stmt)
-                        return list(res.scalars().all())
-
-                    kw_results = await _kw_search(use_region=True)
-                    # Retry without region filter if the regional query was empty.
-                    if not kw_results and region:
-                        kw_results = await _kw_search(use_region=False)
-
-                    for ci in kw_results:
-                        # Avoid duplicates
-                        if not any(m["code"] == ci.code for m in matches):
-                            # Score: count how many keywords match description
-                            desc_lower = (ci.description or "").lower()
-                            kw_hits = sum(1 for k in keywords if k in desc_lower)
-                            score = min(0.9, 0.3 + kw_hits * 0.15)
-                            matches.append(
-                                {
-                                    "code": ci.code,
-                                    "description": (ci.description or "")[:200],
-                                    "unit": ci.unit or "",
-                                    "rate": float(ci.rate) if ci.rate else 0.0,
-                                    "currency": ci.currency or "",
-                                    "region": ci.region or "",
-                                    "score": score,
-                                }
-                            )
-                    # Keep top 5
-                    matches.sort(key=lambda m: m["score"], reverse=True)
-                    matches = matches[:5]
-            except Exception as txt_err:
-                logger.warning("Text search failed for item %d (%s): %s", idx, description[:30], txt_err)
-
-        # 5c. Prefer matches with the same unit - boost their score
-        if item_unit:
-            for m in matches:
-                if m["unit"].lower() == item_unit.lower():
-                    m["score"] = min(1.0, m["score"] + 0.05)
-
-        # Sort by score descending
-        matches.sort(key=lambda m: m["score"], reverse=True)
-
-        # Determine best match
         best_match = matches[0] if matches else None
         if best_match:
             total_matched += 1
@@ -862,6 +788,57 @@ async def enrich_estimate(
         "total_matched": total_matched,
         "total_items": len(items),
     }
+
+
+# ── List estimate jobs (server-side history) ───────────────────────────────
+
+
+@router.get(
+    "/estimates/",
+    response_model=EstimateJobListResponse,
+    dependencies=[Depends(RequirePermission("ai.estimate"))],
+)
+async def list_estimate_jobs(
+    user_id: CurrentUserId,
+    service: AIService = Depends(_get_service),
+    project_id: str | None = None,
+    status_filter: str | None = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> EstimateJobListResponse:
+    """List the current user's past AI estimate jobs, newest first.
+
+    Backs the "Recent estimates" history panel so runs survive a page
+    reload / device switch (previously they lived only in browser
+    localStorage). Results are always scoped to the calling user.
+
+    Query params:
+        - **project_id**: only jobs linked to this project (when the user can
+          access it; otherwise 404 to avoid a cross-tenant enumeration oracle)
+        - **status_filter**: e.g. ``completed`` / ``failed`` / ``processing``
+        - **limit** / **offset**: pagination (limit capped at 100)
+    """
+    parsed_project_id: uuid.UUID | None = None
+    if project_id:
+        try:
+            parsed_project_id = uuid.UUID(project_id)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid project_id: {project_id}",
+            ) from exc
+        # Enforce project access on the optional filter (same rationale as
+        # quick_estimate): the list is already user-scoped, but a user could
+        # otherwise probe whether arbitrary project UUIDs have jobs.
+        await verify_project_access(parsed_project_id, user_id, service.session)
+
+    return await service.list_estimates(
+        user_id,
+        project_id=parsed_project_id,
+        status_filter=(status_filter or None),
+        limit=limit,
+        offset=offset,
+    )
 
 
 # ── Get estimate job ─────────────────────────────────────────────────────────

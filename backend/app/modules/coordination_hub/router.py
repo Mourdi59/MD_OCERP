@@ -27,6 +27,7 @@ import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 
 from app.dependencies import (
@@ -110,7 +111,8 @@ async def get_trade_matrix(
     """6×6 discipline-pair grid of clashes - drives the heat-map cell."""
     user_id = payload.get("sub", "")
     await verify_project_access(project_id, user_id, session)
-    return await service.trade_matrix(project_id)
+    currency = await _load_project_currency(session, project_id)
+    return await service.trade_matrix(project_id, currency=currency)
 
 
 @router.get(
@@ -134,6 +136,37 @@ async def get_timeline(
     user_id = payload.get("sub", "")
     await verify_project_access(project_id, user_id, session)
     return await service.timeline(project_id, days=days)
+
+
+@router.get(
+    "/projects/{project_id}/export.csv",
+    response_class=PlainTextResponse,
+    dependencies=[Depends(RequirePermission("coordination.read"))],
+)
+async def export_snapshot_csv(
+    project_id: uuid.UUID,
+    payload: CurrentUserPayload,
+    session: SessionDep,
+    service: CoordinationHubService = Depends(_get_service),
+) -> PlainTextResponse:
+    """Download the live coordination snapshot as a single CSV file.
+
+    One attachable artefact for a coordination meeting: headline KPIs +
+    threshold-alert status + the per-discipline-pair (cost-weighted)
+    breakdown. Always reflects live numbers (the dashboard TTL cache is
+    bypassed for the export). Read-only - same ``coordination.read`` gate
+    as the dashboard, with the per-project IDOR guard.
+    """
+    user_id = payload.get("sub", "")
+    await verify_project_access(project_id, user_id, session)
+    currency = await _load_project_currency(session, project_id)
+    csv_text = await service.export_snapshot_csv(project_id, currency=currency)
+    filename = f"coordination-{project_id}.csv"
+    return PlainTextResponse(
+        content=csv_text,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ── Thresholds ─────────────────────────────────────────────────────────────

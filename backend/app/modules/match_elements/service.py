@@ -3237,6 +3237,73 @@ class MatchElementsService:
             qty = _quantity_for_unit(g.quantities or {}, unit)
             ci = cost_items.get(g.chosen_candidate_id) if g.chosen_candidate_id else None
 
+            # ── Custom (no-catalogue-match) line ─────────────────────────
+            # When the estimator chose "Create custom position" for a group
+            # that no catalogue rate fit, the typed description / unit / rate
+            # live in metadata_["custom_position"]. If they did not also save
+            # it to their catalogue (ci is None) we build the Position
+            # straight from that spec - this is the line the old stub
+            # silently dropped. The dimensional gate is intentionally skipped
+            # here: the estimator already decided the unit and rate.
+            custom_spec = None
+            meta = g.metadata_ if isinstance(g.metadata_, dict) else {}
+            if ci is None and isinstance(meta.get("custom_position"), dict):
+                custom_spec = meta["custom_position"]
+            if custom_spec is not None:
+                position_unit = str(custom_spec.get("unit") or unit or "pcs")
+                description = str(custom_spec.get("description") or g.group_key)
+                unit_rate = _decimal_or_zero(custom_spec.get("rate"))
+                currency = base_currency
+                classification = {}
+                section_path = ["Custom"]
+                resource_previews = []
+                positions_preview.append(
+                    schemas.ApplyPositionPreview(
+                        group_key=g.group_key,
+                        section_path=section_path,
+                        description=description,
+                        unit=position_unit,
+                        quantity=qty,
+                        unit_rate=unit_rate,
+                        currency=currency,
+                        resources=resource_previews,
+                    )
+                )
+                if not spec.dry_run and boq_id is not None:
+                    max_ord += 1
+                    ordinal = f"{max_ord:04d}"
+                    metadata: dict[str, Any] = {
+                        "match_session_id": str(session_id),
+                        "match_group_key": g.group_key,
+                        "match_signature": g.signature or "",
+                        "match_method": "custom",
+                        "match_confidence": g.confidence or "",
+                        "custom_position": True,
+                    }
+                    pos = Position(
+                        boq_id=boq_id,
+                        parent_id=None,
+                        ordinal=ordinal,
+                        description=description,
+                        unit=position_unit,
+                        quantity=f"{qty:.4f}",
+                        unit_rate=f"{unit_rate.quantize(_Q4, rounding=ROUND_HALF_UP)}",
+                        total=f"{(Decimal(str(qty)) * unit_rate).quantize(_Q4, rounding=ROUND_HALF_UP)}",
+                        classification={},
+                        source="manual",
+                        confidence=g.confidence or "",
+                        cad_element_ids=list(g.element_ids or []),
+                        validation_status="pending",
+                        metadata_=metadata,
+                        sort_order=max_ord,
+                    )
+                    db.add(pos)
+                    await db.flush()
+                    g.boq_position_id = pos.id
+                    g.status = "applied"
+                    positions_created += 1
+                continue
+
             description = ci.description if ci else g.group_key
             # CWICR catalogues sometimes encode a multiplier into the
             # unit string ("100 м3 @ 5,311,861.57 EUR" → 53,118.62
@@ -3419,21 +3486,180 @@ class MatchElementsService:
             row.status = "tbd"
             row.notes = "Pending - no good catalogue match"
         elif spec.action == "custom":
-            # Phase A.9 will write a Position with custom rate; for now
-            # we just flag the group and stash the spec in metadata.
-            row.status = "tbd"
-            row.notes = (
-                f"Custom: {spec.custom_description or '(no description)'} "
-                f"@ {spec.custom_rate or 0} per {spec.custom_unit or 'pcs'}"
-            )
-            row.metadata_ = {
-                **(row.metadata_ or {}),
-                "custom_position": spec.model_dump(mode="json"),
-            }
+            await self._apply_custom_position(db, session_id, row, spec)
         elif spec.action == "rfq":
             await self._raise_rfq_for_group(db, session_id, row, spec)
         await db.flush()
         return await self.get_group_detail(db, session_id, spec.group_key)
+
+    async def _apply_custom_position(
+        self,
+        db: AsyncSession,
+        session_id: uuid.UUID,
+        row: MatchGroup,
+        spec: schemas.NoMatchRequest,
+    ) -> None:
+        """Turn a "no catalogue match" group into a real custom BOQ line.
+
+        This used to be a stub that only parked the group as ``tbd`` with a
+        note - the line the estimator typed (description / unit / rate) never
+        reached the bill of quantities. Now the custom spec is persisted on
+        the group and the group is marked ``confirmed`` with
+        ``chosen_method="custom"`` so the standard ``apply_to_boq`` pass picks
+        it up and writes a Position priced at the user's rate. ``apply_to_boq``
+        reads ``metadata_["custom_position"]`` when there is no
+        ``chosen_candidate_id``.
+
+        When ``save_to_my_catalogue`` is set we also persist the line as a
+        reusable :class:`CostItem` (``source="custom"``, scoped to the
+        project's region) and link the group to it via
+        ``chosen_candidate_id`` so future projects in the same region can
+        match against it. Catalogue persistence is best-effort: if it fails,
+        the project-only custom line still applies and the note says why.
+        """
+        # Normalise the typed inputs. An empty description is allowed but we
+        # fall back to the human group label so the BOQ row is never blank.
+        description = (spec.custom_description or "").strip() or (
+            _human_group_label(row.group_key, None) or row.group_key
+        )
+        unit = (spec.custom_unit or row.chosen_unit or "pcs").strip() or "pcs"
+        rate = spec.custom_rate if spec.custom_rate is not None else Decimal("0")
+
+        # Persist the custom spec so apply_to_boq can rebuild the line.
+        custom_payload = {
+            "description": description,
+            "unit": unit,
+            "rate": str(rate),
+        }
+        row.chosen_unit = unit
+        row.chosen_method = "custom"
+        # A custom line is, by definition, the estimator's own decision -
+        # full confidence so it isn't filtered out of confident-only views.
+        row.confidence = "1.0000"
+        row.confirmed_at = datetime.now(UTC)
+        row.status = "confirmed"
+
+        saved_to_catalogue = False
+        catalogue_code: str | None = None
+        if spec.save_to_my_catalogue:
+            try:
+                cost_item = await self._save_custom_cost_item(
+                    db,
+                    session_id,
+                    description=description,
+                    unit=unit,
+                    rate=rate,
+                )
+            except Exception as exc:  # noqa: BLE001 - catalogue write is optional
+                logger.warning(
+                    "match_elements.custom: catalogue save failed for group %s: %s",
+                    row.group_key,
+                    exc,
+                )
+                cost_item = None
+            if cost_item is not None:
+                saved_to_catalogue = True
+                catalogue_code = cost_item.code
+                # Link the group to the catalogue row so apply uses the
+                # CostItem path (and the group reads as a normal match).
+                row.chosen_candidate_id = cost_item.id
+
+        row.metadata_ = {
+            **(row.metadata_ or {}),
+            "custom_position": custom_payload,
+            "custom_saved_to_catalogue": saved_to_catalogue,
+        }
+        if catalogue_code:
+            row.metadata_["custom_catalogue_code"] = catalogue_code
+
+        note = f"Custom: {description} @ {rate} {unit}"
+        if saved_to_catalogue:
+            note += f" (saved to catalogue as {catalogue_code})"
+        row.notes = note
+
+    async def _save_custom_cost_item(
+        self,
+        db: AsyncSession,
+        session_id: uuid.UUID,
+        *,
+        description: str,
+        unit: str,
+        rate: Decimal,
+    ):
+        """Persist a custom estimator rate as a reusable CostItem.
+
+        The item is region-scoped (the ``oe_costs_item`` unique key is
+        ``(code, region)``) and tagged ``source="custom"`` so it shows up in
+        the catalogue browser under the user's own rates rather than mixed
+        into CWICR. The code is a stable, collision-resistant slug derived
+        from the description so re-saving the same line updates the rate
+        instead of creating duplicates.
+        """
+        import hashlib
+
+        from app.modules.costs.models import CostItem  # noqa: PLC0415
+        from app.modules.projects.models import Project  # noqa: PLC0415
+
+        sess = await db.get(MatchSession, session_id)
+        project = await db.get(Project, sess.project_id) if sess else None
+        region = (getattr(project, "region", "") or "").strip() or None
+
+        # Currency: project currency, else region default, else empty (the
+        # apply step folds blanks onto the project base currency).
+        currency = ""
+        if project and getattr(project, "currency", None):
+            currency = str(project.currency).upper()
+        if not currency and region:
+            try:
+                from app.modules.costs.router import _REGION_CURRENCY  # noqa: PLC0415
+
+                currency = _REGION_CURRENCY.get(region.upper(), "")
+            except Exception:  # noqa: BLE001 - best-effort
+                currency = ""
+
+        slug = hashlib.sha1(description.lower().strip().encode("utf-8")).hexdigest()[:10]
+        code = f"CUSTOM-{slug}"
+
+        # Upsert by (code, region): re-saving the same description in the
+        # same region refreshes the rate rather than violating the unique key.
+        existing = (
+            await db.execute(select(CostItem).where(CostItem.code == code, CostItem.region == region))
+        ).scalar_one_or_none()
+        if existing is not None:
+            existing.description = description
+            existing.unit = unit
+            existing.rate = str(rate)
+            if currency:
+                existing.currency = currency
+            existing.is_active = True
+            existing.metadata_ = {
+                **(existing.metadata_ or {}),
+                "custom_source": "match_elements",
+                "last_session_id": str(session_id),
+            }
+            await db.flush()
+            return existing
+
+        item = CostItem(
+            code=code,
+            description=description,
+            unit=unit,
+            rate=str(rate),
+            currency=currency,
+            source="custom",
+            classification={},
+            components=[],
+            tags=["custom", "match-elements"],
+            region=region,
+            is_active=True,
+            metadata_={
+                "custom_source": "match_elements",
+                "last_session_id": str(session_id),
+            },
+        )
+        db.add(item)
+        await db.flush()
+        return item
 
     async def _raise_rfq_for_group(
         self,

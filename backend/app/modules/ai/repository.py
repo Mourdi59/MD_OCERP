@@ -6,7 +6,7 @@ No business logic - pure data access.
 
 import uuid
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.ai.models import AIEstimateJob, AISettings
@@ -64,3 +64,38 @@ class AIEstimateJobRepository:
         await self.session.flush()
         # Expire cached ORM instances so the next get_by_id re-reads from DB
         self.session.expire_all()
+
+    async def list_for_user(
+        self,
+        user_id: uuid.UUID,
+        *,
+        project_id: uuid.UUID | None = None,
+        status: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[AIEstimateJob], int]:
+        """List a user's estimate jobs, newest first, with a total count.
+
+        Filters are optional and AND-combined. Returns ``(rows, total)`` where
+        ``total`` is the unpaginated match count so the caller can render
+        pagination controls. The ``user_id`` filter is always applied so one
+        tenant never sees another's jobs.
+        """
+        conditions = [AIEstimateJob.user_id == user_id]
+        if project_id is not None:
+            conditions.append(AIEstimateJob.project_id == project_id)
+        if status:
+            conditions.append(AIEstimateJob.status == status)
+
+        count_stmt = select(func.count(AIEstimateJob.id)).where(*conditions)
+        total = int((await self.session.execute(count_stmt)).scalar_one() or 0)
+
+        rows_stmt = (
+            select(AIEstimateJob)
+            .where(*conditions)
+            .order_by(AIEstimateJob.created_at.desc(), AIEstimateJob.id.desc())
+            .limit(max(1, min(limit, 100)))
+            .offset(max(0, offset))
+        )
+        rows = list((await self.session.execute(rows_stmt)).scalars().all())
+        return rows, total

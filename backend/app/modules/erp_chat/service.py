@@ -447,8 +447,11 @@ class ERPChatService:
                     yield _sse("text", {"content": assistant_text[i : i + chunk_size]})
 
             # 6. Persist messages - shield so middleware cancellation can't
-            # tear down the DB write mid-flush.
-            await asyncio.shield(
+            # tear down the DB write mid-flush. Returns the persisted
+            # assistant ChatMessage id so the client can reconcile its
+            # optimistic bubble id and submit per-turn thumbs feedback that
+            # actually lands (the T8 dashboard depends on this).
+            assistant_message_id = await asyncio.shield(
                 self._persist_messages(
                     chat_session,
                     user_id,
@@ -487,7 +490,17 @@ class ERPChatService:
                 chat_session.title = title
                 await asyncio.shield(self.session.flush())
 
-            yield _sse("done", {"session_id": str(chat_session.id), "tokens": total_tokens})
+            yield _sse(
+                "done",
+                {
+                    "session_id": str(chat_session.id),
+                    "tokens": total_tokens,
+                    # Persisted assistant-turn id. The client swaps its
+                    # optimistic bubble id for this so thumbs feedback POSTs
+                    # against a real row instead of 404-ing on a client UUID.
+                    "message_id": (str(assistant_message_id) if assistant_message_id else None),
+                },
+            )
 
         except Exception as exc:
             logger.exception("stream_response fatal error")
@@ -831,8 +844,13 @@ class ERPChatService:
         tool_calls: list[dict[str, Any]],
         tool_results: list[dict[str, Any]],
         tokens_used: int,
-    ) -> None:
-        """Persist user message and assistant response to the database."""
+    ) -> uuid.UUID | None:
+        """Persist user message and assistant response to the database.
+
+        Returns the persisted assistant ``ChatMessage.id`` (or ``None`` on
+        failure) so the streaming endpoint can hand it to the client for
+        feedback reconciliation.
+        """
         try:
             # Save user message
             user_msg = ChatMessage(
@@ -901,8 +919,10 @@ class ERPChatService:
                     "Failed to publish erp_chat.message.created events",
                     exc_info=True,
                 )
+            return assistant_msg.id
         except Exception:
             logger.exception("Failed to persist chat messages")
+            return None
 
     # ── T8: Per-turn feedback + admin observability ─────────────────────
 

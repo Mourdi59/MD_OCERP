@@ -38,6 +38,10 @@ class BOQState:
     validation_errors: int = 0
     export_ready: bool = False
     completion_pct: float = 0.0
+    # Scope-drift: leaf-position count now vs the captured scope baseline.
+    position_count: int = 0
+    baseline_position_count: int = 0
+    baseline_source: str = "none"
 
 
 @dataclass
@@ -53,6 +57,9 @@ class ScheduleState:
     start_date: str | None = None
     end_date: str | None = None
     completion_pct: float = 0.0
+    # Real progress signals for the Schedule-health KPI (both 0..100).
+    progress_pct: float = 0.0
+    baseline_adherence_pct: float = 0.0
 
 
 @dataclass
@@ -78,6 +85,10 @@ class ValidationState:
     passed_rules: int = 0
     total_rules: int = 0
     completion_pct: float = 0.0
+    # Stable aliases for the dashboard Real-time validation widget.
+    rules_passed: int = 0
+    rules_total: int = 0
+    errors: int = 0
 
 
 @dataclass
@@ -319,6 +330,9 @@ async def _collect_boq(
 
         # Completion percentage: items with valid prices / total items (excluding sections)
         leaf_items = state.total_items - state.sections_count
+        # Leaf-position count is the scope-coverage numerator (real, non-zero
+        # for any project with priced rows). Sections are structural, not scope.
+        state.position_count = max(0, leaf_items)
         if leaf_items > 0:
             items_ok = leaf_items - max(state.items_with_zero_price, state.items_with_zero_quantity)
             state.completion_pct = max(0.0, min(1.0, items_ok / leaf_items))
@@ -329,9 +343,109 @@ async def _collect_boq(
             state.total_items > 0 and state.items_with_zero_price == 0 and state.items_with_zero_quantity == 0
         )
 
+        # Scope baseline: the leaf-position count this project's scope was
+        # frozen at. Resolution order (most authoritative first):
+        #   1. Explicit baseline captured into the project's metadata JSONB
+        #      (set via POST /scope-baseline/ - persisted, deliberate).
+        #   2. The earliest BOQ version snapshot's position count (the natural
+        #      "first frozen estimate").
+        #   3. The current leaf count (no drift yet - coverage reads 100%).
+        baseline, source = await _resolve_scope_baseline(session, project_id, boq_ids, state.position_count)
+        state.baseline_position_count = baseline
+        state.baseline_source = source
+
     except Exception:
         logger.debug("Could not collect BOQ state for %s", project_id, exc_info=True)
     return state
+
+
+def _count_snapshot_positions(snapshot_data: Any) -> int:
+    """‌⁠‍Count leaf positions inside a BOQ version snapshot's payload.
+
+    Snapshots store ``snapshot_data`` as a JSON blob. We tolerate the two
+    shapes seen in the wild: a flat ``{"positions": [...]}`` list, or a
+    nested tree under ``positions``/``children``. Section rows (a node that
+    carries children) are not counted as scope leaves. Returns 0 for an
+    unrecognised shape so a malformed snapshot never poisons the baseline.
+    """
+    if not isinstance(snapshot_data, dict):
+        return 0
+    positions = snapshot_data.get("positions")
+    if not isinstance(positions, list):
+        return 0
+
+    def _walk(nodes: list) -> int:
+        leaves = 0
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            children = node.get("children")
+            if isinstance(children, list) and children:
+                leaves += _walk(children)
+            else:
+                # A node with no children is a leaf. When the snapshot is flat
+                # (no nesting at all) every row is a leaf, which is correct.
+                leaves += 1
+        return leaves
+
+    return _walk(positions)
+
+
+async def _resolve_scope_baseline(
+    session: AsyncSession,
+    project_id: str,
+    boq_ids: list[str],
+    current_leaf_count: int,
+) -> tuple[int, str]:
+    """‌⁠‍Resolve the scope baseline for the scope-coverage metric.
+
+    Returns ``(baseline_count, source)`` where source is one of
+    ``metadata`` / ``snapshot`` / ``current``. Read-only and fail-soft:
+    any error falls back to the current count so coverage degrades to 100%
+    rather than 0% (a missing baseline must never look like total scope loss).
+    """
+    # 1. Explicit, persisted baseline in the project metadata JSONB.
+    try:
+        row = (
+            await session.execute(
+                text("SELECT metadata FROM oe_projects_project WHERE id = :pid"),
+                {"pid": project_id},
+            )
+        ).first()
+        meta = row[0] if row else None
+        if isinstance(meta, dict):
+            pi_meta = meta.get("project_intelligence")
+            if isinstance(pi_meta, dict):
+                raw = pi_meta.get("scope_baseline_positions")
+                if isinstance(raw, (int, float)) and int(raw) > 0:
+                    return int(raw), "metadata"
+    except Exception:
+        logger.debug("scope baseline metadata read failed for %s", project_id, exc_info=True)
+
+    # 2. Earliest BOQ version snapshot across this project's BOQs.
+    if boq_ids:
+        try:
+            placeholders = ", ".join(f":sid{i}" for i in range(len(boq_ids)))
+            params: dict[str, Any] = {f"sid{i}": bid for i, bid in enumerate(boq_ids)}
+            snap_row = (
+                await session.execute(
+                    text(
+                        f"SELECT snapshot_data FROM oe_boq_snapshot "  # noqa: S608 - placeholders are bound params
+                        f"WHERE boq_id IN ({placeholders}) "
+                        f"ORDER BY created_at ASC LIMIT 1"
+                    ),
+                    params,
+                )
+            ).first()
+            if snap_row and snap_row[0] is not None:
+                count = _count_snapshot_positions(snap_row[0])
+                if count > 0:
+                    return count, "snapshot"
+        except Exception:
+            logger.debug("scope baseline snapshot read failed for %s", project_id, exc_info=True)
+
+    # 3. No baseline captured yet - the current scope is the baseline.
+    return current_leaf_count, "current"
 
 
 async def _collect_schedule(
@@ -393,6 +507,12 @@ async def _collect_schedule(
             except (ValueError, TypeError):
                 pass
 
+        # Schedule-health signals (drives the dashboard KPI card). We read
+        # each activity's planned span + actual progress and compare actual
+        # against the time-elapsed planned progress at the data date.
+        if state.activities_count > 0:
+            await _compute_schedule_health(session, schedule_id, state)
+
         # Completion estimate
         if state.activities_count > 0:
             pct = 0.3  # base for existing schedule
@@ -407,6 +527,85 @@ async def _collect_schedule(
     except Exception:
         logger.debug("Could not collect schedule state for %s", project_id, exc_info=True)
     return state
+
+
+async def _compute_schedule_health(
+    session: AsyncSession,
+    schedule_id: str,
+    state: ScheduleState,
+) -> None:
+    """‌⁠‍Compute mean progress and baseline adherence from activity progress.
+
+    * ``progress_pct`` - the mean actual percent-complete across activities.
+    * ``baseline_adherence_pct`` - the share of activities whose actual
+      progress is at or above the time-elapsed planned progress (i.e. not
+      behind schedule). A project where every activity is keeping pace reads
+      100; one where every activity lags reads 0.
+
+    Planned progress is the deterministic linear time-elapsed model
+    (0% before start, 100% after planned finish). Read-only and fail-soft.
+    """
+    from app.modules.project_intelligence.forecast import _parse_iso_date
+
+    try:
+        rows = (
+            await session.execute(
+                text(
+                    "SELECT s.data_date, a.start_date, a.end_date, a.progress_pct "
+                    "FROM oe_schedule_activity a "
+                    "JOIN oe_schedule_schedule s ON a.schedule_id = s.id "
+                    "WHERE a.schedule_id = :sid"
+                ),
+                {"sid": schedule_id},
+            )
+        ).fetchall()
+    except Exception:
+        logger.debug("schedule health read failed for %s", schedule_id, exc_info=True)
+        return
+
+    if not rows:
+        return
+
+    from datetime import date as _date
+
+    actuals: list[float] = []
+    on_pace = 0
+    counted = 0
+    for data_date_raw, start_raw, end_raw, prog_raw in rows:
+        try:
+            actual = float(prog_raw) if prog_raw not in (None, "") else 0.0
+        except (TypeError, ValueError):
+            actual = 0.0
+        actual = max(0.0, min(100.0, actual))
+        actuals.append(actual)
+
+        sd = _parse_iso_date(start_raw)
+        ed = _parse_iso_date(end_raw)
+        dd = _parse_iso_date(data_date_raw) or _date.today()
+        if sd is None or ed is None or ed <= sd:
+            # No dated span to judge adherence against; skip this activity in
+            # the adherence ratio (but it still counts toward mean progress).
+            continue
+        if dd <= sd:
+            planned = 0.0
+        elif dd >= ed:
+            planned = 100.0
+        else:
+            planned = (dd - sd).days / (ed - sd).days * 100.0
+        counted += 1
+        # An activity is "on pace" when actual is within 1pp of planned or
+        # ahead. The 1pp slack absorbs integer-day rounding noise.
+        if actual >= planned - 1.0:
+            on_pace += 1
+
+    if actuals:
+        state.progress_pct = round(sum(actuals) / len(actuals), 1)
+    if counted > 0:
+        state.baseline_adherence_pct = round(on_pace / counted * 100.0, 1)
+    elif actuals:
+        # No activity had a usable span; fall back to mean progress so the KPI
+        # is not stuck at zero for a schedule that genuinely has progress.
+        state.baseline_adherence_pct = state.progress_pct
 
 
 async def _collect_takeoff(
@@ -491,6 +690,10 @@ async def _collect_validation(
         state.warnings = report[2] or 0
         state.passed_rules = report[3] or 0
         state.total_rules = report[4] or 0
+        # Stable aliases for the dashboard widget (mirror the canonical fields).
+        state.rules_passed = state.passed_rules
+        state.rules_total = state.total_rules
+        state.errors = state.critical_errors
 
         # Completion: 1.0 if no critical errors, scaled by passed/total otherwise
         if state.total_rules > 0:
@@ -894,6 +1097,16 @@ async def _collect_tasks(
     """Collect tasks / defects / inspections domain state."""
     state = TasksState()
     try:
+        # ``due_date`` is a varchar holding an ISO ``YYYY-MM-DD`` string, so we
+        # compare it lexicographically against today's ISO date passed as a
+        # bound parameter. The previous ``due_date < date('now')`` compared a
+        # varchar to a DATE, which raises InvalidDatetimeFormat on PostgreSQL
+        # (the v6 default) and silently zeroed the whole tasks domain. ISO
+        # date strings sort lexicographically, so string comparison is correct
+        # on both PostgreSQL and SQLite.
+        from datetime import date as _today_date
+
+        today_iso = _today_date.today().isoformat()
         row = (
             await session.execute(
                 text(
@@ -901,12 +1114,13 @@ async def _collect_tasks(
                     "       SUM(CASE WHEN status IN ('open', 'in_progress', 'draft') "
                     "                THEN 1 ELSE 0 END), "
                     "       SUM(CASE WHEN due_date IS NOT NULL "
-                    "                AND due_date < date('now') "
+                    "                AND due_date != '' "
+                    "                AND due_date < :today "
                     "                AND status != 'completed' "
                     "                THEN 1 ELSE 0 END) "
                     "FROM oe_tasks_task WHERE project_id = :pid"
                 ),
-                {"pid": project_id},
+                {"pid": project_id, "today": today_iso},
             )
         ).first()
         if row:
@@ -946,17 +1160,20 @@ async def _collect_assemblies(
     state = AssembliesState()
     try:
         # Project-scoped + template assemblies - templates are global
-        # but available to every project, so we count both.
+        # but available to every project, so we count both. ``is_template``
+        # is a real boolean column; comparing it to the integer ``1`` raises
+        # "operator does not exist: boolean = integer" on PostgreSQL (the v6
+        # default), which silently zeroed the whole assemblies domain. We use
+        # the boolean predicate directly (``is_template`` / ``NOT is_template``)
+        # which is valid on both PostgreSQL and SQLite.
         row = (
             await session.execute(
                 text(
                     "SELECT COUNT(*), "
                     "       SUM(CASE WHEN project_id = :pid THEN 1 ELSE 0 END), "
-                    "       SUM(CASE WHEN is_template = 1 OR is_template = TRUE "
-                    "                THEN 1 ELSE 0 END) "
+                    "       SUM(CASE WHEN is_template THEN 1 ELSE 0 END) "
                     "FROM oe_assemblies_assembly "
-                    "WHERE project_id = :pid OR is_template = 1 "
-                    "   OR is_template = TRUE"
+                    "WHERE project_id = :pid OR is_template"
                 ),
                 {"pid": project_id},
             )

@@ -797,3 +797,97 @@ class AgentService:
             if len(insights) >= limit:
                 break
         return insights
+
+    # ── BOQ proposals: extract + apply (human-confirmed) ──────────────────────
+
+    async def get_run_proposals(
+        self,
+        *,
+        run_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> dict[str, Any] | None:
+        """Return the structured BOQ-position proposals a run produced.
+
+        The BOQ-drafter emits each line as a ``create_position`` observation
+        during the loop, but the run's final answer is markdown - so the
+        proposals would otherwise be lost. This recovers them from the persisted
+        steps (with a JSON-final-output fallback) so the UI can offer a real
+        "apply to BOQ" action instead of asking the user to re-type every line.
+
+        Returns ``None`` when the run does not exist or is not owned by the
+        caller (the router maps that to 404/403). When the run has no proposals
+        the ``proposals`` list is empty - a valid "nothing to apply" state.
+        """
+        from app.modules.ai_agents.proposals import extract_proposals, proposal_currencies
+
+        run = await self.run_repo.get_by_id(run_id)
+        if run is None or str(run.user_id) != str(user_id):
+            return None
+        steps = await self.step_repo.list_for_run(run_id)
+        proposals = extract_proposals(steps, run.final_output)
+        currencies = sorted(proposal_currencies(proposals))
+        return {
+            "run_id": str(run_id),
+            "project_id": str(run.project_id) if run.project_id else None,
+            "count": len(proposals),
+            "currencies": currencies,
+            "mixed_currency": len(currencies) > 1,
+            "proposals": [p.to_dict() for p in proposals],
+        }
+
+    async def apply_run_proposals(
+        self,
+        *,
+        run_id: uuid.UUID,
+        user_id: uuid.UUID,
+        boq_id: uuid.UUID,
+    ) -> dict[str, Any] | None:
+        """Apply a run's BOQ-position proposals to ``boq_id`` as real positions.
+
+        The human-confirmed half of the drafter flow: the user reviewed the
+        proposals and chose a BOQ, so we create real positions through the BOQ
+        module's own ``add_position`` (every invariant honoured) and tag each
+        line back to the run. Currencies are never blended - an off-currency or
+        un-priced line is skipped with a reason.
+
+        Returns ``None`` when the run is not found / not owned by the caller.
+        Raises :class:`ValueError` when the run has no proposals to apply (the
+        router maps that to 422). The caller (router) is responsible for
+        verifying the user's access to the target BOQ's project and for the
+        commit.
+        """
+        from app.modules.ai_agents.proposals import (
+            apply_proposals_to_boq,
+            extract_proposals,
+        )
+        from app.modules.boq.service import BOQService
+
+        run = await self.run_repo.get_by_id(run_id)
+        if run is None or str(run.user_id) != str(user_id):
+            return None
+
+        steps = await self.step_repo.list_for_run(run_id)
+        proposals = extract_proposals(steps, run.final_output)
+        if not proposals:
+            msg = "This run produced no BOQ position proposals to apply."
+            raise ValueError(msg)
+
+        boq_service = BOQService(self.session)
+        project_currency = (await boq_service._resolve_project_currency(boq_id)) or ""  # noqa: SLF001
+
+        outcome = await apply_proposals_to_boq(
+            session=self.session,
+            proposals=proposals,
+            boq_id=boq_id,
+            run_id=run_id,
+            project_currency=project_currency,
+        )
+        return {
+            "run_id": str(run_id),
+            "boq_id": str(boq_id),
+            "created": outcome.created,
+            "skipped": outcome.skipped,
+            "currency": outcome.currency,
+            "created_ordinals": outcome.created_ordinals,
+            "skipped_reasons": outcome.skipped_reasons,
+        }

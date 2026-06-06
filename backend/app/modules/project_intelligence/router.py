@@ -15,6 +15,7 @@ import logging
 import time
 import uuid
 from dataclasses import asdict
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -54,6 +55,7 @@ from app.modules.project_intelligence.schemas import (
     ProjectSummaryResponse,
     RecommendationRequest,
     ScheduleSlipResponse,
+    ScopeBaselineResponse,
     SnoozeForecastRequest,
 )
 from app.modules.project_intelligence.scorer import compute_score
@@ -398,6 +400,69 @@ async def run_action(
         message=result.message,
         redirect_url=result.redirect_url,
         data=result.data,
+    )
+
+
+# ── POST /scope-baseline/ ─────────────────────────────────────────────────
+#
+# Capture the current BOQ scope (leaf-position count) as this project's scope
+# baseline. The scope-coverage metric on the Estimation Dashboard then reads
+# current-vs-baseline to surface scope drift (creep or de-scoping). The
+# baseline is persisted into the project's metadata JSONB (no migration: the
+# column already exists with a {} default) so it survives restarts and is the
+# authoritative source the collector prefers over snapshot-derived baselines.
+
+
+@router.post(
+    "/scope-baseline/",
+    response_model=ScopeBaselineResponse,
+    dependencies=[Depends(RequirePermission("project_intelligence.create"))],
+)
+async def set_scope_baseline(
+    project_id: uuid.UUID = Query(...),
+    session: SessionDep = None,  # type: ignore[assignment]
+    user_id: CurrentUserId = None,  # type: ignore[assignment]
+) -> ScopeBaselineResponse:
+    """Freeze the current BOQ leaf-position count as the scope baseline."""
+    await _verify_project_access(session, project_id, user_id)
+
+    # Recompute the live state (forced refresh) so the captured number is the
+    # current truth, not a 60s-stale cache value.
+    state = await _get_state(session, user_id, str(project_id), refresh=True)
+    current = int(getattr(state.boq, "position_count", 0) or 0)
+    if current <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No priced BOQ positions to baseline yet. Add line items first.",
+        )
+
+    from app.modules.projects.repository import ProjectRepository
+
+    repo = ProjectRepository(session)
+    project = await repo.get_by_id(project_id)
+    if project is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    # Merge into the project metadata JSONB. Re-assign the dict so SQLAlchemy's
+    # change tracking flushes it (in-place mutation of a JSON column is not
+    # always detected by the ORM).
+    meta = dict(getattr(project, "metadata_", None) or {})
+    pi_meta = dict(meta.get("project_intelligence") or {})
+    captured_at = datetime.now(UTC).isoformat()
+    pi_meta["scope_baseline_positions"] = current
+    pi_meta["scope_baseline_captured_at"] = captured_at
+    pi_meta["scope_baseline_captured_by"] = str(user_id) if user_id else None
+    meta["project_intelligence"] = pi_meta
+    project.metadata_ = meta
+    await session.commit()
+
+    # The baseline changed, so the cached state is stale for this user.
+    _invalidate_cache(user_id, str(project_id))
+
+    return ScopeBaselineResponse(
+        project_id=str(project_id),
+        baseline_position_count=current,
+        captured_at=captured_at,
     )
 
 

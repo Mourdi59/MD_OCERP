@@ -1136,23 +1136,123 @@ class GeoHubService:
         payload: dict[str, Any] | None = None,
         *,
         kind: str | None = None,
+        include: set[str] | None = None,
     ) -> dict[str, Any]:
-        """Merge every overlay for the project into one FeatureCollection."""
+        """Merge a project's whole map into one GeoJSON FeatureCollection.
+
+        Pre-deepening this only merged vector overlays, so a GeoJSON
+        export of a project that had its location anchored and incidents /
+        punch items / diary photos pinned came back with everything those
+        records contributed *missing* - the export silently did not match
+        what the user saw on the map. We now fold the anchor point and the
+        three cross-module pin layers into the collection so the export is
+        the full picture.
+
+        ``include`` selects which layers to fold in (defaults to all):
+        ``overlays``, ``anchor``, ``hse``, ``punchlist``, ``diary``. Each
+        feature carries an ``oe:layer`` property so a downstream consumer
+        (QGIS, ArcGIS, a custom importer) can split the collection back
+        into layers. ``kind`` still narrows the vector-overlay slice.
+        """
         await self._verify_project_owner(
             project_id,
             payload,
             not_found_detail=translate("errors.project_not_found", locale=get_locale()),
         )
-        overlays = await self.overlays.list_for_project(
-            project_id,
-            kind=kind,
-            limit=1000,
-        )
+        # ``include is None`` means "the caller did not filter" -> fold every
+        # layer. An *explicit* empty set (the caller asked for only unknown
+        # tokens, e.g. ``include=bogus``) must stay empty: it folds nothing
+        # rather than silently degrading back to "everything".
+        wanted = include if include is not None else {"overlays", "anchor", "hse", "punchlist", "diary"}
         merged_features: list[dict[str, Any]] = []
-        for ov in overlays:
-            data = ov.geojson or {}
-            for feat in data.get("features") or []:
-                merged_features.append(feat)
+
+        if "overlays" in wanted:
+            overlays = await self.overlays.list_for_project(
+                project_id,
+                kind=kind,
+                limit=1000,
+            )
+            for ov in overlays:
+                data = ov.geojson or {}
+                for feat in data.get("features") or []:
+                    feat = dict(feat) if isinstance(feat, dict) else feat
+                    if isinstance(feat, dict):
+                        props = dict(feat.get("properties") or {})
+                        props.setdefault("oe:layer", "overlay")
+                        props.setdefault("oe:overlay_kind", ov.kind)
+                        feat["properties"] = props
+                    merged_features.append(feat)
+
+        # A ``kind`` filter targets vector overlays specifically - when one
+        # is set the caller wants just that overlay slice, so we skip the
+        # anchor + cross-module pins (they have no overlay "kind").
+        if kind is None:
+            if "anchor" in wanted:
+                anchor = await self.anchors.get_by_project(project_id)
+                if anchor is not None and not (anchor.lat == Decimal("0") and anchor.lon == Decimal("0")):
+                    merged_features.append(
+                        _point_feature(
+                            float(anchor.lon),
+                            float(anchor.lat),
+                            {
+                                "oe:layer": "anchor",
+                                "epsg_code": anchor.epsg_code,
+                                "address": anchor.address,
+                                "region_code": anchor.region_code,
+                            },
+                        )
+                    )
+
+            if "hse" in wanted:
+                for p in await self.list_hse_pins(project_id, payload=payload, limit=2000):
+                    merged_features.append(
+                        _point_feature(
+                            float(p["lon"]),
+                            float(p["lat"]),
+                            {
+                                "oe:layer": "hse",
+                                "incident_number": p["incident_number"],
+                                "title": p["title"],
+                                "incident_type": p["incident_type"],
+                                "severity": p["severity"],
+                                "status": p["status"],
+                            },
+                        )
+                    )
+
+            if "punchlist" in wanted:
+                for p in await self.list_punchlist_pins(project_id, payload=payload, limit=2000):
+                    merged_features.append(
+                        _point_feature(
+                            float(p["lon"]),
+                            float(p["lat"]),
+                            {
+                                "oe:layer": "punchlist",
+                                "title": p["title"],
+                                "priority": p["priority"],
+                                "status": p["status"],
+                                "category": p["category"],
+                            },
+                        )
+                    )
+
+            if "diary" in wanted:
+                for p in await self.list_diary_photo_pins(project_id, payload=payload, limit=2000):
+                    merged_features.append(
+                        _point_feature(
+                            float(p["lon"]),
+                            float(p["lat"]),
+                            {
+                                "oe:layer": "diary",
+                                "taken_at": p["taken_at"].isoformat() if p.get("taken_at") else None,
+                                "file_url": p["file_url"],
+                                "thumbnail_url": p["thumbnail_url"],
+                                "is_360": p["is_360"],
+                                "is_drone": p["is_drone"],
+                            },
+                        )
+                    )
+
         return {"type": "FeatureCollection", "features": merged_features}
 
     async def delete_overlay(
@@ -1962,55 +2062,12 @@ class GeoHubService:
         result = await self.session.execute(stmt)
         rows = result.all()
 
-        def _project_address_text(addr: Any) -> str | None:
-            """Render the project's JSONB address as a single line.
-
-            Used by the frontend to detect drift between the typed
-            address and the geocoded ``anchor.address`` - when the user
-            edits the project address after the first geocode the two
-            strings diverge and we surface a "Re-anchor" chip.
-            """
-            if not isinstance(addr, dict):
-                return None
-            parts = [
-                addr.get("street"),
-                addr.get("house_number") or addr.get("houseNumber"),
-                addr.get("postal_code") or addr.get("postcode"),
-                addr.get("city"),
-                addr.get("state"),
-                addr.get("country"),
-            ]
-            line = ", ".join(p for p in parts if isinstance(p, str) and p.strip())
-            return line or None
-
-        def _address_coords(addr: Any) -> tuple[Decimal, Decimal] | None:
-            """Lift ``lat`` + ``lng``/``lon`` out of the project address JSONB.
-
-            Seeds store the geocoded point on the address dict (``lat`` +
-            ``lng``); some hand-entered data uses ``lon``. Returns
-            ``(lat, lon)`` only when both are present and inside the valid
-            WGS-84 range - bad/partial coords are treated as "no location"
-            rather than dropping a pin on null island.
-            """
-            if not isinstance(addr, dict):
-                return None
-            lat_raw = addr.get("lat")
-            # Seeds use ``lng``; accept ``lon`` as an alias for hand-entered data.
-            lon_raw = addr.get("lng")
-            if lon_raw is None:
-                lon_raw = addr.get("lon")
-            if lat_raw is None or lon_raw is None:
-                return None
-            try:
-                lat = Decimal(str(lat_raw))
-                lon = Decimal(str(lon_raw))
-            except (ArithmeticError, ValueError, TypeError):
-                return None
-            if not (Decimal("-90") <= lat <= Decimal("90")):
-                return None
-            if not (Decimal("-180") <= lon <= Decimal("180")):
-                return None
-            return lat, lon
+        # ``_project_address_line`` + ``_address_coords`` are shared
+        # module-level helpers (see bottom of file) so the global pin
+        # layer and the project-scoped ``map_config`` fallback agree on
+        # exactly which projects count as "located" and how the address
+        # line renders.
+        _project_address_text = _project_address_line
 
         out: list[dict[str, Any]] = []
         for project, anchor in rows:
@@ -2093,6 +2150,32 @@ class GeoHubService:
                 )
 
         anchor = await self.anchors.get_by_project(project_id)
+        if anchor is None or (anchor.lat == Decimal("0") and anchor.lon == Decimal("0")):
+            # A project can pin on the GLOBAL Geo Hub map purely from its
+            # ``address.lat``/``lng`` (no GeoAnchor row, or only the
+            # placeholder 0/0 anchor the ``projects.created`` subscriber
+            # seeds). Without this fallback that same project opened to a
+            # dead "Not anchored - place this project on the map" empty
+            # state, contradicting the globe that clearly showed it located.
+            # Synthesise a transient anchor from the address coords so the
+            # project view boots centred on the real spot; the frontend
+            # labels it auto-derived and lets the user persist it.
+            from app.modules.projects.repository import ProjectRepository
+
+            project = await ProjectRepository(self.session).get_by_id(project_id)
+            coords = _address_coords(project.address) if project is not None else None
+            if coords is not None:
+                lat, lon = coords
+                addr = project.address if isinstance(project.address, dict) else {}
+                cc = addr.get("country_code")
+                region_code = str(cc).upper() if isinstance(cc, str) and cc.strip() else None
+                anchor = _TransientAnchor(
+                    project_id=project_id,
+                    lat=lat,
+                    lon=lon,
+                    region_code=region_code,
+                    address=_project_address_line(addr),
+                )
         imagery = await self.imagery.list_for_project(project_id)
         terrain = await self.terrain.get_default()
         # Push dev_id filter into SQL on the tileset list so a PropDev
@@ -2135,6 +2218,133 @@ class GeoHubService:
             "overlays": overlays,
             "viewpoints": viewpoints,
             "active_jobs": active_jobs,
+        }
+
+    # ── Map summary (project-scoped layer legend) ───────────────────────
+
+    async def map_summary(
+        self,
+        project_id: uuid.UUID,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Aggregate every map layer for a project into counts + breakdowns.
+
+        Powers the project-map layer legend. Computed with SQL ``count()``
+        and grouped aggregates (not by materialising every row) so a
+        project with thousands of pins reports its legend in a handful of
+        cheap queries. Cross-module counts (HSE / punchlist / diary)
+        mirror exactly the rows the pin-layer endpoints would return -
+        same project scope, same "has WGS84 coords" filter, same
+        archived/active rules - so the legend can never disagree with the
+        pins actually rendered.
+        """
+        from sqlalchemy import func, select
+
+        await self._verify_project_owner(
+            project_id,
+            payload,
+            not_found_detail=translate("errors.project_not_found", locale=get_locale()),
+        )
+
+        # ── Anchor (real or derived from address coords) ────────────────
+        anchor = await self.anchors.get_by_project(project_id)
+        has_real_anchor = anchor is not None and not (anchor.lat == Decimal("0") and anchor.lon == Decimal("0"))
+        anchor_is_derived = False
+        if not has_real_anchor:
+            from app.modules.projects.repository import ProjectRepository
+
+            project = await ProjectRepository(self.session).get_by_id(project_id)
+            if project is not None and _address_coords(project.address) is not None:
+                anchor_is_derived = True
+
+        # ── Own-module layers: tilesets / overlays / raster / viewpoints ─
+        tilesets = await self.tilesets.list_for_project(project_id, limit=500)
+        tileset_breakdown: dict[str, int] = {}
+        for ts in tilesets:
+            tileset_breakdown[ts.status] = tileset_breakdown.get(ts.status, 0) + 1
+
+        overlays = await self.overlays.list_for_project(project_id, limit=1000)
+        overlay_breakdown: dict[str, int] = {}
+        for ov in overlays:
+            overlay_breakdown[ov.kind] = overlay_breakdown.get(ov.kind, 0) + 1
+
+        raster_overlays = await self.raster_overlays.list_for_project(
+            project_id,
+            include_hidden=True,
+        )
+        raster_breakdown: dict[str, int] = {}
+        for r in raster_overlays:
+            raster_breakdown[r.source_kind] = raster_breakdown.get(r.source_kind, 0) + 1
+
+        viewpoints = await self.viewpoints.list_for_project(project_id)
+        active_jobs = await self.jobs.list_active_for_project(project_id)
+
+        # ── Cross-module pin layers: grouped count() aggregates ─────────
+        from app.modules.daily_diary.models import DiaryPhoto
+        from app.modules.punchlist.models import PunchItem
+        from app.modules.safety.models import SafetyIncident
+
+        hse_rows = (
+            await self.session.execute(
+                select(SafetyIncident.severity, func.count())
+                .where(SafetyIncident.project_id == project_id)
+                .where(SafetyIncident.geo_lat.is_not(None))
+                .where(SafetyIncident.geo_lon.is_not(None))
+                .group_by(SafetyIncident.severity)
+            )
+        ).all()
+        hse_breakdown = {str(sev or "unknown"): int(cnt) for sev, cnt in hse_rows}
+
+        punch_rows = (
+            await self.session.execute(
+                select(PunchItem.priority, func.count())
+                .where(PunchItem.project_id == project_id)
+                .where(PunchItem.geo_lat.is_not(None))
+                .where(PunchItem.geo_lon.is_not(None))
+                .group_by(PunchItem.priority)
+            )
+        ).all()
+        punch_breakdown = {str(pri or "unknown"): int(cnt) for pri, cnt in punch_rows}
+
+        diary_count = (
+            await self.session.execute(
+                select(func.count())
+                .select_from(DiaryPhoto)
+                .where(DiaryPhoto.project_id == project_id)
+                .where(DiaryPhoto.lat.is_not(None))
+                .where(DiaryPhoto.lng.is_not(None))
+                .where(DiaryPhoto.is_archived.is_(False))
+            )
+        ).scalar_one()
+
+        def _layer(total: int, breakdown: dict[str, int]) -> dict[str, Any]:
+            return {"total": total, "breakdown": breakdown}
+
+        hse_total = sum(hse_breakdown.values())
+        punch_total = sum(punch_breakdown.values())
+        total_features = (
+            len(tilesets)
+            + len(overlays)
+            + len(raster_overlays)
+            + len(viewpoints)
+            + hse_total
+            + punch_total
+            + int(diary_count)
+        )
+
+        return {
+            "project_id": project_id,
+            "has_anchor": has_real_anchor or anchor_is_derived,
+            "anchor_is_derived": anchor_is_derived,
+            "tilesets": _layer(len(tilesets), tileset_breakdown),
+            "overlays": _layer(len(overlays), overlay_breakdown),
+            "raster_overlays": _layer(len(raster_overlays), raster_breakdown),
+            "viewpoints": _layer(len(viewpoints), {}),
+            "hse_pins": _layer(hse_total, hse_breakdown),
+            "punchlist_pins": _layer(punch_total, punch_breakdown),
+            "diary_pins": _layer(int(diary_count), {}),
+            "active_jobs": len(active_jobs),
+            "total_features": total_features,
         }
 
     # ── Cross-module pin layers (HSE / Punchlist / Diary photos) ────────
@@ -2406,6 +2616,133 @@ def _safe_filename(name: str) -> str:
     base = re.sub(r"[^A-Za-z0-9._\-]+", "_", name or "file")
     base = base.strip("._-") or "file"
     return base[:120]
+
+
+def _point_feature(
+    lon: float,
+    lat: float,
+    properties: dict[str, Any],
+) -> dict[str, Any]:
+    """Build a GeoJSON Point Feature, dropping ``None`` property values."""
+    return {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [lon, lat]},
+        "properties": {k: v for k, v in properties.items() if v is not None},
+    }
+
+
+def _project_address_line(addr: Any) -> str | None:
+    """Render a project's JSONB address as a single human-readable line.
+
+    Tolerant of both snake_case (``house_number``, ``postal_code``) and
+    camelCase (``houseNumber``, ``postcode``) key spellings so seed data
+    and hand-entered data both render. Returns ``None`` when nothing
+    usable is present.
+    """
+    if not isinstance(addr, dict):
+        return None
+    parts = [
+        addr.get("street"),
+        addr.get("house_number") or addr.get("houseNumber"),
+        addr.get("postal_code") or addr.get("postcode"),
+        addr.get("city"),
+        addr.get("state"),
+        addr.get("country"),
+    ]
+    line = ", ".join(p for p in parts if isinstance(p, str) and p.strip())
+    return line or None
+
+
+def _address_coords(addr: Any) -> tuple[Decimal, Decimal] | None:
+    """Lift ``lat`` + ``lng``/``lon`` out of a project's address JSONB.
+
+    Seeds store the geocoded point on the address dict (``lat`` +
+    ``lng``); some hand-entered data uses ``lon``. Returns ``(lat, lon)``
+    only when both are present and inside the valid WGS-84 range - bad or
+    partial coords are treated as "no location" rather than dropping a
+    pin on null island. Shared by ``list_anchored_projects`` (the global
+    pin layer) and ``map_config`` (the project view) so a project that
+    pins on the global map opens to a usable project-scoped map instead
+    of the dead "not anchored" empty state.
+    """
+    if not isinstance(addr, dict):
+        return None
+    lat_raw = addr.get("lat")
+    lon_raw = addr.get("lng")
+    if lon_raw is None:
+        lon_raw = addr.get("lon")
+    if lat_raw is None or lon_raw is None:
+        return None
+    try:
+        lat = Decimal(str(lat_raw))
+        lon = Decimal(str(lon_raw))
+    except (ArithmeticError, ValueError, TypeError):
+        return None
+    if not (Decimal("-90") <= lat <= Decimal("90")):
+        return None
+    if not (Decimal("-180") <= lon <= Decimal("180")):
+        return None
+    return lat, lon
+
+
+class _TransientAnchor:
+    """In-memory anchor projection for a project located by address coords only.
+
+    A project whose ``address`` JSONB carries ``lat``/``lng`` shows up on
+    the global Geo Hub map (see ``list_anchored_projects``) but has no
+    persisted ``GeoAnchor`` row. ``map_config`` synthesises one of these
+    so the project-scoped Cesium viewer boots centred on the right spot
+    instead of painting the "no_anchor" empty state. It carries every
+    attribute ``GeoAnchorResponse.model_validate`` reads (``from_attributes``)
+    and is never written to the database - ``id`` is ``None`` so the
+    frontend can tell a synthesised anchor from a real one and offer to
+    persist it via the normal create-anchor flow when the user adjusts it.
+    """
+
+    __slots__ = (
+        "id",
+        "project_id",
+        "lat",
+        "lon",
+        "alt",
+        "epsg_code",
+        "region_code",
+        "address",
+        "accuracy_m",
+        "metadata_",
+        "created_at",
+        "updated_at",
+    )
+
+    def __init__(
+        self,
+        *,
+        project_id: uuid.UUID,
+        lat: Decimal,
+        lon: Decimal,
+        region_code: str | None,
+        address: str | None,
+    ) -> None:
+        now = datetime.now(UTC)
+        self.id = None
+        self.project_id = project_id
+        self.lat = lat
+        self.lon = lon
+        self.alt = Decimal("0")
+        self.epsg_code = 4326
+        self.region_code = region_code
+        self.address = address
+        self.accuracy_m = None
+        # ``derived_from: project_address`` lets the frontend label the
+        # anchor as auto-derived (not surveyed) and prompt the user to
+        # confirm + persist it. ``persisted: False`` is the explicit flag
+        # the UI checks before offering "Save this location".
+        self.metadata_ = {
+            "derived_from": "project_address",
+            "persisted": False,
+        }
+        self.created_at = now
+        self.updated_at = now
 
 
 def _extract_user_id(

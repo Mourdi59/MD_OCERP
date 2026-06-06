@@ -635,13 +635,20 @@ class CoordinationHubService:
 
     # ── Trade matrix ────────────────────────────────────────────────────────
 
-    async def trade_matrix(self, project_id: uuid.UUID) -> TradeMatrixResponse:
+    async def trade_matrix(self, project_id: uuid.UUID, *, currency: str = "") -> TradeMatrixResponse:
         """6×6 discipline-pair heat-map of OPEN clashes for ``project_id``.
 
         Rows / cols come from :data:`CANONICAL_TRADES`; cells aggregate
-        ``count`` (all statuses), ``open`` and ``resolved``. A pair is
+        ``count`` (all statuses), ``open``, ``resolved`` and the summed
+        open ``cost_impact`` (rework + labour) of that pair. A pair is
         normalised symmetrically (row index ≤ col index) so we never
         produce duplicate cells like (struct, arch) AND (arch, struct).
+
+        The cost weighting reuses the :mod:`clash_cost_impact` kernel
+        (same arithmetic the cost dashboard shows) so a "weight by money"
+        toggle in the UI is honest end to end, not a fresh client guess.
+        When the cost module is unavailable the cells still carry counts
+        and ``cost_impact`` degrades to ``0`` - the matrix never 500s.
         """
         try:
             from app.modules.clash.models import ClashResult, ClashRun
@@ -651,6 +658,7 @@ class CoordinationHubService:
                 project_id=project_id,
                 trades=list(CANONICAL_TRADES),
                 cells=[],
+                currency=currency,
             )
 
         stmt = (
@@ -674,6 +682,7 @@ class CoordinationHubService:
                 project_id=project_id,
                 trades=list(CANONICAL_TRADES),
                 cells=[],
+                currency=currency,
             )
 
         # Pair-key → (count, open, resolved). The pair is sorted
@@ -693,6 +702,10 @@ class CoordinationHubService:
             elif status_ in ("approved", "resolved"):
                 cell["resolved"] += n_int
 
+        # Cost weighting per canonical pair. Best-effort: a missing cost
+        # module / priced-rework leaves every pair at Decimal("0").
+        cost_by_pair = await self._cost_impact_by_canonical_pair(project_id)
+
         cells = [
             TradeMatrixCell(
                 row=row,
@@ -700,6 +713,7 @@ class CoordinationHubService:
                 count=v["count"],
                 open=v["open"],
                 resolved=v["resolved"],
+                cost_impact=cost_by_pair.get((row, col), Decimal("0")),
             )
             for (row, col), v in agg.items()
         ]
@@ -707,11 +721,90 @@ class CoordinationHubService:
         # deterministically (snapshot-friendly).
         idx = {t: i for i, t in enumerate(CANONICAL_TRADES)}
         cells.sort(key=lambda c: (idx.get(c.row, 999), idx.get(c.col, 999)))
+        total_cost = sum((c.cost_impact for c in cells), Decimal("0"))
         return TradeMatrixResponse(
             project_id=project_id,
             trades=list(CANONICAL_TRADES),
             cells=cells,
+            currency=currency,
+            total_cost_impact=total_cost,
         )
+
+    async def _cost_impact_by_canonical_pair(self, project_id: uuid.UUID) -> dict[tuple[str, str], Decimal]:
+        """Open cost-impact summed per canonical (row, col) trade pair.
+
+        Reuses the :class:`ClashCostImpactService` per-clash arithmetic
+        kernel so the money figure matches the cost dashboard exactly,
+        then re-buckets each clash into the matrix's own 6-trade
+        vocabulary (the cost service keeps mechanical / electrical /
+        plumbing separate; the matrix folds all three into ``mep``).
+
+        Returns an empty dict on any failure - the matrix degrades to a
+        count-only view rather than 500ing. Reads BOQ positions ONCE for
+        the whole project so we never N+1 over clashes.
+        """
+        try:
+            from app.modules.clash.models import ClashResult, ClashRun
+            from app.modules.clash.schemas import OPEN_STATUSES
+            from app.modules.clash_cost_impact.service import (
+                ClashCostImpactService,
+            )
+        except Exception:
+            return {}
+
+        cost_svc = ClashCostImpactService(self.session)
+        project = await cost_svc._load_project(project_id)  # noqa: SLF001
+        if project is None:
+            return {}
+
+        # ``select(Entity)`` rows come back as 1-tuple ``Row`` objects from
+        # ``.all()``; use ``.scalars()`` so we iterate the ORM instances
+        # directly (a ``Row`` is not an ``isinstance`` of ``tuple``).
+        try:
+            result = await self.session.execute(
+                select(ClashResult)
+                .join(ClashRun, ClashRun.id == ClashResult.run_id)
+                .where(
+                    and_(
+                        ClashRun.project_id == project_id,
+                        ClashResult.status.in_(OPEN_STATUSES),
+                    )
+                )
+            )
+            open_clashes = list(result.scalars().all())
+        except SQLAlchemyError:
+            await _safe_rollback(self.session)
+            return {}
+        except Exception:  # noqa: BLE001
+            logger.exception("coordination_hub: cost-matrix clash load failed")
+            await _safe_rollback(self.session)
+            return {}
+        if not open_clashes:
+            return {}
+
+        try:
+            positions = await cost_svc._positions_for_project(project_id)  # noqa: SLF001
+        except SQLAlchemyError:
+            await _safe_rollback(self.session)
+            return {}
+        except Exception:  # noqa: BLE001
+            logger.exception("coordination_hub: cost-matrix positions load failed")
+            await _safe_rollback(self.session)
+            return {}
+
+        out: dict[tuple[str, str], Decimal] = defaultdict(lambda: Decimal("0"))
+        for clash in open_clashes:
+            try:
+                affected = cost_svc._affected_positions(clash, positions)  # noqa: SLF001
+                _, clash_total = cost_svc._compute_impact(clash, project, affected)  # noqa: SLF001
+            except Exception:  # noqa: BLE001 - never let one bad row break the matrix
+                continue
+            a = _normalise_trade(getattr(clash, "a_discipline", None))
+            b = _normalise_trade(getattr(clash, "b_discipline", None))
+            if a > b:
+                a, b = b, a
+            out[(a, b)] += clash_total
+        return dict(out)
 
     # ── Timeline ────────────────────────────────────────────────────────────
 
@@ -1216,3 +1309,82 @@ class CoordinationHubService:
             thresholds=out_rows,
             alerts=alerts,
         )
+
+    # ── Snapshot export ────────────────────────────────────────────────────
+
+    async def export_snapshot_csv(self, project_id: uuid.UUID, *, currency: str) -> str:
+        """Render the project's coordination snapshot as a single CSV string.
+
+        One file a coordinator can attach to meeting minutes: the headline
+        KPIs, the threshold-alert status, and the per-discipline-pair
+        breakdown with cost weighting. Built off the SAME aggregator the
+        dashboard renders (no fresh, divergent computation) and never
+        cached so an export always reflects live numbers.
+
+        The CSV uses a leading ``section`` column so the three logical
+        blocks (kpi / alert / trade_pair) stay one parseable file - Excel
+        and pandas both read it back without per-block re-splitting.
+        """
+        import csv
+        import io
+
+        # Bypass the dashboard TTL cache so an export is always fresh - a
+        # coordinator clicking Export right after a clash run must not get
+        # a 30s-stale snapshot stamped onto the meeting record.
+        dashboard = await self.dashboard(project_id, currency=currency, use_cache=False)
+        matrix = await self.trade_matrix(project_id, currency=currency)
+        thresholds = await self.evaluate_thresholds(project_id, allow_seed=False)
+
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(["section", "key", "value", "detail", "currency"])
+
+        # Block 1 - headline KPIs.
+        cur = dashboard.currency or currency or ""
+        writer.writerow(["kpi", "as_of", dashboard.as_of.isoformat(), "", ""])
+        writer.writerow(["kpi", "open_clashes", dashboard.clashes.open_count, "", ""])
+        writer.writerow(["kpi", "resolved_clashes", dashboard.clashes.resolved_count, "", ""])
+        writer.writerow(["kpi", "ignored_clashes", dashboard.clashes.ignored_count, "", ""])
+        writer.writerow(
+            [
+                "kpi",
+                "open_cost_impact_total",
+                format(dashboard.open_cost_impact_total, "f"),
+                "",
+                cur,
+            ]
+        )
+        writer.writerow(["kpi", "federations", dashboard.federations.count, "", ""])
+        writer.writerow(["kpi", "rule_packs_installed", dashboard.rule_packs.installed_count, "", ""])
+        writer.writerow(["kpi", "bcf_topics_30d", dashboard.bcf_activity.topics_exported_30d, "", ""])
+
+        # Block 2 - threshold alerts (every metric, with its current level).
+        for tr in thresholds.thresholds:
+            writer.writerow(
+                [
+                    "alert",
+                    tr.metric,
+                    format(tr.current_value, "f"),
+                    f"{tr.level} (warn>={format(tr.warn_value, 'f')}, "
+                    f"error>={format(tr.error_value, 'f')}, "
+                    f"enabled={tr.enabled})",
+                    "",
+                ]
+            )
+
+        # Block 3 - per-discipline-pair breakdown with cost weighting.
+        for cell in matrix.cells:
+            # Skip empty pairs so the export is a signal, not a 36-row grid.
+            if cell.count == 0 and cell.cost_impact == 0:
+                continue
+            writer.writerow(
+                [
+                    "trade_pair",
+                    f"{cell.row} x {cell.col}",
+                    cell.open,
+                    f"total={cell.count}, resolved={cell.resolved}, cost_impact={format(cell.cost_impact, 'f')}",
+                    matrix.currency or cur,
+                ]
+            )
+
+        return buf.getvalue()

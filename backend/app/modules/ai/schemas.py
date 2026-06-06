@@ -227,3 +227,55 @@ class CreateBOQFromEstimateRequest(BaseModel):
 
     project_id: UUID
     boq_name: str = Field(default="AI Estimate", min_length=1, max_length=255)
+    # When true, run cost-DB enrichment during BOQ creation and replace each
+    # line's AI rate with the best same-currency CWICR match (recording the
+    # match code on the position). Lets the user persist the regional rates
+    # they reviewed in the UI instead of the raw AI guesses. Off by default so
+    # the legacy "save AI rates as-is" behaviour is unchanged.
+    apply_enriched: bool = False
+    # Region used for the cost-DB lookup when ``apply_enriched`` is set
+    # (e.g. "DE_BERLIN"). Empty = search across all regions.
+    region: str = Field(default="", max_length=64)
+
+
+# ── Estimate history (server-side job list) ──────────────────────────────────
+
+
+class EstimateJobSummary(BaseModel):
+    """Lightweight summary of an estimate job for the history list.
+
+    Excludes the full ``items`` payload (which can be large) so the list
+    endpoint stays cheap to page through. The frontend fetches the full job
+    via ``GET /ai/estimate/{id}`` when the user reopens one.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    project_id: UUID | None = None
+    input_type: str
+    input_text: str | None = None
+    input_filename: str | None = None
+    status: str
+    items_count: int = 0
+    currency: str = ""
+    grand_total: Decimal = Decimal("0")
+    model_used: str | None = None
+    tokens_used: int = 0
+    cost_usd_estimate: Decimal = Decimal("0")
+    duration_ms: int = 0
+    error_message: str | None = None
+    created_at: datetime
+
+    @field_serializer("grand_total", "cost_usd_estimate", when_used="json")
+    def _ser_money(self, v: Decimal) -> str | None:
+        return _serialise_money(v)
+
+
+class EstimateJobListResponse(BaseModel):
+    """Paginated list of estimate-job summaries for the current user."""
+
+    items: list[EstimateJobSummary] = Field(default_factory=list)
+    total: int = 0
+    limit: int = 20
+    offset: int = 0
