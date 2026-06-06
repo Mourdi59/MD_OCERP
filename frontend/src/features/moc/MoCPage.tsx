@@ -52,6 +52,7 @@ import {
   ConfirmDialog,
   RecoveryCard,
   SkeletonTable,
+  IntroRichText,
 } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { PageHeader } from '@/shared/ui/PageHeader';
@@ -1302,6 +1303,14 @@ export function MoCPage() {
       <SectionIntro
         storageKey="moc"
         title={t('moc.intro_title', { defaultValue: 'Control changes before anyone acts' })}
+        more={
+          <IntroRichText
+            text={t('moc.intro_more', {
+              defaultValue:
+                'Construction projects drift. Someone swaps a material on site, an engineer revises a detail, the client widens the scope, and three weeks later nobody can say who agreed to it, what it cost or what it did to the programme. Management of Change is the gate that stops a deviation from the agreed design, scope or process from happening informally. Every proposed change is captured, assessed and approved before work changes, so there are no surprises at the next valuation.\n\n**You put in:**\n- A change request with a category (engineering, scope, design, process, material, safety, regulatory and more) and a risk level\n- A headline cost impact, currency and schedule delta in days\n- A detailed impact assessment per area (cost, schedule, safety, quality, environment) with severity and mitigation\n- Review and decision notes captured at each step for the audit trail\n\n**You get out:**\n- A controlled register with a unique code per change and a clear status across the pipeline\n- Totals at a glance: total, in progress, accepted and implemented\n- A locked decision history showing who reviewed, who decided and when\n- Links to the commercial records the change generated, so cost and approval never drift apart\n\n**How it works day to day:**\n1. Raise the change request, set its category and risk, and record the headline cost and schedule impact.\n2. Add one or more impact assessment lines so the full effect, not just the headline, is on record.\n3. Move it to reviewed once it has been technically checked and is ready for a decision.\n4. Accept or decline it; a declined request is final and cannot be reopened.\n5. Once the approved change is carried out on site or in the model, mark it implemented.\n\nThe status flow (proposed, reviewed, accepted or declined, implemented) is enforced by the backend, so the page only ever offers the transitions that are legal right now. Approved changes flow on to Variations and Change Orders, which is where the priced commercial instruction lives, keeping the whole change-to-cost trail connected and auditable.',
+            })}
+          />
+        }
         links={[
           { label: t('moc.intro_link_variations', { defaultValue: 'Variations' }), onClick: () => navigate('/variations') },
           { label: t('moc.intro_link_changeorders', { defaultValue: 'Change Orders' }), onClick: () => navigate('/changeorders') },

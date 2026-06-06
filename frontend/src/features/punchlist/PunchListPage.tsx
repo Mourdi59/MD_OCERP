@@ -33,6 +33,7 @@ import {
   WideModalSection,
   WideModalField,
   SkeletonTable,
+  IntroRichText,
 } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
@@ -946,6 +947,14 @@ export function PunchListPage() {
         title={t('punch.intro_title', {
           defaultValue: 'Nothing slips through at handover',
         })}
+        more={
+          <IntroRichText
+            text={t('punch.intro_more', {
+              defaultValue:
+                'Near the end of a job the small stuff piles up: a scuffed door, a missing fire seal, a tile that is not bedded right, a socket that does not work. These are not formal non-conformances, they are snags that just need someone to go and fix them and someone else to confirm they are done. The Punch List is the running register of that outstanding work, so handover is not held up by a hundred half-remembered items on a clipboard.\n\n**You put in:**\n- Punch items with a title, description and a photo or two of the problem\n- A priority (low to critical), a category (structural, MEP, finishing and so on) and a location\n- An assignee and a due date so each item has an owner and a deadline\n- Items raised automatically from a failed inspection, an NCR or a model clash, tagged with their source\n\n**You get out:**\n- A KPI strip showing total, open, in-progress, resolved, overdue and average days to close\n- A Kanban board to manage flow and a list view for bulk triage and close-out\n- A clear status lifecycle for every item, with overdue items flagged in red\n- Bulk close, per-item photos and a map view to see snags by location on site\n\n**How it works day to day:**\n1. Capture the snag during a walkthrough, set its priority and location, and assign it.\n2. The owner moves it Open to In Progress to Resolved as they work it.\n3. A checker verifies the fix and moves it Resolved to Verified to Closed.\n4. If the fix does not hold up on a re-check, reopen it straight back to Open from Resolved, Verified or Closed.\n5. Use the list view to multi-select and bulk close a batch once a zone is signed off.\n\nThe status flow is enforced by the backend, so only legal moves are offered, and reopen always goes back to Open rather than an invalid intermediate state. Items that came from a failed Inspection or an NCR keep a source badge so you can trace them to their origin, which keeps the inspect, defect and close-out loop honest right through to handover.',
+            })}
+          />
+        }
         links={[
           {
             label: t('punch.intro_link_inspections', { defaultValue: 'Inspections' }),

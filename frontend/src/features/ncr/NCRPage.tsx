@@ -25,7 +25,7 @@ import {
   ListChecks,
   Link2,
 } from 'lucide-react';
-import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, RecoveryCard, SkeletonTable } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, RecoveryCard, SkeletonTable, IntroRichText } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { SectionIntro } from '@/features/validation';
@@ -895,6 +895,14 @@ export function NCRPage() {
         title={t('ncr.intro_title', {
           defaultValue: 'Catch defective work, fix the cause',
         })}
+        more={
+          <IntroRichText
+            text={t('ncr.intro_more', {
+              defaultValue:
+                'A non-conformance is work that does not meet the specification: concrete below strength, a duct run that clashes, a missing test certificate, a safety breach. Left as a verbal "we will sort it out", these turn into disputes, rejected work and arguments over who pays. A Non-Conformance Report makes the defect a formal record with a number, a severity and an owner, so it cannot quietly disappear and the cause gets fixed rather than just the symptom.\n\n**You put in:**\n- The non-conformance type (material, workmanship, design, documentation or safety) and a severity from observation up to critical\n- A clear title and description of what was observed, where, and which specification was not met\n- The location on site and, if known, a preliminary root cause\n- Corrective and preventive actions as the investigation progresses\n\n**You get out:**\n- A numbered NCR register with status from identified through review, corrective action and verification to closed\n- At-a-glance counts of total, open, under-review and closed NCRs\n- Traceability badges when an NCR was auto-raised from a clash or a blocking validation error\n- A one-click Variation when the defect carries a cost, linking the quality record to the commercial one\n\n**How it works day to day:**\n1. Raise the NCR, classify it and describe the defect against the spec it breaches.\n2. Investigate the root cause and record the corrective action that fixes this instance.\n3. Add a preventive action so the same failure does not recur on the next pour or run.\n4. If the fix costs money, create a Variation straight from the NCR to capture the commercial impact.\n5. Verify the work and close the NCR, leaving a dated record of the whole cycle.\n\nNCRs are frequently raised straight from a failed Inspection, which pre-fills the defect from the checklist. Minor snags that just need a re-check belong on the Punch List instead, while genuine non-conformances that need root-cause analysis stay here. When there is a cost, the trail runs on to Change Orders so quality and money never separate.',
+            })}
+          />
+        }
         links={[
           {
             label: t('ncr.intro_link_inspections', { defaultValue: 'Inspections' }),

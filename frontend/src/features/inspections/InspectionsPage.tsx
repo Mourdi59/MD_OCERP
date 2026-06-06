@@ -31,7 +31,7 @@ import {
   ListChecks,
   MinusCircle,
 } from 'lucide-react';
-import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, RecoveryCard, SkeletonTable } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, RecoveryCard, SkeletonTable, IntroRichText } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { SectionIntro } from '@/features/validation';
@@ -1370,6 +1370,14 @@ export function InspectionsPage() {
         title={t('inspections.intro_title', {
           defaultValue: 'Close the inspect-to-fix loop',
         })}
+        more={
+          <IntroRichText
+            text={t('inspections.intro_more', {
+              defaultValue:
+                'Quality on site is won or lost at the inspection. A pour is checked before the concrete goes in, a fire-stopping run is verified before it is boarded over, a unit is walked at handover. The problem is what happens after a fail: the note gets lost, the defect is never tracked, and the same issue turns up at the final account. This page makes the inspection the start of a loop, not a dead end, so every fail becomes a tracked defect that someone has to close.\n\n**You put in:**\n- A scheduled inspection with a type (structural, electrical, plumbing, fire safety, concrete, waterproofing, MEP, handover and more)\n- A planned date, an inspector and a location\n- A checklist of items to verify on site, with critical items flagged as hold points\n- The outcome when the work is checked: pass, partial or fail\n\n**You get out:**\n- An inspection register with status from scheduled through in-progress to completed, plus a clear pass/fail/partial result\n- Counts of total, scheduled, passed and failed inspections at the top of the page\n- One-click creation of a Punch List item or a formal NCR from any failed or partial result, pre-filled from the inspection\n- An Excel export of the full inspection log for records and client reporting\n\n**How it works day to day:**\n1. Schedule the inspection, choose its type and add the checklist of things to verify.\n2. Start it when the inspector goes to site, then record the result as pass, partial or fail.\n3. On a fail or partial, raise a Punch List item for a minor snag, or an NCR for a formal non-conformance.\n4. The follow-up record is pre-filled from the inspection, so the defect traces straight back to the check.\n5. Re-inspect once the fix is done and the trail shows the full inspect-defect-close cycle.\n\nFailed inspections feed directly into the Punch List for minor defects and into NCRs for non-conformances needing root-cause analysis, and the same control points can be tied to ITP hold points in the QMS overview. That keeps the inspect, defect and close-out loop fully traceable across the quality cluster rather than scattered across separate tools.',
+            })}
+          />
+        }
         links={[
           {
             label: t('inspections.intro_link_punch', { defaultValue: 'Punch List' }),

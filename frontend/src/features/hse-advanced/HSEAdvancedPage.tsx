@@ -35,6 +35,7 @@ import {
   Breadcrumb,
   RecoveryCard,
   SkeletonTable,
+  IntroRichText,
 } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
@@ -217,6 +218,14 @@ export function HSEAdvancedPage() {
         title={t('hse_advanced.intro_title', {
           defaultValue: 'Close out every safety finding, not just log it',
         })}
+        more={
+          <IntroRichText
+            text={t('hse_advanced.intro_more', {
+              defaultValue:
+                'Logging a safety incident is the easy part. The hard part, and the part regulators and clients actually check, is showing that every finding was investigated, that high-risk tasks were planned before they started, that permits were properly issued, and that corrective actions were closed and stayed closed. This is the formal HSE workspace that carries a finding from "something happened" all the way to "fixed and verified", with the paper trail that an audit or an insurance claim needs.\n\n**You put in:**\n- Incident investigations opened from a Safety incident, using 5-Whys, fishbone, timeline or SWOT\n- Job Safety Analyses (JSA) that break a task into steps, name the hazards and list the controls\n- Permits to work (hot work, confined space and the like) with their prerequisites and work window\n- Toolbox talks, PPE issue records, site safety audits with findings, and corrective/preventive actions\n\n**You get out:**\n- A KPI strip across the top: open investigations, overdue CAPAs, active permits and days since the last lost-time incident\n- JSAs and permits driven through real approval states, so nothing goes active without the right sign-off\n- A CAPA register that tracks every action to completion and flags anything overdue\n- An OSHA 300 incident log you can export to CSV for the required five-year retention\n\n**How it works day to day:**\n1. When a Safety incident needs more than a log entry, open an investigation and work the root cause.\n2. Before high-risk work starts, raise a JSA and walk it from draft through review and approval to active.\n3. Issue the permit to work, confirm its prerequisites, and suspend or close it as conditions change.\n4. Record toolbox talks and PPE issues, and run audits that generate findings.\n5. Turn findings into CAPAs, assign and verify them, and watch the KPI strip drive the overdue count to zero.\n\nThis page is the formal counterpart to the day-to-day Safety module: incidents and observations are captured there, and the serious ones are escalated here for investigation and corrective action. The days-since-LTI figure is computed from the same safety data, so both views stay in agreement.',
+            })}
+          />
+        }
         links={[
           {
             label: t('hse_advanced.intro_link_safety', { defaultValue: 'Safety' }),
