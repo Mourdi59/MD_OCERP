@@ -305,6 +305,55 @@ export interface ClashCluster {
   storey: number | null;
 }
 
+/** Where a clash group can be turned into a tracked work item. */
+export type ClashActionTarget = 'punchlist' | 'task';
+
+/** AI-augmented draft for turning a clash cluster into a work item. The
+ *  engine proposes; the coordinator reviews + confirms (AI proposes, human
+ *  confirms). `confidence` (0..1) is advisory only - the UI shows it as a
+ *  chip and never auto-applies a weak guess. */
+export interface ClashGroupActionProposal {
+  cluster_id: number;
+  target: ClashActionTarget;
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  suggested_assignee: string | null;
+  member_count: number;
+  dominant_disciplines: string[];
+  storey: number | null;
+  max_severity: ClashSeverity | null;
+  confidence: number;
+  /** True when this group already produced a linked work item; the UI then
+   *  disables the confirm button and points at the existing one. */
+  already_linked: boolean;
+  existing_action_id: string | null;
+  existing_action_target: ClashActionTarget | null;
+}
+
+/** Coordinator's confirmation body. Every field is optional and overrides
+ *  the matching value from the proposal. */
+export interface ClashGroupActionBody {
+  target: ClashActionTarget;
+  title?: string;
+  description?: string;
+  priority?: 'low' | 'medium' | 'high' | 'critical';
+  assigned_to?: string | null;
+  due_date?: string | null;
+  advance_status?: boolean;
+}
+
+/** Result of creating a work item from a clash cluster. `created` is false
+ *  (idempotent no-op) when the group already had a linked item. */
+export interface ClashGroupActionResult {
+  created: boolean;
+  action_id: string;
+  action_target: ClashActionTarget;
+  cluster_id: number;
+  results_linked: number;
+  results_advanced: number;
+}
+
 /** Wave A4 — one per-discipline-pair tolerance override on a run. */
 export interface ClashRule {
   id: string;
@@ -738,6 +787,33 @@ export const clashApi = {
   listClusters: (projectId: string, runId: string) =>
     apiGet<ClashCluster[]>(
       `/v1/clash/projects/${projectId}/runs/${runId}/clusters`,
+    ),
+
+  /** AI-augmented draft for turning a clash cluster into a work item.
+   *  The coordinator reviews + confirms via `createClusterAction`. */
+  clusterActionProposal: (
+    projectId: string,
+    runId: string,
+    clusterId: number,
+    target: ClashActionTarget = 'punchlist',
+  ) => {
+    const q = new URLSearchParams({ target });
+    return apiGet<ClashGroupActionProposal>(
+      `/v1/clash/projects/${projectId}/runs/${runId}/clusters/${clusterId}/action-proposal?${q.toString()}`,
+    );
+  },
+
+  /** Create one punch item / task from a clash cluster, with link-back.
+   *  Idempotent: a group with an existing item returns `created=false`. */
+  createClusterAction: (
+    projectId: string,
+    runId: string,
+    clusterId: number,
+    body: ClashGroupActionBody,
+  ) =>
+    apiPost<ClashGroupActionResult, ClashGroupActionBody>(
+      `/v1/clash/projects/${projectId}/runs/${runId}/clusters/${clusterId}/action`,
+      body,
     ),
 
   /** Wave A4 — engine-mined rule proposals from the run's FP history.

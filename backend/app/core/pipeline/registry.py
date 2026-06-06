@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # A node runner receives the executor-built node context and returns a small
 # JSON envelope (IDs + previews, never the big payload - §3.2 hard rule 1).
-NodeRunner = Callable[["NodeContext"], Awaitable[dict[str, Any]]]
+type NodeRunner = Callable[["NodeContext"], Awaitable[dict[str, Any]]]
 
 
 @dataclass

@@ -12,6 +12,7 @@ import fnmatch
 import logging
 import shutil
 import uuid
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
@@ -54,10 +55,16 @@ from app.modules.bim_hub.schemas import (
     BIMQuantityMapUpdate,
     BOQElementLinkCreate,
     FederationCreate,
+    FederationDiffResponse,
     FederationFullResponse,
+    FederationHealthResponse,
+    FederationMemberHealth,
     FederationModelAdd,
     FederationModelResponse,
     FederationResponse,
+    FederationSnapshot,
+    FederationSnapshotMember,
+    FederationSnapshotMemberDelta,
     FederationTypeTreeClass,
     FederationTypeTreeMember,
     FederationTypeTreeResponse,
@@ -105,6 +112,242 @@ def _humanise_ifc_class(ifc_class: str) -> str:
             out_chars.append(" ")
         out_chars.append(ch)
     return "".join(out_chars)
+
+
+# ── Federation health helpers (v7.x) ────────────────────────────────────────
+#
+# Pure, side-effect-free classification so the logic is unit-testable
+# without a DB. ``BIMModel`` rows are passed in already-resolved.
+
+# A ready, non-empty member is "stale" when its last update lags the
+# freshest member of the federation by more than this many days. Tuned to
+# a fortnight: a coordination set that re-uploads one discipline but not
+# the others within two weeks is the classic stale-member scenario.
+FEDERATION_STALENESS_THRESHOLD_DAYS = 14
+
+# Statuses we treat as a successful conversion. Anything else that is not
+# an explicit failure is treated as still-processing.
+_READY_MODEL_STATUSES = frozenset({"ready", "complete", "completed", "done"})
+_FAILED_MODEL_STATUSES = frozenset({"failed", "error", "errored"})
+
+
+def _classify_federation_member(
+    *,
+    member_id: uuid.UUID,
+    bim_model_id: uuid.UUID,
+    discipline: str,
+    model: BIMModel | None,
+    newest_update: datetime | None,
+) -> FederationMemberHealth:
+    """Classify a single federation member into a health state.
+
+    Pure function - takes the already-resolved ``BIMModel`` (or ``None``
+    when the link dangles) and the federation's freshest update time, and
+    returns the member's health report. The ordering of checks is the
+    severity ladder: missing > failed > processing > empty > stale > ready.
+    """
+    if model is None:
+        return FederationMemberHealth(
+            member_id=member_id,
+            bim_model_id=bim_model_id,
+            model_name=f"model-{str(bim_model_id)[:8]}",
+            discipline=discipline,
+            state="missing",
+            model_status=None,
+            element_count=0,
+            last_updated=None,
+            staleness_days=None,
+            warnings=["model_deleted"],
+        )
+
+    status_norm = (model.status or "").strip().lower()
+    last_updated = model.updated_at
+    staleness_days: int | None = None
+    if last_updated is not None and newest_update is not None:
+        staleness_days = max(0, (newest_update - last_updated).days)
+
+    if status_norm in _FAILED_MODEL_STATUSES:
+        return FederationMemberHealth(
+            member_id=member_id,
+            bim_model_id=bim_model_id,
+            model_name=model.name,
+            discipline=discipline,
+            state="failed",
+            model_status=model.status,
+            element_count=model.element_count,
+            last_updated=last_updated,
+            staleness_days=staleness_days,
+            warnings=["conversion_failed"],
+        )
+
+    if status_norm not in _READY_MODEL_STATUSES:
+        return FederationMemberHealth(
+            member_id=member_id,
+            bim_model_id=bim_model_id,
+            model_name=model.name,
+            discipline=discipline,
+            state="processing",
+            model_status=model.status,
+            element_count=model.element_count,
+            last_updated=last_updated,
+            staleness_days=staleness_days,
+            warnings=["still_processing"],
+        )
+
+    if model.element_count <= 0:
+        return FederationMemberHealth(
+            member_id=member_id,
+            bim_model_id=bim_model_id,
+            model_name=model.name,
+            discipline=discipline,
+            state="empty",
+            model_status=model.status,
+            element_count=0,
+            last_updated=last_updated,
+            staleness_days=staleness_days,
+            warnings=["no_elements"],
+        )
+
+    if staleness_days is not None and staleness_days > FEDERATION_STALENESS_THRESHOLD_DAYS:
+        return FederationMemberHealth(
+            member_id=member_id,
+            bim_model_id=bim_model_id,
+            model_name=model.name,
+            discipline=discipline,
+            state="stale",
+            model_status=model.status,
+            element_count=model.element_count,
+            last_updated=last_updated,
+            staleness_days=staleness_days,
+            warnings=["stale_relative_to_set"],
+        )
+
+    return FederationMemberHealth(
+        member_id=member_id,
+        bim_model_id=bim_model_id,
+        model_name=model.name,
+        discipline=discipline,
+        state="ready",
+        model_status=model.status,
+        element_count=model.element_count,
+        last_updated=last_updated,
+        staleness_days=staleness_days,
+        warnings=[],
+    )
+
+
+# Severity ladder for the federation's headline state - the worst member
+# wins. Index 0 is best.
+_HEALTH_SEVERITY_ORDER: list[str] = [
+    "ready",
+    "stale",
+    "empty",
+    "processing",
+    "failed",
+    "missing",
+]
+
+
+def _aggregate_federation_health(
+    federation_id: uuid.UUID,
+    members: list[FederationMemberHealth],
+    spread_days: int | None,
+) -> FederationHealthResponse:
+    """Roll member reports up into a federation-level health summary.
+
+    Pure function so the aggregation (counts, score, worst-state) is
+    testable without touching the DB.
+    """
+    counts: dict[str, int] = dict.fromkeys(_HEALTH_SEVERITY_ORDER, 0)
+    for m in members:
+        counts[m.state] = counts.get(m.state, 0) + 1
+    total = len(members)
+    ready = counts.get("ready", 0)
+    score = round(ready / total, 2) if total else 0.0
+    # Worst (= highest-severity) state present is the headline; an empty
+    # member set has no worst state, so it reports ``no_members``.
+    overall: str = "no_members" if total == 0 else "ready"
+    for state in reversed(_HEALTH_SEVERITY_ORDER):
+        if counts.get(state, 0) > 0:
+            overall = state
+            break
+    return FederationHealthResponse(
+        federation_id=federation_id,
+        member_count=total,
+        ready_count=ready,
+        processing_count=counts.get("processing", 0),
+        failed_count=counts.get("failed", 0),
+        stale_count=counts.get("stale", 0),
+        missing_count=counts.get("missing", 0),
+        empty_count=counts.get("empty", 0),
+        total_elements=sum(m.element_count for m in members),
+        overall_state=overall,  # type: ignore[arg-type]
+        score=score,
+        spread_days=spread_days,
+        members=members,
+    )
+
+
+def diff_federation_snapshots(
+    federation_id: uuid.UUID,
+    old: FederationSnapshot,
+    new: FederationSnapshot,
+) -> FederationDiffResponse:
+    """Pure three-way diff between two federation snapshots.
+
+    Bucketing is by ``bim_model_id``:
+
+    * present only in ``new`` -> ``added``
+    * present only in ``old`` -> ``removed``
+    * present in both, element_count differs -> ``changed``
+    * present in both, element_count identical -> ``unchanged``
+
+    Side-effect free and DB-free so it can be unit-tested directly.
+    """
+    old_by_id = {m.bim_model_id: m for m in old.members}
+    new_by_id = {m.bim_model_id: m for m in new.members}
+
+    added = [m for mid, m in new_by_id.items() if mid not in old_by_id]
+    removed = [m for mid, m in old_by_id.items() if mid not in new_by_id]
+
+    changed: list[FederationSnapshotMemberDelta] = []
+    unchanged: list[FederationSnapshotMember] = []
+    for mid, new_m in new_by_id.items():
+        old_m = old_by_id.get(mid)
+        if old_m is None:
+            continue
+        if new_m.element_count != old_m.element_count:
+            changed.append(
+                FederationSnapshotMemberDelta(
+                    bim_model_id=mid,
+                    model_name=new_m.model_name,
+                    discipline=new_m.discipline,
+                    element_count_delta=new_m.element_count - old_m.element_count,
+                    old_element_count=old_m.element_count,
+                    new_element_count=new_m.element_count,
+                )
+            )
+        else:
+            unchanged.append(new_m)
+
+    # Stable ordering for deterministic UI + snapshot tests.
+    added.sort(key=lambda m: (m.discipline, m.model_name))
+    removed.sort(key=lambda m: (m.discipline, m.model_name))
+    changed.sort(key=lambda d: (-abs(d.element_count_delta), d.model_name))
+    unchanged.sort(key=lambda m: (m.discipline, m.model_name))
+
+    total_drift = new.total_elements - old.total_elements
+
+    return FederationDiffResponse(
+        federation_id=federation_id,
+        old_captured_at=old.captured_at,
+        new_captured_at=new.captured_at,
+        added=added,
+        removed=removed,
+        changed=changed,
+        unchanged=unchanged,
+        total_element_drift=total_drift,
+    )
 
 
 def _safe_float(value: Any) -> float | None:
@@ -1929,6 +2172,11 @@ class BIMHubService:
         # preview can show *why* a population is smaller than expected
         # instead of silently dropping rows.
         per_rule_matches: dict[uuid.UUID, list[tuple[BIMElement, Decimal, Decimal]]] = {}
+        # Per-rule count of elements that matched the filter but yielded no
+        # usable quantity. Combined with the match count it gives a match
+        # quality ratio we stamp onto the auto-created Position as a
+        # confidence score (AI-augmented, human-confirmed provenance).
+        per_rule_skips: dict[uuid.UUID, int] = {}
         results: list[dict[str, Any]] = []
         skipped: list[dict[str, Any]] = []
         matched_element_ids: set[uuid.UUID] = set()
@@ -1940,6 +2188,7 @@ class BIMHubService:
 
                 qty = self._extract_quantity(element, rule.quantity_source)
                 if qty is None:
+                    per_rule_skips[rule.id] = per_rule_skips.get(rule.id, 0) + 1
                     skipped.append(
                         {
                             "element_id": str(element.id),
@@ -1959,6 +2208,7 @@ class BIMHubService:
                     waste_pct = Decimal(rule.waste_factor_pct or "0")
                     adjusted = qty * multiplier * (Decimal("1") + waste_pct / Decimal("100"))
                 except (InvalidOperation, ValueError) as exc:
+                    per_rule_skips[rule.id] = per_rule_skips.get(rule.id, 0) + 1
                     skipped.append(
                         {
                             "element_id": str(element.id),
@@ -2008,12 +2258,17 @@ class BIMHubService:
                 if rule is None or not matches:
                     continue
 
+                confidence = self._match_quality_confidence(
+                    matched=len(matches),
+                    skipped=per_rule_skips.get(rule_id, 0),
+                )
                 try:
                     async with self.session.begin_nested():
                         created_links, created_positions = await self._persist_rule_matches(
                             rule=rule,
                             model=model,
                             matches=matches,
+                            confidence=confidence,
                         )
                         links_created += created_links
                         positions_created += created_positions
@@ -2069,11 +2324,15 @@ class BIMHubService:
         rule: BIMQuantityMap,
         model: BIMModel,
         matches: list[tuple[BIMElement, Decimal, Decimal]],
+        confidence: str | None = None,
     ) -> tuple[int, int]:
         """Create BOQElementLink (and optionally a Position) for one rule.
 
         Called from ``apply_quantity_maps`` inside a savepoint. Returns
         ``(links_created, positions_created)``.
+
+        ``confidence`` is the rule's match-quality bucket (``high`` / ``medium``
+        / ``low``); it is stamped onto an auto-created Position as provenance.
         """
         if not matches:
             return 0, 0
@@ -2102,6 +2361,7 @@ class BIMHubService:
                 rule=rule,
                 project_id=model.project_id,
                 matches=matches,
+                confidence=confidence,
             )
             if position is None:
                 return 0, 0
@@ -2187,6 +2447,7 @@ class BIMHubService:
         rule: BIMQuantityMap,
         project_id: uuid.UUID,
         matches: list[tuple[BIMElement, Decimal, Decimal]],
+        confidence: str | None = None,
     ) -> Position | None:
         """Insert a new Position in the project's first/default BOQ.
 
@@ -2194,6 +2455,10 @@ class BIMHubService:
         rule. Unit = rule.unit (fallback "pcs"). Classification is lifted
         from ``rule.metadata_["classification"]`` when present.
         Returns ``None`` if the project has no BOQ to attach to.
+
+        ``source`` is always ``"cad_import"`` (the position is derived from a
+        BIM model) and ``confidence`` carries the rule's match-quality bucket so
+        the estimator can audit how trustworthy the auto-generated quantity is.
         """
         # Find the project's first BOQ (oldest created_at, same as
         # ``BOQRepository.list_for_project`` order inverted).
@@ -2294,10 +2559,13 @@ class BIMHubService:
             total=str(line_total),
             classification=classification,
             source="cad_import",
-            confidence=None,
+            confidence=confidence,
             cad_element_ids=[],
             validation_status="pending",
-            metadata_={"auto_created_by_rule": str(rule.id)},
+            metadata_={
+                "auto_created_by_rule": str(rule.id),
+                "match_confidence": confidence,
+            },
             sort_order=max_order + 1,
         )
         self.session.add(position)
@@ -2471,6 +2739,32 @@ class BIMHubService:
         # via string coercion.  This handles e.g. ``actual=42`` against
         # ``expected="42"`` and ``actual=True`` against ``expected="true"``.
         return str(actual).lower() == str(expected).lower()
+
+    @staticmethod
+    def _match_quality_confidence(*, matched: int, skipped: int) -> str | None:
+        """Derive a confidence bucket from a rule's match quality.
+
+        The signal is the share of elements selected by the rule's filter that
+        actually produced a usable quantity (``matched`` of ``matched + skipped``).
+        A rule that selected many elements but dropped most of them for missing
+        properties is low-confidence, so the auto-created BOQ position is stamped
+        accordingly and the estimator knows to look harder before pricing it.
+
+        Mirrors the frontend ``draftConfidence`` thresholds so the sandbox
+        preview and the persisted provenance agree.
+
+        Returns ``"high"`` / ``"medium"`` / ``"low"``, or ``None`` when there is
+        nothing to score.
+        """
+        considered = matched + skipped
+        if considered == 0:
+            return None
+        ratio = matched / considered
+        if ratio >= 0.9:
+            return "high"
+        if ratio >= 0.6:
+            return "medium"
+        return "low"
 
     @staticmethod
     def _extract_quantity(element: BIMElement, source: str) -> Decimal | None:
@@ -3474,3 +3768,131 @@ class BIMHubService:
             total_elements=total_elements,
             classes=classes_payload,
         )
+
+    # ── Federation Health (v7.x) ─────────────────────────────────────────────
+
+    async def compute_federation_health(
+        self,
+        federation_id: uuid.UUID,
+    ) -> FederationHealthResponse:
+        """Classify every member model into a readiness state.
+
+        Resolves each member's underlying ``BIMModel`` and buckets it:
+
+        * ``missing``    - the link points at a model row that no longer
+          exists (dangling reference after the model was deleted).
+        * ``failed``     - the model's conversion pipeline reported failure.
+        * ``processing`` - the model is still importing / converting.
+        * ``empty``      - the model is ready but extracted zero elements.
+        * ``stale``      - the model is ready and non-empty but was last
+          updated noticeably earlier than the freshest member (a likely
+          superseded discipline that was never re-uploaded).
+        * ``ready``      - the model is ready, non-empty, and fresh.
+
+        The report is a pure read-only computation; nothing is persisted.
+        Empty federations return a well-formed ``no_members`` report
+        (``score=0.0``) rather than raising.
+        """
+        federation = await self.get_federation(federation_id)
+        members = list(federation.members or [])
+        if not members:
+            return FederationHealthResponse(
+                federation_id=federation_id,
+                overall_state="no_members",
+            )
+
+        # Batch-resolve the underlying model rows so we never N+1.
+        member_model_ids = [m.bim_model_id for m in members]
+        model_rows = (
+            (await self.session.execute(select(BIMModel).where(BIMModel.id.in_(member_model_ids)))).scalars().all()
+        )
+        models_by_id = {row.id: row for row in model_rows}
+
+        # The "freshest" member anchors staleness: any ready+non-empty
+        # member that lags the freshest by more than the threshold is stale.
+        ready_update_times = [
+            models_by_id[m.bim_model_id].updated_at
+            for m in members
+            if m.bim_model_id in models_by_id and models_by_id[m.bim_model_id].updated_at is not None
+        ]
+        newest = max(ready_update_times) if ready_update_times else None
+        oldest = min(ready_update_times) if ready_update_times else None
+        spread_days = (newest - oldest).days if (newest and oldest) else None
+
+        member_reports: list[FederationMemberHealth] = []
+        for member in members:
+            model = models_by_id.get(member.bim_model_id)
+            discipline = member.discipline or (model.discipline if model else None) or "other"
+            report = _classify_federation_member(
+                member_id=member.id,
+                bim_model_id=member.bim_model_id,
+                discipline=discipline,
+                model=model,
+                newest_update=newest,
+            )
+            member_reports.append(report)
+
+        return _aggregate_federation_health(federation_id, member_reports, spread_days)
+
+    # ── Federation Snapshot & Diff (v7.x) ────────────────────────────────────
+
+    async def capture_federation_snapshot(
+        self,
+        federation_id: uuid.UUID,
+    ) -> FederationSnapshot:
+        """Build a portable, storage-free composition fingerprint.
+
+        Captures the current member set with each member's discipline,
+        resolved model name, version, and live element count. The FE
+        exports this as JSON and can upload an older one later to diff
+        against ``capture_federation_snapshot`` taken at compare time.
+        """
+        federation = await self.get_federation(federation_id)
+        members = list(federation.members or [])
+        snapshot_members: list[FederationSnapshotMember] = []
+        total_elements = 0
+        if members:
+            member_model_ids = [m.bim_model_id for m in members]
+            model_rows = (
+                (await self.session.execute(select(BIMModel).where(BIMModel.id.in_(member_model_ids)))).scalars().all()
+            )
+            models_by_id = {row.id: row for row in model_rows}
+            for member in sorted(members, key=lambda m: (m.z_order, m.created_at)):
+                model = models_by_id.get(member.bim_model_id)
+                element_count = model.element_count if model else 0
+                total_elements += element_count
+                snapshot_members.append(
+                    FederationSnapshotMember(
+                        bim_model_id=member.bim_model_id,
+                        model_name=(model.name if model else f"model-{str(member.bim_model_id)[:8]}"),
+                        discipline=member.discipline or (model.discipline if model else None) or "other",
+                        element_count=element_count,
+                        version=(model.version if model else None),
+                    )
+                )
+
+        return FederationSnapshot(
+            schema_version="1",
+            federation_id=federation_id,
+            name=federation.name,
+            captured_at=datetime.now(UTC),
+            member_count=len(snapshot_members),
+            total_elements=total_elements,
+            members=snapshot_members,
+        )
+
+    async def diff_federation_snapshot(
+        self,
+        federation_id: uuid.UUID,
+        old_snapshot: FederationSnapshot,
+    ) -> FederationDiffResponse:
+        """Diff a caller-supplied prior snapshot against the live state.
+
+        The "new" side is captured live at request time so the diff always
+        reflects reality, never a second stale upload. Bucketing is by
+        ``bim_model_id``: present-in-both => changed/unchanged (by element
+        count), new-only => added, old-only => removed.
+        """
+        # Touch the federation so a missing/foreign id 404s consistently.
+        new_snapshot = await self.capture_federation_snapshot(federation_id)
+        return diff_federation_snapshots(federation_id, old_snapshot, new_snapshot)

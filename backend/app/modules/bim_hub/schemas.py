@@ -1066,3 +1066,144 @@ class FederationTypeTreeResponse(BaseModel):
     federation_id: UUID
     total_elements: int = 0
     classes: list[FederationTypeTreeClass] = Field(default_factory=list)
+
+
+# ── Federation Health (v7.x) ───────────────────────────────────────────────
+#
+# A federation is only as trustworthy as its weakest member. The health
+# report walks every member link, resolves the underlying BIM model, and
+# classifies each one so the coordinator sees at a glance which models are
+# ready to compose, which are still processing, which failed conversion,
+# which are stale relative to the rest of the set, and which point at a
+# model row that no longer exists (a dangling link). The report is a pure
+# read-only computation - it persists nothing.
+
+FederationMemberHealthState = Literal[
+    "ready",
+    "processing",
+    "failed",
+    "stale",
+    "missing",
+    "empty",
+]
+
+
+class FederationMemberHealth(BaseModel):
+    """Health classification for one federation member."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    member_id: UUID
+    bim_model_id: UUID
+    model_name: str
+    discipline: str
+    state: FederationMemberHealthState
+    # Raw ``BIMModel.status`` (``ready`` / ``processing`` / ``failed`` /
+    # ``None`` when the model row is gone).
+    model_status: str | None = None
+    element_count: int = 0
+    # ISO-8601 string of the model's last update, or ``None`` when missing.
+    last_updated: datetime | None = None
+    # Days between this member's last update and the freshest member in the
+    # federation. ``None`` when not computable (missing model / single member).
+    staleness_days: int | None = None
+    # Human-free, machine-readable reason codes for any warning. The FE
+    # translates each code; we never emit prose here.
+    warnings: list[str] = Field(default_factory=list)
+
+
+class FederationHealthResponse(BaseModel):
+    """Aggregated health report for a whole federation.
+
+    ``score`` is a 0..1 readiness ratio (ready members / total members),
+    rounded to two decimals. An empty federation scores ``0.0`` with an
+    explicit ``no_members`` reason so the UI never divides by zero.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    federation_id: UUID
+    member_count: int = 0
+    ready_count: int = 0
+    processing_count: int = 0
+    failed_count: int = 0
+    stale_count: int = 0
+    missing_count: int = 0
+    empty_count: int = 0
+    total_elements: int = 0
+    # Worst single state across all members, surfaced as the federation's
+    # headline status (``ready`` only when every member is ready).
+    overall_state: FederationMemberHealthState | Literal["no_members"] = "no_members"
+    score: float = 0.0
+    # Number of days the freshest and stalest members differ by; ``0`` for
+    # uniform sets, ``None`` when fewer than two datable members exist.
+    spread_days: int | None = None
+    members: list[FederationMemberHealth] = Field(default_factory=list)
+
+
+# ── Federation Snapshot & Diff (v7.x) ──────────────────────────────────────
+#
+# A snapshot is a portable, point-in-time fingerprint of a federation's
+# composition (which models, which disciplines, how many elements each).
+# It is deliberately storage-free: the FE downloads the JSON and can later
+# upload an older one to diff against the current live state. This gives
+# "what changed since the last coordination round" without a new table.
+
+
+class FederationSnapshotMember(BaseModel):
+    """One member's fingerprint inside a snapshot."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    bim_model_id: UUID
+    model_name: str
+    discipline: str
+    element_count: int = 0
+    version: str | None = None
+
+
+class FederationSnapshot(BaseModel):
+    """Portable composition fingerprint of a federation at a point in time."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    schema_version: Literal["1"] = "1"
+    federation_id: UUID
+    name: str
+    captured_at: datetime
+    member_count: int = 0
+    total_elements: int = 0
+    members: list[FederationSnapshotMember] = Field(default_factory=list)
+
+
+class FederationSnapshotMemberDelta(BaseModel):
+    """How a single member changed between two snapshots."""
+
+    bim_model_id: UUID
+    model_name: str
+    discipline: str
+    # Element-count change (new - old); ``0`` for members present in both
+    # with no drift. Positive = grew, negative = shrank.
+    element_count_delta: int = 0
+    old_element_count: int = 0
+    new_element_count: int = 0
+
+
+class FederationDiffResponse(BaseModel):
+    """Structured diff between two federation snapshots.
+
+    The "old" snapshot is supplied by the caller (an exported file); the
+    "new" snapshot is captured live at request time. Members are bucketed
+    into added / removed / changed / unchanged so the UI can render a
+    classic three-way diff.
+    """
+
+    federation_id: UUID
+    old_captured_at: datetime
+    new_captured_at: datetime
+    added: list[FederationSnapshotMember] = Field(default_factory=list)
+    removed: list[FederationSnapshotMember] = Field(default_factory=list)
+    changed: list[FederationSnapshotMemberDelta] = Field(default_factory=list)
+    unchanged: list[FederationSnapshotMember] = Field(default_factory=list)
+    # Net element-count drift across the whole federation.
+    total_element_drift: int = 0

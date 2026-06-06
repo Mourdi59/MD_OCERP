@@ -67,6 +67,7 @@ from app.modules.clash.models import (
 )
 from app.modules.clash.repository import ClashRepository
 from app.modules.clash.schemas import (
+    CLASH_ACTION_TARGETS,
     CLASH_GROUPING_DIMENSIONS,
     CLASH_ISSUE_STATUSES,
     CLASH_SEVERITIES,
@@ -649,6 +650,135 @@ def _dominant_pair_and_storey(
     if storey_counts:
         top_storey = max(storey_counts, key=lambda s: (storey_counts[s], -s))
     return top_pair, top_storey
+
+
+# Worst-first ordering for picking a cluster's headline severity. Mirrors
+# :data:`CLASH_SEVERITIES` (index 0 = worst). Kept local so the proposal
+# helper stays a pure function with no schema import at call time.
+_SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+# Clash severity → work-item priority. The punchlist / task priority
+# vocabularies both accept these four bands, so the mapping is 1:1; a
+# missing / unknown severity degrades to ``medium`` (never blocks).
+_SEVERITY_TO_PRIORITY = {
+    "critical": "critical",
+    "high": "high",
+    "medium": "medium",
+    "low": "low",
+}
+
+
+def _max_severity(members: list[ClashResult]) -> str | None:
+    """Return the worst (highest-rank) severity across a cluster, or None.
+
+    ``None`` only when ``members`` is empty - every result row carries a
+    server-defaulted ``severity`` so a non-empty cluster always resolves
+    one. Pure function over the rows.
+    """
+    if not members:
+        return None
+    worst = "low"
+    worst_rank = _SEVERITY_RANK["low"]
+    for m in members:
+        raw = (getattr(m, "severity", "") or "medium").strip() or "medium"
+        # Coerce an unknown band to ``medium`` so we never surface a stray
+        # raw string (e.g. a typo'd severity) as the cluster's headline.
+        sev = raw if raw in _SEVERITY_RANK else "medium"
+        rank = _SEVERITY_RANK[sev]
+        if rank < worst_rank:
+            worst_rank = rank
+            worst = sev
+    return worst
+
+
+def _build_cluster_action_proposal(
+    cluster_id: int,
+    members: list[ClashResult],
+    label: str,
+    target: str,
+) -> dict:
+    """Draft an AI-augmented work-item proposal from a cluster's members.
+
+    Pure heuristic - **no LLM call**. Derives a readable title, a body that
+    lists the dominant interference and a sample of element pairs, a
+    priority (mapped from the cluster's worst severity), a suggested
+    assignee (the most-common assignee already on the member rows, if any)
+    and a ``confidence`` score.
+
+    Confidence rewards a cluster that is easy for a coordinator to action:
+    a single dominant discipline pair, a resolved storey and a clear worst
+    severity push it up; a tiny or geometrically scattered cluster pulls it
+    down. The score is advisory only - the human still confirms (and may
+    edit every field) before anything is created.
+
+    Returns a plain dict matching :class:`ClashGroupActionProposal`.
+    """
+    (disc_a, disc_b), storey = _dominant_pair_and_storey(members)
+    max_sev = _max_severity(members)
+    priority = _SEVERITY_TO_PRIORITY.get(max_sev or "medium", "medium")
+    n = len(members)
+
+    pair_label = label.strip() or (f"{disc_a} x {disc_b}" if disc_a or disc_b else f"Cluster {cluster_id}")
+    title = f"Coordinate clash group: {pair_label}"[:255]
+
+    # Most-common existing assignee across the members (carry the human's
+    # earlier triage forward as the default), else none.
+    assignee_counts: dict[str, int] = {}
+    for m in members:
+        a = (getattr(m, "assigned_to", "") or "").strip()
+        if a:
+            assignee_counts[a] = assignee_counts.get(a, 0) + 1
+    suggested_assignee = max(assignee_counts, key=lambda k: assignee_counts[k]) if assignee_counts else None
+
+    # Body: headline + up to five representative element pairs so the
+    # site team can find the interference without opening the model.
+    lines = [
+        f"Auto-drafted from a {n}-clash coordination group.",
+        f"Dominant interference: {disc_a or 'Unassigned'} vs {disc_b or 'Unassigned'}"
+        + (f" on Level {storey}" if storey is not None else ""),
+        f"Highest severity in group: {max_sev or 'medium'}.",
+        "",
+        "Representative element pairs:",
+    ]
+    for m in members[:5]:
+        a_name = (getattr(m, "a_name", "") or "?").strip() or "?"
+        b_name = (getattr(m, "b_name", "") or "?").strip() or "?"
+        ctype = (getattr(m, "clash_type", "") or "hard").strip() or "hard"
+        lines.append(f"- {a_name} vs {b_name} ({ctype})")
+    if n > 5:
+        lines.append(f"- ... and {n - 5} more")
+    description = "\n".join(lines)[:5000]
+
+    # ── Confidence: 0..1, advisory only ───────────────────────────────
+    confidence = 0.35
+    # A clear dominant pair (resolved disciplines, not Unassigned) is the
+    # single biggest signal that the group is coherent.
+    if disc_a and disc_b and disc_a != "Unassigned" and disc_b != "Unassigned":
+        confidence += 0.25
+    if storey is not None:
+        confidence += 0.15
+    if max_sev in ("critical", "high"):
+        confidence += 0.15
+    # Larger, denser clusters are more obviously worth one shared action.
+    if n >= 5:
+        confidence += 0.10
+    confidence = round(min(confidence, 1.0), 2)
+
+    return {
+        "cluster_id": int(cluster_id),
+        "target": target if target in CLASH_ACTION_TARGETS else "punchlist",
+        "title": title,
+        "description": description,
+        "priority": priority,
+        "suggested_assignee": suggested_assignee,
+        "member_count": n,
+        "dominant_disciplines": [d for d in (disc_a, disc_b) if d],
+        "storey": storey,
+        "max_severity": max_sev,
+        "confidence": confidence,
+        "already_linked": False,
+        "existing_action_id": None,
+        "existing_action_target": None,
+    }
 
 
 def _resolved_mttr_hours(rows: list[ClashResult]) -> float | None:
@@ -2530,6 +2660,251 @@ class ClashService:
                 }
             )
         return out
+
+    async def _cluster_members(self, run_id: uuid.UUID, cluster_id: int) -> list[ClashResult]:
+        """Every result row stamped with ``cluster_id`` inside this run.
+
+        Single in-memory filter over the run's rows (cluster sizes are
+        small and bounded by the DBSCAN cap), so no per-cluster query.
+        """
+        rows = await self.repo.all_results(run_id)
+        return [r for r in rows if getattr(r, "cluster_id", None) is not None and int(r.cluster_id) == int(cluster_id)]
+
+    @staticmethod
+    def _existing_action_link(members: list[ClashResult]) -> dict | None:
+        """Return the first ``meta['linked_action']`` found on the members.
+
+        The cluster→work-item link is stamped onto every member's ``meta``
+        JSONB (there is no dedicated column / table), so any one member
+        carrying a link means the whole group was already actioned. Used to
+        keep :meth:`create_action_from_cluster` idempotent.
+        """
+        for m in members:
+            link = (getattr(m, "meta", None) or {}).get("linked_action")
+            if isinstance(link, dict) and link.get("action_id"):
+                return link
+        return None
+
+    async def propose_cluster_action(
+        self,
+        project_id: uuid.UUID,
+        run_id: uuid.UUID,
+        cluster_id: int,
+        target: str = "punchlist",
+    ) -> dict:
+        """AI-augmented draft for turning a clash cluster into a work item.
+
+        IDOR-guarded via :meth:`get_run`. Raises 404 when the cluster has no
+        members (unknown id / pre-clustering run). The returned dict matches
+        :class:`ClashGroupActionProposal`; the engine only *proposes* - the
+        coordinator reviews and confirms via :meth:`create_action_from_cluster`.
+        When the group already has a linked work item the proposal carries
+        ``already_linked=True`` + the existing id so the UI can disable the
+        confirm button instead of spawning a duplicate.
+        """
+        await self.get_run(project_id, run_id)
+        if target not in CLASH_ACTION_TARGETS:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Unknown action target '{target}' (expected one of {', '.join(CLASH_ACTION_TARGETS)})",
+            )
+        members = await self._cluster_members(run_id, cluster_id)
+        if not members:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clash cluster not found")
+        clusters = await self.repo.clusters_for_run(run_id)
+        label = next((c.label for c in clusters if int(c.cluster_id) == int(cluster_id)), "")
+        proposal = _build_cluster_action_proposal(cluster_id, members, label or "", target)
+        existing = self._existing_action_link(members)
+        if existing is not None:
+            proposal["already_linked"] = True
+            proposal["existing_action_id"] = existing.get("action_id")
+            proposal["existing_action_target"] = existing.get("target")
+        return proposal
+
+    async def create_action_from_cluster(
+        self,
+        project_id: uuid.UUID,
+        run_id: uuid.UUID,
+        cluster_id: int,
+        *,
+        target: str = "punchlist",
+        title: str | None = None,
+        description: str | None = None,
+        priority: str | None = None,
+        assigned_to: str | None = None,
+        due_date: str | None = None,
+        advance_status: bool = True,
+        actor: str | None = None,
+    ) -> dict:
+        """Create one punch item / task from a clash cluster, with link-back.
+
+        Cross-module bridge (the human-confirmed half of the
+        ``clash.high_severity`` auto-bridge): instead of one item per clash,
+        a coordinator collapses a whole spatial cluster into a single tracked
+        work item. The new row carries a back-link to the run + cluster + the
+        representative clash result; every member clash gets the reverse link
+        stamped onto its ``meta`` JSONB plus an audit-history entry, and its
+        still-``new`` status optionally advances to ``reviewed`` so the board
+        reflects the human action.
+
+        Idempotent: if any member already carries ``meta['linked_action']``
+        the call is a no-op and returns ``created=False`` pointing at the
+        existing item. IDOR-guarded via :meth:`get_run`.
+        """
+        run = await self.get_run(project_id, run_id)
+        if target not in CLASH_ACTION_TARGETS:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Unknown action target '{target}' (expected one of {', '.join(CLASH_ACTION_TARGETS)})",
+            )
+        members = await self._cluster_members(run_id, cluster_id)
+        if not members:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clash cluster not found")
+
+        # ── Idempotency: never spawn a second item for one group ──────────
+        existing = self._existing_action_link(members)
+        if existing is not None:
+            return {
+                "created": False,
+                "action_id": str(existing.get("action_id")),
+                "action_target": str(existing.get("target") or target),
+                "cluster_id": int(cluster_id),
+                "results_linked": 0,
+                "results_advanced": 0,
+            }
+
+        clusters = await self.repo.clusters_for_run(run_id)
+        label = next((c.label for c in clusters if int(c.cluster_id) == int(cluster_id)), "")
+        proposal = _build_cluster_action_proposal(cluster_id, members, label or "", target)
+        # Human overrides win over the AI draft, field by field.
+        final_title = (title or proposal["title"]).strip()[:255] or proposal["title"]
+        final_desc = (description if description is not None else proposal["description"])[:5000]
+        final_priority = priority or proposal["priority"]
+        final_assignee = assigned_to if assigned_to is not None else proposal["suggested_assignee"]
+        actor_id = str(actor or "system")
+        representative = members[0]
+        member_result_ids = [str(m.id) for m in members]
+        member_element_ids = list(
+            dict.fromkeys(
+                [str(getattr(m, "a_element_id", "")) for m in members]
+                + [str(getattr(m, "b_element_id", "")) for m in members]
+            )
+        )
+        shared_meta = {
+            "source": "clash_cluster",
+            "clash_run_id": str(run_id),
+            "clash_cluster_id": int(cluster_id),
+            "clash_cluster_label": label or "",
+            "clash_result_ids": member_result_ids,
+            "clash_member_count": len(members),
+        }
+
+        # ── Create the work item in the target module ───────────────────
+        # A coordination assignee is usually a user UUID. The punchlist
+        # ``assigned_to`` column is a plain String(36) (accepts any value);
+        # the tasks ``responsible_id`` is a real GUID column, so only pass
+        # it there when it parses as a UUID - never crash on free text.
+        def _as_uuid_str(value: str | None) -> str | None:
+            if not value:
+                return None
+            try:
+                return str(uuid.UUID(str(value)))
+            except (ValueError, AttributeError, TypeError):
+                return None
+
+        # The request ``due_date`` is an ISO day string; the punchlist
+        # column is a datetime. Parse defensively - bad input → no deadline.
+        punch_due: datetime | None = None
+        if due_date and len(due_date) == 10:
+            try:
+                punch_due = datetime.fromisoformat(due_date)
+            except ValueError:
+                punch_due = None
+
+        action_id: str
+        if target == "punchlist":
+            from app.modules.punchlist.schemas import PunchItemCreate
+            from app.modules.punchlist.service import PunchListService
+
+            punch = await PunchListService(self.session).create_item(
+                PunchItemCreate(
+                    project_id=project_id,
+                    title=final_title,
+                    description=final_desc,
+                    priority=final_priority,
+                    assigned_to=final_assignee,
+                    due_date=punch_due,
+                    metadata=shared_meta,
+                ),
+                user_id=actor_id,
+            )
+            # Stamp the single-result back-link column so the existing
+            # per-clash idempotency guard in the punchlist event bridge
+            # also sees this group as already-handled for its lead member.
+            punch.clash_result_id = str(representative.id)
+            await self.session.flush()
+            action_id = str(punch.id)
+        else:  # target == "task"
+            from app.modules.tasks.schemas import TaskCreate
+            from app.modules.tasks.service import TaskService
+
+            # Task priority vocabulary is low|normal|high|urgent - remap the
+            # clash band so the create call validates.
+            task_priority = {
+                "low": "low",
+                "medium": "normal",
+                "high": "high",
+                "critical": "urgent",
+            }.get(final_priority, "normal")
+            task = await TaskService(self.session).create_task(
+                TaskCreate(
+                    project_id=project_id,
+                    task_type="coordination",
+                    title=final_title[:500],
+                    description=final_desc,
+                    responsible_id=_as_uuid_str(final_assignee),
+                    priority=task_priority,
+                    due_date=due_date if (due_date and len(due_date) == 10) else None,
+                    bim_element_ids=[e for e in member_element_ids if e][:200],
+                    metadata=shared_meta,
+                ),
+                user_id=actor_id,
+            )
+            action_id = str(task.id)
+
+        # ── Stamp the reverse link + audit trail onto every member ──────
+        link = {
+            "target": target,
+            "action_id": action_id,
+            "created_at": _now().isoformat(),
+            "actor": actor_id,
+        }
+        advanced = 0
+        for m in members:
+            meta = dict(getattr(m, "meta", None) or {})
+            meta["linked_action"] = link
+            m.meta = meta
+            self._append_history(m, actor_id, "linked_action", None, f"{target}:{action_id}")
+            if advance_status and m.status == "new":
+                self._append_history(m, actor_id, "status", m.status, "reviewed")
+                m.status = "reviewed"
+                advanced += 1
+        await self.session.flush()
+
+        # Refresh the cached status counts so the dashboard KPI stays true.
+        if advanced:
+            rows, _ = await self.repo.list_results(run_id, limit=_MAX_RESULTS)
+            run.summary = _build_summary(list(rows))
+            await self.session.flush()
+
+        return {
+            "created": True,
+            "action_id": action_id,
+            "action_target": target,
+            "cluster_id": int(cluster_id),
+            "results_linked": len(members),
+            "results_advanced": advanced,
+        }
 
     async def list_rules(self, project_id: uuid.UUID, run_id: uuid.UUID) -> list[dict]:
         """Return the run's persisted rule list (raw JSON-friendly dicts)."""

@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 
 # Handlers may be either sync or async - we await whichever they are.
-JobHandler = Callable[[JobRun, dict[str, Any]], Any]
+type JobHandler = Callable[[JobRun, dict[str, Any]], Any]
 
 
 # ── Handler registry ─────────────────────────────────────────────────────

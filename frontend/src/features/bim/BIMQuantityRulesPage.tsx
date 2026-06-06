@@ -51,6 +51,11 @@ import {
   Flame,
   Thermometer,
   Construction,
+  FlaskConical,
+  History,
+  RotateCcw,
+  ShieldAlert,
+  ListChecks,
   type LucideIcon,
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -85,6 +90,19 @@ import {
   CONSTRAINT_TYPE_LABELS,
   type ConstraintType,
 } from './bimConstants';
+import {
+  buildCoverageReport,
+  checkUnitSafety,
+  draftConfidence,
+  formulaSignature,
+  pushVersion,
+  readVersions,
+  runSandbox,
+  type RuleFormulaFields,
+  type RuleVersionSnapshot,
+  type SandboxElement,
+  type SandboxRunResult,
+} from './ruleSandbox';
 import {
   fetchRequirementSets,
   fetchRequirementSetDetail,
@@ -261,20 +279,23 @@ function toFormState(rule: BIMQuantityMap, boqPositionLookup: Map<string, string
   };
 }
 
+/** Context the payload builder needs to maintain the metadata-stored version
+ *  history when editing an existing rule. ``previousFields`` is the rule's
+ *  formula *before* this edit; ``baseMetadata`` is its current metadata bag so
+ *  we preserve unrelated keys. Omitted entirely on create. */
+interface VersionContext {
+  previousFields: RuleFormulaFields;
+  baseMetadata: Record<string, unknown>;
+  label?: string;
+}
+
 function buildPayload(
   form: RuleFormState,
   projectId: string | null,
+  versionCtx?: VersionContext,
 ): CreateBIMQuantityMapRequest {
-  const propertyFilter: Record<string, string> = {};
-  for (const row of form.property_filter) {
-    const k = row.key.trim();
-    if (!k) continue;
-    propertyFilter[k] = row.value;
-  }
-  const quantitySource =
-    form.quantity_source === 'custom'
-      ? form.custom_quantity_source.trim() || 'count'
-      : form.quantity_source;
+  const propertyFilter = propertyFilterMap(form.property_filter);
+  const quantitySource = effectiveQuantitySource(form);
 
   const boqTarget: QuantityMapTarget = {};
   if (form.target_kind === 'existing' && form.target_position_id) {
@@ -292,6 +313,22 @@ function buildPayload(
     }
   }
 
+  // Version history (metadata-only, no migration). When editing, snapshot the
+  // PREVIOUS formula into metadata.versions if it changed, so the user can
+  // restore an earlier formula later. On create there's no history yet.
+  let metadata: Record<string, unknown> = {};
+  if (versionCtx) {
+    metadata = { ...versionCtx.baseMetadata };
+    const nextFields = formToFormulaFields(form);
+    const changed = formulaSignature(nextFields) !== formulaSignature(versionCtx.previousFields);
+    if (changed) {
+      const existing = readVersions(versionCtx.baseMetadata);
+      metadata.versions = pushVersion(existing, versionCtx.previousFields, {
+        label: versionCtx.label,
+      });
+    }
+  }
+
   return {
     org_id: null,
     project_id: projectId,
@@ -305,11 +342,166 @@ function buildPayload(
     waste_factor_pct: form.waste_factor_pct.trim() || '0',
     boq_target: Object.keys(boqTarget).length > 0 ? boqTarget : null,
     is_active: form.is_active,
-    metadata: {},
+    metadata,
+  };
+}
+
+/** Collapse the editor's property rows into the flat key/value map the
+ *  sandbox + payload share. Blank keys are dropped. */
+function propertyFilterMap(rows: PropertyRow[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const row of rows) {
+    const k = row.key.trim();
+    if (!k) continue;
+    out[k] = row.value;
+  }
+  return out;
+}
+
+/** Resolve the effective quantity source from the form (custom falls back to
+ *  its free-text field, then to ``count``). */
+function effectiveQuantitySource(form: RuleFormState): string {
+  return form.quantity_source === 'custom'
+    ? form.custom_quantity_source.trim() || 'count'
+    : form.quantity_source;
+}
+
+/** The formula-bearing slice of the form, used for the sandbox, unit-safety
+ *  and version snapshots. */
+function formToFormulaFields(form: RuleFormState): RuleFormulaFields {
+  return {
+    element_type_filter: form.element_type_filter.trim(),
+    property_filter: propertyFilterMap(form.property_filter),
+    quantity_source: effectiveQuantitySource(form),
+    multiplier: form.multiplier.trim() || '1',
+    waste_factor_pct: form.waste_factor_pct.trim() || '0',
+    unit: form.unit.trim(),
   };
 }
 
 /* ── Rule editor modal ────────────────────────────────────────────────── */
+
+/* ── Sandbox result view ──────────────────────────────────────────────── */
+
+/** Confidence pill colour by bucket. */
+const CONFIDENCE_STYLES: Record<'high' | 'medium' | 'low', string> = {
+  high: 'border-emerald-400/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400',
+  medium: 'border-amber-400/50 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400',
+  low: 'border-red-400/50 bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400',
+};
+
+/** Renders the outcome of a sandbox dry-run: roll-up counters, a confidence
+ *  pill, the per-element quantity breakdown (first 25) and a skip note. */
+function SandboxResultView({ result, unit }: { result: SandboxRunResult; unit: string }) {
+  const { t } = useTranslation();
+  const { confidence, ratio } = draftConfidence(result);
+  const sample = result.matches.slice(0, 25);
+
+  if (result.matches.length === 0 && result.skips.length === 0) {
+    return (
+      <div className="mt-2 rounded-md border border-dashed border-border-light px-3 py-3 text-center text-[11px] text-content-tertiary">
+        {t('bim_rules.sandbox_no_match', {
+          defaultValue:
+            'No elements matched in the {{n}} scanned. Loosen the element type or property filter.',
+          n: result.scanned,
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-2.5">
+      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+        <span className="rounded-md bg-oe-blue/10 px-2 py-0.5 font-medium text-oe-blue">
+          {t('bim_rules.sandbox_matched', {
+            defaultValue: '{{n}} matched',
+            n: result.matches.length,
+          })}
+        </span>
+        {result.skips.length > 0 && (
+          <span className="rounded-md bg-amber-100 px-2 py-0.5 font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+            {t('bim_rules.sandbox_skipped', {
+              defaultValue: '{{n}} skipped (no quantity)',
+              n: result.skips.length,
+            })}
+          </span>
+        )}
+        <span className="rounded-md bg-surface-tertiary px-2 py-0.5 font-medium tabular-nums text-content-secondary">
+          {t('bim_rules.sandbox_total', {
+            defaultValue: 'Σ {{total}} {{unit}}',
+            total: result.totalAdjusted.toLocaleString(undefined, {
+              maximumFractionDigits: 3,
+            }),
+            unit: unit || '',
+          })}
+        </span>
+        <span
+          className={clsx(
+            'ml-auto rounded-md border px-2 py-0.5 font-medium',
+            CONFIDENCE_STYLES[confidence],
+          )}
+          title={t('bim_rules.sandbox_confidence_title', {
+            defaultValue:
+              'Share of matched elements that produced a usable quantity ({{pct}}%). Review low-confidence rules before saving.',
+            pct: Math.round(ratio * 100),
+          })}
+        >
+          {t('bim_rules.sandbox_confidence', {
+            defaultValue: 'Confidence: {{level}}',
+            level: t(`bim_rules.confidence_${confidence}`, { defaultValue: confidence }),
+          })}
+        </span>
+      </div>
+
+      <div className="max-h-44 overflow-y-auto rounded-md border border-border-light">
+        <table className="w-full text-left text-[10px]">
+          <thead className="sticky top-0 bg-surface-secondary text-content-secondary">
+            <tr>
+              <th className="px-2 py-1 font-medium">
+                {t('bim_rules.col_element_type', { defaultValue: 'Type' })}
+              </th>
+              <th className="px-2 py-1 font-medium">
+                {t('bim_rules.sandbox_col_name', { defaultValue: 'Name' })}
+              </th>
+              <th className="px-2 py-1 text-right font-medium">
+                {t('bim_rules.col_raw', { defaultValue: 'Raw' })}
+              </th>
+              <th className="px-2 py-1 text-right font-medium">
+                {t('bim_rules.col_adjusted', { defaultValue: 'Adjusted' })}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sample.map((m, idx) => (
+              <tr
+                key={`${m.element_id}-${idx}`}
+                className="border-t border-border-light text-content-primary"
+              >
+                <td className="truncate px-2 py-1">{m.element_type}</td>
+                <td className="max-w-[160px] truncate px-2 py-1 text-content-tertiary">
+                  {m.name || m.stable_id || m.element_id}
+                </td>
+                <td className="px-2 py-1 text-right tabular-nums">{m.raw_quantity.toFixed(3)}</td>
+                <td className="px-2 py-1 text-right tabular-nums">
+                  {m.adjusted_quantity.toFixed(3)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {result.matches.length > sample.length && (
+        <p className="text-[10px] text-content-tertiary">
+          {t('bim_rules.sandbox_more', {
+            defaultValue: 'Showing first {{shown}} of {{total}} matched elements.',
+            shown: sample.length,
+            total: result.matches.length,
+          })}
+        </p>
+      )}
+    </div>
+  );
+}
 
 interface RuleEditorModalProps {
   open: boolean;
@@ -317,6 +509,13 @@ interface RuleEditorModalProps {
   initial: RuleFormState;
   mode: 'create' | 'edit' | 'duplicate';
   projectId: string | null;
+  /** Currently-selected BIM model — drives the live test sandbox. */
+  modelId: string;
+  modelName?: string;
+  /** Formula of the rule before this edit, used to version on save. */
+  previousFields?: RuleFormulaFields;
+  /** The rule's current metadata bag (carries version history). */
+  baseMetadata?: Record<string, unknown>;
   onSubmit: (payload: CreateBIMQuantityMapRequest) => void;
   submitting: boolean;
 }
@@ -327,6 +526,10 @@ function RuleEditorModal({
   initial,
   mode,
   projectId,
+  modelId,
+  modelName,
+  previousFields,
+  baseMetadata,
   onSubmit,
   submitting,
 }: RuleEditorModalProps) {
@@ -336,6 +539,77 @@ function RuleEditorModal({
   useEffect(() => {
     if (open) setForm(initial);
   }, [open, initial]);
+
+  // ── Live test sandbox ────────────────────────────────────────────────
+  // Runs the DRAFT rule against the selected model's elements client-side,
+  // mirroring the backend engine, so the user sees matched elements +
+  // per-element computed quantities before ever saving. AI-augmented,
+  // human-confirmed: this is a preview, the apply still happens server-side.
+  const [sandboxResult, setSandboxResult] = useState<SandboxRunResult | null>(null);
+  const [sandboxBusy, setSandboxBusy] = useState(false);
+  const [sandboxError, setSandboxError] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  // Reset the sandbox + history panels whenever the modal is (re)opened.
+  useEffect(() => {
+    if (open) {
+      setSandboxResult(null);
+      setSandboxError(null);
+      setHistoryOpen(false);
+    }
+  }, [open]);
+
+  const formula = useMemo(() => formToFormulaFields(form), [form]);
+  const unitSafety = useMemo(
+    () => checkUnitSafety(formula.quantity_source, formula.unit),
+    [formula.quantity_source, formula.unit],
+  );
+  const versions = useMemo(() => readVersions(baseMetadata), [baseMetadata]);
+
+  const runTest = useCallback(async () => {
+    if (!modelId) {
+      setSandboxError(
+        t('bim_rules.sandbox_no_model', {
+          defaultValue: 'Pick a BIM model in the toolbar to test this rule.',
+        }),
+      );
+      return;
+    }
+    setSandboxBusy(true);
+    setSandboxError(null);
+    try {
+      // Skeleton fetch carries element_type + quantities + properties, which
+      // is everything the rule engine reads — no geometry round-trip needed.
+      const resp = await fetchBIMElements(modelId, { skeleton: true });
+      const elements = resp.items as unknown as SandboxElement[];
+      setSandboxResult(runSandbox(formula, elements));
+    } catch (err) {
+      setSandboxError(err instanceof Error ? err.message : String(err));
+      setSandboxResult(null);
+    } finally {
+      setSandboxBusy(false);
+    }
+  }, [modelId, formula, t]);
+
+  const restoreVersion = useCallback((v: RuleVersionSnapshot) => {
+    setForm((prev) => ({
+      ...prev,
+      element_type_filter: v.element_type_filter,
+      property_filter: Object.entries(v.property_filter ?? {}).map(([key, value]) => ({
+        key,
+        value: String(value),
+      })),
+      quantity_source: presetFromQuantitySource(v.quantity_source),
+      custom_quantity_source: presetFromQuantitySource(v.quantity_source) === 'custom'
+        ? v.quantity_source
+        : '',
+      multiplier: v.multiplier,
+      waste_factor_pct: v.waste_factor_pct,
+      unit: v.unit,
+    }));
+    setHistoryOpen(false);
+    setSandboxResult(null);
+  }, []);
 
   // BOQs for the active project
   const boqsQuery = useQuery({
@@ -405,9 +679,18 @@ function RuleEditorModal({
     (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       if (!form.name.trim()) return;
-      onSubmit(buildPayload(form, projectId));
+      // Only edits carry a version context; create/duplicate start clean.
+      const versionCtx =
+        mode === 'edit' && previousFields
+          ? {
+              previousFields,
+              baseMetadata: baseMetadata ?? {},
+              label: form.name.trim(),
+            }
+          : undefined;
+      onSubmit(buildPayload(form, projectId, versionCtx));
     },
-    [form, projectId, onSubmit],
+    [form, projectId, onSubmit, mode, previousFields, baseMetadata],
   );
 
   if (!open) return null;
@@ -651,6 +934,123 @@ function RuleEditorModal({
                 />
               </div>
             </div>
+
+            {/* Unit-safety guard — warns when the declared unit's dimension
+                disagrees with the quantity source (e.g. an area_m2 rule that
+                declares an m³ unit). Silent when either side is unknown. */}
+            {unitSafety.mismatch && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                <ShieldAlert size={14} className="mt-0.5 shrink-0" />
+                <span>
+                  {t('bim_rules.unit_mismatch', {
+                    defaultValue:
+                      'Unit mismatch: the source produces a {{src}} quantity but the unit "{{unit}}" reads as {{unitDim}}. Pick a matching unit or quantity source before saving.',
+                    src: t(`bim_rules.dim_${unitSafety.sourceDimension}`, {
+                      defaultValue: unitSafety.sourceDimension,
+                    }),
+                    unit: formula.unit,
+                    unitDim: t(`bim_rules.dim_${unitSafety.unitDimension}`, {
+                      defaultValue: unitSafety.unitDimension,
+                    }),
+                  })}
+                </span>
+              </div>
+            )}
+
+            {/* Live test sandbox — run the draft rule against the picked model
+                and show matched elements + computed quantities before saving. */}
+            <div className="rounded-lg border border-border-light bg-surface-secondary/40 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-content-secondary">
+                  <FlaskConical size={14} className="text-oe-blue" />
+                  {t('bim_rules.sandbox_title', { defaultValue: 'Test this rule' })}
+                </div>
+                <button
+                  type="button"
+                  onClick={runTest}
+                  disabled={sandboxBusy}
+                  className="flex items-center gap-1.5 rounded-lg border border-oe-blue/40 bg-oe-blue/5 px-2.5 py-1 text-[11px] font-medium text-oe-blue hover:bg-oe-blue/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {sandboxBusy ? <Loader2 size={11} className="animate-spin" /> : <Play size={11} />}
+                  {modelName
+                    ? t('bim_rules.sandbox_run_named', {
+                        defaultValue: 'Run on {{model}}',
+                        model: modelName,
+                      })
+                    : t('bim_rules.sandbox_run', { defaultValue: 'Run dry test' })}
+                </button>
+              </div>
+              <p className="mt-1 text-[10px] text-content-tertiary">
+                {t('bim_rules.sandbox_hint', {
+                  defaultValue:
+                    'Runs the current draft against the selected model in your browser. Nothing is saved or linked until you press Save.',
+                })}
+              </p>
+
+              {sandboxError && (
+                <div className="mt-2 flex items-center gap-1.5 text-[11px] text-red-600">
+                  <AlertCircle size={12} />
+                  {sandboxError}
+                </div>
+              )}
+
+              {sandboxResult && !sandboxBusy && (
+                <SandboxResultView result={sandboxResult} unit={formula.unit} />
+              )}
+            </div>
+
+            {/* Version history — restore an earlier formula. Stored in the
+                rule's metadata.versions, so no migration is needed. */}
+            {mode === 'edit' && versions.length > 0 && (
+              <div className="rounded-lg border border-border-light bg-surface-secondary/40 p-3">
+                <button
+                  type="button"
+                  onClick={() => setHistoryOpen((o) => !o)}
+                  className="flex w-full items-center justify-between gap-2 text-xs font-semibold text-content-secondary"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <History size={14} className="text-oe-blue" />
+                    {t('bim_rules.versions_title', {
+                      defaultValue: 'Previous versions ({{n}})',
+                      n: versions.length,
+                    })}
+                  </span>
+                  <ChevronRight
+                    size={14}
+                    className={clsx(
+                      'text-content-tertiary transition-transform',
+                      historyOpen && 'rotate-90',
+                    )}
+                  />
+                </button>
+                {historyOpen && (
+                  <ul className="mt-2 space-y-1.5">
+                    {[...versions].reverse().map((v, i) => (
+                      <li
+                        key={`${v.saved_at}-${i}`}
+                        className="flex items-center justify-between gap-2 rounded-md border border-border-light bg-surface-primary px-2.5 py-1.5"
+                      >
+                        <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-content-tertiary">
+                          {(v.element_type_filter || '*')} · {v.quantity_source} · ×{v.multiplier} ·{' '}
+                          {v.waste_factor_pct}% · {v.unit || '-'}
+                        </span>
+                        <span className="shrink-0 text-[10px] text-content-quaternary tabular-nums">
+                          {new Date(v.saved_at).toLocaleString()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => restoreVersion(v)}
+                          className="flex shrink-0 items-center gap-1 rounded-md border border-border-light px-2 py-0.5 text-[10px] font-medium text-oe-blue hover:bg-oe-blue/5"
+                        >
+                          <RotateCcw size={10} />
+                          {t('bim_rules.versions_restore', { defaultValue: 'Restore' })}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
             {/* Target */}
             <div>
@@ -2554,6 +2954,150 @@ function NoProjectPicker() {
   );
 }
 
+/* ── Coverage report panel ────────────────────────────────────────────── */
+
+/**
+ * Missing-scope detector. Lists every element type present in the active model
+ * and whether at least one active rule selects it. Uncovered categories (the
+ * trades nobody has written a rule for yet) are surfaced first with a one-click
+ * "create a rule for this" affordance, so a half-covered model is obvious at a
+ * glance instead of silently shipping under-scoped quantities.
+ */
+function CoverageReportPanel({
+  report,
+  onCreateForCategory,
+  modelName,
+}: {
+  report: ReturnType<typeof buildCoverageReport>;
+  onCreateForCategory: (category: string) => void;
+  modelName?: string;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const pct = Math.round(report.coverageRatio * 100);
+  const hasGaps = report.uncovered.length > 0;
+
+  return (
+    <div
+      className={clsx(
+        'rounded-xl border bg-surface-primary shadow-sm',
+        hasGaps ? 'border-amber-300' : 'border-emerald-300',
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left"
+      >
+        <span
+          className={clsx(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+            hasGaps
+              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+          )}
+        >
+          <ListChecks size={16} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-content-primary">
+            {t('bim_rules.coverage_title', { defaultValue: 'Rule coverage' })}
+            {modelName ? <span className="text-content-tertiary"> · {modelName}</span> : null}
+          </span>
+          <span className="block text-[11px] text-content-secondary">
+            {hasGaps
+              ? t('bim_rules.coverage_gaps', {
+                  defaultValue:
+                    '{{pct}}% of categories covered. {{n}} element type(s) have no active rule.',
+                  pct,
+                  n: report.uncovered.length,
+                })
+              : t('bim_rules.coverage_full', {
+                  defaultValue: 'Every element type in this model is covered by a rule.',
+                })}
+          </span>
+        </span>
+        <span className="shrink-0 text-lg font-semibold tabular-nums text-content-primary">
+          {pct}%
+        </span>
+        <ChevronRight
+          size={16}
+          className={clsx('shrink-0 text-content-tertiary transition-transform', open && 'rotate-90')}
+        />
+      </button>
+
+      {open && (
+        <div className="border-t border-border-light px-4 py-3">
+          <div className="overflow-hidden rounded-lg border border-border-light">
+            <table className="w-full text-left text-[11px]">
+              <thead className="bg-surface-secondary text-content-secondary">
+                <tr>
+                  <th className="px-3 py-1.5 font-medium">
+                    {t('bim_rules.coverage_col_category', { defaultValue: 'Element type' })}
+                  </th>
+                  <th className="px-3 py-1.5 text-right font-medium">
+                    {t('bim_rules.coverage_col_count', { defaultValue: 'Elements' })}
+                  </th>
+                  <th className="px-3 py-1.5 font-medium">
+                    {t('bim_rules.coverage_col_rules', { defaultValue: 'Covered by' })}
+                  </th>
+                  <th className="px-3 py-1.5 text-right font-medium">
+                    {t('bim_rules.col_actions', { defaultValue: 'Actions' })}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.rows.map((row) => (
+                  <tr
+                    key={row.category}
+                    className="border-t border-border-light text-content-primary"
+                  >
+                    <td className="px-3 py-1.5">
+                      <span className="flex items-center gap-1.5">
+                        <span
+                          className={clsx(
+                            'inline-block h-2 w-2 shrink-0 rounded-full',
+                            row.covered ? 'bg-emerald-500' : 'bg-amber-500',
+                          )}
+                        />
+                        {row.category}
+                      </span>
+                    </td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-content-tertiary">
+                      {row.elementCount}
+                    </td>
+                    <td className="px-3 py-1.5 text-content-tertiary">
+                      {row.covered ? (
+                        <span className="truncate">{row.ruleNames.join(', ')}</span>
+                      ) : (
+                        <span className="text-amber-600">
+                          {t('bim_rules.coverage_no_rule', { defaultValue: 'No rule' })}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-1.5 text-right">
+                      {!row.covered && (
+                        <button
+                          type="button"
+                          onClick={() => onCreateForCategory(row.category)}
+                          className="inline-flex items-center gap-1 rounded-md border border-oe-blue/40 px-2 py-0.5 text-[10px] font-medium text-oe-blue hover:bg-oe-blue/5"
+                        >
+                          <Plus size={10} />
+                          {t('bim_rules.coverage_add_rule', { defaultValue: 'Add rule' })}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Main page ────────────────────────────────────────────────────────── */
 
 export function BIMQuantityRulesPage() {
@@ -2655,25 +3199,44 @@ export function BIMQuantityRulesPage() {
   }, [modelsQuery.data, modelId]);
 
   // Skeleton fetch (5 fields per element, no geometry) of the selected
-  // model so the Requirements tab can offer real category names and
-  // parameter values in its "From BIM Model" auto-fill — disabled when
-  // the user is on the Quantity Rules tab to avoid pulling 50k rows
-  // over the wire for nothing.
+  // model. The Requirements tab uses it for the "From BIM Model" auto-fill;
+  // the Quantity Rules tab uses it for the coverage / missing-scope report.
+  // Disabled on the Rule Library tab to avoid pulling 50k rows for nothing.
   const elementsQuery = useQuery({
     queryKey: ['bim-elements-skeleton', modelId],
     queryFn: () =>
       modelId
         ? fetchBIMElements(modelId, { skeleton: true })
         : Promise.resolve({ items: [], total: 0 }),
-    enabled: !!modelId && activeTab === 'requirements',
+    enabled:
+      !!modelId && (activeTab === 'requirements' || activeTab === 'quantity_rules'),
     staleTime: 5 * 60 * 1000,
   });
   const requirementsElements = elementsQuery.data?.items;
+
+  // Coverage / missing-scope report: which element types in the active model
+  // have NO active rule selecting them. Computed purely client-side from the
+  // skeleton elements + the visible rules.
+  const coverageReport = useMemo(() => {
+    const items = elementsQuery.data?.items;
+    if (!items || items.length === 0) return null;
+    return buildCoverageReport(
+      items as unknown as SandboxElement[],
+      rules.map((r) => ({
+        name: r.name,
+        element_type_filter: r.element_type_filter ?? '',
+        is_active: r.is_active,
+      })),
+    );
+  }, [elementsQuery.data, rules]);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<'create' | 'edit' | 'duplicate'>('create');
   const [editorInitial, setEditorInitial] = useState<RuleFormState>(blankForm());
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  // The rule being edited (or null) so the editor can version its previous
+  // formula on save and surface its metadata-stored history.
+  const [editingRule, setEditingRule] = useState<BIMQuantityMap | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -2813,6 +3376,7 @@ export function BIMQuantityRulesPage() {
   const openCreate = useCallback(() => {
     setEditorMode('create');
     setEditingRuleId(null);
+    setEditingRule(null);
     setEditorInitial(blankForm());
     setEditorOpen(true);
   }, []);
@@ -2823,6 +3387,7 @@ export function BIMQuantityRulesPage() {
   const openCreateFromPreset = useCallback((preset: QuantityRulePreset) => {
     setEditorMode('create');
     setEditingRuleId(null);
+    setEditingRule(null);
     setEditorInitial({ ...blankForm(), ...preset.patch });
     setEditorOpen(true);
   }, []);
@@ -2831,6 +3396,7 @@ export function BIMQuantityRulesPage() {
     (rule: BIMQuantityMap) => {
       setEditorMode('edit');
       setEditingRuleId(rule.id);
+      setEditingRule(rule);
       setEditorInitial(toFormState(rule, boqPositionLookup));
       setEditorOpen(true);
     },
@@ -2841,6 +3407,7 @@ export function BIMQuantityRulesPage() {
     (rule: BIMQuantityMap) => {
       setEditorMode('duplicate');
       setEditingRuleId(null);
+      setEditingRule(null);
       const form = toFormState(rule, boqPositionLookup);
       form.name = `${form.name} (copy)`;
       setEditorInitial(form);
@@ -2848,6 +3415,20 @@ export function BIMQuantityRulesPage() {
     },
     [boqPositionLookup],
   );
+
+  // Pre-fill a new rule whose element-type filter targets one uncovered
+  // category — the "fix this gap" affordance on the coverage report.
+  const openCreateForCategory = useCallback((category: string) => {
+    setEditorMode('create');
+    setEditingRuleId(null);
+    setEditingRule(null);
+    setEditorInitial({
+      ...blankForm(),
+      name: `${category} - quantity`,
+      element_type_filter: category,
+    });
+    setEditorOpen(true);
+  }, []);
 
   const handleSubmit = useCallback(
     (payload: CreateBIMQuantityMapRequest) => {
@@ -2889,6 +3470,23 @@ export function BIMQuantityRulesPage() {
   }, [modelId, applyMutation, addToast, t]);
 
   const modelOptions = modelsQuery.data?.items ?? [];
+  const selectedModelName = modelOptions.find((m) => m.id === modelId)?.name;
+
+  // Formula + metadata of the rule being edited, fed to the editor so it can
+  // version the previous formula on save and show its history.
+  const editingPreviousFields = useMemo<RuleFormulaFields | undefined>(() => {
+    if (!editingRule) return undefined;
+    return {
+      element_type_filter: editingRule.element_type_filter ?? '',
+      property_filter: Object.fromEntries(
+        Object.entries(editingRule.property_filter ?? {}).map(([k, v]) => [k, String(v)]),
+      ),
+      quantity_source: editingRule.quantity_source ?? '',
+      multiplier: editingRule.multiplier ?? '1',
+      waste_factor_pct: editingRule.waste_factor_pct ?? '0',
+      unit: editingRule.unit ?? '',
+    };
+  }, [editingRule]);
 
   /* ── Render ────────────────────────────────────────────────────────── */
 
@@ -3180,6 +3778,16 @@ export function BIMQuantityRulesPage() {
             </div>
           </div>
         ) : (
+          <div className="space-y-4">
+            {/* Coverage / missing-scope report — which element types in the
+                active model no active rule yet selects. */}
+            {coverageReport && (
+              <CoverageReportPanel
+                report={coverageReport}
+                onCreateForCategory={openCreateForCategory}
+                modelName={selectedModelName}
+              />
+            )}
           <div className="overflow-hidden rounded-xl border border-border-light bg-surface-primary shadow-sm">
             <table className="w-full text-left text-xs">
               <thead className="border-b border-border-light bg-surface-secondary text-content-secondary">
@@ -3304,6 +3912,7 @@ export function BIMQuantityRulesPage() {
               </tbody>
             </table>
           </div>
+          </div>
         )}
       </div>
 
@@ -3314,6 +3923,10 @@ export function BIMQuantityRulesPage() {
         initial={editorInitial}
         mode={editorMode}
         projectId={activeProjectId}
+        modelId={modelId}
+        modelName={selectedModelName}
+        previousFields={editingPreviousFields}
+        baseMetadata={editingRule?.metadata}
         onSubmit={handleSubmit}
         submitting={createMutation.isPending || patchMutation.isPending}
       />

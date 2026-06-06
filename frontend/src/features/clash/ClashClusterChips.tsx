@@ -12,11 +12,14 @@
 // labelled each cluster (`label`, `size`, `dominant_disciplines`,
 // `storey`) so the chip is a thin presentation wrapper.
 
+import { useState } from 'react';
 import clsx from 'clsx';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { ClipboardList } from 'lucide-react';
 
 import { clashApi, type ClashCluster } from './api';
+import { ClashGroupActionDialog } from './ClashGroupActionDialog';
 
 const DISCIPLINE_COLOR: Record<string, string> = {
   Structural: 'bg-rose-100 text-rose-800 ring-rose-200 hover:bg-rose-200',
@@ -48,6 +51,10 @@ export interface ClashClusterChipsProps {
   /** When set, the strip can be hidden via the parent flag (no clusters /
    *  cluster ribbon disabled). Mostly used for tests. */
   hidden?: boolean;
+  /** Show the "Create work item" action when a cluster is selected. The
+   *  coordinator can collapse the whole group into one punch item / task.
+   *  Defaults on; pass false to hide it (e.g. for a read-only viewer). */
+  enableGroupAction?: boolean;
   className?: string;
 }
 
@@ -58,9 +65,11 @@ export function ClashClusterChips({
   onSelect,
   totalClashes,
   hidden,
+  enableGroupAction = true,
   className,
 }: ClashClusterChipsProps) {
   const { t } = useTranslation();
+  const [actionOpen, setActionOpen] = useState(false);
   const { data, isLoading } = useQuery<ClashCluster[]>({
     queryKey: ['clash', projectId, runId, 'clusters'],
     queryFn: () => clashApi.listClusters(projectId, runId),
@@ -120,6 +129,35 @@ export function ClashClusterChips({
           </button>
         );
       })}
+
+      {enableGroupAction && selectedClusterId != null && (
+        <button
+          type="button"
+          onClick={() => setActionOpen(true)}
+          className={clsx(
+            'ml-1 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium',
+            'ring-1 transition-colors',
+            'bg-surface-primary text-oe-blue ring-oe-blue/40 hover:bg-oe-blue/10',
+          )}
+          data-testid="cluster-create-action"
+          title={t('clash.groupAction.buttonHint', {
+            defaultValue: 'Create one punch item or task for this whole clash group',
+          })}
+        >
+          <ClipboardList size={13} />
+          {t('clash.groupAction.button', { defaultValue: 'Create work item' })}
+        </button>
+      )}
+
+      {enableGroupAction && selectedClusterId != null && actionOpen && (
+        <ClashGroupActionDialog
+          projectId={projectId}
+          runId={runId}
+          clusterId={selectedClusterId}
+          open={actionOpen}
+          onClose={() => setActionOpen(false)}
+        />
+      )}
     </div>
   );
 }

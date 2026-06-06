@@ -49,6 +49,9 @@ from app.modules.clash.schemas import (
     ClashCategoryItem,
     ClashClusterRead,
     ClashCompareResponse,
+    ClashGroupActionProposal,
+    ClashGroupActionRequest,
+    ClashGroupActionResponse,
     ClashGroupedSummary,
     ClashIssuePage,
     ClashIssueRead,
@@ -755,6 +758,72 @@ async def list_clusters(
     await _require_project_access(session, project_id, user_id)
     rows = await service.list_clusters(project_id, run_id)
     return [ClashClusterRead.model_validate(r) for r in rows]
+
+
+@router.get(
+    "/projects/{project_id}/runs/{run_id}/clusters/{cluster_id}/action-proposal",
+    response_model=ClashGroupActionProposal,
+    dependencies=[Depends(RequirePermission("clash.read"))],
+)
+async def cluster_action_proposal(
+    project_id: uuid.UUID,
+    run_id: uuid.UUID,
+    cluster_id: int,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    target: str = Query(default="punchlist", description="punchlist | task"),
+    service: ClashService = Depends(_get_service),
+) -> ClashGroupActionProposal:
+    """AI-augmented draft for turning a clash cluster into a work item.
+
+    The engine proposes a title, body, priority, assignee and confidence
+    from the cluster's geometry + triage state; the coordinator reviews
+    and confirms via the POST endpoint below (AI proposes, human confirms).
+    404 when the cluster id is unknown / the run pre-dates clustering.
+    """
+    await _require_project_access(session, project_id, user_id)
+    proposal = await service.propose_cluster_action(project_id, run_id, cluster_id, target=target)
+    return ClashGroupActionProposal.model_validate(proposal)
+
+
+@router.post(
+    "/projects/{project_id}/runs/{run_id}/clusters/{cluster_id}/action",
+    response_model=ClashGroupActionResponse,
+    dependencies=[Depends(RequirePermission("clash.update"))],
+)
+async def create_cluster_action(
+    project_id: uuid.UUID,
+    run_id: uuid.UUID,
+    cluster_id: int,
+    data: ClashGroupActionRequest,
+    user_id: CurrentUserId,
+    session: SessionDep,
+    service: ClashService = Depends(_get_service),
+) -> ClashGroupActionResponse:
+    """Create one punch item / task from a clash cluster, with link-back.
+
+    Collapses an entire spatial cluster into a single tracked work item in
+    the punchlist or task module, stamps the reverse link + an audit entry
+    onto every member clash, and (by default) advances still-``new`` members
+    to ``reviewed``. Idempotent: a cluster that already has a linked item
+    returns ``created=False`` pointing at the existing one rather than
+    spawning a duplicate.
+    """
+    await _require_project_access(session, project_id, user_id)
+    result = await service.create_action_from_cluster(
+        project_id,
+        run_id,
+        cluster_id,
+        target=data.target,
+        title=data.title,
+        description=data.description,
+        priority=data.priority,
+        assigned_to=data.assigned_to,
+        due_date=data.due_date,
+        advance_status=data.advance_status,
+        actor=str(user_id),
+    )
+    return ClashGroupActionResponse.model_validate(result)
 
 
 @router.get(

@@ -53,6 +53,25 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 
 import { FederationTypeTree } from './FederationTypeTree';
+import {
+  buildFederationViewerDeeplink,
+  diffHasChanges,
+  diffSummaryCounts,
+  formatDrift,
+  hasActionableIssues,
+  issueBreakdown,
+  parseSnapshotPayload,
+  readinessPercent,
+  snapshotFileName,
+  snapshotMatchesFederation,
+  stateLabelKey,
+  toneForState,
+  type FederationDiff,
+  type FederationHealth,
+  type FederationMemberHealthState,
+  type FederationSnapshot,
+  type HealthTone,
+} from './federationHealth';
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -199,8 +218,35 @@ async function removeMember(fedId: string, modelId: string): Promise<void> {
   await apiDelete(`${BASE}/${fedId}/models/${modelId}`);
 }
 
+async function fetchFederationHealth(id: string): Promise<FederationHealth> {
+  return apiGet<FederationHealth>(`${BASE}/${id}/health`);
+}
+
+async function fetchFederationSnapshot(id: string): Promise<FederationSnapshot> {
+  return apiGet<FederationSnapshot>(`${BASE}/${id}/snapshot`);
+}
+
+async function postFederationDiff(
+  id: string,
+  oldSnapshot: FederationSnapshot,
+): Promise<FederationDiff> {
+  return apiPost<FederationDiff, FederationSnapshot>(
+    `${BASE}/${id}/diff`,
+    oldSnapshot,
+  );
+}
+
 // PUT /federations/{id} is wired on the backend but the UI for inline
 // metadata editing lands in Slice 2 together with the federated viewer.
+
+/* ── Health tone → Tailwind classes ────────────────────────────────── */
+
+const HEALTH_TONE_CLASSES: Record<HealthTone, string> = {
+  green: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  amber: 'bg-amber-100 text-amber-700 border-amber-200',
+  red: 'bg-red-100 text-red-700 border-red-200',
+  neutral: 'bg-slate-100 text-slate-600 border-slate-200',
+};
 
 /* ── New-federation modal ──────────────────────────────────────────── */
 
@@ -309,6 +355,470 @@ function NewFederationModal({
   );
 }
 
+/* ── Health panel ──────────────────────────────────────────────────── */
+
+function HealthStateBadge({
+  state,
+}: {
+  state: FederationMemberHealthState | 'no_members';
+}) {
+  const { t } = useTranslation();
+  const tone = toneForState(state);
+  const label = t(`bim.federation.health.${stateLabelKey(state)}`, {
+    defaultValue: state.replace(/_/g, ' '),
+  });
+  return (
+    <span
+      className={
+        'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ' +
+        HEALTH_TONE_CLASSES[tone]
+      }
+      data-testid={`federation-health-badge-${state}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+interface FederationHealthPanelProps {
+  federationId: string;
+}
+
+function FederationHealthPanel({ federationId }: FederationHealthPanelProps) {
+  const { t } = useTranslation();
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['bim-federation-health', federationId],
+    queryFn: () => fetchFederationHealth(federationId),
+    enabled: !!federationId,
+  });
+
+  if (isLoading) {
+    return (
+      <p
+        data-testid="federation-health-loading"
+        className="p-2 text-sm text-slate-500"
+      >
+        {t('bim.federation.health.loading', {
+          defaultValue: 'Checking member health…',
+        })}
+      </p>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div
+        data-testid="federation-health-error"
+        role="alert"
+        className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+      >
+        <div>
+          {t('bim.federation.health.error', {
+            defaultValue: 'Could not load federation health',
+          })}
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => void refetch()}>
+          {t('common.retry', { defaultValue: 'Retry' })}
+        </Button>
+      </div>
+    );
+  }
+
+  if (data.member_count === 0) {
+    return (
+      <div
+        data-testid="federation-health-empty"
+        className="rounded border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500"
+      >
+        {t('bim.federation.health.no_members', {
+          defaultValue:
+            'Add member models to see a readiness report for this federation.',
+        })}
+      </div>
+    );
+  }
+
+  const issues = issueBreakdown(data);
+  const pct = readinessPercent(data.score);
+
+  return (
+    <div data-testid="federation-health-panel" className="space-y-4">
+      {/* Headline readiness */}
+      <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3">
+        <div className="flex items-center gap-3">
+          <HealthStateBadge state={data.overall_state} />
+          <div>
+            <div className="text-sm font-semibold text-slate-800">
+              {t('bim.federation.health.readiness', {
+                defaultValue: '{{pct}}% ready',
+              }).replace('{{pct}}', String(pct))}
+            </div>
+            <div className="text-xs text-slate-500">
+              {t('bim.federation.health.ready_of_total', {
+                defaultValue: '{{ready}} of {{total}} members ready',
+              })
+                .replace('{{ready}}', String(data.ready_count))
+                .replace('{{total}}', String(data.member_count))}
+            </div>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-sm font-semibold text-slate-800">
+            {data.total_elements.toLocaleString()}
+          </div>
+          <div className="text-xs text-slate-500">
+            {t('bim.federation.health.total_elements', {
+              defaultValue: 'elements',
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Readiness bar */}
+      <div
+        className="h-2 w-full overflow-hidden rounded-full bg-slate-100"
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div
+          className="h-full rounded-full bg-emerald-500 transition-all"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+      {/* Actionable issues summary */}
+      {hasActionableIssues(data) ? (
+        <div
+          data-testid="federation-health-issues"
+          className="flex flex-wrap items-center gap-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+        >
+          <span className="font-medium">
+            {t('bim.federation.health.needs_attention', {
+              defaultValue: 'Needs attention:',
+            })}
+          </span>
+          {issues.map((issue) => (
+            <span key={issue.state} className="inline-flex items-center gap-1">
+              <HealthStateBadge state={issue.state} />
+              <span>×{issue.count}</span>
+            </span>
+          ))}
+          {data.spread_days !== null && data.spread_days > 0 ? (
+            <span className="ml-1">
+              {t('bim.federation.health.spread', {
+                defaultValue: 'Update spread: {{days}} days',
+              }).replace('{{days}}', String(data.spread_days))}
+            </span>
+          ) : null}
+        </div>
+      ) : (
+        <div
+          data-testid="federation-health-all-ready"
+          className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700"
+        >
+          {t('bim.federation.health.all_ready', {
+            defaultValue: 'All members are converted, populated, and in sync.',
+          })}
+        </div>
+      )}
+
+      {/* Per-member rows */}
+      <ul className="divide-y divide-slate-100 rounded border border-slate-200">
+        {data.members.map((m) => (
+          <li
+            key={m.member_id}
+            data-testid={`federation-health-member-${m.bim_model_id}`}
+            className="flex items-center justify-between gap-3 px-3 py-2"
+          >
+            <div className="flex items-center gap-2">
+              <Badge>
+                {t(`bim.federation.disc_${m.discipline}`, {
+                  defaultValue: m.discipline,
+                })}
+              </Badge>
+              <span className="text-sm text-slate-700">{m.model_name}</span>
+              <span className="text-xs text-slate-400">
+                {m.element_count.toLocaleString()}{' '}
+                {t('bim.federation.health.elements_short', {
+                  defaultValue: 'el.',
+                })}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {m.staleness_days !== null && m.staleness_days > 0 ? (
+                <span className="text-xs text-slate-400">
+                  {t('bim.federation.health.days_behind', {
+                    defaultValue: '{{days}}d behind',
+                  }).replace('{{days}}', String(m.staleness_days))}
+                </span>
+              ) : null}
+              <HealthStateBadge state={m.state} />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/* ── Snapshot & diff panel ─────────────────────────────────────────── */
+
+interface FederationSnapshotPanelProps {
+  federationId: string;
+}
+
+function FederationSnapshotPanel({ federationId }: FederationSnapshotPanelProps) {
+  const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
+  const [diff, setDiff] = useState<FederationDiff | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const translateCode = useCallback(
+    (code: string): string => {
+      if (code === 'invalid_json_shape') {
+        return t('bim.federation.snapshot.err_invalid_shape', {
+          defaultValue: 'That file is not a valid federation snapshot.',
+        });
+      }
+      if (code === 'schema_version_unsupported') {
+        return t('bim.federation.snapshot.err_version', {
+          defaultValue: 'This snapshot was made by a newer version and cannot be read.',
+        });
+      }
+      if (code === 'federation_mismatch') {
+        return t('bim.federation.snapshot.err_mismatch', {
+          defaultValue: 'That snapshot belongs to a different federation.',
+        });
+      }
+      return code;
+    },
+    [t],
+  );
+
+  const handleDownload = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const snapshot = await fetchFederationSnapshot(federationId);
+      const blob = new Blob([JSON.stringify(snapshot, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = snapshotFileName(snapshot);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      addToast({
+        type: 'success',
+        title: t('bim.federation.snapshot.downloaded', {
+          defaultValue: 'Snapshot downloaded',
+        }),
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }, [federationId, addToast, t]);
+
+  const handleUpload = useCallback(
+    async (file: File) => {
+      setBusy(true);
+      setError(null);
+      setDiff(null);
+      try {
+        const text = await file.text();
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          throw new Error('invalid_json_shape');
+        }
+        const snapshot = parseSnapshotPayload(parsed);
+        if (!snapshotMatchesFederation(snapshot, federationId)) {
+          throw new Error('federation_mismatch');
+        }
+        const result = await postFederationDiff(federationId, snapshot);
+        setDiff(result);
+      } catch (e) {
+        setError(translateCode(e instanceof Error ? e.message : String(e)));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [federationId, translateCode],
+  );
+
+  const counts = diff ? diffSummaryCounts(diff) : null;
+
+  return (
+    <div data-testid="federation-snapshot-panel" className="space-y-4">
+      <p className="text-xs text-slate-500">
+        {t('bim.federation.snapshot.intro', {
+          defaultValue:
+            'Download a snapshot of the current composition, then upload an earlier one to see what changed between coordination rounds.',
+        })}
+      </p>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" onClick={handleDownload} disabled={busy}>
+          {t('bim.federation.snapshot.download', {
+            defaultValue: 'Download snapshot',
+          })}
+        </Button>
+        <label className="inline-flex">
+          <span
+            className={
+              'cursor-pointer rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 ' +
+              (busy ? 'pointer-events-none opacity-60' : '')
+            }
+          >
+            {t('bim.federation.snapshot.compare', {
+              defaultValue: 'Compare with file…',
+            })}
+            <input
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              data-testid="federation-snapshot-upload"
+              disabled={busy}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                // Reset so re-selecting the same file fires onChange again.
+                e.target.value = '';
+                if (file) void handleUpload(file);
+              }}
+            />
+          </span>
+        </label>
+      </div>
+
+      {error ? (
+        <p className="text-sm text-red-600" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      {diff ? (
+        <div data-testid="federation-diff-result" className="space-y-3">
+          {!diffHasChanges(diff) ? (
+            <div className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              {t('bim.federation.snapshot.no_changes', {
+                defaultValue: 'No composition changes since that snapshot.',
+              })}
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="rounded bg-emerald-100 px-2 py-0.5 text-emerald-700">
+                  +{counts?.added}{' '}
+                  {t('bim.federation.snapshot.added', { defaultValue: 'added' })}
+                </span>
+                <span className="rounded bg-red-100 px-2 py-0.5 text-red-700">
+                  -{counts?.removed}{' '}
+                  {t('bim.federation.snapshot.removed', {
+                    defaultValue: 'removed',
+                  })}
+                </span>
+                <span className="rounded bg-amber-100 px-2 py-0.5 text-amber-700">
+                  ~{counts?.changed}{' '}
+                  {t('bim.federation.snapshot.changed', {
+                    defaultValue: 'changed',
+                  })}
+                </span>
+                <span className="rounded bg-slate-100 px-2 py-0.5 text-slate-600">
+                  {formatDrift(diff.total_element_drift)}{' '}
+                  {t('bim.federation.snapshot.element_drift', {
+                    defaultValue: 'element drift',
+                  })}
+                </span>
+              </div>
+
+              {diff.added.length > 0 ? (
+                <div>
+                  <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                    {t('bim.federation.snapshot.added', { defaultValue: 'added' })}
+                  </h4>
+                  <ul className="space-y-1 text-sm text-slate-700">
+                    {diff.added.map((m) => (
+                      <li key={m.bim_model_id} className="flex items-center gap-2">
+                        <Badge>{m.discipline}</Badge>
+                        <span>{m.model_name}</span>
+                        <span className="text-xs text-slate-400">
+                          {m.element_count.toLocaleString()}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {diff.removed.length > 0 ? (
+                <div>
+                  <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-red-600">
+                    {t('bim.federation.snapshot.removed', {
+                      defaultValue: 'removed',
+                    })}
+                  </h4>
+                  <ul className="space-y-1 text-sm text-slate-700">
+                    {diff.removed.map((m) => (
+                      <li key={m.bim_model_id} className="flex items-center gap-2">
+                        <Badge>{m.discipline}</Badge>
+                        <span className="line-through opacity-70">
+                          {m.model_name}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {diff.changed.length > 0 ? (
+                <div>
+                  <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-600">
+                    {t('bim.federation.snapshot.changed', {
+                      defaultValue: 'changed',
+                    })}
+                  </h4>
+                  <ul className="space-y-1 text-sm text-slate-700">
+                    {diff.changed.map((d) => (
+                      <li
+                        key={d.bim_model_id}
+                        className="flex items-center justify-between gap-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Badge>{d.discipline}</Badge>
+                          <span>{d.model_name}</span>
+                        </div>
+                        <span
+                          className={
+                            'font-mono text-xs ' +
+                            (d.element_count_delta >= 0
+                              ? 'text-emerald-600'
+                              : 'text-red-600')
+                          }
+                        >
+                          {formatDrift(d.element_count_delta)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /* ── Detail drawer ──────────────────────────────────────────────────── */
 
 interface FederationDetailDrawerProps {
@@ -372,11 +882,13 @@ function FederationDetailDrawer({
   // 404s in a yellow toast). Instead it renders a clickable list of member
   // models that deep-link to the per-model viewer at /bim/:modelId, which
   // is the supported & working 3D surface.
-  const [activeTab, setActiveTab] = useState<'members' | 'types' | '3d'>(
-    'members',
-  );
-  const onTabKeyDown = useTabKeyboardNav<'members' | 'types' | '3d'>({
-    ids: ['members', 'types', '3d'] as const,
+  const [activeTab, setActiveTab] = useState<
+    'members' | 'health' | 'types' | 'snapshot' | '3d'
+  >('members');
+  const onTabKeyDown = useTabKeyboardNav<
+    'members' | 'health' | 'types' | 'snapshot' | '3d'
+  >({
+    ids: ['members', 'health', 'types', 'snapshot', '3d'] as const,
     activeId: activeTab,
     onChange: setActiveTab,
     orientation: 'horizontal',
@@ -565,7 +1077,9 @@ function FederationDetailDrawer({
               {(
                 [
                   ['members', t('bim.federation.tab_members', { defaultValue: 'Members' })],
+                  ['health', t('bim.federation.tab_health', { defaultValue: 'Health' })],
                   ['types', t('bim.federation.tab_types', { defaultValue: 'Element types' })],
+                  ['snapshot', t('bim.federation.tab_snapshot', { defaultValue: 'Snapshot & diff' })],
                   ['3d', t('bim.federation.tab_3d', { defaultValue: '3D' })],
                 ] as Array<[typeof activeTab, string]>
               ).map(([key, label]) => {
@@ -627,7 +1141,8 @@ function FederationDetailDrawer({
                             defaultValue: m.discipline,
                           })}</Badge>
                           <span className="text-sm text-slate-700">
-                            {m.bim_model_id.slice(0, 8)}
+                            {modelNameById.get(m.bim_model_id) ??
+                              m.bim_model_id.slice(0, 8)}
                           </span>
                           <span className="text-xs text-slate-400">
                             z={m.z_order}
@@ -708,6 +1223,28 @@ function FederationDetailDrawer({
               </div>
             ) : null}
 
+            {activeTab === 'health' ? (
+              <div
+                data-testid="federation-tab-panel-health"
+                role="tabpanel"
+                id="federation-tab-panel-health"
+                aria-labelledby="federation-tab-health"
+              >
+                <FederationHealthPanel federationId={data.id} />
+              </div>
+            ) : null}
+
+            {activeTab === 'snapshot' ? (
+              <div
+                data-testid="federation-tab-panel-snapshot"
+                role="tabpanel"
+                id="federation-tab-panel-snapshot"
+                aria-labelledby="federation-tab-snapshot"
+              >
+                <FederationSnapshotPanel federationId={data.id} />
+              </div>
+            ) : null}
+
             {activeTab === 'types' ? (
               <div data-testid="federation-tab-panel-types" role="tabpanel" id="federation-tab-panel-types" aria-labelledby="federation-tab-types">
                 {/* Slice 2: federation-flat (NOT per-model) element-type
@@ -745,9 +1282,39 @@ function FederationDetailDrawer({
                 <p className="mb-3 text-xs text-slate-500">
                   {t('bim.federation.tab_3d_subtitle', {
                     defaultValue:
-                      'Pick a model below to open the full 3D viewer for that file. The federated scene returns in a later release.',
+                      'Pick a model below to open the full 3D viewer for that file, or open the whole set at once. The federated scene returns in a later release.',
                   })}
                 </p>
+                {(() => {
+                  // "Open all" deeplinks to the first available member with
+                  // the rest carried as a ``models`` query param so the
+                  // viewer can load them as overlays. Members whose geometry
+                  // HEAD probe failed are excluded so we never seed the
+                  // viewer with a broken model.
+                  const openableIds = data.members
+                    .filter(
+                      (m) => geometryAvailability[m.bim_model_id] !== false,
+                    )
+                    .map((m) => m.bim_model_id);
+                  const allLink = buildFederationViewerDeeplink(
+                    data.id,
+                    openableIds,
+                  );
+                  if (!allLink || openableIds.length < 2) return null;
+                  return (
+                    <div className="mb-3">
+                      <Button
+                        size="sm"
+                        data-testid="federation-open-all-3d"
+                        onClick={() => navigate(allLink)}
+                      >
+                        {t('bim.federation.open_all_in_3d', {
+                          defaultValue: 'Open all members in 3D viewer',
+                        })}
+                      </Button>
+                    </div>
+                  );
+                })()}
                 {data.members.length === 0 ? (
                   <p className="text-sm text-slate-500">
                     {t('bim.federation.no_members')}

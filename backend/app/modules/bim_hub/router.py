@@ -100,11 +100,14 @@ from app.modules.bim_hub.schemas import (
     BOQElementLinkListResponse,
     BOQElementLinkResponse,
     FederationCreate,
+    FederationDiffResponse,
     FederationFullResponse,
+    FederationHealthResponse,
     FederationListResponse,
     FederationModelAdd,
     FederationModelResponse,
     FederationResponse,
+    FederationSnapshot,
     FederationTypeTreeResponse,
     FederationUpdate,
     QuantityMapApplyRequest,
@@ -4720,3 +4723,74 @@ async def get_federation_type_tree(
     federation = await service.get_federation(federation_id)
     await _verify_project_access(session, federation.project_id, _user_id)
     return await service.aggregate_federation_type_tree(federation_id)
+
+
+# ── Federation Health (v7.x) ───────────────────────────────────────────────
+#
+# A read-only readiness report over the member set: which models are ready
+# to compose, which are still processing/failed, which are stale relative
+# to the freshest member, and which dangle (model row deleted). Persists
+# nothing - safe to poll.
+
+
+@router.get(
+    "/federations/{federation_id}/health",
+    response_model=FederationHealthResponse,
+    dependencies=[Depends(RequirePermission("bim.read"))],
+)
+async def get_federation_health(
+    federation_id: uuid.UUID,
+    session: SessionDep,
+    _user_id: CurrentUserId,
+) -> FederationHealthResponse:
+    """Return the federation health report (member readiness + staleness)."""
+    service = BIMHubService(session)
+    federation = await service.get_federation(federation_id)
+    await _verify_project_access(session, federation.project_id, _user_id)
+    return await service.compute_federation_health(federation_id)
+
+
+# ── Federation Snapshot & Diff (v7.x) ──────────────────────────────────────
+#
+# A snapshot is a portable, storage-free fingerprint of the federation's
+# composition. The FE downloads it and can POST an older one back to diff
+# against the live state - no new table needed.
+
+
+@router.get(
+    "/federations/{federation_id}/snapshot",
+    response_model=FederationSnapshot,
+    dependencies=[Depends(RequirePermission("bim.read"))],
+)
+async def get_federation_snapshot(
+    federation_id: uuid.UUID,
+    session: SessionDep,
+    _user_id: CurrentUserId,
+) -> FederationSnapshot:
+    """Capture a portable composition fingerprint of the federation."""
+    service = BIMHubService(session)
+    federation = await service.get_federation(federation_id)
+    await _verify_project_access(session, federation.project_id, _user_id)
+    return await service.capture_federation_snapshot(federation_id)
+
+
+@router.post(
+    "/federations/{federation_id}/diff",
+    response_model=FederationDiffResponse,
+    dependencies=[Depends(RequirePermission("bim.read"))],
+)
+async def diff_federation_snapshot(
+    federation_id: uuid.UUID,
+    old_snapshot: FederationSnapshot,
+    session: SessionDep,
+    _user_id: CurrentUserId,
+) -> FederationDiffResponse:
+    """Diff a caller-supplied prior snapshot against the live federation.
+
+    The "old" snapshot is an exported file the caller uploads; the "new"
+    side is captured live so the diff always reflects current reality.
+    """
+    service = BIMHubService(session)
+    federation = await service.get_federation(federation_id)
+    await _verify_project_access(session, federation.project_id, _user_id)
+    return await service.diff_federation_snapshot(federation_id, old_snapshot)

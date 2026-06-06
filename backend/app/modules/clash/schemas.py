@@ -897,3 +897,82 @@ class ClashProfileApplyRequest(BaseModel):
     model_ids: list[uuid.UUID] = Field(..., min_length=1)
     name: str | None = Field(default=None, max_length=255)
     carry_forward: bool = Field(default=True)
+
+
+# ── Cluster → coordination action (cross-module link) ────────────────────
+
+# Where a clash group can be turned into a tracked work item. ``punchlist``
+# spawns a site-actionable punch item; ``task`` spawns a coordination task
+# in the project task board. Both keep a back-link to the originating run /
+# cluster so the action and the geometry stay traceable.
+CLASH_ACTION_TARGETS = ("punchlist", "task")
+
+
+class ClashGroupActionProposal(BaseModel):
+    """AI-augmented draft for turning a clash cluster into a work item.
+
+    Returned by ``GET /runs/{id}/clusters/{cid}/action-proposal``. The
+    engine *proposes* a title, body, priority and assignee from the
+    cluster's geometry + triage state; the coordinator reviews and confirms
+    (editing any field) before the work item is created. ``confidence`` is a
+    0..1 score on how well-formed the proposal is (high when the cluster has
+    a clear dominant discipline pair + severity, lower for mixed clusters) -
+    surfaced in the UI as a chip so a human never auto-applies a weak guess.
+    """
+
+    cluster_id: int
+    target: str = Field(default="punchlist", description="punchlist | task")
+    title: str
+    description: str
+    priority: str = Field(default="medium", description="low | medium | high | critical")
+    suggested_assignee: str | None = None
+    member_count: int = 0
+    dominant_disciplines: list[str] = Field(default_factory=list, max_length=2)
+    storey: int | None = None
+    max_severity: str | None = None
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    # True when these members already produced a linked work item; the UI
+    # disables the confirm button and shows the existing link instead.
+    already_linked: bool = False
+    existing_action_id: str | None = None
+    existing_action_target: str | None = None
+
+
+class ClashGroupActionRequest(BaseModel):
+    """Confirm creation of a work item from a clash cluster (human step).
+
+    Every field is optional and overrides the matching value from the
+    proposal - the coordinator edits the AI draft, then confirms. ``target``
+    decides which module receives the new row. ``advance_status`` (default
+    on) moves the cluster's still-``new`` members to ``reviewed`` so the
+    review board reflects that a human has acted on them.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    target: str = Field(default="punchlist", description="punchlist | task")
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=5000)
+    priority: str | None = Field(default=None, pattern=r"^(low|medium|high|critical)$")
+    assigned_to: str | None = Field(default=None, max_length=36)
+    due_date: str | None = Field(default=None, max_length=40)
+    advance_status: bool = Field(default=True)
+
+
+class ClashGroupActionResponse(BaseModel):
+    """Result of creating a work item from a clash cluster.
+
+    ``action_id`` is the new punch item / task id; ``action_target`` echoes
+    the module it landed in. ``results_linked`` is how many clash rows now
+    carry the back-link, ``results_advanced`` how many were moved to
+    ``reviewed`` by the same call. ``created`` is False (idempotent no-op)
+    when the cluster already had a linked work item - ``action_id`` then
+    points at the pre-existing one.
+    """
+
+    created: bool = True
+    action_id: str
+    action_target: str
+    cluster_id: int
+    results_linked: int = 0
+    results_advanced: int = 0
