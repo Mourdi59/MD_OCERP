@@ -631,6 +631,12 @@ class AiEstimatorService:
             await self.run_repo.update_fields(run.id, **config_fields)
             refreshed = await self.run_repo.get_by_id(run.id)
             assert refreshed is not None  # noqa: S101
+            # An intake-originated run already has the composed groups (the
+            # intake composer wrote them BEFORE this checkpoint). Re-deriving
+            # groups from envelopes here would wipe the composed board, so skip
+            # grouping and keep the intake's groups (flagged on the run).
+            if (refreshed.metadata_ or {}).get("intake_composed"):
+                return refreshed
             # Run grouping now that the config is confirmed.
             return await self._build_groups(refreshed)
 

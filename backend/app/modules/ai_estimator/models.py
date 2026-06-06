@@ -19,6 +19,15 @@ Tables:
                              stage event (thought / tool_call / observation /
                              answer / error / stage_complete) for clean per-run
                              provenance, mirroring the AgentStep shape.
+    oe_ai_estimator_intake - the conversational intake (v2) state for a run:
+                             one row per run (1:1), carrying the dialogue FSM
+                             phase, the detected project type, the partial /
+                             confirmed parameter sheet, the per-param status,
+                             the clarification round counter, the current
+                             question batch, the transcript, and the composed
+                             package-board state. The intake sits in front of
+                             the run FSM and is resumable / pollable like the
+                             rest of the run.
 
 The run/step tables are append-only from a user's perspective (the service
 writes incrementally as the pipeline advances). Group rows are mutated as the
@@ -403,3 +412,105 @@ class AiEstimatorStep(Base):
 
     def __repr__(self) -> str:
         return f"<AiEstimatorStep run={self.run_id} idx={self.step_idx} role={self.role}>"
+
+
+class AiEstimatorIntake(Base):
+    """Conversational intake (v2) state for a run - one row per run (1:1).
+
+    The intake is a small FSM that sits in front of the run FSM: it turns a
+    vague free-text request ("ремонт кухни") into a confirmed parameter sheet
+    plus a composed, editable element-group board, then hands off to the
+    existing grouping -> matching -> apply pipeline unchanged. It is persisted
+    so it is resumable and pollable like the run.
+
+    ``mode`` is ``ai`` (LLM-driven conversation) or ``offline`` (curated
+    questionnaire form through the same machine). ``phase`` walks the dialogue
+    (``collect_request`` -> ``extract`` -> ``clarify_round_1..3`` ->
+    ``parameter_sheet`` -> ``compose_groups`` -> ``group_board`` -> ``done``).
+    ``round_idx`` is the hard 0..3 clarification-round counter (max 3 rounds,
+    founder decision 1). ``param_status`` records, per parameter,
+    ``known | asked | confirmed | skipped`` so the machine never re-asks a
+    question it already has an answer for.
+    """
+
+    __tablename__ = "oe_ai_estimator_intake"
+    __table_args__ = (Index("ix_ai_estimator_intake_run", "run_id", unique=True),)
+
+    run_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("oe_ai_estimator_run.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    # "ai" | "offline" - whether the dialogue is LLM-phrased or a curated form.
+    mode: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="offline",
+        server_default="offline",
+    )
+    # The original free-text request the user submitted (or "" on a manual
+    # type pick). source_inputs.text_input still mirrors this for v1 back-compat.
+    raw_request: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    # The detected project_type key, or NULL when none / ambiguous (the UI then
+    # shows the type tiles for a manual pick).
+    detected_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Real type-detection confidence [0,1] or NULL (NULL on the deterministic
+    # offline path - honest "selected", not a fabricated percentage).
+    type_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # The partial / confirmed parameter sheet: {param_key: value}.
+    params: Mapped[dict] = mapped_column(  # type: ignore[assignment]
+        JSON,
+        nullable=False,
+        default=dict,
+        server_default="{}",
+    )
+    # Per-param lifecycle: {param_key: "known"|"asked"|"confirmed"|"skipped"}.
+    param_status: Mapped[dict] = mapped_column(  # type: ignore[assignment]
+        JSON,
+        nullable=False,
+        default=dict,
+        server_default="{}",
+    )
+    # How many clarification rounds have been used (0..3, hard ceiling 3).
+    round_idx: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+    # The current round's question batch (serialised IntakeQuestion dicts).
+    questions: Mapped[list] = mapped_column(  # type: ignore[assignment]
+        JSON,
+        nullable=False,
+        default=list,
+        server_default="[]",
+    )
+    # The dialogue transcript: [{"role": "user"|"assistant", "text": "...",
+    # "ts": "<iso>"}].
+    transcript: Mapped[list] = mapped_column(  # type: ignore[assignment]
+        JSON,
+        nullable=False,
+        default=list,
+        server_default="[]",
+    )
+    # The intake dialogue phase (see service._INTAKE_PHASES).
+    phase: Mapped[str] = mapped_column(
+        String(24),
+        nullable=False,
+        default="collect_request",
+        server_default="collect_request",
+    )
+    # The composed package-board state: [{"package_key", "selected",
+    # "coverage", "best_score", "group_ids", "quantity", "unit", "estimated",
+    # "stages", "trade"}].
+    packages: Mapped[list] = mapped_column(  # type: ignore[assignment]
+        JSON,
+        nullable=False,
+        default=list,
+        server_default="[]",
+    )
+
+    def __repr__(self) -> str:
+        return f"<AiEstimatorIntake run={self.run_id} phase={self.phase} mode={self.mode}>"

@@ -27,9 +27,15 @@ from app.dependencies import (
     verify_project_access,
 )
 from app.modules.ai_estimator import schemas
-from app.modules.ai_estimator.models import AiEstimatorGroup, AiEstimatorRun
+from app.modules.ai_estimator.intake import IntakeService
+from app.modules.ai_estimator.models import (
+    AiEstimatorGroup,
+    AiEstimatorIntake,
+    AiEstimatorRun,
+)
 from app.modules.ai_estimator.repository import (
     AiEstimatorGroupRepository,
+    AiEstimatorIntakeRepository,
     AiEstimatorRunRepository,
 )
 from app.modules.ai_estimator.service import AiEstimatorService
@@ -69,6 +75,207 @@ async def _load_group(
     if grp is None or grp.run_id != run.id:
         raise HTTPException(status_code=404, detail="Estimate group not found")
     return grp
+
+
+async def _load_intake(session: SessionDep, run: AiEstimatorRun) -> AiEstimatorIntake:
+    """Load the 1:1 intake row for a run (404 when the run has no intake)."""
+    intake = await AiEstimatorIntakeRepository(session).get_for_run(run.id)
+    if intake is None:
+        raise HTTPException(status_code=404, detail="This run has no conversational intake.")
+    return intake
+
+
+# ── Conversational intake (v2) ───────────────────────────────────────────────
+
+
+@router.post(
+    "/intake",
+    response_model=schemas.IntakeState,
+    status_code=201,
+    dependencies=[Depends(RequirePermission("ai_estimator.run"))],
+)
+async def create_intake(
+    spec: schemas.IntakeCreate,
+    session: SessionDep,
+    current_user_id: CurrentUserId,
+) -> schemas.IntakeState:
+    """Start a conversational intake from a free-text request.
+
+    Creates a run in status ``intake`` plus an intake row, runs the extraction
+    step (AI or deterministic), and returns the first :class:`IntakeState`.
+    Grouping does NOT run yet - the user confirms a parameter sheet and a group
+    board first.
+    """
+    await verify_project_access(spec.project_id, current_user_id, session)
+    service = IntakeService(session)
+    run, intake = await service.start(spec, _uid(current_user_id))
+    return await service.to_state(run, intake)
+
+
+@router.get(
+    "/runs/{run_id}/intake",
+    response_model=schemas.IntakeState,
+    dependencies=[Depends(RequirePermission("ai_estimator.read"))],
+)
+async def get_intake(
+    run_id: uuid.UUID,
+    session: SessionDep,
+    current_user_id: CurrentUserId,
+) -> schemas.IntakeState:
+    """Poll the intake state (while extraction / a round / compose runs)."""
+    run = await _load_run(session, run_id, current_user_id)
+    intake = await _load_intake(session, run)
+    return await IntakeService(session).to_state(run, intake)
+
+
+@router.post(
+    "/runs/{run_id}/intake/answer",
+    response_model=schemas.IntakeState,
+    dependencies=[Depends(RequirePermission("ai_estimator.run"))],
+)
+async def answer_intake(
+    run_id: uuid.UUID,
+    spec: schemas.IntakeAnswerRequest,
+    session: SessionDep,
+    current_user_id: CurrentUserId,
+) -> schemas.IntakeState:
+    """Record the current round's answers and (optionally) advance the FSM.
+
+    Advancing never exceeds three clarification rounds: a third advancing
+    answer always lands on the parameter sheet, never a fourth round.
+    """
+    run = await _load_run(session, run_id, current_user_id)
+    intake = await _load_intake(session, run)
+    service = IntakeService(session)
+    intake = await service.answer(run, intake, spec)
+    refreshed = await _load_run(session, run_id, current_user_id)
+    return await service.to_state(refreshed, intake)
+
+
+@router.post(
+    "/runs/{run_id}/intake/confirm-parameters",
+    response_model=schemas.IntakeState,
+    dependencies=[Depends(RequirePermission("ai_estimator.run"))],
+)
+async def confirm_parameters(
+    run_id: uuid.UUID,
+    spec: schemas.ConfirmParametersRequest,
+    session: SessionDep,
+    current_user_id: CurrentUserId,
+) -> schemas.IntakeState:
+    """Confirm the parameter sheet (checkpoint A) and compose the group board.
+
+    Runs the hybrid checklist + live vector-probe composer and persists the
+    composed groups, then transitions to ``group_board``.
+    """
+    run = await _load_run(session, run_id, current_user_id)
+    intake = await _load_intake(session, run)
+    service = IntakeService(session)
+    intake = await service.confirm_parameters(run, intake, spec)
+    refreshed = await _load_run(session, run_id, current_user_id)
+    return await service.to_state(refreshed, intake)
+
+
+@router.post(
+    "/runs/{run_id}/intake/packages",
+    response_model=schemas.IntakeState,
+    dependencies=[Depends(RequirePermission("ai_estimator.run"))],
+)
+async def edit_intake_packages(
+    run_id: uuid.UUID,
+    spec: schemas.IntakePackagesRequest,
+    session: SessionDep,
+    current_user_id: CurrentUserId,
+) -> schemas.IntakeState:
+    """Edit the package board: add / remove / toggle packages.
+
+    Editing a package re-probes it (honest: the coverage badge reflects the
+    real live probe); removing a package deletes its composed groups.
+    """
+    run = await _load_run(session, run_id, current_user_id)
+    intake = await _load_intake(session, run)
+    service = IntakeService(session)
+    intake = await service.edit_packages(run, intake, spec)
+    refreshed = await _load_run(session, run_id, current_user_id)
+    return await service.to_state(refreshed, intake)
+
+
+@router.post(
+    "/runs/{run_id}/intake/finish",
+    response_model=schemas.RunRead,
+    dependencies=[Depends(RequirePermission("ai_estimator.run"))],
+)
+async def finish_intake(
+    run_id: uuid.UUID,
+    session: SessionDep,
+    current_user_id: CurrentUserId,
+) -> schemas.RunRead:
+    """Confirm the group board (checkpoint B) and bridge to the run pipeline.
+
+    Advances the run to the same state the legacy source checkpoint produced
+    (status ``grouping``), keeping the composed groups, so the rest of the
+    pipeline (match / preview / apply) runs unchanged.
+    """
+    run = await _load_run(session, run_id, current_user_id)
+    intake = await _load_intake(session, run)
+    service = IntakeService(session)
+    run = await service.finish(run, intake, _uid(current_user_id))
+    return AiEstimatorService(session).run_to_read(run)
+
+
+@router.get(
+    "/project-types",
+    response_model=list[schemas.ProjectTypeOut],
+    dependencies=[Depends(RequirePermission("ai_estimator.read"))],
+)
+async def list_project_types(_current_user_id: CurrentUserId) -> list[schemas.ProjectTypeOut]:
+    """Return the static project-type registry for the intake UI (tiles + schema).
+
+    Every user-facing label is an i18n key (``aiest.ptype.<key>`` /
+    ``aiest.param.<key>`` / ``aiest.pkg.<key>``); the synonyms are included so
+    the UI can show "matched on ..." hints.
+    """
+    from app.modules.ai_estimator.project_types import PROJECT_TYPE_ORDER, get_project_type
+
+    out: list[schemas.ProjectTypeOut] = []
+    for key in PROJECT_TYPE_ORDER:
+        pt = get_project_type(key)
+        if pt is None:
+            continue
+        out.append(
+            schemas.ProjectTypeOut(
+                key=pt.key,
+                label_key=f"aiest.ptype.{pt.key}",
+                synonyms=[*pt.synonyms_en, *pt.synonyms_ru, *pt.synonyms_de],
+                params=[
+                    schemas.ProjectParamOut(
+                        key=p.key,
+                        kind=p.kind,  # type: ignore[arg-type]
+                        unit=p.unit,
+                        required=p.required,
+                        choices=list(p.choices or ()),
+                        unlocks=list(p.unlocks),
+                        round_group=p.round_group,
+                        label_key=f"aiest.param.{p.key}",
+                        why_key=f"aiest.why.{p.key}",
+                    )
+                    for p in pt.params
+                ],
+                packages=[
+                    schemas.WorkPackageOut(
+                        key=pkg.key,
+                        trade=pkg.trade,
+                        default_on=pkg.default_on,
+                        stages=list(pkg.stages),
+                        unit=pkg.unit,
+                        label_key=f"aiest.pkg.{pkg.key}",
+                    )
+                    for pkg in pt.packages
+                ],
+                default_unit_system=pt.default_unit_system,
+            )
+        )
+    return out
 
 
 # ── Runs ───────────────────────────────────────────────────────────────────
