@@ -282,6 +282,36 @@ class TakeoffCompareResponse(BaseModel):
     summary: dict[str, Any] = Field(default_factory=dict)
 
 
+# ── Create-variation-from-delta handoff (Item 17) ───────────────────────
+
+
+class CreateVariationFromCompareRequest(BaseModel):
+    """Turn a PDF revision-compare delta into a draft variation request.
+
+    The compare is recomputed server-side from the two document ids (the
+    deterministic :meth:`compare_documents` is the single source of
+    truth), so the client only carries the project + document pair and an
+    optional title override. The created variation is always a *draft* -
+    automation proposes, a human confirms and submits it.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    project_id: UUID
+    from_document_id: str = Field(..., min_length=1, max_length=255)
+    to_document_id: str = Field(..., min_length=1, max_length=255)
+    title: str | None = Field(default=None, max_length=500)
+
+
+class CreateVariationFromCompareResponse(BaseModel):
+    """The draft variation request minted from a PDF revision-compare delta."""
+
+    variation_request_id: UUID
+    code: str
+    estimated_cost_impact: str = "0"  # signed Decimal string in base currency
+    currency: str = ""
+
+
 class LinkToBoqRequest(BaseModel):
     """Request to link a measurement to a BOQ position."""
 

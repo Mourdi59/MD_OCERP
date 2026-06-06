@@ -60,6 +60,10 @@
     "measurement_consistency": {
       "fail": "BOQ mixes metric and imperial units - use one system consistently",
       "suggestion": "Convert all quantities to either metric or imperial units"
+    },
+    "revision_cost_impact_review": {
+      "fail": "Revision cost impact of {amount} is not yet captured as a variation",
+      "suggestion": "Create a draft variation request from this revision compare to track the cost change"
     }
   },
   "din276": {

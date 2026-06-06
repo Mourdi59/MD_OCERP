@@ -60,6 +60,10 @@
     "measurement_consistency": {
       "fail": "LV vermischt metrische und imperiale Einheiten - einheitliches System verwenden",
       "suggestion": "Alle Mengen entweder in metrische oder imperiale Einheiten umrechnen"
+    },
+    "revision_cost_impact_review": {
+      "fail": "Die Kostenauswirkung der Revision von {amount} ist noch nicht als Nachtrag erfasst",
+      "suggestion": "Aus diesem Revisionsvergleich einen Nachtragsentwurf erstellen, um die Kostenänderung zu erfassen"
     }
   },
   "din276": {

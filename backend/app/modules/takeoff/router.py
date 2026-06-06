@@ -65,6 +65,8 @@ from app.modules.takeoff.manifest_verifier import (
 )
 from app.modules.takeoff.models import CadExtractionSession
 from app.modules.takeoff.schemas import (
+    CreateVariationFromCompareRequest,
+    CreateVariationFromCompareResponse,
     LinkToBoqRequest,
     TakeoffCompareResponse,
     TakeoffMeasurementBulkCreate,
@@ -4499,6 +4501,41 @@ async def compare_takeoff_documents(
     await verify_project_access(project_id, str(user_id), session)
     payload = await service.compare_documents(project_id, from_document_id, to_document_id)
     return TakeoffCompareResponse(**payload)
+
+
+@router.post(
+    "/measurements/create-variation",
+    response_model=CreateVariationFromCompareResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[
+        Depends(RequirePermission("takeoff.read")),
+        Depends(RequirePermission("variations.create")),
+    ],
+)
+async def create_variation_from_takeoff_compare(
+    body: CreateVariationFromCompareRequest,
+    user_id: CurrentUserId = None,  # type: ignore[assignment]
+    service: TakeoffService = Depends(_get_service),
+    session: SessionDep = None,  # type: ignore[assignment]
+) -> CreateVariationFromCompareResponse:
+    """Create a DRAFT variation request from a PDF takeoff revision delta.
+
+    Recomputes the deterministic compare for the two document ids and turns
+    its net cost impact into a draft VariationRequest (never submitted - a
+    human confirms it in the variations module). Requires BOTH
+    ``takeoff.read`` AND ``variations.create`` so a read-only viewer cannot
+    mint a variation. Gated by ``verify_project_access`` so a foreign-tenant
+    ``project_id`` 404s.
+    """
+    await verify_project_access(body.project_id, str(user_id), session)
+    payload = await service.create_variation_from_documents(
+        body.project_id,
+        body.from_document_id,
+        body.to_document_id,
+        title=body.title,
+        user_id=str(user_id) if user_id else None,
+    )
+    return CreateVariationFromCompareResponse(**payload)
 
 
 # ── Summary (must be before /{measurement_id} to avoid route collision) ──

@@ -580,7 +580,6 @@ _STOREY_NULL_LITERALS: frozenset[str] = frozenset(
         "n/a",
         "na",
         "-",
-        "-",
     }
 )
 

@@ -180,6 +180,7 @@ PRESENCE_PROBES: tuple[Probe, ...] = (
     Probe("inspections", _project_probe("oe_inspections_inspection")),
     Probe("ncr", _project_probe("oe_ncr_ncr")),
     Probe("punchlist", _project_probe("oe_punchlist_item")),
+    Probe("closeout", _project_probe("oe_closeout_package")),
     Probe("qms", _project_probe("oe_qms_itp_plan")),
     Probe("safety", _project_probe("oe_safety_incident")),
     Probe("hse_advanced", _project_probe("oe_hse_advanced_jsa")),

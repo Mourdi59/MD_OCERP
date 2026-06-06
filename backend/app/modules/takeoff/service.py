@@ -779,6 +779,32 @@ def _compute_cost_impact(
     return str(impact)
 
 
+def _build_pdf_revision_narrative(
+    *,
+    measurement_tally: dict[str, Any],
+    changed_linked_count: int,
+) -> str:
+    """Plain-text description of a PDF revision delta for a draft variation.
+
+    Built only from the deterministic summary tally (no AI), so the
+    estimator sees what moved before confirming the variation.
+    """
+
+    def _n(key: str) -> int:
+        try:
+            return int(measurement_tally.get(key, 0) or 0)
+        except (ValueError, TypeError):
+            return 0
+
+    return (
+        "Auto-generated from a PDF takeoff revision compare. "
+        f"{_n('added')} measurements added, {_n('removed')} removed, "
+        f"{_n('modified')} changed; "
+        f"{changed_linked_count} priced (linked-to-BOQ) measurement values changed. "
+        "Review and confirm before submitting this variation."
+    )
+
+
 class TakeoffService:
     """Business logic for takeoff operations."""
 
@@ -1680,3 +1706,79 @@ class TakeoffService:
         except Exception:  # noqa: BLE001 - pricing is advisory, never break the compare
             logger.debug("Cost-impact rate lookup failed for position %s", position_id, exc_info=True)
             return None, None
+
+    async def create_variation_from_documents(
+        self,
+        project_id: uuid.UUID,
+        from_document_id: str,
+        to_document_id: str,
+        *,
+        title: str | None = None,
+        user_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Turn a PDF revision delta into a draft VariationRequest.
+
+        Mirrors the DWG handoff: the deterministic
+        :meth:`compare_documents` is the single source of truth (no
+        recompute of the diff math), and the result is shaped into a
+        *draft* VariationRequest (never submitted/approved - a human
+        confirms it in the variations module). Provenance is stamped into
+        ``metadata.source = "pdf_revision_compare"``.
+
+        Returns ``{variation_request_id, code, estimated_cost_impact,
+        currency}``.
+        """
+        diff = await self.compare_documents(project_id, from_document_id, to_document_id)
+        summary = diff.get("summary") or {}
+        measurement_tally = summary.get("measurements") or {}
+        net_impact_raw = summary.get("net_cost_impact")
+        currency = summary.get("cost_currency") or ""
+
+        rows = diff.get("measurement_rows", [])
+        changed_measurement_ids = [row["measurement_id"] for row in rows if row.get("change_type") == "modified"]
+        changed_linked_count = len(
+            [row for row in rows if row.get("change_type") == "modified" and row.get("linked_boq_position_id")]
+        )
+
+        try:
+            estimated_cost_impact = Decimal(str(net_impact_raw)) if net_impact_raw not in (None, "") else Decimal("0")
+        except (InvalidOperation, ValueError, TypeError):
+            estimated_cost_impact = Decimal("0")
+
+        resolved_title = title or "Drawing revision (PDF takeoff)"
+        description = _build_pdf_revision_narrative(
+            measurement_tally=measurement_tally,
+            changed_linked_count=changed_linked_count,
+        )
+
+        # Lazy import (mirrors the BOQService import) so the takeoff module
+        # load never depends on the variations module at import time.
+        from app.modules.variations.schemas import VariationRequestCreate
+        from app.modules.variations.service import VariationsService
+
+        vr_create = VariationRequestCreate(
+            project_id=project_id,
+            title=resolved_title[:500],
+            description=description[:20000],
+            classification="scope_change",
+            estimated_cost_impact=estimated_cost_impact,
+            estimated_schedule_days=0,
+            currency=currency[:10],
+            status="draft",
+            metadata={
+                "source": "pdf_revision_compare",
+                "from_document_id": str(from_document_id),
+                "to_document_id": str(to_document_id),
+                "changed_measurement_ids": changed_measurement_ids,
+                "net_cost_impact": str(estimated_cost_impact),
+            },
+        )
+        variations_service = VariationsService(self.session)
+        vr = await variations_service.create_request(vr_create, user_id=user_id)
+
+        return {
+            "variation_request_id": vr.id,
+            "code": vr.code,
+            "estimated_cost_impact": str(estimated_cost_impact),
+            "currency": currency,
+        }

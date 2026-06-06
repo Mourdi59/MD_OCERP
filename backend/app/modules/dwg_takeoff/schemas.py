@@ -372,5 +372,34 @@ class DwgDrawingDiffResponse(BaseModel):
     summary: dict[str, Any] = Field(default_factory=dict)
 
 
+# ── Create-variation-from-delta handoff (Item 17) ───────────────────────
+
+
+class CreateVariationFromDiffRequest(BaseModel):
+    """Turn a revision-compare delta into a draft variation request.
+
+    The diff itself is recomputed server-side from the two version ids
+    (the deterministic :meth:`compare_drawing_versions` is the single
+    source of truth), so the client only carries the version pair and an
+    optional title override. The created variation is always a *draft* -
+    AI/automation proposes, a human confirms and submits it.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    from_version_id: UUID
+    to_version_id: UUID
+    title: str | None = Field(default=None, max_length=500)
+
+
+class CreateVariationFromDiffResponse(BaseModel):
+    """The draft variation request minted from a revision-compare delta."""
+
+    variation_request_id: UUID
+    code: str
+    estimated_cost_impact: str = "0"  # signed Decimal string in base currency
+    currency: str = ""
+
+
 # Forward reference resolution
 DwgDrawingResponse.model_rebuild()

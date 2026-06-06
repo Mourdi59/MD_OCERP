@@ -538,6 +538,46 @@ def _calculate_cost_impact(
     return str(impact)
 
 
+def _build_revision_narrative(
+    *,
+    entity_tally: dict[str, Any],
+    annotation_tally: dict[str, Any],
+    changed_linked_count: int,
+) -> str:
+    """Plain-text description of a revision delta for a draft variation.
+
+    Built only from the deterministic summary tallies (no AI). Reads like
+    "3 layers added, 1 removed, 2 changed; 4 annotations added, 1 removed,
+    5 changed; 2 priced (linked-to-BOQ) annotation values changed." so the
+    estimator sees what moved before they confirm the variation.
+    """
+
+    def _n(tally: dict[str, Any], key: str) -> int:
+        try:
+            return int(tally.get(key, 0) or 0)
+        except (ValueError, TypeError):
+            return 0
+
+    parts = [
+        (
+            f"{_n(entity_tally, 'added')} layers added, "
+            f"{_n(entity_tally, 'removed')} removed, "
+            f"{_n(entity_tally, 'modified')} changed"
+        ),
+        (
+            f"{_n(annotation_tally, 'added')} annotations added, "
+            f"{_n(annotation_tally, 'removed')} removed, "
+            f"{_n(annotation_tally, 'modified')} changed"
+        ),
+        f"{changed_linked_count} priced (linked-to-BOQ) annotation values changed",
+    ]
+    return (
+        "Auto-generated from a drawing revision compare. "
+        + "; ".join(parts)
+        + ". Review and confirm before submitting this variation."
+    )
+
+
 class DwgTakeoffService:
     """Business logic for DWG drawings, versions, and annotations."""
 
@@ -1648,6 +1688,101 @@ class DwgTakeoffService:
         except Exception:  # noqa: BLE001 - pricing is advisory, never break the compare
             logger.debug("Cost-impact rate lookup failed for position %s", position_id, exc_info=True)
             return None, None
+
+    async def create_variation_from_versions(
+        self,
+        drawing_id: uuid.UUID,
+        from_version_id: uuid.UUID,
+        to_version_id: uuid.UUID,
+        *,
+        title: str | None = None,
+        user_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Turn a drawing revision delta into a draft VariationRequest.
+
+        The deterministic :meth:`compare_drawing_versions` is the single
+        source of truth - this method does NOT recompute the diff, it
+        calls compare and shapes its summary into a controlled-change
+        record. A *draft* VariationRequest is created (never submitted or
+        approved): AI/automation proposes the change, a human confirms it
+        in the variations workflow.
+
+        The variation is classified ``scope_change`` and carries the net
+        cost impact from the compare in the project's base currency.
+        Provenance (the drawing id, the version pair, the changed linked
+        annotation ids, the raw net impact) is stamped into
+        ``metadata.source = "dwg_revision_compare"`` so the handoff is
+        traceable and idempotent-friendly (the version pair is unique).
+
+        Returns ``{variation_request_id, code, estimated_cost_impact,
+        currency}``.
+        """
+        diff = await self.compare_drawing_versions(drawing_id, from_version_id, to_version_id)
+        drawing = await self.get_drawing(drawing_id)
+
+        summary = diff.get("summary") or {}
+        entity_tally = summary.get("entities") or {}
+        annotation_tally = summary.get("annotations") or {}
+        net_impact_raw = summary.get("net_cost_impact")
+        currency = summary.get("cost_currency") or ""
+
+        changed_annotation_ids = [
+            row["annotation_id"] for row in diff.get("annotation_rows", []) if row.get("change_type") == "modified"
+        ]
+
+        try:
+            estimated_cost_impact = Decimal(str(net_impact_raw)) if net_impact_raw not in (None, "") else Decimal("0")
+        except (InvalidOperation, ValueError, TypeError):
+            estimated_cost_impact = Decimal("0")
+
+        from_v = diff.get("from_version_number")
+        to_v = diff.get("to_version_number")
+        resolved_title = title or f"Drawing revision {drawing.name} v{from_v}->v{to_v}"
+        description = _build_revision_narrative(
+            entity_tally=entity_tally,
+            annotation_tally=annotation_tally,
+            changed_linked_count=len(
+                [
+                    row
+                    for row in diff.get("annotation_rows", [])
+                    if row.get("change_type") == "modified" and row.get("linked_boq_position_id")
+                ]
+            ),
+        )
+
+        # Lazy import (mirrors the BOQService import at _resolve_position_rate)
+        # so the dwg_takeoff module load never depends on the variations
+        # module being importable at import time.
+        from app.modules.variations.schemas import VariationRequestCreate
+        from app.modules.variations.service import VariationsService
+
+        vr_create = VariationRequestCreate(
+            project_id=drawing.project_id,
+            title=resolved_title[:500],
+            description=description[:20000],
+            classification="scope_change",
+            estimated_cost_impact=estimated_cost_impact,
+            estimated_schedule_days=0,
+            currency=currency[:10],
+            status="draft",
+            metadata={
+                "source": "dwg_revision_compare",
+                "drawing_id": str(drawing_id),
+                "from_version_id": str(from_version_id),
+                "to_version_id": str(to_version_id),
+                "changed_annotation_ids": changed_annotation_ids,
+                "net_cost_impact": str(estimated_cost_impact),
+            },
+        )
+        variations_service = VariationsService(self.session)
+        vr = await variations_service.create_request(vr_create, user_id=user_id)
+
+        return {
+            "variation_request_id": vr.id,
+            "code": vr.code,
+            "estimated_cost_impact": str(estimated_cost_impact),
+            "currency": currency,
+        }
 
     async def get_entities(
         self,

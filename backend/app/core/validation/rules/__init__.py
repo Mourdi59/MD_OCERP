@@ -3405,6 +3405,98 @@ class MeasurementConsistency(ValidationRule):
         ]
 
 
+# ── Revision-compare cost-impact review (Item 17) ───────────────────────────
+
+
+class RevisionCostImpactReview(ValidationRule):
+    """Advisory: a priced revision change should become a controlled variation.
+
+    When a drawing / PDF revision compare reports a non-zero
+    ``net_cost_impact`` but no variation request has been raised from it
+    yet, this rule flags the gap so the cost change is captured in the
+    commercial workflow rather than slipping through silently. It is a
+    WARNING (advisory, never blocks) per the "AI proposes, human confirms"
+    principle - the user creates the draft variation from the compare
+    drawer.
+
+    The compare result is supplied to the engine via
+    ``ValidationContext.data`` (or ``context.data["compare"]``) with the
+    shape returned by ``compare_drawing_versions`` /
+    ``compare_documents``: a ``summary`` carrying ``net_cost_impact``.
+    ``context.metadata["variation_request_exists"]`` (truthy) marks that a
+    variation has already been raised, so re-validating after the handoff
+    passes cleanly.
+    """
+
+    rule_id = "boq_quality.revision_cost_impact_review"
+    name = "Revision cost impact needs a variation"
+    standard = "boq_quality"
+    severity = Severity.WARNING
+    category = RuleCategory.CONSISTENCY
+    description = (
+        "A revision change with a non-zero cost impact should be turned "
+        "into a controlled variation request rather than left untracked."
+    )
+
+    @staticmethod
+    def _extract_net_impact(data: Any) -> Decimal | None:
+        """Pull ``net_cost_impact`` out of a compare-result-shaped payload."""
+        if not isinstance(data, dict):
+            return None
+        summary = data.get("summary")
+        if not isinstance(summary, dict):
+            # Allow the summary itself to be passed directly.
+            summary = data if "net_cost_impact" in data else {}
+        raw = summary.get("net_cost_impact")
+        if raw in (None, ""):
+            return None
+        try:
+            return Decimal(str(raw))
+        except (InvalidOperation, ValueError, TypeError):
+            return None
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        locale = _get_locale(context)
+        net_impact = self._extract_net_impact(context.data)
+        if net_impact is None:
+            # No compare payload / no priced change in this context - nothing
+            # to assert (a passing row here would defeat SKIPPED status).
+            return []
+
+        meta = getattr(context, "metadata", None) or {}
+        variation_exists = bool(meta.get("variation_request_exists")) if isinstance(meta, dict) else False
+
+        if net_impact != 0 and not variation_exists:
+            return [
+                RuleResult(
+                    rule_id=self.rule_id,
+                    rule_name=self.name,
+                    severity=self.severity,
+                    category=self.category,
+                    passed=False,
+                    message=translate(
+                        "boq_quality.revision_cost_impact_review.fail",
+                        locale=locale,
+                        amount=_fmt_decimal(float(net_impact)),
+                    ),
+                    suggestion=translate(
+                        "boq_quality.revision_cost_impact_review.suggestion",
+                        locale=locale,
+                    ),
+                )
+            ]
+        return [
+            RuleResult(
+                rule_id=self.rule_id,
+                rule_name=self.name,
+                severity=self.severity,
+                category=self.category,
+                passed=True,
+                message=_ok(locale),
+            )
+        ]
+
+
 # ── Pipeline Builder graph-validity rule ────────────────────────────────────
 
 
@@ -4538,6 +4630,7 @@ def register_builtin_rules() -> None:
         (MeasurementConsistency(), None),
         (BOQUnitSystemConsistencyRule(), None),
         (ClassificationCountryMismatchRule(), None),
+        (RevisionCostImpactReview(), None),
         # DIN 276 (DACH)
         (DIN276CostGroupRequired(), None),
         (DIN276ValidCostGroup(), None),
