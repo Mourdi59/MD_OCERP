@@ -33,7 +33,7 @@ import {
   RefreshCw,
   Power,
 } from 'lucide-react';
-import { Card, Badge, Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { Card, Badge, Breadcrumb, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 
 interface StepProps {
@@ -128,6 +128,11 @@ export function ModuleDeveloperGuide() {
         title={t('modules_developer_guide.intro_title', {
           defaultValue: 'Build your own module without leaving the app',
         })}
+        more={
+          t('modules_developer_guide.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('modules_developer_guide.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('nav.modules', { defaultValue: 'Modules' }), onClick: () => navigate('/modules') },
         ]}

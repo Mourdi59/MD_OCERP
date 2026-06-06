@@ -17,11 +17,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
-import { GitCompare, Loader2, ArrowRight, BarChart3, MessageSquare } from 'lucide-react';
+import { GitCompare, Loader2, ArrowRight, BarChart3, MessageSquare, FilePlus2 } from 'lucide-react';
 
 import { SideDrawer, MoneyDisplay, Badge } from '@/shared/ui';
+import { useToastStore } from '@/stores/useToastStore';
 import {
   takeoffApi,
   type TakeoffDocumentResponse,
@@ -103,6 +105,51 @@ export function PdfCompareDrawer({
   });
 
   const diff = diffQuery.data;
+
+  const navigate = useNavigate();
+  const addToast = useToastStore((s) => s.addToast);
+
+  // The diff has a real change when any tally bucket other than "unchanged"
+  // is non-zero. With no change there is nothing to turn into a variation.
+  const hasChanges = useMemo(() => {
+    if (!diff) return false;
+    const m = diff.summary.measurements;
+    return (m.added ?? 0) + (m.removed ?? 0) + (m.modified ?? 0) > 0;
+  }, [diff]);
+
+  const createVariationMutation = useMutation({
+    mutationFn: () => {
+      if (!canCompare) throw new Error('no comparison selected');
+      return takeoffApi.createVariation(projectId, fromId, toId);
+    },
+    onSuccess: (result) => {
+      addToast(
+        {
+          type: 'success',
+          title: t('takeoff_compare.variation_created', {
+            defaultValue: 'Draft variation {{code}} created',
+            code: result.code,
+          }),
+          message: t('takeoff_compare.variation_created_hint', {
+            defaultValue: 'Review and confirm it in the variations module before submitting.',
+          }),
+          action: {
+            label: t('takeoff_compare.view_variation', { defaultValue: 'View variation' }),
+            onClick: () => navigate('/variations'),
+          },
+        },
+        { duration: 8000 },
+      );
+    },
+    onError: () => {
+      addToast({
+        type: 'error',
+        title: t('takeoff_compare.variation_error', {
+          defaultValue: 'Could not create the variation. Please try again.',
+        }),
+      });
+    },
+  });
 
   const rows = useMemo(
     () =>
@@ -260,7 +307,14 @@ export function PdfCompareDrawer({
 
         {diff && !diffQuery.isLoading && (
           <>
-            {tab === 'summary' && <SummaryTab diff={diff} />}
+            {tab === 'summary' && (
+              <SummaryTab
+                diff={diff}
+                canCreateVariation={hasChanges && canCompare}
+                creating={createVariationMutation.isPending}
+                onCreateVariation={() => createVariationMutation.mutate()}
+              />
+            )}
             {tab === 'measurements' && <MeasurementsTab rows={rows} hideUnchanged={hideUnchanged} />}
           </>
         )}
@@ -271,7 +325,17 @@ export function PdfCompareDrawer({
 
 /* ── Summary tab ───────────────────────────────────────────────────────── */
 
-function SummaryTab({ diff }: { diff: TakeoffCompareResponse }) {
+function SummaryTab({
+  diff,
+  canCreateVariation,
+  creating,
+  onCreateVariation,
+}: {
+  diff: TakeoffCompareResponse;
+  canCreateVariation: boolean;
+  creating: boolean;
+  onCreateVariation: () => void;
+}) {
   const { t } = useTranslation();
   const { summary } = diff;
   const tally = summary.measurements;
@@ -311,7 +375,32 @@ function SummaryTab({ diff }: { diff: TakeoffCompareResponse }) {
           <p className="text-xs text-content-tertiary">
             {t('takeoff_compare.no_cost_impact', {
               defaultValue:
-                'No cost impact — no linked BOQ measurement changed value between these revisions.',
+                'No cost impact - no linked BOQ measurement changed value between these revisions.',
+            })}
+          </p>
+        )}
+
+        {/* Create-variation-from-delta handoff (Item 17). Disabled when the
+            two documents are identical / there are no changes. Creates a
+            DRAFT variation the user confirms in the variations module. */}
+        <button
+          type="button"
+          onClick={onCreateVariation}
+          disabled={!canCreateVariation || creating}
+          data-testid="takeoff-compare-create-variation"
+          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md bg-oe-blue px-3 py-2 text-xs font-semibold text-white transition hover:bg-oe-blue/90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {creating ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <FilePlus2 size={14} />
+          )}
+          {t('takeoff_compare.create_variation', { defaultValue: 'Create variation from delta' })}
+        </button>
+        {!canCreateVariation && (
+          <p className="mt-1 text-[10px] text-content-tertiary">
+            {t('takeoff_compare.create_variation_disabled', {
+              defaultValue: 'Pick two documents with at least one change to raise a variation.',
             })}
           </p>
         )}

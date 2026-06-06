@@ -27,6 +27,7 @@ import {
   WideModalSection,
   WideModalField,
   DismissibleInfo,
+  IntroRichText,
 } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { projectsApi } from '@/features/projects/api';
@@ -211,6 +212,11 @@ export function PortalPage() {
         title={t('portal.intro_title', {
           defaultValue: 'Give outsiders exactly what they need — nothing more',
         })}
+        more={
+          t('portal.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('portal.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('portal.intro_link_subs', { defaultValue: 'Subcontractors' }),

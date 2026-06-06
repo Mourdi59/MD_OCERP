@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { AlertOctagon, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 
-import { Breadcrumb, Button, Card, EmptyState, DismissibleInfo } from '@/shared/ui';
+import { Breadcrumb, Button, Card, EmptyState, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 
@@ -108,6 +108,11 @@ export function ProjectControlsPage() {
         title={t('project-controls.intro_title', {
           defaultValue: 'Catch the project slipping before it does',
         })}
+        more={
+          t('project-controls.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('project-controls.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('nav.finance', { defaultValue: 'Finance' }), onClick: () => navigate('/finance') },
           { label: t('nav.risks', { defaultValue: 'Risks' }), onClick: () => navigate('/risks') },

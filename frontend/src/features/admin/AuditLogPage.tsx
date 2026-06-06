@@ -58,7 +58,7 @@ import {
   User as UserIcon,
   X,
 } from 'lucide-react';
-import { Badge, EmptyState, Breadcrumb, DismissibleInfo, Button } from '@/shared/ui';
+import { Badge, EmptyState, Breadcrumb, DismissibleInfo, IntroRichText, Button } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import { triggerDownload } from '@/shared/lib/api';
@@ -1077,6 +1077,11 @@ export function AuditLogPage() {
         title={t('admin_audit_log.intro_title', {
           defaultValue: 'Prove who changed what, when',
         })}
+        more={
+          t('admin_audit_log.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('admin_audit_log.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('nav.users', { defaultValue: 'User Management' }), onClick: () => navigate('/users') },
           { label: t('nav.governance', { defaultValue: 'Governance' }), onClick: () => navigate('/governance') },

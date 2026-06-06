@@ -6,7 +6,7 @@ import {
   Table, Table2, ArrowRight, Copy, Trash2, Plus,
   Search, ArrowUpDown, ChevronDown, GitCompareArrows, X, Loader2,
 } from 'lucide-react';
-import { Card, Badge, EmptyState, Skeleton, Button, Breadcrumb, FileTypeChips, DismissibleInfo } from '@/shared/ui';
+import { Card, Badge, EmptyState, Skeleton, Button, Breadcrumb, FileTypeChips, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { apiGet } from '@/shared/lib/api';
@@ -746,6 +746,7 @@ export function BOQListPage() {
       <DismissibleInfo
         storageKey="boq"
         title={t('boq.intro_title', { defaultValue: 'Every work item priced and totalled' })}
+        more={t('boq.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('boq.intro_more')} /> : undefined}
         links={[
           { label: t('nav.validation', { defaultValue: 'Validation' }), onClick: () => navigate('/validation') },
           { label: t('nav.finance', { defaultValue: 'Finance' }), onClick: () => navigate('/finance') },

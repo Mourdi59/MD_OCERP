@@ -80,6 +80,8 @@ import {
   CalendarRange,
   Gauge,
   Wand2,
+  PackageCheck,
+  Loader2,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -87,6 +89,7 @@ import { useModuleStore } from '@/stores/useModuleStore';
 import { apiGet } from '@/shared/lib/api';
 import { UpdateNotification } from '@/shared/ui/UpdateChecker';
 import { useViewModeStore } from '@/stores/useViewModeStore';
+import { useNavPendingStore } from '@/shared/lib/navigationProgress';
 import { useRecentStore } from '@/stores/useRecentStore';
 import { useGlobalSearchStore } from '@/stores/useGlobalSearchStore';
 import { getModuleNavItems } from '@/modules/_registry';
@@ -364,6 +367,7 @@ const navGroups: NavGroup[] = [
       { labelKey: 'inspections.title', to: '/inspections', icon: ClipboardCheck },
       { labelKey: 'ncr.title', to: '/ncr', icon: AlertOctagon },
       { labelKey: 'nav.punchlist', to: '/punchlist', icon: ListChecks },
+      { labelKey: 'closeout.title', to: '/closeout', icon: PackageCheck },
     ],
   },
   // ── 13. SAFETY & ESG ───────────────────────────────────────────────
@@ -639,6 +643,7 @@ const ROUTE_BACKEND_MODULE: Record<string, string> = {
   '/inspections': 'oe_inspections',
   '/ncr': 'oe_ncr',
   '/punchlist': 'oe_punchlist',
+  '/closeout': 'oe_closeout',
   '/qms': 'oe_qms',
   // Safety & HSE
   '/safety': 'oe_safety',
@@ -744,6 +749,7 @@ const ROUTE_MODULE_KEY: Record<string, string> = {
   '/inspections': 'inspections',
   '/ncr': 'ncr',
   '/punchlist': 'punchlist',
+  '/closeout': 'closeout',
   '/qms': 'qms',
   // Safety & HSE
   '/safety': 'safety',
@@ -1968,6 +1974,19 @@ function SidebarItem({
   const kbdHint = KBD_HINTS[item.to];
   const tourTestId = PRODUCT_TOUR_NAV_TESTIDS[item.to];
 
+  // Route-transition feedback: while THIS row's destination is loading
+  // (history pushed, React location not yet committed — see
+  // navigationProgress.ts) swap the icon for a spinner. Boolean selector
+  // so only the affected row re-renders. Items that pin a query string
+  // ("/boq?tab=…") must match it exactly; plain items match pathname.
+  const itemPath = item.to.split('?')[0];
+  const isPendingTarget = useNavPendingStore((s) => {
+    if (!s.pendingPath) return false;
+    return item.to.includes('?')
+      ? s.pendingPath === item.to
+      : s.pendingPath.split('?')[0] === itemPath;
+  });
+
   const handlePinClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -2014,7 +2033,11 @@ function SidebarItem({
           )
         }
       >
-        <Icon size={16} strokeWidth={isActive ? 2 : 1.75} />
+        {isPendingTarget ? (
+          <Loader2 size={16} className="oe-nav-spinner text-oe-blue" />
+        ) : (
+          <Icon size={16} strokeWidth={isActive ? 2 : 1.75} />
+        )}
         {hasBadge && (
           <span
             className={clsx(
@@ -2086,7 +2109,14 @@ function SidebarItem({
             {seq}
           </span>
         )}
-        <Icon size={compact ? 14 : 16} strokeWidth={isActive ? 2 : 1.75} className="shrink-0" />
+        {isPendingTarget ? (
+          <Loader2
+            size={compact ? 14 : 16}
+            className="oe-nav-spinner shrink-0 text-oe-blue"
+          />
+        ) : (
+          <Icon size={compact ? 14 : 16} strokeWidth={isActive ? 2 : 1.75} className="shrink-0" />
+        )}
         {/* Hover-tooltip via title falls back to the full label even when
             CSS truncates with an ellipsis. The visible width is now
             264px (was 232) so most labels render in full at default

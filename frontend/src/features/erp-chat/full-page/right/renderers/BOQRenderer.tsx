@@ -1,3 +1,5 @@
+import { unwrapList } from './normalize';
+
 interface BOQItem {
   ordinal?: string;
   description?: string;
@@ -8,7 +10,8 @@ interface BOQItem {
 }
 
 export default function BOQRenderer({ data }: { data: unknown }) {
-  const items: BOQItem[] = Array.isArray(data) ? data : [];
+  // Backend `get_boq_items` returns `{ positions: [...], grand_total, ... }`.
+  const items = unwrapList(data, ['positions', 'items']) as BOQItem[];
 
   if (items.length === 0) {
     return (

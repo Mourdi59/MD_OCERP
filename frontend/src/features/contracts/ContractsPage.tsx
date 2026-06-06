@@ -33,6 +33,7 @@ import {
   RecoveryCard,
   SkeletonTable,
   DismissibleInfo,
+  IntroRichText,
 } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import {
@@ -372,6 +373,11 @@ export function ContractsPage() {
         title={t('contracts.intro_title', {
           defaultValue: 'Keep the contract sum honest end to end',
         })}
+        more={
+          t('contracts.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('contracts.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.variations', { defaultValue: 'Variations' }),

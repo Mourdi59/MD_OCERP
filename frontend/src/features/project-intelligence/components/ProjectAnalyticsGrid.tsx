@@ -10,9 +10,10 @@
  *   6. Real-time validation (live rule pass count)
  */
 
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Flag, Loader2 } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -27,7 +28,7 @@ import {
   Area,
   ResponsiveContainer,
 } from 'recharts';
-import { apiGet } from '@/shared/lib/api';
+import { apiGet, apiPost } from '@/shared/lib/api';
 import { buildPareto, type ParetoInput } from './ParetoHelper';
 
 export const PI_QUERY_STALE_MS = 60_000;
@@ -87,12 +88,14 @@ interface SummaryState {
   boq?: {
     position_count?: number;
     baseline_position_count?: number;
+    baseline_source?: string;
   };
   validation?: {
     rules_passed?: number;
     rules_total?: number;
     errors?: number;
     warnings?: number;
+    last_run?: string | null;
   };
 }
 
@@ -225,26 +228,80 @@ export function ProjectAnalyticsGrid({ projectId }: ProjectAnalyticsGridProps) {
     return pieData;
   }, [bidAnalysisQ.data]);
 
-  // ── Widget 5: Scope coverage ──────────────────────────────────────────
+  // ── Widget 5: Scope coverage (real scope-drift metric) ─────────────────
+  // Coverage = current leaf positions / captured scope baseline. Above 100%
+  // means scope creep (more lines than baselined); below 100% means
+  // de-scoping. ``baseline_source`` tells the user where the baseline came
+  // from (an explicitly captured metadata baseline, the first BOQ snapshot,
+  // or the live count when nothing has been frozen yet).
   const coverage = useMemo(() => {
     const boq = summaryQ.data?.state?.boq;
     const current = boq?.position_count ?? 0;
     const baseline = boq?.baseline_position_count ?? current;
-    const pct = baseline > 0 ? Math.min(100, (current / baseline) * 100) : 0;
-    return { current, baseline, pct };
+    const source = boq?.baseline_source ?? 'none';
+    const pct = baseline > 0 ? (current / baseline) * 100 : 0;
+    const drift = current - baseline;
+    return { current, baseline, pct, source, drift };
   }, [summaryQ.data]);
 
   // ── Widget 6: Real-time validation ─────────────────────────────────────
+  // Prefer the real last-validation report (passed/total/errors/warnings now
+  // surfaced on the summary). Anomalies augment the live picture for projects
+  // that have never run a formal validation pass.
   const validation = useMemo(() => {
     const v = summaryQ.data?.state?.validation;
     const anomalies = anomaliesQ.data ?? [];
-    const passed = v?.rules_passed ?? 0;
-    const total = v?.rules_total ?? passed + anomalies.length;
-    const errors = (v?.errors ?? 0) + anomalies.filter((a) => a.severity === 'error').length;
-    const warnings =
-      (v?.warnings ?? 0) + anomalies.filter((a) => a.severity === 'warning').length;
-    return { passed, total, errors, warnings };
+    const hasReport = !!v?.last_run;
+    const anomalyErrors = anomalies.filter((a) => a.severity === 'error').length;
+    const anomalyWarnings = anomalies.filter((a) => a.severity === 'warning').length;
+    if (hasReport) {
+      return {
+        passed: v?.rules_passed ?? 0,
+        total: v?.rules_total ?? 0,
+        errors: v?.errors ?? 0,
+        warnings: v?.warnings ?? 0,
+        fromReport: true,
+      };
+    }
+    // No formal validation report yet: derive a live picture from anomalies.
+    return {
+      passed: 0,
+      total: anomalies.length,
+      errors: anomalyErrors,
+      warnings: anomalyWarnings,
+      fromReport: false,
+    };
   }, [summaryQ.data, anomaliesQ.data]);
+
+  // ── Scope-baseline capture (persisted) ─────────────────────────────────
+  const queryClient = useQueryClient();
+  const [baselineMsg, setBaselineMsg] = useState<string | null>(null);
+  const setBaselineM = useMutation({
+    mutationFn: () =>
+      apiPost<{ baseline_position_count: number }>(
+        `/v1/project_intelligence/scope-baseline/?project_id=${projectId}`,
+      ),
+    onSuccess: async () => {
+      setBaselineMsg(
+        t('project_intelligence.analytics.baseline_set_ok', {
+          defaultValue: 'Scope baseline captured',
+        }),
+      );
+      // Refresh the summary so coverage recomputes against the new baseline.
+      await queryClient.invalidateQueries({ queryKey: ['pi', 'summary', projectId] });
+      setTimeout(() => setBaselineMsg(null), 3000);
+    },
+    onError: (err: unknown) => {
+      setBaselineMsg(
+        err instanceof Error
+          ? err.message
+          : t('project_intelligence.analytics.baseline_set_err', {
+              defaultValue: 'Could not capture baseline',
+            }),
+      );
+      setTimeout(() => setBaselineMsg(null), 4000);
+    },
+  });
 
   const emptyLabel = t('project_intelligence.analytics.no_data', {
     defaultValue: 'No data yet',
@@ -382,7 +439,7 @@ export function ProjectAnalyticsGrid({ projectId }: ProjectAnalyticsGridProps) {
         )}
       </WidgetCard>
 
-      {/* 5. Scope coverage */}
+      {/* 5. Scope coverage (real scope-drift) */}
       <WidgetCard
         testId="pi-widget-scope-coverage"
         title={t('project_intelligence.analytics.scope_coverage', {
@@ -392,8 +449,17 @@ export function ProjectAnalyticsGrid({ projectId }: ProjectAnalyticsGridProps) {
           defaultValue: 'BOQ line count vs baseline',
         })}
       >
-        <div className="h-full flex flex-col items-center justify-center">
-          <div className="text-3xl font-bold text-content-primary tabular-nums">
+        <div className="h-full flex flex-col items-center justify-center text-center">
+          <div
+            className={`text-3xl font-bold tabular-nums ${
+              coverage.drift > 0
+                ? 'text-amber-500'
+                : coverage.drift < 0
+                  ? 'text-rose-500'
+                  : 'text-emerald-500'
+            }`}
+            data-testid="pi-scope-coverage-pct"
+          >
             {coverage.pct.toFixed(0)}%
           </div>
           <div className="text-2xs text-content-tertiary mt-1">
@@ -403,6 +469,59 @@ export function ProjectAnalyticsGrid({ projectId }: ProjectAnalyticsGridProps) {
               baseline: coverage.baseline,
             })}
           </div>
+          {coverage.drift !== 0 && (
+            <div
+              className={`text-2xs mt-0.5 ${
+                coverage.drift > 0 ? 'text-amber-500' : 'text-rose-500'
+              }`}
+              data-testid="pi-scope-drift"
+            >
+              {coverage.drift > 0
+                ? t('project_intelligence.analytics.scope_creep', {
+                    defaultValue: '+{{n}} added since baseline',
+                    n: coverage.drift,
+                  })
+                : t('project_intelligence.analytics.scope_descoped', {
+                    defaultValue: '{{n}} removed since baseline',
+                    n: coverage.drift,
+                  })}
+            </div>
+          )}
+          {coverage.source === 'current' && coverage.current > 0 ? (
+            <button
+              type="button"
+              onClick={() => setBaselineM.mutate()}
+              disabled={setBaselineM.isPending}
+              data-testid="pi-set-baseline"
+              className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-2xs font-medium text-oe-blue border border-oe-blue/30 rounded-md hover:bg-oe-blue/5 transition-colors disabled:opacity-50"
+            >
+              {setBaselineM.isPending ? (
+                <Loader2 size={11} className="animate-spin" />
+              ) : (
+                <Flag size={11} />
+              )}
+              {t('project_intelligence.analytics.set_baseline', {
+                defaultValue: 'Set baseline',
+              })}
+            </button>
+          ) : (
+            <div className="text-[10px] text-content-quaternary mt-1.5">
+              {coverage.source === 'metadata'
+                ? t('project_intelligence.analytics.baseline_src_metadata', {
+                    defaultValue: 'Baseline: captured',
+                  })
+                : coverage.source === 'snapshot'
+                  ? t('project_intelligence.analytics.baseline_src_snapshot', {
+                      defaultValue: 'Baseline: first snapshot',
+                    })
+                  : ''}
+            </div>
+          )}
+          {baselineMsg && (
+            <div className="text-[10px] text-content-tertiary mt-1" data-testid="pi-baseline-msg">
+              {baselineMsg}
+            </div>
+          )}
         </div>
       </WidgetCard>
 
@@ -412,12 +531,21 @@ export function ProjectAnalyticsGrid({ projectId }: ProjectAnalyticsGridProps) {
         title={t('project_intelligence.analytics.validation_live', {
           defaultValue: 'Real-time validation',
         })}
-        subtitle={t('project_intelligence.analytics.validation_live_sub', {
-          defaultValue: 'Rule pass count (updates every 60s)',
-        })}
+        subtitle={
+          validation.fromReport
+            ? t('project_intelligence.analytics.validation_live_sub', {
+                defaultValue: 'Rule pass count (updates every 60s)',
+              })
+            : t('project_intelligence.analytics.validation_live_sub_anom', {
+                defaultValue: 'Live anomaly scan (no formal run yet)',
+              })
+        }
       >
         <div className="h-full flex flex-col items-center justify-center gap-1">
-          <div className="text-3xl font-bold text-content-primary tabular-nums">
+          <div
+            className="text-3xl font-bold text-content-primary tabular-nums"
+            data-testid="pi-validation-passed"
+          >
             {validation.passed}
             <span className="text-lg text-content-tertiary font-normal">
               {' '}
@@ -425,7 +553,7 @@ export function ProjectAnalyticsGrid({ projectId }: ProjectAnalyticsGridProps) {
             </span>
           </div>
           <div className="flex items-center gap-3 text-2xs mt-1">
-            <span className="text-rose-500">
+            <span className="text-rose-500" data-testid="pi-validation-errors">
               {validation.errors}{' '}
               {t('project_intelligence.analytics.errors', {
                 defaultValue: 'errors',

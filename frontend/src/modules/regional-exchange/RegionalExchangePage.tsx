@@ -28,7 +28,7 @@ import {
   Info,
   Printer,
 } from 'lucide-react';
-import { Button, Badge, DismissibleInfo } from '@/shared/ui';
+import { Button, Badge, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
@@ -456,6 +456,11 @@ export default function RegionalExchangePage({ template }: RegionalExchangePageP
         title={t('regional.intro_title', {
           defaultValue: "Speak your country's tender format",
         })}
+        more={
+          t('regional.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('regional.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.boq', { defaultValue: 'Bill of Quantities' }),

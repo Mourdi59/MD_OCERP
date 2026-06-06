@@ -128,6 +128,10 @@ export interface EstimateJobResponse {
   model_used: string;
   duration_ms: number;
   confidence?: number;
+  /** Number of tokens the AI call consumed (0 when unknown). */
+  tokens_used?: number;
+  /** Estimated USD spend for the run (Decimal-as-string on the wire). */
+  cost_usd_estimate?: number | string;
   error_message?: string | null;
   input_type?: string;
 }
@@ -135,6 +139,42 @@ export interface EstimateJobResponse {
 export interface CreateBOQFromEstimate {
   project_id: string;
   boq_name: string;
+  /** When true, persist the best same-currency CWICR rate per line. */
+  apply_enriched?: boolean;
+  /** Region for the cost-DB lookup when apply_enriched is set. */
+  region?: string;
+}
+
+/** Lightweight summary of a past estimate job (history list). */
+export interface EstimateJobSummary {
+  id: string;
+  project_id?: string | null;
+  input_type: string;
+  input_text?: string | null;
+  input_filename?: string | null;
+  status: string;
+  items_count: number;
+  currency: string;
+  grand_total: number | string;
+  model_used?: string | null;
+  tokens_used: number;
+  cost_usd_estimate: number | string;
+  duration_ms: number;
+  error_message?: string | null;
+  created_at: string;
+}
+
+export interface EstimateJobList {
+  items: EstimateJobSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** Per-region item counts from the cost database (drives the enrich dropdown). */
+export interface CostRegionStat {
+  region: string;
+  count: number;
 }
 
 export interface CostMatch {
@@ -251,10 +291,26 @@ export const aiApi = {
   },
 
   createBOQFromEstimate: (jobId: string, data: CreateBOQFromEstimate) =>
-    apiPost<{ boq_id: string; project_id: string }, CreateBOQFromEstimate>(
-      `/v1/ai/estimate/${jobId}/create-boq/`,
-      data,
-    ),
+    apiPost<
+      { boq_id: string; project_id: string; positions_created: number; positions_enriched?: number },
+      CreateBOQFromEstimate
+    >(`/v1/ai/estimate/${jobId}/create-boq/`, data),
+
+  /** List the current user's past estimate jobs (server-side history). */
+  listEstimates: (params?: { limit?: number; offset?: number; status?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.limit != null) q.set('limit', String(params.limit));
+    if (params?.offset != null) q.set('offset', String(params.offset));
+    if (params?.status) q.set('status_filter', params.status);
+    const qs = q.toString();
+    return apiGet<EstimateJobList>(`/v1/ai/estimates/${qs ? `?${qs}` : ''}`);
+  },
+
+  /** Fetch a single estimate job (used to reopen a history entry). */
+  getEstimate: (jobId: string) => apiGet<EstimateJobResponse>(`/v1/ai/estimate/${jobId}`),
+
+  /** Distinct regions present in the cost DB, with item counts (best-first). */
+  costRegions: () => apiGet<CostRegionStat[]>('/v1/costs/regions/stats/'),
 
   enrichEstimate: (jobId: string, region: string, currency: string) =>
     apiPost<EnrichResult>(`/v1/ai/estimate/${jobId}/enrich/`, { region, currency }),

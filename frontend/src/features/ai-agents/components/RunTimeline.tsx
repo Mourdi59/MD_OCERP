@@ -392,12 +392,11 @@ export function RunTimeline({ run }: { run: AgentRun }): JSX.Element {
       {/* Final output */}
       {run.final_output && <FinalOutput text={run.final_output} />}
 
-      {/* Apply affordances — surfaced when the output carries structured BOQ
-          position proposals. Never auto-applies; deep-links to the BOQ editor
-          for review (architecture guide "AI-augmented, human-confirmed"). */}
-      {run.status === 'completed' && run.final_output && (
-        <ApplyActionButton output={run.final_output} />
-      )}
+      {/* Apply affordances — surfaced when the run produced structured BOQ
+          position proposals (recovered from its steps by the backend). Never
+          auto-applies; the user picks a BOQ and clicks Apply (architecture
+          guide "AI-augmented, human-confirmed"). */}
+      {run.status === 'completed' && <ApplyActionButton runId={run.id} />}
     </div>
   );
 }

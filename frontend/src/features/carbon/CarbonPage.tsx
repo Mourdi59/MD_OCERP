@@ -27,11 +27,12 @@ import {
   Breadcrumb,
   SkeletonTable,
   ConfirmDialog,
+  DismissibleInfo,
+  IntroRichText,
 } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
-import { SectionIntro } from '@/features/validation';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { apiGet, getErrorMessage } from '@/shared/lib/api';
@@ -218,11 +219,16 @@ export function CarbonPage() {
         }
       />
 
-      <SectionIntro
+      <DismissibleInfo
         storageKey="carbon"
         title={t('carbon.intro_title', {
           defaultValue: 'Where carbon numbers come from',
         })}
+        more={
+          t('carbon.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('carbon.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('carbon.intro_link_boq', { defaultValue: 'Open BOQ editor' }),
@@ -238,7 +244,7 @@ export function CarbonPage() {
           defaultValue:
             'Embodied carbon comes from your Bill of Quantities: each priced position is multiplied by a material carbon factor from EPD sources such as Okobaudat, ICE and EC3, or a manual override. Open an inventory and assign factors to positions to roll up A1 to D embodied emissions, track Scope 1, 2 and 3 operational carbon and reduction targets, then package it all as GHG Protocol, GRI or ISSB reports.',
         })}
-      </SectionIntro>
+      </DismissibleInfo>
 
       {/* Tabs */}
       <div className="border-b border-border-light">

@@ -60,6 +60,7 @@ import { PageHeader } from '@/shared/ui/PageHeader';
 import {
   matchElementsApi,
   CONSTRUCTION_STAGES,
+  type ApplyPositionPreview,
   type ConstructionStage,
   type GroupSummary,
   type MatchSession,
@@ -371,6 +372,7 @@ export function MatchWizardFlow() {
     count: number;
     total: number;
     currency: string | null;
+    positions: ApplyPositionPreview[];
   } | null>(null);
 
   // Clearing the picked model / live session / progress / results when
@@ -547,6 +549,7 @@ export function MatchWizardFlow() {
         count: r.positions_created,
         total: r.grand_total,
         currency: r.currency,
+        positions: r.positions ?? [],
       });
       if (!dryRun) {
         addToast({
@@ -1017,7 +1020,12 @@ export function MatchWizardFlow() {
                           })}
                         </option>
                         {loadedCatalogues.map((c) => (
-                          <option key={c.collection} value={c.region}>
+                          // Key on region+collection: several regions can map
+                          // to the same shared collection (e.g. all English
+                          // regions bind to cwicr_en_v3), so c.collection
+                          // alone collided and triggered React duplicate-key
+                          // warnings. The option value stays c.region.
+                          <option key={`${c.region}:${c.collection}`} value={c.region}>
                             {c.city ? `${c.city}, ` : ''}
                             {c.region.toUpperCase()} — {c.language} · {c.currency}
                           </option>
@@ -1468,6 +1476,119 @@ export function MatchWizardFlow() {
                           tone={applyResult.written ? 'good' : 'default'}
                         />
                       </div>
+
+                      {/* Line-by-line preview of the BOQ rollup. The backend
+                          returns the full position list (description, unit,
+                          qty, rate, line total, classification + resource
+                          sub-rows); surfacing it here is what makes the
+                          "Preview the bill of quantities" promise real -
+                          before, the user only saw three aggregate tiles and
+                          had to write blind. Zero-rate lines (unit-mismatch
+                          gate, or a TBD/custom line at 0) are flagged so the
+                          estimator can fix them before writing. */}
+                      {applyResult.positions.length > 0 && (
+                        <div className="rounded-lg border border-border-light overflow-hidden">
+                          <div className="flex items-center justify-between gap-2 border-b border-border-light bg-surface-muted px-3 py-2">
+                            <div className="text-sm font-medium text-content-primary">
+                              {t('match.wizard.previewLines', {
+                                defaultValue: '{{n}} positions',
+                                n: applyResult.positions.length,
+                              })}
+                            </div>
+                            {applyResult.positions.some((p) => Number(p.unit_rate) === 0) && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                {t('match.wizard.zeroRateWarning', {
+                                  defaultValue:
+                                    '{{n}} line(s) have no rate yet',
+                                  n: applyResult.positions.filter(
+                                    (p) => Number(p.unit_rate) === 0,
+                                  ).length,
+                                })}
+                              </span>
+                            )}
+                          </div>
+                          <div className="max-h-80 overflow-auto">
+                            <table className="w-full text-sm">
+                              <thead className="sticky top-0 bg-surface-primary">
+                                <tr className="border-b border-border-light text-left text-xs uppercase tracking-wide text-content-tertiary">
+                                  <th className="px-3 py-2 font-medium">
+                                    {t('match.wizard.colDescription', {
+                                      defaultValue: 'Description',
+                                    })}
+                                  </th>
+                                  <th className="px-3 py-2 font-medium">
+                                    {t('match.wizard.colUnit', { defaultValue: 'Unit' })}
+                                  </th>
+                                  <th className="px-3 py-2 text-right font-medium">
+                                    {t('match.wizard.colQty', { defaultValue: 'Qty' })}
+                                  </th>
+                                  <th className="px-3 py-2 text-right font-medium">
+                                    {t('match.wizard.colRate', { defaultValue: 'Rate' })}
+                                  </th>
+                                  <th className="px-3 py-2 text-right font-medium">
+                                    {t('match.wizard.colTotal', { defaultValue: 'Total' })}
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {applyResult.positions.map((p, i) => {
+                                  const zeroRate = Number(p.unit_rate) === 0;
+                                  return (
+                                    <tr
+                                      key={`${p.group_key}-${i}`}
+                                      className="border-b border-border-light/60 last:border-0 align-top"
+                                    >
+                                      <td className="px-3 py-2">
+                                        <div className="text-content-primary">
+                                          {p.description}
+                                        </div>
+                                        {p.section_path.length > 0 && (
+                                          <div className="mt-0.5 text-[11px] text-content-tertiary">
+                                            {p.section_path.join(' · ')}
+                                          </div>
+                                        )}
+                                        {p.resources.length > 0 && (
+                                          <div className="mt-0.5 text-[11px] text-content-tertiary">
+                                            {t('match.wizard.resourceCount', {
+                                              defaultValue: '{{n}} resource sub-rows',
+                                              n: p.resources.length,
+                                            })}
+                                          </div>
+                                        )}
+                                      </td>
+                                      <td className="px-3 py-2 text-content-secondary">
+                                        {p.unit}
+                                      </td>
+                                      <td className="px-3 py-2 text-right tabular-nums text-content-secondary">
+                                        {Number(p.quantity).toLocaleString(undefined, {
+                                          maximumFractionDigits: 3,
+                                        })}
+                                      </td>
+                                      <td
+                                        className={clsx(
+                                          'px-3 py-2 text-right tabular-nums',
+                                          zeroRate
+                                            ? 'text-amber-700 dark:text-amber-300'
+                                            : 'text-content-secondary',
+                                        )}
+                                      >
+                                        {zeroRate
+                                          ? t('match.wizard.noRate', {
+                                              defaultValue: 'no rate',
+                                            })
+                                          : fmtMoney(Number(p.unit_rate), p.currency)}
+                                      </td>
+                                      <td className="px-3 py-2 text-right tabular-nums font-medium text-content-primary">
+                                        {fmtMoney(Number(p.line_total), p.currency)}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
 
                       {!applyResult.written ? (
                         <div className="flex flex-wrap gap-2">

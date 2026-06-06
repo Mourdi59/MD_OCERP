@@ -162,11 +162,19 @@ describe('geo_hub api endpoints', () => {
   });
 
   it('exportGeoJSON GETs /overlays/export-geojson/', async () => {
-    const res = (await exportGeoJSON(PROJECT, 'boundary')) as unknown as Record<
-      string, string
-    >;
+    const res = (await exportGeoJSON(PROJECT, {
+      kind: 'boundary',
+    })) as unknown as Record<string, string>;
     expect(res._mockGet).toContain('/v1/geo-hub/overlays/export-geojson/');
     expect(res._mockGet).toContain(`project_id=${PROJECT}`);
     expect(res._mockGet).toContain('kind=boundary');
+  });
+
+  it('exportGeoJSON forwards include layers', async () => {
+    const res = (await exportGeoJSON(PROJECT, {
+      include: ['anchor', 'hse'],
+    })) as unknown as Record<string, string>;
+    expect(res._mockGet).toContain('/v1/geo-hub/overlays/export-geojson/');
+    expect(res._mockGet).toContain('include=anchor%2Chse');
   });
 });

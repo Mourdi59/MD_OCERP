@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Sparkles, Save, Wand2, AlertTriangle } from 'lucide-react';
-import { Button, Card, Badge, DismissibleInfo } from '@/shared/ui';
+import { Button, Card, Badge, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { useToastStore } from '@/stores/useToastStore';
@@ -181,6 +181,11 @@ export function NlRuleBuilderPanel() {
         title={t('compliance.intro_title', {
           defaultValue: 'Write a check in plain language',
         })}
+        more={
+          t('compliance.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('compliance.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.validation', { defaultValue: 'Validation' }),

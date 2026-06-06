@@ -18,7 +18,7 @@ import clsx from 'clsx';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { useConfirm } from '@/shared/hooks/useConfirm';
-import { SkeletonCard, EmptyState, ConfirmDialog, Button } from '@/shared/ui';
+import { SkeletonCard, EmptyState, ConfirmDialog, Button, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import {
   aiAgentsApi,
@@ -331,6 +331,17 @@ export function AgentsPage(): JSX.Element {
           </Button>
         }
       />
+
+      <DismissibleInfo
+        storageKey="agents"
+        title={t('agents.intro_title', { defaultValue: 'Put autonomous agents to work' })}
+        more={t('agents.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('agents.intro_more')} /> : undefined}
+      >
+        {t('agents.intro_body', {
+          defaultValue:
+            'Run AI agents that reason over your project data, call tools and propose actions for you to review before anything is applied.',
+        })}
+      </DismissibleInfo>
 
       {/* LLM-provider banner — surfaces the most common failure cause
           (no_llm) upfront instead of letting the user write a prompt,

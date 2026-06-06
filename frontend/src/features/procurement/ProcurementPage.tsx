@@ -26,6 +26,7 @@ import {
   RecoveryCard,
   SkeletonTable,
   DismissibleInfo,
+  IntroRichText,
 } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { PageHeader } from '@/shared/ui/PageHeader';
@@ -221,6 +222,11 @@ export function ProcurementPage() {
         title={t('procurement.intro_title', {
           defaultValue: 'See committed spend before the invoice lands',
         })}
+        more={
+          t('procurement.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('procurement.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.finance', { defaultValue: 'Finance' }),

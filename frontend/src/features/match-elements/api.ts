@@ -774,6 +774,8 @@ export const matchElementsApi = {
       custom_description?: string;
       custom_unit?: string;
       custom_rate?: number;
+      save_to_my_catalogue?: boolean;
+      rfq_supplier_ids?: string[];
     },
   ) =>
     call<GroupDetail>(`/sessions/${sessionId}/no-match`, {

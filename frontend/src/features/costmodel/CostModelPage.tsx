@@ -28,7 +28,7 @@ import {
   Loader2,
   Network,
 } from 'lucide-react';
-import { Card, CardHeader, CardContent, Button, Badge, EmptyState, Skeleton, Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { Card, CardHeader, CardContent, Button, Badge, EmptyState, Skeleton, Breadcrumb, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { PlanningCrossLinks } from '@/features/schedule/PlanningCrossLinks';
 import { apiGet, apiPost, apiPatch } from '@/shared/lib/api';
@@ -2641,6 +2641,11 @@ export function CostModelPage() {
         title={t('costmodel.intro_title', {
           defaultValue: 'See where the money is really going',
         })}
+        more={
+          t('costmodel.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('costmodel.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.boq', { defaultValue: 'Bill of Quantities' }),

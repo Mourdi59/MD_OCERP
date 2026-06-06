@@ -30,7 +30,7 @@ import {
   AlertTriangle,
   type LucideIcon,
 } from 'lucide-react';
-import { Button, Card, Badge, ConfirmDialog, EmptyState, Skeleton, DismissibleInfo, CountryFlag, Breadcrumb } from '@/shared/ui';
+import { Button, Card, Badge, ConfirmDialog, EmptyState, Skeleton, DismissibleInfo, IntroRichText, CountryFlag, CountryFlagBackdrop, Breadcrumb } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
@@ -1605,7 +1605,10 @@ export function CatalogPage() {
   }, [queryClient]);
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="relative space-y-5 animate-fade-in">
+      {/* Faint watermark of the selected resource-database country - reads
+          as a wash behind the catalog, never interactive. */}
+      <CountryFlagBackdrop code={region || null} />
       <Breadcrumb items={[{ label: t('catalog.title', { defaultValue: 'Resource Catalog' }) }]} />
       {/* Canonical top block — module name + icon are shown by the global top
           app bar. The page renders only its (contextual) subtitle on the left
@@ -1701,6 +1704,7 @@ export function CatalogPage() {
       <DismissibleInfo
         storageKey="catalog"
         title={t('catalog.intro_title', { defaultValue: 'Keep the building blocks priced right' })}
+        more={t('catalog.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('catalog.intro_more')} /> : undefined}
         links={[
           { label: t('nav.assemblies', { defaultValue: 'Assemblies' }), onClick: () => navigate('/assemblies') },
           { label: t('nav.costs', { defaultValue: 'Cost Database' }), onClick: () => navigate('/costs') },

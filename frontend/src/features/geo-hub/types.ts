@@ -263,6 +263,32 @@ export interface AnchoredProject {
   project_address_text?: string | null;
 }
 
+/* ── Map layer summary (project-scoped legend) ───────────────────────── */
+
+/** Mirrors backend ``MapLayerSummary``. */
+export interface MapLayerSummary {
+  total: number;
+  /** Domain breakdown (e.g. ``{ high: 3, low: 1 }``); empty when N/A. */
+  breakdown: Record<string, number>;
+}
+
+/** Mirrors backend ``MapSummaryResponse``. */
+export interface MapSummary {
+  project_id: string;
+  has_anchor: boolean;
+  /** ``true`` when the anchor was derived from address coords (not saved). */
+  anchor_is_derived: boolean;
+  tilesets: MapLayerSummary;
+  overlays: MapLayerSummary;
+  raster_overlays: MapLayerSummary;
+  viewpoints: MapLayerSummary;
+  hse_pins: MapLayerSummary;
+  punchlist_pins: MapLayerSummary;
+  diary_pins: MapLayerSummary;
+  active_jobs: number;
+  total_features: number;
+}
+
 /* ── Geocode suggest (autocomplete) ──────────────────────────────────── */
 
 export interface GeocodeSuggestion {

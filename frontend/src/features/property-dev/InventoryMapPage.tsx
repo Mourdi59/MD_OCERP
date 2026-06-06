@@ -42,6 +42,7 @@ import {
   Card,
   DismissibleInfo,
   EmptyState,
+  IntroRichText,
   SideDrawer,
 } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
@@ -434,6 +435,7 @@ export function InventoryMapPage() {
         title={t('propdev_inventory_map.intro_title', {
           defaultValue: 'See the whole sales floor at a glance',
         })}
+        more={t('propdev_inventory_map.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('propdev_inventory_map.intro_more')} /> : undefined}
         links={[
           ...(devId
             ? [

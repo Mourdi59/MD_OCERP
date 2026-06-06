@@ -39,6 +39,7 @@ import {
   EmptyState,
   Breadcrumb,
   DismissibleInfo,
+  IntroRichText,
   CountryFlag,
   ConfirmDialog,
   WideModal,
@@ -1456,6 +1457,11 @@ export function ContactsPage() {
         title={t('contacts.intro_title', {
           defaultValue: 'One clean address book, no duplicate parties',
         })}
+        more={
+          t('contacts.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('contacts.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('nav.crm', { defaultValue: 'CRM' }), onClick: () => navigate('/crm') },
           {

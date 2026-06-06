@@ -9,7 +9,7 @@ import {
   XCircle,
   Download,
 } from 'lucide-react';
-import { Button, Card, CardHeader, CardContent, Badge, Breadcrumb, CountryFlag, DismissibleInfo } from '@/shared/ui';
+import { Button, Card, CardHeader, CardContent, Badge, Breadcrumb, CountryFlag, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import { apiGet, apiPost } from '@/shared/lib/api';
@@ -642,6 +642,11 @@ export function DatabaseSetupPage() {
         title={t('setup.intro_title', {
           defaultValue: 'Get priced and ready in minutes',
         })}
+        more={
+          t('setup.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('setup.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('nav.costs', { defaultValue: 'Cost Database' }), onClick: () => navigate('/costs') },
           { label: t('nav.catalog', { defaultValue: 'Resource Catalog' }), onClick: () => navigate('/catalog') },

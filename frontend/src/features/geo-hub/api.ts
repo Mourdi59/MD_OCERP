@@ -21,6 +21,7 @@ import type {
   HSEPin,
   ImageryLayer,
   MapConfig,
+  MapSummary,
   PdfOverlayUploadResponse,
   PunchlistPin,
   TerrainSource,
@@ -45,6 +46,18 @@ export function getMapConfig(
   return apiGet<MapConfig>(
     `${BASE}/map-config/${projectId}${qs ? `?${qs}` : ''}`,
   );
+}
+
+/* ── Map summary (project-scoped layer legend) ───────────────────────── */
+
+/**
+ * Aggregate counts + breakdowns for every layer on a project's map.
+ * One round-trip backing the layer legend - per-layer feature counts
+ * plus small domain breakdowns (HSE severity, punch priority, tileset
+ * status). See backend ``GET /map-summary/{project_id}``.
+ */
+export function getMapSummary(projectId: string): Promise<MapSummary> {
+  return apiGet<MapSummary>(`${BASE}/map-summary/${projectId}`);
 }
 
 /* ── Anchors ─────────────────────────────────────────────────────────── */
@@ -246,12 +259,22 @@ export function importKML(body: {
   return apiPost<GeoOverlay>(`${BASE}/overlays/import-kml/`, body);
 }
 
+/**
+ * Export a project's whole map as one GeoJSON FeatureCollection. By
+ * default this folds in the anchor point + the HSE / punchlist / diary
+ * pin layers alongside the vector overlays (each feature tagged with an
+ * ``oe:layer`` property). Pass ``include`` to export only a subset of
+ * layers, or ``kind`` to narrow the vector-overlay slice.
+ */
 export function exportGeoJSON(
   projectId: string,
-  kind?: string,
+  options?: { kind?: string; include?: string[] },
 ): Promise<Record<string, unknown>> {
   const qs = new URLSearchParams({ project_id: projectId });
-  if (kind) qs.set('kind', kind);
+  if (options?.kind) qs.set('kind', options.kind);
+  if (options?.include && options.include.length > 0) {
+    qs.set('include', options.include.join(','));
+  }
   return apiGet<Record<string, unknown>>(
     `${BASE}/overlays/export-geojson/?${qs.toString()}`,
   );

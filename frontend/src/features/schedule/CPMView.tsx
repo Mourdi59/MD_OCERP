@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw, Layers, AlertTriangle, X } from 'lucide-react';
-import { Button, Card, Badge, Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { Button, Card, Badge, Breadcrumb, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { apiGet, apiPost } from '@/shared/lib/api';
 
@@ -143,6 +143,11 @@ export function CPMView({ scheduleId }: CPMViewProps) {
         title={t('schedule_cpm.intro_title', {
           defaultValue: 'Know which activities cannot slip',
         })}
+        more={
+          t('schedule_cpm.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('schedule_cpm.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('schedule_cpm.intro_link_schedule', { defaultValue: 'Back to schedule' }), onClick: () => navigate('/schedule') },
         ]}

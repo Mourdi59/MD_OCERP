@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Breadcrumb, Button, Card, Badge, Skeleton, EmptyState } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
-import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
+import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
@@ -313,6 +313,11 @@ export function AnalyticsPage() {
         title={t('analytics.intro_title', {
           defaultValue: 'See which projects are bleeding money',
         })}
+        more={
+          t('analytics.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('analytics.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.projects', { defaultValue: 'Projects' }),

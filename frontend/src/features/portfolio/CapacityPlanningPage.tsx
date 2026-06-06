@@ -3,7 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { User, Users, Truck, Building2, AlertTriangle, CalendarRange } from 'lucide-react';
 
-import { Card, CardContent, Badge, EmptyState, Skeleton, Breadcrumb } from '@/shared/ui';
+import {
+  Card,
+  CardContent,
+  Badge,
+  EmptyState,
+  Skeleton,
+  Breadcrumb,
+  DismissibleInfo,
+  IntroRichText,
+} from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { getErrorMessage } from '@/shared/lib/api';
 import {
@@ -103,6 +112,23 @@ export function CapacityPlanningPage() {
           </div>
         }
       />
+
+      <DismissibleInfo
+        storageKey="capacity"
+        title={t('capacity.intro_title', {
+          defaultValue: 'Spot resource conflicts across every project',
+        })}
+        more={
+          t('capacity.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('capacity.intro_more')} />
+            : undefined
+        }
+      >
+        {t('capacity.intro_body', {
+          defaultValue:
+            'This heatmap shows how your people, crews and equipment are booked across all projects so you can see where two projects are competing for the same resource before it becomes a delay.',
+        })}
+      </DismissibleInfo>
 
       {/* ── Summary chips ───────────────────────────────────────────────── */}
       {data && (

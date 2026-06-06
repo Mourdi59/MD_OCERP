@@ -36,7 +36,7 @@ import {
 
 import { BetaBanner } from '@/shared/ui/BetaBanner';
 import { Breadcrumb } from '@/shared/ui/Breadcrumb';
-import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
+import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
@@ -858,6 +858,11 @@ export function RequirementsMatrixPage() {
         title={t('requirements.intro_title', {
           defaultValue: 'Prove every information requirement was met',
         })}
+        more={
+          t('requirements.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('requirements.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.bim_rules', { defaultValue: 'Rule Packs' }),

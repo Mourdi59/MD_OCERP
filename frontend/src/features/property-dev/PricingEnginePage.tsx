@@ -81,6 +81,7 @@ import {
   DismissibleInfo,
   EmptyState,
   InfoHint,
+  IntroRichText,
   MoneyDisplay,
   SideDrawer,
   SkeletonTable,
@@ -2464,6 +2465,7 @@ export function PricingEnginePage(): JSX.Element {
         title={t('propdev_pricing.intro_title', {
           defaultValue: 'Price units by rule, not by guess',
         })}
+        more={t('propdev_pricing.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('propdev_pricing.intro_more')} /> : undefined}
         links={[
           {
             label: t('propdev.title', { defaultValue: 'Property Development' }),

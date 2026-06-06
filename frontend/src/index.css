@@ -1581,3 +1581,26 @@ tbody tr:nth-child(20) { animation-delay: 570ms; }
   .animate-blob-slow-3,
   .animate-blob-slow-4 { animation: none; }
 }
+
+/* Route-transition pending cursor — navigationProgress.ts toggles this
+   class on <html> between history push and React location commit. The
+   user gets instant "working on it" feedback at the pointer even before
+   the 150ms-delayed top progress bar appears. */
+html.oe-nav-pending,
+html.oe-nav-pending body {
+  cursor: progress;
+}
+
+/* Sidebar pending-row spinner — appears only if the route transition is
+   still in flight after 120ms, so instant navigations never blink the
+   row icon. */
+.oe-nav-spinner {
+  opacity: 0;
+  animation: oe-nav-spinner-in 1ms linear 120ms forwards, oe-nav-spin 1s linear infinite;
+}
+@keyframes oe-nav-spinner-in {
+  to { opacity: 1; }
+}
+@keyframes oe-nav-spin {
+  to { transform: rotate(360deg); }
+}

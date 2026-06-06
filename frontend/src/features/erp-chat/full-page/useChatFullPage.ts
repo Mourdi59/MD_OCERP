@@ -3,7 +3,25 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { aiApi, type AISettings } from '@/features/ai/api';
 import { uuid } from '@/shared/lib/browser';
-import type { ChatMessage, DataPanelEntry, ToolCallInfo } from '../types';
+import {
+  fetchChatSessions,
+  fetchSessionMessages,
+  deleteChatSession,
+} from '../api';
+import type { ChatMessage, ChatSession, DataPanelEntry, ToolCallInfo } from '../types';
+
+/** Shape of a persisted message row from GET /sessions/{id}/messages/. */
+interface PersistedMessage {
+  id: string;
+  session_id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string | null;
+  tool_calls: { name?: string; args?: Record<string, unknown> }[] | null;
+  tool_results: { tool?: string; result?: ToolCallInfo['result'] }[] | null;
+  renderer: string | null;
+  renderer_data: unknown;
+  created_at: string;
+}
 
 const DEFAULT_SUGGESTIONS = [
   'Show all projects',
@@ -25,9 +43,48 @@ export interface UseChatFullPageReturn {
   dataPanelEntries: DataPanelEntry[];
   activePanelIndex: number;
   aiConfigured: boolean | null; // null = still loading
+  sessions: ChatSession[];
+  sessionsLoading: boolean;
+  loadingSessionId: string | null;
   sendMessage: (text: string) => void;
   clearChat: () => void;
   setActivePanelIndex: (idx: number) => void;
+  loadSession: (id: string) => Promise<void>;
+  removeSession: (id: string) => Promise<void>;
+  refreshSessions: () => Promise<void>;
+}
+
+/**
+ * Rebuild the data-panel history from persisted assistant messages. Each
+ * stored assistant turn that carried a renderer becomes one panel entry, in
+ * chronological order, so resuming a session restores the right-hand cards
+ * (not just the chat text).
+ */
+function panelEntriesFromMessages(rows: PersistedMessage[]): DataPanelEntry[] {
+  const entries: DataPanelEntry[] = [];
+  for (const row of rows) {
+    if (row.role !== 'assistant' || !row.renderer || row.renderer === 'error') continue;
+    const ts = new Date(row.created_at).getTime() || Date.now();
+    // Prefer the explicit renderer_data; fall back to the last tool result's
+    // data so older rows (pre renderer_data column) still render.
+    let data: unknown = row.renderer_data;
+    let toolName = 'result';
+    if ((data == null || data === undefined) && Array.isArray(row.tool_results)) {
+      const last = [...row.tool_results].reverse().find((tr) => tr?.result?.renderer);
+      data = last?.result?.data;
+      toolName = last?.tool ?? toolName;
+    } else if (Array.isArray(row.tool_results) && row.tool_results.length > 0) {
+      toolName = row.tool_results[row.tool_results.length - 1]?.tool ?? toolName;
+    }
+    entries.push({
+      renderer: row.renderer,
+      data,
+      toolName,
+      summary: '',
+      timestamp: ts,
+    });
+  }
+  return entries;
 }
 
 export function useChatFullPage(): UseChatFullPageReturn {
@@ -38,8 +95,14 @@ export function useChatFullPage(): UseChatFullPageReturn {
   const [dataPanelEntries, setDataPanelEntries] = useState<DataPanelEntry[]>([]);
   const [activePanelIndex, setActivePanelIndex] = useState(-1);
   const [aiConfigured, setAiConfigured] = useState<boolean | null>(null);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+  // Tracks the session id created by the most recent stream so we only
+  // refresh the sidebar list once a new conversation is actually persisted.
+  const lastStreamSessionRef = useRef<string | null>(null);
 
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
 
@@ -68,6 +131,96 @@ export function useChatFullPage(): UseChatFullPageReturn {
       cancelled = true;
     };
   }, []);
+
+  const refreshSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    try {
+      const res = await fetchChatSessions();
+      setSessions(res.items ?? []);
+    } catch {
+      // Non-fatal: the sidebar just stays empty. The chat itself still works.
+      setSessions([]);
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  // Load the session list once on mount so the user can resume past chats.
+  useEffect(() => {
+    void refreshSessions();
+  }, [refreshSessions]);
+
+  const loadSession = useCallback(
+    async (id: string) => {
+      if (abortRef.current) abortRef.current.abort();
+      setLoadingSessionId(id);
+      try {
+        const rows = (await fetchSessionMessages(id)) as PersistedMessage[];
+        const rebuilt: ChatMessage[] = rows
+          .filter((r) => r.role === 'user' || r.role === 'assistant')
+          .map((r) => ({
+            id: r.id,
+            role: r.role,
+            content: r.content ?? '',
+            ts: new Date(r.created_at),
+            toolCalls: Array.isArray(r.tool_results)
+              ? r.tool_results.map((tr) => ({
+                  id: uid(),
+                  name: tr.tool ?? 'tool',
+                  status: 'done' as const,
+                  result: tr.result,
+                  startedAt: 0,
+                }))
+              : undefined,
+          }));
+        const entries = panelEntriesFromMessages(rows);
+        setMessages(rebuilt);
+        setDataPanelEntries(entries);
+        setActivePanelIndex(entries.length > 0 ? entries.length - 1 : -1);
+        setSessionId(id);
+        setSuggestions([]);
+      } catch {
+        // Surface a non-destructive system note rather than wiping the UI.
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: uid(),
+            role: 'system',
+            content: 'Could not load that conversation. It may have been deleted.',
+            ts: new Date(),
+          },
+        ]);
+      } finally {
+        setLoadingSessionId(null);
+      }
+    },
+    [],
+  );
+
+  const removeSession = useCallback(
+    async (id: string) => {
+      // Optimistically drop from the list; restore on failure.
+      const prev = sessions;
+      setSessions((s) => s.filter((x) => x.id !== id));
+      try {
+        await deleteChatSession(id);
+        // If we deleted the active conversation, reset to a fresh chat.
+        setSessionId((current) => {
+          if (current === id) {
+            setMessages([]);
+            setDataPanelEntries([]);
+            setActivePanelIndex(-1);
+            setSuggestions(DEFAULT_SUGGESTIONS);
+            return null;
+          }
+          return current;
+        });
+      } catch {
+        setSessions(prev);
+      }
+    },
+    [sessions],
+  );
 
   const sendMessage = useCallback(
     (text: string) => {
@@ -202,7 +355,10 @@ export function useChatFullPage(): UseChatFullPageReturn {
               switch (currentEvent) {
                 case 'session_id': {
                   const sid = payload.session_id as string | undefined;
-                  if (sid) setSessionId(sid);
+                  if (sid) {
+                    setSessionId(sid);
+                    lastStreamSessionRef.current = sid;
+                  }
                   break;
                 }
 
@@ -305,6 +461,16 @@ export function useChatFullPage(): UseChatFullPageReturn {
                 }
 
                 case 'done': {
+                  // Reconcile the optimistic client bubble id with the
+                  // persisted assistant ChatMessage id so thumbs feedback
+                  // POSTs against a real row (the backend 404s on a client
+                  // UUID, which silently broke the T8 feedback pipeline).
+                  const persistedId = payload.message_id as string | undefined;
+                  if (persistedId) {
+                    setMessages((prev) =>
+                      prev.map((m) => (m.id === aiMsgId ? { ...m, id: persistedId } : m)),
+                    );
+                  }
                   break;
                 }
               }
@@ -326,10 +492,16 @@ export function useChatFullPage(): UseChatFullPageReturn {
         } finally {
           setIsStreaming(false);
           abortRef.current = null;
+          // A turn just persisted (and possibly created + auto-titled) a
+          // session. Refresh the sidebar so the conversation shows up and
+          // its title reflects the first prompt.
+          if (lastStreamSessionRef.current) {
+            void refreshSessions();
+          }
         }
       })();
     },
-    [isStreaming, sessionId, activeProjectId, aiConfigured],
+    [isStreaming, sessionId, activeProjectId, aiConfigured, refreshSessions],
   );
 
   const clearChat = useCallback(() => {
@@ -339,6 +511,7 @@ export function useChatFullPage(): UseChatFullPageReturn {
     setMessages([]);
     setIsStreaming(false);
     setSessionId(null);
+    lastStreamSessionRef.current = null;
     setSuggestions(DEFAULT_SUGGESTIONS);
     setDataPanelEntries([]);
     setActivePanelIndex(-1);
@@ -352,8 +525,14 @@ export function useChatFullPage(): UseChatFullPageReturn {
     dataPanelEntries,
     activePanelIndex,
     aiConfigured,
+    sessions,
+    sessionsLoading,
+    loadingSessionId,
     sendMessage,
     clearChat,
     setActivePanelIndex,
+    loadSession,
+    removeSession,
+    refreshSessions,
   };
 }

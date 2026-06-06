@@ -36,7 +36,7 @@ import {
 import clsx from 'clsx';
 import { Button, Breadcrumb, EmptyState, DateDisplay, SkeletonTable } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
-import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
+import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
 import { PreferencesTab } from './PreferencesTab';
 
@@ -225,6 +225,11 @@ export function NotificationsPage() {
         title={t('notifications.intro_title', {
           defaultValue: 'Nothing important slips past you',
         })}
+        more={
+          t('notifications.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('notifications.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.bi_dashboards', { defaultValue: 'BI Dashboards' }),

@@ -28,6 +28,7 @@ import {
   Breadcrumb,
   ConfirmDialog,
   DismissibleInfo,
+  IntroRichText,
   RecoveryCard,
   SkeletonTable,
   WideModal,
@@ -1841,6 +1842,11 @@ export function RFIPage() {
       <DismissibleInfo
         storageKey="rfi"
         title={t('rfi.intro_title', { defaultValue: 'Get a clear answer on the record' })}
+        more={
+          t('rfi.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('rfi.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.variations', { defaultValue: 'Variations' }),

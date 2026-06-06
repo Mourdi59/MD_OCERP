@@ -36,6 +36,7 @@ import {
   BetaBanner,
   Button,
   DismissibleInfo,
+  IntroRichText,
   EmptyState,
   RecoveryCard,
   Breadcrumb,
@@ -204,6 +205,11 @@ export function AccommodationListPage() {
         title={t('accommodation.intro_title', {
           defaultValue: 'House the workforce without losing track',
         })}
+        more={
+          t('accommodation.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('accommodation.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('accommodation.intro_link_calendar', { defaultValue: 'Calendar' }),

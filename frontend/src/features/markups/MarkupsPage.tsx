@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, RecoveryCard, SkeletonTable } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
-import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
+import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { apiGet } from '@/shared/lib/api';
@@ -1579,6 +1579,7 @@ export function MarkupsPage() {
             title={t('markups.intro_title', {
               defaultValue: 'Drawing comments that do not get lost',
             })}
+            more={t('markups.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('markups.intro_more')} /> : undefined}
             links={[
               {
                 label: t('markups.compare_revisions', { defaultValue: 'Compare' }),

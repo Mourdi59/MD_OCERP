@@ -27,6 +27,7 @@ import { FloatingQueuePanel } from './layout/FloatingQueuePanel';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { ddcVerifyIntegrity, ddcInjectMeta, DDC_ORIGIN } from '@/shared/lib/ddc-integrity';
+import { NavigationProgress } from '@/shared/lib/navigationProgress';
 import { useKeyboardShortcuts } from '@/shared/hooks/useKeyboardShortcuts';
 import { useTranslation } from 'react-i18next';
 import { getLanguageByCode } from './i18n';
@@ -106,6 +107,7 @@ const PdfComparePage = lazy(() =>
 const PunchListPage = lazy(() =>
   import('@/features/punchlist/PunchListPage').then((m) => ({ default: m.PunchListPage }))
 );
+const CloseoutPage = lazy(() => import('@/features/closeout/CloseoutPage'));
 const FieldReportsPage = lazy(() =>
   import('@/features/fieldreports/FieldReportsPage').then((m) => ({ default: m.FieldReportsPage }))
 );
@@ -724,6 +726,11 @@ export default function App() {
 
   return (
     <Suspense fallback={<LoadingScreen />}>
+      {/* Route-transition pending feedback: under v7_startTransition the
+          old page stays on screen while a lazy chunk loads, so this binder
+          drives the top progress bar + sidebar row spinner for the gap
+          between history push and location commit (navigationProgress.ts). */}
+      <NavigationProgress />
       <OfflineBanner />
       {isAuthenticated && <GlobalShortcuts />}
       {/* First-run product tour — 8-step spotlight walk-through. Always
@@ -893,6 +900,7 @@ export default function App() {
         <Route path="/markups" element={<P title="Markups"><MarkupsPage /></P>} />
         <Route path="/markups/compare" element={<P title="Compare Revisions"><PdfComparePage /></P>} />
         <Route path="/punchlist" element={<P title="Punch List"><PunchListPage /></P>} />
+        <Route path="/closeout" element={<P title="Handover & Closeout"><CloseoutPage /></P>} />
         <Route path="/field-reports" element={<P title="Field Reports"><FieldReportsPage /></P>} />
 
         <Route path="/finance" element={<P title="Finance"><FinancePage /></P>} />

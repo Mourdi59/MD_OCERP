@@ -26,7 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { ScrollText, ShieldCheck, Workflow, type LucideIcon } from 'lucide-react';
-import { Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { Breadcrumb, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { PermissionsMatrixPage } from '@/features/admin/PermissionsMatrixPage';
@@ -121,6 +121,11 @@ export function GovernancePage() {
         title={t('governance.intro_title', {
           defaultValue: 'Set who can do what, and what gets checked',
         })}
+        more={
+          t('governance.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('governance.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('nav.users', { defaultValue: 'User Management' }), onClick: () => navigate('/users') },
           { label: t('nav.validation', { defaultValue: 'Validation' }), onClick: () => navigate('/validation') },

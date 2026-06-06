@@ -38,6 +38,7 @@ import {
   CardHeader,
   ConfirmDialog,
   DismissibleInfo,
+  IntroRichText,
   EmptyState,
   Input,
   WideModal,
@@ -962,6 +963,11 @@ export function FederationsPage() {
         title={t('bim_federations.intro_title', {
           defaultValue: 'One coordinated model across every discipline',
         })}
+        more={
+          t('bim_federations.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('bim_federations.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('bim_federations.intro_link_bim', { defaultValue: 'BIM viewer' }), onClick: () => navigate('/bim') },
           { label: t('bim_federations.intro_link_clash', { defaultValue: 'Clash detection' }), onClick: () => navigate('/clash') },

@@ -13,7 +13,17 @@ import {
   HelpCircle,
 } from 'lucide-react';
 
-import { Card, CardContent, Badge, EmptyState, Skeleton, SideDrawer, Breadcrumb } from '@/shared/ui';
+import {
+  Card,
+  CardContent,
+  Badge,
+  EmptyState,
+  Skeleton,
+  SideDrawer,
+  Breadcrumb,
+  DismissibleInfo,
+  IntroRichText,
+} from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { getErrorMessage } from '@/shared/lib/api';
 import {
@@ -134,6 +144,23 @@ export function ResourceLevelingPage() {
           </div>
         }
       />
+
+      <DismissibleInfo
+        storageKey="leveling"
+        title={t('leveling.intro_title', {
+          defaultValue: 'Smooth out over-booked crews and machines',
+        })}
+        more={
+          t('leveling.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('leveling.intro_more')} />
+            : undefined
+        }
+      >
+        {t('leveling.intro_body', {
+          defaultValue:
+            'See where a crew or machine is booked beyond its capacity across all projects, then review suggestions for which booking to shift or spread. Nothing moves until you confirm it.',
+        })}
+      </DismissibleInfo>
 
       {/* ── Summary chips ───────────────────────────────────────────────── */}
       {data && (

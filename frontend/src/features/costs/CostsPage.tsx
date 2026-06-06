@@ -31,7 +31,7 @@ import {
   TrendingUp,
   Trash2,
 } from 'lucide-react';
-import { Button, Card, Badge, EmptyState, SkeletonTable, CountryFlag, Breadcrumb, ConfirmDialog, DismissibleInfo } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, SkeletonTable, CountryFlag, CountryFlagBackdrop, Breadcrumb, ConfirmDialog, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet, apiPost, apiDelete, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
@@ -853,7 +853,10 @@ export function CostsPage() {
   };
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="relative space-y-5 animate-fade-in">
+      {/* Faint watermark of the active cost-database country (founder ask):
+          pick the German base and the page carries the German flag at ~5%. */}
+      <CountryFlagBackdrop code={activeRegion} />
       <Breadcrumb items={[{ label: t('costs.title') }]} />
 
       {/* Canonical top block — module name + icon live in the global top app
@@ -941,6 +944,7 @@ export function CostsPage() {
       <DismissibleInfo
         storageKey="costs"
         title={t('costs.intro_title', { defaultValue: 'One source of truth for unit rates' })}
+        more={t('costs.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('costs.intro_more')} /> : undefined}
         links={[
           { label: t('nav.costs_import', { defaultValue: 'Import Cost Database' }), onClick: () => navigate('/costs/import') },
           { label: t('nav.catalog', { defaultValue: 'Resource Catalog' }), onClick: () => navigate('/catalog') },

@@ -29,6 +29,7 @@ import {
   Card,
   Badge,
   DismissibleInfo,
+  IntroRichText,
   EmptyState,
   Breadcrumb,
   SkeletonTable,
@@ -263,6 +264,11 @@ export function SubcontractorsPage() {
         title={t('subcontractors.intro_title', {
           defaultValue: 'Only award to firms that are actually qualified',
         })}
+        more={
+          t('subcontractors.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('subcontractors.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.bid_management', { defaultValue: 'Bid Management' }),

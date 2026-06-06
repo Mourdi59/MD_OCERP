@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Button, Card, Badge, EmptyState, Breadcrumb, DateDisplay, ConfirmDialog, RecoveryCard, SkeletonTable } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
-import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
+import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet } from '@/shared/lib/api';
@@ -1352,6 +1352,7 @@ export function CDEPage() {
         title={t('cde.intro_title', {
           defaultValue: 'One agreed source of truth for documents',
         })}
+        more={t('cde.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('cde.intro_more')} /> : undefined}
         links={[
           {
             label: t('nav.project_files', { defaultValue: 'Files' }),

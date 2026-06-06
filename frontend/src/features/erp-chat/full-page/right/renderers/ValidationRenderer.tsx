@@ -1,4 +1,93 @@
 import { useState } from 'react';
+import { unwrapList, toNum } from './normalize';
+
+interface ValidationReport {
+  id?: string;
+  target_type?: string;
+  rule_set?: string;
+  status?: string;
+  score?: string | number | null;
+  total_rules?: number;
+  passed_count?: number;
+  warning_count?: number;
+  error_count?: number;
+  created_at?: string;
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  passed: 'var(--chat-tool-done)',
+  warnings: '#f0883e',
+  errors: 'var(--chat-tool-error)',
+  failed: 'var(--chat-tool-error)',
+};
+
+function ReportCard({ report }: { report: ValidationReport }) {
+  const status = (report.status ?? 'pending').toLowerCase();
+  const color = STATUS_COLOR[status] ?? 'var(--chat-text-secondary)';
+  const score = toNum(report.score);
+  const scorePct = score != null ? Math.round((score <= 1 ? score * 100 : score)) : null;
+  const Chip = ({ n, label, c }: { n: number; label: string; c: string }) => (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        fontFamily: 'var(--chat-font-mono)',
+        fontSize: 11,
+        color: c,
+      }}
+    >
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: c, display: 'inline-block' }} />
+      {n} {label}
+    </span>
+  );
+
+  return (
+    <div
+      style={{
+        background: 'var(--chat-surface-1)',
+        border: '1px solid var(--chat-border-subtle)',
+        borderLeft: `3px solid ${color}`,
+        borderRadius: 'var(--chat-radius-sm)',
+        padding: '10px 12px',
+        marginBottom: 8,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--chat-text-primary)' }}>
+          {report.rule_set ?? 'Validation'}
+          {report.target_type && (
+            <span style={{ color: 'var(--chat-text-tertiary)', fontWeight: 400, marginLeft: 6, fontSize: 12 }}>
+              {report.target_type}
+            </span>
+          )}
+        </span>
+        <span
+          style={{
+            fontFamily: 'var(--chat-font-mono)',
+            fontSize: 11,
+            color,
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+          }}
+        >
+          {status}
+          {scorePct != null && <span style={{ marginLeft: 6 }}>{scorePct}%</span>}
+        </span>
+      </div>
+      <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
+        <Chip n={report.passed_count ?? 0} label="passed" c="var(--chat-tool-done)" />
+        <Chip n={report.warning_count ?? 0} label="warnings" c="#f0883e" />
+        <Chip n={report.error_count ?? 0} label="errors" c="var(--chat-tool-error)" />
+        {report.total_rules != null && (
+          <span style={{ fontFamily: 'var(--chat-font-mono)', fontSize: 11, color: 'var(--chat-text-tertiary)', marginLeft: 'auto' }}>
+            {report.total_rules} rules
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface ValidationItem {
   rule_id?: string;
@@ -106,7 +195,22 @@ function ValidationItemRow({ item }: { item: ValidationItem }) {
 }
 
 export default function ValidationRenderer({ data }: { data: unknown }) {
-  const items: ValidationItem[] = Array.isArray(data) ? data : [];
+  // Backend `get_validation_results` / `run_validation` return
+  // `{ reports: [...] }` where each report is a per-run summary with
+  // traffic-light counts. Render those as report cards. Fall back to the
+  // legacy per-rule-result list shape (`{ results: [...] }` / bare array).
+  const reports = unwrapList(data, ['reports']) as ValidationReport[];
+  if (reports.length > 0) {
+    return (
+      <div style={{ overflow: 'auto', height: '100%', padding: 12 }}>
+        {reports.map((r, i) => (
+          <ReportCard key={r.id ?? i} report={r} />
+        ))}
+      </div>
+    );
+  }
+
+  const items = unwrapList(data, ['results']) as ValidationItem[];
 
   if (items.length === 0) {
     return (

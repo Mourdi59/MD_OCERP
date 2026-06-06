@@ -20,7 +20,7 @@ import {
   Download,
   Sparkles,
 } from 'lucide-react';
-import { Button, Card, Badge, EmptyState, Breadcrumb, InfoHint, DismissibleInfo, ConfirmDialog, RecoveryCard, SkeletonTable, SkeletonCard } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, Breadcrumb, InfoHint, DismissibleInfo, IntroRichText, ConfirmDialog, RecoveryCard, SkeletonTable, SkeletonCard } from '@/shared/ui';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
@@ -1658,6 +1658,11 @@ export function ChangeOrdersPage() {
         title={t('changeorders.intro_title', {
           defaultValue: 'Price every scope change before you commit it',
         })}
+        more={
+          t('changeorders.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('changeorders.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.finance', { defaultValue: 'Finance' }),

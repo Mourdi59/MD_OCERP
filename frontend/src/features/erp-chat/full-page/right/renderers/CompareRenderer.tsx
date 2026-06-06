@@ -1,16 +1,54 @@
+import { unwrapList, toNum } from './normalize';
+
 interface CompareData {
   metrics?: { label: string; values: (string | number | null)[] }[];
   columns?: string[];
+}
+
+interface CompareProject {
+  id?: string;
+  name?: string;
+  code?: string;
+  status?: string;
+  contract_value?: number;
+  budget_estimate?: number;
+  region?: string;
+  currency?: string;
 }
 
 function isNumeric(v: unknown): v is number {
   return typeof v === 'number' && !isNaN(v);
 }
 
+/**
+ * The backend `compare_projects` tool returns a flat list of project rows
+ * (`{ projects: [...] }`). Pivot it into the metric-by-project matrix the
+ * table renderer expects: one column per project, one row per metric.
+ */
+function projectsToMatrix(projects: CompareProject[]): CompareData {
+  if (projects.length === 0) return { metrics: [], columns: [] };
+  const columns = projects.map((p) => p.name ?? p.code ?? 'Project');
+  const metricKeys: { label: string; get: (p: CompareProject) => string | number | null }[] = [
+    { label: 'Status', get: (p) => p.status ?? null },
+    { label: 'Region', get: (p) => p.region ?? null },
+    { label: 'Currency', get: (p) => p.currency ?? null },
+    { label: 'Contract value', get: (p) => toNum(p.contract_value) ?? null },
+    { label: 'Budget estimate', get: (p) => toNum(p.budget_estimate) ?? null },
+  ];
+  const metrics = metricKeys
+    .map((m) => ({ label: m.label, values: projects.map(m.get) }))
+    // Drop metric rows where every project is null/empty so the table stays tight.
+    .filter((row) => row.values.some((v) => v != null && v !== ''));
+  return { metrics, columns };
+}
+
 export default function CompareRenderer({ data }: { data: unknown }) {
   const d = (data && typeof data === 'object' ? data : {}) as CompareData;
-  const metrics = d.metrics ?? [];
-  const columns = d.columns ?? [];
+  // Prefer the pre-built matrix if a caller supplied it; otherwise pivot the
+  // backend's `{ projects: [...] }` list.
+  const pivoted = d.metrics ? d : projectsToMatrix(unwrapList(data, ['projects']) as CompareProject[]);
+  const metrics = pivoted.metrics ?? [];
+  const columns = pivoted.columns ?? [];
 
   if (metrics.length === 0) {
     return (

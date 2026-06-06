@@ -9,7 +9,7 @@ import {
   Upload, Tag, Eye, Share2, LayoutGrid, Table2, ArrowUpDown, BarChart3, AlertCircle,
   CheckSquare, Square as SquareIcon, Library,
 } from 'lucide-react';
-import { Button, Card, Badge, DismissibleInfo, EmptyState, SkeletonGrid, Breadcrumb } from '@/shared/ui';
+import { Button, Card, Badge, DismissibleInfo, IntroRichText, EmptyState, SkeletonGrid, Breadcrumb } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
@@ -475,6 +475,7 @@ export function AssembliesPage() {
       <DismissibleInfo
         storageKey="assemblies"
         title={t('assemblies.intro_title', { defaultValue: 'Price recurring work once, reuse it everywhere' })}
+        more={t('assemblies.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('assemblies.intro_more')} /> : undefined}
         links={[
           {
             label: t('assemblies.browse_library', { defaultValue: 'Browse Library' }),

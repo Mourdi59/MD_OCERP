@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Plus, Power, Trash2, Webhook } from 'lucide-react';
 import { apiDelete, apiGet, apiPost, apiPatch } from '@/shared/lib/api';
-import { Breadcrumb, DismissibleInfo, Button } from '@/shared/ui';
+import { Breadcrumb, DismissibleInfo, IntroRichText, Button } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 
@@ -134,6 +134,11 @@ export function WebhookTargetsPage() {
         title={t('admin_webhook_targets.intro_title', {
           defaultValue: 'Push events to any system you run',
         })}
+        more={
+          t('admin_webhook_targets.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('admin_webhook_targets.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.integrations', { defaultValue: 'Integrations' }),

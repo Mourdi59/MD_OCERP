@@ -1,7 +1,11 @@
+import { unwrapList } from './normalize';
+
 interface Activity {
   name?: string;
   start?: string | number;
   end?: string | number;
+  start_date?: string;
+  end_date?: string;
   duration_days?: number;
   is_critical?: boolean;
 }
@@ -15,7 +19,14 @@ function parseDayOffset(val: string | number | undefined, minDate: number): numb
 }
 
 export default function ScheduleRenderer({ data }: { data: unknown }) {
-  const activities: Activity[] = Array.isArray(data) ? data : [];
+  // Backend `get_schedule` returns `{ activities: [...], summary }`. The
+  // activity rows carry `start_date`/`end_date`; older callers used
+  // `start`/`end`. Normalize to `start`/`end` so the bar math is uniform.
+  const activities = (unwrapList(data, ['activities']) as Activity[]).map((a) => ({
+    ...a,
+    start: a.start ?? a.start_date,
+    end: a.end ?? a.end_date,
+  }));
 
   if (activities.length === 0) {
     return (

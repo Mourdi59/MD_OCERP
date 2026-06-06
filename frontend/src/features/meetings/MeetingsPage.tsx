@@ -41,6 +41,7 @@ import {
   Breadcrumb,
   ConfirmDialog,
   DismissibleInfo,
+  IntroRichText,
   RecoveryCard,
   SkeletonTable,
   WideModal,
@@ -2203,6 +2204,11 @@ export function MeetingsPage() {
       <DismissibleInfo
         storageKey="meetings"
         title={t('meetings.intro_title', { defaultValue: 'Decisions and actions never get lost' })}
+        more={
+          t('meetings.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('meetings.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('tasks.title', { defaultValue: 'Tasks' }),

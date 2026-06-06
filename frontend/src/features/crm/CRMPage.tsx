@@ -65,6 +65,7 @@ import {
   Breadcrumb,
   SkeletonTable,
   DismissibleInfo,
+  IntroRichText,
 } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import {
@@ -365,6 +366,11 @@ export function CRMPage() {
         title={t('crm.intro_title', {
           defaultValue: 'Stop losing deals between the cracks',
         })}
+        more={
+          t('crm.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('crm.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('contacts.title', { defaultValue: 'Contacts' }),

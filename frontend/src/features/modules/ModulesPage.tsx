@@ -41,7 +41,7 @@ import {
   FileArchive,
   type LucideIcon,
 } from 'lucide-react';
-import { Card, Badge, Button, Input, InfoHint, Breadcrumb, ConfirmDialog, DismissibleInfo } from '@/shared/ui';
+import { Card, Badge, Button, Input, InfoHint, Breadcrumb, ConfirmDialog, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { PartnerPackApplyDialog } from './PartnerPackApplyDialog';
 import { PartnerPackDeactivateDialog } from './PartnerPackDeactivateDialog';
@@ -310,6 +310,11 @@ export function ModulesPage() {
         title={t('modules.intro_title', {
           defaultValue: 'Show only the tools this company needs',
         })}
+        more={
+          t('modules.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('modules.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.setup_databases', { defaultValue: 'Databases & Resources' }),

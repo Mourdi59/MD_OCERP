@@ -2,7 +2,7 @@
  * GlobalProgress — thin animated bar at top of viewport for long operations.
  * Usage: useProgressStore.getState().start() / .done()
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { create } from 'zustand';
 
 interface ProgressStore {
@@ -98,10 +98,26 @@ export const useProgressStore = create<ProgressStore>((set, get) => ({
   },
 }));
 
+/** Operations faster than this never show the bar — route changes that
+ *  resolve instantly (warm chunk + cached data) must not flash chrome. */
+const SHOW_DELAY_MS = 150;
+
 export function GlobalProgress() {
   const isActive = useProgressStore((s) => s.isActive);
   const progress = useProgressStore((s) => s.progress);
   const barRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  // Grace period: only reveal the bar once the operation has been running
+  // for SHOW_DELAY_MS. done() before the timer fires → bar never appears.
+  useEffect(() => {
+    if (!isActive) {
+      setVisible(false);
+      return;
+    }
+    const timer = setTimeout(() => setVisible(true), SHOW_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [isActive]);
 
   // Sync progress to the bar width via ref for smooth animation
   useEffect(() => {
@@ -110,7 +126,7 @@ export function GlobalProgress() {
     }
   }, [progress]);
 
-  if (!isActive && progress === 0) return null;
+  if (!visible || (!isActive && progress === 0)) return null;
 
   return (
     <div

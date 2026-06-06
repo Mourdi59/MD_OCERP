@@ -22,6 +22,7 @@ import {
   Card,
   Badge,
   DismissibleInfo,
+  IntroRichText,
   EmptyState,
   Breadcrumb,
   ConfirmDialog,
@@ -259,6 +260,11 @@ export default function PayrollPage() {
         title={t('payroll.intro_title', {
           defaultValue: 'Turn hours worked into posted labour cost',
         })}
+        more={
+          t('payroll.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('payroll.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('payroll.intro_link_field_reports', { defaultValue: 'Field Reports' }),

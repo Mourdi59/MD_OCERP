@@ -27,7 +27,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { Breadcrumb, EmptyState, SkeletonGrid } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
-import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
+import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { useToastStore } from '@/stores/useToastStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -997,6 +997,11 @@ export function ReportsPage() {
         title={t('reports.intro_title', {
           defaultValue: 'Hand over a document, not a screenshot',
         })}
+        more={
+          t('reports.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('reports.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.boq', { defaultValue: 'BOQ' }),

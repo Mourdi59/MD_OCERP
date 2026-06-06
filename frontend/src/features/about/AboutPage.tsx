@@ -10,7 +10,7 @@ import {
   Linkedin, Youtube, Star, Coffee, Rocket, ArrowRight, Handshake,
   Github, MessageCircle,
 } from 'lucide-react';
-import { Card, Button, Badge, Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { Card, Button, Badge, Breadcrumb, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { APP_VERSION } from '@/shared/lib/version';
 import { UpdateNotification } from '@/shared/ui/UpdateChecker';
@@ -35,6 +35,11 @@ export function AboutPage() {
         title={t('about.intro_title', {
           defaultValue: 'Know what you are running and why',
         })}
+        more={
+          t('about.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('about.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('nav.modules', { defaultValue: 'Modules' }), onClick: () => navigate('/modules') },
           { label: t('nav.settings', { defaultValue: 'Settings' }), onClick: () => navigate('/settings') },

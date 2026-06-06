@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { Badge, Button, Input, Breadcrumb, ConfirmDialog, SkeletonGrid } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
-import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
+import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
@@ -916,6 +916,7 @@ export function IntegrationsPage() {
         title={t('integrations.intro_title', {
           defaultValue: 'Get project events into the tools you use',
         })}
+        more={t('integrations.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('integrations.intro_more')} /> : undefined}
         links={[
           {
             label: t('integrations.link_webhook_targets', { defaultValue: 'Webhook targets' }),

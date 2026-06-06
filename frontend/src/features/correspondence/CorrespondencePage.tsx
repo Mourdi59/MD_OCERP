@@ -31,6 +31,7 @@ import {
   Breadcrumb,
   DateDisplay,
   DismissibleInfo,
+  IntroRichText,
   RecoveryCard,
   SkeletonTable,
   ConfirmDialog,
@@ -1249,6 +1250,11 @@ export function CorrespondencePage() {
       <DismissibleInfo
         storageKey="correspondence"
         title={t('correspondence.intro_title', { defaultValue: 'Your evidence trail when claims start' })}
+        more={
+          t('correspondence.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('correspondence.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('transmittals.title', { defaultValue: 'Transmittals' }),

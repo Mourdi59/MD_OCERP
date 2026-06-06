@@ -83,6 +83,12 @@ export interface TradeMatrixCell {
   count: number;
   open: number;
   resolved: number;
+  /**
+   * Summed open cost-impact (rework + labour) of this discipline pair,
+   * computed by the clash_cost_impact kernel. Decimal-as-string on the
+   * wire; `'0'` when the cost module is unavailable or no priced rework.
+   */
+  cost_impact: string | number;
 }
 
 /** Full payload returned by `GET /coordination/projects/:id/trade-matrix`. */
@@ -90,6 +96,10 @@ export interface TradeMatrixResponse {
   project_id: string;
   trades: CanonicalTrade[];
   cells: TradeMatrixCell[];
+  /** Project display currency for the cost-weighted view (may be ''). */
+  currency?: string;
+  /** Sum of every cell's `cost_impact` (Decimal-as-string). */
+  total_cost_impact?: string | number;
 }
 
 /**

@@ -9,7 +9,7 @@
  *   PUT /v1/coordination/projects/{pid}/thresholds/{metric}
  */
 
-import { apiGet, apiPut } from '@/shared/lib/api';
+import { apiGet, apiPut, getAuthToken } from '@/shared/lib/api';
 import type {
   CoordinationDashboard,
   CoordinationThresholdsResponse,
@@ -59,6 +59,47 @@ export function fetchCoordinationThresholds(
   return apiGet<CoordinationThresholdsResponse>(
     `/v1/coordination/projects/${projectId}/thresholds`,
   );
+}
+
+/**
+ * Download the live coordination snapshot for a project as a CSV file
+ * (KPIs + threshold-alert status + cost-weighted discipline-pair
+ * breakdown). Streams the attachment from the API with the bearer token,
+ * then triggers a browser download. Throws on a non-2xx response so the
+ * caller can surface an error toast. Requires `coordination.read`.
+ */
+export async function downloadCoordinationSnapshot(
+  projectId: string,
+): Promise<void> {
+  const token = getAuthToken();
+  const res = await fetch(
+    `/api/v1/coordination/projects/${projectId}/export.csv`,
+    {
+      method: 'GET',
+      headers: {
+        Accept: 'text/csv',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    },
+  );
+  if (!res.ok) {
+    throw Object.assign(new Error(`Export failed (${res.status})`), {
+      status: res.status,
+    });
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `coordination-${projectId}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    // Revoke on the next tick so the click has a chance to start.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 }
 
 /**

@@ -30,6 +30,7 @@ import {
   SkeletonTable,
   ConfirmDialog,
   DismissibleInfo,
+  IntroRichText,
 } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import {
@@ -517,6 +518,11 @@ export function VariationsPage() {
         title={t('variations.intro_title', {
           defaultValue: 'Settle changes before they become disputes',
         })}
+        more={
+          t('variations.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('variations.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.contracts', { defaultValue: 'Contracts' }),

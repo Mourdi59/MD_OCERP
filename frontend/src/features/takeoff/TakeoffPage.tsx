@@ -28,7 +28,7 @@ import {
   GitCompare,
 } from 'lucide-react';
 
-import { Button, Card, Badge, Input, Skeleton, DismissibleInfo, Breadcrumb } from '@/shared/ui';
+import { Button, Card, Badge, Input, Skeleton, DismissibleInfo, IntroRichText, Breadcrumb } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { PdfCompareDrawer } from './PdfCompareDrawer';
 import { apiGet, apiPost } from '@/shared/lib/api';
@@ -1824,6 +1824,11 @@ export function TakeoffPage() {
       <DismissibleInfo
         storageKey="takeoff"
         title={t('takeoff.intro_title', { defaultValue: 'Measure straight off the drawing' })}
+        more={
+          t('takeoff.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('takeoff.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('nav.boq', { defaultValue: 'Bill of Quantities' }), onClick: () => navigate('/boq') },
           { label: t('nav.quantities', { defaultValue: 'Quantity Takeoff' }), onClick: () => navigate('/quantities') },

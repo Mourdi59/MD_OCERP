@@ -34,6 +34,7 @@ import { projectsApi } from '@/features/projects/api';
 import { AnchorAdjustPanel } from './AnchorAdjustPanel';
 import { useTilesetOverlayState } from './hooks/useTilesetOverlayState';
 import {
+  createAnchor,
   fetchDiaryPhotoPins,
   fetchHsePins,
   fetchPunchlistPins,
@@ -45,6 +46,7 @@ import { GeoEmptyState, type GeoEmptyKind } from './GeoEmptyState';
 import { GeoModePicker } from './GeoModePicker';
 import { PlaceOnMapPicker } from './PlaceOnMapPicker';
 import { GeoOverlayHud } from './GeoOverlayHud';
+import { MapLayerLegend } from './MapLayerLegend';
 import { OverlayLayer } from './OverlayLayer';
 import { OverlayPanel, type OverlayEditMode } from './OverlayPanel';
 import { TilesetSidebar } from './TilesetSidebar';
@@ -257,27 +259,50 @@ export function ProjectGeoPage() {
   const handleAnchorMapClick = useCallback(
     async (coords: { lat: number; lon: number }) => {
       const anchorId = data?.anchor?.id;
-      if (!anchorId) return;
+      const metadata = {
+        ...(data?.anchor?.metadata ?? {}),
+        geocode_source: 'manual',
+        geocode_precision: 'address',
+      };
       try {
-        await updateAnchor(anchorId, {
-          lat: coords.lat.toFixed(8),
-          lon: coords.lon.toFixed(8),
-          // Mark the anchor as manually placed so the source attribution
-          // and drift indicator reflect the user's deliberate override.
-          metadata: {
-            ...(data?.anchor?.metadata ?? {}),
-            geocode_source: 'manual',
-            geocode_precision: 'address',
-          },
-        });
+        if (anchorId) {
+          // Existing persisted anchor -> move it in place.
+          await updateAnchor(anchorId, {
+            lat: coords.lat.toFixed(8),
+            lon: coords.lon.toFixed(8),
+            // Mark the anchor as manually placed so the source attribution
+            // and drift indicator reflect the user's deliberate override.
+            metadata,
+          });
+        } else if (projectId) {
+          // Anchor was DERIVED from the project address (id is null and
+          // not yet persisted). The first drag confirms + persists it so
+          // the "drag to confirm" nudge actually saves a real GeoAnchor
+          // instead of silently no-oping. ``createAnchor`` is idempotent
+          // server-side (overwrites the project's single anchor row).
+          await createAnchor({
+            project_id: projectId,
+            lat: coords.lat.toFixed(8),
+            lon: coords.lon.toFixed(8),
+            metadata,
+          });
+        } else {
+          return;
+        }
         addToast({
           type: 'success',
-          title: t('geo_hub.adjust.moved_success', {
-            defaultValue: 'Anchor moved',
-          }),
+          title: anchorId
+            ? t('geo_hub.adjust.moved_success', { defaultValue: 'Anchor moved' })
+            : t('geo_hub.adjust.saved_success', {
+                defaultValue: 'Location saved',
+              }),
         });
         await queryClient.invalidateQueries({
           queryKey: ['geo-hub', 'map-config', projectId],
+        });
+        // Refresh the layer legend so its derived-anchor nudge clears.
+        await queryClient.invalidateQueries({
+          queryKey: ['geo-hub', 'map-summary', projectId],
         });
       } catch {
         addToast({
@@ -584,6 +609,14 @@ export function ProjectGeoPage() {
                       onToggleDragMode={() => setAnchorDragMode((v) => !v)}
                       projectAddressText={projectAddressText}
                     />
+                  )}
+                  {/* Layer legend — feature counts + breakdowns per layer,
+                      with deep-links into the source module for empty
+                      layers. Only meaningful once the project is locatable
+                      (a real or address-derived anchor); the no-anchor
+                      empty state owns the canvas otherwise. */}
+                  {data?.anchor && !emptyKind && (
+                    <MapLayerLegend projectId={projectId} />
                   )}
                 </>
               }

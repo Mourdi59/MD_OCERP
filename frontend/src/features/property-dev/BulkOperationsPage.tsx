@@ -44,6 +44,7 @@ import {
   Card,
   DismissibleInfo,
   EmptyState,
+  IntroRichText,
 } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
@@ -971,6 +972,7 @@ export function BulkOperationsPage() {
         title={t('propdev_bulk_ops.intro_title', {
           defaultValue: 'Move many records safely at once',
         })}
+        more={t('propdev_bulk_ops.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('propdev_bulk_ops.intro_more')} /> : undefined}
         links={[
           {
             label: t('propdev.title', { defaultValue: 'Property Development' }),

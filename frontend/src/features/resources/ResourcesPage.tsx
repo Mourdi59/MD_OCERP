@@ -40,6 +40,7 @@ import {
   Card,
   Badge,
   DismissibleInfo,
+  IntroRichText,
   EmptyState,
   Breadcrumb,
   SkeletonTable,
@@ -591,6 +592,11 @@ export function ResourcesPage() {
         title={t('resources.intro_title', {
           defaultValue: 'Stop double-booking crews and kit',
         })}
+        more={
+          t('resources.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('resources.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('resources.intro_link_schedule', { defaultValue: '4D Schedule' }),

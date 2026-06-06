@@ -30,6 +30,7 @@ import {
   EmptyState,
   Breadcrumb,
   DismissibleInfo,
+  IntroRichText,
   RecoveryCard,
   SkeletonTable,
   WideModal,
@@ -207,6 +208,11 @@ export function TaktSchedulePage() {
         title={t('takt.intro_title', {
           defaultValue: 'Keep crews flowing, not waiting',
         })}
+        more={
+          t('takt.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('takt.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('takt.intro_link_advanced', { defaultValue: 'Last Planner' }), onClick: () => navigate('/schedule-advanced') },
           { label: t('takt.intro_link_schedule', { defaultValue: '4D Schedule' }), onClick: () => navigate('/schedule') },

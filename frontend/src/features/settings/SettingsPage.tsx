@@ -35,7 +35,7 @@ import {
   Wrench,
   LayoutGrid,
 } from 'lucide-react';
-import { Card, CardHeader, CardContent, CardFooter, Button, Badge, InfoHint, Skeleton, Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { Card, CardHeader, CardContent, CardFooter, Button, Badge, InfoHint, Skeleton, Breadcrumb, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { DashboardLayoutManager } from '@/features/dashboard/DashboardLayoutManager';
@@ -1221,6 +1221,11 @@ export function SettingsPage() {
         title={t('settings.intro_title', {
           defaultValue: 'Set the platform up once for your team',
         })}
+        more={
+          t('settings.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('settings.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.setup_databases', { defaultValue: 'Databases & Resources' }),

@@ -16,7 +16,7 @@ import {
   Sparkles,
   Globe,
 } from 'lucide-react';
-import { Button, Card, Badge, Breadcrumb, ConfirmDialog, CountryFlag, DismissibleInfo } from '@/shared/ui';
+import { Button, Card, Badge, Breadcrumb, ConfirmDialog, CountryFlag, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useToastStore } from '@/stores/useToastStore';
@@ -1655,6 +1655,7 @@ export function ImportDatabasePage() {
       <DismissibleInfo
         storageKey="costs-import"
         title={t('costs_import.intro_title', { defaultValue: 'Get a regional price book in minutes' })}
+        more={t('costs_import.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('costs_import.intro_more')} /> : undefined}
         links={[
           { label: t('nav.costs', { defaultValue: 'Cost Database' }), onClick: () => navigate('/costs') },
           { label: t('nav.catalog', { defaultValue: 'Resource Catalog' }), onClick: () => navigate('/catalog') },

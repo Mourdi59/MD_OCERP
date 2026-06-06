@@ -27,7 +27,7 @@ import {
   Search,
 } from 'lucide-react';
 
-import { Badge, Breadcrumb, Button, Card, DismissibleInfo, EmptyState, Input } from '@/shared/ui';
+import { Badge, Breadcrumb, Button, Card, DismissibleInfo, IntroRichText, EmptyState, Input } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
@@ -148,6 +148,11 @@ export function AssetsPage() {
           title={t('assets.intro_title', {
             defaultValue: 'Carry the model through to handover',
           })}
+          more={
+            t('assets.intro_more', { defaultValue: '' })
+              ? <IntroRichText text={t('assets.intro_more')} />
+              : undefined
+          }
           links={[
             { label: t('assets.intro_link_bim', { defaultValue: 'BIM viewer' }), onClick: () => navigate('/bim') },
           ]}

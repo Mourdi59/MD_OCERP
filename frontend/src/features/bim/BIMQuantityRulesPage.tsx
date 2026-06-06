@@ -55,7 +55,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-import { Badge, Breadcrumb, ConfirmDialog, DismissibleInfo, EmptyState, SkeletonTable } from '@/shared/ui';
+import { Badge, Breadcrumb, ConfirmDialog, DismissibleInfo, IntroRichText, EmptyState, SkeletonTable } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { apiGet } from '@/shared/lib/api';
 import { FolderOpen } from 'lucide-react';
@@ -2946,6 +2946,11 @@ export function BIMQuantityRulesPage() {
           title={t('bim_rules.intro_title', {
             defaultValue: 'Link hundreds of elements without clicking each one',
           })}
+          more={
+            t('bim_rules.intro_more', { defaultValue: '' })
+              ? <IntroRichText text={t('bim_rules.intro_more')} />
+              : undefined
+          }
           links={[
             { label: t('bim_rules.intro_link_bim', { defaultValue: 'BIM viewer' }), onClick: () => navigate('/bim') },
             { label: t('bim_rules.intro_link_boq', { defaultValue: 'Open BOQ' }), onClick: () => navigate('/boq') },

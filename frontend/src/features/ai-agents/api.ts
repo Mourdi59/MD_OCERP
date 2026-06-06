@@ -168,6 +168,49 @@ export interface EventTriggerDescriptor {
   available: boolean;
 }
 
+// ── BOQ proposals: extract + apply (human-confirmed) ──────────────────────────
+
+/** One structured BOQ-position proposal a run produced (money as strings). */
+export interface PositionProposalDto {
+  description: string;
+  unit: string;
+  qty: number;
+  unit_rate: string;
+  currency: string;
+  total: string;
+}
+
+/** The applyable proposals a run produced (GET /runs/{id}/proposals). */
+export interface RunProposals {
+  run_id: string;
+  project_id: string | null;
+  count: number;
+  currencies: string[];
+  mixed_currency: boolean;
+  proposals: PositionProposalDto[];
+}
+
+export interface ApplyProposalsRequest {
+  boq_id: string;
+}
+
+/** Outcome of applying a run's proposals to a BOQ (POST /runs/{id}/apply). */
+export interface ApplyProposalsResult {
+  run_id: string;
+  boq_id: string;
+  created: number;
+  skipped: number;
+  currency: string | null;
+  created_ordinals: string[];
+  skipped_reasons: string[];
+}
+
+/** A BOQ a run's proposals can be applied to (subset of the BOQ list item). */
+export interface BoqOption {
+  id: string;
+  name: string;
+}
+
 export const aiAgentsApi = {
   listAgents: () => apiGet<AgentDescriptor[]>('/v1/ai-agents/agents/'),
   listRuns: (projectId?: string) =>
@@ -205,4 +248,16 @@ export const aiAgentsApi = {
     apiGet<EventTriggerDescriptor[]>('/v1/ai-agents/triggers/'),
   setAgentTriggers: (id: string, body: SetTriggersRequest) =>
     apiPost<AgentMetadata, SetTriggersRequest>(`/v1/ai-agents/custom/${id}/triggers`, body),
+
+  // BOQ proposals: extract from a run + apply to a BOQ (human-confirmed).
+  getRunProposals: (runId: string) =>
+    apiGet<RunProposals>(`/v1/ai-agents/runs/${runId}/proposals`),
+  applyRunProposals: (runId: string, body: ApplyProposalsRequest) =>
+    apiPost<ApplyProposalsResult, ApplyProposalsRequest>(
+      `/v1/ai-agents/runs/${runId}/apply`,
+      body,
+    ),
+  // BOQs the proposals can be applied to (the cross-module target list).
+  listProjectBoqs: (projectId: string) =>
+    apiGet<BoqOption[]>(`/v1/boq/?project_id=${projectId}`),
 };

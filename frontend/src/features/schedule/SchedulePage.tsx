@@ -25,7 +25,7 @@ import {
   TrendingUp,
   Layers,
 } from 'lucide-react';
-import { Button, Card, Badge, Input, SkeletonTable, Breadcrumb, DismissibleInfo, GanttChart as SVGGanttChart, ViewInBIMButton, ConfirmDialog } from '@/shared/ui';
+import { Button, Card, Badge, Input, SkeletonTable, Breadcrumb, DismissibleInfo, IntroRichText, GanttChart as SVGGanttChart, ViewInBIMButton, ConfirmDialog } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import type { GanttActivity as SVGGanttActivity, GanttViewMode } from '@/shared/ui';
@@ -2126,6 +2126,11 @@ export function SchedulePage() {
         title={t('schedule.intro_title', {
           defaultValue: 'Build the plan straight from the estimate',
         })}
+        more={
+          t('schedule.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('schedule.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('schedule.intro_link_boq', { defaultValue: 'Open BOQ' }), onClick: () => navigate('/boq') },
           { label: t('schedule.intro_link_bim', { defaultValue: 'BIM viewer' }), onClick: () => navigate('/bim') },

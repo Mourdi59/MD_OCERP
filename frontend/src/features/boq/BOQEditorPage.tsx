@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 // lucide-react icons used by sub-components (BOQToolbar, BOQGrid, etc.) — none needed directly here
 import { Database, Download, ExternalLink, X, Sparkles, AlertTriangle as WarnTriangle, Lock, Copy, Wallet, Keyboard, GitCompare, RefreshCw, ShieldCheck } from 'lucide-react';
-import { Button, Badge, Breadcrumb, ModuleHelpButton, ConfirmDialog, DismissibleInfo } from '@/shared/ui';
+import { Button, Badge, Breadcrumb, ModuleHelpButton, ConfirmDialog, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useProgressStore } from '@/shared/ui/GlobalProgress';
 import { apiGet, apiPost, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
@@ -3907,6 +3907,7 @@ export function BOQEditorPage() {
         storageKey="boq-editor"
         className="mb-4"
         title={t('boq_editor.intro_title', { defaultValue: 'Edit the estimate without losing the thread' })}
+        more={t('boq_editor.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('boq_editor.intro_more')} /> : undefined}
         links={[
           { label: t('nav.assemblies', { defaultValue: 'Assemblies' }), onClick: () => navigate('/assemblies') },
           { label: t('nav.costs', { defaultValue: 'Cost Database' }), onClick: () => navigate('/costs') },

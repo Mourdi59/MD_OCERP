@@ -21,6 +21,7 @@ import {
   Breadcrumb,
   DateDisplay,
   DismissibleInfo,
+  IntroRichText,
   RecoveryCard,
   SkeletonTable,
   ConfirmDialog,
@@ -953,6 +954,11 @@ export function SubmittalsPage() {
       <DismissibleInfo
         storageKey="submittals"
         title={t('submittals.intro_title', { defaultValue: 'No work installed without sign-off' })}
+        more={
+          t('submittals.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('submittals.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('boq.title', { defaultValue: 'Bill of Quantities' }),

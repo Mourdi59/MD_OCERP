@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, RecoveryCard, ViewInBIMButton } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
-import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
+import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { PlanningCrossLinks } from '@/features/schedule/PlanningCrossLinks';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
@@ -1413,6 +1413,11 @@ export function TasksPage() {
         title={t('tasks.intro_title', {
           defaultValue: 'Loose ends that actually get closed',
         })}
+        more={
+          t('tasks.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('tasks.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.schedule', { defaultValue: '4D Schedule' }),

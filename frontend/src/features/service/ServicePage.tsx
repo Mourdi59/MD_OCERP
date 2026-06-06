@@ -34,7 +34,7 @@ import {
   ConfirmDialog,
 } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
-import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
+import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { useToastStore } from '@/stores/useToastStore';
@@ -345,6 +345,7 @@ export function ServicePage() {
         title={t('service.intro_title', {
           defaultValue: 'From customer call to billed visit',
         })}
+        more={t('service.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('service.intro_more')} /> : undefined}
         links={[
           {
             label: t('service.intro_link_contacts', { defaultValue: 'Customers (Contacts)' }),

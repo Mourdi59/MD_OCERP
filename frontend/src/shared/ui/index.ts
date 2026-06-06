@@ -101,6 +101,7 @@ export { ErrorBoundary } from './ErrorBoundary';
 export { NotFoundPage } from './NotFoundPage';
 
 export { CountryFlag } from './CountryFlag';
+export { CountryFlagBackdrop } from './CountryFlagBackdrop';
 
 export { CountryCombobox, CUSTOM_SENTINEL } from './CountryCombobox';
 export type { CountryComboboxProps } from './CountryCombobox';

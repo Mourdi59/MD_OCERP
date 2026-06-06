@@ -13,7 +13,7 @@ import {
   MessageSquarePlus,
   Info,
 } from 'lucide-react';
-import { Breadcrumb, AIDisclaimerBanner, DismissibleInfo } from '@/shared/ui';
+import { Breadcrumb, AIDisclaimerBanner, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToastStore } from '@/stores/useToastStore';
@@ -469,6 +469,7 @@ export function AdvisorPage() {
         title={t('advisor.intro_title', {
           defaultValue: 'Ask the price book a plain question',
         })}
+        more={t('advisor.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('advisor.intro_more')} /> : undefined}
         links={[
           { label: t('advisor.intro_link_costs', { defaultValue: 'Cost database' }), onClick: () => navigate('/costs') },
           { label: t('advisor.intro_link_estimate', { defaultValue: 'Quick Estimate' }), onClick: () => navigate('/ai-estimate') },

@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { isModuleLoaded } from '@/shared/lib/moduleProbe';
-import { Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { Breadcrumb, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import {
@@ -955,6 +955,11 @@ export function QuantitiesPage() {
       <DismissibleInfo
         storageKey="quantities"
         title={t('quantities.intro_title', { defaultValue: 'Pick the right way to measure' })}
+        more={
+          t('quantities.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('quantities.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('nav.ai_estimate', { defaultValue: 'Quick Estimate (AI)' }), onClick: () => navigate('/ai-estimate') },
           { label: t('nav.takeoff', { defaultValue: 'PDF Takeoff' }), onClick: () => navigate('/takeoff') },

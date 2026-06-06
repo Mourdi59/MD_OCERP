@@ -27,18 +27,22 @@ import {
   Sparkles,
   Activity,
   FolderOpen,
+  Download,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
+import { useToastStore } from '@/stores/useToastStore';
+
 import { DateDisplay } from '@/shared/ui/DateDisplay';
-import { BetaBanner, Breadcrumb, DismissibleInfo, EmptyState, RecoveryCard } from '@/shared/ui';
+import { BetaBanner, Breadcrumb, DismissibleInfo, EmptyState, IntroRichText, RecoveryCard } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useActiveProjectProfile } from '@/features/projects/useProjectProfile';
 import { projectsApi } from '@/features/projects/api';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import {
+  downloadCoordinationSnapshot,
   fetchCoordinationDashboard,
   fetchCoordinationThresholds,
   fetchCoordinationTimeline,
@@ -233,9 +237,16 @@ export function CoordinationHubPage() {
     retry: false,
   });
 
+  // Activity-window selector. The timeline endpoint already accepts
+  // ``?days=N`` (1-365) but the UI previously pinned it to 30 with no
+  // control. Lift it into state so the operator can widen / narrow the
+  // lookback; the query key includes the window so React Query caches
+  // each separately.
+  const TIMELINE_WINDOWS = [7, 30, 90] as const;
+  const [timelineDays, setTimelineDays] = useState<number>(30);
   const timelineQuery = useQuery({
-    queryKey: ['coordination-timeline', projectId, 30],
-    queryFn: () => fetchCoordinationTimeline(projectId as string, 30),
+    queryKey: ['coordination-timeline', projectId, timelineDays],
+    queryFn: () => fetchCoordinationTimeline(projectId as string, timelineDays),
     enabled: !!projectId,
     staleTime: 30_000,
     retry: false,
@@ -256,6 +267,33 @@ export function CoordinationHubPage() {
   const userRole = useAuthStore((s) => s.userRole);
   const canEditThresholds = !!userRole && WRITE_ROLES.has(userRole);
   const [thresholdEditorOpen, setThresholdEditorOpen] = useState(false);
+
+  // CSV snapshot export - one attachable artefact for a coordination
+  // meeting. Read-only so every authenticated member can pull it.
+  const addToast = useToastStore((s) => s.addToast);
+  const [exporting, setExporting] = useState(false);
+  const handleExport = async () => {
+    if (!projectId || exporting) return;
+    setExporting(true);
+    try {
+      await downloadCoordinationSnapshot(projectId);
+      addToast({
+        type: 'success',
+        title: t('coordination.export_started', {
+          defaultValue: 'Coordination snapshot exported',
+        }),
+      });
+    } catch {
+      addToast({
+        type: 'error',
+        title: t('coordination.export_failed', {
+          defaultValue: 'Could not export the coordination snapshot',
+        }),
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Stale-project detection. The user's `oe_active_project` localStorage
   // entry can outlive the project itself (deleted on the server, fresh
@@ -417,6 +455,16 @@ export function CoordinationHubPage() {
                 </button>
               ) : null}
               <button
+                data-testid="coordination-export"
+                type="button"
+                onClick={handleExport}
+                disabled={exporting}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/40 bg-white/50 px-3 py-1.5 text-xs font-medium text-content-secondary backdrop-blur transition hover:border-oe-blue/40 hover:bg-white/80 hover:text-content-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/5 dark:bg-slate-800/50 dark:hover:bg-slate-700/50"
+              >
+                <Download size={13} />
+                {t('coordination.export_csv', { defaultValue: 'Export CSV' })}
+              </button>
+              <button
                 data-testid="coordination-refresh"
                 type="button"
                 onClick={handleRefresh}
@@ -434,6 +482,11 @@ export function CoordinationHubPage() {
           title={t('coordination.intro_title', {
             defaultValue: 'One health view across every federated model',
           })}
+          more={
+            t('coordination.intro_more', { defaultValue: '' })
+              ? <IntroRichText text={t('coordination.intro_more')} />
+              : undefined
+          }
           links={[
             {
               label: t('nav.clash_detection', { defaultValue: 'Clash Detection' }),
@@ -580,13 +633,43 @@ export function CoordinationHubPage() {
             <GlassPanel
               testId="coordination-timeline-panel"
               icon={<Activity size={16} />}
-              title={t('coordination.timeline_title', {
-                defaultValue: 'Recent activity (30 days)',
+              title={t('coordination.timeline_title_window', {
+                defaultValue: 'Recent activity ({{days}} days)',
+                days: timelineDays,
               })}
               subtitle={t('coordination.timeline_subtitle', {
                 defaultValue:
                   'Clash runs, federations, rule pack checks and BCF topics',
               })}
+              action={
+                <div
+                  role="group"
+                  aria-label={t('coordination.timeline_window_aria', {
+                    defaultValue: 'Activity lookback window',
+                  })}
+                  className="inline-flex overflow-hidden rounded-lg border border-border text-xs"
+                >
+                  {TIMELINE_WINDOWS.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      data-testid={`coordination-timeline-window-${d}`}
+                      aria-pressed={timelineDays === d}
+                      onClick={() => setTimelineDays(d)}
+                      className={
+                        timelineDays === d
+                          ? 'bg-oe-blue px-3 py-1 font-medium text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400'
+                          : 'bg-surface px-3 py-1 font-medium text-content-secondary transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400'
+                      }
+                    >
+                      {t('coordination.timeline_window_days', {
+                        defaultValue: '{{n}}d',
+                        n: d,
+                      })}
+                    </button>
+                  ))}
+                </div>
+              }
             >
               {timelineQuery.isError ? (
                 <div data-testid="coordination-timeline-error">

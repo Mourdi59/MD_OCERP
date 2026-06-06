@@ -1,3 +1,5 @@
+import { toNum } from './normalize';
+
 interface CostModelData {
   bac?: number;
   eac?: number;
@@ -7,6 +9,13 @@ interface CostModelData {
   actual?: number[];
   earned?: number[];
   periods?: string[];
+  // Backend `get_cost_model` cost-breakdown shape.
+  boq_name?: string;
+  direct_cost?: number;
+  net_total?: number;
+  grand_total?: number;
+  sections?: { title?: string; subtotal?: number; position_count?: number }[];
+  markups?: { name?: string; category?: string; percentage?: number; amount?: number }[];
 }
 
 function formatNumber(n: number | undefined): string {
@@ -116,13 +125,106 @@ function MiniChart({ planned, actual, earned }: { planned?: number[]; actual?: n
   );
 }
 
+function fmtMoney(n: number | undefined): string {
+  if (n == null) return '-';
+  return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+/**
+ * Cost-breakdown view matching the backend `get_cost_model` output:
+ * direct cost, markups (with %/amount), section subtotals, and grand total.
+ */
+function CostBreakdown({ model }: { model: CostModelData }) {
+  const direct = toNum(model.direct_cost) ?? 0;
+  const grand = toNum(model.grand_total) ?? 0;
+  const markups = model.markups ?? [];
+  const sections = model.sections ?? [];
+
+  const rowStyle: React.CSSProperties = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '8px 12px',
+    fontSize: 13,
+    borderBottom: '1px solid var(--chat-border-subtle)',
+    fontFamily: 'var(--chat-font-body)',
+  };
+  const num: React.CSSProperties = { fontFamily: 'var(--chat-font-mono)', fontVariantNumeric: 'tabular-nums' };
+
+  return (
+    <div style={{ overflow: 'auto', height: '100%', padding: 12, fontFamily: 'var(--chat-font-body)' }}>
+      {model.boq_name && (
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--chat-text-primary)', marginBottom: 8 }}>
+          {model.boq_name}
+        </div>
+      )}
+
+      {/* KPI strip: direct cost + grand total */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8, marginBottom: 16 }}>
+        <KPICard label="Direct cost" value={direct} />
+        <KPICard label="Grand total" value={grand} />
+      </div>
+
+      {markups.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontFamily: 'var(--chat-font-mono)', color: 'var(--chat-text-tertiary)', textTransform: 'uppercase', marginBottom: 4 }}>
+            Markups
+          </div>
+          <div style={{ background: 'var(--chat-surface-1)', border: '1px solid var(--chat-border-subtle)', borderRadius: 'var(--chat-radius)' }}>
+            {markups.map((m, i) => (
+              <div key={m.name ?? i} style={rowStyle}>
+                <span style={{ color: 'var(--chat-text-secondary)' }}>
+                  {m.name ?? m.category ?? `Markup ${i + 1}`}
+                  {m.percentage != null && (
+                    <span style={{ color: 'var(--chat-text-tertiary)', marginLeft: 6 }}>{m.percentage}%</span>
+                  )}
+                </span>
+                <span style={num}>{fmtMoney(toNum(m.amount))}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {sections.length > 0 && (
+        <div>
+          <div style={{ fontSize: 11, fontFamily: 'var(--chat-font-mono)', color: 'var(--chat-text-tertiary)', textTransform: 'uppercase', marginBottom: 4 }}>
+            Sections
+          </div>
+          <div style={{ background: 'var(--chat-surface-1)', border: '1px solid var(--chat-border-subtle)', borderRadius: 'var(--chat-radius)' }}>
+            {sections.map((s, i) => (
+              <div key={s.title ?? i} style={rowStyle}>
+                <span style={{ color: 'var(--chat-text-secondary)' }}>
+                  {s.title ?? `Section ${i + 1}`}
+                  {s.position_count != null && (
+                    <span style={{ color: 'var(--chat-text-tertiary)', marginLeft: 6 }}>
+                      {s.position_count} pos
+                    </span>
+                  )}
+                </span>
+                <span style={num}>{fmtMoney(toNum(s.subtotal))}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CostModelRenderer({ data }: { data: unknown }) {
   const model = (data && typeof data === 'object' ? data : {}) as CostModelData;
 
   const hasKPIs = model.bac != null || model.eac != null || model.spi != null || model.cpi != null;
   const hasChart = model.planned?.length || model.actual?.length || model.earned?.length;
+  // Backend cost-breakdown shape (the common case for the AI chat tool).
+  const hasBreakdown =
+    model.direct_cost != null ||
+    model.grand_total != null ||
+    (model.sections?.length ?? 0) > 0 ||
+    (model.markups?.length ?? 0) > 0;
 
   if (!hasKPIs && !hasChart) {
+    if (hasBreakdown) return <CostBreakdown model={model} />;
     return (
       <div style={{ padding: 24, color: 'var(--chat-text-tertiary)', textAlign: 'center', fontFamily: 'var(--chat-font-body)' }}>
         No cost model data available

@@ -20,7 +20,7 @@ import { apiGet, apiPost, getErrorMessage } from '@/shared/lib/api';
 import { CommentThread } from '@/shared/ui/CommentThread';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { PageHeader } from '@/shared/ui/PageHeader';
-import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
+import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -121,6 +121,11 @@ export default function CollaborationModule() {
       <DismissibleInfo
         storageKey="collaboration"
         title={t('collaboration.intro_title', { defaultValue: 'See who is on the project right now' })}
+        more={
+          t('collaboration.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('collaboration.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('boq.title', { defaultValue: 'Bill of Quantities' }),

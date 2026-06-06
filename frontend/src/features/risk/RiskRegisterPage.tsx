@@ -8,7 +8,7 @@ import {
   AlertTriangle, Shield, Trash2, X, Search, Filter, CalendarDays, TrendingUp,
   LayoutGrid, Activity,
 } from 'lucide-react';
-import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, DismissibleInfo, RecoveryCard, SkeletonTable, SkeletonCard } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, DismissibleInfo, IntroRichText, RecoveryCard, SkeletonTable, SkeletonCard } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { MultiCurrencyTotal } from '@/shared/ui/MultiCurrencyTotal';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
@@ -634,6 +634,7 @@ export function RiskRegisterPage() {
         title={t('risk.intro_title', {
           defaultValue: 'Surface risk before it costs money',
         })}
+        more={t('risk.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('risk.intro_more')} /> : undefined}
         links={[
           { label: t('risk.intro_link_analysis', { defaultValue: 'Cost risk analysis' }), onClick: () => navigate('/risk-analysis') },
           { label: t('risk.intro_link_schedule', { defaultValue: '4D Schedule' }), onClick: () => navigate('/schedule') },

@@ -35,7 +35,7 @@ import {
   Unlock,
   Save,
 } from 'lucide-react';
-import { Card, Badge, Button, WideModal, Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { Card, Badge, Button, WideModal, Breadcrumb, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useToastStore } from '@/stores/useToastStore';
@@ -801,6 +801,11 @@ export function UserManagementPage() {
         title={t('users.intro_title', {
           defaultValue: 'Right people, right access',
         })}
+        more={
+          t('users.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('users.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('nav.governance', { defaultValue: 'Governance' }), onClick: () => navigate('/governance') },
           {

@@ -1,6 +1,7 @@
-import type { ChatMessage } from '../../types';
+import type { ChatMessage, ChatSession } from '../../types';
 import MessageThread from './MessageThread';
 import InputBar from './InputBar';
+import ChatHistory from './ChatHistory';
 
 interface ChatLeftPanelProps {
   messages: ChatMessage[];
@@ -9,9 +10,28 @@ interface ChatLeftPanelProps {
   onSend: (text: string) => void;
   onClear: () => void;
   aiConfigured: boolean | null;
+  sessions: ChatSession[];
+  sessionsLoading: boolean;
+  loadingSessionId: string | null;
+  activeSessionId: string | null;
+  onLoadSession: (id: string) => void;
+  onDeleteSession: (id: string) => void;
 }
 
-export default function ChatLeftPanel({ messages, isStreaming, suggestions, onSend, onClear, aiConfigured }: ChatLeftPanelProps) {
+export default function ChatLeftPanel({
+  messages,
+  isStreaming,
+  suggestions,
+  onSend,
+  onClear,
+  aiConfigured,
+  sessions,
+  sessionsLoading,
+  loadingSessionId,
+  activeSessionId,
+  onLoadSession,
+  onDeleteSession,
+}: ChatLeftPanelProps) {
   return (
     <div
       style={{
@@ -22,6 +42,15 @@ export default function ChatLeftPanel({ messages, isStreaming, suggestions, onSe
         fontFamily: 'var(--chat-font-body)',
       }}
     >
+      <ChatHistory
+        sessions={sessions}
+        sessionsLoading={sessionsLoading}
+        loadingSessionId={loadingSessionId}
+        activeSessionId={activeSessionId}
+        onLoad={onLoadSession}
+        onDelete={onDeleteSession}
+        onNew={onClear}
+      />
       <MessageThread messages={messages} isStreaming={isStreaming} aiConfigured={aiConfigured} />
       <InputBar
         onSend={onSend}

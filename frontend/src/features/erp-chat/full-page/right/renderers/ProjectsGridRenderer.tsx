@@ -1,3 +1,5 @@
+import { unwrapList } from './normalize';
+
 interface ProjectInfo {
   id?: string;
   name?: string;
@@ -23,7 +25,9 @@ function formatCurrency(value: number | undefined, currency?: string): string {
 }
 
 export default function ProjectsGridRenderer({ data }: { data: unknown }) {
-  const projects: ProjectInfo[] = Array.isArray(data) ? data : [];
+  // Backend `get_all_projects` returns `{ projects: [...], total }`; older
+  // callers may pass a bare array. unwrapList handles both.
+  const projects = unwrapList(data, ['projects']) as ProjectInfo[];
 
   if (projects.length === 0) {
     return (

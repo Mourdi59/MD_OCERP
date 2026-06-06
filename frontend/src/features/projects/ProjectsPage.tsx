@@ -10,7 +10,7 @@ import {
 import { formatDistanceToNowStrict, isValid as isValidDate, parseISO } from 'date-fns';
 import { Button, Card, Badge, EmptyState, Skeleton, SkeletonGrid, Breadcrumb, ProjectMap, ProjectWeather, FileTypeChips, type LatLng } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
-import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
+import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { useWidgetSettingsStore } from '@/stores/useWidgetSettingsStore';
 import { getIntlLocale } from '@/shared/lib/formatters';
 import { projectsApi, type Project } from './api';
@@ -413,6 +413,11 @@ export function ProjectsPage() {
       <DismissibleInfo
         storageKey="projects"
         title={t('projects.intro_title', { defaultValue: "One home for every project's numbers" })}
+        more={
+          t('projects.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('projects.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.projects_new', { defaultValue: 'New project' }),

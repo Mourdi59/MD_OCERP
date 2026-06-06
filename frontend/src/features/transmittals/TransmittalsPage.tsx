@@ -26,6 +26,7 @@ import {
   Breadcrumb,
   DateDisplay,
   DismissibleInfo,
+  IntroRichText,
   ConfirmDialog,
   SkeletonTable,
   WideModal,
@@ -1103,6 +1104,11 @@ export function TransmittalsPage() {
       <DismissibleInfo
         storageKey="transmittals"
         title={t('transmittals.intro_title', { defaultValue: 'Prove who got which documents, when' })}
+        more={
+          t('transmittals.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('transmittals.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('submittals.title', { defaultValue: 'Submittals' }),

@@ -23,14 +23,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
-import { GitCompare, Loader2, ArrowRight, Layers, MessageSquare, BarChart3, Eye } from 'lucide-react';
+import {
+  GitCompare,
+  Loader2,
+  ArrowRight,
+  Layers,
+  MessageSquare,
+  BarChart3,
+  Eye,
+  FilePlus2,
+} from 'lucide-react';
 
 import { SideDrawer, MoneyDisplay, Badge } from '@/shared/ui';
+import { useToastStore } from '@/stores/useToastStore';
 import {
   fetchDrawingVersions,
   compareDrawings,
+  createVariationFromDiff,
   type DwgDrawingVersion,
   type DwgDrawingDiffResponse,
   type DwgEntityDiffRow,
@@ -145,6 +157,54 @@ export function DwgDrawingCompareDrawer({
   });
 
   const diff = diffQuery.data;
+
+  const navigate = useNavigate();
+  const addToast = useToastStore((s) => s.addToast);
+
+  // The diff has a real change when any tally bucket other than "unchanged"
+  // is non-zero across entities and annotations. With no changes there is
+  // nothing to turn into a variation, so the button is disabled.
+  const hasChanges = useMemo(() => {
+    if (!diff) return false;
+    const s = diff.summary;
+    const sum = (tally: Record<'added' | 'removed' | 'modified' | 'unchanged', number>) =>
+      (tally.added ?? 0) + (tally.removed ?? 0) + (tally.modified ?? 0);
+    return sum(s.entities) > 0 || sum(s.annotations) > 0;
+  }, [diff]);
+
+  const createVariationMutation = useMutation({
+    mutationFn: () => {
+      if (!canCompare) throw new Error('no comparison selected');
+      return createVariationFromDiff(drawingId, fromId, toId);
+    },
+    onSuccess: (result) => {
+      addToast(
+        {
+          type: 'success',
+          title: t('dwg_compare.variation_created', {
+            defaultValue: 'Draft variation {{code}} created',
+            code: result.code,
+          }),
+          message: t('dwg_compare.variation_created_hint', {
+            defaultValue: 'Review and confirm it in the variations module before submitting.',
+          }),
+          action: {
+            label: t('dwg_compare.view_variation', { defaultValue: 'View variation' }),
+            onClick: () => navigate('/variations'),
+          },
+        },
+        { duration: 8000 },
+      );
+    },
+    onError: () => {
+      addToast({
+        type: 'error',
+        title: t('dwg_compare.variation_error', {
+          defaultValue: 'Could not create the variation. Please try again.',
+        }),
+      });
+    },
+  });
 
   const entityRows = useMemo(
     () =>
@@ -339,7 +399,14 @@ export function DwgDrawingCompareDrawer({
         {/* Body */}
         {diff && !diffQuery.isLoading && (
           <>
-            {tab === 'summary' && <SummaryTab diff={diff} />}
+            {tab === 'summary' && (
+              <SummaryTab
+                diff={diff}
+                canCreateVariation={hasChanges && canCompare}
+                creating={createVariationMutation.isPending}
+                onCreateVariation={() => createVariationMutation.mutate()}
+              />
+            )}
             {tab === 'entities' && <EntitiesTab rows={entityRows} hideUnchanged={hideUnchanged} />}
             {tab === 'annotations' && (
               <AnnotationsTab rows={annotationRows} hideUnchanged={hideUnchanged} />
@@ -353,7 +420,17 @@ export function DwgDrawingCompareDrawer({
 
 /* ── Summary tab ───────────────────────────────────────────────────────── */
 
-function SummaryTab({ diff }: { diff: DwgDrawingDiffResponse }) {
+function SummaryTab({
+  diff,
+  canCreateVariation,
+  creating,
+  onCreateVariation,
+}: {
+  diff: DwgDrawingDiffResponse;
+  canCreateVariation: boolean;
+  creating: boolean;
+  onCreateVariation: () => void;
+}) {
   const { t } = useTranslation();
   const { summary } = diff;
   return (
@@ -384,7 +461,32 @@ function SummaryTab({ diff }: { diff: DwgDrawingDiffResponse }) {
           <p className="text-xs text-content-tertiary">
             {t('dwg_compare.no_cost_impact', {
               defaultValue:
-                'No cost impact — no linked BOQ annotation changed value between these revisions.',
+                'No cost impact - no linked BOQ annotation changed value between these revisions.',
+            })}
+          </p>
+        )}
+
+        {/* Create-variation-from-delta handoff (Item 17). Disabled when the
+            two revisions are identical / there are no changes. Creates a
+            DRAFT variation the user confirms in the variations module. */}
+        <button
+          type="button"
+          onClick={onCreateVariation}
+          disabled={!canCreateVariation || creating}
+          data-testid="dwg-compare-create-variation"
+          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md bg-oe-blue px-3 py-2 text-xs font-semibold text-white transition hover:bg-oe-blue/90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {creating ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <FilePlus2 size={14} />
+          )}
+          {t('dwg_compare.create_variation', { defaultValue: 'Create variation from delta' })}
+        </button>
+        {!canCreateVariation && (
+          <p className="mt-1 text-[10px] text-content-tertiary">
+            {t('dwg_compare.create_variation_disabled', {
+              defaultValue: 'Pick two revisions with at least one change to raise a variation.',
             })}
           </p>
         )}

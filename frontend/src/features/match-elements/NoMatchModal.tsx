@@ -25,6 +25,7 @@ export function NoMatchModal({ sessionId, groupKey, onClose, onDone }: Props) {
   const [desc, setDesc] = useState('');
   const [unit, setUnit] = useState('m3');
   const [rate, setRate] = useState('');
+  const [saveToCatalogue, setSaveToCatalogue] = useState(false);
 
   const mut = useMutation({
     mutationFn: () =>
@@ -36,6 +37,7 @@ export function NoMatchModal({ sessionId, groupKey, onClose, onDone }: Props) {
               custom_description: desc || undefined,
               custom_unit: unit || undefined,
               custom_rate: rate ? Number(rate) : undefined,
+              save_to_my_catalogue: saveToCatalogue,
             }
           : {}),
       }),
@@ -162,6 +164,20 @@ export function NoMatchModal({ sessionId, groupKey, onClose, onDone }: Props) {
                   className="flex-1 px-2 py-1.5 text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
                 />
               </div>
+              <label className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  checked={saveToCatalogue}
+                  onChange={(e) => setSaveToCatalogue(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  {t(
+                    'match_elements.no_match.save_to_catalogue',
+                    'Save to my catalogue so I can reuse this rate on other projects',
+                  )}
+                </span>
+              </label>
             </div>
           )}
         </div>

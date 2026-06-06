@@ -19,7 +19,6 @@ import {
   useState,
   type ChangeEvent,
   type KeyboardEvent,
-  type FC,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -47,19 +46,10 @@ import { fetchChatSessions } from './api';
 import type { ChatMessage, ChatSession, ToolCallInfo } from './types';
 
 // Reuse the full-page renderer registry so the tool-result cards inside the
-// floating panel look identical to /chat. Importing the components directly
-// (not the router) lets us render them inline below each tool call.
-import {
-  ProjectsGridRenderer,
-  BOQRenderer,
-  ScheduleRenderer,
-  ValidationRenderer,
-  CostModelRenderer,
-  RiskMatrixRenderer,
-  CompareRenderer,
-  CWICRRenderer,
-  GenericTableRenderer,
-} from './full-page/right/renderers';
+// floating panel look identical to /chat. The single shared RENDERER_REGISTRY
+// is the source of truth - it maps every backend renderer name (and legacy
+// aliases) to a component, so the two surfaces can never drift again.
+import { RENDERER_REGISTRY } from './full-page/right/renderers';
 
 import './full-page/chat-tokens.css';
 
@@ -94,17 +84,7 @@ const SANITIZE_CONFIG = {
   ADD_ATTR: ['target', 'rel'],
 };
 
-const RENDERERS: Record<string, FC<{ data: unknown }>> = {
-  projects_grid: ProjectsGridRenderer,
-  boq_table: BOQRenderer,
-  schedule_gantt: ScheduleRenderer,
-  validation_list: ValidationRenderer,
-  cost_model: CostModelRenderer,
-  risk_matrix: RiskMatrixRenderer,
-  compare_table: CompareRenderer,
-  cwicr_results: CWICRRenderer,
-  generic_table: GenericTableRenderer,
-};
+const RENDERERS = RENDERER_REGISTRY;
 
 const SOFT_LIMIT = 3000;
 const HARD_LIMIT = 4000;

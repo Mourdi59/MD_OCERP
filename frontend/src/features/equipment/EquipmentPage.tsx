@@ -31,6 +31,7 @@ import {
   SkeletonTable,
   ConfirmDialog,
   DismissibleInfo,
+  IntroRichText,
 } from '@/shared/ui';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
@@ -226,6 +227,11 @@ export function EquipmentPage() {
         title={t('equipment.intro_title', {
           defaultValue: 'Keep unsafe plant off the site',
         })}
+        more={
+          t('equipment.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('equipment.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('equipment.intro_link_resources', { defaultValue: 'Resources' }),

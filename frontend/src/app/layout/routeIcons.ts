@@ -78,6 +78,7 @@ import {
   Info,
   ScrollText,
   Plus,
+  PackageCheck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -156,6 +157,7 @@ const ROUTE_ICON_MAP: Record<string, LucideIcon> = {
   '/inspections': ClipboardCheck,
   '/ncr': AlertOctagon,
   '/punchlist': ListChecks,
+  '/closeout': PackageCheck,
   // ── 13. Safety & ESG ──────────────────────────────────────────────
   '/safety': HardHat,
   '/hse-advanced': Shield,

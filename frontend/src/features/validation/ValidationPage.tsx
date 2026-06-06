@@ -16,9 +16,8 @@ import {
   Filter,
   ExternalLink,
 } from 'lucide-react';
-import { Button, Card, Badge, EmptyState, Skeleton, Breadcrumb } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, Skeleton, Breadcrumb, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
-import { SectionIntro } from './SectionIntro';
 import { apiGet, apiPost, triggerDownload } from '@/shared/lib/api';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
@@ -1020,11 +1019,16 @@ export function ValidationPage() {
         )}
       />
 
-      <SectionIntro
+      <DismissibleInfo
         storageKey="validation"
         title={t('validation.intro_title', {
           defaultValue: 'How validation fits the workflow',
         })}
+        more={
+          t('validation.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('validation.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('validation.intro_link_boq', { defaultValue: 'Open BOQ editor' }),
@@ -1040,7 +1044,7 @@ export function ValidationPage() {
           defaultValue:
             'Validation is a first-class step in the Import → Validate → Enrich → Estimate pipeline. It checks a Bill of Quantities (and its linked canonical/BIM elements) against the rule sets configured for the project — these are derived automatically from the project’s region and classification standard (DIN 276, GAEB, NRM, MasterFormat, boq_quality, …). Each finding links back to the exact BOQ position so you can fix it at the source.',
         })}
-      </SectionIntro>
+      </DismissibleInfo>
 
       {/* No active project — the project is chosen globally in the top bar, so
           guide the user there instead of duplicating a picker. */}

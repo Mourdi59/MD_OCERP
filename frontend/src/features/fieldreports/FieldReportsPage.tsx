@@ -44,6 +44,7 @@ import {
   WideModalField,
   SkeletonGrid,
   DismissibleInfo,
+  IntroRichText,
 } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
@@ -580,6 +581,11 @@ export function FieldReportsPage() {
         title={t('fieldreports.intro_title', {
           defaultValue: 'A defensible record of each site day',
         })}
+        more={
+          t('fieldreports.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('fieldreports.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('fieldreports.intro_link_daily_diary', { defaultValue: 'Daily Diary' }),

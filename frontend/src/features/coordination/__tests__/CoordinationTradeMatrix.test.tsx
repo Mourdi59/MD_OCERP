@@ -28,15 +28,43 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+// MoneyDisplay reads the preferences store — shim it so the cost-weighted
+// view renders without a real provider.
+const __mockPrefState = { currency: 'EUR', numberLocale: 'en-US' };
+vi.mock('@/stores/usePreferencesStore', () => ({
+  usePreferencesStore: (sel?: (s: unknown) => unknown) =>
+    sel ? sel(__mockPrefState) : __mockPrefState,
+}));
+
 const TRADES = ['arch', 'struct', 'mep', 'landscape', 'civil', 'other'] as const;
 
 const SAMPLE: TradeMatrixResponse = {
   project_id: 'p-1',
   trades: [...TRADES],
   cells: [
-    { row: 'arch', col: 'struct', count: 12, open: 7, resolved: 5 },
-    { row: 'mep', col: 'struct', count: 8, open: 4, resolved: 4 },
+    { row: 'arch', col: 'struct', count: 12, open: 7, resolved: 5, cost_impact: '0' },
+    { row: 'mep', col: 'struct', count: 8, open: 4, resolved: 4, cost_impact: '0' },
   ],
+};
+
+// Same shape but with cost weighting present — drives the toggle path.
+const SAMPLE_WITH_COST: TradeMatrixResponse = {
+  project_id: 'p-1',
+  trades: [...TRADES],
+  currency: 'EUR',
+  total_cost_impact: '15000',
+  cells: [
+    { row: 'arch', col: 'struct', count: 12, open: 7, resolved: 5, cost_impact: '2000' },
+    { row: 'mep', col: 'struct', count: 8, open: 4, resolved: 4, cost_impact: '13000' },
+  ],
+};
+
+const EMPTY: TradeMatrixResponse = {
+  project_id: 'p-1',
+  trades: [...TRADES],
+  currency: 'EUR',
+  total_cost_impact: '0',
+  cells: [],
 };
 
 beforeEach(() => {
@@ -153,5 +181,73 @@ describe('CoordinationTradeMatrix', () => {
     expect(aria).toMatch(/7/); // open count
     expect(aria.toLowerCase()).toMatch(/arch/);
     expect(aria.toLowerCase()).toMatch(/struct/);
+  });
+
+  // ── Empty state ───────────────────────────────────────────────────────
+
+  it('renders a real empty state (not a grid) when there are no clashes', () => {
+    render(<CoordinationTradeMatrix data={EMPTY} projectId="p-1" />);
+    expect(
+      screen.getByTestId('coordination-matrix-empty'),
+    ).toBeInTheDocument();
+    // The 6x6 grid of cells must NOT render.
+    expect(
+      screen.queryByTestId('matrix-cell-arch-struct'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('the empty-state CTA navigates to /clash for the project', () => {
+    render(<CoordinationTradeMatrix data={EMPTY} projectId="p-9" />);
+    fireEvent.click(screen.getByTestId('coordination-matrix-empty-cta'));
+    expect(navigate).toHaveBeenCalledWith('/clash?project=p-9');
+  });
+
+  // ── Cost weighting toggle ─────────────────────────────────────────────
+
+  it('does not offer the cost toggle when no cell carries cost', () => {
+    render(<CoordinationTradeMatrix data={SAMPLE} />);
+    expect(
+      screen.queryByTestId('coordination-matrix-weight-cost'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers the count/cost toggle when cost is present', () => {
+    render(<CoordinationTradeMatrix data={SAMPLE_WITH_COST} />);
+    expect(
+      screen.getByTestId('coordination-matrix-weight-count'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('coordination-matrix-weight-cost'),
+    ).toBeInTheDocument();
+  });
+
+  it('defaults to count weighting (cell shows open count)', () => {
+    render(<CoordinationTradeMatrix data={SAMPLE_WITH_COST} />);
+    expect(screen.getByTestId('matrix-cell-arch-struct')).toHaveTextContent(
+      '7',
+    );
+  });
+
+  it('switches the cell figure to compact cost when cost weighting is picked', () => {
+    render(<CoordinationTradeMatrix data={SAMPLE_WITH_COST} />);
+    fireEvent.click(screen.getByTestId('coordination-matrix-weight-cost'));
+    // 2000 -> "2k" compact; the mep/struct cell (13000) -> "13k".
+    expect(screen.getByTestId('matrix-cell-arch-struct')).toHaveTextContent(
+      '2k',
+    );
+    expect(screen.getByTestId('matrix-cell-mep-struct')).toHaveTextContent(
+      '13k',
+    );
+  });
+
+  it('shows the open cost impact in the tooltip when present', () => {
+    render(<CoordinationTradeMatrix data={SAMPLE_WITH_COST} />);
+    const cell = screen.getByTestId('matrix-cell-arch-struct');
+    act(() => {
+      fireEvent.mouseEnter(cell.parentElement as HTMLElement);
+    });
+    expect(
+      screen.getByTestId('matrix-cell-tooltip-cost-arch-struct'),
+    ).toBeInTheDocument();
   });
 });

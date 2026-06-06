@@ -20,7 +20,7 @@ import {
   FileText,
   AlertTriangle,
 } from 'lucide-react';
-import { Button, Card, Badge, EmptyState, RecoveryCard, DismissibleInfo, SkeletonTable, Breadcrumb, ConfirmDialog } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, RecoveryCard, DismissibleInfo, IntroRichText, SkeletonTable, Breadcrumb, ConfirmDialog } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import {
@@ -1370,6 +1370,11 @@ export function TenderingPage() {
         title={t('tendering.intro_title', {
           defaultValue: 'Take a priced BOQ to market and back',
         })}
+        more={
+          t('tendering.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('tendering.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.boq', { defaultValue: 'BOQ' }),

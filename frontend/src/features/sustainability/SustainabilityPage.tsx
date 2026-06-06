@@ -13,7 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { Breadcrumb, Card, CardHeader, CardContent, Button, EmptyState, Skeleton, DismissibleInfo } from '@/shared/ui';
+import { Breadcrumb, Card, CardHeader, CardContent, Button, EmptyState, Skeleton, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { apiGet } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
@@ -312,6 +312,7 @@ export function SustainabilityPage() {
         title={t('sustainability.intro_title', {
           defaultValue: "Read a BOQ's carbon footprint position by position",
         })}
+        more={t('sustainability.intro_more', { defaultValue: '' }) ? <IntroRichText text={t('sustainability.intro_more')} /> : undefined}
         links={[
           { label: t('sustainability.intro_link_carbon', { defaultValue: 'Carbon & ESG' }), onClick: () => navigate('/carbon') },
           { label: t('sustainability.intro_link_boq', { defaultValue: 'Open BOQ' }), onClick: () => navigate('/boq') },

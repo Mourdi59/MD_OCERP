@@ -30,7 +30,7 @@ import {
   Skeleton,
 } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
-import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
+import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
 
@@ -207,6 +207,11 @@ export function SnapshotsPage() {
         title={t('dashboards.intro_title', {
           defaultValue: 'Freeze the model so changes are provable',
         })}
+        more={
+          t('dashboards.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('dashboards.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.data_explorer', { defaultValue: 'Data Explorer' }),

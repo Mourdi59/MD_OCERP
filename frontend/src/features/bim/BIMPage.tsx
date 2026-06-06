@@ -57,7 +57,7 @@ import {
   Palette,
   Footprints,
 } from 'lucide-react';
-import { Badge, EmptyState, Breadcrumb, ConfirmDialog, ModuleHelpButton, DismissibleInfo } from '@/shared/ui';
+import { Badge, EmptyState, Breadcrumb, ConfirmDialog, ModuleHelpButton, DismissibleInfo, IntroRichText } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { BIMViewer } from '@/shared/ui/BIMViewer';
 import type { BIMElementData, BIMModelData } from '@/shared/ui/BIMViewer';
@@ -2935,20 +2935,25 @@ export function BIMPage() {
               )}
             </div>
           </div>
+          {/* Stat pills yield below ~1360px so the two toolbar rows never
+              wrap onto a third line; the same counts live in Summary. */}
           {elements.length > 0 && (
-            <div className="hidden md:flex items-center gap-2 ms-2">
+            <div className="hidden min-[1360px]:flex items-center gap-2 ms-2">
               <StatPill icon={Box} label={t('bim.stat_elements', { defaultValue: 'Elements' })} value={elements.length} />
               {storeys.size > 0 && <StatPill icon={Layers} label={t('bim.stat_storeys', { defaultValue: 'Levels' })} value={storeys.size} />}
               {discips.size > 0 && <StatPill icon={Sparkles} label={t('bim.stat_disciplines', { defaultValue: 'Disciplines' })} value={discips.size} />}
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          {/* Primary CTA cluster — moved to the START of the toolbar so the
-              "Add Model" / "Tour" / "Rules" trio is always visible on row 1
-              regardless of how many toggles wrap below. The rest of the
-              toolbar (toggles, color-by, quality, …) stays right-aligned
-              via the parent `justify-end`. */}
+        {/* Two deliberate toolbar rows (founder ask 2026-06-06): one big
+            flex-wrap broke unevenly onto a third line at common widths.
+            Row 1 = model workflow + cross-module jumps, Row 2 = view
+            controls. Label budget keeps each row to ONE line from 1280px
+            up (verified 1280/1440/1680/1920): the longest labels show only
+            at min-[1900px], medium ones at 2xl; icon + tooltip + aria-label
+            always remain. Header stat pills yield below 1360px. */}
+        <div className="flex min-w-0 flex-col items-end gap-1.5">
+          <div className="flex flex-wrap items-center justify-end gap-2">
           <button
             onClick={() => setUploadOpen((p) => !p)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-oe-blue text-white hover:bg-oe-blue-dark transition-colors shadow-sm"
@@ -3031,32 +3036,9 @@ export function BIMPage() {
                 data-testid="bim-property-search-toggle"
               >
                 <Search size={13} />
-                {t('bim.property_search_button', { defaultValue: 'Property search' })}
-              </button>
-
-              <button
-                onClick={() => setDimensionsVisible(!dimensionsVisible)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors border ${
-                  dimensionsVisible
-                    ? 'bg-oe-blue/10 text-oe-blue border-oe-blue/30'
-                    : 'text-content-secondary bg-surface-secondary border-border-light hover:bg-surface-tertiary'
-                }`}
-                title={
-                  dimensionsVisible
-                    ? t('bim.dimensions_hide', {
-                        defaultValue: 'Hide bounding-box dimensions on selection',
-                      })
-                    : t('bim.dimensions_show', {
-                        defaultValue: 'Show bounding-box dimensions on selection',
-                      })
-                }
-                aria-label={t('bim.dimensions_toggle', {
-                  defaultValue: 'Toggle bounding-box dimensions',
-                })}
-                aria-pressed={dimensionsVisible}
-              >
-                <Maximize2 size={13} />
-                {t('bim.dimensions_button', { defaultValue: 'BBox Dimensions' })}
+                <span className="hidden min-[1900px]:inline">
+                  {t('bim.property_search_button', { defaultValue: 'Property search' })}
+                </span>
               </button>
 
               {projectId && (
@@ -3077,7 +3059,7 @@ export function BIMPage() {
                   data-testid="bim-snapshots-toggle"
                 >
                   <Layers size={13} />
-                  {t('bim.snapshots_button', { defaultValue: 'Snapshots' })}
+                  <span className="hidden 2xl:inline">{t('bim.snapshots_button', { defaultValue: 'Snapshots' })}</span>
                 </button>
               )}
 
@@ -3098,7 +3080,9 @@ export function BIMPage() {
                   data-testid="bim-view-on-map"
                 >
                   <Globe2 size={13} />
-                  {t('geo_hub.view_on_map', { defaultValue: 'View on map' })}
+                  <span className="hidden min-[1900px]:inline">
+                    {t('geo_hub.view_on_map', { defaultValue: 'View on map' })}
+                  </span>
                 </button>
               )}
 
@@ -3121,11 +3105,46 @@ export function BIMPage() {
                   data-testid="bim-open-in-data-explorer"
                 >
                   <Database size={13} />
-                  {t('bim.open_in_data_explorer', {
-                    defaultValue: 'Open in Data Explorer',
-                  })}
+                  <span className="hidden min-[1900px]:inline">
+                    {t('bim.open_in_data_explorer', {
+                      defaultValue: 'Open in Data Explorer',
+                    })}
+                  </span>
                 </button>
               )}
+            </>
+          )}
+          </div>
+
+          {/* Row 2: view controls - only meaningful with a loaded model. */}
+          {elements.length > 0 && (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                onClick={() => setDimensionsVisible(!dimensionsVisible)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors border ${
+                  dimensionsVisible
+                    ? 'bg-oe-blue/10 text-oe-blue border-oe-blue/30'
+                    : 'text-content-secondary bg-surface-secondary border-border-light hover:bg-surface-tertiary'
+                }`}
+                title={
+                  dimensionsVisible
+                    ? t('bim.dimensions_hide', {
+                        defaultValue: 'Hide bounding-box dimensions on selection',
+                      })
+                    : t('bim.dimensions_show', {
+                        defaultValue: 'Show bounding-box dimensions on selection',
+                      })
+                }
+                aria-label={t('bim.dimensions_toggle', {
+                  defaultValue: 'Toggle bounding-box dimensions',
+                })}
+                aria-pressed={dimensionsVisible}
+              >
+                <Maximize2 size={13} />
+                <span className="hidden min-[1900px]:inline">
+                  {t('bim.dimensions_button', { defaultValue: 'BBox Dimensions' })}
+                </span>
+              </button>
 
               <button
                 onClick={() => setAssetCardEnabled(!assetCardEnabled)}
@@ -3150,7 +3169,7 @@ export function BIMPage() {
                 data-testid="bim-asset-card-toggle"
               >
                 <Package size={13} />
-                {t('bim.asset_card_button', { defaultValue: 'Asset Card' })}
+                <span className="hidden 2xl:inline">{t('bim.asset_card_button', { defaultValue: 'Asset Card' })}</span>
               </button>
 
               <button
@@ -3166,7 +3185,7 @@ export function BIMPage() {
                 data-testid="bim-tour-linked-boq-button"
               >
                 <ClipboardList size={13} />
-                {t('bim.linked_boq_button', { defaultValue: 'Linked BOQ' })}
+                <span className="hidden 2xl:inline">{t('bim.linked_boq_button', { defaultValue: 'Linked BOQ' })}</span>
               </button>
 
               <button
@@ -3202,7 +3221,7 @@ export function BIMPage() {
                 data-testid="bim-smart-views-toggle"
               >
                 <Sparkles size={13} />
-                {t('smartViews.title', { defaultValue: 'Smart Views' })}
+                <span className="hidden 2xl:inline">{t('smartViews.title', { defaultValue: 'Smart Views' })}</span>
               </button>
 
               {/* Color-by selector — three families:
@@ -3328,7 +3347,7 @@ export function BIMPage() {
                       )}
                     >
                       <Icon size={12} />
-                      <span className="hidden lg:inline">{label}</span>
+                      <span className="hidden 2xl:inline">{label}</span>
                     </button>
                   );
                 })}
@@ -3352,10 +3371,7 @@ export function BIMPage() {
                     : t('bim.isolate', { defaultValue: 'Isolate' })}
                 </button>
               )}
-              {/* Rules / Add Model / Tour moved to the top of this same
-                  flex row — see the "Primary CTA cluster" comment at the
-                  start of the toolbar. */}
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -3367,6 +3383,11 @@ export function BIMPage() {
         storageKey="bim"
         className="mx-3 mt-2"
         title={t('bim.intro_title', { defaultValue: 'Turn the model into priced quantities' })}
+        more={
+          t('bim.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('bim.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('bim.intro_link_boq', { defaultValue: 'Open BOQ' }), onClick: () => navigate('/boq') },
           { label: t('bim.intro_link_explorer', { defaultValue: 'Data Explorer' }), onClick: () => navigate('/data-explorer') },

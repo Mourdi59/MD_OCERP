@@ -31,6 +31,7 @@ import {
   Badge,
   Breadcrumb,
   DismissibleInfo,
+  IntroRichText,
   RecoveryCard,
   SkeletonTable,
 } from '@/shared/ui';
@@ -297,6 +298,11 @@ export function ProgressClaimDetailPage() {
         title={t('contracts_claim.intro_title', {
           defaultValue: 'Bill exactly what was built this period',
         })}
+        more={
+          t('contracts_claim.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('contracts_claim.intro_more')} />
+            : undefined
+        }
         links={[
           {
             label: t('nav.contracts', { defaultValue: 'Contracts' }),

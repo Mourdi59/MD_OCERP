@@ -515,6 +515,36 @@ export async function compareDrawings(
   );
 }
 
+/** The draft variation request minted from a revision-compare delta. */
+export interface CreateVariationFromDiffResult {
+  variation_request_id: string;
+  code: string;
+  estimated_cost_impact: string;
+  currency: string;
+}
+
+/** Turn a drawing revision delta into a DRAFT variation request.
+ *
+ * The backend recomputes the deterministic compare for the two version
+ * ids and shapes its net cost impact into a draft VariationRequest (never
+ * submitted - a human confirms it in the variations module). Requires both
+ * ``dwg_takeoff.read`` and ``variations.create`` permissions. */
+export async function createVariationFromDiff(
+  drawingId: string,
+  fromVersionId: string,
+  toVersionId: string,
+  title?: string,
+): Promise<CreateVariationFromDiffResult> {
+  return apiPost<CreateVariationFromDiffResult>(
+    `/v1/dwg_takeoff/drawings/${drawingId}/compare/create-variation`,
+    {
+      from_version_id: fromVersionId,
+      to_version_id: toVersionId,
+      ...(title ? { title } : {}),
+    },
+  );
+}
+
 /* ── Offline Readiness (R3 #9) ─────────────────────────────────────────── */
 
 export interface DwgOfflineReadiness {

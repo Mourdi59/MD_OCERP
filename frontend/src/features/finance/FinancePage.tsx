@@ -36,6 +36,7 @@ import {
   EmptyState,
   Breadcrumb,
   DismissibleInfo,
+  IntroRichText,
   RecoveryCard,
   SkeletonTable,
   ConfirmDialog,
@@ -598,6 +599,11 @@ export function FinancePage() {
         title={t('finance.intro_title', {
           defaultValue: 'See where the money actually went',
         })}
+        more={
+          t('finance.intro_more', { defaultValue: '' })
+            ? <IntroRichText text={t('finance.intro_more')} />
+            : undefined
+        }
         links={[
           { label: t('nav.boq', { defaultValue: 'BOQ' }), onClick: () => navigate('/boq') },
           { label: t('nav.5d', { defaultValue: '5D Cost Model' }), onClick: () => navigate('/5d') },
