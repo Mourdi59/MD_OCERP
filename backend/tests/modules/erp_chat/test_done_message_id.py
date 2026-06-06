@@ -95,9 +95,7 @@ async def test_done_event_carries_persisted_assistant_message_id(session_factory
         assert done.get("message_id"), f"done frame missing message_id: {done}"
 
         # The id must match the persisted assistant row.
-        assistant = (
-            await session.execute(select(ChatMessage).where(ChatMessage.role == "assistant"))
-        ).scalar_one()
+        assistant = (await session.execute(select(ChatMessage).where(ChatMessage.role == "assistant"))).scalar_one()
         assert done["message_id"] == str(assistant.id)
 
 
@@ -169,9 +167,7 @@ async def test_tool_turn_persists_renderer_and_returns_its_message_id(session_fa
         assert "event: tool_result" in joined
         done = _parse_done_payload(joined)
 
-        assistant = (
-            await session.execute(select(ChatMessage).where(ChatMessage.role == "assistant"))
-        ).scalar_one()
+        assistant = (await session.execute(select(ChatMessage).where(ChatMessage.role == "assistant"))).scalar_one()
 
         # Renderer + data were persisted for history reconstruction.
         assert assistant.renderer == "projects_grid"

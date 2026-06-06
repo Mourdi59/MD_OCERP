@@ -169,9 +169,7 @@ async def test_trade_matrix_cell_carries_cost_impact(session: AsyncSession) -> N
     # 10% of 1000 rework + labour hours @ default rate => strictly positive.
     assert cell.cost_impact > Decimal("0")
     # The response total equals the sum of the cells.
-    assert matrix.total_cost_impact == sum(
-        (c.cost_impact for c in matrix.cells), Decimal("0")
-    )
+    assert matrix.total_cost_impact == sum((c.cost_impact for c in matrix.cells), Decimal("0"))
     assert matrix.currency == "EUR"
 
 
@@ -209,11 +207,7 @@ async def test_trade_matrix_cost_zero_when_no_priced_positions(
     session.add(run)
     await session.flush()
     # GUID-less clash (no stable ids) => labour hours = 0 in the kernel.
-    session.add(
-        _make_result(
-            run, a_disc="Architectural", b_disc="Structural", a_stable="", b_stable=""
-        )
-    )
+    session.add(_make_result(run, a_disc="Architectural", b_disc="Structural", a_stable="", b_stable=""))
     await session.commit()
 
     svc = CoordinationHubService(session)
@@ -343,10 +337,6 @@ async def test_export_snapshot_csv_bypasses_dashboard_cache(
     assert cached.clashes.open_count == 0  # proves the cache is stale
 
     csv_text = await svc.export_snapshot_csv(project_id, currency="EUR")
-    kpi = {
-        r[1]: r[2]
-        for r in csv.reader(io.StringIO(csv_text))
-        if r and r[0] == "kpi"
-    }
+    kpi = {r[1]: r[2] for r in csv.reader(io.StringIO(csv_text)) if r and r[0] == "kpi"}
     # The export bypassed the cache and saw the live count.
     assert kpi["open_clashes"] == "1"

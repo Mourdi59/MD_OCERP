@@ -192,7 +192,9 @@ export function DismissibleInfo({
 
   return (
     <div className={wrapper}>
-      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+      {/* Collapse on click anywhere in the header strip. Keyboard access is
+          covered by the dedicated buttons inside (Show more toggle, close),
+          so the wrapper itself stays a plain div. */}
       <div
         onClick={collapse}
         className="flex cursor-pointer items-start gap-3 rounded-xl px-4 py-4 transition-colors hover:bg-oe-blue/[0.06]"

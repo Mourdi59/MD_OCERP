@@ -388,9 +388,7 @@ async def test_timeline_endpoint_validates_days(client: AsyncClient, auth: dict[
 
 
 @pytest.mark.asyncio
-async def test_trade_matrix_endpoint_carries_cost_fields(
-    client: AsyncClient, auth: dict[str, str], project_id: str
-):
+async def test_trade_matrix_endpoint_carries_cost_fields(client: AsyncClient, auth: dict[str, str], project_id: str):
     """The matrix payload exposes per-cell + total cost_impact (string)."""
     _invalidate_cache()
     await _seed_clash(project_id, a_disc="Architectural", b_disc="Structural")
@@ -409,9 +407,7 @@ async def test_trade_matrix_endpoint_carries_cost_fields(
 
 
 @pytest.mark.asyncio
-async def test_export_csv_endpoint_returns_attachment(
-    client: AsyncClient, auth: dict[str, str], project_id: str
-):
+async def test_export_csv_endpoint_returns_attachment(client: AsyncClient, auth: dict[str, str], project_id: str):
     """The export endpoint streams a text/csv attachment with the section
     header and the three logical blocks."""
     _invalidate_cache()
@@ -430,9 +426,7 @@ async def test_export_csv_endpoint_returns_attachment(
 
 
 @pytest.mark.asyncio
-async def test_export_csv_endpoint_404_when_project_missing(
-    client: AsyncClient, auth: dict[str, str]
-):
+async def test_export_csv_endpoint_404_when_project_missing(client: AsyncClient, auth: dict[str, str]):
     bogus = uuid.uuid4()
     resp = await client.get(
         f"/api/v1/coordination/projects/{bogus}/export.csv",
@@ -442,10 +436,6 @@ async def test_export_csv_endpoint_404_when_project_missing(
 
 
 @pytest.mark.asyncio
-async def test_export_csv_endpoint_401_when_unauthenticated(
-    client: AsyncClient, project_id: str
-):
-    resp = await client.get(
-        f"/api/v1/coordination/projects/{project_id}/export.csv"
-    )
+async def test_export_csv_endpoint_401_when_unauthenticated(client: AsyncClient, project_id: str):
+    resp = await client.get(f"/api/v1/coordination/projects/{project_id}/export.csv")
     assert resp.status_code in (401, 403)

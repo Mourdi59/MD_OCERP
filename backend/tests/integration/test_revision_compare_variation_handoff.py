@@ -224,9 +224,7 @@ async def test_dwg_handoff_creates_draft_variation_with_net_impact() -> None:
 
     async with async_session_factory() as session:
         service = DwgTakeoffService(session)
-        result = await service.create_variation_from_versions(
-            drawing_id, v1, v2, user_id=str(owner)
-        )
+        result = await service.create_variation_from_versions(drawing_id, v1, v2, user_id=str(owner))
 
         # (55 - 50) * 100 = 500.00 in EUR (project base currency).
         assert result["estimated_cost_impact"] == "500.00"
@@ -374,9 +372,7 @@ async def test_pdf_handoff_creates_draft_variation() -> None:
 
     async with async_session_factory() as session:
         service = TakeoffService(session)
-        result = await service.create_variation_from_documents(
-            project_id, doc_from, doc_to, user_id=str(owner)
-        )
+        result = await service.create_variation_from_documents(project_id, doc_from, doc_to, user_id=str(owner))
         assert result["estimated_cost_impact"] == "500.00"
         assert result["currency"] == "EUR"
         vr = await VariationsService(session).get_request(result["variation_request_id"])
