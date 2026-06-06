@@ -14,6 +14,15 @@
   // for "draw the on-brand SVG placeholder".
   var ARTICLES = [
     {
+      slug: 'v7-0-0',
+      href: '/news/v7-0-0.html',
+      title: 'v7.0.0 - One way in, for every module.',
+      date: '2026-06-06',
+      tag: 'Release',
+      tagClass: 'release',
+      thumb: null
+    },
+    {
       slug: 'v6-10-0',
       href: '/news/v6-10-0.html',
       title: 'v6.10.0 - Field payroll, project controls, compliance gates.',
