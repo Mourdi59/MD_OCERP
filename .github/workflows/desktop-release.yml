@@ -68,10 +68,19 @@ jobs:
       - name: Install Python dependencies
         run: |
           cd backend
-          pip install -e ".[dev]"
+          # Install the exact, pinned dependency set first so every release
+          # ships identical versions on all platforms. The lock is universal
+          # (environment markers), so the same file resolves correctly on
+          # Windows, macOS and Linux. Then install the project itself without
+          # touching deps, so the lock fully owns the dependency graph.
+          pip install -r requirements-desktop.lock
+          pip install -e . --no-deps
 
       - name: Build sidecar with PyInstaller
         run: |
+          # PyInstaller is a build tool, not a runtime dependency, so it is
+          # installed separately and is intentionally absent from the lock.
+          pip install "pyinstaller>=6.0.0"
           pyinstaller desktop/pyinstaller.spec --distpath desktop/dist --workpath desktop/build --noconfirm
 
       - name: Copy sidecar binary

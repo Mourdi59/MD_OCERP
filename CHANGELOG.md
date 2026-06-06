@@ -5,6 +5,16 @@ All notable changes to OpenConstructionERP are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.0.1] - 2026-06-06
+
+### Fixed
+
+- The 7.0.0 Windows desktop app could exit silently right after launch. The launcher carried a misconfigured updater plugin that failed to initialise, and when it failed the whole app went down with no window and no message, so the user saw nothing. This release removes the broken plugin. If the launcher ever fails to start now, it shows a clear error dialog with what went wrong instead of disappearing.
+- The desktop app now only reuses an already-running backend when that backend reports the exact same version and answers as healthy. Before, it could attach to a stale process from an earlier release and run against the wrong server. A version or health mismatch now starts a fresh backend instead.
+- The Windows installer bundles the WebView2 bootstrapper, so a first install no longer depends on a network download to get the runtime in place. The app works on a fresh, offline machine.
+- All backend dependencies for the desktop build are now pinned through a lock file, so the bundle is reproducible and the same every time it is built.
+- The desktop launcher reported version 0.1.0 in its log regardless of the real release. It now logs the actual version.
+
 ## [7.0.0] - 2026-06-06
 
 ### Added

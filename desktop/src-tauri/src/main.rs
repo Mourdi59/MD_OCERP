@@ -221,31 +221,89 @@ fn find_available_port() -> u16 {
 /// simply attach to the healthy instance that is already there.
 const ATTACH_CANDIDATE_PORTS: [u16; 4] = [8000, 8080, 8732, 8765];
 
-/// Probe ``127.0.0.1:<port>/api/health`` and return ``true`` only if it answers
-/// 2xx AND self-identifies as an OpenConstructionERP backend (the health body
-/// carries a ``version`` field). The identity check stops us from attaching to
-/// an unrelated service that merely happens to occupy a candidate port.
+/// Probe ``127.0.0.1:<port>/api/health`` and decide whether we may attach to it.
+///
+/// Returns ``true`` only when the responder is unambiguously a HEALTHY backend
+/// of EXACTLY OUR version. Attaching to anything less is dangerous: a stale dev
+/// backend of a different version (the founder-machine case is a degraded
+/// v6.10.0 on :8000) would serve the desktop app the wrong frontend/schema, and
+/// a merely "degraded" instance may not actually work. So all of the following
+/// must hold, and every rejected candidate is logged with its port, version and
+/// status so attach decisions are auditable from the launcher log:
+///   * HTTP 2xx
+///   * ``status`` is "ok" or "healthy" (NOT "degraded"/"unhealthy")
+///   * ``version`` equals our own ``CARGO_PKG_VERSION`` exactly
+///   * ``alembic_head_matches`` is not ``false`` (migrations not known-stale)
 async fn is_our_backend_healthy(client: &reqwest::Client, port: u16) -> bool {
     let url = format!("http://127.0.0.1:{port}/api/health");
-    match client
+    let resp = match client
         .get(&url)
         .timeout(std::time::Duration::from_millis(1500))
         .send()
         .await
     {
-        Ok(resp) if resp.status().is_success() => match resp.text().await {
-            // The health payload is small JSON like {"status":..,"version":..,
-            // "modules_loaded":..}. Matching on these markers avoids attaching to
-            // a foreign server. A full JSON parse is avoided on purpose to keep
-            // the dependency surface minimal.
-            Ok(body) => {
-                body.contains("\"version\"")
-                    && (body.contains("\"modules_loaded\"") || body.contains("\"alembic"))
-            }
-            Err(_) => false,
-        },
-        _ => false,
+        Ok(resp) => resp,
+        // No listener / connection refused / timeout: nothing to log, this is
+        // the normal "port is free" case.
+        Err(_) => return false,
+    };
+
+    let http_status = resp.status();
+    if !http_status.is_success() {
+        log_line(&format!(
+            "attach: rejected candidate on port {port}: HTTP {}",
+            http_status.as_u16()
+        ));
+        return false;
     }
+
+    let body = match resp.text().await {
+        Ok(body) => body,
+        Err(e) => {
+            log_line(&format!(
+                "attach: rejected candidate on port {port}: could not read health body ({e})"
+            ));
+            return false;
+        }
+    };
+
+    // Parse the health JSON properly so the decision is on real fields, not
+    // substring guesses. serde_json is already a dependency.
+    let json: serde_json::Value = match serde_json::from_str(&body) {
+        Ok(v) => v,
+        Err(_) => {
+            log_line(&format!(
+                "attach: rejected candidate on port {port}: health body is not JSON"
+            ));
+            return false;
+        }
+    };
+
+    let status = json.get("status").and_then(|v| v.as_str()).unwrap_or("");
+    let version = json.get("version").and_then(|v| v.as_str()).unwrap_or("");
+    // Missing key is treated as "not known false" (acceptable); only an explicit
+    // false rejects.
+    let alembic_ok = json
+        .get("alembic_head_matches")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+    let our_version = env!("CARGO_PKG_VERSION");
+
+    let status_ok = matches!(status, "ok" | "healthy");
+    let version_ok = version == our_version;
+
+    if status_ok && version_ok && alembic_ok {
+        log_line(&format!(
+            "attach: accepted candidate on port {port}: status={status} version={version}"
+        ));
+        return true;
+    }
+
+    log_line(&format!(
+        "attach: rejected candidate on port {port}: status={status:?} version={version:?} \
+(ours={our_version}) alembic_head_matches={alembic_ok}"
+    ));
+    false
 }
 
 /// Scan the candidate ports for an existing healthy backend to attach to.
@@ -308,7 +366,6 @@ fn main() {
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(AppState {
             backend_child: Mutex::new(None),
@@ -599,9 +656,59 @@ info@datadrivenconstruction.io.",
             }
         }),
         Err(e) => {
-            // Building the Tauri app itself failed. There is no window to show
-            // an error in, so at least leave a breadcrumb in the log.
-            log_line(&format!("FATAL: error building Tauri application: {e}"));
+            // Building the Tauri app itself failed. There is no Tauri window to
+            // show an error in, so at least leave a breadcrumb in the log...
+            let message = format!("FATAL: error building Tauri application: {e}");
+            log_line(&message);
+            // ...and, on Windows, pop a NATIVE message box so the failure is
+            // never silent again (the v7.0.0 updater-plugin crash exited within
+            // 2s with nothing on screen). MessageBoxW is a bare Win32 call via
+            // windows-sys, so it works even though no Tauri/WebView2 window
+            // exists.
+            show_startup_failure_dialog(&message);
         }
     }
 }
+
+/// Show a native, blocking failure dialog when the app cannot even be built.
+///
+/// On Windows this calls `MessageBoxW` directly (no Tauri window is available at
+/// this point), pairing the error text with the launcher log path so the user
+/// can find full diagnostics. On every other platform it is a no-op beyond the
+/// log line and stderr that the caller already emitted.
+#[cfg(windows)]
+fn show_startup_failure_dialog(message: &str) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        MessageBoxW, MB_ICONERROR, MB_OK, MB_SETFOREGROUND, MB_TOPMOST,
+    };
+
+    let log_hint = log_path()
+        .map(|p| format!("\n\nA full diagnostic log was written to:\n{}", p.display()))
+        .unwrap_or_default();
+    let body = format!(
+        "OpenConstructionERP could not start.\n\n{message}{log_hint}\n\n\
+If this keeps happening, please send the log file to info@datadrivenconstruction.io."
+    );
+
+    let to_wide = |s: &str| -> Vec<u16> {
+        s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>()
+    };
+    let body_w = to_wide(&body);
+    let title_w = to_wide("OpenConstructionERP failed to start");
+
+    // SAFETY: both buffers are valid, NUL-terminated UTF-16; a null HWND is the
+    // documented way to show an owner-less message box.
+    unsafe {
+        MessageBoxW(
+            std::ptr::null_mut(),
+            body_w.as_ptr(),
+            title_w.as_ptr(),
+            MB_OK | MB_ICONERROR | MB_SETFOREGROUND | MB_TOPMOST,
+        );
+    }
+}
+
+/// Non-Windows fallback: the log line and stderr from the caller are the whole
+/// story, so there is nothing extra to do here.
+#[cfg(not(windows))]
+fn show_startup_failure_dialog(_message: &str) {}

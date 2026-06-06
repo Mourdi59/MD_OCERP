@@ -14,7 +14,6 @@
     "shell:allow-spawn",
     "shell:allow-execute",
     "shell:default",
-    "updater:default",
     "process:default"
   ]
 }
