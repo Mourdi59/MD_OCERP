@@ -21,6 +21,7 @@ export function SectionIntro({
   title,
   children,
   links,
+  more,
 }: {
   /** Stable key - collapsed state is remembered under `oce.intro.<storageKey>`. */
   storageKey: string;
@@ -28,9 +29,11 @@ export function SectionIntro({
   children: ReactNode;
   /** Optional cross-module shortcuts rendered as inline pills. */
   links?: SectionLink[];
+  /** Optional long-form copy revealed behind a "Show more" toggle. */
+  more?: ReactNode;
 }) {
   return (
-    <DismissibleInfo storageKey={storageKey} title={title} links={links}>
+    <DismissibleInfo storageKey={storageKey} title={title} links={links} more={more}>
       {children}
     </DismissibleInfo>
   );

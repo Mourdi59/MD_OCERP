@@ -31,6 +31,7 @@ import {
   Breadcrumb,
   RecoveryCard,
   SkeletonTable,
+  IntroRichText,
 } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
@@ -549,6 +550,11 @@ export function SafetyPage() {
         title={t('safety.intro_title', {
           defaultValue: 'Catch the hazard before the injury',
         })}
+        more={
+          t('safety.intro_more', { defaultValue: '' }) ? (
+            <IntroRichText text={t('safety.intro_more')} />
+          ) : undefined
+        }
         links={[
           {
             label: t('safety.intro_link_hse', { defaultValue: 'HSE Advanced' }),
