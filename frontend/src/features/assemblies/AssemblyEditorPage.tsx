@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Plus,
   Trash2,
@@ -24,7 +24,7 @@ import {
   Info,
 } from 'lucide-react';
 import clsx from 'clsx';
-import { Button, Badge, Card, Input, Breadcrumb, ConfirmDialog } from '@/shared/ui';
+import { Button, Badge, Card, Input, Breadcrumb, ConfirmDialog, DismissibleInfo } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet, triggerDownload } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
@@ -45,6 +45,7 @@ const UNITS = ['m', 'm2', 'm3', 'kg', 't', 'pcs', 'lsum', 'h', 'set', 'lm'];
 
 export function AssemblyEditorPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { assemblyId } = useParams<{ assemblyId: string }>();
   const queryClient = useQueryClient();
 
@@ -289,18 +290,31 @@ export function AssemblyEditorPage() {
   const adjustedTotal = assembly.total_rate > 0 ? assembly.total_rate : localAdjustedTotal;
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
-        className="mb-4"
         items={[
           { label: t('nav.assemblies', 'Assemblies'), to: '/assemblies' },
           { label: assembly.name },
         ]}
       />
 
+      <DismissibleInfo
+        storageKey="assembly-detail"
+        title={t('assembly_detail.intro_title', { defaultValue: 'Build the rate component by component' })}
+        links={[
+          { label: t('nav.catalog', { defaultValue: 'Resource Catalog' }), onClick: () => navigate('/catalog') },
+          { label: t('nav.assemblies', { defaultValue: 'Assemblies' }), onClick: () => navigate('/assemblies') },
+        ]}
+      >
+        {t('assembly_detail.intro_body', {
+          defaultValue:
+            'Add, reorder and edit the material, labour and equipment lines of an assembly, each with its factor and unit, and watch the composite rate and the material, labour and equipment split recompute. The finished assembly is reusable across every BOQ.',
+        })}
+      </DismissibleInfo>
+
       {/* Header */}
-      <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-content-primary truncate">
@@ -460,7 +474,7 @@ export function AssemblyEditorPage() {
 
       {/* Tags Editor */}
       {showTagEditor && (
-        <Card className="mb-4">
+        <Card>
           <div className="flex items-center gap-2 flex-wrap">
             <Tag size={14} className="text-violet-500 shrink-0" />
             {(assembly.tags ?? []).map((tag) => (

@@ -144,6 +144,20 @@ function WorkflowIntro() {
               })}
               <ArrowRight size={11} />
             </button>
+            {/* Internal staff manage the contractor-facing side of payment
+                applications as Progress Claims under Contracts. The portal's
+                /portal/payments surface is external (magic-link) only, so we
+                point internal users to the real internal home here. */}
+            <button
+              type="button"
+              onClick={() => navigate('/contracts')}
+              className="inline-flex items-center gap-1 rounded-full border border-border-light bg-surface-primary px-2.5 py-1 text-xs font-medium text-content-secondary transition-colors hover:border-oe-blue hover:text-oe-blue"
+            >
+              {t('portal.intro_link_progress_claims', {
+                defaultValue: 'Progress claims (Contracts)',
+              })}
+              <ArrowRight size={11} />
+            </button>
           </div>
         </div>
         <button

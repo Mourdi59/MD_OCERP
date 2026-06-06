@@ -16,17 +16,19 @@ import {
   Download,
   ExternalLink,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Button,
   Card,
   Badge,
+  DismissibleInfo,
   EmptyState,
   Breadcrumb,
   ConfirmDialog,
   DateDisplay,
   Skeleton,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -70,6 +72,7 @@ function hours(value: string): string {
 
 export default function PayrollPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
@@ -236,7 +239,7 @@ export default function PayrollPage() {
   const labourCost = labourCostQuery.data ?? null;
 
   return (
-    <div className="flex flex-col gap-6 p-6 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           ...(activeProjectName
@@ -247,28 +250,45 @@ export default function PayrollPage() {
       />
 
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-            <Wallet size={22} />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-content-primary">
-              {t('payroll.title', { defaultValue: 'Payroll' })}
-            </h1>
-            <p className="text-sm text-content-tertiary">{activeProjectName}</p>
-          </div>
-        </div>
-        <Button
-          variant="primary"
-          onClick={() => generateMut.mutate()}
-          disabled={generateMut.isPending}
-          aria-label={t('payroll.generate', { defaultValue: 'Generate draft batch' })}
-        >
-          {generateMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus size={16} />}
-          {t('payroll.generate', { defaultValue: 'Generate draft batch' })}
-        </Button>
-      </div>
+      <PageHeader
+        srTitle={t('payroll.title', { defaultValue: 'Payroll' })}
+        subtitle={t('payroll.subtitle', {
+          defaultValue: 'Aggregate field labour into pay batches, finalize and post to the cost model.',
+        })}
+        actions={
+          <Button
+            variant="primary"
+            onClick={() => generateMut.mutate()}
+            disabled={generateMut.isPending}
+            aria-label={t('payroll.generate', { defaultValue: 'Generate draft batch' })}
+          >
+            {generateMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus size={16} />}
+            {t('payroll.generate', { defaultValue: 'Generate draft batch' })}
+          </Button>
+        }
+      />
+
+      <DismissibleInfo
+        storageKey="payroll"
+        title={t('payroll.intro_title', {
+          defaultValue: 'Turn hours worked into posted labour cost',
+        })}
+        links={[
+          {
+            label: t('payroll.intro_link_field_reports', { defaultValue: 'Field Reports' }),
+            onClick: () => navigate('/fieldreports'),
+          },
+          {
+            label: t('payroll.intro_link_5d', { defaultValue: '5D Cost' }),
+            onClick: () => navigate('/5d'),
+          },
+        ]}
+      >
+        {t('payroll.intro_body', {
+          defaultValue:
+            'Generate a draft batch to roll the hours logged in field reports into pay entries per worker, then walk the batch through its lifecycle: submit for approval, finalize to post labour cost to the project budget, and post to the general ledger. Reconcile at any point to confirm batch hours still match the underlying field records before money moves.',
+        })}
+      </DismissibleInfo>
 
       {/* Labour cost rollup (surfaced beside the cost model) */}
       <Card className="p-4">

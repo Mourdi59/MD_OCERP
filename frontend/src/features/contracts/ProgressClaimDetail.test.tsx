@@ -194,8 +194,10 @@ describe('ProgressClaimDetailPage', () => {
     api.getProgressClaim.mockResolvedValue(claim({ status: 'submitted' }));
     api.listClaimLines.mockResolvedValue([]);
     renderDetail();
-    await waitFor(() => expect(screen.getByText(/Approve/i)).toBeTruthy());
-    expect(screen.getByText(/Reject/i)).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Approve/i })).toBeTruthy(),
+    );
+    expect(screen.getByRole('button', { name: /Reject/i })).toBeTruthy();
     expect(screen.queryByText(/^Submit$/i)).toBeNull();
   });
 

@@ -19,6 +19,8 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { isModuleLoaded, _resetModuleProbeCache } from '@/shared/lib/moduleProbe';
+import { Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { ScoreRing } from './ScoreRing';
 import { GapCard } from './GapCard';
 import { AIAdvisorPanel } from './AIAdvisorPanel';
@@ -36,10 +38,7 @@ import {
   PowerOff,
   Power,
   Settings2,
-  Info,
-  X,
   FileText,
-  ShieldCheck,
   TrendingUp,
 } from 'lucide-react';
 
@@ -143,22 +142,6 @@ export function ProjectIntelligencePage() {
   // Active predictive-forecast alert count, reported up from ForecastPanel.
   // Drives the banner above the KPI hero and the Forecasts section badge.
   const [forecastAlertCount, setForecastAlertCount] = useState(0);
-  const [introDismissed, setIntroDismissed] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('oe_pi_intro_dismissed') === '1';
-    } catch {
-      return false;
-    }
-  });
-
-  const dismissIntro = useCallback(() => {
-    setIntroDismissed(true);
-    try {
-      localStorage.setItem('oe_pi_intro_dismissed', '1');
-    } catch {
-      /* ignore storage errors */
-    }
-  }, []);
 
   const scrollToForecasts = useCallback(() => {
     document
@@ -515,38 +498,45 @@ export function ProjectIntelligencePage() {
   const hasMoreGaps = !showAllGaps && score.critical_gaps.length > 5;
 
   return (
-    <div className="h-full overflow-y-auto">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-surface-primary/95 backdrop-blur-sm border-b border-border-light py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BrainCircuit size={20} className="text-oe-blue" />
-            <div>
-              <h1 className="text-base font-semibold text-content-primary">
-                {t('project_intelligence.page_title_v191', {
-                  defaultValue: 'Estimation Dashboard',
-                })}
-                <span className="ml-2 text-xs font-normal text-content-tertiary">
-                  —{' '}
-                  {state.project_name ||
+    <div className="space-y-5 animate-fade-in">
+      {/* Canonical top block (MODULE_STYLE_GUIDE): breadcrumb with depth,
+          PageHeader (subtitle + actions, module name lives in the top bar),
+          then the standard DismissibleInfo card. */}
+      <Breadcrumb
+        items={[
+          ...(activeProjectId
+            ? [
+                {
+                  label:
+                    state.project_name ||
                     t('project_intelligence.unnamed', {
                       defaultValue: 'Unnamed Project',
-                    })}
-                </span>
-              </h1>
-              <p className="text-xs text-content-quaternary">
-                {t('project_intelligence.v191_header_desc', {
-                  defaultValue:
-                    'Cost variance, anomalies, bid analytics — refreshed every 60s.',
-                })}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
+                    }),
+                  to: `/projects/${activeProjectId}`,
+                },
+              ]
+            : []),
+          {
+            label: t('nav.estimation_dashboard', {
+              defaultValue: 'Project Intelligence',
+            }),
+          },
+        ]}
+      />
+      <PageHeader
+        srTitle={t('project_intelligence.page_title_v191', {
+          defaultValue: 'Estimation Dashboard',
+        })}
+        subtitle={t('project_intelligence.v191_header_desc', {
+          defaultValue:
+            'Cost variance, anomalies, bid analytics - refreshed every 60s.',
+        })}
+        actions={
+          <>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="text-xs bg-surface-secondary border border-border-light rounded-md px-2 py-1.5 text-content-secondary focus:outline-none focus:ring-1 focus:ring-oe-blue"
+              className="h-9 text-xs bg-surface-secondary border border-border-light rounded-md px-2 text-content-secondary focus:outline-none focus:ring-1 focus:ring-oe-blue"
               aria-label={t('project_intelligence.role', {
                 defaultValue: 'View as role',
               })}
@@ -567,12 +557,11 @@ export function ProjectIntelligencePage() {
                 })}
               </option>
             </select>
-
             <button
               data-testid="pi-refresh-button"
               onClick={() => fetchData(true)}
               disabled={refreshing}
-              className="flex items-center gap-1.5 text-xs text-content-secondary hover:text-content-primary transition-colors disabled:opacity-50"
+              className="flex h-9 items-center gap-1.5 rounded-md px-2 text-xs text-content-secondary hover:text-content-primary transition-colors disabled:opacity-50"
               title={t('project_intelligence.refresh', {
                 defaultValue: 'Refresh analysis',
               })}
@@ -580,66 +569,41 @@ export function ProjectIntelligencePage() {
               <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
               {lastRefresh && <span>{formatAgo(lastRefresh)}</span>}
             </button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
-      {/* Intro / orientation — explains what this dashboard is and how the
-          readiness score ties back to BOQ, costs and validation. Dismissible
-          and remembered, so it does not nag returning users. */}
-      {!introDismissed && (
-        <div className="mt-4 rounded-xl border border-oe-blue/15 bg-oe-blue-subtle/20 p-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-oe-blue/10">
-              <Info size={15} className="text-oe-blue" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-content-primary mb-1">
-                {t('project_intelligence.intro_title', {
-                  defaultValue: 'What this dashboard tells you',
-                })}
-              </p>
-              <p className="text-xs text-content-secondary leading-relaxed">
-                {t('project_intelligence.intro_body', {
-                  defaultValue:
-                    'It reads your live BOQ, cost model, schedule and risk register and grades how ready this estimate is to go out (BOQ 40%, Cost Model 30%, Validation 20%, Risk 10%). Critical Gaps are the fastest ways to raise that grade — each one links straight to the screen that fixes it. The advisor at the bottom answers project-specific questions.',
-                })}
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Link
-                  to="/boq"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-surface-primary px-2.5 py-1 text-2xs font-medium text-content-secondary hover:border-oe-blue/40 hover:text-oe-blue transition-colors"
-                >
-                  <FileText size={12} />
-                  {t('project_intelligence.intro_link_boq', { defaultValue: 'BOQ editor' })}
-                </Link>
-                <Link
-                  to="/validation"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border-light bg-surface-primary px-2.5 py-1 text-2xs font-medium text-content-secondary hover:border-oe-blue/40 hover:text-oe-blue transition-colors"
-                >
-                  <ShieldCheck size={12} />
-                  {t('project_intelligence.intro_link_validation', {
-                    defaultValue: 'Validation',
-                  })}
-                </Link>
-              </div>
-            </div>
-            <button
-              onClick={dismissIntro}
-              className="shrink-0 p-1 rounded-md text-content-quaternary hover:text-content-secondary hover:bg-surface-secondary transition-colors"
-              aria-label={t('common.dismiss', { defaultValue: 'Dismiss' })}
-            >
-              <X size={15} />
-            </button>
-          </div>
-        </div>
-      )}
+      <DismissibleInfo
+        storageKey="project-intelligence"
+        title={t('project_intelligence.intro_title', {
+          defaultValue: 'What this dashboard tells you',
+        })}
+        links={[
+          {
+            label: t('project_intelligence.intro_link_boq', {
+              defaultValue: 'BOQ editor',
+            }),
+            onClick: () => navigate('/boq'),
+          },
+          {
+            label: t('project_intelligence.intro_link_validation', {
+              defaultValue: 'Validation',
+            }),
+            onClick: () => navigate('/validation'),
+          },
+        ]}
+      >
+        {t('project_intelligence.intro_body', {
+          defaultValue:
+            'It reads your live BOQ, cost model, schedule and risk register and grades how ready this estimate is to go out (BOQ 40%, Cost Model 30%, Validation 20%, Risk 10%). Critical Gaps are the fastest ways to raise that grade - each one links straight to the screen that fixes it. The advisor at the bottom answers project-specific questions.',
+        })}
+      </DismissibleInfo>
 
       {/* Predictive forecast alert banner — only shown when the forecast
           engine has flagged one or more active alerts for this project. */}
       {forecastAlertCount > 0 && (
         <div
-          className="mt-4 rounded-xl border border-rose-300/60 dark:border-rose-900/50 bg-rose-50/70 dark:bg-rose-950/20 p-3 flex items-center gap-3"
+          className="rounded-xl border border-rose-300/60 dark:border-rose-900/50 bg-rose-50/70 dark:bg-rose-950/20 p-3 flex items-center gap-3"
           data-testid="pi-forecast-alert-banner"
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10">
@@ -673,12 +637,10 @@ export function ProjectIntelligencePage() {
       )}
 
       {/* Section 1 — KPI hero */}
-      <div className="py-4">
-        <ProjectKPIHero projectId={activeProjectId} />
-      </div>
+      <ProjectKPIHero projectId={activeProjectId} />
 
       {/* Section 2 — Readiness + Critical gaps (side-by-side, equal height) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 pb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Readiness ring card (compact, fixed width) */}
         <div className="lg:col-span-3 bg-white dark:bg-gray-800/60 rounded-xl border border-border-light shadow-sm p-4 flex flex-col">
           <h3 className="text-xs font-semibold text-content-primary mb-2">
@@ -773,12 +735,10 @@ export function ProjectIntelligencePage() {
       </div>
 
       {/* Section 2b — Analytics grid (full width) */}
-      <div className="pb-4">
-        <ProjectAnalyticsGrid projectId={activeProjectId} />
-      </div>
+      <ProjectAnalyticsGrid projectId={activeProjectId} />
 
       {/* Section 2c — Predictive EVM forecast + alerts (TOP-30 #19) */}
-      <div id="pi-forecasts" className="pb-4 scroll-mt-20">
+      <div id="pi-forecasts" className="scroll-mt-20">
         <div className="rounded-xl border border-border-light bg-white dark:bg-gray-800/60 shadow-sm p-4">
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp size={16} className="text-oe-blue" />
@@ -806,7 +766,7 @@ export function ProjectIntelligencePage() {
       </div>
 
       {/* Section 2d — Live predictive cost + schedule + risk analytics (#19) */}
-      <div className="pb-4">
+      <div>
         <div className="rounded-xl border border-border-light bg-white dark:bg-gray-800/60 shadow-sm p-4">
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp size={16} className="text-oe-blue" />
@@ -826,7 +786,7 @@ export function ProjectIntelligencePage() {
       </div>
 
       {/* Section 3 — Domain detail tabs (reduced to 4) */}
-      <div className="pb-4">
+      <div>
         <DomainDetails
           state={state as DomainStateMap}
           scores={score.domain_scores}
@@ -839,7 +799,7 @@ export function ProjectIntelligencePage() {
       </div>
 
       {/* Section 4 — Cost Intelligence Advisor */}
-      <div className="pb-6">
+      <div className="pb-2">
         <AIAdvisorPanel
           projectId={activeProjectId}
           role={role}

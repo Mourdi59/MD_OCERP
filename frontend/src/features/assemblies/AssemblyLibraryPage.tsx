@@ -4,7 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Library, Search, X, Layers, Globe, AlertCircle, Loader2, Eye, Save } from 'lucide-react';
 
-import { Button, Card, Badge, EmptyState, SkeletonGrid, Breadcrumb } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, SkeletonGrid, Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import { projectsApi } from '@/features/projects/api';
 
@@ -48,6 +49,7 @@ const CATEGORY_BADGE: Record<string, BadgeVariant> = {
 
 export function AssemblyLibraryPage() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -78,35 +80,43 @@ export function AssemblyLibraryPage() {
     tpl.name_translations?.[lang] || tpl.name;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           { label: t('nav.assemblies', 'Assemblies'), to: '/assemblies' },
           { label: t('assemblies.library.title', 'Assembly library') },
         ]}
       />
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="rounded-lg bg-blue-100 p-2 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-            <Library className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-              {t('assemblies.library.title', 'Assembly library')}
-            </h1>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              {t(
-                'assemblies.library.description',
-                'Canonical recipe templates — pick a starting point and apply it to your project.'
-              )}
-            </p>
-          </div>
-        </div>
-        <Badge variant="neutral">
-          {`${total} ${t('assemblies.library.templates_found', 'templates')}`}
-        </Badge>
-      </div>
+      {/* Canonical top block — the breadcrumb above carries the Assemblies >
+          Assembly library trail, and the module name + icon are shown by the
+          global top app bar. The page renders only its subtitle + the count. */}
+      <PageHeader
+        srTitle={t('assemblies.library.title', 'Assembly library')}
+        subtitle={t(
+          'assemblies.library.description',
+          'Canonical recipe templates, pick a starting point and apply it to your project.'
+        )}
+        actions={
+          <Badge variant="neutral">
+            {`${total} ${t('assemblies.library.templates_found', 'templates')}`}
+          </Badge>
+        }
+      />
+
+      <DismissibleInfo
+        storageKey="assemblies-library"
+        title={t('assembly_library.intro_title', { defaultValue: 'Find a ready recipe instead of building one' })}
+        links={[
+          { label: t('nav.assemblies', { defaultValue: 'Assemblies' }), onClick: () => navigate('/assemblies') },
+          { label: t('assemblies.new_assembly', { defaultValue: 'New Assembly' }), onClick: () => navigate('/assemblies/new') },
+          { label: t('nav.boq', { defaultValue: 'Bill of Quantities' }), onClick: () => navigate('/boq') },
+        ]}
+      >
+        {t('assembly_library.intro_body', {
+          defaultValue:
+            'Search the shared library of assembly templates by trade and category, preview the components and rates, and save the ones you want into your own assemblies. Saved assemblies are then ready to apply to BOQ positions on any project.',
+        })}
+      </DismissibleInfo>
 
       {/* Search bar */}
       <div className="relative">

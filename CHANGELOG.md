@@ -5,6 +5,32 @@ All notable changes to OpenConstructionERP are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.0.0] - 2026-06-06
+
+### Added
+
+- AI Estimate Builder, a new module that takes any starting point, a typed scope, a BIM model or uploaded documents, and walks it to a priced bill of quantities in four guarded stages: understand the source, group the quantities, match rates from the cost database, review and apply. Every stage shows its work and waits for a human decision. The AI suggests groupings and matches with confidence scores, but unit rates only ever come from the cost catalogue, the model is never allowed to invent a price. Runs are persisted, so a half-finished estimate survives a reload, and the whole flow degrades gracefully when no AI key or vector database is configured.
+- Every module page now opens with the same information card, and the card finally says something useful. Instead of repeating the module name, the heading names the problem the module solves, "Nothing slips through at handover" rather than "Punch list", and the body explains in two or three plain sentences what you put in, what you get out and where the result flows next, with direct links to the connected modules. Around 60 pages that had no orientation card at all received one. The copy was written per module against what each page actually does, in all 27 languages.
+- Collapsing that information card no longer leaves a stub in the page. The card disappears entirely and a small info icon appears in the top bar right after the module name; one click brings the card back. The cards also support a "Show more" expansion for longer step-by-step explanations, with simple formatting for lists and emphasis.
+- The collaboration hub is now a real workspace: live comment threads, BIM viewpoints you can create and open, who-is-here presence and your own element locks, all on one screen instead of a set of dead links.
+- The Validate button in the BOQ editor jumps straight into the validation dashboard with that BOQ preselected, and the dashboard remembers your last BOQ and restores the latest report when you return. Rule-set chips read as names a person uses, DIN 276, GAEB, NRM, MasterFormat, instead of raw engine ids.
+- The daily diary calendar is clickable: pick any day to create or edit that day's entry directly, with keyboard navigation.
+
+### Changed
+
+- One identity per module, everywhere. The module name and icon live in the top app bar next to the project selector, and nowhere else: in-page duplicate titles are gone from roughly 90 pages, breadcrumbs render only when they add real depth such as a project or a detail trail, and the per-page project pickers are removed, the project is chosen once, globally. Page headers across the app share one layout, a muted one-line subtitle on the left, the actions on the right, on a single midline, with one uniform vertical rhythm instead of each page hand-rolling its own margins.
+- Translucent tints across the whole interface actually render now. The theme palette silently dropped every semi-transparent variant of the brand and surface colors at build time, so card backgrounds, hover tints and accent borders that were designed in never reached the screen, the information cards looked like bare text on white. The palette now compiles those variants correctly, and the info cards wear their intended light translucent blue in both light and dark themes.
+- The role-based reporting dashboards load like they should. The page used to hold every widget hostage behind one slow project-wide fan-out, showing skeletons that never resolved; widgets now load independently and resolve to data, an honest empty state with a way forward, or a retry, never a permanent grey box. Figures that have no source yet show a dash with a note explaining what will fill them.
+- Supplier catalogs stops pretending to be a purchasing module. Requisitions, purchase orders and three-way matching clearly hand off to Procurement where they actually live, and the page focuses on what it is, the vendor and item reference library.
+- Monte Carlo risk analysis respects the project currency on every figure and reads the project from the global context, and the subcontractor payments portal no longer traps signed-out visitors, it explains that access comes via the invitation link and offers a way back to the app.
+- The element-to-cost matching wizard speaks all 27 languages, including the stage rail and step counter that were previously English-only.
+- The project pill in the top bar yields space on mid-size screens so module names no longer truncate to "Carbo..." at common laptop widths.
+
+### Fixed
+
+- Reopening a punch-list item works again: resolved items can be sent back to open, verified items can be reopened, and closed items can be brought back, matching what the workflow allows on the server.
+- The desktop app detects an already-running backend on the common ports and attaches to it instead of failing a fresh boot next to it, and the splash screen can open the launcher log directly when something does go wrong.
+
 ## [6.10.0] - 2026-06-05
 
 ### Added

@@ -1,6 +1,7 @@
-import { useState, useCallback, type ReactNode, type KeyboardEvent } from 'react';
+import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Info, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Info, X } from 'lucide-react';
+import { useModuleInfoStore } from '@/stores/useModuleInfoStore';
 
 /**
  * Contextual info / help card used across every module page.
@@ -11,20 +12,20 @@ import { Info, X } from 'lucide-react';
  *
  *  - Expanded: a soft, translucent card with an info chip, a title and the
  *    body. Clicking anywhere on the card - or on the X - collapses it.
- *  - Collapsed: a bare inline line (NO background, NO border, NO card): a small
- *    Info icon plus the muted label "Module information". It takes minimal
- *    vertical space and re-expands with one click. It is a real button, so it
- *    is keyboard accessible and carries aria-expanded=false for AT.
+ *  - Collapsed: NOTHING renders in the page (founder decision 2026-06-06).
+ *    The card registers itself in `useModuleInfoStore`, and the top app bar
+ *    shows a small info icon right after the module name (project pill >
+ *    module name > info icon). Clicking that icon re-expands the card here.
  *
- * There is no longer a dismissed / render-null state. The X now simply
- * collapses, so the line "Module information" is always reachable.
+ * There is no longer a dismissed-forever state. The X simply collapses, and
+ * the top-bar icon keeps the card always reachable on every breakpoint.
  *
  * Persistence lives under ``oce.intro.<storageKey>`` in localStorage:
  *
  *   - missing / "0" -> expanded
  *   - "1"           -> collapsed
  *   - "2"           -> collapsed (LEGACY "dismissed" value: users who pressed
- *                      the old X now see the collapsed line instead of nothing)
+ *                      the old X now get the top-bar icon instead of nothing)
  *
  * Use the SAME ``storageKey`` you would pass to the old SectionIntro so
  * existing preferences carry over. The public API (storageKey, title,
@@ -34,6 +35,61 @@ import { Info, X } from 'lucide-react';
 export interface DismissibleInfoLink {
   label: string;
   onClick: () => void;
+}
+
+/* ── IntroRichText ────────────────────────────────────────────────────────
+   Canonical formatter for the "Show more" long-form module explanations.
+   Renders a translated plain string with a tiny markdown subset - enough
+   for professional structure without pulling in a markdown dependency:
+
+     - blank line ("\n\n")      -> paragraph break
+     - lines starting with "- " -> bulleted list
+     - lines starting with "1. "-> numbered list (any digits + dot)
+     - **bold** inline          -> <strong> (lead-ins like "**You put in:**")
+
+   Translators keep the same markers in all 27 locales; everything else is
+   rendered verbatim, so there is no HTML-injection surface. */
+
+function renderInline(text: string): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**') ? (
+      <strong key={i} className="font-semibold text-content-primary">
+        {part.slice(2, -2)}
+      </strong>
+    ) : (
+      part
+    ),
+  );
+}
+
+export function IntroRichText({ text }: { text: string }) {
+  const blocks = text.split(/\n\s*\n/).filter((b) => b.trim().length > 0);
+  return (
+    <div className="space-y-2.5">
+      {blocks.map((block, bi) => {
+        const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
+        if (lines.every((l) => l.startsWith('- '))) {
+          return (
+            <ul key={bi} className="list-disc space-y-1 pl-5">
+              {lines.map((l, li) => (
+                <li key={li}>{renderInline(l.slice(2))}</li>
+              ))}
+            </ul>
+          );
+        }
+        if (lines.every((l) => /^\d+\.\s/.test(l))) {
+          return (
+            <ol key={bi} className="list-decimal space-y-1 pl-5">
+              {lines.map((l, li) => (
+                <li key={li}>{renderInline(l.replace(/^\d+\.\s/, ''))}</li>
+              ))}
+            </ol>
+          );
+        }
+        return <p key={bi}>{renderInline(lines.join(' '))}</p>;
+      })}
+    </div>
+  );
 }
 
 /** Persisted display states for an info card. */
@@ -60,6 +116,7 @@ export function DismissibleInfo({
   storageKey,
   title,
   children,
+  more,
   links,
   className,
 }: {
@@ -67,6 +124,14 @@ export function DismissibleInfo({
   storageKey: string;
   title: string;
   children?: ReactNode;
+  /**
+   * Optional EXTENDED explanation (founder 2026-06-06): a few more
+   * paragraphs revealed behind a "Show more" toggle inside the card -
+   * a step-by-step, professionally formatted walkthrough of how the
+   * module works. Pass `<IntroRichText text={t('x.intro_more', ...)} />`
+   * for canonical formatting (paragraphs, bullets, bold lead-ins).
+   */
+  more?: ReactNode;
   /** Optional cross-module shortcuts rendered as inline pills. */
   links?: DismissibleInfoLink[];
   /** Extra classes for the outer wrapper (e.g. margin overrides). */
@@ -92,44 +157,37 @@ export function DismissibleInfo({
   const collapse = useCallback(() => persist('collapsed'), [persist]);
   const expand = useCallback(() => persist('expanded'), [persist]);
 
-  const onCollapsedKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLElement>) => {
-      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
-        e.preventDefault();
-        expand();
-      }
-    },
-    [expand],
-  );
+  // "Show more" is session-local (not persisted): a returning user sees the
+  // short card again and opens the long read only when they want it.
+  const [showMore, setShowMore] = useState(false);
 
-  if (state === 'collapsed') {
-    // Collapsed: a bare inline line - no card chrome at all. It is a native
-    // button so it is keyboard accessible and announces aria-expanded=false.
-    return (
-      <button
-        type="button"
-        onClick={expand}
-        onKeyDown={onCollapsedKeyDown}
-        aria-expanded={false}
-        className={`group inline-flex cursor-pointer items-center gap-1.5 rounded-sm bg-transparent text-content-tertiary transition-colors hover:text-content-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus ${
-          className ?? 'mb-3'
-        }`}
-      >
-        <Info size={13} className="shrink-0" />
-        <span className="text-xs">
-          {t('common.module_info', { defaultValue: 'Module information' })}
-        </span>
-      </button>
-    );
-  }
+  // While collapsed the card renders nothing here - it hands itself to the
+  // top app bar instead (Header shows an info icon after the module name
+  // that calls `expand`). Unmount (navigation) unregisters automatically.
+  const register = useModuleInfoStore((s) => s.register);
+  const unregister = useModuleInfoStore((s) => s.unregister);
+  useEffect(() => {
+    if (state !== 'collapsed') return undefined;
+    register({ key: lsKey, expand });
+    return () => unregister(lsKey);
+  }, [state, lsKey, expand, register, unregister]);
 
-  // Expanded: a soft, translucent card. The X and the link pills are
-  // interactive, so they cannot live inside a role=button (nesting interactive
-  // content is invalid ARIA). Instead the outer row is a plain div with a
-  // click/keyboard handler (whole-card toggle), and a dedicated header BUTTON
-  // carries the aria-expanded semantics for AT.
-  const wrapper = `group rounded-xl border border-border-light border-l-2 border-l-oe-blue/70 bg-oe-blue-subtle/25 shadow-sm animate-fade-in ${
-    className ?? 'mb-5'
+  if (state === 'collapsed') return null;
+
+  // Expanded: a soft, translucent card - a VISIBLE light blue tint
+  // (bg-oe-blue/10 ~ #e5f1fc over white; /[0.14] over the dark surfaces),
+  // founder feedback 2026-06-06: the previous bg-oe-blue-subtle/25 emitted
+  // no CSS at all (alpha on an opaque var) so cards looked transparent.
+  // The X and the link pills are interactive, so they cannot live inside a
+  // role=button (nesting interactive content is invalid ARIA). Instead the
+  // outer row is a plain div with a click/keyboard handler (whole-card
+  // toggle), and a dedicated header BUTTON carries aria-expanded for AT.
+  // No default margin (audit fix S2): pages provide rhythm via the root
+  // space-y-5; a built-in mb-5 doubled the gap below every info card.
+  // Tint at 80% of the first visible pass (founder 2026-06-06: "светло
+  // синий, добавь немного прозрачности, фон на 80%"): /10 -> /[0.08].
+  const wrapper = `group rounded-xl border border-oe-blue/20 border-l-2 border-l-oe-blue/70 bg-oe-blue/[0.08] dark:bg-oe-blue/[0.11] backdrop-blur-sm shadow-sm animate-fade-in ${
+    className ?? ''
   }`;
 
   return (
@@ -137,9 +195,9 @@ export function DismissibleInfo({
       {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
       <div
         onClick={collapse}
-        className="flex cursor-pointer items-start gap-3 rounded-xl px-4 py-4 transition-colors hover:bg-surface-secondary/30"
+        className="flex cursor-pointer items-start gap-3 rounded-xl px-4 py-4 transition-colors hover:bg-oe-blue/[0.06]"
       >
-        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-oe-blue-subtle/70">
+        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-oe-blue/15">
           <Info size={16} className="text-oe-blue-text" />
         </span>
         <div className="min-w-0 flex-1">
@@ -155,12 +213,36 @@ export function DismissibleInfo({
             }}
             aria-expanded
             title={t('common.collapse', { defaultValue: 'Collapse' })}
-            className="block rounded-sm text-left text-base font-medium leading-snug text-content-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            className="block rounded-sm text-left text-base font-medium leading-snug text-content-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
           >
             {title}
           </button>
           {children != null && (
-            <div className="mt-1.5 text-sm leading-relaxed text-content-secondary/90">{children}</div>
+            <div className="mt-1.5 text-sm leading-relaxed text-content-secondary">{children}</div>
+          )}
+          {more != null && (
+            <>
+              {showMore && (
+                <div className="mt-3 border-t border-oe-blue/15 pt-3 text-sm leading-relaxed text-content-secondary animate-fade-in">
+                  {more}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  // The toggle lives inside the clickable card - never collapse.
+                  e.stopPropagation();
+                  setShowMore((v) => !v);
+                }}
+                aria-expanded={showMore}
+                className="mt-2 inline-flex items-center gap-1 rounded-sm text-xs font-medium text-oe-blue-text transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+              >
+                {showMore
+                  ? t('common.show_less', { defaultValue: 'Show less' })
+                  : t('common.show_more', { defaultValue: 'Show more' })}
+                {showMore ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+              </button>
+            </>
           )}
           {links && links.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">

@@ -20,8 +20,9 @@ import {
   FileText,
   AlertTriangle,
 } from 'lucide-react';
-import { Button, Card, Badge, EmptyState, RecoveryCard, Skeleton, DismissibleInfo, SkeletonTable, Breadcrumb, ConfirmDialog } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, RecoveryCard, DismissibleInfo, SkeletonTable, Breadcrumb, ConfirmDialog } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import {
   WideModal,
   WideModalSection,
@@ -1279,15 +1280,17 @@ function PackageDetail({
 
 export function TenderingPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { activeProjectId, setActiveProject } = useProjectContextStore();
+  const { activeProjectId } = useProjectContextStore();
 
   const selectedProjectId = activeProjectId ?? '';
   const [selectedPackageId, setSelectedPackageId] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  // Fetch projects
-  const { data: projects, isLoading: projectsLoading } = useQuery({
+  // Fetch projects — used to resolve the active project's name + currency.
+  // Project SELECTION happens in the global top bar, not here.
+  const { data: projects } = useQuery({
     queryKey: ['projects'],
     queryFn: () => apiGet<Project[]>('/v1/projects/'),
     staleTime: 5 * 60_000,
@@ -1326,92 +1329,67 @@ export function TenderingPage() {
   // symbol-less number rather than mislabelling amounts as EUR.
   const currency = selectedProject?.currency || '';
 
-  const handleProjectChange = useCallback((id: string) => {
-    const name = projects?.find((p) => p.id === id)?.name ?? '';
-    if (id) {
-      setActiveProject(id, name);
-    } else {
-      useProjectContextStore.getState().clearProject();
-    }
-    setSelectedPackageId('');
-  }, [projects, setActiveProject]);
-
   const handlePackageCreated = useCallback(() => {
     queryClient.invalidateQueries({
       queryKey: ['tendering-packages', selectedProjectId],
     });
   }, [queryClient, selectedProjectId]);
 
-  const projectOptions = (projects || []).map((p) => ({
-    value: p.id,
-    label: p.name,
-  }));
-
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb items={[
         ...(selectedProject ? [{ label: selectedProject.name, to: `/projects/${selectedProject.id}` }] : []),
         { label: t('tendering.title', 'Tendering') },
-      ]} className="mb-4" />
+      ]} />
 
-      {/* Header */}
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">
-            {t('tendering.title', 'Tendering')}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t(
-              'tendering.subtitle',
-              'Manage bid packages, collect and compare subcontractor offers',
-            )}
-          </p>
-        </div>
-      </div>
+      {/* Header — project selection lives in the global top bar; the page
+          reads the shared project context, so there is no in-page project
+          picker. */}
+      <PageHeader
+        subtitle={t(
+          'tendering.subtitle',
+          'Manage bid packages, collect and compare subcontractor offers',
+        )}
+        actions={
+          <span title={!selectedProjectId ? t('tendering.select_project_first', { defaultValue: 'Select a project first' }) : undefined}>
+            <Button
+              variant="primary"
+              icon={<Plus size={16} />}
+              disabled={!selectedProjectId}
+              onClick={() => setShowCreateDialog(true)}
+            >
+              {t('tendering.new_package', 'New Tender Package')}
+            </Button>
+          </span>
+        }
+      />
 
       {/* Workflow explanation */}
       <DismissibleInfo
         storageKey="tendering"
-        className="mb-6"
-        title={t('info.tendering.title', { defaultValue: 'About Tendering' })}
+        title={t('tendering.intro_title', {
+          defaultValue: 'Take a priced BOQ to market and back',
+        })}
+        links={[
+          {
+            label: t('nav.boq', { defaultValue: 'BOQ' }),
+            onClick: () => navigate('/boq'),
+          },
+          {
+            label: t('nav.procurement', { defaultValue: 'Procurement' }),
+            onClick: () => navigate('/procurement'),
+          },
+          {
+            label: t('nav.bid_management', { defaultValue: 'Bid Management' }),
+            onClick: () => navigate('/bid-management'),
+          },
+        ]}
       >
-        {t('info.tendering.body', {
+        {t('tendering.intro_body', {
           defaultValue:
-            'Build bid packages from a BOQ, send them to subcontractors, and compare the offers you receive side by side. The workflow runs Draft, Issued, Collecting, Evaluating, Awarded. Awarding a winner writes the agreed rates back to the BOQ and prepares a draft purchase order in Procurement.',
+            'Build bid packages straight from a project BOQ, issue them to subcontractors, and compare offers side by side through Draft, Issued, Collecting, Evaluating and Awarded. Awarding a winner writes the agreed rates back to the BOQ and drafts a purchase order in Procurement, which is what sets this apart from the subcontractor-package flow in Bid Management.',
         })}
       </DismissibleInfo>
-
-      {/* Project selector + New package button */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end">
-        <div className="flex-1">
-          {projectsLoading ? (
-            <Skeleton height={40} className="w-full" rounded="md" />
-          ) : (
-            <div>
-              <label className="text-sm font-medium text-content-primary block mb-1.5">
-                {t('tendering.select_project', 'Project')}
-              </label>
-              <SelectDropdown
-                value={selectedProjectId}
-                onChange={handleProjectChange}
-                options={projectOptions}
-                placeholder={t('tendering.select_project_placeholder', 'Choose a project...')}
-              />
-            </div>
-          )}
-        </div>
-        <span title={!selectedProjectId ? t('tendering.select_project_first', { defaultValue: 'Select a project first' }) : undefined}>
-          <Button
-            variant="primary"
-            size="md"
-            icon={<Plus size={16} />}
-            disabled={!selectedProjectId}
-            onClick={() => setShowCreateDialog(true)}
-          >
-            {t('tendering.new_package', 'New Tender Package')}
-          </Button>
-        </span>
-      </div>
 
       {/* Empty state when no project chosen (page-internal selector above) */}
       {!selectedProjectId && (

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   MessageSquare,
@@ -29,6 +30,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Badge, Button, Input, Breadcrumb, ConfirmDialog, SkeletonGrid } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
+import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
@@ -824,6 +827,7 @@ function ConnectModal({
 
 export function IntegrationsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const { confirm, ...confirmProps } = useConfirm();
@@ -889,37 +893,57 @@ export function IntegrationsPage() {
   }, [queryClient]);
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           { label: t('nav.settings', 'Settings'), to: '/settings' },
           { label: t('integrations.title', 'Integrations') },
         ]}
-        className="mb-4"
       />
 
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">
-            {t('integrations.title', 'Integrations')}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t(
-              'integrations.subtitle',
-              'Connect external services to receive project notifications in your favorite tools.'
-            )}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        srTitle={t('integrations.title', 'Integrations')}
+        subtitle={t(
+          'integrations.subtitle',
+          'Connect external services to receive project notifications in your favorite tools.'
+        )}
+      />
+
+      <DismissibleInfo
+        storageKey="integrations"
+        title={t('integrations.intro_title', {
+          defaultValue: 'Get project events into the tools you use',
+        })}
+        links={[
+          {
+            label: t('integrations.link_webhook_targets', { defaultValue: 'Webhook targets' }),
+            onClick: () => navigate('/admin/webhook-targets'),
+          },
+          {
+            label: t('notifications.title', { defaultValue: 'Notifications' }),
+            onClick: () => navigate('/notifications'),
+          },
+          {
+            label: t('nav.settings', { defaultValue: 'Settings' }),
+            onClick: () => navigate('/settings'),
+          },
+        ]}
+      >
+        {t('integrations.intro_body', {
+          defaultValue:
+            'Connect Teams, Slack, Telegram, Discord, email or a signed webhook and pick which events (tasks, RFIs, invoices, document uploads, BOQ changes) trigger a message, with a Test button before you save. Subscribe to the calendar feed for due dates, or point n8n, Zapier, Make and BI tools at the REST API for everything else.',
+        })}
+      </DismissibleInfo>
 
       {/* Connector cards grouped by category */}
+      <div className="space-y-6">
       {CATEGORY_ORDER.map((category) => {
         const categoryConnectors = CONNECTORS.filter((c) => c.category === category);
         if (categoryConnectors.length === 0) return null;
         const catLabel = CATEGORY_LABELS[category];
 
         return (
-          <div key={category} className="mb-6">
+          <div key={category}>
             <h2 className="text-xs font-bold text-content-tertiary uppercase tracking-wider mb-3">
               {t(catLabel.key, catLabel.defaultLabel)}
             </h2>
@@ -1070,6 +1094,7 @@ export function IntegrationsPage() {
           </div>
         );
       })}
+      </div>
 
       {isLoading && <SkeletonGrid items={6} />}
 

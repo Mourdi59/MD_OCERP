@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -12,7 +13,8 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { Breadcrumb, Card, CardHeader, CardContent, Button, EmptyState, Skeleton } from '@/shared/ui';
+import { Breadcrumb, Card, CardHeader, CardContent, Button, EmptyState, Skeleton, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { apiGet } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import {
@@ -149,6 +151,7 @@ function EPDSelect({
 
 export function SustainabilityPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const [selectedProjectId, setSelectedProjectId] = useState('');
@@ -290,7 +293,7 @@ export function SustainabilityPage() {
   const selectedProject = projects?.find((p) => p.id === selectedProjectId);
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           ...(selectedProject
@@ -298,27 +301,30 @@ export function SustainabilityPage() {
             : []),
           { label: t('nav.sustainability', { defaultValue: 'Sustainability' }) },
         ]}
-        className="mb-4"
       />
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-            <Leaf size={20} strokeWidth={1.75} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-content-primary">
-              {t('sustainability.title', 'Sustainability / CO2 Analysis')}
-            </h1>
-            <p className="text-sm text-content-secondary">
-              {t('sustainability.subtitle', 'Embodied carbon analysis based on EPD data (EN 15804, A1-A3)')}
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        srTitle={t('nav.sustainability', { defaultValue: 'Sustainability' })}
+        subtitle={t('sustainability.subtitle', 'Embodied carbon analysis based on EPD data (EN 15804, A1-A3)')}
+      />
+
+      <DismissibleInfo
+        storageKey="sustainability"
+        title={t('sustainability.intro_title', {
+          defaultValue: "Read a BOQ's carbon footprint position by position",
+        })}
+        links={[
+          { label: t('sustainability.intro_link_carbon', { defaultValue: 'Carbon & ESG' }), onClick: () => navigate('/carbon') },
+          { label: t('sustainability.intro_link_boq', { defaultValue: 'Open BOQ' }), onClick: () => navigate('/boq') },
+        ]}
+      >
+        {t('sustainability.intro_body', {
+          defaultValue:
+            'Select a project and BOQ, enrich it with EPD material factors, then calculate to see total CO2, a per-square-metre benchmark and a breakdown by material category down to each position. Export the CO2 report as PDF or CSV. This is the per-BOQ view; the Carbon module holds full inventories, scopes, targets and standards reporting.',
+        })}
+      </DismissibleInfo>
 
       {/* Selectors */}
-      <Card className="mb-6">
+      <Card>
         <CardContent>
           <div className="flex flex-wrap items-end gap-4">
             <div className="flex-1 min-w-[200px]">
@@ -376,7 +382,7 @@ export function SustainabilityPage() {
 
       {/* Loading */}
       {sustainLoading && (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 mb-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <Skeleton height={160} className="w-full" rounded="lg" />
           <Skeleton height={160} className="w-full" rounded="lg" />
           <Skeleton height={160} className="w-full" rounded="lg" />

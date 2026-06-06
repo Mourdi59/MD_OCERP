@@ -42,6 +42,7 @@ import {
   Button, Card, CardHeader, CardContent, Badge, Skeleton, EmptyState, Breadcrumb,
   ProjectMap, ProjectWeather,
 } from '@/shared/ui';
+import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { ProjectLayoutManager } from './ProjectLayoutManager';
 import { useProjectDetailLayoutStore } from '@/stores/useProjectDetailLayoutStore';
 import {
@@ -408,7 +409,7 @@ function ProjectPhaseRibbon({ phase }: { phase: string | null }) {
   // Unknown phase — show single chip instead of a fake stepper.
   if (activeIdx < 0) {
     return (
-      <div className="mb-4 flex items-center gap-2 rounded-lg border border-border-light bg-surface-secondary px-3 py-2 text-xs">
+      <div className="flex items-center gap-2 rounded-lg border border-border-light bg-surface-secondary px-3 py-2 text-xs">
         <span className="font-medium uppercase tracking-wider text-content-tertiary">
           {t('projects.phase_label', { defaultValue: 'Phase' })}
         </span>
@@ -418,7 +419,7 @@ function ProjectPhaseRibbon({ phase }: { phase: string | null }) {
   }
 
   return (
-    <div className="mb-4 rounded-lg border border-border-light bg-surface-secondary px-4 py-3">
+    <div className="rounded-lg border border-border-light bg-surface-secondary px-4 py-3">
       <div className="flex items-center gap-1.5 overflow-x-auto">
         {PHASE_STEPS.map((step, idx) => {
           const isActive = idx === activeIdx;
@@ -534,7 +535,7 @@ function ProjectLocationPanel({ project }: { project: Project }) {
   return (
     <div
       className={clsx(
-        'mb-4 grid gap-3 items-stretch',
+        'grid gap-3 items-stretch',
         mapEnabled && weatherEnabled
           ? 'grid-cols-1 lg:grid-cols-[3fr_2fr]'
           : 'grid-cols-1',
@@ -1381,7 +1382,7 @@ export function ProjectDetailPage() {
   // ── Loading state ──────────────────────────────────────────────────────
   if (projectLoading) {
     return (
-      <div className="w-full space-y-6 animate-fade-in">
+      <div className="space-y-5 animate-fade-in">
         <Skeleton height={20} width={120} />
         <Skeleton height={80} className="w-full" />
         <div className="grid grid-cols-4 gap-4">
@@ -1451,9 +1452,9 @@ export function ProjectDetailPage() {
   const currency = project.currency || undefined;
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb + Customize toggle */}
-      <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <Breadcrumb
           items={[
             { label: t('projects.title', 'Projects'), to: '/projects' },
@@ -1477,9 +1478,31 @@ export function ProjectDetailPage() {
         </Button>
       </div>
 
+      <DismissibleInfo
+        storageKey="project-detail"
+        title={t('projects.detail_intro_title', {
+          defaultValue: 'Every part of one project in reach',
+        })}
+        links={[
+          {
+            label: t('project.settings.title', { defaultValue: 'Project Settings' }),
+            onClick: () => navigate(`/projects/${project.id}/settings`),
+          },
+          {
+            label: t('nav.boq', { defaultValue: 'BOQ' }),
+            onClick: () => navigate(`/projects/${project.id}/boq`),
+          },
+        ]}
+      >
+        {t('projects.detail_intro_body', {
+          defaultValue:
+            'This is the project hub: its BOQs, 4D schedule, 5D budget, tendering and key stats sit on one page so you do not hunt through the sidebar to find where the work lives. Jump straight into a cost work-product or open Project Settings to change region, currency or active modules. Edits to BOQs and costs roll up into the totals shown across Analytics and Reporting.',
+        })}
+      </DismissibleInfo>
+
       {/* ─── Customize panel (collapsible) — mirrors Dashboard pattern ─── */}
       {customizing && (
-        <Card className="mb-4 animate-card-in border-oe-blue/30">
+        <Card className="animate-card-in border-oe-blue/30">
           <CardHeader
             title={t('project.layout.title', { defaultValue: 'Customize project page' })}
             subtitle={t('project.layout.subtitle', {
@@ -1503,7 +1526,7 @@ export function ProjectDetailPage() {
       {(!isWidgetHidden('project-info') || !isWidgetHidden('health-bar')) && (
       <div
         className={clsx(
-          'mb-4 grid gap-3 items-stretch',
+          'grid gap-3 items-stretch',
           !isWidgetHidden('project-info') && !isWidgetHidden('health-bar')
             ? 'grid-cols-1 lg:grid-cols-[3fr_2fr]'
             : 'grid-cols-1',
@@ -1763,7 +1786,7 @@ export function ProjectDetailPage() {
           other authenticated users the strip is read-only. The owner
           check below leans on the JWT ``sub`` claim because the auth
           store doesn't keep ``userId`` separately yet. */}
-      <div className="mb-3" data-testid="team-strip-host">
+      <div data-testid="team-strip-host">
         <TeamStrip
           projectId={projectId!}
           canManage={(() => {
@@ -1791,7 +1814,7 @@ export function ProjectDetailPage() {
 
       {!isWidgetHidden('summary-cards') && (
       /* ── Summary Cards ───────────────────────────────────────────────── */
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {(() => {
           const areaMatch = project.description?.match(/(\d[\d.,]*)\s*m[²2]/i);
           const area = areaMatch ? parseFloat((areaMatch[1] ?? '0').replace(',', '')) : null;
@@ -1833,7 +1856,7 @@ export function ProjectDetailPage() {
       )}
 
       {/* ── Tab Bar ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 mb-4 border-b border-border-light">
+      <div className="flex items-center gap-1 border-b border-border-light">
         {([
           { key: 'dashboard' as ProjectTab, label: t('projects.dashboard', { defaultValue: 'Dashboard' }), icon: <LayoutDashboard size={15} /> },
           { key: 'overview' as ProjectTab, label: t('projects.overview'), icon: <Table2 size={15} /> },

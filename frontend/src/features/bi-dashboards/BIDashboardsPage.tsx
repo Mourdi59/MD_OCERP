@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
@@ -32,6 +33,8 @@ import {
   WideModalSection,
   WideModalField,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
+import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage } from '@/shared/lib/api';
@@ -196,6 +199,7 @@ function MultiCurrencyHint({
 
 export function BIDashboardsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const [tab, setTab] = useState<Tab>('dashboards');
@@ -280,32 +284,53 @@ export function BIDashboardsPage() {
         ]}
       />
 
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-content-primary">
-            {t('bi.title', { defaultValue: 'BI & Dashboards' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('bi.subtitle', {
-              defaultValue:
-                'KPIs, scheduled reports, executive dashboards and alert rules — all in one place.',
-            })}
-          </p>
-        </div>
-        {(tab === 'dashboards' || tab === 'reports' || tab === 'alerts') && (
-          <Button
-            variant="primary"
-            icon={<Plus size={14} />}
-            onClick={() => setCreateOpen(true)}
-          >
-            {tab === 'dashboards'
-              ? t('bi.new_dashboard', { defaultValue: 'New Dashboard' })
-              : tab === 'reports'
-                ? t('bi.new_report', { defaultValue: 'New Report' })
-                : t('bi.new_alert', { defaultValue: 'New Alert' })}
-          </Button>
-        )}
-      </div>
+      {/* Header — module name + icon live in the global top bar; this page
+          renders only the muted subtitle + actions (canon §2). */}
+      <PageHeader
+        srTitle={t('nav.bi_dashboards', { defaultValue: 'BI Dashboards' })}
+        subtitle={t('bi.subtitle', {
+          defaultValue:
+            'KPIs, scheduled reports, executive dashboards and alert rules, all in one place.',
+        })}
+        actions={
+          (tab === 'dashboards' || tab === 'reports' || tab === 'alerts') ? (
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<Plus size={14} />}
+              onClick={() => setCreateOpen(true)}
+            >
+              {tab === 'dashboards'
+                ? t('bi.new_dashboard', { defaultValue: 'New Dashboard' })
+                : tab === 'reports'
+                  ? t('bi.new_report', { defaultValue: 'New Report' })
+                  : t('bi.new_alert', { defaultValue: 'New Alert' })}
+            </Button>
+          ) : undefined
+        }
+      />
+
+      <DismissibleInfo
+        storageKey="bi-dashboards"
+        title={t('bi.intro_title', {
+          defaultValue: 'Stop rebuilding the same board every week',
+        })}
+        links={[
+          {
+            label: t('nav.reporting', { defaultValue: 'Reporting' }),
+            onClick: () => navigate('/reporting'),
+          },
+          {
+            label: t('nav.notifications', { defaultValue: 'Notifications' }),
+            onClick: () => navigate('/notifications'),
+          },
+        ]}
+      >
+        {t('bi.intro_body', {
+          defaultValue:
+            'Install the starter pack in one click to get role-based dashboards, system KPIs with history, reports and alert rules, or build your own from the KPI library. Schedule any report to deliver itself to recipients on a cadence, and set alerts that fire when a KPI crosses a threshold. KPIs are computed live from your project data, so the boards stay current without manual updates.',
+        })}
+      </DismissibleInfo>
 
       {/* Tabs */}
       <div className="border-b border-border-light">

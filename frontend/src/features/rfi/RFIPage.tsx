@@ -17,10 +17,8 @@ import {
   Loader2,
   CalendarClock,
   Paperclip,
-  ArrowRightLeft,
   UploadCloud,
   Check,
-  Info,
 } from 'lucide-react';
 import {
   Button,
@@ -29,6 +27,7 @@ import {
   EmptyState,
   Breadcrumb,
   ConfirmDialog,
+  DismissibleInfo,
   RecoveryCard,
   SkeletonTable,
   WideModal,
@@ -36,6 +35,7 @@ import {
   WideModalField,
 } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { UserSearchInput } from '@/shared/ui/UserSearchInput';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useCreateShortcut } from '@/shared/hooks/useCreateShortcut';
@@ -99,8 +99,6 @@ export const PRIORITY_VALUES: readonly RFIPriority[] = [
   'high',
   'critical',
 ] as const;
-
-const LS_INFO_DISMISSED = 'oe_rfi_info_dismissed';
 
 /**
  * Decode the ``sub`` claim from the JWT so we can compute the
@@ -1490,9 +1488,6 @@ export function RFIPage() {
    * status / priority / discipline dropdowns above.
    */
   const [quickView, setQuickView] = useState<'all' | 'mine' | 'awaiting' | 'overdue'>('all');
-  const [infoDismissed, setInfoDismissed] = useState(
-    () => localStorage.getItem(LS_INFO_DISMISSED) === '1',
-  );
 
   // Decode JWT once per token rotation. Falls back to ``null`` for
   // anonymous viewers — quick-filter "Awaiting me" simply matches nothing
@@ -1797,7 +1792,7 @@ export function RFIPage() {
   );
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -1806,150 +1801,88 @@ export function RFIPage() {
             : []),
           { label: t('rfi.title', { defaultValue: 'RFIs' }) },
         ]}
-        className="mb-4"
       />
 
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">
-            {t('rfi.page_title', { defaultValue: 'Requests for Information' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('rfi.subtitle', { defaultValue: 'Submit, track, and resolve design and construction queries' })}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {!routeProjectId && projects.length > 0 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((pr) => pr.id === e.target.value);
-                if (p) {
-                  useProjectContextStore.getState().setActiveProject(p.id, p.name);
-                }
-              }}
-              aria-label={t('rfi.select_project', { defaultValue: 'Project...' })}
-              className={inputCls + ' !h-8 !text-xs max-w-[180px]'}
+      <PageHeader
+        subtitle={t('rfi.subtitle', { defaultValue: 'Submit, track, and resolve design and construction queries' })}
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={
+                exportMut.isPending ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Download size={14} />
+                )
+              }
+              onClick={() => exportMut.mutate()}
+              disabled={exportMut.isPending || !projectId}
             >
-              <option value="" disabled>
-                {t('rfi.select_project', { defaultValue: 'Project...' })}
-              </option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={
-              exportMut.isPending ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Download size={14} />
-              )
-            }
-            onClick={() => exportMut.mutate()}
-            disabled={exportMut.isPending || !projectId}
-          >
-            {t('rfi.export_rfi_log', { defaultValue: 'Export RFI Log' })}
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowCreateModal(true)}
-            disabled={!projectId}
-            title={!projectId ? t('common.select_project_first', { defaultValue: 'Please select a project first' }) : undefined}
-            icon={<Plus size={14} />}
-          >
-            {t('rfi.new_rfi', { defaultValue: 'New RFI' })}
-          </Button>
-        </div>
-      </div>
+              {t('rfi.export_rfi_log', { defaultValue: 'Export RFI Log' })}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowCreateModal(true)}
+              disabled={!projectId}
+              title={!projectId ? t('common.select_project_first', { defaultValue: 'Please select a project first' }) : undefined}
+              icon={<Plus size={14} />}
+            >
+              {t('rfi.new_rfi', { defaultValue: 'New RFI' })}
+            </Button>
+          </>
+        }
+      />
 
-      {/* Purpose / help banner — explains the RFI workflow + connections. */}
-      {!infoDismissed && (
-        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-300 relative">
-          <button
-            onClick={() => {
-              setInfoDismissed(true);
-              localStorage.setItem(LS_INFO_DISMISSED, '1');
-            }}
-            className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded text-blue-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40 dark:hover:text-blue-200 transition-colors"
-            aria-label={t('common.dismiss', { defaultValue: 'Dismiss' })}
-          >
-            <X size={14} />
-          </button>
-          <div className="flex items-center gap-2 mb-1">
-            <Info size={16} />
-            <span className="font-semibold">
-              {t('rfi.info_title', { defaultValue: 'About RFIs' })}
-            </span>
-          </div>
-          <p className="text-xs pr-6">
-            {t('rfi.info_body', {
-              defaultValue:
-                'A Request for Information is the formal channel for resolving design or construction queries with a documented, contractual answer. Each RFI follows a workflow:',
-            })}{' '}
-            <strong>
-              {t('rfi.info_workflow', {
-                defaultValue: 'Open → Answered → Closed',
-              })}
-            </strong>
-            {'. '}
-            {t('rfi.info_link_hint', {
-              defaultValue:
-                'Attach drawings/documents for context, assign a Ball-in-Court, and convert cost-impacting RFIs into a Change Order in one click.',
-            })}
-          </p>
-        </div>
-      )}
-
-      {/* Cross-module link */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/changeorders')}>
-          <ArrowRightLeft size={13} className="me-1" />
-          {t('rfi.link_change_orders', { defaultValue: 'View Change Orders' })}
-        </Button>
-        <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/documents')}>
-          <FileText size={13} className="me-1" />
-          {t('rfi.link_documents', { defaultValue: 'Documents' })}
-        </Button>
-        <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/submittals')}>
-          <Paperclip size={13} className="me-1" />
-          {t('rfi.link_submittals', { defaultValue: 'Submittals' })}
-        </Button>
-      </div>
+      {/* Canonical module info card — pain-named title + workflow body. */}
+      <DismissibleInfo
+        storageKey="rfi"
+        title={t('rfi.intro_title', { defaultValue: 'Get a clear answer on the record' })}
+        links={[
+          {
+            label: t('nav.variations', { defaultValue: 'Variations' }),
+            onClick: () => navigate('/variations'),
+          },
+          {
+            label: t('correspondence.title', { defaultValue: 'Correspondence' }),
+            onClick: () => navigate('/correspondence'),
+          },
+        ]}
+      >
+        {t('rfi.intro_body', {
+          defaultValue:
+            'Raise a question to the design team, set who owns the next move and a response due date, then track it from Open to Answered to Closed with a ball-in-court badge and an overdue counter. Attach the drawings in question from Documents, and when an answer carries cost you can spin it straight into a Variation. Export the full RFI log for the contract file.',
+        })}
+      </DismissibleInfo>
 
       {projectId ? (
       <>
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('rfi.stat_total', { defaultValue: 'Total RFIs' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-content-primary">
+          <p className="text-lg font-semibold mt-1 tabular-nums text-content-primary">
             {stats.total}
           </p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('rfi.stat_open', { defaultValue: 'Open' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-oe-blue">{stats.open}</p>
+          <p className="text-lg font-semibold mt-1 tabular-nums text-oe-blue">{stats.open}</p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('rfi.stat_overdue', { defaultValue: 'Overdue' })}
           </p>
           <p
             className={clsx(
-              'text-2xl font-bold mt-1 tabular-nums',
+              'text-lg font-semibold mt-1 tabular-nums',
               stats.overdue > 0 ? 'text-semantic-error' : 'text-content-primary',
             )}
           >
@@ -1957,10 +1890,10 @@ export function RFIPage() {
           </p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('rfi.stat_avg_days', { defaultValue: 'Avg. Days Open' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-content-primary">
+          <p className="text-lg font-semibold mt-1 tabular-nums text-content-primary">
             {stats.avgDays}
           </p>
         </Card>

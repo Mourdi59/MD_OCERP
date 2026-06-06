@@ -20,7 +20,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowUpRight,
-  ClipboardList,
   Cuboid,
   Download,
   Edit3,
@@ -28,7 +27,8 @@ import {
   Search,
 } from 'lucide-react';
 
-import { Badge, Breadcrumb, Button, Card, EmptyState, Input } from '@/shared/ui';
+import { Badge, Breadcrumb, Button, Card, DismissibleInfo, EmptyState, Input } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
 
@@ -125,36 +125,39 @@ export function AssetsPage() {
 
   return (
     <div className="flex h-full flex-col p-6">
-      <Breadcrumb
-        items={[
-          { label: activeProjectName || t('nav.project', { defaultValue: 'Project' }), to: `/projects/${activeProjectId}` },
-          { label: t('nav.assets', { defaultValue: 'Assets' }) },
-        ]}
-      />
+      <div className="mb-4 space-y-5">
+        <Breadcrumb
+          items={[
+            { label: activeProjectName || t('nav.project', { defaultValue: 'Project' }), to: `/projects/${activeProjectId}` },
+            { label: t('nav.assets', { defaultValue: 'Assets' }) },
+          ]}
+        />
 
-      {/* ── Header ───────────────────────────────────────────────────── */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <ClipboardList size={22} className="text-oe-blue" />
-          <h1 className="text-2xl font-semibold text-content-primary">
-            {t('assets.title', { defaultValue: 'Asset Register' })}
-          </h1>
-          <Badge variant="neutral">{total}</Badge>
-        </div>
-        <div className="text-sm text-content-secondary">
-          {t('assets.subtitle', {
+        {/* ── Header ───────────────────────────────────────────────────── */}
+        <PageHeader
+          srTitle={t('assets.title', { defaultValue: 'Asset Register' })}
+          subtitle={t('assets.subtitle', {
             defaultValue: 'Equipment, fixtures and systems extracted from your BIM models.',
           })}
-        </div>
-      </div>
+          actions={<Badge variant="neutral">{total}</Badge>}
+        />
 
-      {/* ── Purpose intro ─────────────────────────────────────────────── */}
-      <p className="mb-4 max-w-3xl text-xs leading-relaxed text-content-tertiary">
-        {t('assets.page_intro', {
-          defaultValue:
-            'The Asset Register is your facility-management handover list. Any BIM element tagged with a manufacturer, model or serial in the CAD-BIM Viewer appears here. Track operational status and warranties, then export the whole register as a COBie spreadsheet for the operator.',
-        })}
-      </p>
+        {/* ── Purpose intro ─────────────────────────────────────────────── */}
+        <DismissibleInfo
+          storageKey="assets"
+          title={t('assets.intro_title', {
+            defaultValue: 'Carry the model through to handover',
+          })}
+          links={[
+            { label: t('assets.intro_link_bim', { defaultValue: 'BIM viewer' }), onClick: () => navigate('/bim') },
+          ]}
+        >
+          {t('assets.intro_body', {
+            defaultValue:
+              'Lists every BIM element flagged as a tracked asset in the active project, with search across manufacturer, model and serial and a status filter. Edit a row to record operational data on the element, open it in the 3D viewer, or export the register as COBie for facilities handover.',
+          })}
+        </DismissibleInfo>
+      </div>
 
       {/* ── Filters ──────────────────────────────────────────────────── */}
       <Card className="mb-4">

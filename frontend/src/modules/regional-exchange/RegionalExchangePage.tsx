@@ -13,10 +13,9 @@
 
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Globe,
   Upload,
   Download,
   FileUp,
@@ -29,7 +28,8 @@ import {
   Info,
   Printer,
 } from 'lucide-react';
-import { Button, Badge } from '@/shared/ui';
+import { Button, Badge, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import { parseExcelFile } from '../_shared/excelImport';
@@ -179,6 +179,7 @@ export interface RegionalExchangePageProps {
 
 export default function RegionalExchangePage({ template }: RegionalExchangePageProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const addToast = useToastStore((s) => s.addToast);
   const queryClient = useQueryClient();
 
@@ -432,31 +433,45 @@ export default function RegionalExchangePage({ template }: RegionalExchangePageP
   const parsedPositions = parsedResult?.positions ?? null;
 
   return (
-    <div className="space-y-6" data-testid="regional-exchange-page" data-template-id={template.id}>
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-tertiary text-2xl"
-          aria-hidden="true"
-          data-testid="regional-flag"
-        >
-          {template.flag || <Globe className="h-5 w-5 text-content-secondary" />}
-        </div>
-        <div>
-          <h1
-            className="text-xl font-bold text-content-primary"
-            data-testid="regional-label"
-          >
-            {template.label}
-          </h1>
-          <p
-            className="text-sm text-content-tertiary"
-            data-testid="regional-format-hint"
-          >
-            {template.formatHint}
-          </p>
-        </div>
-      </div>
+    <div
+      className="space-y-5 animate-fade-in"
+      data-testid="regional-exchange-page"
+      data-template-id={template.id}
+    >
+      <PageHeader
+        srTitle={template.label}
+        subtitle={
+          <span data-testid="regional-format-hint">
+            <span aria-hidden="true" className="mr-1.5" data-testid="regional-flag">
+              {template.flag}
+            </span>
+            <span data-testid="regional-label">{template.label}</span>
+            {template.formatHint ? <> · {template.formatHint}</> : null}
+          </span>
+        }
+      />
+
+      <DismissibleInfo
+        storageKey={`regional-exchange-${template.id}`}
+        title={t('regional.intro_title', {
+          defaultValue: "Speak your country's tender format",
+        })}
+        links={[
+          {
+            label: t('nav.boq', { defaultValue: 'Bill of Quantities' }),
+            onClick: () => navigate('/boq'),
+          },
+          {
+            label: t('nav.validation', { defaultValue: 'Validation' }),
+            onClick: () => navigate('/validation'),
+          },
+        ]}
+      >
+        {t('regional.intro_body', {
+          defaultValue:
+            "Import and export BOQ data in your region's native structure (NRM in the UK, MasterFormat in the US, DPGF in France and others), with the right trade-section breakdown applied. The data lands in or comes from a normal BOQ, so the same estimate moves across markets without re-keying.",
+        })}
+      </DismissibleInfo>
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-border">
@@ -945,18 +960,6 @@ export default function RegionalExchangePage({ template }: RegionalExchangePageP
         </div>
       )}
 
-      {/* Info box */}
-      <div className="flex items-start gap-2 text-xs text-content-quaternary">
-        <Info className="h-4 w-4 mt-0.5 shrink-0" />
-        <p>
-          {t('regional.info', {
-            defaultValue:
-              '{{label}} is the standard cost reference / measurement framework for this region. Imports are validated against the {{packs}} rule packs before positions are added to the BOQ.',
-            label: template.label,
-            packs: template.validatorPacks.join(', '),
-          })}
-        </p>
-      </div>
     </div>
   );
 }

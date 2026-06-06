@@ -2,12 +2,13 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Search, ChevronDown, ChevronRight, LogOut, User, Settings, Menu, MessageSquarePlus, FolderOpen, CheckCircle2, XCircle, Bug, BookOpen, Loader2, Upload, HelpCircle, Mail, ExternalLink, Github, Sun, Moon, Monitor } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, LogOut, User, Settings, Menu, MessageSquarePlus, FolderOpen, CheckCircle2, XCircle, Bug, BookOpen, Loader2, Upload, HelpCircle, Mail, ExternalLink, Github, Sun, Moon, Monitor, Info } from 'lucide-react';
 import clsx from 'clsx';
 import { SUPPORTED_LANGUAGES, getLanguageByCode } from '../i18n';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUploadQueueStore } from '@/stores/useUploadQueueStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
+import { useModuleInfoStore } from '@/stores/useModuleInfoStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { CountryFlag, PartnerLogoBadge } from '@/shared/ui';
 import { usePartnerPack } from '@/shared/hooks/usePartnerPack';
@@ -255,6 +256,14 @@ export function Header({ title, onMenuClick }: HeaderProps) {
             </h1>
           </>
         )}
+
+        {/* Collapsed module-info re-opener. When the page's DismissibleInfo
+            card is collapsed it vanishes from the page entirely (founder
+            decision 2026-06-06) and registers here: project pill › module
+            name › THIS icon. One click re-expands the card in the page.
+            Visible at every breakpoint - on mobile the in-page card is the
+            only other surface, so this is the sole way back. */}
+        <ModuleInfoReopener />
       </div>
 
       {/* ── Partner co-brand chip (center column) ───────────────────────
@@ -350,6 +359,31 @@ export function Header({ title, onMenuClick }: HeaderProps) {
         <UserMenu />
       </div>
     </header>
+  );
+}
+
+/* ── Module info re-opener (top bar) ──────────────────────────────────── */
+
+/** Small info icon after the module title, shown ONLY while the page's
+ *  DismissibleInfo card is collapsed. Clicking it re-expands the card
+ *  (and this icon disappears, because the card unregisters itself). */
+function ModuleInfoReopener() {
+  const { t } = useTranslation();
+  const hasCollapsed = useModuleInfoStore((s) => s.entries.length > 0);
+  const expandAll = useModuleInfoStore((s) => s.expandAll);
+  if (!hasCollapsed) return null;
+  const label = t('common.module_info', { defaultValue: 'Module information' });
+  return (
+    <button
+      type="button"
+      onClick={expandAll}
+      aria-label={label}
+      title={label}
+      data-testid="header-module-info"
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-content-tertiary transition-colors hover:bg-surface-secondary hover:text-content-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+    >
+      <Info size={15} strokeWidth={1.75} />
+    </button>
   );
 }
 
@@ -1364,7 +1398,10 @@ function ProjectSwitcher() {
           chrome — this is the breadcrumb root, it should anchor the eye. */}
       <div
         className={clsx(
-          'flex items-stretch rounded-lg border transition-all max-w-[260px] overflow-hidden',
+          // Audit fix S5 (2026-06-06): cap the pill tighter on lg so the
+          // MODULE NAME next to it stops truncating to "Carbo…"/"Takt Pl…"
+          // at 1280-1440px; the pill gets its full 260px back on xl+.
+          'flex items-stretch rounded-lg border transition-all max-w-[180px] xl:max-w-[260px] overflow-hidden',
           activeProjectId
             ? 'bg-oe-blue-subtle border-oe-blue/30 hover:bg-oe-blue/10 hover:border-oe-blue/50 shadow-[0_1px_2px_rgba(0,122,255,0.05)]'
             : 'border-dashed border-oe-blue/40 bg-oe-blue/[0.04] hover:bg-oe-blue/[0.08] hover:border-oe-blue/60',

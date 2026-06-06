@@ -18,24 +18,29 @@ about the chrome - only the content differs.
 
 Order top to bottom:
 
-1. `Breadcrumb` - on EVERY module page, always the first element, canonical trail:
+1. `Breadcrumb` - first element where it has DEPTH. The shared component
+   hides single-item trails itself (founder decision 2026-06-06): a lone
+   module label duplicates the top app bar (project pill + module icon +
+   module name) and renders nothing. Pages still PASS their canonical trail;
+   the component decides visibility.
    - The shared component already renders the Home icon (-> `/`). Never add a
      "Dashboard" text item - the icon IS the dashboard link.
-   - Non-project page: `[Module label]` (current, unlinked). Label = the same
-     i18n `nav.*` key as the sidebar item.
+   - Non-project page: `[Module label]` (current, unlinked; hidden at runtime).
+     Label = the same i18n `nav.*` key as the sidebar item.
    - Project-scoped page: `[Project name -> /projects/:id] -> [Module label]`.
      The project comes from the shared project context, never a page-local
      guess; omit the project item while no project is selected.
    - Detail page: `[Project] -> [Module label -> list route] -> [item name/number]`.
    - Never include sidebar GROUP names in the trail; never link the last item;
      never invent intermediate levels that have no real page behind them.
-2. Header row - one line on desktop, wraps on mobile.
-   FOUNDER DECISION 2026-06-06: the module NAME renders ONCE - in the top app
-   bar (AppLayout title), now accompanied by the module ICON
+2. Header row - use the shared `PageHeader` component
+   (`frontend/src/shared/ui/PageHeader.tsx`). One line on desktop, wraps on
+   mobile. FOUNDER DECISION 2026-06-06: the module NAME renders ONCE - in the
+   top app bar (AppLayout title), accompanied by the module ICON
    (`frontend/src/app/layout/routeIcons.ts`). Pages must NOT repeat the module
-   name as an in-page H1.
-   - Left: optional one-line subtitle `<p className="text-sm
-     text-content-tertiary">` - one sentence, what the module does (i18n).
+   name as a visible in-page H1 (pass `srTitle` for screen readers).
+   - Left: optional one-line subtitle - one sentence, what the module does
+     (i18n), `text-content-tertiary`.
    - Right: actions, in this order: primary action (`Button` variant primary),
      secondary actions (outline/ghost), then `ModuleHelpButton` where a tour
      exists.
@@ -48,12 +53,33 @@ Order top to bottom:
 
 One per page, `storageKey` = route slug. Canonical behavior (2026-06-06 spec):
 
-- Expanded: translucent light card - background MORE translucent than chrome
-  (`bg-oe-blue-subtle/30` over theme surface), text slightly dimmed
-  (`text-content-secondary` body, title `text-content-primary/90`).
-- Clicking ANYWHERE on the block OR the X collapses it to a bare line: info icon
-  + muted label `t('common.module_info')` ("Module information") - NO background,
-  NO border. Clicking that line re-expands.
+FOUNDER DECISION 2026-06-06 (content): the expanded TITLE is never the module
+name and never a generic "Information" - it names the PAIN the module closes,
+in the user's language ("Nothing slips through at handover", not "Punch
+list"). The BODY explains HOW the module works in 1-3 plain sentences (what
+you put in, what you get out, where the result goes next). The collapsed
+state keeps the neutral `common.module_info` label. Canonical copy deck:
+`docs/strategy/MODULE_INTRO_COPY.md` - every page's intro title/body comes
+from there via i18n keys (`<feature>.intro_title` / `<feature>.intro_body`).
+
+- Expanded: translucent light card with a VISIBLE light blue tint:
+  `bg-oe-blue/10 dark:bg-oe-blue/[0.14] backdrop-blur-sm`, border
+  `border-oe-blue/20` + left accent `border-l-oe-blue/70`. Body
+  `text-content-secondary`, title `text-content-primary`.
+  WHY these exact classes (2026-06-06): alpha modifiers on var()-based
+  Tailwind colors emitted NO css until the channel-triplet fix
+  (`--oe-blue-ch` in index.css + function colors in tailwind.config.js) -
+  `bg-oe-blue-subtle/25` and friends silently rendered transparent.
+  `oe-blue-subtle` deliberately has NO alpha support (its dark value is
+  itself an rgba tint) - use `bg-oe-blue/<n>` for translucent blues.
+- FOUNDER DECISION 2026-06-06 (collapse target): clicking ANYWHERE on the
+  block OR the X removes the card from the page ENTIRELY - no leftover line
+  in the content flow. The card registers in `useModuleInfoStore` and the
+  TOP APP BAR shows a small info icon right after the module name (project
+  pill > module icon + name > info icon). Clicking that icon re-expands the
+  card in the page (and the icon disappears). Implemented centrally in
+  `DismissibleInfo.tsx` + `Header.tsx` (`ModuleInfoReopener`) - pages need
+  no changes.
 - Collapsed state persists per page (`localStorage oce.intro.<key>`).
 - Content: 1-3 sentences max on what the page is for + optional cross-module
   link pills. Never marketing copy.

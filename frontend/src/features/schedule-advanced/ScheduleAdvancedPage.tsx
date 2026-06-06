@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -30,12 +31,14 @@ import {
   Badge,
   EmptyState,
   Breadcrumb,
+  DismissibleInfo,
   RecoveryCard,
   SkeletonTable,
   WideModal,
   ConfirmDialog,
   InfoHint,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { PlanningCrossLinks } from '@/features/schedule/PlanningCrossLinks';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
@@ -167,6 +170,7 @@ function pctNumber(value: string | number | null | undefined): number {
 
 export function ScheduleAdvancedPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('master');
   // Arrow-key navigation across the schedule advanced tab strip (WCAG 2.1.1).
   const onTabKeyDown = useTabKeyboardNav<Tab>({
@@ -193,13 +197,16 @@ export function ScheduleAdvancedPage() {
     queryFn: () => projectsApi.list(),
   });
 
-  // Prefer the globally-selected active project; fall back to the first
-  // project only when no active project is set. Never override an explicit
-  // in-page selection.
+  // Project selection lives in the global top-bar selector. Follow the
+  // active project; fall back to the first project only when nothing is
+  // active yet. Reset dependent selections whenever the project changes.
   useEffect(() => {
-    if (projectId) return;
-    const seed = activeProjectId || projectsQ.data?.[0]?.id;
-    if (seed) setProjectId(seed);
+    const next = activeProjectId || projectsQ.data?.[0]?.id || '';
+    if (!next || next === projectId) return;
+    setProjectId(next);
+    setMasterId('');
+    setLookAheadId('');
+    setWeekPlanId('');
   }, [activeProjectId, projectsQ.data, projectId]);
 
   const masterQ = useQuery({
@@ -317,7 +324,7 @@ export function ScheduleAdvancedPage() {
   });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           {
@@ -328,48 +335,42 @@ export function ScheduleAdvancedPage() {
         ]}
       />
 
+      <PageHeader
+        srTitle={t('nav.schedule_advanced', { defaultValue: 'Last Planner / CPM' })}
+        subtitle={t('schedule_advanced.subtitle', {
+          defaultValue:
+            'Pull-planning, lookaheads, weekly commitments, constraints and baselines.',
+        })}
+        actions={
+          <Button
+            variant="primary"
+            icon={<Plus size={14} />}
+            onClick={() => setCreateMaster(true)}
+            disabled={!projectId}
+          >
+            {t('schedule_advanced.new_master', { defaultValue: 'New Master Schedule' })}
+          </Button>
+        }
+      />
+
+      <DismissibleInfo
+        storageKey="schedule-advanced"
+        title={t('schedule_advanced.intro_title', {
+          defaultValue: 'Keep the weekly promises the plan depends on',
+        })}
+        links={[
+          { label: t('schedule_advanced.intro_link_schedule', { defaultValue: '4D Schedule' }), onClick: () => navigate('/schedule') },
+          { label: t('schedule_advanced.intro_link_takt', { defaultValue: 'Takt planning' }), onClick: () => navigate('/takt') },
+        ]}
+      >
+        {t('schedule_advanced.intro_body', {
+          defaultValue:
+            'Builds the Last Planner stack on top of a master schedule: break the project into phases, roll a six-week look-ahead to clear constraints, and capture weekly commitments from trade foremen. Missed commitments record a reason for non-completion that feeds root-cause analysis, and baselines track variance against the plan.',
+        })}
+      </DismissibleInfo>
+
       {/* Cross-module navigation — connects the planning value chain */}
       <PlanningCrossLinks active="schedule-advanced" />
-
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-content-primary">
-            {t('schedule_advanced.title', { defaultValue: 'Last Planner / CPM' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('schedule_advanced.subtitle', {
-              defaultValue:
-                'Pull-planning, lookaheads, weekly commitments, constraints and baselines.',
-            })}
-          </p>
-        </div>
-        {projectsQ.data && projectsQ.data.length > 0 && (
-          <select
-            value={projectId}
-            onChange={(e) => {
-              setProjectId(e.target.value);
-              setMasterId('');
-              setLookAheadId('');
-              setWeekPlanId('');
-            }}
-            className={clsx(inputCls, 'max-w-xs')}
-          >
-            {projectsQ.data.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-
-      {/* How Last Planner connects to the rest of the platform */}
-      <InfoHint
-        text={t('schedule_advanced.what_is_lps', {
-          defaultValue:
-            'The Last Planner System is pull-based production control that complements the 4D Schedule. Master schedule sets milestones, Phase Plans pull work backwards from them, Look-Aheads (6 weeks) make work ready by removing constraints, and Weekly Work Plans capture crew commitments. PPC (Percent Plan Complete) and constraint logs measure reliability. Use the 4D Schedule for the CPM critical path; use this for what the team actually commits to do next.',
-        })}
-      />
 
       {/* Tabs */}
       <div className="border-b border-border-light">

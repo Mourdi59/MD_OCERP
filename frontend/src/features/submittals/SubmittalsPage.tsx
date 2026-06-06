@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import {
   FileCheck,
@@ -20,6 +20,7 @@ import {
   EmptyState,
   Breadcrumb,
   DateDisplay,
+  DismissibleInfo,
   RecoveryCard,
   SkeletonTable,
   ConfirmDialog,
@@ -28,6 +29,7 @@ import {
   WideModalField,
 } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
@@ -103,8 +105,6 @@ const STATUS_LABELS: Record<SubmittalStatus, string> = {
   rejected: 'Rejected',
   closed: 'Closed',
 };
-
-const LS_INFO_DISMISSED = 'oe_submittals_info_dismissed';
 
 const inputCls =
   'h-10 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
@@ -702,6 +702,7 @@ const SubmittalRow = React.memo(function SubmittalRow({
 export function SubmittalsPage() {
   const { t } = useTranslation();
   const { projectId: routeProjectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
@@ -712,9 +713,6 @@ export function SubmittalsPage() {
   const [editingSubmittal, setEditingSubmittal] = useState<Submittal | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<SubmittalStatus | ''>('');
-  const [infoDismissed, setInfoDismissed] = useState(
-    () => localStorage.getItem(LS_INFO_DISMISSED) === '1',
-  );
 
   // Data
   const { data: projects = [] } = useQuery({
@@ -920,7 +918,7 @@ export function SubmittalsPage() {
   );
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -929,38 +927,14 @@ export function SubmittalsPage() {
             : []),
           { label: t('submittals.title', { defaultValue: 'Submittals' }) },
         ]}
-        className="mb-4"
       />
 
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-2xl font-bold text-content-primary shrink-0">
-          {t('submittals.page_title', { defaultValue: 'Submittals' })}
-        </h1>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {!routeProjectId && projects.length > 0 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((pr) => pr.id === e.target.value);
-                if (p) {
-                  useProjectContextStore.getState().setActiveProject(p.id, p.name);
-                }
-              }}
-              aria-label={t('submittals.select_project', { defaultValue: 'Project...' })}
-              className={inputCls + ' !h-8 !text-xs max-w-[180px]'}
-            >
-              <option value="" disabled>
-                {t('submittals.select_project', { defaultValue: 'Project...' })}
-              </option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
+      <PageHeader
+        subtitle={t('submittals.subtitle', {
+          defaultValue: 'Track shop drawings, product data, and samples through review and approval',
+        })}
+        actions={
           <Button
             variant="primary"
             size="sm"
@@ -972,80 +946,63 @@ export function SubmittalsPage() {
           >
             {t('submittals.new_submittal', { defaultValue: 'New Submittal' })}
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Info banner */}
-      {!infoDismissed && (
-        <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-300 relative">
-          <button
-            onClick={() => {
-              setInfoDismissed(true);
-              localStorage.setItem(LS_INFO_DISMISSED, '1');
-            }}
-            className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded text-blue-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40 dark:hover:text-blue-200 transition-colors"
-            aria-label={t('common.dismiss', { defaultValue: 'Dismiss' })}
-          >
-            <X size={14} />
-          </button>
-          <div className="flex items-center gap-2 mb-1">
-            <Info size={16} />
-            <span className="font-semibold">
-              {t('submittals.info_title', { defaultValue: 'About Submittals' })}
-            </span>
-          </div>
-          <p className="text-xs pr-6">
-            {t('submittals.info_body', {
-              defaultValue:
-                'Submittals are documents sent for review and approval \u2014 shop drawings, product data, samples, test reports, or certificates. Each submittal goes through a review workflow:',
-            })}{' '}
-            <strong>
-              {t('submittals.info_workflow', {
-                defaultValue: 'Draft \u2192 Submitted \u2192 Under Review \u2192 Approved/Rejected',
-              })}
-            </strong>
-            {'. '}
-            {t('submittals.info_link_hint', {
-              defaultValue:
-                'Link submittals to your BOQ positions to track which items have approved documentation.',
-            })}
-          </p>
-        </div>
-      )}
+      {/* Canonical module info card \u2014 pain-named title + workflow body. */}
+      <DismissibleInfo
+        storageKey="submittals"
+        title={t('submittals.intro_title', { defaultValue: 'No work installed without sign-off' })}
+        links={[
+          {
+            label: t('boq.title', { defaultValue: 'Bill of Quantities' }),
+            onClick: () => navigate('/boq'),
+          },
+          {
+            label: t('transmittals.title', { defaultValue: 'Transmittals' }),
+            onClick: () => navigate('/transmittals'),
+          },
+        ]}
+      >
+        {t('submittals.intro_body', {
+          defaultValue:
+            'Log each shop drawing, product data sheet, sample or certificate and move it through Draft, Submitted, Under Review, then Approved or Revise-and-resubmit, with a due-date and days-in-court badge so nothing stalls. Link a submittal to the BOQ positions it covers so you can see which items have approved documentation before they go to site.',
+        })}
+      </DismissibleInfo>
 
       {!projectId && <RequiresProject>{null}</RequiresProject>}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('submittals.stat_total', { defaultValue: 'Total' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-content-primary">
+          <p className="text-lg font-semibold mt-1 tabular-nums text-content-primary">
             {stats.total}
           </p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('submittals.stat_pending', { defaultValue: 'Pending Review' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-amber-500">{stats.pending}</p>
+          <p className="text-lg font-semibold mt-1 tabular-nums text-amber-500">{stats.pending}</p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('submittals.stat_approved', { defaultValue: 'Approved' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-semantic-success">
+          <p className="text-lg font-semibold mt-1 tabular-nums text-semantic-success">
             {stats.approved}
           </p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('submittals.stat_rejected', { defaultValue: 'Rejected / Resubmit' })}
           </p>
           <p
             className={clsx(
-              'text-2xl font-bold mt-1 tabular-nums',
+              'text-lg font-semibold mt-1 tabular-nums',
               stats.rejected > 0 ? 'text-semantic-error' : 'text-content-primary',
             )}
           >
@@ -1055,7 +1012,7 @@ export function SubmittalsPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search

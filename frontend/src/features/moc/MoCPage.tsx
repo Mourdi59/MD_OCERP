@@ -54,6 +54,7 @@ import {
   SkeletonTable,
 } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { SectionIntro } from '@/features/validation';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
@@ -1266,7 +1267,7 @@ export function MoCPage() {
     : undefined;
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           ...(selectedProjectId && breadcrumbProjectName
@@ -1274,35 +1275,13 @@ export function MoCPage() {
             : []),
           { label: t('moc.title', { defaultValue: 'Management of Change' }) },
         ]}
-        className="mb-4"
       />
 
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-content-primary flex items-center gap-2">
-          <Replace size={24} className="text-oe-blue" />
-          {t('moc.page_title', { defaultValue: 'Management of Change' })}
-        </h1>
-        <div className="flex items-center gap-2 shrink-0">
-          {!routeProjectId && projects.length > 0 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((pr) => pr.id === e.target.value);
-                if (p) useProjectContextStore.getState().setActiveProject(p.id, p.name);
-              }}
-              aria-label={t('moc.select_project', { defaultValue: 'Project...' })}
-              className={inputCls + ' !h-8 !text-xs max-w-[180px]'}
-            >
-              <option value="" disabled>
-                {t('moc.select_project', { defaultValue: 'Project...' })}
-              </option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
+      <PageHeader
+        subtitle={t('moc.subtitle', {
+          defaultValue: 'Capture, assess, and route deviations from the agreed design, scope, or process',
+        })}
+        actions={
           <Button
             variant="primary"
             size="sm"
@@ -1316,12 +1295,12 @@ export function MoCPage() {
           >
             {t('moc.new_change', { defaultValue: 'New change request' })}
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <SectionIntro
         storageKey="moc"
-        title={t('moc.intro_title', { defaultValue: 'When to raise a change request' })}
+        title={t('moc.intro_title', { defaultValue: 'Control changes before anyone acts' })}
         links={[
           { label: t('moc.intro_link_variations', { defaultValue: 'Variations' }), onClick: () => navigate('/variations') },
           { label: t('moc.intro_link_changeorders', { defaultValue: 'Change Orders' }), onClick: () => navigate('/changeorders') },
@@ -1329,27 +1308,27 @@ export function MoCPage() {
       >
         {t('moc.intro_body', {
           defaultValue:
-            'Management of Change is the controlled way to introduce a deviation from the agreed design, scope or process. Capture the proposed change, assess its cost, schedule, safety and quality impact, then route it through review and approval before anyone acts on it. Approved changes flow on to variations and change orders so the commercial trail stays connected, and every decision is kept for the audit record.',
+            'Capture a proposed deviation from the agreed design, scope or process, assess its cost, schedule, safety and quality impact, then route it through review and approval before work changes. Approved changes flow on to Variations and Change Orders so the commercial trail stays connected and every decision is kept for the audit record.',
         })}
       </SectionIntro>
 
       {projectId ? (
         <>
           {/* Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Card className="p-4 animate-card-in">
-              <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+              <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
                 {t('moc.stat_total', { defaultValue: 'Total' })}
               </p>
-              <p className="text-2xl font-bold mt-1 tabular-nums text-content-primary">{stats.total}</p>
+              <p className="text-lg font-semibold mt-1 tabular-nums text-content-primary">{stats.total}</p>
             </Card>
             <Card className="p-4 animate-card-in">
-              <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+              <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
                 {t('moc.stat_open', { defaultValue: 'In progress' })}
               </p>
               <p
                 className={clsx(
-                  'text-2xl font-bold mt-1 tabular-nums',
+                  'text-lg font-semibold mt-1 tabular-nums',
                   stats.open > 0 ? 'text-oe-blue' : 'text-content-primary',
                 )}
               >
@@ -1357,21 +1336,21 @@ export function MoCPage() {
               </p>
             </Card>
             <Card className="p-4 animate-card-in">
-              <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+              <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
                 {t('moc.stat_accepted', { defaultValue: 'Accepted' })}
               </p>
-              <p className="text-2xl font-bold mt-1 tabular-nums text-emerald-500">{stats.accepted}</p>
+              <p className="text-lg font-semibold mt-1 tabular-nums text-emerald-500">{stats.accepted}</p>
             </Card>
             <Card className="p-4 animate-card-in">
-              <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+              <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
                 {t('moc.stat_implemented', { defaultValue: 'Implemented' })}
               </p>
-              <p className="text-2xl font-bold mt-1 tabular-nums text-semantic-success">{stats.implemented}</p>
+              <p className="text-lg font-semibold mt-1 tabular-nums text-semantic-success">{stats.implemented}</p>
             </Card>
           </div>
 
           {/* Toolbar */}
-          <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="relative flex-1 max-w-sm">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary" />
               <input

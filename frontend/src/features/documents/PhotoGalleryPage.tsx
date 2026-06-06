@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Upload,
@@ -30,6 +30,8 @@ import {
   Check,
 } from 'lucide-react';
 import { Card, Button, Badge, ConfirmDialog, EmptyState, Breadcrumb, AuthImage, SkeletonGrid } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
+import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { apiGet } from '@/shared/lib/api';
 import { useConfirm } from '@/shared/hooks/useConfirm';
@@ -1025,6 +1027,7 @@ function CategoryFilter({
 
 export function PhotoGalleryPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
@@ -1277,58 +1280,68 @@ export function PhotoGalleryPage() {
   }
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      {/* Breadcrumb */}
+    <div className="space-y-5 animate-fade-in">
+      {/* Breadcrumb — single item auto-hides; the Home icon IS the dashboard
+          link, so no literal "Dashboard" item. */}
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
           { label: t('photos.title', { defaultValue: 'Project Photos' }) },
         ]}
       />
 
-      {/* Header — Variant C: minimal flat dense (GitHub/Stripe-dashboard feel).
-          The module title lives in the global top app bar, so the in-page
-          header does NOT repeat it. Project selection is also global (top
-          bar) - we read the shared project context only. What remains: a
-          tiny uppercase eyebrow (sidebar group), a compact row led by the
-          inline count badge(s) with right-aligned compact actions, a muted
-          subtitle line, then a hairline divider into the content. A
-          screen-reader-only h1 keeps the page heading semantics intact. */}
-      <div className="border-b border-border-light pb-4">
-        <h1 className="sr-only">{t('photos.title', { defaultValue: 'Project Photos' })}</h1>
-        <p className="text-2xs font-semibold uppercase tracking-wider text-content-quaternary">
-          {t('sidebar.group.documents', { defaultValue: 'Documents' })}
-        </p>
-        <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="shrink-0 rounded-full bg-surface-secondary px-2 py-0.5 text-xs text-content-secondary">
-              {t('photos.subtitle', {
-                defaultValue: '{{count}} photos',
-                count: photoList.length,
-              })}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
-            {/* Select mode toggle */}
+      {/* Canonical header: subtitle + actions, srTitle for screen readers.
+          The module name lives in the top app bar; project selection is
+          global (we read the shared project context only). */}
+      <PageHeader
+        srTitle={t('photos.title', { defaultValue: 'Project Photos' })}
+        subtitle={t('photos.subtitle', {
+          defaultValue: '{{count}} photos',
+          count: photoList.length,
+        })}
+        actions={
+          <>
             {photoList.length > 0 && !selectMode && (
-              <Button variant="ghost" size="sm" onClick={() => setSelectMode(true)} className="h-8 shrink-0 whitespace-nowrap">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setSelectMode(true)}
+                className="shrink-0 whitespace-nowrap"
+              >
                 <CheckSquare size={14} className="mr-1.5 shrink-0" />
                 <span className="whitespace-nowrap">{t('photos.select', { defaultValue: 'Select' })}</span>
               </Button>
             )}
-            <Button onClick={() => setShowUpload(!showUpload)} size="sm" disabled={!projectId} className="h-8 shrink-0 whitespace-nowrap">
+            <Button
+              onClick={() => setShowUpload(!showUpload)}
+              size="sm"
+              disabled={!projectId}
+              className="shrink-0 whitespace-nowrap"
+            >
               <Upload size={14} className="mr-1.5 shrink-0" />
               <span className="whitespace-nowrap">{t('photos.upload_photos', { defaultValue: 'Upload Photos' })}</span>
             </Button>
-          </div>
-        </div>
-        <p className="mt-1 text-xs text-content-tertiary">
-          {t('photos.page_intro', {
-            defaultValue:
-              'Visual site documentation: progress, defects, deliveries and safety. EXIF date and GPS are read on upload so photos sort chronologically and on a timeline.',
-          })}
-        </p>
-      </div>
+          </>
+        }
+      />
+
+      {/* Info card (canonical, pain-named copy from MODULE_INTRO_COPY) */}
+      <DismissibleInfo
+        storageKey="photos"
+        title={t('photos.intro_title', {
+          defaultValue: 'Prove what the site looked like, when',
+        })}
+        links={[
+          {
+            label: t('nav.project_files', { defaultValue: 'Files' }),
+            onClick: () => navigate('/files'),
+          },
+        ]}
+      >
+        {t('photos.intro_body', {
+          defaultValue:
+            'Upload site photos and the gallery reads EXIF capture date and GPS on the way in, so progress, defects, deliveries and safety shots sort chronologically and on a timeline. Tag and caption in batches, and accept the suggested category when it spots a likely defect. The photos sit beside the rest of the project files in the File Manager.',
+        })}
+      </DismissibleInfo>
 
       {/* Batch selection bar */}
       {selectMode && (

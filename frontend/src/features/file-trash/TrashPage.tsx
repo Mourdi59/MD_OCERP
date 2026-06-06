@@ -32,6 +32,7 @@ import {
 import clsx from 'clsx';
 import { Button, Card, EmptyState, Skeleton } from '@/shared/ui';
 import { Breadcrumb } from '@/shared/ui/Breadcrumb';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -160,35 +161,32 @@ export function TrashPage() {
           { label: t('files.trash.title', { defaultValue: 'Recycle Bin' }) },
         ]}
       />
-      <header className="flex items-center gap-3 mb-6">
-        <button
-          type="button"
-          onClick={() => navigate('/files')}
-          className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-content-secondary hover:bg-surface-secondary"
-          aria-label={t('common.back', { defaultValue: 'Back' })}
-        >
-          <ArrowLeft size={16} />
-        </button>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold text-content-primary">
-            {t('files.trash.title', { defaultValue: 'Recycle Bin' })}
-          </h1>
-          {projectName && (
-            <p className="text-sm text-content-tertiary truncate">
-              {projectName}
-            </p>
-          )}
-        </div>
-        <div className="text-right">
-          <div className="text-xs text-content-tertiary">
-            {t('files.trash.summary', {
-              defaultValue: '{{count}} item(s) · {{bytes}}',
-              count: stats.data?.count ?? 0,
-              bytes: formatBytes(stats.data?.total_bytes ?? 0),
-            })}
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        srTitle={t('files.trash.title', { defaultValue: 'Recycle Bin' })}
+        subtitle={t('files.trash.subtitle', {
+          defaultValue:
+            'Deleted files stay here for 30 days before they are permanently removed. Restore or purge them per row.',
+        })}
+        actions={
+          <>
+            <span className="text-xs text-content-tertiary">
+              {t('files.trash.summary', {
+                defaultValue: '{{count}} item(s) · {{bytes}}',
+                count: stats.data?.count ?? 0,
+                bytes: formatBytes(stats.data?.total_bytes ?? 0),
+              })}
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<ArrowLeft size={14} />}
+              onClick={() => navigate('/files')}
+            >
+              {t('files.trash.back_to_files', { defaultValue: 'Back to files' })}
+            </Button>
+          </>
+        }
+      />
 
       {list.isLoading && (
         <div className="space-y-3">

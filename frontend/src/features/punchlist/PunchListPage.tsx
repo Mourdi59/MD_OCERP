@@ -19,7 +19,7 @@ import {
   XCircle,
   AlertTriangle,
   Clock,
-  Globe2,
+  MapPin,
 } from 'lucide-react';
 import {
   Button,
@@ -34,6 +34,7 @@ import {
   WideModalField,
   SkeletonTable,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { SectionIntro } from '@/features/validation';
@@ -894,62 +895,63 @@ export function PunchListPage() {
         ]}
       />
 
-      {/* ── Header: one-line subtitle + primary actions ────────────────── */}
+      {/* ── Header: subtitle + primary actions ─────────────────────────── */}
       {/* Module title and icon live in the global top app bar; project
           selection is handled by the global top bar and read here from the
           shared project context. */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        {/* Left: one-line subtitle */}
-        <p className="text-sm text-content-tertiary min-w-0">
-          {t('punch.header_subtitle', {
-            defaultValue: 'Track snags and deficiencies through to close-out',
-          })}
-        </p>
-
-        {/* Right: controls */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          {projectId && (
-            <button
-              type="button"
-              onClick={() => navigate(`/projects/${projectId}/geo`)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border-light bg-surface-primary px-2.5 py-1.5 text-xs font-medium text-content-secondary hover:bg-surface-secondary hover:text-oe-blue focus:outline-none focus:ring-2 focus:ring-oe-blue/40 shrink-0 whitespace-nowrap"
-              title={t('geo_hub.view_on_map', { defaultValue: 'View on map' })}
-              aria-label={t('geo_hub.view_on_map', { defaultValue: 'View on map' })}
-              data-testid="punchlist-view-on-map"
+      <PageHeader
+        srTitle={t('punch.title', { defaultValue: 'Punch List' })}
+        subtitle={t('punch.header_subtitle', {
+          defaultValue: 'Track snags and deficiencies through to close-out',
+        })}
+        actions={
+          <>
+            {projectId && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<MapPin size={14} />}
+                onClick={() => navigate(`/projects/${projectId}/geo`)}
+                title={t('geo_hub.view_on_map', { defaultValue: 'View on map' })}
+                data-testid="punchlist-view-on-map"
+              >
+                {t('geo_hub.view_on_map', { defaultValue: 'View on map' })}
+              </Button>
+            )}
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowAddModal(true)}
+              disabled={!projectId}
+              icon={<Plus size={14} />}
             >
-              <Globe2 size={13} />
-              {t('geo_hub.view_on_map', { defaultValue: 'View on map' })}
-            </button>
-          )}
-          <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)} disabled={!projectId} className="shrink-0 whitespace-nowrap" icon={<Plus size={14} />}>
-            {t('punch.new_item', { defaultValue: 'New Item' })}
-          </Button>
-        </div>
-      </div>
+              {t('punch.new_item', { defaultValue: 'New Item' })}
+            </Button>
+          </>
+        }
+      />
 
-      <div>
-        <SectionIntro
-          storageKey="punchlist"
-          title={t('punch.intro_title', {
-            defaultValue: 'Track snags & deficiencies to close-out',
-          })}
-          links={[
-            {
-              label: t('punch.intro_link_inspections', { defaultValue: 'Inspections' }),
-              onClick: () => navigate('/inspections'),
-            },
-            {
-              label: t('punch.intro_link_ncr', { defaultValue: 'NCRs' }),
-              onClick: () => navigate('/ncr'),
-            },
-          ]}
-        >
-          {t('punch.intro_body', {
-            defaultValue:
-              'Punch list items capture outstanding work, snags and minor defects. Move each item through Open → In Progress → Resolved → Verified → Closed. Items raised from a failed inspection or an NCR are tagged with their source so you can trace them back. Use the Kanban view to manage flow, the list view for bulk triage.',
-          })}
-        </SectionIntro>
-      </div>
+      <SectionIntro
+        storageKey="punchlist"
+        title={t('punch.intro_title', {
+          defaultValue: 'Nothing slips through at handover',
+        })}
+        links={[
+          {
+            label: t('punch.intro_link_inspections', { defaultValue: 'Inspections' }),
+            onClick: () => navigate('/inspections'),
+          },
+          {
+            label: t('punch.intro_link_ncr', { defaultValue: 'NCRs' }),
+            onClick: () => navigate('/ncr'),
+          },
+        ]}
+      >
+        {t('punch.intro_body', {
+          defaultValue:
+            'Punch list items capture outstanding work, snags and minor defects. Move each item Open to In Progress to Resolved to Verified to Closed, and reopen anything back to Open straight from Resolved, Verified or Closed when a fix does not hold up on a re-check. Items raised from a failed inspection or an NCR are tagged with their source so you can trace them back. Use the Kanban view to manage flow, the list view for bulk triage.',
+        })}
+      </SectionIntro>
 
       {/* KPI strip */}
       <StatsCards summary={summary} />

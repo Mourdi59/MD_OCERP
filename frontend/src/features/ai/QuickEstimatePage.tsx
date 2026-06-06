@@ -40,11 +40,11 @@ import {
   Database,
   Plus,
   Search,
-  BrainCircuit,
   Wand2,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { Card, CardContent, Button, Badge, AIDisclaimerBanner, DismissibleInfo, Breadcrumb } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { aiApi, type QuickEstimateRequest, type EstimateJobResponse, type EstimateItem, type CadExtractResponse, type EnrichResult, type EnrichedItem, type CostMatch, type CadColumnsResponse, type CadGroupResponse, type CadDynamicGroup, type CadGroupElementsResponse } from './api';
@@ -1248,9 +1248,9 @@ function CadConverterSection({
       </div>
 
       {/* Info note */}
-      <div className="flex items-start gap-2 rounded-lg bg-oe-blue-subtle/50 px-3 py-2.5">
-        <Info size={14} className="shrink-0 mt-0.5 text-oe-blue" />
-        <p className="text-xs text-oe-blue leading-relaxed">
+      <div className="flex items-start gap-2 rounded-lg bg-oe-blue/10 dark:bg-oe-blue/[0.14] px-3 py-2.5">
+        <Info size={14} className="shrink-0 mt-0.5 text-oe-blue-text" />
+        <p className="text-xs text-oe-blue-text leading-relaxed">
           {t('ai.cad_module_info_extract', {
             defaultValue: 'CAD/BIM files are converted using DDC converters and quantities are extracted directly — no AI API key required.',
           })}
@@ -2175,7 +2175,7 @@ export function QuickEstimatePage() {
         className="pointer-events-none absolute -bottom-40 -right-40 -z-10 h-96 w-96 rounded-full bg-gradient-radial from-emerald-400/15 to-transparent blur-3xl"
       />
 
-      <div className="space-y-6 px-4 py-5 lg:px-6 lg:py-6">
+      <div className="space-y-5 px-4 py-5 lg:px-6 lg:py-6">
       <Breadcrumb
         items={[
           {
@@ -2185,69 +2185,71 @@ export function QuickEstimatePage() {
           },
         ]}
       />
-      {/* Hero header — glass pill with title, subtitle, model pill */}
-      <header
-        className="animate-card-in relative overflow-hidden rounded-2xl border border-white/40 bg-white/60 px-5 py-4 backdrop-blur-xl shadow-lg shadow-slate-900/[0.04] dark:border-white/5 dark:bg-slate-900/40"
-        style={{ animationDelay: '0ms' }}
-      >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-16 right-1/4 h-40 w-40 rounded-full bg-gradient-radial from-violet-400/20 to-transparent blur-3xl"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-16 -left-10 h-40 w-40 rounded-full bg-gradient-radial from-sky-400/15 to-transparent blur-3xl"
-        />
-        <div className="relative flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div
-              aria-hidden="true"
-              className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 via-blue-500 to-sky-500 text-white shadow-md shadow-violet-500/25"
+      {/* Canonical top block — module name + icon live in the global top bar.
+          The page renders only its subtitle (left) + actions (right); the
+          model pill stays as the single action for the AI route. */}
+      <PageHeader
+        srTitle={
+          isCadRoute
+            ? t('ai.cad_takeoff_title', { defaultValue: 'CAD/BIM Takeoff' })
+            : t('ai.estimate_title', { defaultValue: 'AI Estimate' })
+        }
+        subtitle={
+          isCadRoute
+            ? t('ai.cad_takeoff_subtitle', { defaultValue: 'Extract quantities from 3D models and drawings' })
+            : t('ai.estimate_subtitle', { defaultValue: 'Create an estimate from any source' })
+        }
+        actions={
+          !isCadRoute && isConfigured && aiSettings?.preferred_model ? (
+            <span
+              data-testid="ai-quick-estimate-model-pill"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border-light bg-surface-elevated px-3 py-1 text-xs font-medium text-content-secondary"
             >
-              <BrainCircuit size={22} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-content-primary">
-                {isCadRoute
-                  ? t('ai.cad_takeoff_title', { defaultValue: 'CAD/BIM Takeoff' })
-                  : t('ai.estimate_title', { defaultValue: 'AI Estimate' })
-                }
-              </h1>
-              <p className="mt-0.5 text-sm text-content-secondary">
-                {isCadRoute
-                  ? t('ai.cad_takeoff_subtitle', { defaultValue: 'Extract quantities from 3D models and drawings' })
-                  : t('ai.estimate_subtitle', { defaultValue: 'Create an estimate from any source' })
-                }
-              </p>
-            </div>
-          </div>
-          {!isCadRoute && isConfigured && aiSettings?.preferred_model && (
-            <div className="flex items-center gap-2">
-              <span
-                data-testid="ai-quick-estimate-model-pill"
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/50 bg-white/70 px-3 py-1 text-xs font-medium text-content-secondary backdrop-blur dark:border-white/10 dark:bg-slate-800/60"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <Zap size={11} className="text-violet-500" />
-                {t('ai.model_pill', {
-                  defaultValue: 'model: {{model}}',
-                  model: aiSettings.preferred_model,
-                })}
-              </span>
-            </div>
-          )}
-        </div>
-      </header>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <Zap size={11} className="text-violet-500" />
+              {t('ai.model_pill', {
+                defaultValue: 'model: {{model}}',
+                model: aiSettings.preferred_model,
+              })}
+            </span>
+          ) : undefined
+        }
+      />
 
-      <DismissibleInfo
-        storageKey="ai-estimate"
-        title={t('info.ai-estimate.title', { defaultValue: 'AI Estimate' })}
-      >
-        {t('info.ai-estimate.body', {
-          defaultValue:
-            'Turn text, photos, PDFs, spreadsheets, or CAD and BIM files into a structured cost estimate with quantities, units, and rates. Match lines against the cost database and save the result as a BOQ on any project.',
-        })}
-      </DismissibleInfo>
+      {isCadRoute ? (
+        <DismissibleInfo
+          storageKey="cad-takeoff"
+          title={t('cad_takeoff.intro_title', {
+            defaultValue: 'Pull quantities straight from the model',
+          })}
+          links={[
+            { label: t('cad_takeoff.intro_link_explorer', { defaultValue: 'Data Explorer' }), onClick: () => navigate('/data-explorer') },
+            { label: t('cad_takeoff.intro_link_boq', { defaultValue: 'Open BOQ' }), onClick: () => navigate('/boq') },
+          ]}
+        >
+          {t('cad_takeoff.intro_body', {
+            defaultValue:
+              'Upload a CAD or BIM file and DDC converters extract its elements and quantities directly, with no AI key required. Group the results, match them against the cost database, and save the confirmed lines as a BOQ on any project.',
+          })}
+        </DismissibleInfo>
+      ) : (
+        <DismissibleInfo
+          storageKey="ai-estimate"
+          title={t('ai_estimate.intro_title', {
+            defaultValue: 'From a rough brief to a first number fast',
+          })}
+          links={[
+            { label: t('ai_estimate.intro_link_boq', { defaultValue: 'Open BOQ' }), onClick: () => navigate('/boq') },
+            { label: t('ai_estimate.intro_link_costs', { defaultValue: 'Cost database' }), onClick: () => navigate('/costs') },
+            { label: t('ai_estimate.intro_link_builder', { defaultValue: 'Estimate Builder' }), onClick: () => navigate('/ai-estimator') },
+          ]}
+        >
+          {t('ai_estimate.intro_body', {
+            defaultValue:
+              'Turn text, photos, PDFs, spreadsheets or CAD and BIM files into a structured estimate with quantities, units and rates. Lines are matched against the cost database for you to review, then saved as a BOQ on any project.',
+          })}
+        </DismissibleInfo>
+      )}
 
       {!isCadRoute && <AIDisclaimerBanner />}
 
@@ -2905,9 +2907,9 @@ export function QuickEstimatePage() {
                         </div>
                       ))}
                     </div>
-                    <div className="mt-2.5 flex items-start gap-2 rounded-lg bg-oe-blue-subtle/50 px-2.5 py-2">
-                      <Info size={13} className="shrink-0 mt-0.5 text-oe-blue" />
-                      <div className="text-[11px] text-oe-blue leading-relaxed">
+                    <div className="mt-2.5 flex items-start gap-2 rounded-lg bg-oe-blue/10 dark:bg-oe-blue/[0.14] px-2.5 py-2">
+                      <Info size={13} className="shrink-0 mt-0.5 text-oe-blue-text" />
+                      <div className="text-[11px] text-oe-blue-text leading-relaxed">
                         <p>
                           {t('ai.cad_module_info_extract', {
                             defaultValue:

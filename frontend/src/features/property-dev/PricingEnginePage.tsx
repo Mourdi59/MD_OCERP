@@ -33,7 +33,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   useMutation,
   useQuery,
@@ -75,14 +75,17 @@ import {
 } from 'lucide-react';
 import {
   Badge,
+  Breadcrumb,
   Button,
   Card,
+  DismissibleInfo,
   EmptyState,
   InfoHint,
   MoneyDisplay,
   SideDrawer,
   SkeletonTable,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage } from '@/shared/lib/api';
@@ -2434,22 +2437,58 @@ function QuoteHistoryTab({ devId }: { devId: string }): JSX.Element {
 
 export function PricingEnginePage(): JSX.Element {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { devId = '' } = useParams<{ devId: string }>();
   const [tab, setTab] = useState<Tab>('lists');
 
   return (
-    <div className="space-y-5">
-      <header>
-        <h1 className="text-xl font-semibold">
-          {t('propdev.pricing.title', 'Pricing engine')}
-        </h1>
-        <p className="text-sm text-content-secondary">
-          {t(
-            'propdev.pricing.subtitle',
+    <div className="space-y-5 animate-fade-in">
+      <Breadcrumb
+        items={[
+          {
+            label: t('propdev.title', { defaultValue: 'Property Development' }),
+            to: '/property-dev',
+          },
+          { label: t('propdev.pricing.title', { defaultValue: 'Pricing engine' }) },
+        ]}
+      />
+      <PageHeader
+        srTitle={t('propdev.pricing.title', { defaultValue: 'Pricing engine' })}
+        subtitle={t('propdev.pricing.subtitle', {
+          defaultValue:
             'Versioned, rule-driven sales pricing with simulator and audit history.',
-          )}
-        </p>
-      </header>
+        })}
+      />
+      <DismissibleInfo
+        storageKey="propdev-pricing"
+        title={t('propdev_pricing.intro_title', {
+          defaultValue: 'Price units by rule, not by guess',
+        })}
+        links={[
+          {
+            label: t('propdev.title', { defaultValue: 'Property Development' }),
+            onClick: () => navigate('/property-dev'),
+          },
+          ...(devId
+            ? [
+                {
+                  label: t('propdev.inventory_map.title', {
+                    defaultValue: 'Inventory Map',
+                  }),
+                  onClick: () =>
+                    navigate(
+                      `/property-dev/developments/${devId}/inventory-map`,
+                    ),
+                },
+              ]
+            : []),
+        ]}
+      >
+        {t('propdev_pricing.intro_body', {
+          defaultValue:
+            'Set versioned sales price lists and pricing rules for a development, then run the simulator to see what a unit would quote at before you publish it. Every quote is kept in an audit history, and the prices flow into the development’s reservations and buyer quotes.',
+        })}
+      </DismissibleInfo>
       <Tabs tab={tab} setTab={setTab} />
       {tab === 'lists' && <PriceListsTab devId={devId} />}
       {tab === 'rules' && <RulesTab devId={devId} />}

@@ -25,7 +25,8 @@ import {
   TrendingUp,
   Layers,
 } from 'lucide-react';
-import { Button, Card, Badge, Input, InfoHint, SkeletonTable, Breadcrumb, GanttChart as SVGGanttChart, ViewInBIMButton, ConfirmDialog } from '@/shared/ui';
+import { Button, Card, Badge, Input, SkeletonTable, Breadcrumb, DismissibleInfo, GanttChart as SVGGanttChart, ViewInBIMButton, ConfirmDialog } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import type { GanttActivity as SVGGanttActivity, GanttViewMode } from '@/shared/ui';
 import { apiGet } from '@/shared/lib/api';
@@ -2091,11 +2092,11 @@ export function SchedulePage() {
   // Project schedule detail view
   if (selectedProject) {
     return (
-      <div className="w-full animate-fade-in">
+      <div className="space-y-5 animate-fade-in">
         <Breadcrumb items={[
           { label: selectedProject.name, to: `/projects/${selectedProject.id}` },
           { label: t('schedule.title', '4D Schedule') },
-        ]} className="mb-4" />
+        ]} />
 
         <ProjectSchedules
           project={selectedProject}
@@ -2107,28 +2108,38 @@ export function SchedulePage() {
 
   // Project list view
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb items={[
         { label: t('schedule.title', '4D Schedule') },
-      ]} className="mb-4" />
+      ]} />
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-content-primary">
-          {t('schedule.title', '4D Schedule')}
-        </h1>
-        <p className="mt-1 text-sm text-content-secondary">
-          {t(
-            'schedule.subtitle',
-            'Select a project to view and manage its construction schedule',
-          )}
-        </p>
-      </div>
+      <PageHeader
+        srTitle={t('schedule.title', '4D Schedule')}
+        subtitle={t(
+          'schedule.subtitle',
+          'Plan the build timeline as a Gantt with dependencies and the critical path.',
+        )}
+      />
+
+      <DismissibleInfo
+        storageKey="schedule"
+        title={t('schedule.intro_title', {
+          defaultValue: 'Build the plan straight from the estimate',
+        })}
+        links={[
+          { label: t('schedule.intro_link_boq', { defaultValue: 'Open BOQ' }), onClick: () => navigate('/boq') },
+          { label: t('schedule.intro_link_bim', { defaultValue: 'BIM viewer' }), onClick: () => navigate('/bim') },
+          { label: t('schedule.intro_link_advanced', { defaultValue: 'Last Planner' }), onClick: () => navigate('/schedule-advanced') },
+        ]}
+      >
+        {t('schedule.intro_body', {
+          defaultValue:
+            'Create a schedule, add activities by hand or generate them from a BOQ, and view the timeline as a Gantt with dependencies and the critical path. Run CPM to find the longest path and the float, and link activities to BIM elements to drive a 4D sequence on the model.',
+        })}
+      </DismissibleInfo>
 
       {/* Cross-module navigation — connects the planning value chain */}
       <PlanningCrossLinks active="schedule" />
-
-      {/* 4D explanation */}
-      <InfoHint className="mb-6" text={t('schedule.what_is_4d', { defaultValue: '4D scheduling links your BOQ positions to a project timeline. Create activities, set dependencies, and visualize progress on a Gantt chart. The critical path analysis highlights activities that directly affect the project end date. Activity types: Task = work item, Milestone = checkpoint with zero duration, Summary = grouping header. Once activities have progress, the 5D Cost Model derives SPI/CPI earned-value metrics, and schedule risk feeds the Risk Register.' })} />
 
       {isLoading ? (
         <SkeletonTable rows={3} columns={3} />

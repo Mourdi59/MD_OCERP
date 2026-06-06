@@ -41,7 +41,8 @@ import {
   FileArchive,
   type LucideIcon,
 } from 'lucide-react';
-import { Card, Badge, Button, Input, InfoHint, Breadcrumb, ConfirmDialog } from '@/shared/ui';
+import { Card, Badge, Button, Input, InfoHint, Breadcrumb, ConfirmDialog, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { PartnerPackApplyDialog } from './PartnerPackApplyDialog';
 import { PartnerPackDeactivateDialog } from './PartnerPackDeactivateDialog';
 import {
@@ -261,6 +262,7 @@ function getPresetIcon(iconName: string): LucideIcon {
 
 export function ModulesPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Deep-link support: ``/modules?tab=partner-packs`` opens that tab directly
   // (used by the dashboard co-brand banner). Falls back to Company Profiles.
@@ -278,39 +280,57 @@ export function ModulesPage() {
   });
 
   return (
-    <div className="w-full animate-fade-in">
-      <Breadcrumb
-        items={[{ label: t('nav.modules', 'Modules') }]}
-        className="mb-4"
-      />
+    <div className="space-y-5 animate-fade-in">
+      <Breadcrumb items={[{ label: t('nav.modules', 'Modules') }]} />
 
       {/* Header */}
-      <div className="mb-6 animate-card-in flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">
-            {t('modules.page_title', { defaultValue: 'Modules & Marketplace' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('modules.page_subtitle', {
-              defaultValue: 'Manage your company profile, data packages, and system modules.',
+      <PageHeader
+        className="animate-card-in"
+        srTitle={t('nav.modules', 'Modules')}
+        subtitle={t('modules.page_subtitle', {
+          defaultValue: 'Manage your company profile, data packages, and system modules.',
+        })}
+        actions={
+          <Link
+            to="/modules/developer-guide"
+            className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-oe-blue/30 bg-oe-blue/5 text-xs font-medium text-oe-blue hover:bg-oe-blue/10 hover:border-oe-blue/50 transition-colors shrink-0"
+            title={t('modules.dev_guide_hint', {
+              defaultValue: 'Learn how to build your own module',
             })}
-          </p>
-        </div>
-        <Link
-          to="/modules/developer-guide"
-          className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-oe-blue/30 bg-oe-blue/5 text-xs font-medium text-oe-blue hover:bg-oe-blue/10 hover:border-oe-blue/50 transition-colors shrink-0"
-          title={t('modules.dev_guide_hint', {
-            defaultValue: 'Learn how to build your own module',
-          })}
-        >
-          <Info size={14} />
-          {t('modules.dev_guide', { defaultValue: 'Build a module — developer guide' })}
-        </Link>
-      </div>
+          >
+            <Info size={14} />
+            {t('modules.dev_guide', { defaultValue: 'Build a module — developer guide' })}
+          </Link>
+        }
+      />
+
+      {/* Canonical module intro — pain-named, copy from MODULE_INTRO_COPY. */}
+      <DismissibleInfo
+        storageKey="modules"
+        title={t('modules.intro_title', {
+          defaultValue: 'Show only the tools this company needs',
+        })}
+        links={[
+          {
+            label: t('nav.setup_databases', { defaultValue: 'Databases & Resources' }),
+            onClick: () => navigate('/setup/databases'),
+          },
+          {
+            label: t('modules.dev_guide', { defaultValue: 'Developer guide' }),
+            onClick: () => navigate('/modules/developer-guide'),
+          },
+          { label: t('nav.settings', { defaultValue: 'Settings' }), onClick: () => navigate('/settings') },
+        ]}
+      >
+        {t('modules.intro_body', {
+          defaultValue:
+            'Switch on a company profile to tailor which modules appear in the sidebar, apply a partner pack to load a branded preset of presets and rules, and install data packages like cost databases, resource catalogues and languages from the marketplace. System modules lists everything currently loaded so you can see what is active and what an install would add.',
+        })}
+      </DismissibleInfo>
 
       {/* Tab bar */}
       <div
-        className="mb-6 flex gap-1 rounded-lg bg-surface-secondary p-1 animate-card-in"
+        className="flex gap-1 rounded-lg bg-surface-secondary p-1 animate-card-in"
         role="tablist"
         aria-label={t('modules.tabs', { defaultValue: 'Module sections' })}
         onKeyDown={onTabKeyDown}

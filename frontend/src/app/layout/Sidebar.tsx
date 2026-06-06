@@ -318,7 +318,11 @@ const navGroups: NavGroup[] = [
   },
   // ── 10. FIELD OPERATIONS ───────────────────────────────────────────
   // Day-to-day site: diary, field reports, service tickets, the
-  // subcontractor portal + its payments tab.
+  // subcontractor portal. The /portal/payments route is intentionally
+  // NOT listed here: it is the external, magic-link-authed surface for
+  // subcontractors (no app shell) and is reached only through the link
+  // in their invitation email. Internal staff manage payment
+  // applications via Progress Claims under /contracts.
   {
     id: 'grp_field',
     labelKey: 'sidebar.group.field',
@@ -330,7 +334,6 @@ const navGroups: NavGroup[] = [
       { labelKey: 'nav.field_reports', to: '/field-reports', icon: ClipboardList, advancedOnly: true },
       { labelKey: 'nav.service', to: '/service', icon: Wrench },
       { labelKey: 'nav.portal', to: '/portal', icon: Globe },
-      { labelKey: 'nav.portal_payments', to: '/portal/payments', icon: FileText, advancedOnly: true },
     ],
   },
   // ── 11. RESOURCES & ASSETS ─────────────────────────────────────────
@@ -631,7 +634,6 @@ const ROUTE_BACKEND_MODULE: Record<string, string> = {
   '/payroll': 'oe_payroll',
   '/service': 'oe_service',
   '/portal': 'oe_portal',
-  '/portal/payments': 'oe_portal',
   // Quality
   '/validation': 'oe_validation',
   '/inspections': 'oe_inspections',
@@ -736,7 +738,6 @@ const ROUTE_MODULE_KEY: Record<string, string> = {
   '/payroll': 'payroll',
   '/service': 'service',
   '/portal': 'portal',
-  '/portal/payments': 'portal',
   '/assets': 'equipment',
   // Quality
   '/validation': 'validation',

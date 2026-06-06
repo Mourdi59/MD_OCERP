@@ -35,12 +35,14 @@ import {
   Badge,
   EmptyState,
   Breadcrumb,
+  DismissibleInfo,
   RecoveryCard,
   SkeletonTable,
   ConfirmDialog,
   TabBar,
   tabIds,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import {
   WideModal,
@@ -528,109 +530,11 @@ function FinanceModuleLinks({ projectId: _projectId }: { projectId: string }) {
   );
 }
 
-/* ── Workflow Guide ───────────────────────────────────────────────────── */
-
-function FinanceWorkflowGuide() {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(() => {
-    try { return localStorage.getItem('oe_finance_guide_closed') !== '1'; } catch { return true; }
-  });
-
-  const dismiss = () => {
-    setOpen(false);
-    try { localStorage.setItem('oe_finance_guide_closed', '1'); } catch { /* */ }
-  };
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="mb-2 inline-flex items-center gap-1.5 text-xs text-content-tertiary hover:text-oe-blue transition-colors"
-      >
-        <Lightbulb size={12} />
-        {t('finance.show_guide', { defaultValue: 'Show: How it works' })}
-      </button>
-    );
-  }
-
-  const steps = [
-    {
-      num: '1',
-      icon: <Wallet size={16} />,
-      title: t('finance.guide_step1_title', { defaultValue: 'Create budget lines' }),
-      desc: t('finance.guide_step1_desc', {
-        defaultValue: 'Lock your BOQ estimate → budget lines are created automatically from sections. Or add them manually per WBS category.',
-      }),
-    },
-    {
-      num: '2',
-      icon: <FileText size={16} />,
-      title: t('finance.guide_step2_title', { defaultValue: 'Track invoices' }),
-      desc: t('finance.guide_step2_desc', {
-        defaultValue: 'Create payable invoices (from subcontractors) or receivable invoices (to clients). Attach line items and link to WBS.',
-      }),
-    },
-    {
-      num: '3',
-      icon: <CreditCard size={16} />,
-      title: t('finance.guide_step3_title', { defaultValue: 'Record payments' }),
-      desc: t('finance.guide_step3_desc', {
-        defaultValue: 'Mark invoices as paid — payment records are created automatically. Track amounts, methods, and references.',
-      }),
-    },
-    {
-      num: '4',
-      icon: <BarChart3 size={16} />,
-      title: t('finance.guide_step4_title', { defaultValue: 'Monitor with EVM' }),
-      desc: t('finance.guide_step4_desc', {
-        defaultValue: 'Create periodic snapshots to track Earned Value metrics: SPI, CPI, EAC, VAC. See if you\'re on time and within budget.',
-      }),
-    },
-  ];
-
-  return (
-    <div className="mb-4 rounded-xl border border-oe-blue/15 bg-gradient-to-r from-oe-blue/[0.03] to-violet-500/[0.03] p-4 animate-card-in">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Lightbulb size={14} className="text-oe-blue" />
-          <span className="text-xs font-semibold text-content-primary">
-            {t('finance.how_it_works', { defaultValue: 'How it works' })}
-          </span>
-        </div>
-        <button
-          onClick={dismiss}
-          className="rounded p-0.5 text-content-quaternary hover:text-content-secondary transition-colors"
-          aria-label={t('common.dismiss', { defaultValue: 'Dismiss' })}
-        >
-          <X size={14} />
-        </button>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {steps.map((s) => (
-          <div key={s.num} className="flex items-start gap-2.5">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-oe-blue text-white text-2xs font-bold">
-              {s.num}
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-content-primary">
-                <span className="text-oe-blue">{s.icon}</span>
-                {s.title}
-              </div>
-              <p className="mt-0.5 text-2xs leading-relaxed text-content-tertiary">
-                {s.desc}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /* ── Main Page ────────────────────────────────────────────────────────── */
 
 export function FinancePage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { projectId: routeProjectId } = useParams<{ projectId?: string }>();
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
   const projectId = routeProjectId || activeProjectId || '';
@@ -667,7 +571,7 @@ export function FinancePage() {
   ];
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           ...(projectName
@@ -675,47 +579,51 @@ export function FinancePage() {
             : []),
           { label: t('finance.title', { defaultValue: 'Finance' }) },
         ]}
-        className="mb-4"
       />
 
       {/* Header + Module Links */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">
-            {t('finance.title', { defaultValue: 'Finance' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('finance.subtitle', {
-              defaultValue:
-                'Budgets, invoices, payments, and earned value management',
-            })}
-          </p>
-        </div>
-        {projectId && <FinanceModuleLinks projectId={projectId} />}
-      </div>
+      <PageHeader
+        srTitle={t('finance.title', { defaultValue: 'Finance' })}
+        subtitle={t('finance.subtitle', {
+          defaultValue:
+            'Budgets, invoices, payments, and earned value management',
+        })}
+        actions={projectId ? <FinanceModuleLinks projectId={projectId} /> : undefined}
+      />
 
-      {/* How it works — collapsible workflow guide */}
-      <FinanceWorkflowGuide />
+      {/* Canonical module intro — pain-named, copy from MODULE_INTRO_COPY.
+          Replaces the bespoke gradient "How it works" workflow guide. */}
+      <DismissibleInfo
+        storageKey="finance"
+        title={t('finance.intro_title', {
+          defaultValue: 'See where the money actually went',
+        })}
+        links={[
+          { label: t('nav.boq', { defaultValue: 'BOQ' }), onClick: () => navigate('/boq') },
+          { label: t('nav.5d', { defaultValue: '5D Cost Model' }), onClick: () => navigate('/5d') },
+          {
+            label: t('nav.procurement', { defaultValue: 'Procurement' }),
+            onClick: () => navigate('/procurement'),
+          },
+        ]}
+      >
+        {t('finance.intro_body', {
+          defaultValue:
+            'Set budget lines against your WBS, then track invoices and payments as they land so committed, actual and forecast sit next to the original budget with the variance called out. The earned value dashboard turns that into cost and schedule performance, and budgets can pull straight from the BOQ estimate and 5D cost model.',
+        })}
+      </DismissibleInfo>
 
-      {/* No-project warning */}
-      {!projectId && (
-        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-          {t('common.select_project_hint', { defaultValue: 'Select a project from the header to get started.' })}
-        </div>
-      )}
+      {/* No-project case is handled by the RequiresProject empty state below;
+          the single global project selector is the one source of truth, so
+          there is no duplicate amber banner here (audit: finance-top). */}
 
       {/* Summary Cards */}
-      {projectId && (
-        <div className="mb-6">
-          <FinanceSummaryCards projectId={projectId} />
-        </div>
-      )}
+      {projectId && <FinanceSummaryCards projectId={projectId} />}
 
       {/* Tab Bar */}
       <TabBar<FinanceTab>
         ariaLabel={t('finance.tabs_aria', { defaultValue: 'Finance sections' })}
         idPrefix="finance"
-        className="mb-6"
         tabs={tabs.map((tab) => ({ id: tab.key, label: tab.label, icon: tab.icon }))}
         activeId={activeTab}
         onChange={setActiveTab}

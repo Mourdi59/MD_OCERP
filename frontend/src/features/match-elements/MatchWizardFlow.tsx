@@ -98,10 +98,14 @@ type StageId =
 interface StageDef {
   id: StageId;
   index: number;
-  /** Short rail label. */
-  title: string;
-  /** One-line "what & why" shown in the rail + panel header. */
-  blurb: string;
+  /** i18n key for the short rail label. */
+  titleKey: string;
+  /** English fallback for the rail label (defaultValue). */
+  titleDefault: string;
+  /** i18n key for the one-line "what & why" shown in the rail + panel header. */
+  blurbKey: string;
+  /** English fallback for the blurb (defaultValue). */
+  blurbDefault: string;
   Icon: typeof Layers;
 }
 
@@ -109,50 +113,64 @@ const STAGES: readonly StageDef[] = [
   {
     id: 'model',
     index: 1,
-    title: 'Source model',
-    blurb: 'Pick the BIM/CAD model whose elements get priced.',
+    titleKey: 'match.stage_model_title',
+    titleDefault: 'Source model',
+    blurbKey: 'match.stage_model_blurb',
+    blurbDefault: 'Pick the BIM/CAD model whose elements get priced.',
     Icon: Boxes,
   },
   {
     id: 'catalogue',
     index: 2,
-    title: 'Cost catalogue',
-    blurb: 'Confirm the rate catalogue and vector search are ready.',
+    titleKey: 'match.stage_catalogue_title',
+    titleDefault: 'Cost catalogue',
+    blurbKey: 'match.stage_catalogue_blurb',
+    blurbDefault: 'Confirm the rate catalogue and vector search are ready.',
     Icon: Database,
   },
   {
     id: 'scope',
     index: 3,
-    title: 'Scope & rules',
-    blurb: 'Set construction stage, quantities and auto-confirm.',
+    titleKey: 'match.stage_scope_title',
+    titleDefault: 'Scope & rules',
+    blurbKey: 'match.stage_scope_blurb',
+    blurbDefault: 'Set construction stage, quantities and auto-confirm.',
     Icon: SlidersHorizontal,
   },
   {
     id: 'grouping',
     index: 4,
-    title: 'Grouping',
-    blurb: 'See how elements roll up into estimable groups.',
+    titleKey: 'match.stage_grouping_title',
+    titleDefault: 'Grouping',
+    blurbKey: 'match.stage_grouping_blurb',
+    blurbDefault: 'See how elements roll up into estimable groups.',
     Icon: Layers,
   },
   {
     id: 'run',
     index: 5,
-    title: 'Run match',
-    blurb: 'Embed every group and rank cost candidates.',
+    titleKey: 'match.stage_run_title',
+    titleDefault: 'Run match',
+    blurbKey: 'match.stage_run_blurb',
+    blurbDefault: 'Embed every group and rank cost candidates.',
     Icon: PlayCircle,
   },
   {
     id: 'review',
     index: 6,
-    title: 'Review',
-    blurb: 'Inspect candidates, adjust and confirm matches.',
+    titleKey: 'match.stage_review_title',
+    titleDefault: 'Review',
+    blurbKey: 'match.stage_review_blurb',
+    blurbDefault: 'Inspect candidates, adjust and confirm matches.',
     Icon: Search,
   },
   {
     id: 'apply',
     index: 7,
-    title: 'Apply & finish',
-    blurb: 'Preview the BOQ rollup and write it to the project.',
+    titleKey: 'match.stage_apply_title',
+    titleDefault: 'Apply & finish',
+    blurbKey: 'match.stage_apply_blurb',
+    blurbDefault: 'Preview the BOQ rollup and write it to the project.',
     Icon: Rocket,
   },
 ] as const;
@@ -234,10 +252,10 @@ function StageRail({
                     isCurrent ? 'text-oe-blue' : 'text-content-primary',
                   )}
                 >
-                  {s.index}. {s.title}
+                  {s.index}. {t(s.titleKey, { defaultValue: s.titleDefault })}
                 </span>
                 <span className="block text-xs text-content-secondary leading-snug">
-                  {s.blurb}
+                  {t(s.blurbKey, { defaultValue: s.blurbDefault })}
                 </span>
               </span>
             </button>
@@ -249,6 +267,7 @@ function StageRail({
 }
 
 function PanelHeader({ stage }: { stage: StageDef }) {
+  const { t } = useTranslation();
   const Icon = stage.Icon;
   return (
     <div className="flex items-start gap-3 border-b border-border-light pb-4">
@@ -257,10 +276,18 @@ function PanelHeader({ stage }: { stage: StageDef }) {
       </span>
       <div>
         <div className="text-xs font-medium uppercase tracking-wide text-content-tertiary">
-          Step {stage.index} of {STAGES.length}
+          {t('match.wizard.step_counter', {
+            defaultValue: 'Step {{n}} of {{total}}',
+            n: stage.index,
+            total: STAGES.length,
+          })}
         </div>
-        <h2 className="text-xl font-semibold text-content-primary">{stage.title}</h2>
-        <p className="mt-0.5 text-sm text-content-secondary">{stage.blurb}</p>
+        <h2 className="text-xl font-semibold text-content-primary">
+          {t(stage.titleKey, { defaultValue: stage.titleDefault })}
+        </h2>
+        <p className="mt-0.5 text-sm text-content-secondary">
+          {t(stage.blurbKey, { defaultValue: stage.blurbDefault })}
+        </p>
       </div>
     </div>
   );
@@ -868,9 +895,11 @@ export function MatchWizardFlow() {
                   {s.index}
                 </span>
                 <span>
-                  <span className="font-medium text-content-primary">{s.title}</span>
+                  <span className="font-medium text-content-primary">
+                    {t(s.titleKey, { defaultValue: s.titleDefault })}
+                  </span>
                   {' — '}
-                  {s.blurb}
+                  {t(s.blurbKey, { defaultValue: s.blurbDefault })}
                 </span>
               </li>
             ))}
@@ -1122,7 +1151,17 @@ export function MatchWizardFlow() {
                       </option>
                       {CONSTRUCTION_STAGES.map((cs) => (
                         <option key={cs} value={cs}>
-                          {cs.replace(/^\d+_/, '').replace(/([a-z])([A-Z])/g, '$1 $2')}
+                          {/* Reuse the already-translated 12-stage taxonomy
+                              labels (aiest.stage_*). The match-elements enum
+                              tokens are identical to the ai_estimator ones, so
+                              the keys map 1:1 and stay translated in all 27
+                              locales. Fall back to a humanised token only if a
+                              key is somehow missing. */}
+                          {t(`aiest.stage_${cs}`, {
+                            defaultValue: cs
+                              .replace(/^\d+_/, '')
+                              .replace(/([a-z])([A-Z])/g, '$1 $2'),
+                          })}
                         </option>
                       ))}
                     </select>
@@ -1363,7 +1402,9 @@ export function MatchWizardFlow() {
                                       : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
                                 )}
                               >
-                                {g.status}
+                                {t(`match.group_status_${g.status}`, {
+                                  defaultValue: g.status,
+                                })}
                               </span>
                             </td>
                             <td className="px-3 py-2 text-right">

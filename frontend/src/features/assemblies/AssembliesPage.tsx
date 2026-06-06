@@ -10,6 +10,7 @@ import {
   CheckSquare, Square as SquareIcon, Library,
 } from 'lucide-react';
 import { Button, Card, Badge, DismissibleInfo, EmptyState, SkeletonGrid, Breadcrumb } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
 import { copyToClipboard } from '@/shared/lib/browser';
@@ -352,26 +353,20 @@ export function AssembliesPage() {
     }).format(n);
 
   return (
-    <div className="w-full animate-fade-in">
-      <Breadcrumb items={[{ label: t('nav.assemblies', 'Assemblies') }]} className="mb-4" />
-      {/* Header — compact single-row: title + counter chip + action stack
-          on the right. The previous header burned ~80px on a 2xl headline +
-          paragraph subtitle that just restated what the page is. */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-oe-blue to-sky-500 text-white inline-flex items-center justify-center shadow-sm">
-            <Layers className="w-3.5 h-3.5" />
-          </span>
-          <h1 className="text-base lg:text-lg leading-none font-semibold text-content-primary">
-            {t('assemblies.title', 'Assemblies')}
-          </h1>
-          <span className="text-xs text-content-tertiary tabular-nums">
-            {total > 0
-              ? `${total} ${t('assemblies.assemblies_found', 'assemblies')}`
-              : t('assemblies.description', 'Reusable cost recipes')}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5">
+    <div className="space-y-5 animate-fade-in">
+      <Breadcrumb items={[{ label: t('nav.assemblies', 'Assemblies') }]} />
+      {/* Canonical top block — module name + icon are shown in the global top
+          app bar. The page renders only its (contextual) subtitle and the
+          action stack. */}
+      <PageHeader
+        srTitle={t('assemblies.title', 'Assemblies')}
+        subtitle={
+          total > 0
+            ? `${total} ${t('assemblies.assemblies_found', 'assemblies')}`
+            : t('assemblies.description', 'Reusable cost recipes')
+        }
+        actions={
+          <>
           <div className="relative">
             <Button
               variant="secondary"
@@ -459,37 +454,45 @@ export function AssembliesPage() {
             size="sm"
             icon={<Sparkles size={14} />}
             onClick={() => setShowAiGenerate(true)}
-            className="border-violet-300/40 text-violet-600 hover:bg-violet-50 dark:border-violet-700/30 dark:text-violet-400 dark:hover:bg-violet-950/30"
           >
             {t('assemblies.ai_generate', { defaultValue: 'AI Generate' })}
           </Button>
           <Button
             variant="primary"
-            icon={<Plus size={16} />}
+            size="sm"
+            icon={<Plus size={14} />}
             onClick={() => setCreateModalOpen(true)}
           >
             {t('assemblies.new_assembly', 'New Assembly')}
           </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Intro / help banner — collapsible, remembers its state per page.
           Explains the assembly recipe metaphor and how it ties into the
           BOQ on first visit, then folds to a one-line header for returners. */}
       <DismissibleInfo
         storageKey="assemblies"
-        className="mb-3"
-        title={t('info.assemblies.title', { defaultValue: 'About assemblies' })}
+        title={t('assemblies.intro_title', { defaultValue: 'Price recurring work once, reuse it everywhere' })}
         links={[
           {
             label: t('assemblies.browse_library', { defaultValue: 'Browse Library' }),
             onClick: () => navigate('/assemblies/library'),
           },
+          {
+            label: t('assemblies.new_assembly', { defaultValue: 'New Assembly' }),
+            onClick: () => navigate('/assemblies/new'),
+          },
+          {
+            label: t('nav.boq', { defaultValue: 'Bill of Quantities' }),
+            onClick: () => navigate('/boq'),
+          },
         ]}
       >
-        {t('info.assemblies.body', {
+        {t('assemblies.intro_body', {
           defaultValue:
-            'Assemblies are reusable cost recipes that bundle materials, labour and equipment into a single composite rate, for example a reinforced concrete wall combining concrete, rebar, formwork and labour. Apply an assembly to a BOQ position to auto-populate its component costs and keep rates consistent across the project.',
+            'Assemblies are reusable cost recipes that bundle materials, labour and equipment into one composite rate, for example a reinforced concrete wall combining concrete, rebar, formwork and labour. Apply an assembly to a BOQ position to auto-populate its component costs and keep rates consistent across the project.',
         })}
       </DismissibleInfo>
 
@@ -500,7 +503,7 @@ export function AssembliesPage() {
           Hidden when there are zero assemblies; renders skeleton rows
           while banner data is loading. */}
       {(banner.totalCount > 0 || allForBanner) && (
-        <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-5">
           <StatTile
             icon={<Layers size={14} />}
             label={t('assemblies.stat_total', { defaultValue: 'Assemblies' })}

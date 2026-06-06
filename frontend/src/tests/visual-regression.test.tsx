@@ -307,7 +307,9 @@ describe('Visual Regression — ConfirmDialog', () => {
 ═══════════════════════════════════════════════════════════════════════ */
 
 describe('Visual Regression — Breadcrumb', () => {
-  it('renders single breadcrumb item', () => {
+  it('renders nothing for a single-item trail (top bar already names the module)', () => {
+    // Founder decision 2026-06-06 (MODULE_STYLE_GUIDE 2.1): a lone module
+    // label duplicates the top app bar, so the component hides itself.
     const { container } = render(
       <RouterWrapper>
         <Breadcrumb items={[{ label: 'Projects' }]} />

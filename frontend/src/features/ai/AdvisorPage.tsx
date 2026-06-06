@@ -13,9 +13,10 @@ import {
   MessageSquarePlus,
   Info,
 } from 'lucide-react';
-import { Breadcrumb, AIDisclaimerBanner } from '@/shared/ui';
+import { Breadcrumb, AIDisclaimerBanner, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { apiGet, apiPost } from '@/shared/lib/api';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useLLMRun } from './hooks/useLLMRun';
@@ -291,6 +292,7 @@ function ChatBubble({
 
 export function AdvisorPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [aiConfigured, setAiConfigured] = useState<boolean | null>(null); // null = loading
@@ -454,7 +456,29 @@ export function AdvisorPage() {
         className="mb-3 shrink-0"
       />
 
+      {/* Canonical top block — the module name + icon are shown by the global
+          top app bar. This chat page manages its own header bar below, so we
+          emit only the sr-only h1 here to keep exactly one page heading. */}
+      <PageHeader srTitle={t('nav.ai_advisor', 'AI Cost Advisor')} />
+
       <AIDisclaimerBanner variant="compact" className="mb-3 shrink-0" />
+
+      <DismissibleInfo
+        storageKey="advisor"
+        className="mb-3 shrink-0"
+        title={t('advisor.intro_title', {
+          defaultValue: 'Ask the price book a plain question',
+        })}
+        links={[
+          { label: t('advisor.intro_link_costs', { defaultValue: 'Cost database' }), onClick: () => navigate('/costs') },
+          { label: t('advisor.intro_link_estimate', { defaultValue: 'Quick Estimate' }), onClick: () => navigate('/ai-estimate') },
+        ]}
+      >
+        {t('advisor.intro_body', {
+          defaultValue:
+            'Ask in plain language what something should cost and the advisor answers from your installed regional cost databases, showing the source rates, units and regions behind each reply. Use it to sanity-check a number before you commit it to an estimate.',
+        })}
+      </DismissibleInfo>
 
       {/* AI not configured warning */}
       {aiConfigured === false && (
@@ -486,10 +510,10 @@ export function AdvisorPage() {
             <Sparkles size={14} />
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-[15px] font-semibold text-content-primary leading-tight">
-              {t('ai.advisor_title', { defaultValue: 'AI Cost Advisor' })}
-            </h1>
-            <p className="text-[11px] text-content-tertiary leading-tight truncate">
+            {/* No visible module-name heading here — the top app bar already
+                shows the module name + icon. We keep the assistant avatar and
+                the contextual scope line, which carry real information. */}
+            <p className="text-[13px] font-medium text-content-primary leading-tight truncate">
               {activeProjectId && activeProjectName
                 ? t('ai.advisor_scoped', {
                     defaultValue: 'Using {{project}} region & currency as default context',
@@ -560,7 +584,7 @@ export function AdvisorPage() {
               <div className="flex flex-wrap justify-center gap-2 mb-4 max-w-md">
                 {[
                   { icon: Database, label: t('ai.advisor_cap_db', { defaultValue: '55K+ cost items (CWICR)' }) },
-                  { icon: Globe, label: t('ai.advisor_cap_regions', { defaultValue: '48 regional databases' }) },
+                  { icon: Globe, label: t('ai.advisor_cap_regions', { defaultValue: 'Regional cost databases' }) },
                   { icon: Sparkles, label: t('ai.advisor_cap_ai', { defaultValue: 'AI-powered answers' }) },
                 ].map((cap, i) => (
                   <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-surface-secondary px-3 py-1 text-2xs text-content-tertiary">

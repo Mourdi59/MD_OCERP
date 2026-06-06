@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users,
@@ -18,6 +19,8 @@ import {
 import { apiGet, apiPost, getErrorMessage } from '@/shared/lib/api';
 import { CommentThread } from '@/shared/ui/CommentThread';
 import { EmptyState } from '@/shared/ui/EmptyState';
+import { PageHeader } from '@/shared/ui/PageHeader';
+import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -82,9 +85,9 @@ function initialFor(name: string): string {
  */
 export default function CollaborationModule() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
-  const setActiveProject = useProjectContextStore((s) => s.setActiveProject);
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ['projects'],
@@ -104,48 +107,36 @@ export default function CollaborationModule() {
   const projectName = projects.find((p) => p.id === projectId)?.name ?? '';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30">
-            <Users className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-content-primary">
-              {t('collab.title', { defaultValue: 'Real-time Collaboration' })}
-            </h1>
-            <p className="text-sm text-content-tertiary">
-              {t('collab.hub_subtitle', {
-                defaultValue:
-                  'Discuss, share viewpoints and see who is working on a project right now',
-              })}
-            </p>
-          </div>
-        </div>
+      <PageHeader
+        srTitle={t('collab.title', { defaultValue: 'Real-time Collaboration' })}
+        subtitle={t('collab.hub_subtitle', {
+          defaultValue:
+            'Discuss, share viewpoints and see who is working on a project right now',
+        })}
+      />
 
-        {/* Project selector */}
-        {projects.length > 0 && (
-          <div className="relative">
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((pr) => pr.id === e.target.value);
-                if (p) setActiveProject(p.id, p.name);
-              }}
-              aria-label={t('collab.select_project', { defaultValue: 'Select project' })}
-              className="appearance-none rounded-lg border border-border bg-surface-primary px-3 py-2 pr-9 text-sm text-content-primary focus:border-oe-blue focus:outline-none focus:ring-1 focus:ring-oe-blue/30 max-w-[260px]"
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
-          </div>
-        )}
-      </div>
+      {/* Canonical module info card — pain-named title + workflow body. */}
+      <DismissibleInfo
+        storageKey="collaboration"
+        title={t('collaboration.intro_title', { defaultValue: 'See who is on the project right now' })}
+        links={[
+          {
+            label: t('boq.title', { defaultValue: 'Bill of Quantities' }),
+            onClick: () => navigate('/boq'),
+          },
+          {
+            label: t('bim.title', { defaultValue: 'BIM' }),
+            onClick: () => navigate('/bim'),
+          },
+        ]}
+      >
+        {t('collaboration.intro_body', {
+          defaultValue:
+            'A per-project hub for a threaded discussion, saved viewpoints and a live presence roster showing who is connected and what they have open for editing. The same comment thread also appears in context on BOQ positions, Documents, RFIs and BIM elements, and camera-anchored viewpoints can be saved from the BIM viewer and PDF takeoff. Live co-editing uses peer-to-peer WebRTC, which needs a WebSocket provider configured for persistent server-side sync.',
+        })}
+      </DismissibleInfo>
 
       {projectsLoading ? (
         <div className="flex items-center justify-center py-16 text-content-tertiary">

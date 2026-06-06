@@ -8,7 +8,8 @@ import {
   AlertTriangle, Shield, Trash2, X, Search, Filter, CalendarDays, TrendingUp,
   LayoutGrid, Activity,
 } from 'lucide-react';
-import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, InfoHint, RecoveryCard, SkeletonTable, SkeletonCard } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, DismissibleInfo, RecoveryCard, SkeletonTable, SkeletonCard } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { MultiCurrencyTotal } from '@/shared/ui/MultiCurrencyTotal';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { PlanningCrossLinks } from '@/features/schedule/PlanningCrossLinks';
@@ -517,6 +518,7 @@ function DetailView({ riskId, onBack }: { riskId: string; onBack: () => void }) 
 
 export function RiskRegisterPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
@@ -609,57 +611,45 @@ export function RiskRegisterPage() {
   }, [summary, currency]);
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb items={[
         ...(project ? [{ label: project.name, to: `/projects/${project.id}` }] : []),
         { label: t('nav.risk_register', { defaultValue: 'Risk Register' }) },
       ]} />
 
-      {/* Cross-module navigation — connects the planning value chain */}
-      <div className="mt-3">
-        <PlanningCrossLinks active="risks" />
-      </div>
-
-      <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">{t('nav.risk_register', { defaultValue: 'Risk Register' })}</h1>
-          {project && <p className="mt-1 text-sm text-content-secondary">{project.name}</p>}
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Project selector */}
-          {projects.length > 0 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((pr) => pr.id === e.target.value);
-                if (p) useProjectContextStore.getState().setActiveProject(p.id, p.name);
-              }}
-              aria-label={t('risk.select_project', { defaultValue: 'Project...' })}
-              className={selectCls + ' max-w-[180px]'}
-            >
-              <option value="" disabled>{t('risk.select_project', { defaultValue: 'Project...' })}</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          )}
+      <PageHeader
+        srTitle={t('nav.risk_register', { defaultValue: 'Risk Register' })}
+        subtitle={t('risk.subtitle', {
+          defaultValue: 'Track project threats with probability x impact scoring, matrix and Monte Carlo analysis.',
+        })}
+        actions={
           <Button variant="primary" onClick={() => setShowCreate(true)} disabled={!projectId}>
             <Plus size={16} className="mr-1.5" />{t('risk.new', { defaultValue: 'Add Risk' })}
           </Button>
-        </div>
-      </div>
-
-      {/* How the Risk Register connects to the rest of the platform */}
-      <InfoHint
-        className="mt-4"
-        text={t('risk.what_is_register', {
-          defaultValue:
-            'The Risk Register tracks project threats with probability x impact scoring. Risk score = probability x cost impact; the matrix and heatmap visualise concentration. Schedule risk (from the 4D Schedule PERT analysis) and cost contingency (from 5D Monte Carlo) should be logged here as risks with mitigation and contingency plans. Similar risks and their mitigations are surfaced cross-project on each risk via semantic search.',
-        })}
+        }
       />
 
+      <DismissibleInfo
+        storageKey="risks"
+        title={t('risk.intro_title', {
+          defaultValue: 'Surface risk before it costs money',
+        })}
+        links={[
+          { label: t('risk.intro_link_analysis', { defaultValue: 'Cost risk analysis' }), onClick: () => navigate('/risk-analysis') },
+          { label: t('risk.intro_link_schedule', { defaultValue: '4D Schedule' }), onClick: () => navigate('/schedule') },
+        ]}
+      >
+        {t('risk.intro_body', {
+          defaultValue:
+            'Log project risks with probability, cost and schedule impact and an owner, then read exposure on a probability-by-impact matrix and per-currency totals that refuse to blend currencies. A second tab runs a Monte Carlo simulation over the register, and the planning cross-links carry the project context into schedule and cost work.',
+        })}
+      </DismissibleInfo>
+
+      {/* Cross-module navigation — connects the planning value chain */}
+      <PlanningCrossLinks active="risks" />
+
       {summary && (
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { icon: ShieldAlert, label: t('risk.total', { defaultValue: 'Total Risks' }), value: summary.total_risks, cls: 'text-content-primary', bg: 'bg-surface-secondary' },
             { icon: AlertTriangle, label: t('risk.high_critical', { defaultValue: 'High / Critical' }), value: summary.high_critical_count, cls: 'text-semantic-error', bg: 'bg-red-50 dark:bg-red-950/30' },
@@ -688,7 +678,7 @@ export function RiskRegisterPage() {
           role="tablist"
           aria-label={t('risk.tabs_aria', { defaultValue: 'Risk register tabs' })}
           onKeyDown={onTabKeyDown}
-          className="mt-6 flex items-center gap-1 border-b border-border-light"
+          className="flex items-center gap-1 border-b border-border-light"
         >
           <button
             type="button"
@@ -729,22 +719,22 @@ export function RiskRegisterPage() {
 
       {/* Monte Carlo tab content — render and stop here. */}
       {projectId && activeTab === 'montecarlo' && (
-        <div className="mt-4">
+        <div>
           <MonteCarloTab projectId={projectId} currency={currency} />
         </div>
       )}
 
       {/* Only show matrix when there are actual risks */}
-      {activeTab === 'register' && hasRisks && matrixData?.cells && <div className="mt-6"><RiskMatrix cells={matrixData.cells} /></div>}
+      {activeTab === 'register' && hasRisks && matrixData?.cells && <div><RiskMatrix cells={matrixData.cells} /></div>}
 
       {/* 5x5 Risk Heatmap (client-side, based on probability_score × impact_score_cost) */}
       {activeTab === 'register' && risks.length > 0 && risks.some((r) => r.probability_score != null && r.impact_score_cost != null) && (
-        <div className="mt-6"><RiskMatrixHeatmap risks={risks} /></div>
+        <div><RiskMatrixHeatmap risks={risks} /></div>
       )}
 
       {/* Search & filter bar (only when there are risks) */}
       {activeTab === 'register' && risks.length > 0 && (
-        <div className="mt-4 flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 min-w-[200px] max-w-xs">
             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-content-tertiary" />
             <input
@@ -762,7 +752,7 @@ export function RiskRegisterPage() {
       )}
 
       {activeTab === 'register' && showFilters && (
-        <div className="mt-2 flex items-center gap-2 flex-wrap animate-fade-in">
+        <div className="flex items-center gap-2 flex-wrap animate-fade-in">
           <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} aria-label={t('risk.filter_category', { defaultValue: 'Filter by category' })} className={selectCls + ' max-w-[150px]'}>
             <option value="">{t('risk.all_categories', { defaultValue: 'All Categories' })}</option>
             {CATEGORIES.map((c) => <option key={c} value={c}>{t(`risk.cat_${c}`, { defaultValue: c })}</option>)}
@@ -779,7 +769,7 @@ export function RiskRegisterPage() {
         </div>
       )}
 
-      {activeTab === 'register' && <div className="mt-4">
+      {activeTab === 'register' && <div>
         {!projectId ? (
           <Card><RequiresProject
             emptyHint={t('risk.no_project_desc', { defaultValue: 'Open a project first to view and manage risks.' })}

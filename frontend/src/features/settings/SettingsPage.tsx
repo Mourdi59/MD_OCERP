@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getIntlLocale } from '@/shared/lib/formatters';
 import { TranslationManager } from './TranslationManager';
@@ -35,7 +35,8 @@ import {
   Wrench,
   LayoutGrid,
 } from 'lucide-react';
-import { Card, CardHeader, CardContent, CardFooter, Button, Badge, InfoHint, Skeleton, Breadcrumb } from '@/shared/ui';
+import { Card, CardHeader, CardContent, CardFooter, Button, Badge, InfoHint, Skeleton, Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { DashboardLayoutManager } from '@/features/dashboard/DashboardLayoutManager';
 import { UpdateNotification } from '@/shared/ui/UpdateChecker';
@@ -1099,6 +1100,7 @@ const TABS: readonly TabDef[] = [
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
   const setTokens = useAuthStore((s) => s.setTokens);
   const queryClient = useQueryClient();
@@ -1194,25 +1196,48 @@ export function SettingsPage() {
   const ActiveIcon = activeTabDef.icon;
 
   return (
-    <div className="w-full animate-fade-in">
-      <Breadcrumb
-        items={[{ label: t('nav.settings', 'Settings') }]}
-        className="mb-4"
-      />
-
+    <div className="space-y-5 animate-fade-in">
       {/* Update notification — surfaced in Settings so users see new
-          versions even if they dismissed the sidebar widget for the session. */}
-      <div className="-mx-4 sm:-mx-7 mb-6">
+          versions even if they dismissed the sidebar widget for the session.
+          Rendered FIRST so that when UpdateNotification returns null (the
+          common no-update case) it is the leading space-y child and reserves
+          no phantom margin (audit: settings-top). Full-bleed when shown. */}
+      <div className="-mx-4 sm:-mx-7 empty:hidden">
         <UpdateNotification forceShow hideDismiss />
       </div>
 
+      <Breadcrumb items={[{ label: t('nav.settings', 'Settings') }]} />
+
       {/* Page header */}
-      <div className="mb-6 animate-card-in">
-        <h1 className="text-2xl font-bold text-content-primary">{t('nav.settings', 'Settings')}</h1>
-        <p className="mt-1 text-sm text-content-secondary">
-          {t('settings.subtitle', { defaultValue: 'Manage your account and preferences' })}
-        </p>
-      </div>
+      <PageHeader
+        className="animate-card-in"
+        srTitle={t('nav.settings', 'Settings')}
+        subtitle={t('settings.subtitle', { defaultValue: 'Manage your account and preferences' })}
+      />
+
+      {/* Canonical module intro — pain-named, copy from MODULE_INTRO_COPY. */}
+      <DismissibleInfo
+        storageKey="settings"
+        title={t('settings.intro_title', {
+          defaultValue: 'Set the platform up once for your team',
+        })}
+        links={[
+          {
+            label: t('nav.setup_databases', { defaultValue: 'Databases & Resources' }),
+            onClick: () => navigate('/setup/databases'),
+          },
+          {
+            label: t('nav.integrations', { defaultValue: 'Integrations' }),
+            onClick: () => navigate('/integrations'),
+          },
+          { label: t('nav.modules', { defaultValue: 'Modules' }), onClick: () => navigate('/modules') },
+        ]}
+      >
+        {t('settings.intro_body', {
+          defaultValue:
+            'Connect an AI provider key, choose language, timezone and number formats, manage DDC converter versions, and wire integrations like Slack, Teams, Telegram and webhooks from one place. The Advanced tab holds backup, restore and the database setup wizard, so the choices made here flow into every module for this workspace.',
+        })}
+      </DismissibleInfo>
 
       {/* ── Two-column layout: sidebar nav + content ──────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-6 lg:gap-8">

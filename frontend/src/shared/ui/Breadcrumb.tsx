@@ -13,7 +13,12 @@ interface BreadcrumbProps {
 }
 
 export function Breadcrumb({ items, className }: BreadcrumbProps) {
-  if (items.length === 0) return null;
+  // A single-item trail (just the module label) duplicates the top app bar,
+  // which already shows the active module icon + name next to the project
+  // selector. Founder decision 2026-06-06 (MODULE_STYLE_GUIDE section 2.1):
+  // breadcrumbs render only when they add depth - a project link or a
+  // detail trail. Top-level module pages therefore render nothing here.
+  if (items.length <= 1) return null;
 
   return (
     <nav aria-label="Breadcrumb" className={clsx('flex items-center gap-1 text-xs', className)}>

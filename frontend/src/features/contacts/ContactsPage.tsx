@@ -25,7 +25,6 @@ import {
   User,
   Pencil,
   Trash2,
-  Info,
   AlertTriangle,
   MoreVertical,
   UserPlus,
@@ -39,6 +38,7 @@ import {
   Badge,
   EmptyState,
   Breadcrumb,
+  DismissibleInfo,
   CountryFlag,
   ConfirmDialog,
   WideModal,
@@ -46,6 +46,7 @@ import {
   WideModalField,
   SideDrawer,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useCreateShortcut } from '@/shared/hooks/useCreateShortcut';
 import { useToastStore } from '@/stores/useToastStore';
@@ -96,8 +97,6 @@ const TAG_GROUPS: { prefix: string; label: string }[] = [
 
 /* Cap per group so the strip stays scannable at 6.6K contacts. */
 const TAG_GROUP_CAP = 8;
-
-const LS_INFO_DISMISSED = 'oe_contacts_info_dismissed';
 
 const TYPE_BADGE_VARIANT: Record<ContactType, 'blue' | 'warning' | 'success' | 'neutral'> = {
   client: 'blue',
@@ -1125,6 +1124,7 @@ function ContactDetailDrawer({
 
 export function ContactsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
 
@@ -1137,9 +1137,6 @@ export function ContactsPage() {
   const [typeFilter, setTypeFilter] = useState<ContactType | ''>('');
   const [countryFilter, setCountryFilter] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [infoDismissed, setInfoDismissed] = useState(
-    () => localStorage.getItem(LS_INFO_DISMISSED) === '1',
-  );
 
   // "n" shortcut → open new contact form
   useCreateShortcut(
@@ -1404,63 +1401,81 @@ export function ContactsPage() {
   );
 
   return (
-    <div className="w-full animate-fade-in">
-      {/* Breadcrumb */}
+    <div className="space-y-5 animate-fade-in">
+      {/* Breadcrumb — single-item trail auto-hides (canonical top block). */}
       <Breadcrumb
         items={[{ label: t('contacts.title', { defaultValue: 'Contacts' }) }]}
-        className="mb-4"
       />
 
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">
-            {t('contacts.page_title', { defaultValue: 'Contacts Directory' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('contacts.subtitle', { defaultValue: 'Manage clients, subcontractors, suppliers, and consultants' })}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={
-              exportMut.isPending ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Download size={14} />
-              )
-            }
-            onClick={() => exportMut.mutate()}
-            disabled={exportMut.isPending}
-          >
-            {t('contacts.export', { defaultValue: 'Export' })}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<Upload size={14} />}
-            onClick={() => setShowImportModal(true)}
-          >
-            {t('contacts.import', { defaultValue: 'Import' })}
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowAddModal(true)}
-            icon={<Plus size={14} />}
-          >
-            {t('contacts.new_contact', { defaultValue: 'New Contact' })}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        srTitle={t('contacts.title', { defaultValue: 'Contacts' })}
+        subtitle={t('contacts.subtitle', {
+          defaultValue: 'Manage clients, subcontractors, suppliers, and consultants',
+        })}
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={
+                exportMut.isPending ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Download size={14} />
+                )
+              }
+              onClick={() => exportMut.mutate()}
+              disabled={exportMut.isPending}
+            >
+              {t('contacts.export', { defaultValue: 'Export' })}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Upload size={14} />}
+              onClick={() => setShowImportModal(true)}
+            >
+              {t('contacts.import', { defaultValue: 'Import' })}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowAddModal(true)}
+              icon={<Plus size={14} />}
+            >
+              {t('contacts.new_contact', { defaultValue: 'New Contact' })}
+            </Button>
+          </>
+        }
+      />
+
+      {/* Canonical module intro — pain-named, copy from MODULE_INTRO_COPY. */}
+      <DismissibleInfo
+        storageKey="contacts"
+        title={t('contacts.intro_title', {
+          defaultValue: 'One clean address book, no duplicate parties',
+        })}
+        links={[
+          { label: t('nav.crm', { defaultValue: 'CRM' }), onClick: () => navigate('/crm') },
+          {
+            label: t('nav.subcontractors', { defaultValue: 'Subcontractors' }),
+            onClick: () => navigate('/subcontractors'),
+          },
+          { label: t('nav.rfi', { defaultValue: 'RFI' }), onClick: () => navigate('/rfi') },
+        ]}
+      >
+        {t('contacts.intro_body', {
+          defaultValue:
+            'Keep every organisation and person on your projects here once, clients, subcontractors, suppliers and consultants, with a prequalification status that flags who is approved to bid or be awarded work. The same record is reused across the platform as RFI and submittal ball-in-court, transmittal recipient, correspondence party and tender invitee, so the downstream paperwork stays consistent.',
+        })}
+      </DismissibleInfo>
 
       {/* KPI strip — surfaces the /stats/ aggregate (total directory size
           and the count of contacts whose prequalification is expiring, the
           most actionable signal for a procurement / bid team). */}
       {stats && (
-        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Card className="p-3">
             <div className="flex items-center gap-2">
               <Users size={16} className="text-oe-blue shrink-0" />
@@ -1524,45 +1539,12 @@ export function ContactsPage() {
         </div>
       )}
 
-      {/* Purpose / help banner — explains the directory and how it
-          connects to the rest of the platform. */}
-      {!infoDismissed && (
-        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-300 relative">
-          <button
-            onClick={() => {
-              setInfoDismissed(true);
-              localStorage.setItem(LS_INFO_DISMISSED, '1');
-            }}
-            className="absolute top-2 right-2 flex h-9 w-9 items-center justify-center rounded text-blue-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40 dark:hover:text-blue-200 transition-colors"
-            aria-label={t('common.dismiss', { defaultValue: 'Dismiss' })}
-          >
-            <X size={14} />
-          </button>
-          <div className="flex items-center gap-2 mb-1">
-            <Info size={16} />
-            <span className="font-semibold">
-              {t('contacts.info_title', { defaultValue: 'About the Contacts Directory' })}
-            </span>
-          </div>
-          <p className="text-xs pr-6">
-            {t('contacts.info_body', {
-              defaultValue:
-                'A single, shared address book for every organisation and person on your projects — clients, subcontractors, suppliers, and consultants. Prequalification status flags who is approved to bid or be awarded work.',
-            })}{' '}
-            {t('contacts.info_link_hint', {
-              defaultValue:
-                'Contacts are reused across the platform: as RFI / submittal ball-in-court, transmittal recipients, correspondence parties, and tender invitees. Keep this list clean and everything downstream stays consistent.',
-            })}
-          </p>
-        </div>
-      )}
-
       {/* CRM tag-chip strip — surfaces metadata.tags from imported
           contacts so a user can pivot the list by tier / topic / language /
           country / inbox / consent without typing into search. AND-combined:
           selecting two chips returns only contacts that carry both tags. */}
       {groupedFacets.length > 0 && (
-        <Card padding="none" className="mb-4">
+        <Card padding="none">
           <div className="flex flex-col gap-2 p-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wide text-content-tertiary">
@@ -1620,7 +1602,7 @@ export function ContactsPage() {
       )}
 
       {/* Filter bar */}
-      <Card padding="none" className="mb-6">
+      <Card padding="none">
         <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
           {/* Search */}
           <div className="relative flex-1">

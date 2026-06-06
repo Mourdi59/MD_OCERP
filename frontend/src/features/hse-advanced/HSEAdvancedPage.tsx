@@ -38,6 +38,7 @@ import {
 } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { SectionIntro } from '@/features/validation';
 import { normalizeListResponse } from '@/shared/lib/apiHelpers';
 import { getErrorMessage } from '@/shared/lib/api';
@@ -194,45 +195,38 @@ export function HSEAdvancedPage() {
   ];
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           ...(projectName ? [{ label: projectName, to: `/projects/${projectId}` }] : []),
           { label: t('nav.hse_advanced', { defaultValue: 'HSE Advanced' }) },
         ]}
-        className="mb-4"
       />
 
-      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">
-            {t('hse_advanced.title', { defaultValue: 'HSE Advanced' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('hse_advanced.subtitle', {
-              defaultValue:
-                'Investigate incidents, run JSAs, manage permits, deliver toolbox talks, issue PPE, audit the site and close CAPAs.',
-            })}
-          </p>
-        </div>
-        {projectId && <Osha300Download projectId={projectId} />}
-      </div>
+      <PageHeader
+        srTitle={t('hse_advanced.title', { defaultValue: 'HSE Advanced' })}
+        subtitle={t('hse_advanced.subtitle', {
+          defaultValue:
+            'Investigate incidents, run JSAs, manage permits, deliver toolbox talks, issue PPE, audit the site and close CAPAs.',
+        })}
+        actions={projectId && <Osha300Download projectId={projectId} />}
+      />
 
       <SectionIntro
         storageKey="hse_advanced"
         title={t('hse_advanced.intro_title', {
-          defaultValue: 'Beyond basic incident logging',
+          defaultValue: 'Close out every safety finding, not just log it',
         })}
         links={[
           {
-            label: t('hse_advanced.intro_link_safety', { defaultValue: 'Safety (incidents)' }),
+            label: t('hse_advanced.intro_link_safety', { defaultValue: 'Safety' }),
             onClick: () => navigate('/safety'),
           },
         ]}
       >
         {t('hse_advanced.intro_body', {
           defaultValue:
-            'HSE Advanced handles the formal side of site safety: 5-Whys incident investigations, Job Safety Analyses, permits-to-work, toolbox talks, PPE issue tracking, safety audits and CAPA (corrective/preventive action) close-out. For quick incident and observation logging use the Safety page; escalate here when an event needs root-cause analysis and tracked corrective actions.',
+            'This is the formal side of site safety: open a 5-Whys investigation off a Safety incident, run Job Safety Analyses and permits-to-work through their approval states, record toolbox talks and PPE issues, audit the site, and track corrective and preventive actions to close-out. Findings feed the KPI strip (open investigations, overdue CAPAs, active permits, days since LTI) and export to an OSHA 300 log.',
         })}
       </SectionIntro>
 
@@ -245,7 +239,7 @@ export function HSEAdvancedPage() {
         })}
       >
         <div
-          className="flex items-center gap-1 mb-6 border-b border-border-light overflow-x-auto"
+          className="flex items-center gap-1 mb-5 border-b border-border-light overflow-x-auto"
           role="tablist"
           aria-label={t('hse_advanced.tabs_aria', {
             defaultValue: 'HSE advanced sections',
@@ -557,7 +551,7 @@ function HSEKpiStrip({ projectId }: { projectId: string }) {
 
   return (
     <div
-      className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6"
+      className="grid grid-cols-2 md:grid-cols-4 gap-3"
       data-testid="hse-kpi-strip"
       aria-label={t('hse_advanced.kpi_aria', { defaultValue: 'HSE key indicators' })}
     >

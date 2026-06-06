@@ -35,12 +35,24 @@
      backgrounds used app-wide (badges, BETA chips, status tags).
      before: #e8f2fe → 4.15:1   after: #f0f7ff → 4.70:1 (axe contrast-AA) */
   --oe-blue-subtle: #f0f7ff;
+  /* Channel triplets for Tailwind alpha modifiers (bg-oe-blue/10,
+     border-oe-blue/30, hover:bg-surface-secondary/50, ...). Tailwind
+     cannot inject alpha into an opaque var(), so before these existed
+     every alpha-modified oe/surface utility was silently DROPPED from
+     the build - the class rendered nothing (found 2026-06-06, reported
+     as "info blocks have no background"). MUST stay in sync with the
+     hex values above/below. */
+  --oe-blue-ch: 0 113 227;
 
   /* Surfaces */
   --oe-bg: #ffffff;
   --oe-bg-secondary: #f5f5f7;
   --oe-bg-tertiary: #fbfbfd;
   --oe-bg-elevated: #ffffff;
+  --oe-bg-ch: 255 255 255;
+  --oe-bg-secondary-ch: 245 245 247;
+  --oe-bg-tertiary-ch: 251 251 253;
+  --oe-bg-elevated-ch: 255 255 255;
 
   /* Borders */
   --oe-border: #d2d2d7;
@@ -175,12 +187,18 @@
      `text-oe-blue-text` reads cleanly on lifted dark surfaces without
      touching `bg-oe-blue-dark` (used as hover/active button bg). */
   --oe-blue-text: #93c5fd;
+  /* Channel triplet - see the light-mode comment. Keep in sync. */
+  --oe-blue-ch: 59 130 246;
 
   /* Surfaces — deep blue-gray palette */
   --oe-bg: #0f1117;
   --oe-bg-secondary: #161822;
   --oe-bg-tertiary: #1a1d2b;
   --oe-bg-elevated: #1e2130;
+  --oe-bg-ch: 15 17 23;
+  --oe-bg-secondary-ch: 22 24 34;
+  --oe-bg-tertiary-ch: 26 29 43;
+  --oe-bg-elevated-ch: 30 33 48;
 
   /* Borders — subtle, low-contrast */
   --oe-border: #2a2d3e;

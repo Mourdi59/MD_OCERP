@@ -3,23 +3,49 @@
  */
 
 import { Trans, useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
   Mail, Shield, BookOpen, Users, Award,
   Briefcase, Globe, ExternalLink,
   Linkedin, Youtube, Star, Coffee, Rocket, ArrowRight, Handshake,
   Github, MessageCircle,
 } from 'lucide-react';
-import { Card, Button, Badge, Breadcrumb } from '@/shared/ui';
+import { Card, Button, Badge, Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { APP_VERSION } from '@/shared/lib/version';
 import { UpdateNotification } from '@/shared/ui/UpdateChecker';
 import { Changelog } from './Changelog';
 
 export function AboutPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
+      {/* Breadcrumb — single-item trail auto-hides (canonical top block). */}
       <Breadcrumb items={[{ label: t('nav.about', { defaultValue: 'About' }) }]} />
+
+      {/* Canonical header row — sr-only title for AT; the module name + icon
+          live in the top app bar. About keeps its brand identity block below. */}
+      <PageHeader srTitle={t('nav.about', { defaultValue: 'About' })} />
+
+      {/* Canonical module intro — pain-named, copy from MODULE_INTRO_COPY. */}
+      <DismissibleInfo
+        storageKey="about"
+        title={t('about.intro_title', {
+          defaultValue: 'Know what you are running and why',
+        })}
+        links={[
+          { label: t('nav.modules', { defaultValue: 'Modules' }), onClick: () => navigate('/modules') },
+          { label: t('nav.settings', { defaultValue: 'Settings' }), onClick: () => navigate('/settings') },
+        ]}
+      >
+        {t('about.intro_body', {
+          defaultValue:
+            'Shows your installed version, recent release notes, the AGPL-3.0 licence and the open-source story behind the platform, plus links to the wider DataDrivenConstruction ecosystem and the cost-estimation book. Use it to confirm what build you are on before reporting an issue or planning an upgrade.',
+        })}
+      </DismissibleInfo>
+
       {/* Header — two columns on wide screens: identity on the left,
           update-availability notification on the right so users can
           spot a new release at a glance. */}

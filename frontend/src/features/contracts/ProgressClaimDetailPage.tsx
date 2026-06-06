@@ -12,7 +12,7 @@
 // the backend, so the affordances are hidden for editors/viewers.
 
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -30,6 +30,7 @@ import {
   Card,
   Badge,
   Breadcrumb,
+  DismissibleInfo,
   RecoveryCard,
   SkeletonTable,
 } from '@/shared/ui';
@@ -94,6 +95,7 @@ function isEditable(status: ClaimStatus): boolean {
 
 export function ProgressClaimDetailPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { projectId, claimId } = useParams<{ projectId: string; claimId: string }>();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
@@ -289,6 +291,28 @@ export function ProgressClaimDetailPage() {
           )}
         </div>
       </div>
+
+      <DismissibleInfo
+        storageKey="contracts-claim"
+        title={t('contracts_claim.intro_title', {
+          defaultValue: 'Bill exactly what was built this period',
+        })}
+        links={[
+          {
+            label: t('nav.contracts', { defaultValue: 'Contracts' }),
+            onClick: () => navigate(contractsHref),
+          },
+          {
+            label: t('nav.finance', { defaultValue: 'Finance' }),
+            onClick: () => navigate('/finance'),
+          },
+        ]}
+      >
+        {t('contracts_claim.intro_body', {
+          defaultValue:
+            'Enter the percent or value complete against each schedule-of-values line, or pull it straight from progress observations, and the claim totals gross, retention and net due for you. Walk it through Submit, Approve, Certify and Mark paid, and the certified amount flows back to the contract and into Finance as a payable.',
+        })}
+      </DismissibleInfo>
 
       {/* Totals */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

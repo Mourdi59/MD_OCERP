@@ -5,11 +5,25 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Function-form colors: a plain `bg-oe-blue` keeps resolving through
+        // var(--oe-blue) (runtime-themable, unchanged), while alpha modifiers
+        // (`bg-oe-blue/10`, `border-oe-blue/30`) compose from the channel
+        // triplet vars (--oe-blue-ch etc., defined next to the hex vars in
+        // index.css). Without this, Tailwind silently DROPPED every
+        // alpha-modified utility on these palettes - no CSS was emitted at
+        // all, so e.g. the DismissibleInfo card background rendered fully
+        // transparent (found 2026-06-06).
         oe: {
-          blue: 'var(--oe-blue)',
+          blue: ({ opacityValue }) =>
+            opacityValue === undefined
+              ? 'var(--oe-blue)'
+              : `rgb(var(--oe-blue-ch) / ${opacityValue})`,
           'blue-hover': 'var(--oe-blue-hover)',
           'blue-active': 'var(--oe-blue-active)',
           'blue-dark': 'var(--oe-blue-dark)',
+          // NOTE: blue-subtle has NO alpha support on purpose - its dark-mode
+          // value is itself an rgba() tint, so alpha-on-alpha would mislead.
+          // Want a translucent blue? Use `bg-oe-blue/10` instead.
           'blue-subtle': 'var(--oe-blue-subtle)',
           // Theme-aware blue intended for use as TEXT on tinted/lifted
           // surfaces. Resolves to a deeper hue in light mode and to a
@@ -18,10 +32,22 @@ export default {
           'blue-text': 'var(--oe-blue-text)',
         },
         surface: {
-          primary: 'var(--oe-bg)',
-          secondary: 'var(--oe-bg-secondary)',
-          tertiary: 'var(--oe-bg-tertiary)',
-          elevated: 'var(--oe-bg-elevated)',
+          primary: ({ opacityValue }) =>
+            opacityValue === undefined
+              ? 'var(--oe-bg)'
+              : `rgb(var(--oe-bg-ch) / ${opacityValue})`,
+          secondary: ({ opacityValue }) =>
+            opacityValue === undefined
+              ? 'var(--oe-bg-secondary)'
+              : `rgb(var(--oe-bg-secondary-ch) / ${opacityValue})`,
+          tertiary: ({ opacityValue }) =>
+            opacityValue === undefined
+              ? 'var(--oe-bg-tertiary)'
+              : `rgb(var(--oe-bg-tertiary-ch) / ${opacityValue})`,
+          elevated: ({ opacityValue }) =>
+            opacityValue === undefined
+              ? 'var(--oe-bg-elevated)'
+              : `rgb(var(--oe-bg-elevated-ch) / ${opacityValue})`,
         },
         border: {
           DEFAULT: 'var(--oe-border)',

@@ -22,7 +22,8 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import {
   AlertTriangle,
@@ -30,7 +31,6 @@ import {
   Download,
   FileText,
   GitMerge,
-  Mail,
   Map as MapIcon,
   RefreshCw,
   ShieldAlert,
@@ -42,8 +42,10 @@ import {
   Breadcrumb,
   Button,
   Card,
+  DismissibleInfo,
   EmptyState,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { getErrorMessage, triggerDownload, apiPost } from '@/shared/lib/api';
@@ -909,25 +911,43 @@ function ActionBar({
 /* ───────────── Page shell ───────────────────────────────────────────── */
 
 export function BulkOperationsPage() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const userRole = useAuthStore((s) => s.userRole);
   const isManagerPlus = useMemo(
     () => (userRole ? MANAGER_PLUS.has(userRole.toLowerCase()) : false),
     [userRole],
   );
 
+  const breadcrumb = (
+    <Breadcrumb
+      items={[
+        {
+          label: t('propdev.title', { defaultValue: 'Property Development' }),
+          to: '/property-dev',
+        },
+        {
+          label: t('propdev.bulk_ops.title', {
+            defaultValue: 'Bulk operations',
+          }),
+        },
+      ]}
+    />
+  );
+
   if (!isManagerPlus) {
     return (
-      <div className="space-y-4">
-        <Breadcrumb
-          items={[
-            { label: 'Property Development', to: '/property-dev' },
-            { label: 'Bulk operations' },
-          ]}
-        />
+      <div className="space-y-5 animate-fade-in">
+        {breadcrumb}
         <Card className="p-6">
           <EmptyState
-            title="Not authorized"
-            description="Bulk operations are MANAGER+ only. Contact your workspace admin if you need access."
+            title={t('propdev.bulk_ops.not_authorized_title', {
+              defaultValue: 'Not authorized',
+            })}
+            description={t('propdev.bulk_ops.not_authorized_desc', {
+              defaultValue:
+                'Bulk operations are MANAGER+ only. Contact your workspace admin if you need access.',
+            })}
           />
         </Card>
       </div>
@@ -935,29 +955,34 @@ export function BulkOperationsPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <Breadcrumb
-        items={[
-          { label: 'Property Development', to: '/property-dev' },
-          { label: 'Bulk operations' },
-        ]}
+    <div className="space-y-5 animate-fade-in">
+      {breadcrumb}
+      <PageHeader
+        srTitle={t('propdev.bulk_ops.heading', {
+          defaultValue: 'Bulk operations console',
+        })}
+        subtitle={t('propdev.bulk_ops.subtitle', {
+          defaultValue:
+            'Manager-only batch actions across plots, reservations, documents, leads and buyers.',
+        })}
       />
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <Mail className="text-oe-blue" size={20} />
-          <div className="flex-1">
-            <h1 className="text-lg font-semibold text-content-primary">
-              Bulk operations console
-            </h1>
-            <p className="mt-0.5 text-xs text-content-tertiary">
-              Manager-only batch actions across plots, reservations, documents,
-              leads and buyers. Every section: dry-run first → review →
-              execute. Each batch is SAVEPOINT-atomic (the whole transaction
-              rolls back on hard DB failure).
-            </p>
-          </div>
-        </div>
-      </Card>
+      <DismissibleInfo
+        storageKey="propdev-bulk-operations"
+        title={t('propdev_bulk_ops.intro_title', {
+          defaultValue: 'Move many records safely at once',
+        })}
+        links={[
+          {
+            label: t('propdev.title', { defaultValue: 'Property Development' }),
+            onClick: () => navigate('/property-dev'),
+          },
+        ]}
+      >
+        {t('propdev_bulk_ops.intro_body', {
+          defaultValue:
+            'Manager-only batch actions across plots, reservations, documents, leads and buyers, where every run is dry-run first, then review, then execute. Each batch is one atomic transaction that rolls back fully on failure, so a large change to the development never leaves it half-applied.',
+        })}
+      </DismissibleInfo>
 
       <PlotStatusChangeSection />
       <ReservationExtendExpirySection />

@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Wand2, ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react';
 
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -27,6 +27,7 @@ import { matchElementsApi } from '@/features/match-elements/api';
 import { fetchDocuments, uploadDocument } from '@/features/documents/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
 import { Button, Card, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 
 import {
   aiEstimatorApi,
@@ -599,10 +600,16 @@ export function AiEstimatorPage() {
   // ── Render: runs list ──────────────────────────────────────────────
   if (view === 'list') {
     return (
-      <div className="animate-fade-in">
-        <PageHeader />
-        <AiStatusBanner readiness={readiness} />
+      <div className="space-y-5 animate-fade-in">
+        <PageHeader
+          srTitle={t('nav.ai_estimator', { defaultValue: 'AI Estimate Builder' })}
+          subtitle={t('aiest.subtitle', {
+            defaultValue:
+              'A full AI-driven estimate from any source. The agent groups quantities and finds catalogue rates, and you confirm every step.',
+          })}
+        />
         <IntroBanner />
+        <AiStatusBanner readiness={readiness} />
         <RunsList
           runs={runsQ.data?.runs ?? []}
           loading={runsQ.isLoading}
@@ -621,19 +628,24 @@ export function AiEstimatorPage() {
 
   return (
     <ScoreThresholdsProvider value={meta.thresholds}>
-    <div className="animate-fade-in">
-      <div className="mb-4 flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={<ArrowLeft className="h-4 w-4" />}
-          onClick={backToList}
-        >
-          {t('aiest.wizard.back_to_runs', { defaultValue: 'All estimates' })}
-        </Button>
-      </div>
-
-      <PageHeader />
+    <div className="space-y-5 animate-fade-in">
+      <PageHeader
+        srTitle={t('nav.ai_estimator', { defaultValue: 'AI Estimate Builder' })}
+        subtitle={t('aiest.subtitle', {
+          defaultValue:
+            'A full AI-driven estimate from any source. The agent groups quantities and finds catalogue rates, and you confirm every step.',
+        })}
+        actions={
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<ArrowLeft className="h-4 w-4" />}
+            onClick={backToList}
+          >
+            {t('aiest.wizard.back_to_runs', { defaultValue: 'All estimates' })}
+          </Button>
+        }
+      />
       <AiStatusBanner readiness={readiness} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_1fr_300px]">
@@ -841,38 +853,22 @@ export function AiEstimatorPage() {
 
 // ── Small local presentational helpers ───────────────────────────────
 
-function PageHeader() {
-  const { t } = useTranslation();
-  return (
-    <div className="mb-4 flex items-center gap-3">
-      <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-oe-blue to-indigo-600 text-white shadow-sm">
-        <Wand2 className="h-5 w-5" />
-      </span>
-      <div>
-        <h1 className="text-2xl font-bold text-content-primary">
-          {t('aiest.title', { defaultValue: 'AI Estimate Builder' })}
-        </h1>
-        <p className="text-sm text-content-secondary">
-          {t('aiest.subtitle', {
-            defaultValue:
-              'A full AI-driven precise estimate from any source. The agent groups quantities and finds exact catalogue rates - you confirm every step.',
-          })}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 function IntroBanner() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   return (
     <DismissibleInfo
       storageKey="ai-estimator"
-      title={t('info.ai-estimator.title', { defaultValue: 'How the AI Estimate Builder works' })}
+      title={t('ai-estimator.intro_title', { defaultValue: 'A guided estimate you can actually trust' })}
+      links={[
+        { label: t('ai-estimator.intro_link_boq', { defaultValue: 'Open BOQ' }), onClick: () => navigate('/boq') },
+        { label: t('ai-estimator.intro_link_costs', { defaultValue: 'Cost database' }), onClick: () => navigate('/costs') },
+        { label: t('ai-estimator.intro_link_validation', { defaultValue: 'Validation' }), onClick: () => navigate('/validation') },
+      ]}
     >
-      {t('info.ai-estimator.body', {
+      {t('ai-estimator.intro_body', {
         defaultValue:
-          'Bring any source - a BIM or CAD model, a DWG or PDF takeoff, an Excel or GAEB import, photos, or just a written description. The agent detects the format, reads it into elements, groups quantities, and finds exact catalogue rates with full resource breakdowns. Every rate comes from the cost database, never invented by the AI, and you confirm each stage before it moves on. The result is a validated estimate you write straight into a bill of quantities.',
+          'Bring any source, a BIM or CAD model, a DWG or PDF takeoff, an Excel or GAEB import, photos or a written description. The agent detects the format, reads it into elements, groups quantities and finds catalogue rates with resource breakdowns, and you confirm each stage before it moves on. Every rate comes from the cost database, never invented, and the validated result writes straight into a BOQ.',
       })}
     </DismissibleInfo>
   );

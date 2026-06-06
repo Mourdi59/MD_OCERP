@@ -11,7 +11,6 @@ import {
   ChevronDown,
   ChevronRight,
   ArrowRight,
-  Info,
   Send,
   Link2,
   FileText,
@@ -19,6 +18,8 @@ import {
   File,
 } from 'lucide-react';
 import { Button, Card, Badge, EmptyState, Breadcrumb, DateDisplay, ConfirmDialog, RecoveryCard, SkeletonTable } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
+import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet } from '@/shared/lib/api';
@@ -1045,9 +1046,6 @@ export function CDEPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [stateFilter, setStateFilter] = useState<CDEState | ''>('');
-  const [infoDismissed, setInfoDismissed] = useState(
-    () => localStorage.getItem('oe_cde_info_dismissed') === '1',
-  );
 
   // Data
   const { data: projects = [] } = useQuery({
@@ -1295,7 +1293,7 @@ export function CDEPage() {
   );
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -1304,85 +1302,16 @@ export function CDEPage() {
             : []),
           { label: t('cde.title', { defaultValue: 'Common Data Environment' }) },
         ]}
-        className="mb-4"
       />
 
-      {/* Info box — dismissible */}
-      {!infoDismissed && (
-        <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-300">
-          <div className="flex items-center justify-between gap-2 mb-1">
-            <div className="flex items-center gap-2">
-              <Info size={16} />
-              <span className="font-semibold">
-                {t('cde.info_title', { defaultValue: 'About Document Containers' })}
-              </span>
-            </div>
-            <button
-              onClick={() => {
-                setInfoDismissed(true);
-                localStorage.setItem('oe_cde_info_dismissed', '1');
-              }}
-              className="flex h-6 w-6 items-center justify-center rounded text-blue-600 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors shrink-0"
-              aria-label={t('common.dismiss', { defaultValue: 'Dismiss' })}
-            >
-              <X size={14} />
-            </button>
-          </div>
-          <p className="text-xs">
-            {t('cde.info_description', {
-              defaultValue:
-                'A container organizes your project documents following the ISO 19650 standard. Each container holds document revisions that flow through 4 states: WIP (work in progress) \u2192 Shared (with team) \u2192 Published (approved) \u2192 Archived. Link your uploaded documents from the Documents page to containers for formal tracking.',
-            })}
-          </p>
-        </div>
-      )}
-
-      {/* Document flow */}
-      <div className="flex items-center gap-2 text-2xs text-content-quaternary mb-4">
-        <span className="text-content-tertiary">
-          {t('cde.flow_label', { defaultValue: 'Document flow:' })}
-        </span>
-        <button onClick={() => navigate('/documents')} className="hover:text-oe-blue transition-colors">
-          {t('cde.flow_upload', { defaultValue: 'Upload' })}
-        </button>
-        <span>&#8594;</span>
-        <span className="text-oe-blue font-medium">
-          {t('cde.flow_organize', { defaultValue: 'Organize (CDE)' })}
-        </span>
-        <span>&#8594;</span>
-        <button onClick={() => navigate('/transmittals')} className="hover:text-oe-blue transition-colors">
-          {t('cde.flow_distribute', { defaultValue: 'Distribute' })}
-        </button>
-      </div>
-
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-2xl font-bold text-content-primary shrink-0">
-          {t('cde.page_title', { defaultValue: 'Common Data Environment' })}
-        </h1>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {!routeProjectId && projects.length > 0 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((pr) => pr.id === e.target.value);
-                if (p) {
-                  useProjectContextStore.getState().setActiveProject(p.id, p.name);
-                }
-              }}
-              className={inputCls + ' !h-8 !text-xs max-w-[180px]'}
-            >
-              <option value="" disabled>
-                {t('cde.select_project', { defaultValue: 'Project...' })}
-              </option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
+      <PageHeader
+        srTitle={t('cde.title', { defaultValue: 'Common Data Environment' })}
+        subtitle={t('cde.subtitle', {
+          defaultValue:
+            'Organise project documents into ISO 19650 containers and move them through WIP, Shared, Published and Archived.',
+        })}
+        actions={
           <Button
             variant="primary"
             size="sm"
@@ -1395,7 +1324,7 @@ export function CDEPage() {
                   }),
                   message: t('cde.select_project_first', {
                     defaultValue:
-                      'Pick a project from the header dropdown, then click New Container.',
+                      'Pick a project from the top bar, then click New Container.',
                   }),
                 });
                 return;
@@ -1414,12 +1343,35 @@ export function CDEPage() {
             <Plus size={14} className="mr-1 shrink-0" />
             <span>{t('cde.new_container', { defaultValue: 'New Container' })}</span>
           </Button>
-        </div>
-      </div>
+        }
+      />
+
+      {/* Info card (canonical, pain-named copy from MODULE_INTRO_COPY) */}
+      <DismissibleInfo
+        storageKey="cde"
+        title={t('cde.intro_title', {
+          defaultValue: 'One agreed source of truth for documents',
+        })}
+        links={[
+          {
+            label: t('nav.project_files', { defaultValue: 'Files' }),
+            onClick: () => navigate('/files'),
+          },
+          {
+            label: t('files.transmittals.open_log', { defaultValue: 'Transmittal log' }),
+            onClick: () => navigate('/files/transmittals'),
+          },
+        ]}
+      >
+        {t('cde.intro_body', {
+          defaultValue:
+            'Organise project documents into ISO 19650 containers and move each revision through Work in Progress, Shared, Published and Archived, so everyone works off the right version. Upload first, organise here, then distribute. Promotions are gated by your role and the history is kept per container.',
+        })}
+      </DismissibleInfo>
 
       {/* Summary cards — fed by the /cde/stats aggregate endpoint */}
       {projectId && stats && stats.total > 0 && (
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Card padding="sm" className="flex flex-col">
             <span className="text-2xs font-medium uppercase tracking-wide text-content-tertiary">
               {t('cde.stat_total', { defaultValue: 'Total containers' })}
@@ -1456,7 +1408,7 @@ export function CDEPage() {
       )}
 
       {/* State filter tabs */}
-      <div className="mb-6 flex items-center gap-1 overflow-x-auto pb-1" title={t('cde.iso19650_states_tooltip', { defaultValue: 'ISO 19650 document states: WIP = Work in Progress (being authored), Shared = shared with team for review, Published = formally approved and issued, Archived = superseded or no longer current' })}>
+      <div className="flex items-center gap-1 overflow-x-auto pb-1" title={t('cde.iso19650_states_tooltip', { defaultValue: 'ISO 19650 document states: WIP = Work in Progress (being authored), Shared = shared with team for review, Published = formally approved and issued, Archived = superseded or no longer current' })}>
         {[
           { key: '' as CDEState | '', label: 'All', count: stateCounts.all },
           ...STATE_ORDER.map((s) => ({
@@ -1491,7 +1443,7 @@ export function CDEPage() {
       </div>
 
       {/* Search */}
-      <div className="mb-6 relative max-w-sm">
+      <div className="relative max-w-sm">
         <Search
           size={16}
           className="absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary"

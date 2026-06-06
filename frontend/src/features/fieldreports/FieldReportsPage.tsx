@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
@@ -42,7 +43,9 @@ import {
   WideModalSection,
   WideModalField,
   SkeletonGrid,
+  DismissibleInfo,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useToastStore } from '@/stores/useToastStore';
@@ -222,6 +225,7 @@ function totalWorkforce(workforce: WorkforceEntry[]): { workers: number; hours: 
 
 export function FieldReportsPage() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const weekStart = localeWeekStart(i18n.language);
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
@@ -491,7 +495,7 @@ export function FieldReportsPage() {
   });
 
   return (
-    <div className="flex flex-col gap-6 p-6 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -503,22 +507,14 @@ export function FieldReportsPage() {
       />
 
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-            <ClipboardList size={22} />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-content-primary">
-              {t('fieldreports.title', { defaultValue: 'Field Reports' })}
-            </h1>
-            <p className="text-sm text-content-tertiary">
-              {activeProjectName}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
+      <PageHeader
+        srTitle={t('fieldreports.title', { defaultValue: 'Field Reports' })}
+        subtitle={t('fieldreports.subtitle', {
+          defaultValue:
+            'Log the daily site diary — weather, workforce, work performed, delays and safety incidents.',
+        })}
+        actions={
+          <>
           {/* View toggle */}
           <div className="flex rounded-lg border border-border-light bg-surface-primary p-0.5">
             <button
@@ -586,29 +582,36 @@ export function FieldReportsPage() {
           <Button variant="primary" size="sm" onClick={handleOpenNew} className="shrink-0 whitespace-nowrap" icon={<Plus size={14} />}>
             {t('fieldreports.new_report', { defaultValue: 'New Report' })}
           </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
-      {/* Purpose intro */}
-      <div className="-mt-2 max-w-3xl space-y-1.5">
-        <p className="text-xs leading-relaxed text-content-tertiary">
-          {t('fieldreports.page_intro', {
-            defaultValue:
-              'Field reports are the daily site diary — weather, workforce, work performed, delays and safety incidents. Each report flows Draft → Submitted → Approved. Click a calendar day to log that day; days with reports show a colored dot per report. Export to Excel/PDF for the owner.',
-          })}
-        </p>
-        <p className="flex items-start gap-1.5 text-xs leading-relaxed text-content-tertiary">
-          <Lock size={12} className="mt-0.5 shrink-0" />
-          {t('fieldreports.workflow_hint', {
-            defaultValue:
-              'Submitting sends the report for approval; approving locks it permanently and it can no longer be edited.',
-          })}
-        </p>
-      </div>
+      {/* Info block */}
+      <DismissibleInfo
+        storageKey="field-reports"
+        title={t('fieldreports.intro_title', {
+          defaultValue: 'A defensible record of each site day',
+        })}
+        links={[
+          {
+            label: t('fieldreports.intro_link_daily_diary', { defaultValue: 'Daily Diary' }),
+            onClick: () => navigate('/daily-diary'),
+          },
+          {
+            label: t('fieldreports.intro_link_payroll', { defaultValue: 'Payroll' }),
+            onClick: () => navigate('/payroll'),
+          },
+        ]}
+      >
+        {t('fieldreports.intro_body', {
+          defaultValue:
+            'Capture daily, inspection, safety and concrete-pour reports with weather, workforce hours by trade, work performed and delays, then move each from draft to submitted to approved with a signature. Reports roll up workforce hours for payroll and progress, and unlike the legally sealed Daily Diary they are structured, templated forms you can export to PDF or Excel.',
+        })}
+      </DismissibleInfo>
 
       {/* Stats cards */}
       {summary && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <StatCard
             label={t('fieldreports.stat_total', { defaultValue: 'Total Reports' })}
             value={summary.total}

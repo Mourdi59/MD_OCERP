@@ -189,7 +189,7 @@ export function AccommodationDetailPage() {
   const blockIds = tabIds('accommodation-detail');
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           {

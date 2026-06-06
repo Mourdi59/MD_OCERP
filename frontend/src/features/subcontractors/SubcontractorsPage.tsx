@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import clsx from 'clsx';
@@ -40,7 +40,7 @@ import {
 import { Toggle } from '@/shared/ui/Toggle';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
-import { PipelineBanner } from './PipelineBanner';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { PrequalModal } from './PrequalModal';
 import { ScorecardTile } from './ScorecardTile';
 import { LienWaiverPanel } from './LienWaiverPanel';
@@ -204,6 +204,7 @@ function RatingStars({ score }: { score: number | string }) {
 
 export function SubcontractorsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -241,71 +242,47 @@ export function SubcontractorsPage() {
         ]}
       />
 
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-content-primary">
-            {t('subcontractors.title', { defaultValue: 'Subcontractors' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('subcontractors.subtitle', {
-              defaultValue:
-                'Manage subcontractor prequalifications, scopes, payments and ratings.',
-            })}
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          icon={<Plus size={14} />}
-          onClick={() => setCreateOpen(true)}
-        >
-          {t('subcontractors.new', { defaultValue: 'New Subcontractor' })}
-        </Button>
-      </div>
+      <PageHeader
+        subtitle={t('subcontractors.subtitle', {
+          defaultValue:
+            'Manage subcontractor prequalifications, scopes, payments and ratings.',
+        })}
+        actions={
+          <Button
+            variant="primary"
+            icon={<Plus size={14} />}
+            onClick={() => setCreateOpen(true)}
+          >
+            {t('subcontractors.new', { defaultValue: 'New Subcontractor' })}
+          </Button>
+        }
+      />
 
       <DismissibleInfo
         storageKey="subcontractors"
-        title={t('info.subcontractors.title', {
-          defaultValue: 'Subcontractor register',
+        title={t('subcontractors.intro_title', {
+          defaultValue: 'Only award to firms that are actually qualified',
         })}
-      >
-        {t('info.subcontractors.body', {
-          defaultValue:
-            'Track your prequalified supply chain here: insurance and certificate status, subcontract scopes, payment applications, retention and performance ratings. Approved firms can be invited to bid packages and bound by contracts, with prequalification and lien waivers gating award and payment.',
-        })}
-      </DismissibleInfo>
-
-      <PipelineBanner
-        intro={t('subcontractors.pipeline_intro', {
-          defaultValue:
-            'Subcontractors are your prequalified supply chain. Approved firms can be invited to bid packages, bound by subcontract agreements, and paid via payment applications — with certificates and ratings gating eligibility.',
-        })}
-        steps={[
+        links={[
           {
-            label: t('subcontractors.step_subs', {
-              defaultValue: 'Subcontractors',
-            }),
-            current: true,
+            label: t('nav.bid_management', { defaultValue: 'Bid Management' }),
+            onClick: () => navigate('/bid-management'),
           },
           {
-            label: t('subcontractors.step_bid', {
-              defaultValue: 'Bid Management',
-            }),
-            to: '/bid-management',
+            label: t('nav.contracts', { defaultValue: 'Contracts' }),
+            onClick: () => navigate('/contracts'),
           },
           {
-            label: t('subcontractors.step_contract', {
-              defaultValue: 'Contracts',
-            }),
-            to: '/contracts',
-          },
-          {
-            label: t('subcontractors.step_procurement', {
-              defaultValue: 'Procurement',
-            }),
-            to: '/procurement',
+            label: t('nav.procurement', { defaultValue: 'Procurement' }),
+            onClick: () => navigate('/procurement'),
           },
         ]}
-      />
+      >
+        {t('subcontractors.intro_body', {
+          defaultValue:
+            'Keep your supply chain here with insurance and certificate status, subcontract scopes, payment applications, retention and performance ratings. Prequalification and lien waivers gate who can be invited to bid packages and who can be paid, so an expired certificate or a missing waiver stops the award before it happens.',
+        })}
+      </DismissibleInfo>
 
       {/* Tabs (single tab — left for layout parity with ServicePage) */}
       <div className="border-b border-border-light">

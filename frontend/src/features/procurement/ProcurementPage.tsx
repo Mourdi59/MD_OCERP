@@ -9,7 +9,6 @@ import {
   Search,
   FileText,
   Wallet,
-  Contact,
   Plus,
   X,
   Loader2,
@@ -26,9 +25,10 @@ import {
   Breadcrumb,
   RecoveryCard,
   SkeletonTable,
-  InfoHint,
+  DismissibleInfo,
 } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { ContactSearchInput } from '@/shared/ui/ContactSearchInput';
@@ -196,7 +196,7 @@ export function ProcurementPage() {
   ];
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           ...(projectName
@@ -204,51 +204,53 @@ export function ProcurementPage() {
             : []),
           { label: t('procurement.title', { defaultValue: 'Procurement' }) },
         ]}
-        className="mb-4"
       />
 
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-content-primary">
-          {t('procurement.title', { defaultValue: 'Procurement' })}
-        </h1>
-        <p className="mt-1 text-sm text-content-secondary">
-          {t('procurement.subtitle', {
-            defaultValue: 'Purchase orders and goods receipts',
-          })}
-        </p>
-      </div>
-
-      {/* Workflow explanation — where procurement sits in the money flow */}
-      <InfoHint
-        className="mb-4"
-        text={t('procurement.workflow_desc', {
-          defaultValue:
-            'A Purchase Order commits budget with a vendor. When goods arrive you record a Goods Receipt; then "Create Invoice from PO" pushes the committed amount into Finance as a payable. PO totals roll up into the project budget as Committed, and into Actual once the invoice is paid.',
+      {/* Header — the module name + icon live in the global top bar; the
+          page renders only its subtitle. Project selection is global too. */}
+      <PageHeader
+        subtitle={t('procurement.subtitle', {
+          defaultValue: 'Purchase orders and goods receipts',
         })}
       />
 
-      {/* Cross-module links */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/finance')}>
-          <Wallet size={13} className="me-1" />
-          {t('procurement.link_finance', { defaultValue: 'Finance' })}
-        </Button>
-        <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/contacts')}>
-          <Contact size={13} className="me-1" />
-          {t('procurement.link_contacts', { defaultValue: 'Contacts' })}
-        </Button>
-      </div>
+      {/* Canonical info block — where procurement sits in the money flow,
+          with cross-module pills for the routes its results flow to. */}
+      <DismissibleInfo
+        storageKey="procurement"
+        title={t('procurement.intro_title', {
+          defaultValue: 'See committed spend before the invoice lands',
+        })}
+        links={[
+          {
+            label: t('nav.finance', { defaultValue: 'Finance' }),
+            onClick: () => navigate('/finance'),
+          },
+          {
+            label: t('nav.supplier_catalogs', { defaultValue: 'Supplier Catalogs' }),
+            onClick: () => navigate('/supplier-catalogs'),
+          },
+          {
+            label: t('nav.contacts', { defaultValue: 'Contacts' }),
+            onClick: () => navigate('/contacts'),
+          },
+        ]}
+      >
+        {t('procurement.intro_body', {
+          defaultValue:
+            'Raise a purchase order to commit budget with a vendor, record a goods receipt when the delivery arrives, then create an invoice from the PO to push the amount into Finance as a payable. PO totals roll up into the project budget as committed and become actual once the invoice is paid.',
+        })}
+      </DismissibleInfo>
 
       {/* No-project warning */}
       {!projectId && (
-        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
           {t('common.select_project_hint', { defaultValue: 'Select a project from the header to get started.' })}
         </div>
       )}
 
       {/* Tab Bar */}
-      <div className="flex items-center gap-1 mb-6 border-b border-border-light">
+      <div className="flex items-center gap-1 border-b border-border-light">
         {tabs.map((tab) => (
           <button
             key={tab.key}

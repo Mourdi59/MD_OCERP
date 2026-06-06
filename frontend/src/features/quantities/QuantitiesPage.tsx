@@ -26,7 +26,8 @@ import {
 } from 'lucide-react';
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { isModuleLoaded } from '@/shared/lib/moduleProbe';
-import { Breadcrumb } from '@/shared/ui';
+import { Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import {
   fetchConverterVersionCheck,
@@ -939,20 +940,32 @@ export function QuantitiesPage() {
     converters.find((c) => c.id === installing)?.name ?? installing ?? '';
 
   return (
-    <div className="w-full space-y-8 animate-fade-in">
-      <Breadcrumb items={[{ label: t('nav.quantities', 'Quantity Takeoff') }]} className="mb-4" />
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-content-primary">
-          {t('quantities.title', { defaultValue: 'Quantity Takeoff' })}
-        </h1>
-        <p className="mt-1 text-sm text-content-tertiary">
-          {t('quantities.subtitle', {
-            defaultValue:
-              'Collect project quantities — from AI text input, PDF drawings, or CAD/BIM models',
-          })}
-        </p>
-      </div>
+    <div className="space-y-5 animate-fade-in">
+      <Breadcrumb items={[{ label: t('nav.quantities', 'Quantity Takeoff') }]} />
+      {/* Canonical top block — module name + icon come from the global top
+          bar; the page renders only its subtitle. */}
+      <PageHeader
+        srTitle={t('quantities.title', { defaultValue: 'Quantity Takeoff' })}
+        subtitle={t('quantities.subtitle', {
+          defaultValue:
+            'Collect project quantities, from AI text input, PDF drawings, or CAD/BIM models',
+        })}
+      />
+
+      <DismissibleInfo
+        storageKey="quantities"
+        title={t('quantities.intro_title', { defaultValue: 'Pick the right way to measure' })}
+        links={[
+          { label: t('nav.ai_estimate', { defaultValue: 'Quick Estimate (AI)' }), onClick: () => navigate('/ai-estimate') },
+          { label: t('nav.takeoff', { defaultValue: 'PDF Takeoff' }), onClick: () => navigate('/takeoff') },
+          { label: t('nav.data_explorer', { defaultValue: 'Data Explorer' }), onClick: () => navigate('/data-explorer') },
+        ]}
+      >
+        {t('quantities.intro_body', {
+          defaultValue:
+            'Choose how to collect quantities, from a written description via AI, from PDF drawings, or from CAD and BIM models, and install the converter modules the file formats need. Each route turns drawings or models into measured quantities that flow into your BOQ.',
+        })}
+      </DismissibleInfo>
 
       {/* Method cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

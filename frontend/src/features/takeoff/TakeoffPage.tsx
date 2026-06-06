@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useMemo, useEffect, useId, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 
 import { Button, Card, Badge, Input, Skeleton, DismissibleInfo, Breadcrumb } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { PdfCompareDrawer } from './PdfCompareDrawer';
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { formatFileSize } from '@/shared/lib/formatters';
@@ -1022,6 +1023,7 @@ export function TakeoffPage() {
 
   /* ── Tab state (synced with ?tab= query parameter from sidebar) ──── */
 
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
   const initialTab: TakeoffTab =
@@ -1794,6 +1796,10 @@ export function TakeoffPage() {
           </g>
         </g>
       </svg>
+      {/* Header zone — full-bleed viewer keeps its own SVG chrome on the root,
+          so the canonical breadcrumb > header > info > tabs block carries its
+          own space-y-5 rhythm here (style guide §1 viewer exception). */}
+      <div className="space-y-5">
       <Breadcrumb
         items={[
           ...(() => {
@@ -1802,19 +1808,30 @@ export function TakeoffPage() {
           })(),
           { label: t('nav.pdf_measurements', 'PDF Measurements') },
         ]}
-        className="mb-3"
       />
-      {/* Header removed — the page title is already in the left sidebar
-          nav, and the subtitle was purely decorative. Saves ~80px of
-          vertical space so the main workspace fits in one viewport. */}
+      {/* Canonical top block — the module name + icon are shown by the global
+          top app bar, so no visible in-page title. The PageHeader carries a
+          subtitle (what the page does) so the header row is never a blank
+          midline before the info card. */}
+      <PageHeader
+        srTitle={t('nav.pdf_measurements', 'PDF Measurements')}
+        subtitle={t('takeoff.subtitle', {
+          defaultValue:
+            'Measure areas, lengths and counts on PDF drawings and send them to a BOQ',
+        })}
+      />
 
       <DismissibleInfo
         storageKey="takeoff"
-        title={t('info.takeoff.title', { defaultValue: 'PDF Takeoff' })}
+        title={t('takeoff.intro_title', { defaultValue: 'Measure straight off the drawing' })}
+        links={[
+          { label: t('nav.boq', { defaultValue: 'Bill of Quantities' }), onClick: () => navigate('/boq') },
+          { label: t('nav.quantities', { defaultValue: 'Quantity Takeoff' }), onClick: () => navigate('/quantities') },
+        ]}
       >
-        {t('info.takeoff.body', {
+        {t('takeoff.intro_body', {
           defaultValue:
-            'Upload PDF drawings to measure areas, lengths and counts, or let AI extract elements with quantities. Selected items flow straight into your BOQ and stay linked to the project cost and schedule.',
+            'Upload PDF drawings to measure areas, lengths and counts by hand, or let AI extract elements with quantities. Selected measurements flow straight into your BOQ and stay linked to the project cost and schedule.',
         })}
       </DismissibleInfo>
 
@@ -1822,7 +1839,7 @@ export function TakeoffPage() {
           for a sharper, more "tool-like" feel; no ring-halo. The Compare
           button sits to the right so revision-diffing is reachable from
           either tab without stealing the tablist's full width. */}
-      <div className="mb-3 flex items-stretch gap-2">
+      <div className="flex items-stretch gap-2">
       <div
         className="flex flex-1 gap-1 rounded-md border border-border-light/80 bg-surface-secondary/40 p-1"
         role="tablist"
@@ -1903,6 +1920,7 @@ export function TakeoffPage() {
         </span>
       </button>
       </div>
+      </div>
 
       {/* Tab content */}
       {activeTab === 'documents' ? (
@@ -1910,6 +1928,7 @@ export function TakeoffPage() {
           role="tabpanel"
           id="takeoff-tabpanel-documents"
           aria-labelledby="takeoff-tab-documents"
+          className="mt-5"
         >
           {/* Workflow steps */}
           <div className="mb-6 grid grid-cols-1 sm:grid-cols-4 gap-3">
@@ -2089,7 +2108,7 @@ export function TakeoffPage() {
         // most internal height — 8rem wasted ~1rem that was shrinking the
         // viewer enough to force an internal scrollbar on laptop screens.
         <div
-          className="flex flex-col h-[calc(100vh-var(--oe-header-height,52px)-7rem)] min-h-0 overflow-x-hidden"
+          className="mt-5 flex flex-col h-[calc(100vh-var(--oe-header-height,52px)-7rem)] min-h-0 overflow-x-hidden"
           role="tabpanel"
           id="takeoff-tabpanel-measurements"
           aria-labelledby="takeoff-tab-measurements"

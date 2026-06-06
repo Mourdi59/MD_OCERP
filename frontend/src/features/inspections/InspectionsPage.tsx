@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, RecoveryCard, SkeletonTable } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { SectionIntro } from '@/features/validation';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
@@ -1317,7 +1318,7 @@ export function InspectionsPage() {
     : null;
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -1326,70 +1327,48 @@ export function InspectionsPage() {
             : []),
           { label: t('inspections.title', { defaultValue: 'Inspections' }) },
         ]}
-        className="mb-4"
       />
 
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-content-primary">
-          {t('inspections.page_title', { defaultValue: 'Quality Inspections' })}
-        </h1>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {!routeProjectId && projects.length > 0 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((pr) => pr.id === e.target.value);
-                if (p) {
-                  useProjectContextStore.getState().setActiveProject(p.id, p.name);
-                }
-              }}
-              aria-label={t('inspections.select_project', { defaultValue: 'Project...' })}
-              className={inputCls + ' !h-8 !text-xs max-w-[180px]'}
+      <PageHeader
+        subtitle={t('inspections.subtitle', {
+          defaultValue: 'Schedule and record quality inspections, then raise punch items or NCRs',
+        })}
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={
+                exportMut.isPending ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Download size={14} />
+                )
+              }
+              onClick={() => exportMut.mutate()}
+              disabled={exportMut.isPending || !projectId}
             >
-              <option value="" disabled>
-                {t('inspections.select_project', { defaultValue: 'Project...' })}
-              </option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={
-              exportMut.isPending ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Download size={14} />
-              )
-            }
-            onClick={() => exportMut.mutate()}
-            disabled={exportMut.isPending || !projectId}
-          >
-            {t('common.export_excel', { defaultValue: 'Export Excel' })}
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowCreateModal(true)}
-            disabled={!projectId}
-            title={!projectId ? t('common.select_project_first', { defaultValue: 'Please select a project first' }) : undefined}
-            icon={<Plus size={14} />}
-          >
-            {t('inspections.new_inspection', { defaultValue: 'New Inspection' })}
-          </Button>
-        </div>
-      </div>
+              {t('common.export_excel', { defaultValue: 'Export Excel' })}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowCreateModal(true)}
+              disabled={!projectId}
+              title={!projectId ? t('common.select_project_first', { defaultValue: 'Please select a project first' }) : undefined}
+              icon={<Plus size={14} />}
+            >
+              {t('inspections.new_inspection', { defaultValue: 'New Inspection' })}
+            </Button>
+          </>
+        }
+      />
 
       <SectionIntro
         storageKey="inspections"
         title={t('inspections.intro_title', {
-          defaultValue: 'Quality inspections in the QA workflow',
+          defaultValue: 'Close the inspect-to-fix loop',
         })}
         links={[
           {
@@ -1408,41 +1387,41 @@ export function InspectionsPage() {
       >
         {t('inspections.intro_body', {
           defaultValue:
-            'Schedule and record quality inspections (structural, MEP, concrete, handover, …) against a project. Completing an inspection with a fail/partial result lets you raise a Punch List item or an NCR in one click, keeping the inspect → defect → close-out loop fully traceable.',
+            'Schedule and record quality inspections (structural, MEP, concrete, handover and more) against a project. A fail or partial result lets you raise a Punch List item or an NCR in one click, keeping the inspect, defect and close-out loop fully traceable back to the QMS overview.',
         })}
       </SectionIntro>
 
       {projectId ? (
       <>
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('inspections.stat_total', { defaultValue: 'Total' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-content-primary">{stats.total}</p>
+          <p className="text-lg font-semibold mt-1 tabular-nums text-content-primary">{stats.total}</p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('inspections.stat_scheduled', { defaultValue: 'Scheduled' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-oe-blue">{stats.scheduled}</p>
+          <p className="text-lg font-semibold mt-1 tabular-nums text-oe-blue">{stats.scheduled}</p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('inspections.stat_passed', { defaultValue: 'Passed' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-semantic-success">
+          <p className="text-lg font-semibold mt-1 tabular-nums text-semantic-success">
             {stats.passed}
           </p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('inspections.stat_failed', { defaultValue: 'Failed' })}
           </p>
           <p
             className={clsx(
-              'text-2xl font-bold mt-1 tabular-nums',
+              'text-lg font-semibold mt-1 tabular-nums',
               stats.failed > 0 ? 'text-semantic-error' : 'text-content-primary',
             )}
           >
@@ -1452,7 +1431,7 @@ export function InspectionsPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search

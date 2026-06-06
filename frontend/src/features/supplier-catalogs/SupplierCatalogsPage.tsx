@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
@@ -15,6 +15,7 @@ import {
   Star,
   AlertOctagon,
   Truck,
+  ArrowUpRight,
 } from 'lucide-react';
 import {
   Button,
@@ -23,6 +24,7 @@ import {
   EmptyState,
   Breadcrumb,
   SkeletonTable,
+  DismissibleInfo,
 } from '@/shared/ui';
 import {
   WideModal,
@@ -32,7 +34,7 @@ import {
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { PipelineBanner } from './PipelineBanner';
-import { getErrorMessage, apiGet } from '@/shared/lib/api';
+import { getErrorMessage } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import {
@@ -44,8 +46,6 @@ import {
   createVendor,
   createCatalogItem,
   createWarehouse,
-  createPR,
-  createPO,
   type Vendor,
   type CatalogItem,
   type Warehouse,
@@ -66,20 +66,9 @@ const VENDOR_VARIANT: Record<VendorStatus, 'neutral' | 'blue' | 'success' | 'war
 const inputCls =
   'h-9 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
 
-interface ProjectStub {
-  id: string;
-  name: string;
-  currency?: string;
-}
-
-function listProjectsLite(): Promise<ProjectStub[]> {
-  return apiGet<ProjectStub[]>('/v1/projects/?limit=200').catch(
-    () => [] as ProjectStub[],
-  );
-}
-
 export function SupplierCatalogsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('vendors');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -90,7 +79,7 @@ export function SupplierCatalogsPage() {
   const vendorsQ = useQuery({
     queryKey: ['sc', 'vendors', statusFilter],
     queryFn: () => listVendors({ status: statusFilter || undefined, limit: 200 }),
-    enabled: tab === 'vendors' || tab === 'catalog' || tab === 'prs' || tab === 'pos' || tab === 'match',
+    enabled: tab === 'vendors' || tab === 'catalog',
   });
   const itemsQ = useQuery({
     queryKey: ['sc', 'items', search],
@@ -102,6 +91,23 @@ export function SupplierCatalogsPage() {
     queryFn: () => listWarehouses(),
     enabled: tab === 'warehouses',
   });
+  // Lookup of catalog items used by the warehouse stock table to resolve a
+  // stock row's catalog_item_id to a human SKU + name (the raw id is a UUID).
+  const itemLookupQ = useQuery({
+    queryKey: ['sc', 'items', 'lookup'],
+    // Backend caps limit at 200; items not in the page slice fall back to a
+    // clear "Unknown item" label rather than the banned UUID slice.
+    queryFn: () => listCatalogItems({ limit: 200 }),
+    enabled: tab === 'warehouses',
+    staleTime: 60_000,
+  });
+  const itemLookup = useMemo(() => {
+    const map = new Map<string, CatalogItem>();
+    if (Array.isArray(itemLookupQ.data)) {
+      for (const it of itemLookupQ.data) map.set(it.id, it);
+    }
+    return map;
+  }, [itemLookupQ.data]);
   // The select visually defaults to the first warehouse, so balances must
   // fetch for it even before the user explicitly picks one (otherwise the
   // first warehouse looks selected but its stock never loads).
@@ -114,9 +120,11 @@ export function SupplierCatalogsPage() {
     enabled: tab === 'warehouses' && !!effectiveWarehouseId,
   });
 
-  // PRs / POs / invoices: backend lacks list endpoints today.  We compute
-  // synthetic empty lists and show an EmptyState.  The create-flow still
-  // works.  This keeps the surface honest about what the API supports.
+  // PRs / POs / 3-way-match: the supplier_catalogs backend exposes only
+  // create/lifecycle actions for these and NO list endpoints, and the records
+  // it stores never surface in /procurement either. Rather than create into a
+  // void, those tabs are honest read-only summaries that hand off to the
+  // /procurement module, which owns the live purchasing workflow.
   // Defensive coerce — the offline-cache layer can occasionally hydrate
   // the query with a non-array value (e.g. a stale FastAPI error envelope
   // from a previous session), which would crash ``.filter()`` below.
@@ -154,25 +162,54 @@ export function SupplierCatalogsPage() {
     }
   };
 
+  // Vendors / catalog items / warehouses are real reference records owned by
+  // this module, so they keep a create action. PR / PO / match are read-only
+  // summaries here (the records belong to /procurement), so no create button.
+  const canCreateHere = tab === 'vendors' || tab === 'catalog' || tab === 'warehouses';
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb items={[{ label: t('nav.supplier_catalogs', { defaultValue: 'Supplier Catalogs' }) }]} />
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-content-primary">
-            {t('supplier_catalogs.title', { defaultValue: 'Supplier Catalogs' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('supplier_catalogs.subtitle', {
-              defaultValue: 'Vendors, item catalogs, price comparison, requisitions, POs and warehouses.',
-            })}
-          </p>
-        </div>
-        <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>
-          {createLabel(tab, t)}
-        </Button>
+        <p className="text-sm text-content-tertiary">
+          {t('supplier_catalogs.subtitle', {
+            defaultValue:
+              'The vendor and item reference library: suppliers, priced catalogs, price comparison and warehouse stock.',
+          })}
+        </p>
+        {canCreateHere && (
+          <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>
+            {createLabel(tab, t)}
+          </Button>
+        )}
       </div>
+
+      <DismissibleInfo
+        storageKey="supplier-catalogs"
+        title={t('supplier_catalogs.info_title', {
+          defaultValue: 'Vendor & catalog reference library',
+        })}
+        links={[
+          {
+            label: t('supplier_catalogs.open_procurement_pill', {
+              defaultValue: 'Open Procurement',
+            }),
+            onClick: () => navigate('/procurement'),
+          },
+          {
+            label: t('supplier_catalogs.open_costs_pill', {
+              defaultValue: 'Cost Database',
+            }),
+            onClick: () => navigate('/costs'),
+          },
+        ]}
+      >
+        {t('supplier_catalogs.info_body', {
+          defaultValue:
+            'This page is your reference library of vendors, priced catalog items and warehouse stock. Live purchasing - raising requisitions, issuing purchase orders and three-way matching invoices - happens in the Procurement module.',
+        })}
+      </DismissibleInfo>
 
       <PipelineBanner
         intro={t('supplier_catalogs.pipeline_intro', {
@@ -291,23 +328,24 @@ export function SupplierCatalogsPage() {
         ) : tab === 'catalog' ? (
           <CatalogTable rows={filteredItems} onSelectPrice={(it) => setPriceItem(it)} onAction={() => setCreateOpen(true)} />
         ) : tab === 'prs' ? (
-          <PREmptyOrTable onAction={() => setCreateOpen(true)} />
+          <ProcurementHandoffPanel kind="prs" />
         ) : tab === 'pos' ? (
-          <POEmptyOrTable onAction={() => setCreateOpen(true)} />
+          <ProcurementHandoffPanel kind="pos" />
         ) : tab === 'match' ? (
-          <MatchEmptyState />
+          <ProcurementHandoffPanel kind="match" />
         ) : (
           <WarehousePanel
             warehouses={warehousesArr}
             selectedId={effectiveWarehouseId}
             balances={balancesArr}
+            itemLookup={itemLookup}
             onAction={() => setCreateOpen(true)}
           />
         )}
       </Card>
 
-      {createOpen && (
-        <CreateModal kind={tab} vendors={vendorsQ.data ?? []} onClose={() => setCreateOpen(false)} />
+      {createOpen && canCreateHere && (
+        <CreateModal kind={tab} onClose={() => setCreateOpen(false)} />
       )}
       {priceItem && (
         <PriceComparisonModal
@@ -486,76 +524,67 @@ function CatalogTable({
   );
 }
 
-function ProcurementHandoff() {
+/**
+ * Read-only hand-off panel for the PR / PO / 3-way-match tabs.
+ *
+ * The supplier_catalogs backend has no list endpoints for these records and
+ * they never surface in /procurement, so creating them here would be a
+ * create-into-the-void. Instead each tab explains what the stage is for and
+ * deep-links to /procurement, which owns the live purchasing workflow.
+ */
+function ProcurementHandoffPanel({ kind }: { kind: 'prs' | 'pos' | 'match' }) {
   const { t } = useTranslation();
-  return (
-    <Link
-      to="/procurement"
-      className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border-light px-3 py-1.5 text-xs font-medium text-content-secondary hover:text-oe-blue hover:border-oe-blue transition-colors"
-    >
-      {t('supplier_catalogs.open_procurement', {
-        defaultValue: 'Track requisitions & POs in Procurement',
-      })}
-    </Link>
-  );
-}
+  const navigate = useNavigate();
 
-function PREmptyOrTable({ onAction }: { onAction: () => void }) {
-  const { t } = useTranslation();
-  return (
-    <div className="flex flex-col items-center">
-      <EmptyState
-        icon={<ClipboardList size={22} />}
-        title={t('supplier_catalogs.prs_empty', {
-          defaultValue: 'Create a requisition',
-        })}
-        description={t('supplier_catalogs.prs_empty_desc', {
-          defaultValue:
-            'Raise a PR with line items here; its full lifecycle (approval → conversion to PO → receipt) is tracked in the Procurement module.',
-        })}
-        action={{
-          label: t('supplier_catalogs.new_pr', { defaultValue: 'New Requisition' }),
-          onClick: onAction,
-        }}
-      />
-      <ProcurementHandoff />
-    </div>
-  );
-}
+  const copy = {
+    prs: {
+      icon: <ClipboardList size={22} />,
+      title: t('supplier_catalogs.prs_handoff', {
+        defaultValue: 'Requisitions live in Procurement',
+      }),
+      desc: t('supplier_catalogs.prs_handoff_desc', {
+        defaultValue:
+          'Raise and track purchase requisitions - request, approval and conversion to a purchase order - in the Procurement module. This page stays focused on the vendor and item reference library that requisitions draw from.',
+      }),
+    },
+    pos: {
+      icon: <ShoppingCart size={22} />,
+      title: t('supplier_catalogs.pos_handoff', {
+        defaultValue: 'Purchase orders live in Procurement',
+      }),
+      desc: t('supplier_catalogs.pos_handoff_desc', {
+        defaultValue:
+          'Issue purchase orders to vendors and follow the draft, sent, acknowledged, received and closed flow in the Procurement module.',
+      }),
+    },
+    match: {
+      icon: <FileCheck size={22} />,
+      title: t('supplier_catalogs.match_handoff', {
+        defaultValue: 'Three-way matching lives in Procurement',
+      }),
+      desc: t('supplier_catalogs.match_handoff_desc', {
+        defaultValue:
+          'Vendor invoices are matched against their purchase order and goods receipt in the Procurement module, where tolerance exceptions are reviewed and resolved.',
+      }),
+    },
+  }[kind];
 
-function POEmptyOrTable({ onAction }: { onAction: () => void }) {
-  const { t } = useTranslation();
-  return (
-    <div className="flex flex-col items-center">
-      <EmptyState
-        icon={<ShoppingCart size={22} />}
-        title={t('supplier_catalogs.pos_empty', {
-          defaultValue: 'Create a purchase order',
-        })}
-        description={t('supplier_catalogs.pos_empty_desc', {
-          defaultValue:
-            'Issue a PO to a vendor here; the draft → sent → acknowledged → received → closed flow is managed in the Procurement module.',
-        })}
-        action={{
-          label: t('supplier_catalogs.new_po', { defaultValue: 'New PO' }),
-          onClick: onAction,
-        }}
-      />
-      <ProcurementHandoff />
-    </div>
-  );
-}
-
-function MatchEmptyState() {
-  const { t } = useTranslation();
   return (
     <EmptyState
-      icon={<AlertOctagon size={22} />}
-      title={t('supplier_catalogs.match_empty', { defaultValue: 'No match exceptions' })}
-      description={t('supplier_catalogs.match_empty_desc', {
-        defaultValue:
-          'Invoices that fail PO/GR/quantity tolerance checks land here for review. Auto-matched invoices are hidden.',
-      })}
+      icon={copy.icon}
+      title={copy.title}
+      description={copy.desc}
+      action={
+        <Button
+          variant="primary"
+          icon={<ArrowUpRight size={14} />}
+          onClick={() => navigate('/procurement')}
+        >
+          {t('supplier_catalogs.go_to_procurement', {
+            defaultValue: 'Go to Procurement',
+          })}
+        </Button>
+      }
     />
   );
 }
@@ -564,11 +593,13 @@ function WarehousePanel({
   warehouses,
   selectedId,
   balances,
+  itemLookup,
   onAction,
 }: {
   warehouses: Warehouse[];
   selectedId: string;
   balances: StockBalance[];
+  itemLookup: Map<string, CatalogItem>;
   onAction: () => void;
 }) {
   const { t } = useTranslation();
@@ -630,10 +661,21 @@ function WarehousePanel({
               </tr>
             </thead>
             <tbody>
-              {balances.map((b) => (
+              {balances.map((b) => {
+                const item = itemLookup.get(b.catalog_item_id);
+                return (
                 <tr key={b.id} className="border-t border-border-light hover:bg-surface-secondary">
-                  <td className="px-4 py-2 font-mono text-xs text-content-secondary truncate max-w-[280px]">
-                    {b.catalog_item_id.slice(0, 8)}
+                  <td className="px-4 py-2 max-w-[320px]">
+                    {item ? (
+                      <div className="min-w-0">
+                        <p className="font-medium text-content-primary truncate">{item.name}</p>
+                        <p className="font-mono text-2xs text-content-tertiary truncate">{item.sku}</p>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-content-tertiary">
+                        {t('supplier_catalogs.unknown_item', { defaultValue: 'Unknown item' })}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-2 text-content-secondary text-xs">{b.batch_lot || '—'}</td>
                   <td className="px-4 py-2 text-right text-xs tabular-nums">{String(b.quantity_on_hand)}</td>
@@ -645,7 +687,8 @@ function WarehousePanel({
                     {b.last_movement_at ? <DateDisplay value={b.last_movement_at} /> : '—'}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -803,13 +846,15 @@ function PriceComparisonModal({
 
 /* ── Create modal ──────────────────────────────────────────────────────── */
 
+/** Tabs that own a real create flow on this page. PR/PO/match hand off to
+ *  /procurement, so they never reach the create modal. */
+type CreateTab = 'vendors' | 'catalog' | 'warehouses';
+
 function CreateModal({
   kind,
-  vendors,
   onClose,
 }: {
-  kind: Tab;
-  vendors: Vendor[];
+  kind: CreateTab;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -817,21 +862,14 @@ function CreateModal({
   const addToast = useToastStore((s) => s.addToast);
   const [busy, setBusy] = useState(false);
 
-  // Real project picker for PR/PO instead of a raw UUID textbox — far less
-  // error-prone and matches every other project-scoped page.
-  const projectsQ = useQuery({
-    queryKey: ['sc', 'projects-lite'],
-    queryFn: listProjectsLite,
-    enabled: kind === 'prs' || kind === 'pos',
-    staleTime: 60_000,
-  });
-  const projectOptions = projectsQ.data ?? [];
-
+  // Vendor currency is the vendor's OWN trading currency, not a project
+  // currency, so there is no sensible default to pre-fill: leave it blank
+  // (the backend treats an empty value as "unset") rather than hardcoding EUR.
   const [vendorForm, setVendorForm] = useState({
     code: '',
     name: '',
     legal_name: '',
-    currency: 'EUR',
+    currency: '',
     payment_terms_days: '30',
     country_code: '',
   });
@@ -841,23 +879,6 @@ function CreateModal({
     description: '',
     unit_of_measure: 'pcs',
     manufacturer: '',
-  });
-  const [prForm, setPrForm] = useState({
-    project_id: '',
-    currency: 'EUR',
-    needed_by: '',
-    lineDesc: '',
-    lineQty: '1',
-    linePrice: '0',
-  });
-  const [poForm, setPoForm] = useState({
-    vendor_id: vendors[0]?.id || '',
-    project_id: '',
-    currency: 'EUR',
-    expected_delivery: '',
-    lineDesc: '',
-    lineQty: '1',
-    linePrice: '0',
   });
   const [warehouseForm, setWarehouseForm] = useState({ code: '', name: '', address: '' });
 
@@ -887,39 +908,6 @@ function CreateModal({
         });
         addToast({ type: 'success', title: t('supplier_catalogs.item_created', { defaultValue: 'Item created' }) });
         qc.invalidateQueries({ queryKey: ['sc', 'items'] });
-      } else if (kind === 'prs') {
-        if (!prForm.project_id.trim()) throw new Error('Project ID required');
-        if (!prForm.lineDesc.trim()) throw new Error('At least one line required');
-        await createPR({
-          project_id: prForm.project_id,
-          currency: prForm.currency,
-          needed_by: prForm.needed_by || undefined,
-          lines: [
-            {
-              description: prForm.lineDesc,
-              quantity: Number(prForm.lineQty) || 1,
-              estimated_unit_price: Number(prForm.linePrice) || 0,
-            },
-          ],
-        });
-        addToast({ type: 'success', title: t('supplier_catalogs.pr_created', { defaultValue: 'Requisition created' }) });
-      } else if (kind === 'pos') {
-        if (!poForm.vendor_id || !poForm.project_id.trim()) throw new Error('Vendor and project required');
-        if (!poForm.lineDesc.trim()) throw new Error('At least one line required');
-        await createPO({
-          vendor_id: poForm.vendor_id,
-          project_id: poForm.project_id,
-          currency: poForm.currency,
-          expected_delivery: poForm.expected_delivery || undefined,
-          lines: [
-            {
-              description: poForm.lineDesc,
-              ordered_qty: Number(poForm.lineQty) || 1,
-              unit_price: Number(poForm.linePrice) || 0,
-            },
-          ],
-        });
-        addToast({ type: 'success', title: t('supplier_catalogs.po_created', { defaultValue: 'PO created' }) });
       } else if (kind === 'warehouses') {
         if (!warehouseForm.code.trim() || !warehouseForm.name.trim()) throw new Error('Code and name required');
         await createWarehouse({
@@ -938,32 +926,26 @@ function CreateModal({
     }
   };
 
-  // PRs / POs have 4 header fields + 3-field line item — xl gives the
-  // line-item row breathing room. Vendors/catalog/warehouses sit at lg.
-  const size = kind === 'prs' || kind === 'pos' ? 'xl' : 'lg';
-
   return (
     <WideModal
       open
       onClose={onClose}
       title={createLabel(kind, t)}
-      size={size}
+      size="lg"
       busy={busy}
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             {t('common.cancel', { defaultValue: 'Cancel' })}
           </Button>
-          {kind !== 'match' && (
-            <Button
-              variant="primary"
-              onClick={submit}
-              loading={busy}
-              icon={busy ? <Loader2 size={14} /> : <Plus size={14} />}
-            >
-              {t('common.create', { defaultValue: 'Create' })}
-            </Button>
-          )}
+          <Button
+            variant="primary"
+            onClick={submit}
+            loading={busy}
+            icon={busy ? <Loader2 size={14} /> : <Plus size={14} />}
+          >
+            {t('common.create', { defaultValue: 'Create' })}
+          </Button>
         </>
       }
     >
@@ -1090,191 +1072,6 @@ function CreateModal({
         </WideModalSection>
       )}
 
-      {kind === 'prs' && (
-        <>
-          <WideModalSection
-            title={t('supplier_catalogs.section_header', { defaultValue: 'Requisition' })}
-            columns={3}
-          >
-            <WideModalField
-              label={t('supplier_catalogs.project', { defaultValue: 'Project' })}
-              required
-              span={3}
-            >
-              <select
-                value={prForm.project_id}
-                onChange={(e) => setPrForm({ ...prForm, project_id: e.target.value })}
-                className={inputCls}
-              >
-                <option value="">
-                  — {t('common.select', { defaultValue: 'Select' })} —
-                </option>
-                {projectOptions.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </WideModalField>
-            <WideModalField
-              label={t('common.currency', { defaultValue: 'Currency' })}
-            >
-              <input
-                value={prForm.currency}
-                onChange={(e) => setPrForm({ ...prForm, currency: e.target.value })}
-                className={inputCls}
-                maxLength={3}
-              />
-            </WideModalField>
-            <WideModalField
-              label={t('supplier_catalogs.needed_by', { defaultValue: 'Needed by' })}
-              span={2}
-            >
-              <input
-                type="date"
-                value={prForm.needed_by}
-                onChange={(e) => setPrForm({ ...prForm, needed_by: e.target.value })}
-                className={inputCls}
-              />
-            </WideModalField>
-          </WideModalSection>
-          <WideModalSection
-            title={t('supplier_catalogs.first_line', { defaultValue: 'First line item' })}
-            columns={3}
-          >
-            <WideModalField
-              label={t('supplier_catalogs.line_description', { defaultValue: 'Description' })}
-              span={3}
-            >
-              <input
-                value={prForm.lineDesc}
-                onChange={(e) => setPrForm({ ...prForm, lineDesc: e.target.value })}
-                className={inputCls}
-              />
-            </WideModalField>
-            <WideModalField label={t('supplier_catalogs.qty', { defaultValue: 'Quantity' })}>
-              <input
-                type="number"
-                value={prForm.lineQty}
-                onChange={(e) => setPrForm({ ...prForm, lineQty: e.target.value })}
-                className={inputCls}
-              />
-            </WideModalField>
-            <WideModalField
-              label={t('supplier_catalogs.est_price', { defaultValue: 'Est. price' })}
-              span={2}
-            >
-              <input
-                type="number"
-                value={prForm.linePrice}
-                onChange={(e) => setPrForm({ ...prForm, linePrice: e.target.value })}
-                className={inputCls}
-              />
-            </WideModalField>
-          </WideModalSection>
-        </>
-      )}
-
-      {kind === 'pos' && (
-        <>
-          <WideModalSection
-            title={t('supplier_catalogs.section_header', { defaultValue: 'Order' })}
-            columns={2}
-          >
-            <WideModalField
-              label={t('supplier_catalogs.vendor', { defaultValue: 'Vendor' })}
-              required
-            >
-              <select
-                value={poForm.vendor_id}
-                onChange={(e) => setPoForm({ ...poForm, vendor_id: e.target.value })}
-                className={inputCls}
-              >
-                <option value="">—</option>
-                {vendors.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.code} — {v.name}
-                  </option>
-                ))}
-              </select>
-            </WideModalField>
-            <WideModalField
-              label={t('supplier_catalogs.project', { defaultValue: 'Project' })}
-              required
-            >
-              <select
-                value={poForm.project_id}
-                onChange={(e) => setPoForm({ ...poForm, project_id: e.target.value })}
-                className={inputCls}
-              >
-                <option value="">
-                  — {t('common.select', { defaultValue: 'Select' })} —
-                </option>
-                {projectOptions.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </WideModalField>
-            <WideModalField
-              label={t('common.currency', { defaultValue: 'Currency' })}
-            >
-              <input
-                value={poForm.currency}
-                onChange={(e) => setPoForm({ ...poForm, currency: e.target.value })}
-                className={inputCls}
-                maxLength={3}
-              />
-            </WideModalField>
-            <WideModalField
-              label={t('supplier_catalogs.expected_delivery', { defaultValue: 'Expected' })}
-            >
-              <input
-                type="date"
-                value={poForm.expected_delivery}
-                onChange={(e) => setPoForm({ ...poForm, expected_delivery: e.target.value })}
-                className={inputCls}
-              />
-            </WideModalField>
-          </WideModalSection>
-          <WideModalSection
-            title={t('supplier_catalogs.first_line', { defaultValue: 'First line item' })}
-            columns={3}
-          >
-            <WideModalField
-              label={t('supplier_catalogs.line_description', { defaultValue: 'Description' })}
-              span={3}
-            >
-              <input
-                value={poForm.lineDesc}
-                onChange={(e) => setPoForm({ ...poForm, lineDesc: e.target.value })}
-                className={inputCls}
-              />
-            </WideModalField>
-            <WideModalField label={t('supplier_catalogs.qty', { defaultValue: 'Quantity' })}>
-              <input
-                type="number"
-                value={poForm.lineQty}
-                onChange={(e) => setPoForm({ ...poForm, lineQty: e.target.value })}
-                className={inputCls}
-              />
-            </WideModalField>
-            <WideModalField
-              label={t('supplier_catalogs.unit_price', { defaultValue: 'Unit price' })}
-              span={2}
-            >
-              <input
-                type="number"
-                value={poForm.linePrice}
-                onChange={(e) => setPoForm({ ...poForm, linePrice: e.target.value })}
-                className={inputCls}
-              />
-            </WideModalField>
-          </WideModalSection>
-        </>
-      )}
-
       {kind === 'warehouses' && (
         <WideModalSection columns={2}>
           <WideModalField
@@ -1309,15 +1106,6 @@ function CreateModal({
             />
           </WideModalField>
         </WideModalSection>
-      )}
-
-      {kind === 'match' && (
-        <div className="text-sm text-content-secondary">
-          {t('supplier_catalogs.match_create_hint', {
-            defaultValue:
-              'Three-way match runs automatically when a vendor invoice is posted against a PO and GR.',
-          })}
-        </div>
       )}
     </WideModal>
   );

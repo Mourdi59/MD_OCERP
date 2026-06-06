@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
@@ -28,12 +29,13 @@ import {
   Badge,
   EmptyState,
   Breadcrumb,
+  DismissibleInfo,
   RecoveryCard,
   SkeletonTable,
   WideModal,
   ConfirmDialog,
-  InfoHint,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -67,6 +69,7 @@ type LobView = 'lob' | 'crew';
 
 export function TaktSchedulePage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
@@ -85,10 +88,15 @@ export function TaktSchedulePage() {
     queryFn: () => projectsApi.list(),
   });
 
+  // Project selection lives in the global top-bar selector. Follow the
+  // active project; fall back to the first project only when nothing is
+  // active yet. Reset dependent selections whenever the project changes.
   useEffect(() => {
-    if (projectId) return;
-    const seed = activeProjectId || projectsQ.data?.[0]?.id;
-    if (seed) setProjectId(seed);
+    const next = activeProjectId || projectsQ.data?.[0]?.id || '';
+    if (!next || next === projectId) return;
+    setProjectId(next);
+    setMasterId('');
+    setTaktId('');
   }, [activeProjectId, projectsQ.data, projectId]);
 
   const masterQ = useQuery({
@@ -171,49 +179,44 @@ export function TaktSchedulePage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[{ label: t('nav.takt', { defaultValue: 'Takt Planning' }) }]}
       />
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-content-primary">
-            {t('takt.title', { defaultValue: 'Takt Planning' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('takt.subtitle', {
-              defaultValue:
-                'Line-of-balance scheduling for repetitive work — cycle a crew through a sequence of locations at a steady takt rhythm.',
-            })}
-          </p>
-        </div>
-        {projectsQ.data && projectsQ.data.length > 0 && (
-          <select
-            value={projectId}
-            onChange={(e) => {
-              setProjectId(e.target.value);
-              setMasterId('');
-              setTaktId('');
-            }}
-            className={clsx(inputCls, 'max-w-xs')}
-            aria-label={t('takt.project', { defaultValue: 'Project' })}
-          >
-            {projectsQ.data.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-
-      <InfoHint
-        text={t('takt.what_is', {
+      <PageHeader
+        srTitle={t('nav.takt', { defaultValue: 'Takt Planning' })}
+        subtitle={t('takt.subtitle', {
           defaultValue:
-            'Takt planning paces repetitive work by sending a crew train through equal-sized locations (levels, blocks, zones). Each trade spends one takt in a location, then hands off to the next. The line-of-balance diagram makes a steady rhythm and any breaks immediately visible.',
+            'Line-of-balance scheduling for repetitive work, cycling a crew through a sequence of locations at a steady takt rhythm.',
         })}
+        actions={
+          <Button
+            variant="primary"
+            icon={<Plus size={14} />}
+            onClick={() => setCreateOpen(true)}
+            disabled={!masterId}
+          >
+            {t('takt.new_takt_schedule', { defaultValue: 'New Takt Schedule' })}
+          </Button>
+        }
       />
+
+      <DismissibleInfo
+        storageKey="takt"
+        title={t('takt.intro_title', {
+          defaultValue: 'Keep crews flowing, not waiting',
+        })}
+        links={[
+          { label: t('takt.intro_link_advanced', { defaultValue: 'Last Planner' }), onClick: () => navigate('/schedule-advanced') },
+          { label: t('takt.intro_link_schedule', { defaultValue: '4D Schedule' }), onClick: () => navigate('/schedule') },
+        ]}
+      >
+        {t('takt.intro_body', {
+          defaultValue:
+            'Pick a project and master schedule, set a sequence of locations, then import trade activities and compute the line of balance. You get the marching diagram, a crew-flow view and any takt-rhythm violations, so trades hand off zone to zone at a steady beat instead of colliding.',
+        })}
+      </DismissibleInfo>
 
       {!projectId ? (
         <Card>

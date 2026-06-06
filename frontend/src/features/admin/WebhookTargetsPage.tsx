@@ -18,8 +18,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Loader2, Plus, Power, Trash2, Webhook } from 'lucide-react';
 import { apiDelete, apiGet, apiPost, apiPatch } from '@/shared/lib/api';
+import { Breadcrumb, DismissibleInfo, Button } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 
 interface WebhookTarget {
@@ -48,6 +51,7 @@ const QUERY_KEY = ['admin-webhook-targets'];
 
 export function WebhookTargetsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const [showCreate, setShowCreate] = useState(false);
@@ -99,29 +103,53 @@ export function WebhookTargetsPage() {
   });
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8 space-y-6" data-testid="webhook-targets-page">
-      <header className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-content-primary flex items-center gap-2">
-            <Webhook size={20} className="text-oe-blue" />
-            {t('webhook_targets.title', { defaultValue: 'Notification Webhooks' })}
-          </h1>
-          <p className="text-sm text-content-secondary mt-1">
-            {t('webhook_targets.subtitle', {
-              defaultValue:
-                'Outbound HTTP endpoints that receive matching notification events.',
-            })}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowCreate((v) => !v)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-oe-blue px-3 py-2 text-xs font-semibold text-white hover:bg-oe-blue/90"
-        >
-          <Plus size={14} />
-          {t('webhook_targets.new', { defaultValue: 'New webhook' })}
-        </button>
-      </header>
+    <div className="space-y-5 animate-fade-in" data-testid="webhook-targets-page">
+      {/* Breadcrumb — single-item trail auto-hides (canonical top block). */}
+      <Breadcrumb
+        items={[{ label: t('webhook_targets.title', { defaultValue: 'Notification Webhooks' }) }]}
+      />
+
+      {/* Canonical header row — module name + icon live in the top app bar. */}
+      <PageHeader
+        srTitle={t('webhook_targets.title', { defaultValue: 'Notification Webhooks' })}
+        subtitle={t('webhook_targets.subtitle', {
+          defaultValue:
+            'Outbound HTTP endpoints that receive matching notification events.',
+        })}
+        actions={
+          <Button
+            variant="primary"
+            size="sm"
+            icon={<Plus size={14} />}
+            onClick={() => setShowCreate((v) => !v)}
+          >
+            {t('webhook_targets.new', { defaultValue: 'New webhook' })}
+          </Button>
+        }
+      />
+
+      {/* Canonical module intro — pain-named, copy from MODULE_INTRO_COPY. */}
+      <DismissibleInfo
+        storageKey="admin-webhook-targets"
+        title={t('admin_webhook_targets.intro_title', {
+          defaultValue: 'Push events to any system you run',
+        })}
+        links={[
+          {
+            label: t('nav.integrations', { defaultValue: 'Integrations' }),
+            onClick: () => navigate('/integrations'),
+          },
+          {
+            label: t('nav.notifications', { defaultValue: 'Notifications' }),
+            onClick: () => navigate('/notifications'),
+          },
+        ]}
+      >
+        {t('admin_webhook_targets.intro_body', {
+          defaultValue:
+            'Register outbound HTTP endpoints that receive matching notification events as they happen, so your own systems can react without polling. Pair it with the friendlier prebuilt connectors on Integrations when you just want chat or email delivery.',
+        })}
+      </DismissibleInfo>
 
       {showCreate && (
         <CreateForm

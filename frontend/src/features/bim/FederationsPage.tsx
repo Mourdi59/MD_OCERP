@@ -44,10 +44,12 @@ import {
   WideModalSection,
   WideModalField,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useToastStore } from '@/stores/useToastStore';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useProjectContextStore } from '@/stores/useProjectContextStore';
 
 import { FederationTypeTree } from './FederationTypeTree';
 
@@ -863,9 +865,11 @@ function FederationDetailDrawer({
 
 export function FederationsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const { confirm, ...confirmProps } = useConfirm();
+  const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
   const [projectId, setProjectId] = useState<string>('');
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedFedId, setSelectedFedId] = useState<string | null>(null);
@@ -875,14 +879,14 @@ export function FederationsPage() {
     queryFn: fetchProjects,
   });
 
-  // Auto-pick the first project once the list loads. Runs in an effect so
-  // we never call setState during render (React 18 strict mode logs a
-  // warning that previously blanked the page in dev).
+  // Project selection lives in the global top-bar selector. Follow the
+  // active project; fall back to the first project only when nothing is
+  // active yet. Runs in an effect so we never call setState during render.
   useEffect(() => {
-    if (!projectId && Array.isArray(projects) && projects.length > 0) {
-      setProjectId(projects[0]!.id);
-    }
-  }, [projects, projectId]);
+    const next =
+      activeProjectId || (Array.isArray(projects) && projects.length > 0 ? projects[0]!.id : '');
+    if (next && next !== projectId) setProjectId(next);
+  }, [activeProjectId, projects, projectId]);
 
   const { data: federations, isLoading, refetch } = useQuery({
     queryKey: ['bim-federations', projectId],
@@ -930,7 +934,7 @@ export function FederationsPage() {
   const selectedProject = (projects ?? []).find((p) => p.id === projectId);
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           ...(selectedProject
@@ -938,59 +942,34 @@ export function FederationsPage() {
             : []),
           { label: t('nav.bim_federations', { defaultValue: 'BIM Federations' }) },
         ]}
-        className="mb-2"
       />
-      <BetaBanner moduleKey="bim-federations" className="mt-3" />
-      <header className="mb-4 rounded-xl border border-border-light bg-surface-primary px-5 py-4">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-content-primary">
-              {t('bim.federation.page_title')}
-            </h1>
-            <p className="mt-1 text-sm text-content-tertiary">
-              {t('bim.federation.page_subtitle')}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="flex items-center gap-2 text-xs font-medium text-content-tertiary">
-              {t('bim.federation.project')}
-              <select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                disabled={!projects || projects.length === 0}
-                className="rounded-md border border-border-light bg-surface-primary px-2.5 py-1.5 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-oe-blue/40"
-              >
-                {(projects ?? []).length === 0 && (
-                  <option value="">
-                    {t('bim.no_projects_available', { defaultValue: 'No projects available' })}
-                  </option>
-                )}
-                {(projects ?? []).map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Button
-              onClick={() => setCreateOpen(true)}
-              disabled={!projectId}
-            >
-              {t('bim.federation.new')}
-            </Button>
-          </div>
-        </div>
-      </header>
+      <BetaBanner moduleKey="bim-federations" />
+      <PageHeader
+        srTitle={t('nav.bim_federations', { defaultValue: 'BIM Federations' })}
+        subtitle={t('bim.federation.page_subtitle')}
+        actions={
+          <Button
+            onClick={() => setCreateOpen(true)}
+            disabled={!projectId}
+          >
+            {t('bim.federation.new')}
+          </Button>
+        }
+      />
 
       <DismissibleInfo
         storageKey="bim-federations"
-        title={t('info.bim-federations.title', {
-          defaultValue: 'BIM federations',
+        title={t('bim_federations.intro_title', {
+          defaultValue: 'One coordinated model across every discipline',
         })}
+        links={[
+          { label: t('bim_federations.intro_link_bim', { defaultValue: 'BIM viewer' }), onClick: () => navigate('/bim') },
+          { label: t('bim_federations.intro_link_clash', { defaultValue: 'Clash detection' }), onClick: () => navigate('/clash') },
+        ]}
       >
-        {t('info.bim-federations.body', {
+        {t('bim_federations.intro_body', {
           defaultValue:
-            'Group related BIM models that share an origin, such as architectural, structural and MEP, into one coordinated set. From a federation you can manage members and open each model in the 3D viewer, keeping the canonical model consistent across disciplines for takeoff, BOQ and cost work.',
+            'Group related models that share an origin, such as architectural, structural and MEP, into one federation. Manage the members of a set and open each model in the 3D viewer, so the disciplines stay aligned for clash checking, takeoff and BOQ work.',
         })}
       </DismissibleInfo>
 

@@ -25,6 +25,8 @@ import {
   Input,
   Skeleton,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
+import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage } from '@/shared/lib/api';
 import { projectsApi, type Project, type ProjectFxRate } from './api';
@@ -546,7 +548,7 @@ export function ProjectSettingsPage() {
   // ── Loading / not-found states ────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="w-full space-y-4 animate-fade-in">
+      <div className="space-y-5 animate-fade-in">
         <Skeleton height={20} width={140} />
         <Skeleton height={48} className="w-full" />
         <Skeleton height={200} className="w-full" />
@@ -648,7 +650,7 @@ export function ProjectSettingsPage() {
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
-    <div className="w-full space-y-4 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
@@ -660,27 +662,45 @@ export function ProjectSettingsPage() {
         ]}
       />
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-content-primary">
-            {t('project.settings.title', { defaultValue: 'Project Settings' })}
-          </h1>
-          <p className="text-sm text-content-tertiary mt-0.5">
-            {t('project.settings.subtitle', {
-              defaultValue:
-                'Currencies, VAT, and custom units that apply to this project only.',
-            })}
-          </p>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={<ArrowLeft size={14} />}
-          onClick={() => navigate(`/projects/${project.id}`)}
-        >
-          {t('common.back_to_project', { defaultValue: 'Back to project' })}
-        </Button>
-      </div>
+      <PageHeader
+        srTitle={t('project.settings.title', { defaultValue: 'Project Settings' })}
+        subtitle={t('project.settings.subtitle', {
+          defaultValue:
+            'Currencies, VAT, and custom units that apply to this project only.',
+        })}
+        actions={
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<ArrowLeft size={14} />}
+            onClick={() => navigate(`/projects/${project.id}`)}
+          >
+            {t('common.back_to_project', { defaultValue: 'Back to project' })}
+          </Button>
+        }
+      />
+
+      <DismissibleInfo
+        storageKey="project-settings"
+        title={t('projects.settings_intro_title', {
+          defaultValue: 'Project rules, set in one place',
+        })}
+        links={[
+          {
+            label: t('nav.validation', { defaultValue: 'Validation' }),
+            onClick: () => navigate('/validation'),
+          },
+          {
+            label: t('nav.boq', { defaultValue: 'BOQ' }),
+            onClick: () => navigate(`/projects/${project.id}/boq`),
+          },
+        ]}
+      >
+        {t('projects.settings_intro_body', {
+          defaultValue:
+            'Set the project currency, VAT, units, classification standard and compliance rule sets here, and re-run the setup wizard to change which modules are active. These choices are the source of truth that BOQ pricing, validation and reports read from, so fixing them once keeps every downstream number consistent. Compliance rule sets chosen here are enforced in Validation.',
+        })}
+      </DismissibleInfo>
 
       {/* ── Project setup (Slice 4 — re-wizard entry) ───────────────────── */}
       <Card padding="lg">

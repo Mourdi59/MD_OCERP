@@ -53,11 +53,13 @@ import {
   Badge,
   EmptyState,
   Breadcrumb,
+  DismissibleInfo,
   SkeletonTable,
   SideDrawer,
   ConfirmDialog,
   ModuleHelpButton,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import {
   WideModal,
   WideModalSection,
@@ -67,7 +69,6 @@ import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
-import { PipelineBanner } from './PipelineBanner';
 import { useToastStore } from '@/stores/useToastStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -394,41 +395,21 @@ export function PropertyDevPage() {
         : null;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           { label: t('propdev.title', { defaultValue: 'Property Development' }) },
         ]}
       />
 
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold text-content-primary">
-              {t('propdev.title', { defaultValue: 'Property Development' })}
-            </h1>
-            {/* Per-module Tour CTA — launches the PropDev guided tour. */}
-            <ModuleHelpButton tourId="propdev" />
-          </div>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('propdev.subtitle', {
-              defaultValue:
-                'Developments, plots, buyer journeys, handovers and warranty claims.',
-            })}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            icon={<LayoutDashboard size={14} />}
-            onClick={() => navigate('/property-dev/dashboards')}
-            aria-label={t('propdev.open_dashboards', {
-              defaultValue: 'Open analytics dashboards',
-            })}
-            data-testid="propdev-tour-dashboards-button"
-          >
-            {t('propdev.dashboards_short', { defaultValue: 'Dashboards' })}
-          </Button>
+      <PageHeader
+        srTitle={t('propdev.title', { defaultValue: 'Property Development' })}
+        subtitle={t('propdev.subtitle', {
+          defaultValue:
+            'Developments, plots, buyer journeys, handovers and warranty claims.',
+        })}
+        actions={
+          <>
           <Button
             variant="primary"
             icon={<Plus size={14} />}
@@ -501,31 +482,45 @@ export function PropertyDevPage() {
                                   ? t('propdev.new_escrow_account', { defaultValue: 'New Escrow Account' })
                                   : t('propdev.new_development', { defaultValue: 'New Development' })}
           </Button>
-        </div>
-      </div>
+          <Button
+            variant="ghost"
+            icon={<LayoutDashboard size={14} />}
+            onClick={() => navigate('/property-dev/dashboards')}
+            aria-label={t('propdev.open_dashboards', {
+              defaultValue: 'Open analytics dashboards',
+            })}
+            data-testid="propdev-tour-dashboards-button"
+          >
+            {t('propdev.dashboards_short', { defaultValue: 'Dashboards' })}
+          </Button>
+          {/* Per-module Tour CTA — launches the PropDev guided tour. */}
+          <ModuleHelpButton tourId="propdev" />
+          </>
+        }
+      />
 
       <div data-testid="propdev-tour-pipeline">
-      <PipelineBanner
-        intro={t('propdev.pipeline_intro', {
-          defaultValue:
-            'Residential sales pipeline: lay out a development of plots and house types, take buyers from lead → reservation → contract → handover, then service warranty claims. Contract values feed Finance.',
-        })}
-        steps={[
-          {
-            label: t('propdev.step_dev', { defaultValue: 'Development' }),
-            current: true,
-          },
-          { label: t('propdev.step_buyers', { defaultValue: 'Buyers' }) },
-          {
-            label: t('propdev.step_contracts', { defaultValue: 'Contracts' }),
-            to: '/contracts',
-          },
-          {
-            label: t('propdev.step_finance', { defaultValue: 'Finance' }),
-            to: '/finance',
-          },
-        ]}
-      />
+        <DismissibleInfo
+          storageKey="property-dev"
+          title={t('propdev.intro_title', {
+            defaultValue: 'Take a buyer from first enquiry to handover',
+          })}
+          links={[
+            {
+              label: t('nav.contracts', { defaultValue: 'Contracts' }),
+              onClick: () => navigate('/contracts'),
+            },
+            {
+              label: t('finance.title', { defaultValue: 'Finance' }),
+              onClick: () => navigate('/finance'),
+            },
+          ]}
+        >
+          {t('propdev.intro_body', {
+            defaultValue:
+              'Lay out a development of plots and house types, then move buyers from lead to reservation to contract to handover and service warranty claims afterwards. Signed contract values flow into Finance, so the sales pipeline and the project books stay in step.',
+          })}
+        </DismissibleInfo>
       </div>
 
       {/* Tabs — all 16 icon buttons in a single wrap row. Group boundaries

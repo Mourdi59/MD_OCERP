@@ -5,9 +5,9 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import {
   Table, Table2, ArrowRight, Copy, Trash2, Plus,
   Search, ArrowUpDown, ChevronDown, GitCompareArrows, X, Loader2,
-  ShieldCheck, Wallet,
 } from 'lucide-react';
 import { Card, Badge, EmptyState, Skeleton, Button, Breadcrumb, FileTypeChips, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { apiGet } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
@@ -689,136 +689,134 @@ export function BOQListPage() {
   }
 
   return (
-    <div className="w-full animate-fade-in">
-      <Breadcrumb items={[{ label: t('boq.title') }]} className="mb-4" />
-      {/* Header */}
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">{t('boq.title')}</h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {/*
-              Bug #217 (mobile /boq stuck on "Loading…"): the subtitle previously
-              gated on ``allBoqs`` truthiness alone, but the per-project boqs
-              query is ``enabled`` only after ``scopedProjects`` resolves and
-              has at least one entry — so on first paint (and forever if the
-              user has zero projects) ``allBoqs`` stays ``undefined`` and the
-              subtitle hangs on "Loading…". On a slow mobile connection that
-              extends the empty-skeleton window past the user's patience and
-              the page reads as broken. Drive the spinner from the actual
-              ``isLoading`` query state instead, and fall back to a real
-              "0 estimates" count once the query has settled (or was never
-              enabled because there are no projects yet).
-            */}
-            {isLoading
-              ? t('common.loading')
-              : t('boq.list_subtitle_count', {
-                  defaultValue: '{{boqCount}} estimates across {{projectCount}} projects',
-                  boqCount: allBoqs?.length ?? 0,
-                  projectCount: projects?.length ?? 0,
-                })}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {compareMode ? (
+    <div className="space-y-5 animate-fade-in">
+      <Breadcrumb items={[{ label: t('boq.title') }]} />
+      {/* Canonical top block — module name + icon are shown by the global
+          top app bar. The page renders only its subtitle (left) and the
+          page actions (right). */}
+      <PageHeader
+        srTitle={t('boq.title')}
+        subtitle={
+          /*
+            Bug #217 (mobile /boq stuck on "Loading…"): the subtitle previously
+            gated on ``allBoqs`` truthiness alone, but the per-project boqs
+            query is ``enabled`` only after ``scopedProjects`` resolves and
+            has at least one entry — so on first paint (and forever if the
+            user has zero projects) ``allBoqs`` stays ``undefined`` and the
+            subtitle hangs on "Loading…". Drive the spinner from the actual
+            ``isLoading`` query state instead, and fall back to a real
+            "0 estimates" count once the query has settled.
+          */
+          isLoading
+            ? t('common.loading')
+            : t('boq.list_subtitle_count', {
+                defaultValue: '{{boqCount}} estimates across {{projectCount}} projects',
+                boqCount: allBoqs?.length ?? 0,
+                projectCount: projects?.length ?? 0,
+              })
+        }
+        actions={
+          <>
+            {compareMode ? (
+              <Button
+                variant="ghost"
+                icon={<X size={16} />}
+                onClick={exitCompareMode}
+              >
+                {t('boq.cancel_compare', { defaultValue: 'Cancel Compare' })}
+              </Button>
+            ) : null}
             <Button
-              variant="ghost"
-              icon={<X size={16} />}
-              onClick={exitCompareMode}
+              variant="primary"
+              icon={<Plus size={16} />}
+              onClick={() => {
+                const pid = activeProjectId || projectFilter || (projects && projects.length === 1 ? projects[0]!.id : undefined) || undefined;
+                setCreateModalProjectId(pid);
+                setCreateModalOpen(true);
+              }}
             >
-              {t('boq.cancel_compare', { defaultValue: 'Cancel Compare' })}
+              {t('boq.new_estimate', { defaultValue: 'New Estimate' })}
             </Button>
-          ) : null}
-          <Button
-            variant="primary"
-            icon={<Plus size={16} />}
-            onClick={() => {
-              const pid = activeProjectId || projectFilter || (projects && projects.length === 1 ? projects[0]!.id : undefined) || undefined;
-              setCreateModalProjectId(pid);
-              setCreateModalOpen(true);
-            }}
-          >
-            {t('boq.new_estimate', { defaultValue: 'New Estimate' })}
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <DismissibleInfo
         storageKey="boq"
-        title={t('info.boq.title', { defaultValue: 'About estimates' })}
-        className="mb-4"
+        title={t('boq.intro_title', { defaultValue: 'Every work item priced and totalled' })}
+        links={[
+          { label: t('nav.validation', { defaultValue: 'Validation' }), onClick: () => navigate('/validation') },
+          { label: t('nav.finance', { defaultValue: 'Finance' }), onClick: () => navigate('/finance') },
+          { label: t('nav.costs', { defaultValue: 'Cost Database' }), onClick: () => navigate('/costs') },
+        ]}
       >
-        {t('info.boq.body', {
+        {t('boq.intro_body', {
           defaultValue:
-            'A Bill of Quantities lists every work item with its quantity and rate, rolling up to the project total. Estimates here draw on the cost database and BIM takeoff quantities, and feed validation, the budget, and tender packages downstream.',
+            'List the work items, quantities and unit rates for a project and watch them roll up to a live total. Rates come from the cost database and quantities from BIM or PDF takeoff, and the finished estimate feeds validation, the budget and tender packages.',
         })}
       </DismissibleInfo>
 
-      {/* Cross-module links */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/validation')}>
-          <ShieldCheck size={13} className="me-1" />
-          {t('boq.link_validation', { defaultValue: 'Run Validation' })}
-        </Button>
-        <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/finance')}>
-          <Wallet size={13} className="me-1" />
-          {t('boq.link_finance', { defaultValue: 'View Budget' })}
-        </Button>
-      </div>
-
       {/* Stats cards — scoped to the SAME filtered set the list renders.
-          When a filter narrows the set, an inline scope label says so. */}
+          When a filter narrows the set, an inline scope label says so.
+          Canon KPI tile: shared Card, top-aligned label+value, text-lg value. */}
       {stats && allBoqs && allBoqs.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <div className="rounded-xl bg-surface-elevated border border-border-light p-3">
-            <div className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card padding="sm" className="flex flex-col justify-start">
+            <div className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
               {isFiltered
                 ? t('boq.matching_estimates', { defaultValue: 'Matching Estimates' })
                 : t('boq.total_estimates', { defaultValue: 'Total Estimates' })}
             </div>
-            <div className="mt-1 text-xl font-bold text-content-primary tabular-nums">{stats.count}</div>
-          </div>
-          <div className="rounded-xl bg-surface-elevated border border-border-light p-3">
-            <div className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">{t('boq.total_positions', { defaultValue: 'Total Positions' })}</div>
-            <div className="mt-1 text-xl font-bold text-content-primary tabular-nums">{stats.totalPositions.toLocaleString()}</div>
-          </div>
-          <div className="rounded-xl bg-surface-elevated border border-border-light p-3">
-            <div className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">{t('boq.total_value', { defaultValue: 'Total Value' })}</div>
+            <div className="mt-1 text-lg font-semibold text-content-primary tabular-nums">{stats.count}</div>
+          </Card>
+          <Card padding="sm" className="flex flex-col justify-start">
+            <div className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">{t('boq.total_positions', { defaultValue: 'Total Positions' })}</div>
+            <div className="mt-1 text-lg font-semibold text-content-primary tabular-nums">{stats.totalPositions.toLocaleString()}</div>
+          </Card>
+          <Card padding="sm" className="flex flex-col justify-start">
+            <div className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">{t('boq.total_value', { defaultValue: 'Total Value' })}</div>
             {/* Money rule: never blend currencies into one scalar. One
-                labelled total when all share a currency; per-currency chips
-                otherwise. ISO code always shown. */}
+                labelled total when all share a currency; the dominant
+                currency plus a "+N more" affordance otherwise, so the tile
+                keeps one baseline and one height across the row. ISO code
+                always shown. */}
             {stats.totalsByCurrency.length === 0 ? (
-              <div className="mt-1 text-xl font-bold text-content-primary tabular-nums">--</div>
+              <div className="mt-1 text-lg font-semibold text-content-primary tabular-nums">&mdash;</div>
             ) : stats.multiCurrency ? (
-              <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                {stats.totalsByCurrency.map((c) => (
-                  <span key={c.currency} className="text-sm font-bold text-content-primary tabular-nums">
-                    {compactMoney(c.total)}
-                    <span className="ml-0.5 text-2xs font-medium text-content-tertiary">{c.currency}</span>
-                  </span>
-                ))}
+              <div className="mt-1 text-lg font-semibold text-content-primary tabular-nums">
+                {compactMoney(stats.totalsByCurrency[0]!.total)}
+                <span className="ml-1 text-xs font-medium text-content-tertiary">
+                  {stats.totalsByCurrency[0]!.currency}
+                </span>
+                <span className="ml-1 text-2xs font-medium text-content-tertiary">
+                  {t('boq.plus_n_more', {
+                    defaultValue: '+{{count}} more',
+                    count: stats.totalsByCurrency.length - 1,
+                  })}
+                </span>
               </div>
             ) : (
-              <div className="mt-1 text-xl font-bold text-content-primary tabular-nums">
+              <div className="mt-1 text-lg font-semibold text-content-primary tabular-nums">
                 {compactMoney(stats.totalsByCurrency[0]!.total)}
                 <span className="ml-1 text-xs font-medium text-content-tertiary">
                   {stats.totalsByCurrency[0]!.currency}
                 </span>
               </div>
             )}
-          </div>
-          <div className="rounded-xl bg-surface-elevated border border-border-light p-3">
-            <div className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">{t('boq.status', { defaultValue: 'Status' })}</div>
+          </Card>
+          <Card padding="sm" className="flex flex-col justify-start">
+            <div className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">{t('boq.status', { defaultValue: 'Status' })}</div>
             <div className="mt-1 flex items-center gap-2">
               <Badge variant="blue" size="sm" dot>{stats.drafts} {t('boq.draft', { defaultValue: 'draft' })}</Badge>
               <Badge variant="success" size="sm" dot>{stats.finals} {t('boq.final', { defaultValue: 'final' })}</Badge>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Search + Filters */}
       {allBoqs && allBoqs.length > 0 && (
-        <Card padding="none" className="mb-6">
+        <Card padding="none">
           <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
             {/* Search */}
             <div className="relative flex-1">
@@ -907,7 +905,7 @@ export function BOQListPage() {
 
       {/* Compare mode banner */}
       {compareMode && selectedForCompare && !compareTarget && (
-        <div className="mb-4 flex items-center gap-3 rounded-xl border border-oe-blue/30 bg-oe-blue-subtle px-4 py-3">
+        <div className="flex items-center gap-3 rounded-xl border border-oe-blue/30 bg-oe-blue-subtle px-4 py-3">
           <GitCompareArrows size={16} className="text-oe-blue shrink-0" />
           <span className="text-sm text-oe-blue font-medium">
             {t('boq.compare_select_second', { defaultValue: 'Select a second BOQ to compare' })}

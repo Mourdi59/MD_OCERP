@@ -35,6 +35,8 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { Button, Breadcrumb, EmptyState, DateDisplay, SkeletonTable } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
+import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
 import { PreferencesTab } from './PreferencesTab';
 
@@ -187,17 +189,66 @@ export function NotificationsPage() {
   );
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           { label: t('notifications.title', 'Notifications') },
         ]}
-        className="mb-3"
       />
+
+      {/* Header — module name + icon live in the global top bar; this page
+          renders only the muted subtitle here (canon §2). The header carries
+          a Mark-all-read action so the right side isn't empty; the filter and
+          count chips stay in the inbox toolbar below. */}
+      <PageHeader
+        srTitle={t('notifications.title', 'Notifications')}
+        subtitle={t('notifications.subtitle', {
+          defaultValue: 'Everything that needs your attention, in one inbox.',
+        })}
+        actions={
+          activeTab === 'inbox' && unreadCount > 0 ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<CheckCircle2 size={14} />}
+              onClick={() => markAllReadMutation.mutate()}
+              disabled={markAllReadMutation.isPending}
+            >
+              {t('notifications.mark_all_read_short', { defaultValue: 'Mark all read' })}
+            </Button>
+          ) : undefined
+        }
+      />
+
+      <DismissibleInfo
+        storageKey="notifications"
+        title={t('notifications.intro_title', {
+          defaultValue: 'Nothing important slips past you',
+        })}
+        links={[
+          {
+            label: t('nav.bi_dashboards', { defaultValue: 'BI Dashboards' }),
+            onClick: () => navigate('/bi-dashboards'),
+          },
+          {
+            label: t('nav.settings', { defaultValue: 'Settings' }),
+            onClick: () => navigate('/settings'),
+          },
+          {
+            label: t('nav.webhook_targets', { defaultValue: 'Notification Webhooks' }),
+            onClick: () => navigate('/admin/webhook-targets'),
+          },
+        ]}
+      >
+        {t('notifications.intro_body', {
+          defaultValue:
+            'The inbox collects every alert the platform raises, imports finished, validation results, safety events, approvals and system messages, with filters for read and unread and a click that takes you straight to the source record. Use the Preferences tab to choose which event types reach you on which channel. Threshold alerts from BI Dashboards and outbound rules from Notification Webhooks both run through here.',
+        })}
+      </DismissibleInfo>
 
       {/* Tab bar — Inbox vs Preferences.  The preferences tab houses the
           per-event-type × per-channel routing matrix added in Wave 3 / T9. */}
-      <div className="mb-3 border-b border-border-light flex items-center gap-1">
+      <div className="border-b border-border-light flex items-center gap-1">
         <button
           type="button"
           onClick={() => setActiveTab('inbox')}
@@ -230,17 +281,12 @@ export function NotificationsPage() {
         <PreferencesTab />
       ) : (
       <>
-      {/* Page header — compact: icon + title + unread chip + filter dropdown
-          + Mark-all-read. Mirrors the bell's style so the user lands on a
-          familiar visual. */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      {/* Inbox toolbar — count chips (left) + filter dropdown (right). The
+          Mark-all-read action now lives in the PageHeader, and the module
+          title + icon live in the global top bar, so the page-level chrome
+          here is just the counts and the filter. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-oe-blue to-sky-500 text-white inline-flex items-center justify-center shadow-sm">
-            <Bell className="w-3.5 h-3.5" />
-          </span>
-          <h1 className="text-base lg:text-lg leading-none font-semibold text-content-primary">
-            {t('notifications.title', 'Notifications')}
-          </h1>
           {total > 0 && (
             <span className="text-xs text-content-tertiary tabular-nums">
               {total} {t('notifications.total', { defaultValue: 'total' })}
@@ -275,17 +321,6 @@ export function NotificationsPage() {
               </option>
             </select>
           </div>
-          {unreadCount > 0 && (
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<CheckCircle2 size={14} />}
-              onClick={() => markAllReadMutation.mutate()}
-              disabled={markAllReadMutation.isPending}
-            >
-              {t('notifications.mark_all_read_short', { defaultValue: 'Mark all read' })}
-            </Button>
-          )}
         </div>
       </div>
 

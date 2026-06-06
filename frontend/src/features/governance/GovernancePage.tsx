@@ -23,10 +23,11 @@
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { ScrollText, ShieldCheck, Workflow, type LucideIcon } from 'lucide-react';
-import { Breadcrumb } from '@/shared/ui';
+import { Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { PermissionsMatrixPage } from '@/features/admin/PermissionsMatrixPage';
 import { ApprovalRoutesPage } from '@/features/approval-routes';
@@ -68,6 +69,7 @@ function isTabKey(value: string | null): value is TabKey {
 
 export function GovernancePage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // The query param is the single source of truth for the active tab,
@@ -95,32 +97,48 @@ export function GovernancePage() {
   });
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           {
             label: t('sidebar.admin_grid.governance', { defaultValue: 'Governance' }),
           },
         ]}
-        className="mb-4"
       />
 
       {/* Header */}
-      <div className="mb-6 animate-card-in">
-        <h1 className="text-2xl font-bold text-content-primary">
-          {t('governance.title', { defaultValue: 'Governance' })}
-        </h1>
-        <p className="mt-1 text-sm text-content-secondary">
-          {t('governance.subtitle', {
-            defaultValue:
-              'Roles & permissions, approval routes, and validation rules — in one place.',
-          })}
-        </p>
-      </div>
+      <PageHeader
+        srTitle={t('sidebar.admin_grid.governance', { defaultValue: 'Governance' })}
+        subtitle={t('governance.subtitle', {
+          defaultValue:
+            'Roles & permissions, approval routes, and validation rules, in one place.',
+        })}
+      />
+
+      {/* Canonical module intro — pain-named, copy from MODULE_INTRO_COPY. */}
+      <DismissibleInfo
+        storageKey="governance"
+        title={t('governance.intro_title', {
+          defaultValue: 'Set who can do what, and what gets checked',
+        })}
+        links={[
+          { label: t('nav.users', { defaultValue: 'User Management' }), onClick: () => navigate('/users') },
+          { label: t('nav.validation', { defaultValue: 'Validation' }), onClick: () => navigate('/validation') },
+          {
+            label: t('nav.audit_log', { defaultValue: 'Audit Log' }),
+            onClick: () => navigate('/admin/audit-log'),
+          },
+        ]}
+      >
+        {t('governance.intro_body', {
+          defaultValue:
+            'One admin home for three platform controls behind tabs: Permissions sets which role can do what, Approval Routes defines who signs off on RFIs, submittals, change requests and other records, and Validation Rules picks which standards (DIN 276, NRM, GAEB, BOQ quality) a project is checked against. What you set here drives the sign-off badges and validation checks the rest of the modules enforce.',
+        })}
+      </DismissibleInfo>
 
       {/* Tab bar — identical look to the /modules page tab strip. */}
       <div
-        className="mb-6 flex gap-1 rounded-lg bg-surface-secondary p-1 animate-card-in"
+        className="flex gap-1 rounded-lg bg-surface-secondary p-1 animate-card-in"
         role="tablist"
         aria-label={t('governance.tabs', { defaultValue: 'Governance sections' })}
         onKeyDown={onTabKeyDown}

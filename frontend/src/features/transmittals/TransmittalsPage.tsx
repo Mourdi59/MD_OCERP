@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   Users,
   FileText,
-  Info,
   Pencil,
   Trash2,
   AlertTriangle,
@@ -26,12 +25,14 @@ import {
   EmptyState,
   Breadcrumb,
   DateDisplay,
+  DismissibleInfo,
   ConfirmDialog,
   SkeletonTable,
   WideModal,
   WideModalSection,
   WideModalField,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
@@ -112,8 +113,6 @@ const PURPOSE_COLORS: Record<TransmittalPurpose, string> = {
   for_review: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
   for_record: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
 };
-
-const LS_INFO_DISMISSED = 'oe_transmittals_info_dismissed';
 
 const inputCls =
   'h-10 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
@@ -858,9 +857,6 @@ export function TransmittalsPage() {
   const [editTarget, setEditTarget] = useState<Transmittal | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<TransmittalStatus | ''>('');
-  const [infoDismissed, setInfoDismissed] = useState(
-    () => localStorage.getItem(LS_INFO_DISMISSED) === '1',
-  );
 
   // Clear URL params after opening modal
   const hasCleanedParams = useRef(false);
@@ -1069,7 +1065,7 @@ export function TransmittalsPage() {
   );
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -1078,56 +1074,14 @@ export function TransmittalsPage() {
             : []),
           { label: t('transmittals.title', { defaultValue: 'Transmittals' }) },
         ]}
-        className="mb-4"
       />
 
-      {/* Document flow */}
-      <div className="flex items-center gap-2 text-2xs text-content-quaternary mb-4">
-        <span className="text-content-tertiary">
-          {t('transmittals.flow_label', { defaultValue: 'Document flow:' })}
-        </span>
-        <button onClick={() => navigate('/documents')} className="hover:text-oe-blue transition-colors" aria-label={t('transmittals.flow_upload', { defaultValue: 'Upload' })}>
-          {t('transmittals.flow_upload', { defaultValue: 'Upload' })}
-        </button>
-        <span aria-hidden="true">&#8594;</span>
-        <button onClick={() => navigate('/cde')} className="hover:text-oe-blue transition-colors" aria-label={t('transmittals.flow_organize', { defaultValue: 'Organize (CDE)' })}>
-          {t('transmittals.flow_organize', { defaultValue: 'Organize (CDE)' })}
-        </button>
-        <span aria-hidden="true">&#8594;</span>
-        <span className="text-oe-blue font-medium">
-          {t('transmittals.flow_distribute', { defaultValue: 'Distribute' })}
-        </span>
-      </div>
-
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-2xl font-bold text-content-primary shrink-0">
-          {t('transmittals.page_title', { defaultValue: 'Transmittals' })}
-        </h1>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {!routeProjectId && projects.length > 0 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((pr) => pr.id === e.target.value);
-                if (p) {
-                  useProjectContextStore.getState().setActiveProject(p.id, p.name);
-                }
-              }}
-              aria-label={t('transmittals.select_project', { defaultValue: 'Project...' })}
-              className={inputCls + ' !h-8 !text-xs max-w-[180px]'}
-            >
-              <option value="" disabled>
-                {t('transmittals.select_project', { defaultValue: 'Project...' })}
-              </option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
+      <PageHeader
+        subtitle={t('transmittals.subtitle', {
+          defaultValue: 'Formally distribute documents and track recipient acknowledgement',
+        })}
+        actions={
           <Button
             variant="primary"
             size="sm"
@@ -1139,95 +1093,88 @@ export function TransmittalsPage() {
           >
             {t('transmittals.new_transmittal', { defaultValue: 'New Transmittal' })}
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Info banner */}
-      {!infoDismissed && (
-        <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-300 relative">
-          <button
-            onClick={() => {
-              setInfoDismissed(true);
-              localStorage.setItem(LS_INFO_DISMISSED, '1');
-            }}
-            className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded text-blue-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40 dark:hover:text-blue-200 transition-colors"
-            aria-label={t('common.dismiss', { defaultValue: 'Dismiss' })}
-          >
-            <X size={14} />
-          </button>
-          <div className="flex items-center gap-2 mb-1">
-            <Info size={16} />
-            <span className="font-semibold">
-              {t('transmittals.info_title', { defaultValue: 'About Transmittals' })}
-            </span>
-          </div>
-          <p className="text-xs pr-6">
-            {t('transmittals.info_body', {
-              defaultValue:
-                'A transmittal is a formal document distribution record. When you send drawings, specifications, or other documents to a subcontractor or consultant, create a transmittal to track: what was sent, to whom, when, and whether they acknowledged receipt.',
-            })}
-            <br />
-            <strong>
-              {t('transmittals.info_purpose_codes', {
-                defaultValue:
-                  'Purpose codes: For Approval, For Information, For Construction, For Review.',
-              })}
-            </strong>
-          </p>
-        </div>
-      )}
+      {/* Canonical module info card — pain-named title + workflow body.
+          The old document-flow strip (Upload -> Organize -> Distribute) is
+          folded into the link pills below so canonical breadcrumb > header >
+          info order is preserved. */}
+      <DismissibleInfo
+        storageKey="transmittals"
+        title={t('transmittals.intro_title', { defaultValue: 'Prove who got which documents, when' })}
+        links={[
+          {
+            label: t('submittals.title', { defaultValue: 'Submittals' }),
+            onClick: () => navigate('/submittals'),
+          },
+          {
+            label: t('correspondence.title', { defaultValue: 'Correspondence' }),
+            onClick: () => navigate('/correspondence'),
+          },
+          {
+            label: t('cde.title', { defaultValue: 'Common Data Environment' }),
+            onClick: () => navigate('/cde'),
+          },
+        ]}
+      >
+        {t('transmittals.intro_body', {
+          defaultValue:
+            'Create a formal distribution record when you issue drawings or specifications to a subcontractor or consultant: what was sent, to whom, the purpose code (For Approval, For Information, For Construction, For Review) and whether they acknowledged receipt. The log becomes the dated evidence trail behind your submittals and correspondence.',
+        })}
+      </DismissibleInfo>
 
       {/* No-project warning */}
       {!projectId && (
-        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
           {t('common.select_project_hint', { defaultValue: 'Select a project from the header to get started.' })}
         </div>
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('transmittals.stat_total', { defaultValue: 'Total' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-content-primary">
+          <p className="text-lg font-semibold mt-1 tabular-nums text-content-primary">
             {stats.total}
           </p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('transmittals.stat_draft', { defaultValue: 'Draft' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-content-tertiary">
+          <p className="text-lg font-semibold mt-1 tabular-nums text-content-tertiary">
             {stats.draft}
           </p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('transmittals.stat_issued', { defaultValue: 'Issued' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-oe-blue">{stats.issued}</p>
+          <p className="text-lg font-semibold mt-1 tabular-nums text-oe-blue">{stats.issued}</p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('transmittals.stat_acknowledged', { defaultValue: 'Acknowledged' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-semantic-success">
+          <p className="text-lg font-semibold mt-1 tabular-nums text-semantic-success">
             {stats.acknowledged}
           </p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('transmittals.stat_closed', { defaultValue: 'Closed' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-content-primary">
+          <p className="text-lg font-semibold mt-1 tabular-nums text-content-primary">
             {stats.closed}
           </p>
         </Card>
       </div>
 
       {/* Toolbar */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search

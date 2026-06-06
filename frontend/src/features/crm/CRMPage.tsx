@@ -17,7 +17,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
@@ -64,7 +64,9 @@ import {
   EmptyState,
   Breadcrumb,
   SkeletonTable,
+  DismissibleInfo,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import {
   WideModal,
   WideModalSection,
@@ -73,7 +75,6 @@ import {
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { MultiCurrencyTotal } from '@/shared/ui/MultiCurrencyTotal';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
-import { PipelineBanner } from './PipelineBanner';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage } from '@/shared/lib/api';
 import { fetchContacts, type Contact } from '@/features/contacts/api';
@@ -198,6 +199,7 @@ function contactLabel(c: Contact | undefined): string {
 
 export function CRMPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [view, setView] = useState<View>('pipeline');
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
@@ -336,56 +338,53 @@ export function CRMPage() {
         : t('crm.new_deal', { defaultValue: 'New Deal' });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <Breadcrumb items={[{ label: t('nav.crm', { defaultValue: 'CRM' }) }]} />
 
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-content-primary">
-            {t('crm.title', { defaultValue: 'CRM' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('crm.subtitle_amo', {
-              defaultValue:
-                'Drag deals across the pipeline, log activity in a click. People come from Contacts, won deals link to Projects.',
-            })}
-          </p>
-        </div>
-        {view !== 'insights' && (
-          <Button
-            variant="primary"
-            icon={<Plus size={14} />}
-            onClick={() => setCreateOpen(true)}
-          >
-            {newLabel}
-          </Button>
-        )}
-      </div>
-
-      <PipelineBanner
-        intro={t('crm.pipeline_intro', {
+      <PageHeader
+        srTitle={t('nav.crm', { defaultValue: 'CRM' })}
+        subtitle={t('crm.subtitle_amo', {
           defaultValue:
-            'CRM is the front of the commercial pipeline: qualify a lead, then move the deal stage by stage. A won deal links to its project and flows on to bid packages and contracts.',
+            'Drag deals across the pipeline, log activity in a click. People come from Contacts, won deals link to Projects.',
         })}
-        steps={[
+        actions={
+          view !== 'insights' && (
+            <Button
+              variant="primary"
+              icon={<Plus size={14} />}
+              onClick={() => setCreateOpen(true)}
+            >
+              {newLabel}
+            </Button>
+          )
+        }
+      />
+
+      <DismissibleInfo
+        storageKey="crm"
+        title={t('crm.intro_title', {
+          defaultValue: 'Stop losing deals between the cracks',
+        })}
+        links={[
           {
-            label: t('crm.step_crm', { defaultValue: 'CRM (lead → deal)' }),
-            current: true,
+            label: t('contacts.title', { defaultValue: 'Contacts' }),
+            onClick: () => navigate('/contacts'),
           },
           {
-            label: t('crm.step_bid', { defaultValue: 'Bid Management' }),
-            to: '/bid-management',
+            label: t('nav.bid_management', { defaultValue: 'Bid Management' }),
+            onClick: () => navigate('/bid-management'),
           },
           {
-            label: t('crm.step_contract', { defaultValue: 'Contracts' }),
-            to: '/contracts',
-          },
-          {
-            label: t('crm.step_variations', { defaultValue: 'Variations' }),
-            to: '/variations',
+            label: t('nav.contracts', { defaultValue: 'Contracts' }),
+            onClick: () => navigate('/contracts'),
           },
         ]}
-      />
+      >
+        {t('crm.intro_body', {
+          defaultValue:
+            'Qualify a lead and drag the deal stage by stage across the pipeline board, logging each call or email in one click. People and companies come from Contacts, and a won deal links to its delivery project and flows on to bid packages and contracts.',
+        })}
+      </DismissibleInfo>
 
       {/* View switcher + search */}
       <div className="flex flex-wrap items-center gap-3">

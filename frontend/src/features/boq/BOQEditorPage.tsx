@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 // lucide-react icons used by sub-components (BOQToolbar, BOQGrid, etc.) — none needed directly here
-import { Database, Download, ExternalLink, X, Sparkles, AlertTriangle as WarnTriangle, Lock, Copy, Wallet, Keyboard, GitCompare, RefreshCw } from 'lucide-react';
-import { Button, Badge, Breadcrumb, ModuleHelpButton, ConfirmDialog } from '@/shared/ui';
+import { Database, Download, ExternalLink, X, Sparkles, AlertTriangle as WarnTriangle, Lock, Copy, Wallet, Keyboard, GitCompare, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Button, Badge, Breadcrumb, ModuleHelpButton, ConfirmDialog, DismissibleInfo } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useProgressStore } from '@/shared/ui/GlobalProgress';
 import { apiGet, apiPost, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
@@ -3899,6 +3899,26 @@ export function BOQEditorPage() {
         ]}
       />
 
+      {/* ── Info card ─────────────────────────────────────────────────────
+          Full-bleed grid editor (style guide §1 viewer exception): the
+          canonical DismissibleInfo lives in the header zone above the grid,
+          never over it. */}
+      <DismissibleInfo
+        storageKey="boq-editor"
+        className="mb-4"
+        title={t('boq_editor.intro_title', { defaultValue: 'Edit the estimate without losing the thread' })}
+        links={[
+          { label: t('nav.assemblies', { defaultValue: 'Assemblies' }), onClick: () => navigate('/assemblies') },
+          { label: t('nav.costs', { defaultValue: 'Cost Database' }), onClick: () => navigate('/costs') },
+          { label: t('nav.validation', { defaultValue: 'Validation' }), onClick: () => navigate('/validation') },
+        ]}
+      >
+        {t('boq_editor.intro_body', {
+          defaultValue:
+            'This is the working grid where you add, renumber and price positions in a hierarchy, paste from Excel, apply assemblies and link rows to cost-database items or BIM elements. Changes recompute the total instantly and stay available to validation and the cost rollup.',
+        })}
+      </DismissibleInfo>
+
       {/* ── Header bar ─────────────────────────────────────────────────── */}
       <div className="mb-4 space-y-2">
         <div className="flex items-center gap-3 min-w-0">
@@ -3955,6 +3975,23 @@ export function BOQEditorPage() {
             >
               <RefreshCw size={14} className="mr-1" />
               {t('boq.model_review_btn', { defaultValue: 'Model sync' })}
+            </Button>
+            {/* Deep link OUT to the Validation dashboard, carrying this BOQ and
+                its project so the target lands pre-selected (2 clicks to a
+                result). The dashboard persists a server-side report; the
+                toolbar's inline Validate keeps the quick in-grid check. */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                navigate(`/validation?boq_id=${boq.id}&project=${boq.project_id}`)
+              }
+              title={t('boq.validate_dashboard_hint', {
+                defaultValue: 'Open the Validation dashboard for this BOQ',
+              })}
+            >
+              <ShieldCheck size={14} className="mr-1" />
+              {t('boq.validate_dashboard_btn', { defaultValue: 'Validate' })}
             </Button>
             <Button
               variant="ghost"

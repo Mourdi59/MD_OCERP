@@ -31,7 +31,8 @@ import {
   TrendingUp,
   Trash2,
 } from 'lucide-react';
-import { Button, Card, Badge, EmptyState, InfoHint, SkeletonTable, CountryFlag, Breadcrumb, ConfirmDialog, DismissibleInfo } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, SkeletonTable, CountryFlag, Breadcrumb, ConfirmDialog, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet, apiPost, apiDelete, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
@@ -852,110 +853,114 @@ export function CostsPage() {
   };
 
   return (
-    <div className="w-full animate-fade-in">
-      <Breadcrumb items={[{ label: t('costs.title') }]} className="mb-4" />
+    <div className="space-y-5 animate-fade-in">
+      <Breadcrumb items={[{ label: t('costs.title') }]} />
 
-      {/* Header */}
-      <div className="mb-5 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">{t('costs.title')}</h1>
-          <span className="mt-1 text-sm text-content-secondary inline-flex items-center gap-0.5 flex-wrap">
-            <span>
-              {regionInfo
-                ? (() => {
-                    // While the search request is in-flight, prefer the
-                    // catalog count from the tab badge over the still-zero
-                    // `total` to avoid the misleading "0 items" flash.
-                    const tabCount =
-                      regionStats?.find((r) => r.region === activeRegion)?.count ?? null;
-                    const display =
-                      total > 0
-                        ? total
-                        : isFetching && tabCount != null
-                          ? tabCount
-                          : 0;
-                    return `${regionInfo.name} — ${display.toLocaleString()} ${t('costs.items', 'items')}`;
-                  })()
-                : total > 0
-                  ? `${total.toLocaleString()} ${t('costs.results_found', 'results found')}`
-                  : t('costs.search_hint', 'Search cost items by description or code')}
-            </span>
-            <InfoHint inline text={t('costs.what_is_cost_db', { defaultValue: 'Unit rates and composite prices for materials, labor, and equipment. Import regional databases (CWICR, BKI, RSMeans) from Modules or add custom rates. Toggle AI Semantic Search for natural-language queries.' })} />
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          {total > 0 && (
+      {/* Canonical top block — module name + icon live in the global top app
+          bar. The page renders only its (contextual) subtitle on the left and
+          the page actions on the right. */}
+      <PageHeader
+        srTitle={t('costs.title')}
+        subtitle={
+          regionInfo
+            ? (() => {
+                // While the search request is in-flight, prefer the catalog
+                // count from the tab badge over the still-zero `total` to
+                // avoid the misleading "0 items" flash.
+                const tabCount =
+                  regionStats?.find((r) => r.region === activeRegion)?.count ?? null;
+                const display =
+                  total > 0
+                    ? total
+                    : isFetching && tabCount != null
+                      ? tabCount
+                      : 0;
+                return `${regionInfo.name}, ${display.toLocaleString()} ${t('costs.items', 'items')}`;
+              })()
+            : total > 0
+              ? `${total.toLocaleString()} ${t('costs.results_found', 'results found')}`
+              : t('costs.search_hint', 'Search cost items by description or code')
+        }
+        actions={
+          <>
+            {total > 0 && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={
+                  exportMutation.isPending ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Download size={14} />
+                  )
+                }
+                onClick={() => exportMutation.mutate()}
+                disabled={exportMutation.isPending}
+              >
+                {t('costs.export', { defaultValue: 'Export' })}
+              </Button>
+            )}
             <Button
               variant="secondary"
               size="sm"
-              icon={
-                exportMutation.isPending ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <Download size={14} />
-                )
-              }
-              onClick={() => exportMutation.mutate()}
-              disabled={exportMutation.isPending}
+              icon={<TrendingUp size={14} />}
+              onClick={() => setShowEscalation((p) => !p)}
+              className={showEscalation ? 'border-amber-300 text-amber-600 bg-amber-50 dark:bg-amber-900/20' : ''}
             >
-              {t('costs.export', { defaultValue: 'Export' })}
+              {t('costs.escalation', { defaultValue: 'Escalation' })}
             </Button>
-          )}
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<TrendingUp size={14} />}
-            onClick={() => setShowEscalation((p) => !p)}
-            className={showEscalation ? 'border-amber-300 text-amber-600 bg-amber-50 dark:bg-amber-900/20' : ''}
-          >
-            {t('costs.escalation', { defaultValue: 'Escalation' })}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<Layers size={14} />}
-            onClick={() => setShowRegionalAdjust((p) => !p)}
-            className={showRegionalAdjust ? 'border-oe-blue/40 text-oe-blue-text bg-oe-blue-subtle/20' : ''}
-          >
-            {t('costs.regional_adjust.toggle', { defaultValue: 'Regional Adjust' })}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<Plus size={14} />}
-            onClick={() => setShowCreateItem(true)}
-          >
-            {t('costs.add_item', { defaultValue: 'Add Item' })}
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            icon={<Upload size={14} />}
-            onClick={() => navigate('/costs/import')}
-          >
-            {t('costs.import_database', { defaultValue: 'Import' })}
-          </Button>
-        </div>
-      </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Layers size={14} />}
+              onClick={() => setShowRegionalAdjust((p) => !p)}
+              className={showRegionalAdjust ? 'border-oe-blue/40 text-oe-blue-text bg-oe-blue-subtle/20' : ''}
+            >
+              {t('costs.regional_adjust.toggle', { defaultValue: 'Regional Adjust' })}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Plus size={14} />}
+              onClick={() => setShowCreateItem(true)}
+            >
+              {t('costs.add_item', { defaultValue: 'Add Item' })}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<Upload size={14} />}
+              onClick={() => navigate('/costs/import')}
+            >
+              {t('costs.import_database', { defaultValue: 'Import' })}
+            </Button>
+          </>
+        }
+      />
 
       <DismissibleInfo
         storageKey="costs"
-        title={t('info.costs.title', { defaultValue: 'Cost Database' })}
+        title={t('costs.intro_title', { defaultValue: 'One source of truth for unit rates' })}
+        links={[
+          { label: t('nav.costs_import', { defaultValue: 'Import Cost Database' }), onClick: () => navigate('/costs/import') },
+          { label: t('nav.catalog', { defaultValue: 'Resource Catalog' }), onClick: () => navigate('/catalog') },
+          { label: t('nav.boq', { defaultValue: 'Bill of Quantities' }), onClick: () => navigate('/boq') },
+        ]}
       >
-        {t('info.costs.body', {
+        {t('costs.intro_body', {
           defaultValue:
-            'Browse unit rates and composite prices for materials, labor, and equipment across regional catalogues like CWICR, BKI, and RSMeans, or add your own. Rates carry their currency and classification, so items you pull into a BOQ feed straight into the cost and schedule rollup.',
+            'Browse and maintain unit and composite rates for materials, labour and equipment across regional catalogues like CWICR, BKI and RSMeans, or add your own. Each rate carries its currency and classification, so items you pull into a BOQ flow straight into the cost and schedule rollup.',
         })}
       </DismissibleInfo>
 
       {/* Escalation Calculator (collapsible) */}
       {showEscalation && (
-        <EscalationCalculator className="mb-5 animate-fade-in" />
+        <EscalationCalculator className="animate-fade-in" />
       )}
 
       {/* Regional Adjust panel (collapsible, v3.12.0) */}
       {showRegionalAdjust && (
-        <RegionalAdjustPanel className="mb-5 animate-fade-in" />
+        <RegionalAdjustPanel className="animate-fade-in" />
       )}
 
       {/* Region Tabs */}

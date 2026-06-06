@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -241,6 +241,30 @@ function getRuleDescriptions(t: (key: string, opts?: Record<string, unknown>) =>
   };
 }
 
+/* ── Rule-set human labels (chip primary text) ────────────────────────── */
+
+/**
+ * Short, human-readable name for a rule-set, shown as the primary chip text
+ * so users never read the raw engine id (`boq_quality`, `din276`, …). The
+ * engine id is rendered as muted secondary text next to it, and the full
+ * sentence ({@link getRuleSetDescription}) stays as the hover/title tooltip.
+ */
+function getRuleSetLabel(
+  ruleSet: string,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
+  const map: Record<string, string> = {
+    boq_quality: t('validation.rs_label_boq_quality', { defaultValue: 'BOQ quality' }),
+    din276: t('validation.rs_label_din276', { defaultValue: 'DIN 276' }),
+    gaeb: t('validation.rs_label_gaeb', { defaultValue: 'GAEB' }),
+    nrm: t('validation.rs_label_nrm', { defaultValue: 'NRM' }),
+    masterformat: t('validation.rs_label_masterformat', { defaultValue: 'MasterFormat' }),
+    bim_compliance: t('validation.rs_label_bim', { defaultValue: 'BIM compliance' }),
+    project_completeness: t('validation.rs_label_completeness', { defaultValue: 'Completeness' }),
+  };
+  return map[ruleSet] ?? ruleSet.replace(/_/g, ' ');
+}
+
 /* ── Rule-set descriptions (badge tooltips) ───────────────────────────── */
 
 function getRuleSetDescription(
@@ -401,13 +425,7 @@ function SummaryCard({ report }: { report: ValidationReportData }) {
               {t('validation.rule_sets', 'Rule sets')}:
             </span>
             {report.rule_sets.length > 0 ? (
-              report.rule_sets.map((rs) => (
-                <span key={rs} title={getRuleSetDescription(rs, t)} className="inline-flex">
-                  <Badge variant="neutral" size="sm">
-                    {rs}
-                  </Badge>
-                </span>
-              ))
+              report.rule_sets.map((rs) => <RuleSetChip key={rs} ruleSet={rs} tone="neutral" />)
             ) : (
               <span className="text-xs text-content-tertiary italic">
                 {t('validation.no_rule_sets', {
@@ -587,6 +605,33 @@ function FilterBar({
   );
 }
 
+/**
+ * Rule-set chip: human label as primary text plus the engine id as muted
+ * secondary text, so the meaning is legible without hovering (the full
+ * sentence stays as the title tooltip). Replaces the old badge that printed
+ * the raw engine id alone.
+ */
+function RuleSetChip({ ruleSet, tone }: { ruleSet: string; tone: 'blue' | 'neutral' }) {
+  const { t } = useTranslation();
+  const label = getRuleSetLabel(ruleSet, t);
+  const showId = label.toLowerCase() !== ruleSet.toLowerCase();
+  const toneClasses =
+    tone === 'blue'
+      ? 'border-oe-blue/30 bg-oe-blue-subtle text-oe-blue'
+      : 'border-border-light bg-surface-secondary text-content-secondary';
+  return (
+    <span
+      title={getRuleSetDescription(ruleSet, t)}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${toneClasses}`}
+    >
+      {label}
+      {showId && (
+        <span className="font-mono text-2xs font-normal text-content-tertiary">{ruleSet}</span>
+      )}
+    </span>
+  );
+}
+
 function SelectDropdown({
   id,
   label,
@@ -631,11 +676,21 @@ export function ValidationPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { activeProjectId, setActiveProject } = useProjectContextStore();
+  const { activeProjectId, activeBOQId, setActiveProject, setActiveBOQ } =
+    useProjectContextStore();
   const addToast = useToastStore((s) => s.addToast);
 
+  // Honor a ?project= deep link (e.g. from the BOQ editor Validate button)
+  // by adopting it into the global project context on mount.
+  const projectParam = searchParams.get('project');
+  const boqIdParam = searchParams.get('boq_id');
+
   const selectedProjectId = activeProjectId ?? '';
-  const [selectedBoqId, setSelectedBoqId] = useState('');
+  // BOQ selection is remembered per project via the shared project context
+  // (useProjectContextStore.activeBOQId). Seed from an explicit ?boq_id= deep
+  // link first, then the remembered context, so a returning user lands on the
+  // same BOQ they last validated without re-picking it.
+  const [selectedBoqId, setSelectedBoqId] = useState(boqIdParam ?? activeBOQId ?? '');
   const [filter, setFilter] = useState<FilterMode>('all');
   const [expandedResults, setExpandedResults] = useState<Set<number>>(new Set());
 
@@ -653,10 +708,28 @@ export function ValidationPage() {
     enabled: !!selectedProjectId,
   });
 
+  // Adopt a ?project= deep link (carried by cross-module links such as the
+  // BOQ editor Validate button) into the global project context, so the page
+  // resolves to the same project the link came from rather than the last one
+  // the user happened to have active.
+  useEffect(() => {
+    if (!projectParam || projectParam === selectedProjectId) return;
+    const name = projects?.find((p) => p.id === projectParam)?.name ?? '';
+    setActiveProject(projectParam, name);
+  }, [projectParam, selectedProjectId, projects, setActiveProject]);
+
   const selectedProject = useMemo(
     () => projects?.find((p) => p.id === selectedProjectId),
     [projects, selectedProjectId],
   );
+
+  // Remember the picked BOQ in the shared project context so it survives
+  // navigation and reload (mirrors how the project itself is remembered).
+  useEffect(() => {
+    if (selectedBoqId && selectedBoqId !== activeBOQId) {
+      setActiveBOQ(selectedBoqId);
+    }
+  }, [selectedBoqId, activeBOQId, setActiveBOQ]);
 
   // Rule sets the engine will apply to this project — derived from its
   // classification standard. Shown as chips and sent verbatim to /run/.
@@ -671,11 +744,20 @@ export function ValidationPage() {
 
   const reportIdParam = searchParams.get('report');
 
-  // Restore the latest persisted report for the selected BOQ so re-entering
-  // the page (or following a ?report= link) shows the result instead of an
-  // empty state. Prefers an explicit ?report= id; otherwise picks the newest
-  // report whose target is the selected BOQ.
-  const { data: restoredReport } = useQuery({
+  // Auto-select the project's most recent BOQ (the list is created_at desc,
+  // so boqs[0] is newest) when nothing is chosen yet and there is no report to
+  // restore — cutting a returning user's clicks-to-result. We wait for the
+  // restore query (below) to settle so a report's BOQ wins over this fallback.
+  // Restore a persisted report so landing on the page shows the last
+  // traffic-light state instead of an empty prompt. Resolution order:
+  //   1. an explicit ?report= id (deep link from a notification),
+  //   2. the newest report for the currently-selected BOQ,
+  //   3. (no BOQ chosen yet) the project's most recent report of any BOQ —
+  //      this lets a returning user land straight on their last result, and
+  //      the alignment effect below selects that report's BOQ.
+  // The list endpoint returns reports newest-first (created_at desc), so the
+  // first matching entry is always the latest.
+  const { data: restoredReport, isSuccess: restoreSettled } = useQuery({
     queryKey: ['validation', 'latest', selectedProjectId, selectedBoqId, reportIdParam],
     queryFn: async (): Promise<ValidationReportResponse | null> => {
       if (reportIdParam) {
@@ -684,21 +766,24 @@ export function ValidationPage() {
       const reports = await apiGet<ValidationReportResponse[]>(
         `/v1/validation/reports/?project_id=${selectedProjectId}&target_type=boq`,
       );
-      const match = reports.find((r) => r.target_id === selectedBoqId);
-      return match ?? null;
+      if (selectedBoqId) {
+        return reports.find((r) => r.target_id === selectedBoqId) ?? null;
+      }
+      // No BOQ picked yet: surface the project's most recent report.
+      return reports[0] ?? null;
     },
-    // Fire on an explicit ?report= deep link even before a BOQ is picked, so a
-    // link from a validation notification opens the report on its own.
-    enabled: (!!selectedProjectId && !!selectedBoqId) || !!reportIdParam,
+    // Fire whenever a project is known (auto-restore the latest report) or on
+    // an explicit ?report= deep link even before a project is resolved.
+    enabled: !!selectedProjectId || !!reportIdParam,
     staleTime: 30_000,
   });
 
-  // Deep-link alignment: when arriving via ?report= (e.g. from a validation
-  // notification), the project/BOQ selectors are usually empty. Point them at
-  // the linked report's project and BOQ so the dropdowns, rule chips and the
+  // Alignment: when a restored report arrives (either via a ?report= deep link
+  // or as the project's most recent report picked when no BOQ was chosen yet),
+  // point the project/BOQ selectors at it so the dropdowns, rule chips and the
   // hydrate effect below all resolve to the report being viewed.
   useEffect(() => {
-    if (!reportIdParam || !restoredReport) return;
+    if (!restoredReport) return;
     if (restoredReport.project_id && restoredReport.project_id !== selectedProjectId) {
       const name = projects?.find((p) => p.id === restoredReport.project_id)?.name ?? '';
       setActiveProject(restoredReport.project_id, name);
@@ -706,20 +791,31 @@ export function ValidationPage() {
     if (restoredReport.target_id && restoredReport.target_id !== selectedBoqId) {
       setSelectedBoqId(restoredReport.target_id);
     }
-  }, [reportIdParam, restoredReport, selectedProjectId, selectedBoqId, projects, setActiveProject]);
+  }, [restoredReport, selectedProjectId, selectedBoqId, projects, setActiveProject]);
 
   // Hydrate the page report from a restored persisted report (only when the
-  // user has not just produced a fresher one via a run). A deep-linked report
-  // (explicit ?report= id) hydrates regardless of the BOQ selection, which the
-  // alignment effect above brings into sync a render later.
+  // user has not just produced a fresher one via a run). When no BOQ is yet
+  // selected we still hydrate the project's most recent report; the alignment
+  // effect above brings the BOQ selection into sync a render later.
   useEffect(() => {
     if (!restoredReport) return;
-    if (!reportIdParam && restoredReport.target_id !== selectedBoqId) return;
+    if (selectedBoqId && !reportIdParam && restoredReport.target_id !== selectedBoqId) return;
     setReport((prev) => {
       if (prev && prev.id === restoredReport.id) return prev;
       return mapStoredReport(restoredReport);
     });
   }, [restoredReport, selectedBoqId, reportIdParam]);
+
+  // Fallback BOQ auto-select: once the restore query has settled with no
+  // report to align a BOQ, pick the project's most recent BOQ so the page is
+  // one click (Run) from a result rather than forcing a manual BOQ pick.
+  useEffect(() => {
+    if (selectedBoqId || !boqs) return;
+    if (!restoreSettled || restoredReport) return;
+    // noUncheckedIndexedAccess: a length guard does not narrow boqs[0].
+    const first = boqs[0];
+    if (first) setSelectedBoqId(first.id);
+  }, [selectedBoqId, boqs, restoreSettled, restoredReport]);
 
   // Run validation mutation — persists a server-side ValidationReport via
   // the validation module (RBAC: validation.create) instead of the
@@ -754,45 +850,45 @@ export function ValidationPage() {
     },
   });
 
-  // Reset BOQ selection when project changes
-  const handleProjectChange = useCallback(
-    (projectId: string) => {
-      const name = projects?.find((p) => p.id === projectId)?.name ?? '';
-      if (projectId) {
-        setActiveProject(projectId, name);
-      } else {
-        useProjectContextStore.getState().clearProject();
-      }
-      setSelectedBoqId('');
-      setReport(null);
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.delete('report');
-          return next;
-        },
-        { replace: true },
-      );
-    },
-    [projects, setActiveProject, setSearchParams],
-  );
+  // The project is chosen globally (top-bar switcher → useProjectContextStore),
+  // not from an in-page picker. When it changes, drop the BOQ selection and any
+  // restored report so the auto-restore re-resolves for the new project.
+  const prevProjectRef = useRef(selectedProjectId);
+  useEffect(() => {
+    if (prevProjectRef.current === selectedProjectId) return;
+    prevProjectRef.current = selectedProjectId;
+    // Keep an explicit ?boq_id= deep link; otherwise reset to the new project.
+    if (boqIdParam) return;
+    setSelectedBoqId('');
+    setReport(null);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('report');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [selectedProjectId, boqIdParam, setSearchParams]);
 
   const handleBoqChange = useCallback(
     (boqId: string) => {
       setSelectedBoqId(boqId);
+      setActiveBOQ(boqId || null);
       setReport(null);
-      // Drop any stale ?report= so the latest-report restore can re-resolve
-      // for the newly selected BOQ.
+      // Drop any stale ?report= / ?boq_id= so the latest-report restore can
+      // re-resolve for the newly selected BOQ.
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
           next.delete('report');
+          next.delete('boq_id');
           return next;
         },
         { replace: true },
       );
     },
-    [setSearchParams],
+    [setSearchParams, setActiveBOQ],
   );
 
   // Filter results
@@ -900,35 +996,27 @@ export function ValidationPage() {
     });
   }, [report, selectedBoqId, addToast, t]);
 
-  const projectOptions = (projects || []).map((p) => ({
-    value: p.id,
-    label: p.name,
-  }));
-
   const boqOptions = (boqs || []).map((b) => ({
     value: b.id,
     label: b.name,
   }));
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb items={[
         ...(selectedProject ? [{ label: selectedProject.name, to: `/projects/${selectedProject.id}` }] : []),
         { label: t('validation.title', 'Validation') },
-      ]} className="mb-4" />
+      ]} className="mb-1" />
 
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-content-primary">
-          {t('validation.title', 'Validation Dashboard')}
-        </h1>
-        <p className="mt-1 text-sm text-content-secondary">
-          {t(
-            'validation.subtitle',
-            'Select a project and BOQ to validate against configured rule sets',
-          )}
-        </p>
-      </div>
+      {/* Header row — the module name lives in the top app bar; only a one-line
+          subtitle here per the module style guide (no in-page H1, no project
+          picker; the project comes from the global top-bar context). */}
+      <p className="text-sm text-content-tertiary">
+        {t(
+          'validation.subtitle',
+          'Check a Bill of Quantities against the rule sets configured for the project.',
+        )}
+      </p>
 
       <SectionIntro
         storageKey="validation"
@@ -952,70 +1040,69 @@ export function ValidationPage() {
         })}
       </SectionIntro>
 
-      {/* Selector bar */}
-      <Card className="mb-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-          <div className="flex-1">
-            {projectsLoading ? (
-              <Skeleton height={40} className="w-full" rounded="md" />
-            ) : (
-              <SelectDropdown
-                id="validation-project-select"
-                label={t('validation.select_project', 'Project')}
-                value={selectedProjectId}
-                onChange={handleProjectChange}
-                options={projectOptions}
-                placeholder={t('validation.select_project_placeholder', 'Choose a project...')}
-              />
-            )}
-          </div>
-          <div className="flex-1">
-            {boqsLoading ? (
-              <Skeleton height={40} className="w-full" rounded="md" />
-            ) : (
-              <SelectDropdown
-                id="validation-boq-select"
-                label={t('validation.select_boq', 'Bill of Quantities')}
-                value={selectedBoqId}
-                onChange={handleBoqChange}
-                options={boqOptions}
-                placeholder={
-                  selectedProjectId
-                    ? t('validation.select_boq_placeholder', 'Choose a BOQ...')
-                    : t('validation.select_project_first', 'Select a project first')
-                }
-              />
-            )}
-          </div>
-          <div className="shrink-0">
-            <span title={!selectedBoqId ? t('validation.select_boq_first', { defaultValue: 'Select a project and BOQ first' }) : undefined}>
-              <Button
-                variant="primary"
-                size="md"
-                icon={<Play size={16} />}
-                loading={runValidation.isPending}
-                disabled={!selectedBoqId}
-                onClick={() => runValidation.mutate()}
-              >
-                {t('validation.run', 'Run Validation')}
-              </Button>
-            </span>
-          </div>
-        </div>
+      {/* No active project — the project is chosen globally in the top bar, so
+          guide the user there instead of duplicating a picker. */}
+      {!selectedProjectId && !projectsLoading && (
+        <EmptyState
+          icon={<ShieldCheck size={28} strokeWidth={1.5} />}
+          title={t('validation.no_project_title', { defaultValue: 'Select a project to validate' })}
+          description={t('validation.no_project_description', {
+            defaultValue:
+              'Pick a project from the switcher in the top bar, then choose one of its Bills of Quantities to check.',
+          })}
+          action={{
+            label: t('validation.go_to_projects', { defaultValue: 'Browse projects' }),
+            onClick: () => navigate('/projects'),
+          }}
+        />
+      )}
 
-        {/* Resolved rule sets — shown before running so the user knows
-            exactly which checks will be applied to this project. */}
-        {selectedProjectId && (
+      {/* Selector bar — BOQ picker + Run. The project is global (top bar). */}
+      {selectedProjectId && (
+        <Card>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+            <div className="flex-1">
+              {boqsLoading ? (
+                <Skeleton height={40} className="w-full" rounded="md" />
+              ) : (
+                <SelectDropdown
+                  id="validation-boq-select"
+                  label={t('validation.select_boq', 'Bill of Quantities')}
+                  value={selectedBoqId}
+                  onChange={handleBoqChange}
+                  options={boqOptions}
+                  placeholder={
+                    boqOptions.length > 0
+                      ? t('validation.select_boq_placeholder', 'Choose a BOQ...')
+                      : t('validation.no_boqs_for_project', { defaultValue: 'This project has no BOQs yet' })
+                  }
+                />
+              )}
+            </div>
+            <div className="shrink-0">
+              <span title={!selectedBoqId ? t('validation.select_boq_first', { defaultValue: 'Select a BOQ first' }) : undefined}>
+                <Button
+                  variant="primary"
+                  size="md"
+                  icon={<Play size={16} />}
+                  loading={runValidation.isPending}
+                  disabled={!selectedBoqId}
+                  onClick={() => runValidation.mutate()}
+                >
+                  {t('validation.run', 'Run Validation')}
+                </Button>
+              </span>
+            </div>
+          </div>
+
+          {/* Resolved rule sets — shown before running so the user knows
+              exactly which checks will be applied to this project. */}
           <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-border-light pt-3">
             <span className="text-xs text-content-tertiary">
               {t('validation.will_check_with', { defaultValue: 'Will check with' })}:
             </span>
             {resolvedRuleSets.map((rs) => (
-              <span key={rs} title={getRuleSetDescription(rs, t)} className="inline-flex">
-                <Badge variant="blue" size="sm">
-                  {rs}
-                </Badge>
-              </span>
+              <RuleSetChip key={rs} ruleSet={rs} tone="blue" />
             ))}
             <span className="text-xs text-content-tertiary">
               {t('validation.rule_sets_from_standard', {
@@ -1023,17 +1110,18 @@ export function ValidationPage() {
               })}
             </span>
           </div>
-        )}
-      </Card>
+        </Card>
+      )}
 
-      {/* No selection state */}
-      {!report && !runValidation.isPending && (
+      {/* No report yet (project active) — honest empty state once a project is
+          selected but no report has been run or restored. */}
+      {selectedProjectId && !report && !runValidation.isPending && (
         <EmptyState
           icon={<ShieldCheck size={28} strokeWidth={1.5} />}
           title={t('validation.empty_title', 'No validation report yet')}
           description={t(
             'validation.empty_description',
-            'Select a project and BOQ, then click "Run Validation" to check data quality.',
+            'Choose a BOQ and click "Run Validation" to check its data quality.',
           )}
         />
       )}

@@ -13,8 +13,6 @@ import {
   ArrowUpRight,
   FileText,
   Webhook,
-  Info,
-  X,
   Pencil,
   Trash2,
   Send,
@@ -32,6 +30,7 @@ import {
   EmptyState,
   Breadcrumb,
   DateDisplay,
+  DismissibleInfo,
   RecoveryCard,
   SkeletonTable,
   ConfirmDialog,
@@ -40,6 +39,7 @@ import {
   WideModalField,
 } from '@/shared/ui';
 import { ContactSearchInput } from '@/shared/ui/ContactSearchInput';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
@@ -58,8 +58,6 @@ import {
   type CreateCorrespondencePayload,
   type UpdateCorrespondencePayload,
 } from './api';
-
-const LS_INFO_DISMISSED = 'oe_correspondence_info_dismissed';
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
@@ -994,9 +992,6 @@ export function CorrespondencePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [directionFilter, setDirectionFilter] = useState<CorrespondenceDirection | ''>('');
   const [typeFilter, setTypeFilter] = useState<CorrespondenceType | ''>('');
-  const [infoDismissed, setInfoDismissed] = useState(
-    () => localStorage.getItem(LS_INFO_DISMISSED) === '1',
-  );
   const { confirm, ...confirmProps } = useConfirm();
 
   // Data
@@ -1219,7 +1214,7 @@ export function CorrespondencePage() {
   );
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -1228,38 +1223,14 @@ export function CorrespondencePage() {
             : []),
           { label: t('correspondence.title', { defaultValue: 'Correspondence' }) },
         ]}
-        className="mb-4"
       />
 
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-2xl font-bold text-content-primary shrink-0">
-          {t('correspondence.page_title', { defaultValue: 'Correspondence' })}
-        </h1>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {!routeProjectId && projects.length > 0 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((pr) => pr.id === e.target.value);
-                if (p) {
-                  useProjectContextStore.getState().setActiveProject(p.id, p.name);
-                }
-              }}
-              aria-label={t('correspondence.select_project', { defaultValue: 'Project...' })}
-              className={inputCls + ' !h-8 !text-xs max-w-[180px]'}
-            >
-              <option value="" disabled>
-                {t('correspondence.select_project', { defaultValue: 'Project...' })}
-              </option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
+      <PageHeader
+        subtitle={t('correspondence.subtitle', {
+          defaultValue: 'A contemporaneous register of every formal letter, notice, email, and memo',
+        })}
+        actions={
           <Button
             variant="primary"
             size="sm"
@@ -1271,68 +1242,38 @@ export function CorrespondencePage() {
           >
             {t('correspondence.new_letter', { defaultValue: 'New Letter' })}
           </Button>
-        </div>
-      </div>
+        }
+      />
+
+      {/* Canonical module info card \u2014 pain-named title + workflow body. */}
+      <DismissibleInfo
+        storageKey="correspondence"
+        title={t('correspondence.intro_title', { defaultValue: 'Your evidence trail when claims start' })}
+        links={[
+          {
+            label: t('transmittals.title', { defaultValue: 'Transmittals' }),
+            onClick: () => navigate('/transmittals'),
+          },
+          {
+            label: t('rfi.title', { defaultValue: 'RFIs' }),
+            onClick: () => navigate('/rfi'),
+          },
+          {
+            label: t('contacts.title', { defaultValue: 'Contacts' }),
+            onClick: () => navigate('/contacts'),
+          },
+        ]}
+      >
+        {t('correspondence.intro_body', {
+          defaultValue:
+            'Keep a contemporaneous register of every formal letter, notice, email and memo exchanged with project parties. Log each entry, attach the source file and link it to the related Transmittals, RFIs, Documents and Contacts so a single thread of communication stays traceable end to end if a dispute arises. Inbound email auto-import is not wired yet, so entries are logged by hand today.',
+        })}
+      </DismissibleInfo>
 
       {/* No-project warning */}
       {!projectId && (
-        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
           {t('common.select_project_hint', { defaultValue: 'Select a project from the header to get started.' })}
-        </div>
-      )}
-
-      {/* Purpose / help banner \u2014 explains what this register is for and how
-          it connects to the rest of the platform. */}
-      {!infoDismissed && (
-        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-300 relative">
-          <button
-            onClick={() => {
-              setInfoDismissed(true);
-              localStorage.setItem(LS_INFO_DISMISSED, '1');
-            }}
-            className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded text-blue-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40 dark:hover:text-blue-200 transition-colors"
-            aria-label={t('common.dismiss', { defaultValue: 'Dismiss' })}
-          >
-            <X size={14} />
-          </button>
-          <div className="flex items-center gap-2 mb-1">
-            <Info size={16} />
-            <span className="font-semibold">
-              {t('correspondence.info_title', { defaultValue: 'About the Correspondence Log' })}
-            </span>
-          </div>
-          <p className="text-xs pr-6">
-            {t('correspondence.info_body_v2', {
-              defaultValue:
-                'A contemporaneous register of every formal letter, notice, email, and memo exchanged with project parties - the audit trail that protects you in disputes and claims. Log each entry, attach the source file, and link it to the related records.',
-            })}{' '}
-            {t('correspondence.info_link_hint', {
-              defaultValue:
-                'Entries can be linked to Documents, Transmittals, and RFIs so a single thread of communication is traceable end-to-end.',
-            })}
-          </p>
-        </div>
-      )}
-
-      {/* Cross-module links */}
-      {projectId && (
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/transmittals')}>
-            <Send size={13} className="me-1" />
-            {t('correspondence.link_transmittals', { defaultValue: 'Transmittals' })}
-          </Button>
-          <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/rfi')}>
-            <HelpCircle size={13} className="me-1" />
-            {t('correspondence.link_rfi', { defaultValue: 'RFIs' })}
-          </Button>
-          <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/documents')}>
-            <FileText size={13} className="me-1" />
-            {t('correspondence.link_documents', { defaultValue: 'Documents' })}
-          </Button>
-          <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/contacts')}>
-            <Mail size={13} className="me-1" />
-            {t('correspondence.link_contacts', { defaultValue: 'Contacts' })}
-          </Button>
         </div>
       )}
 
@@ -1340,7 +1281,7 @@ export function CorrespondencePage() {
           built yet; the integrations module only dispatches OUTBOUND
           webhooks. Marked "Coming Soon" so the cards don't promise a flow
           that doesn't exist. Entries are logged manually today. */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <ConnectorCard
           name={t('correspondence.connector_email', { defaultValue: 'Email (IMAP/SMTP)' })}
           status="coming_soon"
@@ -1360,7 +1301,7 @@ export function CorrespondencePage() {
       </div>
 
       {/* Toolbar */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search

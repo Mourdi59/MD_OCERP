@@ -17,7 +17,7 @@ import {
   TrendingUp, Hash, Clock, ShieldCheck, Bookmark, ScatterChart as ScatterIcon, Trash2,
   Box, Ruler, Square, Building2, Palette,
 } from 'lucide-react';
-import { Button, Card, Badge, Breadcrumb, EmptyState } from '@/shared/ui';
+import { Button, Card, Badge, Breadcrumb, DismissibleInfo, EmptyState } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
 import { useUploadQueueStore } from '@/stores/useUploadQueueStore';
 import { apiGet, apiPost, ApiError, getErrorMessage, extractErrorMessageFromBody } from '@/shared/lib/api';
@@ -3823,10 +3823,25 @@ export function CadDataExplorerPage() {
 
     return (
       <div className="flex flex-col -mx-4 sm:-mx-7 -mt-6 -mb-6 border-s border-border-light animate-fade-in" style={{ height: 'calc(100vh - 56px)' }}>
-        <div className="px-6 pt-4 pb-3 border-b border-border-light">
+        <div className="space-y-3 px-6 pt-4 pb-3 border-b border-border-light">
           <Breadcrumb items={[
             { label: t('nav.cad_bim_explorer', { defaultValue: 'CAD-BIM Explorer' }) },
           ]} />
+          <DismissibleInfo
+            storageKey="data-explorer"
+            title={t('cad_explorer.intro_title', {
+              defaultValue: 'Interrogate model data like a spreadsheet',
+            })}
+            links={[
+              { label: t('cad_explorer.intro_link_bim', { defaultValue: 'BIM viewer' }), onClick: () => navigate('/bim') },
+              { label: t('cad_explorer.intro_link_quantities', { defaultValue: 'Quantities' }), onClick: () => navigate('/quantities') },
+            ]}
+          >
+            {t('cad_explorer.intro_body', {
+              defaultValue:
+                'Loads the element data extracted from a converted CAD or BIM model and lets you table, pivot, chart and describe it without leaving the browser. Filter and slice the rows, spot missing or out-of-range data, export to CSV, or save a selection back as a BIM model you can open in the 3D viewer.',
+            })}
+          </DismissibleInfo>
         </div>
 
         {/* Soft modern background — calm base gradient, muted blurred

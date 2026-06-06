@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
@@ -36,7 +36,7 @@ import {
 } from '@/shared/ui';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
-import { PipelineBanner } from './PipelineBanner';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { apiGet, getErrorMessage } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -203,8 +203,8 @@ function listQAForPackage(packageId: string): Promise<BidQA[]> {
 
 export function BidManagementPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
-  const setActiveProject = useProjectContextStore((s) => s.setActiveProject);
 
   const projectsQ = useQuery({
     queryKey: ['bid-management', 'projects'],
@@ -288,74 +288,45 @@ export function BidManagementPage() {
         ]}
       />
 
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-content-primary">
-            {t('bid_management.title', { defaultValue: 'Bid Management' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('bid_management.subtitle', {
-              defaultValue:
-                'Run end-to-end tendering: packages, invitations, submissions, Q&A, and bid leveling.',
-            })}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {projects.length > 1 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((x) => x.id === e.target.value);
-                if (p) setActiveProject(p.id, p.name);
-              }}
-              className={clsx(inputCls, 'max-w-[260px]')}
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
+      {/* Header — project selection lives in the global top bar; no in-page
+          project picker. The page reads the shared project context. */}
+      <PageHeader
+        subtitle={t('bid_management.subtitle', {
+          defaultValue:
+            'Run end-to-end tendering: packages, invitations, submissions, Q&A, and bid leveling.',
+        })}
+        actions={
           <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>
             {t('bid_management.new_package', { defaultValue: 'New Package' })}
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <DismissibleInfo
         storageKey="bid-management"
-        title={t('info.bid-management.title', { defaultValue: 'About Bid Management' })}
-      >
-        {t('info.bid-management.body', {
-          defaultValue:
-            'Run tendering end to end: bundle scope into bid packages, invite subcontractors, collect priced submissions, and level them side by side before awarding. Packages can draw on your project BOQ, and an award flows straight into Contracts.',
+        title={t('bid_management.intro_title', {
+          defaultValue: 'Pick the right subcontractor like for like',
         })}
-      </DismissibleInfo>
-
-      <PipelineBanner
-        intro={t('bid_management.pipeline_intro', {
-          defaultValue:
-            'Take won work to market: bundle scope into a package, invite prequalified subcontractors, collect priced submissions, level them side by side, and award. The award becomes a contract.',
-        })}
-        steps={[
-          { label: t('bid_management.step_crm', { defaultValue: 'CRM' }), to: '/crm' },
+        links={[
           {
-            label: t('bid_management.step_subs', {
-              defaultValue: 'Subcontractors',
-            }),
-            to: '/subcontractors',
+            label: t('nav.subcontractors', { defaultValue: 'Subcontractors' }),
+            onClick: () => navigate('/subcontractors'),
           },
           {
-            label: t('bid_management.step_bid', { defaultValue: 'Bid Management' }),
-            current: true,
+            label: t('nav.contracts', { defaultValue: 'Contracts' }),
+            onClick: () => navigate('/contracts'),
           },
           {
-            label: t('bid_management.step_contract', { defaultValue: 'Contracts' }),
-            to: '/contracts',
+            label: t('nav.tendering', { defaultValue: 'Tendering' }),
+            onClick: () => navigate('/tendering'),
           },
         ]}
-      />
+      >
+        {t('bid_management.intro_body', {
+          defaultValue:
+            'Bundle scope into bid packages, invite prequalified subcontractors, collect their priced submissions, handle Q and A, and level the bids side by side before you award. The award flows straight into Contracts. Use Tendering instead when you want a formal BOQ-driven tender that writes rates back and raises a PO.',
+        })}
+      </DismissibleInfo>
 
       <div className="border-b border-border-light">
         <nav

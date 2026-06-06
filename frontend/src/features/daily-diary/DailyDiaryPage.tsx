@@ -20,8 +20,6 @@ import {
   ChevronRight,
   AlertTriangle,
   Trash2,
-  ArrowRight,
-  X,
   Globe2,
   FileDown,
   Upload,
@@ -41,10 +39,12 @@ import {
   WideModalSection,
   WideModalField,
   ConfirmDialog,
+  DismissibleInfo,
 } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { getErrorMessage } from '@/shared/lib/api';
@@ -198,91 +198,6 @@ function formatSha(sha: string): string {
   return `${sha.slice(0, 8)}…${sha.slice(-6)}`;
 }
 
-/* ── Workflow intro ──────────────────────────────────────────────────────
- *
- * Site teams open this page without always knowing WHY the diary matters
- * downstream. This banner states the purpose, the daily next-action, and
- * the legal/audit weight of a signed record — plus one-click jumps to the
- * modules the diary feeds into (schedule progress, tasks, photo files).
- * It is dismissible per-session so power users aren't slowed down.
- */
-function WorkflowIntro() {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [dismissed, setDismissed] = useState(
-    () => sessionStorage.getItem('oe.dd.introDismissed') === '1',
-  );
-  if (dismissed) return null;
-  const dismiss = () => {
-    sessionStorage.setItem('oe.dd.introDismissed', '1');
-    setDismissed(true);
-  };
-  return (
-    <Card
-      padding="md"
-      className="border-oe-blue/20 bg-oe-blue-subtle/10"
-    >
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-oe-blue-subtle text-oe-blue-text">
-          <BookOpen size={16} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-content-primary">
-            {t('daily_diary.intro_title', {
-              defaultValue: 'One signed record per site day',
-            })}
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-content-secondary">
-            {t('daily_diary.intro_body', {
-              defaultValue:
-                'Each day, open the diary and log weather, headcount, deliveries and events, attach site photos, then close and sign it. A signed diary is sealed with a sha256 fingerprint — it becomes tamper-evident evidence for delay claims, progress verification and dispute resolution.',
-            })}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="text-2xs font-medium uppercase tracking-wide text-content-tertiary">
-              {t('daily_diary.intro_connects', { defaultValue: 'Feeds into' })}
-            </span>
-            <button
-              type="button"
-              onClick={() => navigate('/schedule')}
-              className="inline-flex items-center gap-1 rounded-full border border-border-light bg-surface-primary px-2.5 py-1 text-xs font-medium text-content-secondary transition-colors hover:border-oe-blue hover:text-oe-blue"
-            >
-              {t('daily_diary.intro_link_schedule', {
-                defaultValue: 'Schedule progress',
-              })}
-              <ArrowRight size={11} />
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/tasks')}
-              className="inline-flex items-center gap-1 rounded-full border border-border-light bg-surface-primary px-2.5 py-1 text-xs font-medium text-content-secondary transition-colors hover:border-oe-blue hover:text-oe-blue"
-            >
-              {t('daily_diary.intro_link_tasks', { defaultValue: 'Tasks' })}
-              <ArrowRight size={11} />
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/files')}
-              className="inline-flex items-center gap-1 rounded-full border border-border-light bg-surface-primary px-2.5 py-1 text-xs font-medium text-content-secondary transition-colors hover:border-oe-blue hover:text-oe-blue"
-            >
-              {t('daily_diary.intro_link_files', { defaultValue: 'Site photos' })}
-              <ArrowRight size={11} />
-            </button>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={dismiss}
-          className="shrink-0 rounded-md p-1 text-content-tertiary transition-colors hover:bg-surface-secondary hover:text-content-primary"
-          aria-label={t('common.dismiss', { defaultValue: 'Dismiss' })}
-        >
-          <X size={14} />
-        </button>
-      </div>
-    </Card>
-  );
-}
-
 /* ── Page ────────────────────────────────────────────────────────────── */
 
 export function DailyDiaryPage() {
@@ -312,9 +227,19 @@ export function DailyDiaryPage() {
     queryFn: () => projectsApi.list(),
   });
 
+  // Project selection lives in the global top bar. Follow the active project
+  // from the shared context; only fall back to the first available project
+  // when nothing is selected globally and nothing is picked here yet.
   useEffect(() => {
+    if (activeProjectId) {
+      if (activeProjectId !== projectId) {
+        setProjectId(activeProjectId);
+        setActiveDiaryId('');
+      }
+      return;
+    }
     if (projectId) return;
-    const seed = activeProjectId || projectsQ.data?.[0]?.id;
+    const seed = projectsQ.data?.[0]?.id;
     if (seed) setProjectId(seed);
   }, [activeProjectId, projectsQ.data, projectId]);
 
@@ -390,64 +315,62 @@ export function DailyDiaryPage() {
             label: t('nav.daily_diary', { defaultValue: 'Daily Site Diary' }),
           },
         ]}
-        className="mb-2"
       />
 
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-content-primary">
-            {t('daily_diary.title', { defaultValue: 'Daily Site Diary' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('daily_diary.subtitle', {
-              defaultValue:
-                'Weather, photos, drone surveys and signed daily records.',
-            })}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {projectsQ.data && projectsQ.data.length > 0 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                setProjectId(e.target.value);
-                setActiveDiaryId('');
-              }}
-              className={clsx(inputCls, 'max-w-xs')}
+      <PageHeader
+        srTitle={t('daily_diary.title', { defaultValue: 'Daily Site Diary' })}
+        subtitle={t('daily_diary.subtitle', {
+          defaultValue:
+            'Weather, photos, drone surveys and signed daily records.',
+        })}
+        actions={
+          <>
+            {projectId && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Globe2 size={14} />}
+                onClick={() => navigate(`/projects/${projectId}/geo`)}
+                title={t('geo_hub.view_on_map', { defaultValue: 'View on map' })}
+                data-testid="daily-diary-view-on-map"
+              >
+                {t('geo_hub.view_on_map', { defaultValue: 'View on map' })}
+              </Button>
+            )}
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<Plus size={14} />}
+              onClick={() => openCreate()}
+              disabled={!projectId}
             >
-              {projectsQ.data.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
-          {projectId && (
-            <button
-              type="button"
-              onClick={() => navigate(`/projects/${projectId}/geo`)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border-light bg-surface-primary px-2.5 py-1.5 text-xs font-medium text-content-secondary hover:bg-surface-secondary hover:text-oe-blue focus:outline-none focus:ring-2 focus:ring-oe-blue/40 shrink-0"
-              title={t('geo_hub.view_on_map', { defaultValue: 'View on map' })}
-              aria-label={t('geo_hub.view_on_map', { defaultValue: 'View on map' })}
-              data-testid="daily-diary-view-on-map"
-            >
-              <Globe2 size={13} />
-              {t('geo_hub.view_on_map', { defaultValue: 'View on map' })}
-            </button>
-          )}
-          <Button
-            variant="primary"
-            size="sm"
-            icon={<Plus size={14} />}
-            onClick={() => openCreate()}
-            disabled={!projectId}
-          >
-            {t('daily_diary.new_diary', { defaultValue: 'New Diary' })}
-          </Button>
-        </div>
-      </div>
+              {t('daily_diary.new_diary', { defaultValue: 'New Diary' })}
+            </Button>
+          </>
+        }
+      />
 
-      <WorkflowIntro />
+      <DismissibleInfo
+        storageKey="daily-diary"
+        title={t('daily_diary.intro_title', {
+          defaultValue: 'Tamper-proof evidence when claims arrive',
+        })}
+        links={[
+          {
+            label: t('daily_diary.intro_link_schedule', { defaultValue: 'Schedule' }),
+            onClick: () => navigate('/schedule'),
+          },
+          {
+            label: t('daily_diary.intro_link_files', { defaultValue: 'Files' }),
+            onClick: () => navigate('/files'),
+          },
+        ]}
+      >
+        {t('daily_diary.intro_body', {
+          defaultValue:
+            'Each site day you open the diary, log weather, headcount, deliveries and events, attach photos and drone or reality-capture surveys, then close and sign it. A signed diary is sealed with a sha256 fingerprint so it stands as tamper-evident proof for delay claims and disputes, and it feeds schedule progress and the site photo library.',
+        })}
+      </DismissibleInfo>
 
       <div className="border-b border-border-light">
         <nav className="flex gap-1 -mb-px">
@@ -505,7 +428,8 @@ export function DailyDiaryPage() {
           ) : (
             <RequiresProject
               emptyHint={t('daily_diary.no_project_desc', {
-                defaultValue: 'Create a project first to start logging site diaries.',
+                defaultValue:
+                  'Pick a project from the top bar to start logging site diaries.',
               })}
             >{null}</RequiresProject>
           )}

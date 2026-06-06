@@ -19,7 +19,6 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
-  LayoutDashboard,
   RefreshCw,
   Radar,
   Layers,
@@ -34,6 +33,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { BetaBanner, Breadcrumb, DismissibleInfo, EmptyState, RecoveryCard } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useActiveProjectProfile } from '@/features/projects/useProjectProfile';
 import { projectsApi } from '@/features/projects/api';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -382,30 +382,15 @@ export function CoordinationHubPage() {
             { label: t('nav.coordination_hub', { defaultValue: 'Coordination Hub' }) },
           ]}
         />
-        {/* Hero header — glass pill with title, subtitle, refresh */}
-        <header className="relative overflow-hidden rounded-2xl border border-white/40 bg-white/60 px-5 py-4 backdrop-blur-xl shadow-lg shadow-slate-900/[0.04] dark:border-white/5 dark:bg-slate-900/40">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -top-16 right-1/4 h-40 w-40 rounded-full bg-gradient-radial from-sky-400/20 to-transparent blur-3xl"
-          />
-          <div className="relative flex flex-wrap items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/25">
-                <LayoutDashboard size={22} />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold tracking-tight text-content-primary">
-                  {t('coordination.title', { defaultValue: 'Model Coordination' })}
-                </h1>
-                <p className="mt-0.5 text-sm text-content-secondary">
-                  {t('coordination.subtitle', {
-                    defaultValue:
-                      'Federations, clashes, rule packs and BCF activity in one view.',
-                  })}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
+        {/* Header */}
+        <PageHeader
+          srTitle={t('coordination.title', { defaultValue: 'Model Coordination' })}
+          subtitle={t('coordination.subtitle', {
+            defaultValue:
+              'Federations, clashes, rule packs and BCF activity in one view.',
+          })}
+          actions={
+            <>
               {dashboardQuery.data ? (
                 <span
                   data-testid="coordination-as-of"
@@ -440,19 +425,33 @@ export function CoordinationHubPage() {
                 <RefreshCw size={13} />
                 {t('coordination.refresh', { defaultValue: 'Refresh' })}
               </button>
-            </div>
-          </div>
-        </header>
+            </>
+          }
+        />
 
         <DismissibleInfo
           storageKey="coordination"
-          title={t('info.coordination.title', {
-            defaultValue: 'Model coordination hub',
+          title={t('coordination.intro_title', {
+            defaultValue: 'One health view across every federated model',
           })}
+          links={[
+            {
+              label: t('nav.clash_detection', { defaultValue: 'Clash Detection' }),
+              onClick: () => navigate('/clash'),
+            },
+            {
+              label: t('nav.bim_federations', { defaultValue: 'BIM Federations' }),
+              onClick: () => navigate('/bim/federations'),
+            },
+            {
+              label: t('nav.bim_rules', { defaultValue: 'Rule Packs' }),
+              onClick: () => navigate('/bim/rules'),
+            },
+          ]}
         >
-          {t('info.coordination.body', {
+          {t('coordination.intro_body', {
             defaultValue:
-              'This dashboard rolls up your federated BIM models, clash results, rule pack checks and BCF activity for the active project into one health view. Use the quick actions to triage clashes, manage federations or run compliance rules, all linked back to the canonical model.',
+              'This dashboard rolls up your federated BIM models, clash results, rule-pack checks and BCF activity for the active project into a single status view. Use the quick actions to triage clashes, manage federations or run compliance rules, with every number traced back to the canonical model.',
           })}
         </DismissibleInfo>
 

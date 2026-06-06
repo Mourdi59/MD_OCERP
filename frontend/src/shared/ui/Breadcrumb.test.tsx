@@ -17,17 +17,18 @@ describe('Breadcrumb', () => {
     expect(container.querySelector('nav')).toBeNull();
   });
 
-  it('should render home icon link', () => {
-    renderBreadcrumb([{ label: 'Page' }]);
+  it('should render nothing for a single-item trail (duplicates the top bar)', () => {
+    // The top app bar already shows the active module icon + name, so a
+    // lone module label adds no navigation depth (MODULE_STYLE_GUIDE 2.1).
+    const { container } = renderBreadcrumb([{ label: 'Current Page' }]);
+    expect(container.querySelector('nav')).toBeNull();
+  });
+
+  it('should render home icon link when the trail has depth', () => {
+    renderBreadcrumb([{ label: 'Projects', to: '/projects' }, { label: 'Page' }]);
     const homeLink = screen.getByLabelText('Dashboard');
     expect(homeLink).toBeInTheDocument();
     expect(homeLink).toHaveAttribute('href', '/');
-  });
-
-  it('should render a single item as non-link', () => {
-    renderBreadcrumb([{ label: 'Current Page' }]);
-    expect(screen.getByText('Current Page')).toBeInTheDocument();
-    expect(screen.getByText('Current Page').closest('a')).toBeNull();
   });
 
   it('should render intermediate items as links', () => {

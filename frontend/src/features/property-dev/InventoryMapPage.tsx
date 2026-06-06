@@ -21,7 +21,7 @@ import {
   type MouseEvent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
@@ -40,9 +40,11 @@ import {
   Breadcrumb,
   Button,
   Card,
+  DismissibleInfo,
   EmptyState,
   SideDrawer,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage } from '@/shared/lib/api';
@@ -125,6 +127,7 @@ function num(v: number | string | null | undefined): number {
 
 export function InventoryMapPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const params = useParams<{ devId: string }>();
   const devId = params.devId ?? '';
   const queryClient = useQueryClient();
@@ -390,7 +393,7 @@ export function InventoryMapPage() {
   const summary = query.data?.summary;
 
   return (
-    <div className="space-y-4 p-4 lg:p-6" data-testid="inventory-map-page">
+    <div className="space-y-5 animate-fade-in" data-testid="inventory-map-page">
       <Breadcrumb
         items={[
           {
@@ -405,25 +408,15 @@ export function InventoryMapPage() {
         ]}
       />
 
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-content-primary">
-            {query.data
-              ? t('propdev.inventory_map.heading_with_dev', {
-                  defaultValue: 'Inventory Map',
-                })
-              : t('propdev.inventory_map.title', {
-                  defaultValue: 'Inventory Map',
-                })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('propdev.inventory_map.subtitle', {
-              defaultValue:
-                'Block, floor and unit grid for the sales floor. Click tiles to inspect, cmd/shift-click to select, then hold or release in bulk.',
-            })}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <PageHeader
+        srTitle={t('propdev.inventory_map.title', {
+          defaultValue: 'Inventory Map',
+        })}
+        subtitle={t('propdev.inventory_map.subtitle', {
+          defaultValue:
+            'Block, floor and unit grid for the sales floor. Click tiles to inspect, cmd/shift-click to select, then hold or release in bulk.',
+        })}
+        actions={
           <Button
             variant="ghost"
             icon={<RefreshCw size={14} />}
@@ -433,8 +426,37 @@ export function InventoryMapPage() {
           >
             {t('common.refresh', { defaultValue: 'Refresh' })}
           </Button>
-        </div>
-      </header>
+        }
+      />
+
+      <DismissibleInfo
+        storageKey="propdev-inventory-map"
+        title={t('propdev_inventory_map.intro_title', {
+          defaultValue: 'See the whole sales floor at a glance',
+        })}
+        links={[
+          ...(devId
+            ? [
+                {
+                  label: t('propdev.pricing.title', {
+                    defaultValue: 'Pricing engine',
+                  }),
+                  onClick: () =>
+                    navigate(`/property-dev/developments/${devId}/pricing`),
+                },
+              ]
+            : []),
+          {
+            label: t('propdev.title', { defaultValue: 'Property Development' }),
+            onClick: () => navigate('/property-dev'),
+          },
+        ]}
+      >
+        {t('propdev_inventory_map.intro_body', {
+          defaultValue:
+            'A block, floor and unit grid showing the live status of every plot in a development, with a KPI ribbon to filter and shift-click to select. Click a tile to inspect a unit or select several to hold or release them in bulk, feeding straight back into reservations and pricing.',
+        })}
+      </DismissibleInfo>
 
       {/* ── KPI ribbon ─────────────────────────────────────────────── */}
       {summary && (

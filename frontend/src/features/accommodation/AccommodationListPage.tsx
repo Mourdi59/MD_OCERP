@@ -35,6 +35,7 @@ import {
   Badge,
   BetaBanner,
   Button,
+  DismissibleInfo,
   EmptyState,
   RecoveryCard,
   Breadcrumb,
@@ -46,6 +47,7 @@ import {
   WideModalSection,
   WideModalField,
 } from '@/shared/ui/WideModal';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { projectsApi } from '@/features/projects/api';
@@ -150,58 +152,74 @@ export function AccommodationListPage() {
   }, [accommodations, counts]);
 
   return (
-    <div className="space-y-4 pb-20 sm:pb-0">
+    <div className="space-y-5 pb-20 sm:pb-0 animate-fade-in">
       <Breadcrumb items={[{ label: t('nav.accommodation', { defaultValue: 'Accommodation' }) }]} />
-      <BetaBanner moduleKey="accommodation" className="mt-3" />
+      <BetaBanner moduleKey="accommodation" />
 
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold text-content-primary">
-              {t('accommodation.title', { defaultValue: 'Accommodation' })}
-            </h1>
+      <PageHeader
+        srTitle={t('accommodation.title', { defaultValue: 'Accommodation' })}
+        subtitle={t('accommodation.subtitle', {
+          defaultValue:
+            'Worker camps, rentals and hotels — rooms, bookings and charges in one place. Bridges to PropDev units and HR contacts.',
+        })}
+        actions={
+          <>
             <ModuleHelpButton tourId="accommodation" />
-          </div>
-          <p className="mt-1 text-sm text-content-secondary max-w-prose">
-            {t('accommodation.subtitle', {
-              defaultValue:
-                'Worker camps, rentals and hotels — rooms, bookings and charges in one place. Bridges to PropDev units and HR contacts.',
-            })}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setHrAutobookOpen(true)}
-            data-testid="accommodation-hr-autobook-button"
-          >
-            <Sparkles size={14} className="mr-1.5" aria-hidden="true" />
-            {t('accommodation.hr_autobook.suggest_button', {
-              defaultValue: 'Suggest room for employee',
-            })}
-          </Button>
-          <Link
-            to="/accommodation/calendar"
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-primary px-3 py-1.5 text-xs font-medium text-content-secondary hover:text-content-primary hover:bg-surface-secondary transition-colors"
-            data-testid="accommodation-calendar-link"
-          >
-            <CalendarCheck2 size={14} aria-hidden="true" />
-            {t('accommodation.calendar.title', { defaultValue: 'Calendar' })}
-          </Link>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setCreateOpen(true)}
-            data-testid="accommodation-new-button"
-            className="hidden sm:inline-flex"
-          >
-            <Plus size={14} className="mr-1.5" aria-hidden="true" />
-            {t('accommodation.new', { defaultValue: 'New accommodation' })}
-          </Button>
-        </div>
-      </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setHrAutobookOpen(true)}
+              data-testid="accommodation-hr-autobook-button"
+            >
+              <Sparkles size={14} className="mr-1.5" aria-hidden="true" />
+              {t('accommodation.hr_autobook.suggest_button', {
+                defaultValue: 'Suggest room for employee',
+              })}
+            </Button>
+            <Link
+              to="/accommodation/calendar"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-primary px-3 py-1.5 text-xs font-medium text-content-secondary hover:text-content-primary hover:bg-surface-secondary transition-colors"
+              data-testid="accommodation-calendar-link"
+            >
+              <CalendarCheck2 size={14} aria-hidden="true" />
+              {t('accommodation.calendar.title', { defaultValue: 'Calendar' })}
+            </Link>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setCreateOpen(true)}
+              data-testid="accommodation-new-button"
+              className="hidden sm:inline-flex"
+            >
+              <Plus size={14} className="mr-1.5" aria-hidden="true" />
+              {t('accommodation.new', { defaultValue: 'New accommodation' })}
+            </Button>
+          </>
+        }
+      />
+
+      <DismissibleInfo
+        storageKey="accommodation"
+        title={t('accommodation.intro_title', {
+          defaultValue: 'House the workforce without losing track',
+        })}
+        links={[
+          {
+            label: t('accommodation.intro_link_calendar', { defaultValue: 'Calendar' }),
+            onClick: () => navigate('/accommodation/calendar'),
+          },
+          {
+            label: t('accommodation.intro_link_contacts', { defaultValue: 'Contacts' }),
+            onClick: () => navigate('/contacts'),
+          },
+        ]}
+      >
+        {t('accommodation.intro_body', {
+          defaultValue:
+            'Track three kinds of stays in one place: worker camps for site crews, rentals for staff, and hotels for visiting consultants. Each property holds rooms, bookings and charges, and the calendar shows who is where across every date. Suggest a room for an employee to bridge directly from HR contacts into a booking.',
+        })}
+      </DismissibleInfo>
 
       {/* Summary KPI strip — collapses to a 2-col grid on phones,
           stretches to 4-col on desktop. Mute when nothing exists yet. */}

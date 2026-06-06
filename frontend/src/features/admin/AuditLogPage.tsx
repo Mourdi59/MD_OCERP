@@ -37,6 +37,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import {
   AlertCircle,
@@ -57,7 +58,8 @@ import {
   User as UserIcon,
   X,
 } from 'lucide-react';
-import { Badge, EmptyState } from '@/shared/ui';
+import { Badge, EmptyState, Breadcrumb, DismissibleInfo, Button } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import { triggerDownload } from '@/shared/lib/api';
 import { fetchUsers, type User } from '@/features/users/api';
@@ -754,6 +756,7 @@ function DetailDrawer({
 
 export function AuditLogPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const addToast = useToastStore((s) => s.addToast);
 
   const initialFilters: AuditFilters = {
@@ -1031,65 +1034,61 @@ export function AuditLogPage() {
   );
 
   return (
-    <div className="relative min-h-full overflow-hidden" data-testid="audit-log-page">
-      {/* Page-level gradient backdrop — mirrors PermissionsMatrixPage. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-sky-50 via-white to-emerald-50/40 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-40 -left-40 -z-10 h-96 w-96 rounded-full bg-gradient-radial from-sky-400/15 to-transparent blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-40 -right-40 -z-10 h-96 w-96 rounded-full bg-gradient-radial from-emerald-400/15 to-transparent blur-3xl"
+    <div className="space-y-5 animate-fade-in" data-testid="audit-log-page">
+      {/* Breadcrumb — single-item trail auto-hides (canonical top block). */}
+      <Breadcrumb
+        items={[{ label: t('admin.audit_log_title', { defaultValue: 'Audit Log' }) }]}
       />
 
-      <div className="space-y-4 px-4 py-5 lg:px-6 lg:py-6">
-        {/* Hero header — glass pill */}
-        <header className="relative overflow-hidden rounded-2xl border border-white/40 bg-white/60 px-5 py-4 backdrop-blur-xl shadow-lg shadow-slate-900/[0.04] dark:border-white/5 dark:bg-slate-900/40">
-          <div className="relative flex flex-wrap items-start justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/25">
-                <HistoryIcon size={22} />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold tracking-tight text-content-primary">
-                  {t('admin.audit_log_title', { defaultValue: 'Audit Log' })}
-                </h1>
-                <p className="mt-0.5 text-sm text-content-secondary max-w-3xl">
-                  {t('admin.audit_log_subtitle', {
-                    defaultValue:
-                      'Read-only timeline of every recorded change. Filter by user, module, action or date — open a row for the full payload.',
-                  })}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={handleExportCsv}
-                data-testid="audit-export-csv"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-white/40 bg-white/70 px-3 py-1.5 text-sm font-medium text-content-secondary hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-oe-blue/30"
-              >
-                <Download size={14} aria-hidden />
-                {t('audit.export_csv', { defaultValue: 'Export CSV' })}
-              </button>
-              <button
-                type="button"
-                onClick={handleExportJson}
-                data-testid="audit-export-json"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-white/40 bg-white/70 px-3 py-1.5 text-sm font-medium text-content-secondary hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-oe-blue/30"
-              >
-                <FileJson size={14} aria-hidden />
-                {t('audit.export_json', { defaultValue: 'Export JSON' })}
-              </button>
-            </div>
-          </div>
-        </header>
+      {/* Canonical header row — module name + icon live in the top app bar. */}
+      <PageHeader
+        srTitle={t('admin.audit_log_title', { defaultValue: 'Audit Log' })}
+        subtitle={t('admin.audit_log_subtitle', {
+          defaultValue:
+            'Read-only timeline of every recorded change. Filter by user, module, action or date, open a row for the full payload.',
+        })}
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Download size={14} />}
+              onClick={handleExportCsv}
+              data-testid="audit-export-csv"
+            >
+              {t('audit.export_csv', { defaultValue: 'Export CSV' })}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<FileJson size={14} />}
+              onClick={handleExportJson}
+              data-testid="audit-export-json"
+            >
+              {t('audit.export_json', { defaultValue: 'Export JSON' })}
+            </Button>
+          </>
+        }
+      />
 
-        <FilterBar
+      {/* Canonical module intro — pain-named, copy from MODULE_INTRO_COPY. */}
+      <DismissibleInfo
+        storageKey="admin-audit-log"
+        title={t('admin_audit_log.intro_title', {
+          defaultValue: 'Prove who changed what, when',
+        })}
+        links={[
+          { label: t('nav.users', { defaultValue: 'User Management' }), onClick: () => navigate('/users') },
+          { label: t('nav.governance', { defaultValue: 'Governance' }), onClick: () => navigate('/governance') },
+        ]}
+      >
+        {t('admin_audit_log.intro_body', {
+          defaultValue:
+            'A read-only, filterable timeline of every recorded action across the platform: who did it, on which record, and when. Use it to investigate a dispute or satisfy an audit; access is limited to Manager and above.',
+        })}
+      </DismissibleInfo>
+
+      <FilterBar
           draft={pending}
           severity={severity}
           searchText={searchText}
@@ -1209,7 +1208,6 @@ export function AuditLogPage() {
             onClose={() => setActiveId(null)}
           />
         )}
-      </div>
     </div>
   );
 }

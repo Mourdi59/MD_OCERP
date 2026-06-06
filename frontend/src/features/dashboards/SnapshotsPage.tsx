@@ -9,10 +9,9 @@
 import { useCallback, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Plus,
-  Layers,
   Trash2,
   FolderOpen,
   FileSpreadsheet,
@@ -30,6 +29,8 @@ import {
   EmptyState,
   Skeleton,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
+import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
 
@@ -65,6 +66,7 @@ function formatDate(iso: string): string {
 
 export function SnapshotsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
   const activeProjectName = useProjectContextStore((s) => s.activeProjectName);
@@ -122,7 +124,7 @@ export function SnapshotsPage() {
 
   if (!activeProjectId) {
     return (
-      <div className="space-y-4 p-4">
+      <div className="space-y-5 animate-fade-in">
         <EmptyState
           icon={<FolderOpen className="h-10 w-10 text-neutral-500" />}
           title={t('dashboards.no_project_title', { defaultValue: 'Select a project first' })}
@@ -143,7 +145,7 @@ export function SnapshotsPage() {
   const snapshots = snapshotsQuery.data?.items ?? [];
 
   return (
-    <div className="space-y-4 p-4" data-testid="dashboards-snapshots-page">
+    <div className="space-y-5 animate-fade-in" data-testid="dashboards-snapshots-page">
       <Breadcrumb
         items={[
           ...(activeProjectName
@@ -153,51 +155,73 @@ export function SnapshotsPage() {
         ]}
       />
 
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-lg font-semibold text-neutral-100">
-            <Layers className="h-5 w-5 text-oe-blue" />
-            {t('dashboards.snapshots_title', { defaultValue: 'Data snapshots' })}
-          </h1>
-          <p className="text-sm text-neutral-400">
-            {activeProjectName || activeProjectId}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-border-light p-0.5" role="tablist">
-            <ViewTab
-              active={view === 'list'}
-              onClick={() => setView('list')}
-              icon={<List className="h-3.5 w-3.5" />}
-              label={t('dashboards.view_list', { defaultValue: 'Snapshots' })}
-              testId="dashboards-view-list"
-            />
-            <ViewTab
-              active={view === 'timeline'}
-              onClick={() => setView('timeline')}
-              icon={<History className="h-3.5 w-3.5" />}
-              label={t('dashboards.view_timeline', { defaultValue: 'Timeline' })}
-              testId="dashboards-view-timeline"
-            />
-            <ViewTab
-              active={view === 'diff'}
-              onClick={() => setView('diff')}
-              icon={<GitCompare className="h-3.5 w-3.5" />}
-              label={t('dashboards.view_diff', { defaultValue: 'Compare' })}
-              testId="dashboards-view-diff"
-            />
-          </div>
-          {view === 'list' && (
-            <Button
-              onClick={() => setCreateOpen(true)}
-              data-testid="dashboards-new-snapshot-btn"
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              {t('dashboards.new_snapshot', { defaultValue: 'New snapshot' })}
-            </Button>
-          )}
-        </div>
-      </header>
+      {/* Header — module name + icon live in the global top bar; this page
+          renders only the muted subtitle + actions (canon §2). */}
+      <PageHeader
+        srTitle={t('dashboards.snapshots_title', { defaultValue: 'Data snapshots' })}
+        subtitle={t('dashboards.snapshots_subtitle', {
+          defaultValue:
+            'Freeze a parquet dataset from your CAD/BIM files, then compare snapshots over time.',
+        })}
+        actions={
+          <>
+            <div className="flex rounded-lg border border-border-light p-0.5" role="tablist">
+              <ViewTab
+                active={view === 'list'}
+                onClick={() => setView('list')}
+                icon={<List className="h-3.5 w-3.5" />}
+                label={t('dashboards.view_list', { defaultValue: 'Snapshots' })}
+                testId="dashboards-view-list"
+              />
+              <ViewTab
+                active={view === 'timeline'}
+                onClick={() => setView('timeline')}
+                icon={<History className="h-3.5 w-3.5" />}
+                label={t('dashboards.view_timeline', { defaultValue: 'Timeline' })}
+                testId="dashboards-view-timeline"
+              />
+              <ViewTab
+                active={view === 'diff'}
+                onClick={() => setView('diff')}
+                icon={<GitCompare className="h-3.5 w-3.5" />}
+                label={t('dashboards.view_diff', { defaultValue: 'Compare' })}
+                testId="dashboards-view-diff"
+              />
+            </div>
+            {view === 'list' && (
+              <Button
+                onClick={() => setCreateOpen(true)}
+                data-testid="dashboards-new-snapshot-btn"
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                {t('dashboards.new_snapshot', { defaultValue: 'New snapshot' })}
+              </Button>
+            )}
+          </>
+        }
+      />
+
+      <DismissibleInfo
+        storageKey="dashboards"
+        title={t('dashboards.intro_title', {
+          defaultValue: 'Freeze the model so changes are provable',
+        })}
+        links={[
+          {
+            label: t('nav.data_explorer', { defaultValue: 'Data Explorer' }),
+            onClick: () => navigate('/data-explorer'),
+          },
+          {
+            label: t('nav.bim', { defaultValue: 'BIM' }),
+            onClick: () => navigate('/bim'),
+          },
+        ]}
+      >
+        {t('dashboards.intro_body', {
+          defaultValue:
+            'Pick a project, then freeze its uploaded IFC, RVT, DWG or DGN files into a dated parquet snapshot of every element and category. Compare two snapshots side by side to see exactly what changed between model revisions, and use the timeline to track growth over time. The frozen dataset is what later charts and the Data Explorer query.',
+        })}
+      </DismissibleInfo>
 
       {view === 'timeline' && (
         <SnapshotTimeline projectId={activeProjectId} />

@@ -15,7 +15,8 @@ import {
   Check,
   Loader2,
 } from 'lucide-react';
-import { Button, Badge, Breadcrumb } from '@/shared/ui';
+import { Button, Badge, Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import { apiGet, apiPost, ApiError } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
@@ -332,20 +333,31 @@ export function TemplatesPage() {
   /* ── Render ──────────────────────────────────────────────────────── */
 
   return (
-    <div className="w-full animate-fade-in pb-12">
-      <Breadcrumb items={[{ label: t('boq.templates', { defaultValue: 'BOQ Templates' }) }]} className="mb-4" />
-      {/* ── Page header ──────────────────────────────────────────────── */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-content-primary">
-          {t('boq.templates', { defaultValue: 'BOQ Templates' })}
-        </h1>
-        <p className="mt-1.5 text-sm text-content-secondary max-w-xl leading-relaxed">
-          {t('boq.templates_subtitle', {
-            defaultValue:
-              'Start with a professional template for your building type. Select a template, set the area, and generate a complete BOQ instantly.',
-          })}
-        </p>
-      </div>
+    <div className="space-y-5 animate-fade-in pb-12">
+      <Breadcrumb items={[{ label: t('boq.templates', { defaultValue: 'BOQ Templates' }) }]} />
+      {/* Canonical top block — module name + icon come from the global top
+          bar; the page renders only its subtitle. */}
+      <PageHeader
+        srTitle={t('boq.templates', { defaultValue: 'BOQ Templates' })}
+        subtitle={t('boq.templates_subtitle', {
+          defaultValue:
+            'Start with a professional template for your building type. Select a template, set the area, and generate a complete BOQ instantly.',
+        })}
+      />
+
+      <DismissibleInfo
+        storageKey="templates"
+        title={t('boq_templates.intro_title', { defaultValue: 'Skip the blank-page start on an estimate' })}
+        links={[
+          { label: t('nav.boq', { defaultValue: 'Bill of Quantities' }), onClick: () => navigate('/boq') },
+          { label: t('nav.costs', { defaultValue: 'Cost Database' }), onClick: () => navigate('/costs') },
+        ]}
+      >
+        {t('boq_templates.intro_body', {
+          defaultValue:
+            'Pick a building type, set the floor area and generate a complete structured BOQ with sections, positions and benchmark rates per square metre. The result opens in the BOQ editor on your chosen project, ready to refine.',
+        })}
+      </DismissibleInfo>
 
       {/* ── Template grid ────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">

@@ -96,6 +96,9 @@ export const manifest: ModuleManifest = {
   translations: {
     en: {
       'nav.regional_exchange': 'Regional BOQ Exchange',
+      'regional.intro_title': "Speak your country's tender format",
+      'regional.intro_body':
+        "Import and export BOQ data in your region's native structure (NRM in the UK, MasterFormat in the US, DPGF in France and others), with the right trade-section breakdown applied. The data lands in or comes from a normal BOQ, so the same estimate moves across markets without re-keying.",
       'regional.tab_import': 'Import',
       'regional.tab_export': 'Export',
       'regional.import_complete': 'Import complete',

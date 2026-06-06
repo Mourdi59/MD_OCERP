@@ -3366,11 +3366,16 @@ export function BIMPage() {
       <DismissibleInfo
         storageKey="bim"
         className="mx-3 mt-2"
-        title={t('info.bim.title', { defaultValue: 'BIM model viewer' })}
+        title={t('bim.intro_title', { defaultValue: 'Turn the model into priced quantities' })}
+        links={[
+          { label: t('bim.intro_link_boq', { defaultValue: 'Open BOQ' }), onClick: () => navigate('/boq') },
+          { label: t('bim.intro_link_explorer', { defaultValue: 'Data Explorer' }), onClick: () => navigate('/data-explorer') },
+          { label: t('bim.intro_link_rules', { defaultValue: 'Quantity rules' }), onClick: () => navigate('/bim/rules') },
+        ]}
       >
-        {t('info.bim.body', {
+        {t('bim.intro_body', {
           defaultValue:
-            'Explore converted CAD and BIM models in 3D, inspect element properties and quantities, and filter by storey, category or discipline. Link elements to BOQ positions to drive takeoff, cost and schedule from the canonical model.',
+            'Open a converted CAD or BIM model in 3D, inspect element properties and quantities, and filter by storey, category or discipline. Link elements to BOQ positions so takeoff, cost and schedule all flow from the canonical model, and jump out to the Data Explorer or the map at any point.',
         })}
       </DismissibleInfo>
 

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Database,
   Loader2,
@@ -9,7 +9,8 @@ import {
   XCircle,
   Download,
 } from 'lucide-react';
-import { Button, Card, CardHeader, CardContent, Badge, Breadcrumb, CountryFlag } from '@/shared/ui';
+import { Button, Card, CardHeader, CardContent, Badge, Breadcrumb, CountryFlag, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import { apiGet, apiPost } from '@/shared/lib/api';
 
@@ -329,6 +330,7 @@ function DemoCard({
 
 export function DatabaseSetupPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const addToast = useToastStore((s) => s.addToast);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -603,7 +605,7 @@ export function DatabaseSetupPage() {
   const installedDemoCount = DEMO_PROJECTS.filter((d) => demoStatuses[d.id] === 'loaded').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -612,33 +614,45 @@ export function DatabaseSetupPage() {
       />
 
       {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">
-            {t('setup.page_title', { defaultValue: 'Databases & Resources' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('setup.page_subtitle', {
-              defaultValue:
-                'Load regional cost databases, resource catalogs, and demo projects.',
-            })}
-          </p>
-        </div>
+      <PageHeader
+        srTitle={t('setup.databases_resources', { defaultValue: 'Databases & Resources' })}
+        subtitle={t('setup.page_subtitle', {
+          defaultValue:
+            'Load regional cost databases, resource catalogs, and demo projects.',
+        })}
+        actions={
+          <div className="hidden sm:flex items-center gap-2">
+            {loadedCount > 0 && (
+              <Badge variant="success" size="sm">
+                {loadedCount}/{CWICR_DATABASES.length} {t('setup.regions', { defaultValue: 'regions' })}
+              </Badge>
+            )}
+            {totalItems > 0 && (
+              <Badge variant="blue" size="sm">
+                {totalItems.toLocaleString()} {t('setup.items', { defaultValue: 'items' })}
+              </Badge>
+            )}
+          </div>
+        }
+      />
 
-        {/* Summary badges */}
-        <div className="hidden sm:flex items-center gap-2">
-          {loadedCount > 0 && (
-            <Badge variant="success" size="sm">
-              {loadedCount}/{CWICR_DATABASES.length} {t('setup.regions', { defaultValue: 'regions' })}
-            </Badge>
-          )}
-          {totalItems > 0 && (
-            <Badge variant="blue" size="sm">
-              {totalItems.toLocaleString()} {t('setup.items', { defaultValue: 'items' })}
-            </Badge>
-          )}
-        </div>
-      </div>
+      {/* Canonical module intro — pain-named, copy from MODULE_INTRO_COPY. */}
+      <DismissibleInfo
+        storageKey="setup-databases"
+        title={t('setup.intro_title', {
+          defaultValue: 'Get priced and ready in minutes',
+        })}
+        links={[
+          { label: t('nav.costs', { defaultValue: 'Cost Database' }), onClick: () => navigate('/costs') },
+          { label: t('nav.catalog', { defaultValue: 'Resource Catalog' }), onClick: () => navigate('/catalog') },
+          { label: t('nav.projects', { defaultValue: 'Projects' }), onClick: () => navigate('/projects') },
+        ]}
+      >
+        {t('setup.intro_body', {
+          defaultValue:
+            'Pick your country and install the matching CWICR cost database of 55,000+ priced items, so the catalogue and unit rates arrive already in the right currency and language. The same screen drops in ready-made demo projects with sections, positions and a schedule, giving you live data to estimate against straight away.',
+        })}
+      </DismissibleInfo>
 
       {/* ── Section 1: Cost Databases ────────────────────────────────────── */}
       <Card>

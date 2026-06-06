@@ -385,13 +385,12 @@ export function RFIDetailPage() {
 
   if (isError || !rfi) {
     return (
-      <div className="w-full animate-fade-in">
+      <div className="space-y-5 animate-fade-in">
         <Breadcrumb
           items={[
             { label: t('rfi.title', { defaultValue: 'RFIs' }), to: '/rfi' },
             { label: t('common.not_found', { defaultValue: 'Not found' }) },
           ]}
-          className="mb-4"
         />
         <EmptyState
           icon={<AlertTriangle size={28} strokeWidth={1.5} />}
@@ -432,7 +431,7 @@ export function RFIDetailPage() {
   const overdueDelta = daysOverdue(rfi.response_due_date);
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -442,11 +441,10 @@ export function RFIDetailPage() {
           { label: t('rfi.title', { defaultValue: 'RFIs' }), to: '/rfi' },
           { label: `#${rfi.rfi_number}` },
         ]}
-        className="mb-4"
       />
 
       {/* Hero */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3 mb-2 flex-wrap">
             <span className="text-sm font-mono font-semibold text-content-tertiary">

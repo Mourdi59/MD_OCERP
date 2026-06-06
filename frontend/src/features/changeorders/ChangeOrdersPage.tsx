@@ -20,7 +20,9 @@ import {
   Download,
   Sparkles,
 } from 'lucide-react';
-import { Button, Card, Badge, EmptyState, Breadcrumb, InfoHint, ConfirmDialog, RecoveryCard, SkeletonTable, SkeletonCard } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, Breadcrumb, InfoHint, DismissibleInfo, ConfirmDialog, RecoveryCard, SkeletonTable, SkeletonCard } from '@/shared/ui';
+import { useNavigate } from 'react-router-dom';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import {
   WideModal,
@@ -1504,6 +1506,7 @@ function DetailView({
 
 export function ChangeOrdersPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
@@ -1622,63 +1625,59 @@ export function ChangeOrdersPage() {
   const currency = project?.currency || summary?.currency || '';
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb items={[
         ...(project ? [{ label: project.name, to: `/projects/${project.id}` }] : []),
         { label: t('nav.change_orders', { defaultValue: 'Change Orders' }) },
       ]} />
 
-      {/* Header */}
-      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">
-            {t('nav.change_orders', { defaultValue: 'Change Orders' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('changeorders.subtitle', { defaultValue: 'Track scope changes with cost and schedule impact' })}
-          </p>
-        </div>
-        <div className="flex items-end gap-3">
-          <div>
-            <label htmlFor="co-project-select" className="block text-sm font-medium text-content-primary mb-1.5">
-              {t('common.project', { defaultValue: 'Project' })}
-            </label>
-            <select
-              id="co-project-select"
-              value={projectId}
-              onChange={(e) => {
-                const id = e.target.value;
-                const name = projects.find((p) => p.id === id)?.name ?? '';
-                if (id) {
-                  useProjectContextStore.getState().setActiveProject(id, name);
-                }
-              }}
-              className="h-10 w-full min-w-[200px] rounded-lg border border-border bg-surface-primary px-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue"
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-          <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={handleExportCSV} disabled={!filteredOrders || filteredOrders.length === 0}>
-            {t('changeorders.export_csv', { defaultValue: 'Export CSV' })}
-          </Button>
-          <Button variant="secondary" onClick={() => setShowAIDraft(true)} disabled={!projectId}>
-            <Sparkles size={16} className="mr-1.5" />
-            {t('changeorders.ai_draft', { defaultValue: 'AI Draft' })}
-          </Button>
-          <Button variant="primary" onClick={() => setShowCreate(true)} disabled={!projectId}>
-            <Plus size={16} className="mr-1.5" />
-            {t('changeorders.new', { defaultValue: 'New Change Order' })}
-          </Button>
-        </div>
-      </div>
+      {/* Header — project selection lives in the global top bar; the page
+          reads the shared project context and falls back to the first
+          project, so no in-page project picker is rendered here. */}
+      <PageHeader
+        subtitle={t('changeorders.subtitle', { defaultValue: 'Track scope changes with cost and schedule impact' })}
+        actions={
+          <>
+            <Button variant="secondary" icon={<Download size={14} />} onClick={handleExportCSV} disabled={!filteredOrders || filteredOrders.length === 0}>
+              {t('changeorders.export_csv', { defaultValue: 'Export CSV' })}
+            </Button>
+            <Button variant="secondary" onClick={() => setShowAIDraft(true)} disabled={!projectId}>
+              <Sparkles size={16} className="mr-1.5" />
+              {t('changeorders.ai_draft', { defaultValue: 'AI Draft' })}
+            </Button>
+            <Button variant="primary" onClick={() => setShowCreate(true)} disabled={!projectId}>
+              <Plus size={16} className="mr-1.5" />
+              {t('changeorders.new', { defaultValue: 'New Change Order' })}
+            </Button>
+          </>
+        }
+      />
 
-      <InfoHint className="mt-4 mb-2" text={t('changeorders.workflow_desc', { defaultValue: 'Change Order workflow: Draft (prepare scope change) \u2192 Submitted (send for review) \u2192 Approved or Rejected. Each order tracks cost impact and schedule impact in days. Add line items to detail what changed \u2014 original vs new quantities and rates. The cost delta is computed automatically.' })} />
+      <DismissibleInfo
+        storageKey="changeorders"
+        title={t('changeorders.intro_title', {
+          defaultValue: 'Price every scope change before you commit it',
+        })}
+        links={[
+          {
+            label: t('nav.finance', { defaultValue: 'Finance' }),
+            onClick: () => navigate('/finance'),
+          },
+          {
+            label: t('nav.variations', { defaultValue: 'Variations' }),
+            onClick: () => navigate('/variations'),
+          },
+        ]}
+      >
+        {t('changeorders.intro_body', {
+          defaultValue:
+            'Capture each scope change with its line items, original versus new quantities and rates, and the system computes the cost delta and schedule impact for you. Route it through Draft, Submitted, Approved and Executed, optionally via a named approval chain, and an approved order is applied to the project budget as a revised commitment.',
+        })}
+      </DismissibleInfo>
 
       {/* Summary cards */}
       {summary && (
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-secondary">
@@ -1763,7 +1762,7 @@ export function ChangeOrdersPage() {
       )}
 
       {/* Status filter */}
-      <div className="mt-6 flex items-center gap-3 mb-3">
+      <div className="flex items-center gap-3">
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}

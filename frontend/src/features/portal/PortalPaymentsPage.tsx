@@ -16,10 +16,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
-import { Loader2, AlertCircle, KeyRound, Receipt, FileText } from 'lucide-react';
+import { Loader2, AlertCircle, KeyRound, Receipt, FileText, ArrowLeft } from 'lucide-react';
 import { Card, EmptyState } from '@/shared/ui';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { PaymentApplicationList } from './PaymentApplicationList';
 import { PaymentApplicationForm } from './PaymentApplicationForm';
 import { PaymentApplicationDetailModal } from './PaymentApplicationDetailModal';
@@ -33,6 +34,13 @@ export function PortalPaymentsPage() {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const magicToken = params.get('token');
+  // An internal staff member can land here without a magic link (e.g. via a
+  // bookmark or a stale link). When they do, the sign-in wall below offers an
+  // escape back into the app: to the dashboard if a session is known, else to
+  // /login (which itself bounces an already-signed-in cookie session straight
+  // to the dashboard, so /login is always a safe destination).
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const escapeTo = isAuthenticated ? '/' : '/login';
 
   const [authed, setAuthed] = useState<boolean>(() => !!getPortalSessionToken());
   const [authError, setAuthError] = useState<string | null>(null);
@@ -120,6 +128,16 @@ export function PortalPaymentsPage() {
             }
           />
         </Card>
+        {/* Escape hatch — a stranded internal user (no magic link, no app
+            shell) can get back into OpenConstructionERP instead of being
+            trapped on the sign-in wall. */}
+        <Link
+          to={escapeTo}
+          className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-oe-blue transition-colors hover:underline"
+        >
+          <ArrowLeft size={14} />
+          {t('payportal.back_to_app', { defaultValue: 'Back to OpenConstructionERP' })}
+        </Link>
       </CenteredShell>
     );
   }

@@ -14,6 +14,7 @@ import { useState, useCallback, useMemo, useEffect, useRef, useLayoutEffect } fr
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import {
   Users,
@@ -34,7 +35,8 @@ import {
   Unlock,
   Save,
 } from 'lucide-react';
-import { Card, Badge, Button, WideModal } from '@/shared/ui';
+import { Card, Badge, Button, WideModal, Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useToastStore } from '@/stores/useToastStore';
 import {
@@ -681,6 +683,7 @@ function RoleDropdown({
 
 export function UserManagementPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   // Creating users is ADMIN-only (POST /users/ is gated by users.create=ADMIN).
@@ -766,31 +769,54 @@ export function UserManagementPage() {
   };
 
   return (
-    <div className="w-full animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Users size={22} className="text-oe-blue" />
-            {t('users.management', { defaultValue: 'User Management' })}
-          </h1>
-          <p className="text-sm text-content-secondary mt-0.5">
-            {t('users.management_desc', { defaultValue: 'Manage team members, roles, and access' })}
-          </p>
-        </div>
-        {isAdmin && (
-          <button
-            onClick={() => setShowInvite(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-oe-blue text-white hover:bg-oe-blue-dark transition-colors"
-          >
-            <UserPlus size={16} />
-            {t('users.invite_user', { defaultValue: 'Invite User' })}
-          </button>
-        )}
-      </div>
+    <div className="space-y-5 animate-fade-in">
+      {/* Breadcrumb — single-item trail auto-hides (canonical top block). */}
+      <Breadcrumb
+        items={[{ label: t('users.management', { defaultValue: 'User Management' }) }]}
+      />
+
+      {/* Canonical header row — module name + icon live in the top app bar. */}
+      <PageHeader
+        srTitle={t('users.management', { defaultValue: 'User Management' })}
+        subtitle={t('users.management_desc', {
+          defaultValue: 'Manage team members, roles, and access',
+        })}
+        actions={
+          isAdmin ? (
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<UserPlus size={14} />}
+              onClick={() => setShowInvite(true)}
+            >
+              {t('users.invite_user', { defaultValue: 'Invite User' })}
+            </Button>
+          ) : undefined
+        }
+      />
+
+      {/* Canonical module intro — pain-named, copy from MODULE_INTRO_COPY. */}
+      <DismissibleInfo
+        storageKey="users"
+        title={t('users.intro_title', {
+          defaultValue: 'Right people, right access',
+        })}
+        links={[
+          { label: t('nav.governance', { defaultValue: 'Governance' }), onClick: () => navigate('/governance') },
+          {
+            label: t('nav.audit_log', { defaultValue: 'Audit Log' }),
+            onClick: () => navigate('/admin/audit-log'),
+          },
+        ]}
+      >
+        {t('users.intro_body', {
+          defaultValue:
+            'Invite team members, assign their role and tune which modules each person can reach. Roles set here decide what every user sees and can do across the platform; for the rules behind those roles and approval steps, open Governance.',
+        })}
+      </DismissibleInfo>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: t('users.total', { defaultValue: 'Total Users' }), value: stats.total, icon: Users, color: 'text-oe-blue' },
           { label: t('users.active', { defaultValue: 'Active' }), value: stats.active, icon: Check, color: 'text-green-600' },
@@ -799,16 +825,16 @@ export function UserManagementPage() {
         ].map((s) => (
           <Card key={s.label} className="p-3">
             <div className="flex items-center gap-2">
-              <s.icon size={16} className={s.color} />
-              <span className="text-xs text-content-secondary">{s.label}</span>
+              <s.icon size={16} className={clsx('shrink-0', s.color)} />
+              <span className="text-2xs uppercase tracking-wide text-content-tertiary">{s.label}</span>
             </div>
-            <div className="text-xl font-bold mt-1">{s.value}</div>
+            <div className="text-lg font-semibold text-content-primary mt-1">{s.value}</div>
           </Card>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-xs">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-quaternary" />
           <input

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import clsx from 'clsx';
 import {
   CalendarDays,
@@ -40,6 +40,7 @@ import {
   EmptyState,
   Breadcrumb,
   ConfirmDialog,
+  DismissibleInfo,
   RecoveryCard,
   SkeletonTable,
   WideModal,
@@ -47,6 +48,7 @@ import {
   WideModalField,
 } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useCreateShortcut } from '@/shared/hooks/useCreateShortcut';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
@@ -1832,6 +1834,7 @@ const MeetingRow = React.memo(function MeetingRow({
 export function MeetingsPage() {
   const { t } = useTranslation();
   const { projectId: routeProjectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
@@ -2143,7 +2146,7 @@ export function MeetingsPage() {
   );
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -2152,125 +2155,101 @@ export function MeetingsPage() {
             : []),
           { label: t('meetings.title', { defaultValue: 'Meetings' }) },
         ]}
-        className="mb-4"
       />
 
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">
-            {t('meetings.page_title', { defaultValue: 'Meetings' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('meetings.subtitle', { defaultValue: 'Schedule, track, and document project meetings with action items' })}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {!routeProjectId && projects.length > 0 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((pr) => pr.id === e.target.value);
-                if (p) {
-                  useProjectContextStore.getState().setActiveProject(p.id, p.name);
-                }
-              }}
-              aria-label={t('meetings.select_project_label', { defaultValue: 'Select project' })}
-              className={inputCls + ' !h-8 !text-xs max-w-[180px]'}
+      <PageHeader
+        subtitle={t('meetings.subtitle', { defaultValue: 'Schedule, track, and document project meetings with action items' })}
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowImportModal(true)}
+              disabled={!projectId}
+              icon={<FileUp size={14} />}
             >
-              <option value="" disabled>
-                {t('meetings.select_project', { defaultValue: 'Project...' })}
-              </option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
-          <Button
-            variant="secondary"
-            onClick={() => setShowImportModal(true)}
-            disabled={!projectId}
-            icon={<FileUp size={16} />}
-          >
-            {t('meetings.import_summary', { defaultValue: 'Import Summary' })}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowSeriesModal(true)}
-            disabled={!projectId}
-            icon={<CalendarDays size={14} />}
-            data-testid="meetings-new-series"
-          >
-            {t('meetings.create_recurring_series', {
-              defaultValue: 'Create recurring series',
-            })}
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowCreateModal(true)}
-            disabled={!projectId}
-            title={!projectId ? t('common.select_project_first', { defaultValue: 'Please select a project first' }) : undefined}
-            icon={<Plus size={14} />}
-          >
-            {t('meetings.new_meeting', { defaultValue: 'New Meeting' })}
-          </Button>
-        </div>
-      </div>
+              {t('meetings.import_summary', { defaultValue: 'Import Summary' })}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowSeriesModal(true)}
+              disabled={!projectId}
+              icon={<CalendarDays size={14} />}
+              data-testid="meetings-new-series"
+            >
+              {t('meetings.create_recurring_series', {
+                defaultValue: 'Create recurring series',
+              })}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowCreateModal(true)}
+              disabled={!projectId}
+              title={!projectId ? t('common.select_project_first', { defaultValue: 'Please select a project first' }) : undefined}
+              icon={<Plus size={14} />}
+            >
+              {t('meetings.new_meeting', { defaultValue: 'New Meeting' })}
+            </Button>
+          </>
+        }
+      />
+
+      {/* Canonical module info card — pain-named title + workflow body.
+          Action items raised in a meeting flow into Tasks; that connection
+          lives in the link pill below instead of a separate strip. */}
+      <DismissibleInfo
+        storageKey="meetings"
+        title={t('meetings.intro_title', { defaultValue: 'Decisions and actions never get lost' })}
+        links={[
+          {
+            label: t('tasks.title', { defaultValue: 'Tasks' }),
+            onClick: () => navigate('/tasks'),
+          },
+        ]}
+      >
+        {t('meetings.intro_body', {
+          defaultValue:
+            'Schedule project meetings, capture minutes and turn discussion into tracked action items with an owner and a due date. Set up a recurring series for standing site or coordination meetings, or import a summary from an existing write-up, so every decision and follow-up stays attached to the project record.',
+        })}
+      </DismissibleInfo>
 
       {projectId ? (
       <>
-      {/* Cross-module links — action items flow into Tasks once a meeting
-          is completed; surface that connection up front. */}
-      <div className="flex flex-wrap items-center gap-1.5 mb-4">
-        <span className="text-2xs text-content-tertiary uppercase tracking-wide me-1">
-          {t('meetings.connections_label', { defaultValue: 'Action items flow to' })}
-        </span>
-        <Link
-          to={`/projects/${projectId}/tasks`}
-          className="inline-flex items-center gap-1 rounded-full bg-oe-blue/10 px-2.5 py-1 text-xs font-medium text-oe-blue hover:bg-oe-blue/20 transition-colors"
-        >
-          <ListChecks size={13} />
-          {t('meetings.link_tasks', { defaultValue: 'Project Tasks' })}
-        </Link>
-      </div>
-
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('meetings.stat_total', { defaultValue: 'Total Meetings' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-content-primary">{stats.total}</p>
+          <p className="text-lg font-semibold mt-1 tabular-nums text-content-primary">{stats.total}</p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('meetings.stat_scheduled', { defaultValue: 'Scheduled' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-oe-blue">{stats.scheduled}</p>
+          <p className="text-lg font-semibold mt-1 tabular-nums text-oe-blue">{stats.scheduled}</p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('meetings.stat_in_progress', { defaultValue: 'In Progress' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-amber-500">{stats.inProgress}</p>
+          <p className="text-lg font-semibold mt-1 tabular-nums text-amber-500">{stats.inProgress}</p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('meetings.stat_completed', { defaultValue: 'Completed' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-semantic-success">
+          <p className="text-lg font-semibold mt-1 tabular-nums text-semantic-success">
             {stats.completed}
           </p>
         </Card>
       </div>
 
       {/* Toolbar */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search

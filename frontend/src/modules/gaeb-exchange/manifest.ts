@@ -34,6 +34,9 @@ export const manifest: ModuleManifest = {
       'nav.gaeb_exchange': 'GAEB Exchange',
       'gaeb.title': 'GAEB XML 3.3 Import / Export',
       'gaeb.subtitle': 'Exchange BOQ data in GAEB DA XML format (X81 / X83)',
+      'gaeb.intro_title': 'Trade tender data the DACH way',
+      'gaeb.intro_body':
+        'Import a GAEB DA XML file (X81 priceless LV or X83 priced Angebot) straight into a BOQ, or export your BOQ back out as a tender or bid document in the same format. Imports run through validation on the way in, so your Leistungsverzeichnis arrives structured and checked.',
       'gaeb.tab_import': 'Import',
       'gaeb.tab_export': 'Export',
       'gaeb.import_complete': 'GAEB import complete',

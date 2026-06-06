@@ -5,9 +5,11 @@
 
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw, Layers, AlertTriangle, X } from 'lucide-react';
-import { Button, Card, Badge } from '@/shared/ui';
+import { Button, Card, Badge, Breadcrumb, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { apiGet, apiPost } from '@/shared/lib/api';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -56,6 +58,7 @@ interface CPMViewProps {
 
 export function CPMView({ scheduleId }: CPMViewProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [levelOpen, setLevelOpen] = useState(false);
   const [levelResult, setLevelResult] = useState<LevelResourcesResponse | null>(null);
@@ -122,10 +125,37 @@ export function CPMView({ scheduleId }: CPMViewProps) {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 animate-fade-in">
+      <Breadcrumb
+        items={[
+          { label: t('schedule.title', { defaultValue: '4D Schedule' }), to: '/schedule' },
+          { label: t('schedule.cpm.title', { defaultValue: 'Critical Path' }) },
+        ]}
+      />
+      <PageHeader
+        srTitle={t('schedule.cpm.title', { defaultValue: 'Critical Path' })}
+        subtitle={t('schedule.cpm.subtitle', {
+          defaultValue: 'Forward and backward pass, early and late dates, float and the critical path.',
+        })}
+      />
+      <DismissibleInfo
+        storageKey="schedule_cpm"
+        title={t('schedule_cpm.intro_title', {
+          defaultValue: 'Know which activities cannot slip',
+        })}
+        links={[
+          { label: t('schedule_cpm.intro_link_schedule', { defaultValue: 'Back to schedule' }), onClick: () => navigate('/schedule') },
+        ]}
+      >
+        {t('schedule_cpm.intro_body', {
+          defaultValue:
+            'Runs the Critical Path Method over one schedule, showing the forward and backward pass, early and late dates and total float for every activity, with the critical path flagged. Use the resource-leveling step to shift non-critical activities and ease over-allocated crews without moving the finish date.',
+        })}
+      </DismissibleInfo>
+
       {/* ── Toolbar + summary ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
+        <div className="flex items-center gap-2 text-sm text-content-secondary">
           <Badge variant="blue">
             {t('schedule.cpm.summary_duration', { days: projectDuration })}
           </Badge>

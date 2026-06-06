@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import {
   ClipboardList,
@@ -26,7 +26,9 @@ import {
   Trash2,
   GripVertical,
 } from 'lucide-react';
-import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, RecoveryCard, ViewInBIMButton, InfoHint } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, RecoveryCard, ViewInBIMButton } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
+import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { PlanningCrossLinks } from '@/features/schedule/PlanningCrossLinks';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
@@ -710,6 +712,7 @@ const TaskCard = React.memo(function TaskCard({
 
 export function TasksPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { projectId: routeProjectId } = useParams<{ projectId: string }>();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
@@ -1335,7 +1338,7 @@ export function TasksPage() {
   };
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -1344,101 +1347,93 @@ export function TasksPage() {
             : []),
           { label: t('tasks.title', { defaultValue: 'Tasks' }) },
         ]}
-        className="mb-4"
       />
 
-      {/* Cross-module navigation — connects the planning value chain */}
+      {/* Header — module name + icon live in the global top bar; project
+          selection lives there too, so no in-page project picker (canon §2/§4).
+          The page reads the shared project context (or the route param). */}
+      <PageHeader
+        srTitle={t('tasks.title', { defaultValue: 'Tasks' })}
+        subtitle={t('tasks.subtitle', {
+          defaultValue: 'Track assignments, deadlines, and progress across your team',
+        })}
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={
+                exportMut.isPending ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Download size={14} />
+                )
+              }
+              onClick={() => exportMut.mutate()}
+              disabled={!projectId || exportMut.isPending}
+            >
+              {t('tasks.export', { defaultValue: 'Export' })}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Upload size={14} />}
+              onClick={() => {
+                setShowImportModal(true);
+                setImportFile(null);
+                setImportResult(null);
+                setImportError(null);
+              }}
+              disabled={!projectId}
+            >
+              {t('tasks.import', { defaultValue: 'Import' })}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowAddModal(true)}
+              disabled={!projectId}
+              title={!projectId ? t('common.select_project_first', { defaultValue: 'Please select a project first' }) : undefined}
+              icon={<Plus size={14} />}
+            >
+              {t('tasks.new_task', { defaultValue: 'New Task' })}
+            </Button>
+          </>
+        }
+      />
+
+      {/* Cross-module navigation — connects the planning value chain.
+          Rendered BELOW the header so the canonical breadcrumb > header > info
+          order is preserved (audit S4). */}
       <PlanningCrossLinks active="tasks" />
 
-      {/* Header */}
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">
-            {t('tasks.title', { defaultValue: 'Tasks' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('tasks.subtitle', { defaultValue: 'Track assignments, deadlines, and progress across your team' })}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          {/* Project selector (if not in route) */}
-          {!routeProjectId && projects.length > 0 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((pr) => pr.id === e.target.value);
-                if (p) {
-                  useProjectContextStore.getState().setActiveProject(p.id, p.name);
-                }
-              }}
-              className={inputCls + ' !h-8 !text-xs max-w-[180px]'}
-            >
-              <option value="" disabled>
-                {t('tasks.select_project', { defaultValue: 'Project...' })}
-              </option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={
-              exportMut.isPending ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Download size={14} />
-              )
-            }
-            onClick={() => exportMut.mutate()}
-            disabled={!projectId || exportMut.isPending}
-          >
-            {t('tasks.export', { defaultValue: 'Export' })}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<Upload size={14} />}
-            onClick={() => {
-              setShowImportModal(true);
-              setImportFile(null);
-              setImportResult(null);
-              setImportError(null);
-            }}
-            disabled={!projectId}
-          >
-            {t('tasks.import', { defaultValue: 'Import' })}
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowAddModal(true)}
-            disabled={!projectId}
-            title={!projectId ? t('common.select_project_first', { defaultValue: 'Please select a project first' }) : undefined}
-            icon={<Plus size={14} />}
-          >
-            {t('tasks.new_task', { defaultValue: 'New Task' })}
-          </Button>
-        </div>
-      </div>
-
       {/* How Tasks connects to the rest of the platform */}
-      <InfoHint
-        className="mb-4"
-        text={t('tasks.what_are_tasks', {
-          defaultValue:
-            'Tasks are lightweight action items: assignments, decisions, and follow-ups with assignee, due date, priority and a checklist. They complement the 4D Schedule (which plans the construction timeline) and Last Planner weekly commitments. Tasks can be created from meetings and pinned to BIM elements. Use "My Tasks" for a cross-project view of everything assigned to you.',
+      <DismissibleInfo
+        storageKey="tasks"
+        title={t('tasks.intro_title', {
+          defaultValue: 'Loose ends that actually get closed',
         })}
-      />
+        links={[
+          {
+            label: t('nav.schedule', { defaultValue: '4D Schedule' }),
+            onClick: () => navigate('/schedule'),
+          },
+          {
+            label: t('nav.meetings', { defaultValue: 'Meetings' }),
+            onClick: () => navigate('/meetings'),
+          },
+        ]}
+      >
+        {t('tasks.intro_body', {
+          defaultValue:
+            'Capture lightweight action items, decisions and follow-ups with an assignee, due date, priority and checklist, separate from the 4D Schedule that plans the build timeline. Create them from meetings, pin them to BIM elements, and use My Tasks for a cross-project list of everything on your plate. They complement Last Planner weekly commitments rather than replace them.',
+        })}
+      </DismissibleInfo>
 
       {/* No-project warning — suppressed in "My Tasks" mode, which is
           cross-project and doesn't require a selected project. */}
       {!projectId && !myTasksOnly && (
-        <div className="mb-4 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-4 py-3">
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-4 py-3">
           <AlertTriangle size={18} className="text-amber-600 shrink-0" />
           <div>
             <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{t('requiresProject.title')}</p>
@@ -1450,7 +1445,7 @@ export function TasksPage() {
       {projectId || myTasksOnly ? (
       <>
       {/* Type filter tabs */}
-      <div className="mb-4 flex items-center gap-1 overflow-x-auto pb-1">
+      <div className="flex items-center gap-1 overflow-x-auto pb-1">
         <button
           onClick={() => setTypeFilter('')}
           className={clsx(
@@ -1573,7 +1568,7 @@ export function TasksPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search

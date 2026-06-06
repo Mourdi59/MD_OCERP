@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNowStrict, isValid as isValidDate, parseISO } from 'date-fns';
 import { Button, Card, Badge, EmptyState, Skeleton, SkeletonGrid, Breadcrumb, ProjectMap, ProjectWeather, FileTypeChips, type LatLng } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
+import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { useWidgetSettingsStore } from '@/stores/useWidgetSettingsStore';
 import { getIntlLocale } from '@/shared/lib/formatters';
 import { projectsApi, type Project } from './api';
@@ -61,6 +63,7 @@ const currencyFmt = new Intl.NumberFormat(getIntlLocale(), {
 export function ProjectsPage() {
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Create project modal
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -381,35 +384,61 @@ export function ProjectsPage() {
   ];
 
   return (
-    <div className="w-full animate-fade-in">
-      <Breadcrumb items={[{ label: t('projects.title', 'Projects') }]} className="mb-4" />
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">{t('projects.title')}</h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {projects
-              ? t('projects.subtitle_count', {
-                  defaultValue: 'Manage your construction estimation projects ({{count}} total)',
-                  count: projects.length,
-                })
-              : t('common.loading', { defaultValue: 'Loading...' })}
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          icon={<FolderPlus size={16} />}
-          onClick={() => setCreateModalOpen(true)}
-        >
-          {t('projects.new_project')}
-        </Button>
-      </div>
+    <div className="space-y-5 animate-fade-in">
+      <Breadcrumb items={[{ label: t('projects.title', 'Projects') }]} />
+      {/* Header — the module name + icon live in the global top bar; this
+          page renders only the muted subtitle + actions (canon §2). */}
+      <PageHeader
+        srTitle={t('nav.projects', { defaultValue: 'Projects' })}
+        subtitle={
+          projects
+            ? t('projects.subtitle_count', {
+                defaultValue: 'Manage your construction estimation projects ({{count}} total)',
+                count: projects.length,
+              })
+            : t('common.loading', { defaultValue: 'Loading...' })
+        }
+        actions={
+          <Button
+            variant="primary"
+            size="sm"
+            icon={<FolderPlus size={16} />}
+            onClick={() => setCreateModalOpen(true)}
+          >
+            {t('projects.new_project')}
+          </Button>
+        }
+      />
+
+      <DismissibleInfo
+        storageKey="projects"
+        title={t('projects.intro_title', { defaultValue: "One home for every project's numbers" })}
+        links={[
+          {
+            label: t('nav.projects_new', { defaultValue: 'New project' }),
+            onClick: () => setCreateModalOpen(true),
+          },
+          {
+            label: t('nav.analytics', { defaultValue: 'Analytics' }),
+            onClick: () => navigate('/analytics'),
+          },
+          {
+            label: t('nav.reporting', { defaultValue: 'Reporting' }),
+            onClick: () => navigate('/reporting'),
+          },
+        ]}
+      >
+        {t('projects.intro_body', {
+          defaultValue:
+            'Every project you create lands here as a card carrying its BOQ count, total value in its own currency, region and uploaded file types, so you see the whole portfolio at a glance without opening each one. Open a card to reach the project hub, or pin and filter to keep daily work on top. Totals feed Analytics and the role dashboards in Reporting.',
+        })}
+      </DismissibleInfo>
 
       {/* Stats cards — 4-up portfolio summary, each card with primary
           number + sub-line so no card is sparse. */}
       {stats && projects && projects.length > 0 && (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* 1. Total Projects */}
             <div className="rounded-xl bg-surface-elevated border border-border-light p-3">
               <div className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">

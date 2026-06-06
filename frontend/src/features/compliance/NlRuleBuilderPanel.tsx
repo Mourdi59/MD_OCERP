@@ -18,10 +18,12 @@
 // pattern matcher — never crashes.
 
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Sparkles, Save, Wand2, AlertTriangle } from 'lucide-react';
-import { Button, Card, Badge } from '@/shared/ui';
+import { Button, Card, Badge, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { useToastStore } from '@/stores/useToastStore';
 import {
@@ -43,6 +45,7 @@ const LANG_OPTIONS: { value: SupportedLang; label: string }[] = [
 
 export function NlRuleBuilderPanel() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const addToast = useToastStore((s) => s.addToast);
 
   const [text, setText] = useState('');
@@ -162,20 +165,38 @@ export function NlRuleBuilderPanel() {
         : 'error';
 
   return (
-    <div className="w-full animate-fade-in" data-testid="nl-rule-builder-panel">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold text-content-primary">
-          {t('compliance.nl.title', {
-            defaultValue: 'Natural Language Rule Builder',
-          })}
-        </h1>
-        <p className="mt-1 text-sm text-content-secondary">
-          {t('compliance.nl.subtitle', {
-            defaultValue:
-              'Describe your rule in plain English, German, or Russian — the builder generates valid DSL.',
-          })}
-        </p>
-      </header>
+    <div className="space-y-5 animate-fade-in" data-testid="nl-rule-builder-panel">
+      <PageHeader
+        srTitle={t('compliance.nl.title', {
+          defaultValue: 'Natural Language Rule Builder',
+        })}
+        subtitle={t('compliance.nl.subtitle', {
+          defaultValue:
+            'Describe your rule in plain English, German, or Russian and the builder generates valid DSL.',
+        })}
+      />
+
+      <DismissibleInfo
+        storageKey="compliance/builder"
+        title={t('compliance.intro_title', {
+          defaultValue: 'Write a check in plain language',
+        })}
+        links={[
+          {
+            label: t('nav.validation', { defaultValue: 'Validation' }),
+            onClick: () => navigate('/validation'),
+          },
+          {
+            label: t('governance.title', { defaultValue: 'Governance' }),
+            onClick: () => navigate('/governance'),
+          },
+        ]}
+      >
+        {t('compliance.intro_body', {
+          defaultValue:
+            'Describe the rule you want in plain English, German or Russian and the builder turns it into valid validation DSL you can review and save. The resulting rule joins the validation rule sets that run against your BOQ and imported data under Governance.',
+        })}
+      </DismissibleInfo>
 
       <div className="grid gap-6 lg:grid-cols-[2fr_2fr_1fr]">
         {/* ── NL pane ─────────────────────────────────────────────── */}

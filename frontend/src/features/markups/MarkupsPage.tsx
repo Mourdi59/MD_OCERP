@@ -33,6 +33,8 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, RecoveryCard, SkeletonTable } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
+import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { apiGet } from '@/shared/lib/api';
@@ -1452,7 +1454,7 @@ export function MarkupsPage() {
   }, [stamps]);
 
   return (
-    <div className="animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -1466,120 +1468,98 @@ export function MarkupsPage() {
         ]}
       />
 
-      {/* ── Header: single row ───────────────────────────────────────────── */}
-      <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
-        {/* Left: title */}
-        <h1 className="text-lg font-bold text-content-primary flex items-center gap-2 shrink-0">
-          <PenTool size={20} className="text-oe-blue" />
-          {t('markups.title', { defaultValue: 'Markups & Annotations' })}
-        </h1>
-
-        {/* Right: controls — single row, no wrap */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Project selector */}
-          {projects.length > 0 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((pr) => pr.id === e.target.value);
-                if (p) {
-                  useProjectContextStore.getState().setActiveProject(p.id, p.name);
-                }
-              }}
-              className={selectCls + ' max-w-[150px]'}
-            >
-              <option value="" disabled>
-                {t('markups.select_project', { defaultValue: 'Project...' })}
-              </option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
+      {/* ── Header (canonical top block) ─────────────────────────────────── */}
+      <PageHeader
+        srTitle={t('nav.markups', { defaultValue: 'Markups' })}
+        subtitle={t('markups.subtitle', {
+          defaultValue:
+            'Review annotations - clouds, arrows, stamps and measurements placed on project documents.',
+        })}
+        actions={
+          <>
+            {/* Document selector — a within-project entity picker, stays. */}
+            {projectId && (
+              <select
+                value={filterDocumentId}
+                onChange={(e) => setFilterDocumentId(e.target.value)}
+                className={selectCls + ' max-w-[140px]'}
+                aria-label={t('markups.document', { defaultValue: 'Document' })}
+              >
+                <option value="">
+                  {documents.length > 0
+                    ? t('markups.all_documents', { defaultValue: 'All Docs' })
+                    : t('markups.no_documents', { defaultValue: 'No docs' })}
                 </option>
-              ))}
-            </select>
-          )}
+                {documents.map((doc) => (
+                  <option key={doc.id} value={doc.id}>
+                    {doc.name}
+                  </option>
+                ))}
+              </select>
+            )}
 
-          {/* Document selector */}
-          {projectId && (
-            <select
-              value={filterDocumentId}
-              onChange={(e) => setFilterDocumentId(e.target.value)}
-              className={selectCls + ' max-w-[140px]'}
-            >
-              <option value="">
-                {documents.length > 0
-                  ? t('markups.all_documents', { defaultValue: 'All Docs' })
-                  : t('markups.no_documents', { defaultValue: 'No docs' })}
-              </option>
-              {documents.map((doc) => (
-                <option key={doc.id} value={doc.id}>
-                  {doc.name}
-                </option>
-              ))}
-            </select>
-          )}
+            {/* Compare revisions — opens the PDF overlay / visual-diff view */}
+            {projectId && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  if (filterDocumentId) params.set('docA', filterDocumentId);
+                  navigate(`/markups/compare${params.toString() ? `?${params.toString()}` : ''}`);
+                }}
+                className="shrink-0 whitespace-nowrap"
+                title={t('markups.compare_revisions', { defaultValue: 'Compare revisions' })}
+              >
+                <GitCompare size={14} />
+                <span className="hidden lg:inline ml-1">
+                  {t('markups.compare_revisions', { defaultValue: 'Compare' })}
+                </span>
+              </Button>
+            )}
 
-          {/* Compare revisions — opens the PDF overlay / visual-diff view */}
-          {projectId && (
+            {/* Open inline PDF annotator — icon-only on small screens */}
+            {documents.length > 0 && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setAnnotateDocId(filterDocumentId || documents[0]?.id || null)}
+                disabled={!projectId || documents.length === 0}
+                className="shrink-0 whitespace-nowrap"
+                title={t('markups.annotate_pdf', { defaultValue: 'Annotate on PDF' })}
+              >
+                <PenTool size={14} />
+                <span className="hidden lg:inline ml-1">{t('markups.annotate_pdf', { defaultValue: 'Annotate' })}</span>
+              </Button>
+            )}
+
+            {/* Add Markup */}
             <Button
-              variant="secondary"
+              variant="primary"
               size="sm"
-              onClick={() => {
-                const params = new URLSearchParams();
-                if (filterDocumentId) params.set('docA', filterDocumentId);
-                navigate(`/markups/compare${params.toString() ? `?${params.toString()}` : ''}`);
-              }}
+              onClick={() => setShowAddModal(true)}
+              disabled={!projectId}
               className="shrink-0 whitespace-nowrap"
-              title={t('markups.compare_revisions', { defaultValue: 'Compare revisions' })}
+              title={t('markups.add_markup', { defaultValue: 'Add Markup' })}
             >
-              <GitCompare size={14} />
-              <span className="hidden lg:inline ml-1">
-                {t('markups.compare_revisions', { defaultValue: 'Compare' })}
-              </span>
+              <Plus size={14} />
+              <span className="hidden lg:inline ml-1">{t('markups.add_markup', { defaultValue: 'Add' })}</span>
             </Button>
-          )}
 
-          {/* Open inline PDF annotator — icon-only on small screens */}
-          {documents.length > 0 && (
+            {/* Export — icon only */}
             <Button
-              variant="secondary"
+              variant="ghost"
               size="sm"
-              onClick={() => setAnnotateDocId(filterDocumentId || documents[0]?.id || null)}
-              disabled={!projectId || documents.length === 0}
-              className="shrink-0 whitespace-nowrap"
-              title={t('markups.annotate_pdf', { defaultValue: 'Annotate on PDF' })}
+              onClick={handleExportCSV}
+              disabled={!projectId}
+              icon={<Download size={14} />}
+              title={t('markups.export', { defaultValue: 'Export' })}
             >
-              <PenTool size={14} />
-              <span className="hidden lg:inline ml-1">{t('markups.annotate_pdf', { defaultValue: 'Annotate' })}</span>
+              <span className="hidden lg:inline">{t('markups.export', { defaultValue: 'Export' })}</span>
             </Button>
-          )}
-
-          {/* Add Markup */}
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowAddModal(true)}
-            disabled={!projectId}
-            className="shrink-0 whitespace-nowrap"
-            title={t('markups.add_markup', { defaultValue: 'Add Markup' })}
-          >
-            <Plus size={14} />
-            <span className="hidden lg:inline ml-1">{t('markups.add_markup', { defaultValue: 'Add' })}</span>
-          </Button>
-
-          {/* Export — icon only */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleExportCSV}
-            disabled={!projectId}
-            icon={<Download size={14} />}
-            title={t('markups.export', { defaultValue: 'Export' })}
-          >
-            <span className="hidden lg:inline">{t('markups.export', { defaultValue: 'Export' })}</span>
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Project gate */}
       {!projectId ? (
@@ -1593,13 +1573,24 @@ export function MarkupsPage() {
         </div>
       ) : (
         <>
-          {/* ── Purpose intro ─────────────────────────────────────────────── */}
-          <p className="mt-2 text-xs text-content-tertiary max-w-3xl leading-relaxed">
-            {t('markups.page_intro', {
-              defaultValue:
-                'Markups are review annotations — clouds, arrows, stamps and measurements placed on project documents. "All annotations" merges markups from the PDF/DWG takeoff tools and this hub; "Hub only" shows the ones created here. Upload drawings on the Documents page, then annotate them.',
+          {/* ── Purpose intro (canonical DismissibleInfo) ─────────────────── */}
+          <DismissibleInfo
+            storageKey="markups"
+            title={t('markups.intro_title', {
+              defaultValue: 'Drawing comments that do not get lost',
             })}
-          </p>
+            links={[
+              {
+                label: t('markups.compare_revisions', { defaultValue: 'Compare' }),
+                onClick: () => navigate('/markups/compare'),
+              },
+            ]}
+          >
+            {t('markups.intro_body', {
+              defaultValue:
+                'Add clouds, arrows, text, stamps and distance, area or count measurements onto project PDFs, assign them to a person and track each one through active, resolved and archived. Open a markup straight on its source drawing in the inline annotator, or push it through an approval route. Export the lot to CSV, and jump to Compare to check two revisions side by side.',
+            })}
+          </DismissibleInfo>
 
           {/* ── Stats Bar ──────────────────────────────────────────────────── */}
           <div className="mt-3">

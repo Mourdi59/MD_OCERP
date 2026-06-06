@@ -2770,11 +2770,15 @@ export function DwgTakeoffPage() {
               <div className="relative z-10 max-w-7xl mx-auto pt-20 pb-4 w-full">
                 <DismissibleInfo
                   storageKey="dwg-takeoff"
-                  title={t('info.dwg-takeoff.title', { defaultValue: 'DWG Takeoff' })}
+                  title={t('dwg_takeoff.intro_title', { defaultValue: 'Measure straight off the 2D drawing' })}
+                  links={[
+                    { label: t('dwg_takeoff.intro_link_boq', { defaultValue: 'Open BOQ' }), onClick: () => navigate('/boq') },
+                    { label: t('dwg_takeoff.intro_link_bim', { defaultValue: 'BIM viewer' }), onClick: () => navigate('/bim') },
+                  ]}
                 >
-                  {t('info.dwg-takeoff.body', {
+                  {t('dwg_takeoff.intro_body', {
                     defaultValue:
-                      'Upload DWG or DXF drawings to view their entities, toggle layers, and measure areas, lengths, and counts directly on the plan. Link measurements to BOQ positions so quantities flow into your cost estimate alongside BIM and the canonical model.',
+                      'Upload DWG or DXF drawings to view their entities, toggle layers, and measure areas, lengths and counts directly on the plan. Link measurements to BOQ positions so the quantities flow into your cost estimate alongside BIM and the canonical model.',
                   })}
                 </DismissibleInfo>
                 <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-8 items-stretch">

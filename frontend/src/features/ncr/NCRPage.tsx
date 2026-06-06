@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { Button, Card, Badge, EmptyState, Breadcrumb, ConfirmDialog, RecoveryCard, SkeletonTable } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { SectionIntro } from '@/features/validation';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
@@ -859,7 +860,7 @@ export function NCRPage() {
   );
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -868,38 +869,14 @@ export function NCRPage() {
             : []),
           { label: t('ncr.title', { defaultValue: 'NCR' }) },
         ]}
-        className="mb-4"
       />
 
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-content-primary">
-          {t('ncr.page_title', { defaultValue: 'Non-Conformance Reports' })}
-        </h1>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {!routeProjectId && projects.length > 0 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((pr) => pr.id === e.target.value);
-                if (p) {
-                  useProjectContextStore.getState().setActiveProject(p.id, p.name);
-                }
-              }}
-              aria-label={t('ncr.select_project', { defaultValue: 'Project...' })}
-              className={inputCls + ' !h-8 !text-xs max-w-[180px]'}
-            >
-              <option value="" disabled>
-                {t('ncr.select_project', { defaultValue: 'Project...' })}
-              </option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
+      <PageHeader
+        subtitle={t('ncr.subtitle', {
+          defaultValue: 'Document non-conforming work, root causes, and corrective actions',
+        })}
+        actions={
           <Button
             variant="primary"
             size="sm"
@@ -910,13 +887,13 @@ export function NCRPage() {
           >
             {t('ncr.new_ncr', { defaultValue: 'New NCR' })}
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <SectionIntro
         storageKey="ncr"
         title={t('ncr.intro_title', {
-          defaultValue: 'When to raise a Non-Conformance Report',
+          defaultValue: 'Catch defective work, fix the cause',
         })}
         links={[
           {
@@ -935,27 +912,27 @@ export function NCRPage() {
       >
         {t('ncr.intro_body', {
           defaultValue:
-            'An NCR formally documents work that does not meet specification — material, workmanship, design, documentation or safety. Capture the root cause and corrective/preventive actions. NCRs are often raised from a failed inspection; when a defect carries a cost impact you can escalate it to a Change Order so the commercial trail stays connected.',
+            'Document work that does not meet specification (material, workmanship, design, documentation or safety), record the root cause and the corrective and preventive actions. NCRs are often raised straight from a failed Inspection, and when a defect carries a cost impact you can escalate it to a Change Order so the money and the quality trail stay connected.',
         })}
       </SectionIntro>
 
       {projectId ? (
       <>
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('ncr.stat_total', { defaultValue: 'Total' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-content-primary">{stats.total}</p>
+          <p className="text-lg font-semibold mt-1 tabular-nums text-content-primary">{stats.total}</p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('ncr.stat_open', { defaultValue: 'Open' })}
           </p>
           <p
             className={clsx(
-              'text-2xl font-bold mt-1 tabular-nums',
+              'text-lg font-semibold mt-1 tabular-nums',
               stats.open > 0 ? 'text-semantic-error' : 'text-content-primary',
             )}
           >
@@ -963,23 +940,23 @@ export function NCRPage() {
           </p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('ncr.stat_under_review', { defaultValue: 'Under Review' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-amber-500">{stats.underReview}</p>
+          <p className="text-lg font-semibold mt-1 tabular-nums text-amber-500">{stats.underReview}</p>
         </Card>
         <Card className="p-4 animate-card-in">
-          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wider">
+          <p className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">
             {t('ncr.stat_closed', { defaultValue: 'Closed' })}
           </p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-semantic-success">
+          <p className="text-lg font-semibold mt-1 tabular-nums text-semantic-success">
             {stats.closed}
           </p>
         </Card>
       </div>
 
       {/* Toolbar */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search

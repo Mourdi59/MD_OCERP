@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import {
@@ -34,6 +35,7 @@ import {
   WideModalField,
 } from '@/shared/ui';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { SectionIntro } from '@/features/validation';
@@ -152,6 +154,7 @@ const inputCls =
 
 export function QMSPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('itp');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -257,31 +260,31 @@ export function QMSPage() {
         ]}
       />
 
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-content-primary">
-            {t('qms.title', { defaultValue: 'Quality Management' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('qms.subtitle', {
-              defaultValue: 'ITP plans, inspections, NCRs, punch list and audits in one place.',
-            })}
-          </p>
-        </div>
-        <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreateOpen(true)} disabled={!projectId}>
-          {tabCreateLabel(tab, t)}
-        </Button>
-      </div>
+      <PageHeader
+        subtitle={t('qms.subtitle', {
+          defaultValue: 'ITP plans, inspections, NCRs, punch list and audits in one place.',
+        })}
+        actions={
+          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setCreateOpen(true)} disabled={!projectId}>
+            {tabCreateLabel(tab, t)}
+          </Button>
+        }
+      />
 
       <SectionIntro
         storageKey="qms"
         title={t('qms.intro_title', {
-          defaultValue: 'One quality system, five linked registers',
+          defaultValue: 'One quality chain, not five silos',
         })}
+        links={[
+          { label: t('inspections.title', { defaultValue: 'Inspections' }), onClick: () => navigate('/inspections') },
+          { label: t('ncr.title', { defaultValue: 'NCRs' }), onClick: () => navigate('/ncr') },
+          { label: t('nav.punchlist', { defaultValue: 'Punch List' }), onClick: () => navigate('/punchlist') },
+        ]}
       >
         {t('qms.intro_body', {
           defaultValue:
-            'QMS ties together the full ISO 9001 quality chain: ITP plans define hold/witness points → Inspections sign them off → failed checks raise NCRs → NCRs with cost impact escalate to a Variation and feed the Cost of Poor Quality (COPQ) rollup → Punch items track close-out → Audits cover the management system. Pick a project, then move through the tabs left-to-right.',
+            'Run the full ISO 9001 quality chain in one place: ITP plans define hold and witness points, Inspections sign them off, failed checks raise NCRs, NCRs with cost impact escalate to a Variation and feed the Cost of Poor Quality rollup, Punch items track close-out and Audits cover the management system. Pick a project, then work the tabs left to right.',
         })}
       </SectionIntro>
 
@@ -384,19 +387,6 @@ export function QMSPage() {
             {(['architectural', 'mechanical', 'electrical', 'finishes', 'structure'] as PunchCategory[]).map((c) => (
               <option key={c} value={c}>
                 {categoryLabel(t, c)}
-              </option>
-            ))}
-          </select>
-        )}
-        {projects.length > 1 && (
-          <select
-            value={projectId}
-            onChange={(e) => useProjectContextStore.getState().setActiveProject(e.target.value, projects.find((p) => p.id === e.target.value)?.name || '')}
-            className={clsx(inputCls, 'max-w-[240px]')}
-          >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
               </option>
             ))}
           </select>

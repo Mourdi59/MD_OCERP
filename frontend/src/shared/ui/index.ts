@@ -56,7 +56,7 @@ export { CommandPalette } from './CommandPalette';
 
 export { InfoHint } from './InfoHint';
 
-export { DismissibleInfo } from './DismissibleInfo';
+export { DismissibleInfo, IntroRichText } from './DismissibleInfo';
 export type { DismissibleInfoLink } from './DismissibleInfo';
 
 export { FeedbackDialog } from './FeedbackDialog';

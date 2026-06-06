@@ -16,7 +16,8 @@ import {
   Sparkles,
   Globe,
 } from 'lucide-react';
-import { Button, Card, Badge, Breadcrumb, ConfirmDialog, CountryFlag } from '@/shared/ui';
+import { Button, Card, Badge, Breadcrumb, ConfirmDialog, CountryFlag, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useToastStore } from '@/stores/useToastStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -1632,29 +1633,42 @@ export function ImportDatabasePage() {
   }, []);
 
   return (
-    <div className="max-w-5xl mx-auto animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
-        className="mb-4"
         items={[
           { label: t('costs.title', 'Cost Database'), to: '/costs' },
           { label: t('costs.import_title', 'Import Cost Database') },
         ]}
       />
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-content-primary">
-          {t('costs.import_title', { defaultValue: 'Import Cost Database' })}
-        </h1>
-        <p className="mt-1 text-sm text-content-secondary">
-          {t('costs.import_subtitle', {
-            defaultValue: 'Load a pricing database or upload your own file.',
-          })}
-        </p>
-      </div>
+      {/* Canonical top block — the breadcrumb above carries the Cost Database
+          > Import trail; the module name + icon are shown by the global top
+          bar. The page renders only its subtitle. */}
+      <PageHeader
+        srTitle={t('costs.import_title', { defaultValue: 'Import Cost Database' })}
+        subtitle={t('costs.import_subtitle', {
+          defaultValue: 'Load a pricing database or upload your own file.',
+        })}
+      />
+
+      <DismissibleInfo
+        storageKey="costs-import"
+        title={t('costs_import.intro_title', { defaultValue: 'Get a regional price book in minutes' })}
+        links={[
+          { label: t('nav.costs', { defaultValue: 'Cost Database' }), onClick: () => navigate('/costs') },
+          { label: t('nav.catalog', { defaultValue: 'Resource Catalog' }), onClick: () => navigate('/catalog') },
+          { label: t('nav.assemblies', { defaultValue: 'Assemblies' }), onClick: () => navigate('/assemblies') },
+        ]}
+      >
+        {t('costs_import.intro_body', {
+          defaultValue:
+            'Install a regional CWICR cost database by country and currency, or upload your own Parquet file, with full resource and cost breakdowns indexed for offline use. Once installed the rates appear in the cost database and become matchable across catalog, assemblies and BOQ.',
+        })}
+      </DismissibleInfo>
 
       {/* DDC CWICR Database -- 11 regional databases */}
-      <Card className="mb-6" padding="none">
+      <Card padding="none">
         <div className="px-6 pt-5 pb-2">
           <div className="flex items-center gap-3 mb-1">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-oe-blue text-white">
@@ -1688,7 +1702,7 @@ export function ImportDatabasePage() {
       <LoadedDatabasesSection />
 
       {/* Divider */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-border-light" />
         <span className="text-xs font-medium text-content-tertiary uppercase tracking-wider">
           {t('costs.or_upload_own', { defaultValue: 'or upload your own file' })}
@@ -1698,7 +1712,7 @@ export function ImportDatabasePage() {
 
       {/* Import result summary */}
       {result && (
-        <Card className="mb-6 animate-card-in">
+        <Card className="animate-card-in">
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
               {result.errors.length === 0 && result.imported > 0 ? (
@@ -1790,9 +1804,9 @@ export function ImportDatabasePage() {
 
       {/* Upload area */}
       {!result && (
-        <>
+        <div className="space-y-5">
           {/* Supported formats */}
-          <Card className="mb-6">
+          <Card>
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-oe-blue-subtle">
                 <Database size={20} className="text-oe-blue" />
@@ -1935,7 +1949,7 @@ export function ImportDatabasePage() {
 
           {/* Actions */}
           {selectedFile && (
-            <div className="mt-6 flex items-center justify-end gap-3 animate-fade-in">
+            <div className="flex items-center justify-end gap-3 animate-fade-in">
               <Button variant="secondary" onClick={handleReset}>
                 {t('common.cancel', { defaultValue: 'Cancel' })}
               </Button>
@@ -1957,7 +1971,7 @@ export function ImportDatabasePage() {
               </Button>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );

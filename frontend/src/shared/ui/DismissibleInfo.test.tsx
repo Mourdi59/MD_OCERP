@@ -1,15 +1,16 @@
 /**
  * Tests for the shared DismissibleInfo help card.
  *
- * Behaviour under test (the two-state contract):
- *   - clicking the card collapses it to a bare "Module information" line
- *   - clicking that line re-expands the card
- *   - the X now ALSO just collapses (it no longer hides the card forever)
- *   - a legacy localStorage value of "2" (old "dismissed") maps to collapsed,
- *     so previously-hidden cards reappear as the bare line
+ * Behaviour under test (the 2026-06-06 contract):
+ *   - clicking the card collapses it - NOTHING is left in the page; the card
+ *     registers itself in useModuleInfoStore so the TOP APP BAR can show the
+ *     re-opener icon (project pill > module name > info icon)
+ *   - the X ALSO just collapses (it never hides the card forever)
+ *   - the store's expand entry re-expands the card and unregisters it
+ *   - a legacy localStorage value of "2" (old "dismissed") maps to collapsed
  *   - a stored "1" maps to collapsed
  *   - clicking an inner link pill runs its handler WITHOUT toggling the card
- *   - keyboard: Enter / Space on the collapsed line expands it
+ *   - unmount (navigation) unregisters from the store
  *
  * ``react-i18next`` and ``window.localStorage`` are mocked globally in
  * ``src/test/setup.ts`` (t returns ``defaultValue``; localStorage is an
@@ -17,9 +18,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 
 import { DismissibleInfo } from './DismissibleInfo';
+import { useModuleInfoStore } from '@/stores/useModuleInfoStore';
 
 const KEY = 'demo-card';
 const LS_KEY = `oce.intro.${KEY}`;
@@ -32,21 +34,9 @@ function renderCard(props?: { links?: { label: string; onClick: () => void }[] }
   );
 }
 
-/**
- * Locate the element that carries the toggle semantics for a given state.
- *
- * Collapsed: a bare native ``<button>`` line with ``aria-expanded=false``.
- * Expanded:  a native ``<button>`` header carries ``aria-expanded`` (the X and
- *            link pills are interactive, so they cannot be nested inside a
- *            role=button - that would be invalid ARIA).
- *
- * Either way the toggle element is uniquely identified by its
- * ``aria-expanded`` attribute.
- */
-function ariaToggle(expanded: boolean): HTMLElement {
-  const el = document.querySelector(`[aria-expanded="${expanded}"]`) as HTMLElement | null;
-  if (!el) throw new Error(`no toggle with aria-expanded=${expanded}`);
-  return el;
+/** The store registry of collapsed cards (what the Header icon reads). */
+function storeEntries() {
+  return useModuleInfoStore.getState().entries;
 }
 
 /** The clickable surface for "whole-card click" in the expanded state. */
@@ -60,6 +50,7 @@ function cardClickSurface(): HTMLElement {
 beforeEach(() => {
   window.localStorage.clear();
   vi.clearAllMocks();
+  useModuleInfoStore.setState({ entries: [] });
 });
 
 describe('DismissibleInfo', () => {
@@ -68,88 +59,88 @@ describe('DismissibleInfo', () => {
     expect(screen.getByText('Demo title')).toBeInTheDocument();
     expect(screen.getByText('Body copy explaining the page.')).toBeInTheDocument();
     // A toggle marked aria-expanded carries the collapse semantics for AT.
-    expect(ariaToggle(true)).toBeInTheDocument();
+    expect(document.querySelector('[aria-expanded="true"]')).toBeInTheDocument();
+    // Nothing registered while expanded - the top bar shows no icon.
+    expect(storeEntries()).toHaveLength(0);
   });
 
-  it('clicking anywhere on the card collapses it to the bare line and persists "1"', () => {
-    renderCard();
+  it('clicking anywhere on the card collapses it to NOTHING and persists "1"', () => {
+    const { container } = renderCard();
     // Click the whole-card surface (not just the title) to prove the entire
     // card is the toggle.
     fireEvent.click(cardClickSurface());
 
-    // Body and title are gone; only the bare "Module information" line remains.
+    // The card leaves the page entirely - no leftover line (founder decision
+    // 2026-06-06: the re-opener lives in the top app bar instead).
     expect(screen.queryByText('Body copy explaining the page.')).not.toBeInTheDocument();
     expect(screen.queryByText('Demo title')).not.toBeInTheDocument();
-    expect(screen.getByText('Module information')).toBeInTheDocument();
-    expect(ariaToggle(false)).toBeInTheDocument();
+    expect(screen.queryByText('Module information')).not.toBeInTheDocument();
+    expect(container.firstChild).toBeNull();
     // Collapsed state persisted under "1".
     expect(window.localStorage.getItem(LS_KEY)).toBe('1');
+    // Registered for the top-bar icon.
+    expect(storeEntries()).toHaveLength(1);
+    expect(storeEntries()[0]!.key).toBe(LS_KEY);
   });
 
-  it('clicking the collapsed line re-expands it and persists "0"', () => {
+  it('the store expand entry (top-bar icon) re-expands and persists "0"', () => {
     renderCard();
     fireEvent.click(cardClickSurface());
-    // The bare collapsed line is itself the clickable surface.
-    fireEvent.click(ariaToggle(false));
+    expect(storeEntries()).toHaveLength(1);
+
+    // The Header icon calls expandAll(), which fires the registered expand.
+    act(() => useModuleInfoStore.getState().expandAll());
 
     expect(screen.getByText('Demo title')).toBeInTheDocument();
     expect(screen.getByText('Body copy explaining the page.')).toBeInTheDocument();
     expect(window.localStorage.getItem(LS_KEY)).toBe('0');
+    // Expanded card unregisters - the top-bar icon disappears.
+    expect(storeEntries()).toHaveLength(0);
   });
 
-  it('the X collapses the card (it no longer hides it) and persists "1"', () => {
+  it('the X collapses the card (it never hides it forever) and persists "1"', () => {
     const { unmount } = renderCard();
     const collapseBtn = screen.getByRole('button', { name: /collapse/i });
     fireEvent.click(collapseBtn);
 
-    // Collapsed to the bare line - NOT removed.
+    // Gone from the page, registered for the top bar.
     expect(screen.queryByText('Body copy explaining the page.')).not.toBeInTheDocument();
-    expect(screen.getByText('Module information')).toBeInTheDocument();
     expect(window.localStorage.getItem(LS_KEY)).toBe('1');
+    expect(storeEntries()).toHaveLength(1);
 
-    // Remount with the SAME storageKey -> still renders the collapsed line.
+    // Remount with the SAME storageKey -> still collapsed, still registered.
     unmount();
+    expect(storeEntries()).toHaveLength(0); // unmount unregistered
     renderCard();
-    expect(screen.getByText('Module information')).toBeInTheDocument();
-    expect(ariaToggle(false)).toBeInTheDocument();
-  });
-
-  it('pressing Enter on the collapsed line expands it (keyboard accessible)', () => {
-    window.localStorage.setItem(LS_KEY, '1');
-    renderCard();
-    fireEvent.keyDown(ariaToggle(false), { key: 'Enter' });
-
-    expect(screen.getByText('Body copy explaining the page.')).toBeInTheDocument();
-    expect(window.localStorage.getItem(LS_KEY)).toBe('0');
-  });
-
-  it('pressing Space on the collapsed line expands it', () => {
-    window.localStorage.setItem(LS_KEY, '1');
-    renderCard();
-    fireEvent.keyDown(ariaToggle(false), { key: ' ' });
-
-    expect(screen.getByText('Body copy explaining the page.')).toBeInTheDocument();
-    expect(window.localStorage.getItem(LS_KEY)).toBe('0');
-  });
-
-  it('legacy stored "1" maps to collapsed', () => {
-    window.localStorage.setItem(LS_KEY, '1');
-    renderCard();
-
     expect(screen.queryByText('Demo title')).not.toBeInTheDocument();
-    expect(screen.queryByText('Body copy explaining the page.')).not.toBeInTheDocument();
-    expect(screen.getByText('Module information')).toBeInTheDocument();
-    expect(ariaToggle(false)).toBeInTheDocument();
+    expect(storeEntries()).toHaveLength(1);
   });
 
-  it('legacy stored "2" (old "dismissed") now renders the collapsed line, NOT nothing', () => {
-    window.localStorage.setItem(LS_KEY, '2');
-    renderCard();
+  it('legacy stored "1" maps to collapsed (nothing in page, registered)', () => {
+    window.localStorage.setItem(LS_KEY, '1');
+    const { container } = renderCard();
 
-    // The card is no longer hidden - it shows the bare collapsed line.
-    expect(screen.getByText('Module information')).toBeInTheDocument();
-    expect(ariaToggle(false)).toBeInTheDocument();
-    expect(screen.queryByText('Body copy explaining the page.')).not.toBeInTheDocument();
+    expect(container.firstChild).toBeNull();
+    expect(storeEntries()).toHaveLength(1);
+  });
+
+  it('legacy stored "2" (old "dismissed") maps to collapsed and stays reachable', () => {
+    window.localStorage.setItem(LS_KEY, '2');
+    const { container } = renderCard();
+
+    // No longer hidden forever: registered, so the top-bar icon re-opens it.
+    expect(container.firstChild).toBeNull();
+    expect(storeEntries()).toHaveLength(1);
+    act(() => useModuleInfoStore.getState().expandAll());
+    expect(screen.getByText('Body copy explaining the page.')).toBeInTheDocument();
+  });
+
+  it('unmount while collapsed unregisters from the store (navigation)', () => {
+    window.localStorage.setItem(LS_KEY, '1');
+    const { unmount } = renderCard();
+    expect(storeEntries()).toHaveLength(1);
+    unmount();
+    expect(storeEntries()).toHaveLength(0);
   });
 
   it('clicking an inner link pill runs its handler WITHOUT toggling the card', () => {
@@ -164,9 +155,10 @@ describe('DismissibleInfo', () => {
     expect(onClick).toHaveBeenCalledTimes(1);
     expect(screen.getByText('Body copy explaining the page.')).toBeInTheDocument();
     expect(window.localStorage.getItem(LS_KEY)).toBeNull();
+    expect(storeEntries()).toHaveLength(0);
   });
 
-  it('two cards with different keys keep independent state', () => {
+  it('two cards with different keys keep independent state and registrations', () => {
     render(
       <>
         <DismissibleInfo storageKey="a" title="Card A" />
@@ -178,10 +170,12 @@ describe('DismissibleInfo', () => {
     expect(collapseButtons).toHaveLength(2);
     fireEvent.click(collapseButtons[0]!);
 
-    // Card A collapsed to the bare line (title gone); Card B still expanded.
+    // Card A gone from the page and registered; Card B still expanded.
     expect(screen.queryByText('Card A')).not.toBeInTheDocument();
     expect(screen.getByText('Card B')).toBeInTheDocument();
     expect(window.localStorage.getItem('oce.intro.a')).toBe('1');
     expect(window.localStorage.getItem('oce.intro.b')).toBeNull();
+    expect(storeEntries()).toHaveLength(1);
+    expect(storeEntries()[0]!.key).toBe('oce.intro.a');
   });
 });

@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertOctagon, AlertTriangle, Gauge, Loader2, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { AlertOctagon, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 
-import { Breadcrumb, Button, Card, EmptyState } from '@/shared/ui';
+import { Breadcrumb, Button, Card, EmptyState, DismissibleInfo } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 
 import type { ControlsKPI } from './api';
@@ -22,6 +24,7 @@ import { DrillDrawer } from './DrillDrawer';
  */
 export function ProjectControlsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
   const [drillKpi, setDrillKpi] = useState<ControlsKPI | null>(null);
 
@@ -55,37 +58,35 @@ export function ProjectControlsPage() {
   );
 
   return (
-    <div className="space-y-5">
-      {/* Tinted hero header — module-accent gradient band */}
-      <div className="rounded-2xl border border-border-light bg-gradient-to-r from-oe-blue/[0.06] via-transparent to-transparent px-5 py-4 dark:from-oe-blue/[0.12]">
-        <Breadcrumb
-          items={[
-            { label: t('nav.group_analytics', { defaultValue: 'Analytics' }) },
-            {
-              label: t('nav.project_controls', {
-                defaultValue: 'Project Controls',
-              }),
-            },
-          ]}
-        />
+    <div className="space-y-5 animate-fade-in">
+      {/* Breadcrumb — single-item trail auto-hides (no sidebar group names
+          in the trail per the style guide). */}
+      <Breadcrumb
+        items={[
+          {
+            label: t('nav.project_controls', {
+              defaultValue: 'Project Controls',
+            }),
+          },
+        ]}
+      />
 
-        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-2.5">
-            <Gauge className="mt-0.5 h-6 w-6 shrink-0 text-accent" />
-            <p className="text-sm text-content-secondary">
-              {t('controls.subtitle', {
-                defaultValue:
-                  'Cost, schedule, quality, safety, risk and change KPIs in one view. Click a tile to trace it back to the source records.',
-              })}
-              <span className="ml-1.5 rounded-full bg-surface-tertiary px-2 py-0.5 text-xs font-medium text-content-tertiary">
-                {projectId
-                  ? t('controls.scope_project', { defaultValue: 'This project' })
-                  : t('controls.portfolio', { defaultValue: 'Portfolio' })}
-              </span>
-            </p>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2">
+      {/* Canonical header row — module name + icon live in the top app bar.
+          The project/portfolio scope chip and refresh sit in the actions
+          slot (audit: project-controls-top, variant B unwrapped). */}
+      <PageHeader
+        srTitle={t('nav.project_controls', { defaultValue: 'Project Controls' })}
+        subtitle={t('controls.subtitle', {
+          defaultValue:
+            'Cost, schedule, quality, safety, risk and change KPIs in one view. Click a tile to trace it back to the source records.',
+        })}
+        actions={
+          <>
+            <span className="inline-flex items-center rounded-full bg-surface-tertiary px-2.5 py-1 text-xs font-medium text-content-tertiary">
+              {projectId
+                ? t('controls.scope_project', { defaultValue: 'This project' })
+                : t('controls.portfolio', { defaultValue: 'Portfolio' })}
+            </span>
             <Button
               variant="secondary"
               size="sm"
@@ -97,12 +98,34 @@ export function ProjectControlsPage() {
                 className={snapshotQ.isFetching ? 'h-4 w-4 animate-spin' : 'h-4 w-4'}
               />
             </Button>
-          </div>
-        </div>
+          </>
+        }
+      />
 
-        {/* Inline stat chips — key numbers the page already computes */}
-        {kpiCount > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+      {/* Canonical module intro — pain-named, copy from MODULE_INTRO_COPY. */}
+      <DismissibleInfo
+        storageKey="project-controls"
+        title={t('project-controls.intro_title', {
+          defaultValue: 'Catch the project slipping before it does',
+        })}
+        links={[
+          { label: t('nav.finance', { defaultValue: 'Finance' }), onClick: () => navigate('/finance') },
+          { label: t('nav.risks', { defaultValue: 'Risks' }), onClick: () => navigate('/risks') },
+          {
+            label: t('nav.changeorders', { defaultValue: 'Change Orders' }),
+            onClick: () => navigate('/changeorders'),
+          },
+        ]}
+      >
+        {t('project-controls.intro_body', {
+          defaultValue:
+            'Six domains, cost, schedule, quality, safety, risk and changes, land on one screen, every number status-banded green, amber or red from a single consolidated snapshot. Open the drill drawer on any tile to trace the figure back to the module that owns it, scoped to the selected project or across the whole portfolio when none is chosen.',
+        })}
+      </DismissibleInfo>
+
+      {/* Inline stat chips — key numbers the page already computes */}
+      {kpiCount > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-border-light bg-surface-primary/70 px-3 py-1 text-xs backdrop-blur">
               <span className="text-content-tertiary">
                 {t('controls.chip_domains', { defaultValue: 'Domains' })}
@@ -141,7 +164,6 @@ export function ProjectControlsPage() {
             </span>
           </div>
         )}
-      </div>
 
       {/* Alerts banner */}
       {alerts.length > 0 && (

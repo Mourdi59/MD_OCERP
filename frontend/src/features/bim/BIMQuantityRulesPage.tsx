@@ -55,7 +55,8 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-import { Badge, Breadcrumb, ConfirmDialog, EmptyState, SkeletonTable } from '@/shared/ui';
+import { Badge, Breadcrumb, ConfirmDialog, DismissibleInfo, EmptyState, SkeletonTable } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { apiGet } from '@/shared/lib/api';
 import { FolderOpen } from 'lucide-react';
 import BIMRequirementsImport from './BIMRequirementsImport';
@@ -2902,45 +2903,31 @@ export function BIMQuantityRulesPage() {
               : []),
             { label: t('nav.bim_rules', { defaultValue: 'BIM Rules' }) },
           ]}
-          className="mb-2"
+          className="mb-3"
         />
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-oe-blue/10 text-oe-blue">
-              <SlidersHorizontal size={20} />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-content-primary">
-                {lockedMode === 'requirements'
-                  ? t('bim_rules.page_title_requirements', {
-                      defaultValue: 'BIM Rules (Compliance)',
-                    })
-                  : t('bim_rules.page_title_quantity', {
-                      defaultValue: 'Quantity Rules',
-                    })}
-              </h1>
-              <p className="text-xs text-content-secondary">
-                {lockedMode === 'requirements'
-                  ? t('bim_rules.page_subtitle_requirements', {
-                      defaultValue:
-                        'Import and check BIM requirements (IDS, COBie, Excel) for your project.',
-                    })
-                  : t('bim_rules.page_subtitle_quantity', {
-                      defaultValue:
-                        'Bulk-link BIM elements to BOQ positions via pattern-based rules.',
-                    })}
-                {activeProjectName && (
-                  <>
-                    {' — '}
-                    <span className="font-medium text-content-primary">{activeProjectName}</span>
-                  </>
-                )}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {activeTab === 'quantity_rules' && (
+        <PageHeader
+          srTitle={
+            lockedMode === 'requirements'
+              ? t('bim_rules.page_title_requirements', {
+                  defaultValue: 'BIM Rules (Compliance)',
+                })
+              : t('bim_rules.page_title_quantity', {
+                  defaultValue: 'Quantity Rules',
+                })
+          }
+          subtitle={
+            lockedMode === 'requirements'
+              ? t('bim_rules.page_subtitle_requirements', {
+                  defaultValue:
+                    'Import and check BIM requirements (IDS, COBie, Excel) for your project.',
+                })
+              : t('bim_rules.page_subtitle_quantity', {
+                  defaultValue:
+                    'Bulk-link BIM elements to BOQ positions via pattern-based rules.',
+                })
+          }
+          actions={
+            activeTab === 'quantity_rules' ? (
               <button
                 type="button"
                 onClick={openCreate}
@@ -2949,9 +2936,27 @@ export function BIMQuantityRulesPage() {
                 <Plus size={13} />
                 {t('bim_rules.new_rule', { defaultValue: 'New rule' })}
               </button>
-            )}
-          </div>
-        </div>
+            ) : undefined
+          }
+        />
+
+        <DismissibleInfo
+          storageKey="bim-rules"
+          className="mt-4"
+          title={t('bim_rules.intro_title', {
+            defaultValue: 'Link hundreds of elements without clicking each one',
+          })}
+          links={[
+            { label: t('bim_rules.intro_link_bim', { defaultValue: 'BIM viewer' }), onClick: () => navigate('/bim') },
+            { label: t('bim_rules.intro_link_boq', { defaultValue: 'Open BOQ' }), onClick: () => navigate('/boq') },
+            { label: t('bim_rules.intro_link_matrix', { defaultValue: 'Requirements matrix' }), onClick: () => navigate('/requirements/matrix') },
+          ]}
+        >
+          {t('bim_rules.intro_body', {
+            defaultValue:
+              'Define a pattern such as category equals Walls and storey equals Level 01, then map it to a BOQ position that already exists or is created for you. Applying the rule links matching elements from a BIM model in bulk, so quantities roll into the BOQ instead of being linked by hand. The same page holds the EIR and information-requirement rules that incoming models are checked against.',
+          })}
+        </DismissibleInfo>
 
         {/* Tabs — hidden when the URL locks the page to a single mode so
             the Takeoff "BIM Rules" and Estimation "Quantity Rules" sidebar

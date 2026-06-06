@@ -20,6 +20,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Breadcrumb, Button, Card, Badge, Skeleton, EmptyState } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
+import { DismissibleInfo } from '@/shared/ui/DismissibleInfo';
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
@@ -278,37 +280,55 @@ export function AnalyticsPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
           { label: t('nav.analytics', { defaultValue: 'Analytics' }) },
         ]}
-        className="mb-4"
       />
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">
-            {t('analytics.title', { defaultValue: 'Cross-Project Analytics' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('analytics.subtitle', {
-              defaultValue: 'Aggregated KPIs across all projects',
-            })}
-          </p>
-        </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={<Download size={14} />}
-          onClick={handleExportCSV}
-          disabled={!sortedProjects.length}
-        >
-          {t('analytics.export_csv', { defaultValue: 'Export CSV' })}
-        </Button>
-      </div>
+      {/* Header — module name + icon live in the global top bar; this page
+          renders only the muted subtitle + actions (canon §2). */}
+      <PageHeader
+        srTitle={t('nav.analytics', { defaultValue: 'Analytics' })}
+        subtitle={t('analytics.subtitle', {
+          defaultValue: 'Aggregated KPIs across all projects',
+        })}
+        actions={
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Download size={14} />}
+            onClick={handleExportCSV}
+            disabled={!sortedProjects.length}
+          >
+            {t('analytics.export_csv', { defaultValue: 'Export CSV' })}
+          </Button>
+        }
+      />
+
+      <DismissibleInfo
+        storageKey="analytics"
+        title={t('analytics.intro_title', {
+          defaultValue: 'See which projects are bleeding money',
+        })}
+        links={[
+          {
+            label: t('nav.projects', { defaultValue: 'Projects' }),
+            onClick: () => navigate('/projects'),
+          },
+          {
+            label: t('nav.reporting', { defaultValue: 'Reporting' }),
+            onClick: () => navigate('/reporting'),
+          },
+        ]}
+      >
+        {t('analytics.intro_body', {
+          defaultValue:
+            'This rolls every project\'s budget against actual cost into one sortable table and bar chart, flagging which jobs are over budget and by how much, with currencies kept separate so a EUR job is never blended with a USD one. Filter by region or status, search, and export the comparison to CSV. Click a row to open that project, or switch to Reporting for the role-by-role KPI view.',
+        })}
+      </DismissibleInfo>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -698,19 +718,23 @@ function KPICard({
 }) {
   return (
     <Card>
+      {/* items-start keeps the icon + text on the same top baseline; the
+          text column is a top-anchored flex-col so a single-line value tile
+          and a 3-line multi-currency tile share the first-line position
+          even when the grid stretches every tile to equal height (audit S8). */}
       <div className="flex items-start gap-3">
         <div
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${iconBg} ${iconColor}`}
         >
           {icon}
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-content-tertiary">{label}</p>
+        <div className="flex min-w-0 flex-1 flex-col justify-start">
+          <p className="text-2xs font-medium uppercase tracking-wide text-content-tertiary">{label}</p>
           {valueNode ? (
             <div className="mt-1">{valueNode}</div>
           ) : (
             <div className="mt-1 flex items-center gap-2">
-              <span className="text-xl font-bold text-content-primary truncate">{value}</span>
+              <span className="text-lg font-semibold text-content-primary truncate">{value}</span>
               {badge}
             </div>
           )}
