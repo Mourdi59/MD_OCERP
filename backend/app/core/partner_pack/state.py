@@ -1,4 +1,4 @@
-"""Persisted "applied partner pack" state — survives restarts.
+"""Persisted "applied partner pack" state - survives restarts.
 
 A single global record (single-tenant, per the partner-pack ADR). Stored as
 JSON alongside the database, mirroring ``module_state.py``. This lets an admin
@@ -31,7 +31,7 @@ class AppliedPackState:
 
     slug: str
     pack_version: str = ""
-    # Full public manifest at apply time — lets Update diff old vs new.
+    # Full public manifest at apply time - lets Update diff old vs new.
     manifest_snapshot: dict[str, Any] = field(default_factory=dict)
     # Ledger of what the apply changed, so Un-apply can reverse it.
     effects: dict[str, Any] = field(default_factory=dict)
@@ -57,7 +57,7 @@ def load_applied_state(data_dir: Path | None = None) -> AppliedPackState | None:
             applied_by=raw.get("applied_by"),
         )
     except Exception:
-        logger.exception("Failed to read %s — ignoring applied pack state", path)
+        logger.exception("Failed to read %s - ignoring applied pack state", path)
         return None
 
 

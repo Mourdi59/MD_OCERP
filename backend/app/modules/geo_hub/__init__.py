@@ -1,5 +1,5 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""Geo Hub — Cesium 3D Tiles + cross-module geospatial integration.
+"""Geo Hub - Cesium 3D Tiles + cross-module geospatial integration.
 
 Adds geospatial capabilities to OpenConstructionERP:
 
@@ -21,12 +21,12 @@ Adds geospatial capabilities to OpenConstructionERP:
 Design notes (see ``RESEARCH_CESIUM_BENTLEY.md``):
 
 * CesiumJS, ``cesium-native``, ``3d-tiles-tools`` and ``gltf-pipeline``
-  are all Apache-2.0 — one-way compatible with our AGPL-3.0 community
+  are all Apache-2.0 - one-way compatible with our AGPL-3.0 community
   ship and our commercial enterprise license.
 * Tile generation runs as a job (``TileGenerationJob`` FSM) and writes
   output under ``tilesets/{tileset_id}/`` in the existing storage
   backend.
-* No Cesium ion key is required — terrain defaults to the WGS84
+* No Cesium ion key is required - terrain defaults to the WGS84
   ellipsoid. Cesium World Terrain is offered as a bring-your-own-key
   ``TerrainSource`` so the community ship has no third-party hard
   dependency.
@@ -38,7 +38,7 @@ from __future__ import annotations
 
 
 async def on_startup() -> None:
-    """Module startup hook — register permissions + event subscribers.
+    """Module startup hook - register permissions + event subscribers.
 
     The module loader calls ``on_startup`` exactly once at application
     boot. The work is delegated to local imports to keep import-time

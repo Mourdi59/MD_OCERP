@@ -1,4 +1,4 @@
-"""‌⁠‍Schedule Advanced ORM models — Last Planner System (LPS) + baselines.
+"""‌⁠‍Schedule Advanced ORM models - Last Planner System (LPS) + baselines.
 
 Tables:
     oe_schedule_advanced_master_schedule
@@ -14,7 +14,7 @@ Tables:
 
 All UUID PKs. ``task_ref`` and ``milestone_target_id`` are plain UUID columns
 (NOT SQLAlchemy ForeignKey) because they reference ``oe_tasks_task`` /
-``oe_schedule_*`` tables across module boundaries — see the architecture guide "critical
+``oe_schedule_*`` tables across module boundaries - see the architecture guide "critical
 lessons" point 2.
 """
 
@@ -82,7 +82,7 @@ class PhasePlan(Base):
     """‌⁠‍A pull-planning phase (e.g. "Foundations", "Tower Crane Phase").
 
     Created collaboratively in a pull session. ``milestone_target_id``
-    references a task UUID — kept as a plain UUID (NOT FK at ORM level)
+    references a task UUID - kept as a plain UUID (NOT FK at ORM level)
     because it crosses module boundaries.
     """
 
@@ -100,7 +100,7 @@ class PhasePlan(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     planned_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     planned_finish: Mapped[date | None] = mapped_column(Date, nullable=True)
-    # Plain UUID — references oe_tasks_task without ORM-level FK
+    # Plain UUID - references oe_tasks_task without ORM-level FK
     milestone_target_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     pulled_status: Mapped[str] = mapped_column(
         String(32),
@@ -188,7 +188,7 @@ class Constraint(Base):
         nullable=True,
         index=True,
     )
-    # Plain UUID — references oe_tasks_task across module boundary
+    # Plain UUID - references oe_tasks_task across module boundary
     task_ref: Mapped[uuid.UUID] = mapped_column(GUID(), nullable=False, index=True)
     constraint_type: Mapped[str] = mapped_column(String(32), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
@@ -223,7 +223,7 @@ class Constraint(Base):
 
 
 class WeeklyWorkPlan(Base):
-    """A weekly work plan — the "commitment week" of LPS.
+    """A weekly work plan - the "commitment week" of LPS.
 
     Holds commitments made by trade foremen in the Monday planning meeting.
     PPC (Percent Plan Complete) is computed when the plan is closed.
@@ -334,7 +334,7 @@ class Commitment(Base):
 class ReasonForNonCompletion(Base):
     """Documented reason a commitment was not completed.
 
-    Drives the LPS RNC pareto chart — root-cause analysis input for
+    Drives the LPS RNC pareto chart - root-cause analysis input for
     continuous improvement.
     """
 
@@ -527,13 +527,13 @@ class Calendar(Base):
         return f"<Calendar {self.name} (default={self.is_default})>"
 
 
-# ── Weekly commitment (Last Planner — Slice 1 CPM build) ───────────────────
+# ── Weekly commitment (Last Planner - Slice 1 CPM build) ───────────────────
 
 
 class WeeklyCommitment(Base):
     """A weekly Last-Planner commitment row tied to a CPM activity.
 
-    Slice 1 / v4.0 — a slimmer companion to :class:`Commitment` (which is
+    Slice 1 / v4.0 - a slimmer companion to :class:`Commitment` (which is
     scoped to a :class:`WeeklyWorkPlan`). This table is keyed directly by
     ``schedule_id`` so the CPM flow can read / write commitments without
     going through the full LPS hierarchy (master schedule → weekly plan
@@ -547,11 +547,11 @@ class WeeklyCommitment(Base):
 
     __tablename__ = "oe_schedule_advanced_weekly_commitment"
 
-    # No ORM-level FK on schedule_id — schedule lives in the
+    # No ORM-level FK on schedule_id - schedule lives in the
     # oe_schedule_schedule table (different module). Plain UUID column
     # per the cross-module convention used throughout schedule_advanced.
     schedule_id: Mapped[uuid.UUID] = mapped_column(GUID(), nullable=False, index=True)
-    # No FK on activity_id either — same reason.
+    # No FK on activity_id either - same reason.
     activity_id: Mapped[uuid.UUID] = mapped_column(GUID(), nullable=False, index=True)
     week_start: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     committed_by: Mapped[uuid.UUID | None] = mapped_column(
@@ -579,7 +579,7 @@ class WeeklyCommitment(Base):
         default=Decimal("0"),
         server_default="0",
         doc=(
-            "Percent Plan Complete — auto-computed as "
+            "Percent Plan Complete - auto-computed as "
             "actual_complete_pct / planned_complete_pct, clamped to [0, 1]. "
             "0 when planned_complete_pct is 0."
         ),
@@ -594,7 +594,7 @@ class WeeklyCommitment(Base):
 # Takt scheduling (a.k.a. line-of-balance / takt-time planning) models
 # repetitive work that cycles a fixed crew through a sequence of locations
 # (levels, blocks, zones) at a steady rhythm. It is parallel to the LPS and
-# CPM hierarchies above — it does NOT merge with MasterSchedule's task tree;
+# CPM hierarchies above - it does NOT merge with MasterSchedule's task tree;
 # instead a TaktSchedule hangs off a MasterSchedule as an alternative planning
 # lens for the repetitive portion of a project.
 
@@ -605,7 +605,7 @@ class TaktSchedule(Base):
     A takt schedule cycles a crew through an ordered list of
     :class:`Location` rows (the "location sequence") performing each
     :class:`TaktActivity` in turn. ``target_cycle_days`` is the planned
-    rhythm — how long the crew spends in each location before handing
+    rhythm - how long the crew spends in each location before handing
     off to the next trade. ``takt_rhythm_tolerance_days`` is the skew
     threshold above which an observed cycle is flagged as a rhythm break.
     """

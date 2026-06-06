@@ -3,8 +3,8 @@
 """‌⁠‍Request/response schemas for the EAC v2 CRUD API.
 
 Kept separate from :mod:`app.modules.eac.schemas` (which mirrors the
-canonical ``EacRuleDefinition`` JSON Schema) so transport concerns —
-pagination, soft-delete, version-history rendering — don't pollute
+canonical ``EacRuleDefinition`` JSON Schema) so transport concerns -
+pagination, soft-delete, version-history rendering - don't pollute
 the canonical types that ship to the frontend type generator.
 """
 
@@ -340,10 +340,10 @@ class EacCompileResponse(BaseModel):
 class EacRunStatusResponse(BaseModel):
     """Output of ``GET /runs/{run_id}/status``.
 
-    ``progress`` is in ``[0.0, 1.0]`` — the frontend renders it as a
+    ``progress`` is in ``[0.0, 1.0]`` - the frontend renders it as a
     percentage with one decimal. ``errors`` is a flat list of human
     readable strings sourced from each rule outcome so the run-detail
-    header can show "Rule 'F90' — formula crashed at row 42" without
+    header can show "Rule 'F90' - formula crashed at row 42" without
     drilling.
     """
 
@@ -369,7 +369,7 @@ class EacRunCancelResponse(BaseModel):
 class EacRunRerunRequest(BaseModel):
     """Payload for ``POST /runs/{run_id}:rerun``.
 
-    The caller supplies the elements explicitly — the engine doesn't
+    The caller supplies the elements explicitly - the engine doesn't
     persist the original input set, and rebuilding it from the BIM
     model is the responsibility of the caller (router resolves
     ``model_id`` → elements; tests pass them inline).

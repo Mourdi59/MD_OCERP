@@ -6,15 +6,15 @@ Without this, every ``RequirePermission("integrations.*")`` gate in
 RBAC engine treats as "unknown → deny" for every non-admin role.
 
 Role mapping (R7 audit, 2026-05-24):
-    integrations.read    = VIEWER   — list configs / webhooks / deliveries
-    integrations.create  = MANAGER  — credentials (webhook URLs, API
+    integrations.read    = VIEWER   - list configs / webhooks / deliveries
+    integrations.create  = MANAGER  - credentials (webhook URLs, API
                                        tokens, bot secrets) carry outbound
                                        cross-tenant risk; only managers+
                                        may wire up new connectors
-    integrations.update  = MANAGER  — rotating/re-pointing credentials is
+    integrations.update  = MANAGER  - rotating/re-pointing credentials is
                                        equivalent in blast-radius to
                                        creating new ones
-    integrations.delete  = MANAGER  — disconnecting an active integration
+    integrations.delete  = MANAGER  - disconnecting an active integration
                                        silently drops notification flow;
                                        only managers+ may sever it
 

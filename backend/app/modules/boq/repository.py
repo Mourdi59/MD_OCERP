@@ -1,7 +1,7 @@
 """‌⁠‍BOQ data access layer.
 
 All database queries for BOQs, positions, markups, and activity logs live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid
@@ -39,7 +39,7 @@ class BOQRepository:
     ) -> tuple[list[BOQ], int]:
         """List BOQs for a project with pagination. Returns (boqs, total_count).
 
-        Positions and markups are NOT eagerly loaded here — use
+        Positions and markups are NOT eagerly loaded here - use
         ``grand_totals_for_boqs`` to compute totals via a single aggregate query.
         """
         base = select(BOQ).where(BOQ.project_id == project_id)
@@ -48,7 +48,7 @@ class BOQRepository:
         count_stmt = select(func.count()).select_from(base.subquery())
         total = (await self.session.execute(count_stmt)).scalar_one()
 
-        # Fetch — skip eager loading of positions/markups for list queries
+        # Fetch - skip eager loading of positions/markups for list queries
         stmt = (
             base.options(noload(BOQ.positions), noload(BOQ.markups))
             .order_by(BOQ.created_at.desc())
@@ -67,7 +67,7 @@ class BOQRepository:
         """Compute grand total (direct cost + markups) for each BOQ by ID.
 
         Convenience wrapper around :meth:`totals_for_boqs` for the
-        majority of callers that only need the grand total — keeps the
+        majority of callers that only need the grand total - keeps the
         existing `dict[uuid.UUID, float]` shape.
         """
         breakdown = await self.totals_for_boqs(boq_ids)
@@ -122,7 +122,7 @@ class BOQRepository:
                 if m.markup_type == "percentage":
                     pct = Decimal(m.percentage or "0")
                     # BUG-B-005: ``subtotal`` bases on direct_cost +
-                    # Σ(preceding markups), identical to ``cumulative`` —
+                    # Σ(preceding markups), identical to ``cumulative`` -
                     # keep list/detail rollup consistent with
                     # ``_calculate_markup_amounts``.
                     base = running if m.apply_to in ("cumulative", "subtotal") else dc
@@ -227,7 +227,7 @@ class PositionRepository:
         BUG-B-006: ``list_for_boq`` carries a hard ``limit=1000`` default for
         paginated UI listing. Every money rollup (direct_cost, grand_total,
         markup base, statistics, cost-breakdown, recalculate-rates,
-        duplicate) MUST sum all positions — a 1500-position BOQ was silently
+        duplicate) MUST sum all positions - a 1500-position BOQ was silently
         dropping positions 1001+ from every total. Aggregation callers use
         this method so the count limit can never under-state a tender.
         """
@@ -266,13 +266,13 @@ class PositionRepository:
     async def reorder(self, position_ids: list[uuid.UUID], boq_id: uuid.UUID) -> None:
         """Reorder positions by assigning sort_order based on list index.
 
-        Only touches positions that belong to ``boq_id`` — foreign IDs are
+        Only touches positions that belong to ``boq_id`` - foreign IDs are
         silently skipped (UPDATE rows=0) rather than mutating positions in
         another user's BOQ (cross-tenant sort_order pollution).
 
         Args:
             position_ids: Ordered list of position UUIDs. Index becomes sort_order.
-            boq_id: Owning BOQ — positions not in this BOQ are not affected.
+            boq_id: Owning BOQ - positions not in this BOQ are not affected.
         """
         for index, pid in enumerate(position_ids):
             stmt = update(Position).where(Position.id == pid, Position.boq_id == boq_id).values(sort_order=index)
@@ -531,7 +531,7 @@ class ActivityLogRepository:
 
 
 class QuantityLinkRepository:
-    """Data access for QuantityLink — model→position quantity bindings."""
+    """Data access for QuantityLink - model→position quantity bindings."""
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session

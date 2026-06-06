@@ -159,7 +159,7 @@ async def list_tasks(
     """
     await verify_project_access(project_id, user_id, session)
     if bim_element_id:
-        # JSON-contains filter — delegated to the service for dialect handling.
+        # JSON-contains filter - delegated to the service for dialect handling.
         tasks_with_bim = await service.get_tasks_for_bim_element(
             bim_element_id,
             project_id=project_id,
@@ -595,7 +595,7 @@ async def import_tasks_file(
             detail="Uploaded file is empty.",
         )
 
-    # Magic-byte sniff — the extension is hostile-supplied, so reject any
+    # Magic-byte sniff - the extension is hostile-supplied, so reject any
     # payload whose first bytes don't match the declared format before we
     # hand the buffer to openpyxl / csv.reader. Mirrors the contacts
     # importer (R7 audit pattern). CSV has no canonical signature; reject
@@ -886,7 +886,7 @@ async def update_task_bim_links(
 ) -> TaskResponse:
     """Replace the full set of BIM element ids linked to this task.
 
-    Idempotent set semantics — the incoming ``bim_element_ids`` list
+    Idempotent set semantics - the incoming ``bim_element_ids`` list
     fully overwrites the previously stored list. Sending an empty list
     clears all links.
     """
@@ -921,7 +921,7 @@ async def tasks_similar(
 ) -> dict[str, Any]:
     """Return tasks semantically similar to the given one.
 
-    By default the search is **cross-project** — that's the highest-value
+    By default the search is **cross-project** - that's the highest-value
     use case: users want to find how a similar task / defect / inspection
     was handled in past projects so they can reuse the resolution.  Pass
     ``cross_project=false`` to limit the search to the same project.

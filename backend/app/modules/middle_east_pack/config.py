@@ -50,17 +50,17 @@ PACK_CONFIG: dict[str, Any] = {
     "standards": [
         {
             "code": "CESMM4",
-            "name": "CESMM4 — Civil Engineering Standard Method of Measurement",
+            "name": "CESMM4 - Civil Engineering Standard Method of Measurement",
             "description": "Widely used in GCC for civil and infrastructure works",
         },
         {
             "code": "POMI",
-            "name": "POMI — Principles of Measurement International",
+            "name": "POMI - Principles of Measurement International",
             "description": "RICS international measurement standard",
         },
         {
             "code": "ICMS",
-            "name": "ICMS — International Construction Measurement Standards",
+            "name": "ICMS - International Construction Measurement Standards",
             "description": "Global cost classification framework",
         },
     ],
@@ -123,7 +123,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "QA_VAT",
-            "name": "Qatar — No VAT",
+            "name": "Qatar - No VAT",
             "type": "vat",
             "country": "QA",
             "rate_pct": "0",
@@ -148,7 +148,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "KW_VAT",
-            "name": "Kuwait — No VAT",
+            "name": "Kuwait - No VAT",
             "type": "vat",
             "country": "KW",
             "rate_pct": "0",
@@ -175,7 +175,7 @@ PACK_CONFIG: dict[str, Any] = {
         "weight": "kg",
         "temperature": "°C",
     },
-    # ── VAT rates (Wave 25 — GCC + AE / SA / BH / OM; QA & KW no VAT yet) ────
+    # ── VAT rates (Wave 25 - GCC + AE / SA / BH / OM; QA & KW no VAT yet) ────
     "vat_rates": {
         "AE": {"standard": Decimal("0.05"), "zero": Decimal("0.00")},
         "SA": {"standard": Decimal("0.15"), "zero": Decimal("0.00")},

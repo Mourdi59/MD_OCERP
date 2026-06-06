@@ -3,13 +3,13 @@
 Mounted at ``/api/v1/service/`` by the module loader.
 
 Endpoint groups:
-    /contracts             — CRUD + dashboard
-    /assets                — CRUD
-    /tickets               — CRUD + dispatch/resolve/close
-    /work-orders           — CRUD + complete/bill
-    /sla-definitions       — CRUD
-    /schedules             — CRUD (PPM)
-    /checklists            — CRUD (inspection templates)
+    /contracts             - CRUD + dashboard
+    /assets                - CRUD
+    /tickets               - CRUD + dispatch/resolve/close
+    /work-orders           - CRUD + complete/bill
+    /sla-definitions       - CRUD
+    /schedules             - CRUD (PPM)
+    /checklists            - CRUD (inspection templates)
 
 All endpoints require auth via ``RequirePermission`` (or read-permission
 where the action is observational).
@@ -218,7 +218,7 @@ async def update_contract(
     """Update a service contract."""
     await _verify_contract_project(contract_id, user_id, session, service)
     # Also guard the *target* project_id when the caller is moving the
-    # contract under a new project — prevents privilege escalation by
+    # contract under a new project - prevents privilege escalation by
     # reassigning a contract you can no longer reach.
     if data.project_id is not None:
         await verify_project_access(data.project_id, user_id, session)
@@ -445,7 +445,7 @@ async def update_ticket(
 
     Dispatch-protected fields (``assigned_to``, ``sla_due_at``,
     ``sla_breach_notified_at``, ``sla_breached_at``) additionally require
-    ``service.dispatch`` — see :data:`TICKET_DISPATCH_PROTECTED_FIELDS`.
+    ``service.dispatch`` - see :data:`TICKET_DISPATCH_PROTECTED_FIELDS`.
     Without this gate an EDITOR with ``service.update`` could self-assign
     internal tickets or silence SLA-breach alerts.
     """
@@ -705,7 +705,7 @@ async def scan_sla_breaches(
     ``service.sla.breached`` event exactly once.
 
     Read-only polling (``notify=false``) only needs ``service.read``. Actually
-    notifying — which stamps the ticket and emits ``service.sla.breached`` —
+    notifying - which stamps the ticket and emits ``service.sla.breached`` -
     is a side-effecting dispatcher action and requires ``service.dispatch``;
     a viewer cannot trigger event fan-out or mutate ticket state.
     """
@@ -735,7 +735,7 @@ async def check_ticket_breaches(
 ) -> SLABreachCheckResponse:
     """Admin trigger: stamp ``sla_breached_at`` on every now-overdue ticket.
 
-    Idempotent — only tickets where ``sla_breached_at IS NULL`` are touched.
+    Idempotent - only tickets where ``sla_breached_at IS NULL`` are touched.
     Emits ``service.sla.breached`` once per newly stamped ticket.
     """
     if contract_id is not None:

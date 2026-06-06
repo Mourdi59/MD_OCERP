@@ -10,7 +10,7 @@ def register_file_saved_view_permissions() -> None:
 
     Viewers may read their views (and any project-shared ones); editors
     may create, rename, repin, reorder and delete. No separate share
-    permission — toggling ``is_shared`` is part of the write verb because
+    permission - toggling ``is_shared`` is part of the write verb because
     the share is scoped to the owner's own project membership.
     """
     permission_registry.register_module_permissions(

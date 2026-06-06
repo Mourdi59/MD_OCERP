@@ -3,7 +3,7 @@
 """‌⁠‍Polars-based lookup for CWICR's full 84-column rate data.
 
 The Qdrant store (:mod:`app.modules.costs.qdrant_adapter`) carries a
-deliberately narrow payload — only the keys and the columns the Query
+deliberately narrow payload - only the keys and the columns the Query
 API filters on. Heavy fields (prices, labor lines, full resource list,
 budget sums, regional adjustments) live in per-region parquet:
 
@@ -16,7 +16,7 @@ country and returns rows by ``rate_code`` in O(50ms) on warm cache.
 Why polars (not pandas)
 -----------------------
 
-* ``scan_parquet`` is mmap-backed and lazy — we never materialise the
+* ``scan_parquet`` is mmap-backed and lazy - we never materialise the
   full 50-100K-row DataFrame for an N-row lookup.
 * Predicate pushdown means the parquet engine only reads the row groups
   that contain the wanted ``rate_code`` values.
@@ -31,7 +31,7 @@ Resolution order
 3. ``~/.openestimator/cwicr/`` (consistent with the embedded Qdrant
    default).
 
-The module is import-safe even when ``polars`` is missing — heavy
+The module is import-safe even when ``polars`` is missing - heavy
 imports happen on first call so a fresh install without the
 ``[semantic]`` extra still boots.
 """
@@ -60,7 +60,7 @@ def _resolve_root() -> Path:
     """‌⁠‍Return the configured CWICR parquet root.
 
     Created on first call if it doesn't exist (the empty case is
-    handled by the per-country resolver — a missing parquet for a given
+    handled by the per-country resolver - a missing parquet for a given
     country surfaces as an empty result, not an exception).
     """
 
@@ -120,7 +120,7 @@ def _scan(parquet_path: str) -> Any:
 
     try:
         import polars as pl
-    except ImportError as exc:  # pragma: no cover — optional [semantic] extra
+    except ImportError as exc:  # pragma: no cover - optional [semantic] extra
         raise RuntimeError(
             "polars is not installed; install the [semantic] extra: pip install openconstructionerp[semantic]"
         ) from exc
@@ -135,7 +135,7 @@ async def lookup_rows(
 ) -> list[dict[str, Any]]:
     """Return full parquet rows for the given rate codes, in input order.
 
-    Codes that don't match in the parquet are dropped silently — the
+    Codes that don't match in the parquet are dropped silently - the
     caller can re-correlate by the ``rate_code`` field on each returned
     row when input-order alignment matters. Empty input or missing
     parquet returns ``[]``.
@@ -195,11 +195,11 @@ def clear_parquet_caches() -> None:
 
     Two caches are cleared:
 
-    * :func:`_parquet_for_country` — directory scan results keyed on the
+    * :func:`_parquet_for_country` - directory scan results keyed on the
       upper-cased country head (``DE``, ``US``, etc.). Must be cleared
       whenever the set of parquet files changes so the path resolver
       discovers newly-added files.
-    * :func:`_scan` — Polars ``LazyFrame`` handles keyed on the absolute
+    * :func:`_scan` - Polars ``LazyFrame`` handles keyed on the absolute
       parquet path string. A ``LazyFrame`` holds an mmap/file descriptor
       open on all platforms. Clearing this cache closes those handles,
       which is important on Windows where an open mmap blocks file

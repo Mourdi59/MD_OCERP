@@ -1,4 +1,4 @@
-"""Optional embedded PostgreSQL runtime — a real PG16 in-process, no Docker.
+"""Optional embedded PostgreSQL runtime - a real PG16 in-process, no Docker.
 
 Boots a PostgreSQL 16 cluster from the ``pixeltable-pgserver`` wheel (bundled PG
 binaries) and points the app's ``DATABASE_URL`` / ``DATABASE_SYNC_URL`` at it, so
@@ -16,7 +16,7 @@ Ordering contract
 *import time*. :func:`boot` therefore MUST run before the first ``from app...``
 import that pulls in ``app.database`` (and before ``get_settings()`` is cached).
 The CLI calls it from ``_setup_env``, which every command runs before importing
-any app module — so the contract holds for ``serve``/``init-db``/``seed``.
+any app module - so the contract holds for ``serve``/``init-db``/``seed``.
 
 Single-process only: run ONE uvicorn worker with embedded PG (the default). For
 multi-worker deployments use an external PostgreSQL and set ``DATABASE_URL``
@@ -72,14 +72,14 @@ def emit_stage(stage: str, status: str, detail: str = "") -> None:
 def is_requested() -> bool:
     """True when the app should run on the embedded PostgreSQL cluster.
 
-    Embedded PostgreSQL is the **default** runtime — a fresh
+    Embedded PostgreSQL is the **default** runtime - a fresh
     ``openconstructionerp serve`` boots a real in-process PG16 (no Docker). The
     operator opts out in either of two ways, checked in order:
 
-    * an explicit ``DATABASE_URL`` in the environment — "use my own database",
+    * an explicit ``DATABASE_URL`` in the environment - "use my own database",
       so we never override it with an embedded cluster;
     * ``OE_USE_EMBEDDED_PG`` set to a falsy value (``0``/``false``/``no``/``off``)
-      — explicit opt-out (typically paired with an external PG set via
+      - explicit opt-out (typically paired with an external PG set via
       ``DATABASE_URL``, which is also covered by the rule above).
 
     Otherwise (the default, and any truthy ``OE_USE_EMBEDDED_PG``) it returns
@@ -230,7 +230,7 @@ def boot(data_dir: Path | str) -> bool:
 
     try:
         # get_uri() is portable: TCP loopback on Windows, a unix socket on
-        # Linux/macOS. Swap only the SQLAlchemy driver — never hand-parse it.
+        # Linux/macOS. Swap only the SQLAlchemy driver - never hand-parse it.
         base = make_url(srv.get_uri())
         async_url = base.set(drivername="postgresql+asyncpg")
         sync_url = base.set(drivername="postgresql+psycopg2")

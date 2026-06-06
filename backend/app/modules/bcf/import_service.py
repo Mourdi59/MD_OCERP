@@ -3,7 +3,7 @@
 
 This module is the **inverse** of :class:`app.modules.bcf.service.BCFExportService`:
 it takes a ``.bcfzip`` produced by Revit / ArchiCAD / Solibri (or by our
-own BCFWriter — round-trip!) and upserts each Topic into the project's
+own BCFWriter - round-trip!) and upserts each Topic into the project's
 :class:`app.modules.clash.models.ClashIssue` table.
 
 Design pillars
@@ -14,7 +14,7 @@ Design pillars
    alembic migration (``v41_clash_signature_smart_issues``) hasn't run,
    the service raises :class:`BCFImportFeatureUnavailable` → the router
    maps that to a structured 503 instead of a 500.
-3. **Idempotent.** Re-importing the same archive produces 0 changes —
+3. **Idempotent.** Re-importing the same archive produces 0 changes -
    topics are upserted by ``(project_id, server_assigned_id)`` falling
    back to ``(project_id, topic.guid)`` reinterpreted as a signature.
 4. **Single transaction.** The session is owned by the request; we
@@ -141,7 +141,7 @@ class BCFImportService:
         """Parse ``raw`` (.bcfzip) and upsert each Topic as a ClashIssue.
 
         Args:
-            project_id: target project — every created row scopes to this id.
+            project_id: target project - every created row scopes to this id.
             raw: the raw ``.bcfzip`` bytes (multipart upload body).
             current_user_id: id of the caller (for the ``ClashRun``
                 created-by stamp; the row is the import-source run).
@@ -149,7 +149,7 @@ class BCFImportService:
         Returns:
             :class:`ImportReport` with per-action counters + per-topic
             error list. A topic that fails individually does NOT roll
-            back its siblings — the report carries the failure inline so
+            back its siblings - the report carries the failure inline so
             the UI can show "39 imported, 1 failed" cleanly.
 
         Raises:
@@ -193,7 +193,7 @@ class BCFImportService:
 
         # 5. Mint a "BCF import" ClashRun the new issues will reference.
         #    A re-import re-uses any prior import run for the same archive
-        #    when no new rows are created — avoiding garbage runs.
+        #    when no new rows are created - avoiding garbage runs.
         run = await self._get_or_create_import_run(ClashRun, project_id, current_user_id, archive_bytes=raw)
 
         for ptopic in parsed.topics:
@@ -369,7 +369,7 @@ class BCFImportService:
             existing.tags = new_tags
             changed = True
         # Always re-stamp the last-seen run when an archive carries the
-        # topic — that's the whole point of the BCF round-trip.
+        # topic - that's the whole point of the BCF round-trip.
         if getattr(existing, "last_seen_run_id", None) != run.id:
             existing.last_seen_run_id = run.id
             changed = True
@@ -381,7 +381,7 @@ class BCFImportService:
 
         Our exporter uses the 40-char SHA-1 hex clash signature directly
         as the BCF topic guid. A non-hex / non-uuid input still needs a
-        stable hash so re-import is idempotent — we SHA-1 it ourselves.
+        stable hash so re-import is idempotent - we SHA-1 it ourselves.
         """
         if not guid:
             return ""
@@ -402,7 +402,7 @@ class BCFImportService:
         key = raw.strip().lower()
         if key in _STATUS_MAP:
             return _STATUS_MAP[key]
-        logger.warning("Unknown BCF TopicStatus %r — defaulting to 'new'", raw)
+        logger.warning("Unknown BCF TopicStatus %r - defaulting to 'new'", raw)
         return "new"
 
     @staticmethod
@@ -413,7 +413,7 @@ class BCFImportService:
         key = raw.strip().lower()
         if key in _PRIORITY_MAP:
             return _PRIORITY_MAP[key]
-        logger.warning("Unknown BCF Priority %r — defaulting to 'medium'", raw)
+        logger.warning("Unknown BCF Priority %r - defaulting to 'medium'", raw)
         return "medium"
 
 
@@ -429,7 +429,7 @@ __all__ = [
     "ImportReport",
 ]
 
-# Mark UTC as referenced — defensive future-proofing if we ever stamp
+# Mark UTC as referenced - defensive future-proofing if we ever stamp
 # import timestamps directly on ClashRun (currently created_at fires).
 _ = UTC
 _ = datetime

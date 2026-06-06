@@ -1,4 +1,4 @@
-"""‌⁠‍Catalog resource service — business logic for resource catalog management.
+"""‌⁠‍Catalog resource service - business logic for resource catalog management.
 
 Stateless service layer. Handles:
 - Resource CRUD
@@ -257,7 +257,7 @@ class CatalogResourceService:
                 f"Import the cost database first via /v1/costs/load-cwicr/{region}",
             )
 
-        # Determine currency from first cost item (no project context here —
+        # Determine currency from first cost item (no project context here -
         # this is a tenant-wide region extraction; rely on CostItem.currency).
         currency = ""
         first_item = cost_items[0]
@@ -455,7 +455,7 @@ class CatalogResourceService:
                     max_price=_fmt_price(max_rate),
                     # Inherit currency from the parent CostItem when
                     # available. Empty (NOT NULL allows ``""``) when the
-                    # parent has no currency stamped — the renderer
+                    # parent has no currency stamped - the renderer
                     # falls back to the bare-number formatter rather
                     # than mis-stamping EUR onto a USD/GBP/JPY rate.
                     currency=comp.get("currency") or "",

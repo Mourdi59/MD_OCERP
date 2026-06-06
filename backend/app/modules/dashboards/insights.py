@@ -1,10 +1,10 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Quick-Insight Panel — auto-chart heuristics (T02).
+"""‌⁠‍Quick-Insight Panel - auto-chart heuristics (T02).
 
 Given a snapshot's tabular data (entities + flattened attributes), produce
 a small bundle of "interesting" charts using rule-based heuristics. No
-ML — the goal is "show me something useful in <500ms" rather than
+ML - the goal is "show me something useful in <500ms" rather than
 optimal chart selection.
 
 Heuristic catalogue
@@ -20,7 +20,7 @@ Skipped automatically:
 * Columns where every value is null.
 * Columns where every value is identical (zero variance / single category).
 * Columns whose name looks like a primary key (``id``, ``*_id``, ``*_guid``,
-  ``uuid``) — these are visually noisy.
+  ``uuid``) - these are visually noisy.
 * Columns whose values look like UUIDs (≥80% match the canonical UUID regex).
 
 Ranking
@@ -124,27 +124,27 @@ def generate_quick_insights(
     usable = _classify_columns(df)
     candidates: list[InsightChart] = []
 
-    # Histograms — one per numeric column.
+    # Histograms - one per numeric column.
     for col in usable["numeric"]:
         chart = _try_histogram(df, col)
         if chart is not None:
             candidates.append(chart)
 
-    # Bars — one per (numeric, categorical) pairing whose cat is small.
+    # Bars - one per (numeric, categorical) pairing whose cat is small.
     for num_col in usable["numeric"]:
         for cat_col in usable["categorical"]:
             chart = _try_bar(df, num_col, cat_col)
             if chart is not None:
                 candidates.append(chart)
 
-    # Lines — one per (datetime, numeric) pairing.
+    # Lines - one per (datetime, numeric) pairing.
     for dt_col in usable["datetime"]:
         for num_col in usable["numeric"]:
             chart = _try_line(df, dt_col, num_col)
             if chart is not None:
                 candidates.append(chart)
 
-    # Scatter — pairwise numeric correlations.
+    # Scatter - pairwise numeric correlations.
     numeric_cols = usable["numeric"]
     for i, a in enumerate(numeric_cols):
         for b in numeric_cols[i + 1 :]:
@@ -152,7 +152,7 @@ def generate_quick_insights(
             if chart is not None:
                 candidates.append(chart)
 
-    # Donuts — one per low-cardinality categorical.
+    # Donuts - one per low-cardinality categorical.
     for col in usable["categorical"]:
         chart = _try_donut(df, col)
         if chart is not None:
@@ -168,7 +168,7 @@ def _classify_columns(df: pd.DataFrame) -> dict[str, list[str]]:
     """Bucket columns into ``numeric`` / ``categorical`` / ``datetime``.
 
     Drops PK-shaped columns, all-null columns, all-same-value columns,
-    and UUID-shaped object columns. The rules are deliberately loose —
+    and UUID-shaped object columns. The rules are deliberately loose -
     we'd rather skip a borderline-useful column than emit a useless
     chart.
     """
@@ -200,7 +200,7 @@ def _classify_columns(df: pd.DataFrame) -> dict[str, list[str]]:
         # Object-typed: tag as categorical unless it looks like UUIDs.
         if _looks_like_uuid_column(series):
             continue
-        # Try datetime parse — pandas treats parseable strings as object.
+        # Try datetime parse - pandas treats parseable strings as object.
         # Suppress the "could not infer format" warning: if the column
         # is heterogeneous we'd rather silently bucket it as categorical.
         import warnings
@@ -209,7 +209,7 @@ def _classify_columns(df: pd.DataFrame) -> dict[str, list[str]]:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", UserWarning)
                 parsed = pd.to_datetime(series, errors="coerce", utc=False)
-        except Exception:  # pragma: no cover — defensive
+        except Exception:  # pragma: no cover - defensive
             parsed = None
         if parsed is not None and parsed.notna().sum() >= max(5, int(len(series) * 0.5)):
             datetime_.append(str(col))
@@ -319,7 +319,7 @@ def _try_line(
     if sub.empty or sub[dt_col].nunique() < 3:
         return None
 
-    # Resample to a sensible bucket — at most ~50 points on the line.
+    # Resample to a sensible bucket - at most ~50 points on the line.
     span_days = (sub[dt_col].max() - sub[dt_col].min()).days or 1
     if span_days > 365 * 2:
         rule = "ME"  # month-end (replaces deprecated "M")
@@ -369,7 +369,7 @@ def _try_scatter(
 
         corr_matrix = np.corrcoef(a_arr, b_arr)
         r = float(corr_matrix[0, 1])
-    except Exception:  # pragma: no cover — defensive
+    except Exception:  # pragma: no cover - defensive
         return None
     if not math.isfinite(r) or abs(r) < _MIN_CORRELATION:
         return None
@@ -469,7 +469,7 @@ def _safe_histogram(series: pd.Series, bins: int):
 
         counts, edges = np.histogram(series.to_numpy(), bins=bins)
         return counts, edges
-    except Exception:  # pragma: no cover — defensive
+    except Exception:  # pragma: no cover - defensive
         return None, None
 
 

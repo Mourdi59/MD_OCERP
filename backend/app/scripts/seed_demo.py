@@ -64,7 +64,7 @@ async def main() -> None:
             headers=headers,
             json={
                 "project_id": project_id,
-                "name": "LV 01 — Rohbauarbeiten",
+                "name": "LV 01 - Rohbauarbeiten",
                 "description": "Leistungsverzeichnis Rohbau: Erdarbeiten, Beton, Mauerwerk, Stahlbau",
             },
         )
@@ -72,7 +72,7 @@ async def main() -> None:
         boq_id = boq["id"]
         print(f"  BOQ: {boq['name']} (id: {boq_id})")
 
-        # 5. Add positions — realistic German construction BOQ
+        # 5. Add positions - realistic German construction BOQ
         positions = [
             # Erdarbeiten (KG 310)
             {
@@ -373,7 +373,7 @@ async def main() -> None:
         for item in cost_items:
             r = await c.post("/api/v1/costs/", headers=headers, json=item)
             if r.status_code in (200, 201):
-                print(f"  {item['code']} — {item['description'][:50]}")
+                print(f"  {item['code']} - {item['description'][:50]}")
             else:
                 print(f"  ERROR {r.status_code}: {r.text[:80]}")
 

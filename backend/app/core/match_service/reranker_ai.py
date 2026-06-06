@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍LLM rerank tier — opt-in, cost-capped, gracefully degrades.
+"""‌⁠‍LLM rerank tier - opt-in, cost-capped, gracefully degrades.
 
 When ``MatchRequest.use_reranker=True`` the ranker calls
 :func:`rerank_top_k` to ask an LLM to re-score the top candidates by
@@ -76,7 +76,7 @@ _SYSTEM_PROMPT = (
 
 
 def _build_user_prompt(envelope: ElementEnvelope, candidates: list[MatchCandidate]) -> str:
-    """‌⁠‍Render the rerank prompt body — element + shortlist as JSON."""
+    """‌⁠‍Render the rerank prompt body - element + shortlist as JSON."""
     element_payload: dict[str, Any] = {
         "category": envelope.category,
         "description": envelope.description,
@@ -105,19 +105,19 @@ def _build_user_prompt(envelope: ElementEnvelope, candidates: list[MatchCandidat
         + json.dumps(element_payload, ensure_ascii=False, indent=2)
         + "\n\nCANDIDATES:\n"
         + json.dumps(candidate_payloads, ensure_ascii=False, indent=2)
-        + "\n\nReturn JSON only — no prose, no markdown."
+        + "\n\nReturn JSON only - no prose, no markdown."
     )
 
 
 def _parse_rerank_response(raw: str) -> list[dict[str, Any]]:
     """‌⁠‍Best-effort parse of the LLM rerank output.
 
-    Returns an empty list on any failure — callers must treat that as
+    Returns an empty list on any failure - callers must treat that as
     "rerank gave us nothing useful, keep the boosted ranking".
     """
     try:
         from app.modules.ai.ai_client import extract_json  # noqa: PLC0415
-    except ImportError:  # pragma: no cover — defensive
+    except ImportError:  # pragma: no cover - defensive
         return []
     parsed = extract_json(raw)
     if isinstance(parsed, list):
@@ -152,7 +152,7 @@ async def rerank_top_k(
 
     Returns ``(ranked_candidates, cost_usd)``. On any failure (no API
     key, network error, malformed response, or projected cost over the
-    cap) returns ``(input_unchanged, 0.0)`` — never raises.
+    cap) returns ``(input_unchanged, 0.0)`` - never raises.
     """
     if not candidates:
         return candidates, 0.0
@@ -160,7 +160,7 @@ async def rerank_top_k(
     head = candidates[:k]
     tail = candidates[k:]
 
-    # Cheap upfront cost gate — refuse if even the empty payload would
+    # Cheap upfront cost gate - refuse if even the empty payload would
     # exceed the cap. Real cost reported by the AI client is checked
     # again after the call.
     if _estimate_cost_usd(RERANK_MAX_TOKENS) > RERANK_MAX_COST_USD:
@@ -172,7 +172,7 @@ async def rerank_top_k(
 
     try:
         from app.modules.ai.ai_client import call_ai, resolve_provider_and_key
-    except ImportError:  # pragma: no cover — defensive
+    except ImportError:  # pragma: no cover - defensive
         return candidates, 0.0
 
     try:
@@ -193,13 +193,13 @@ async def rerank_top_k(
             prompt=prompt,
             max_tokens=RERANK_MAX_TOKENS,
         )
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug("rerank LLM call failed: %s", exc)
         return candidates, 0.0
 
     cost = _estimate_cost_usd(tokens)
     if cost > RERANK_MAX_COST_USD:
-        logger.debug("rerank cost %.4f exceeded cap %.4f — discarding result", cost, RERANK_MAX_COST_USD)
+        logger.debug("rerank cost %.4f exceeded cap %.4f - discarding result", cost, RERANK_MAX_COST_USD)
         return candidates, 0.0
 
     parsed = _parse_rerank_response(raw)

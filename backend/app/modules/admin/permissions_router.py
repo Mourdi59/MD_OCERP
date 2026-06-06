@@ -1,4 +1,4 @@
-"""‌⁠‍Admin — permissions matrix endpoint.
+"""‌⁠‍Admin - permissions matrix endpoint.
 
 Exposes a view + edit surface for the live ``PermissionRegistry`` so the
 frontend can render and tune the roles × modules matrix without re-
@@ -14,7 +14,7 @@ Endpoints
 * ``PATCH /api/v1/admin/permissions/{permission_key}``
       Lower / raise the ``min_role`` for a single permission. Admin-only.
       Refuses to remove admin's own admin-level permissions (lockout
-      protection — admin cannot un-admin itself).
+      protection - admin cannot un-admin itself).
 
 * ``POST /api/v1/admin/permissions/preset/{preset_name}``
       Rewrite the entire matrix to a named baseline preset
@@ -23,7 +23,7 @@ Endpoints
 
 The read endpoint stays gated by ``audit.view`` (Manager+) so the matrix
 remains visible to operators who can read the audit log but can't edit
-RBAC. The write endpoints upgrade the gate to *role=admin* — only true
+RBAC. The write endpoints upgrade the gate to *role=admin* - only true
 admins can flip permissions. Per the brief, when the caller lacks edit
 privilege the frontend falls back to the read-only matrix.
 """
@@ -87,7 +87,7 @@ class PresetApplyResponse(BaseModel):
     changes: list[dict[str, str]]
 
 
-# ── Matrix snapshot (read-only — unchanged contract) ─────────────────────
+# ── Matrix snapshot (read-only - unchanged contract) ─────────────────────
 
 
 def _build_matrix_payload() -> dict[str, Any]:
@@ -104,7 +104,7 @@ def _build_matrix_payload() -> dict[str, Any]:
     modules_index = permission_registry.list_modules()
     all_perms = permission_registry.list_all()
 
-    # Sort modules alphabetically — predictable for the UI test and
+    # Sort modules alphabetically - predictable for the UI test and
     # avoids surprises when the registration order shifts between
     # releases (module loader topological sort is dependency-driven).
     for module_name in sorted(modules_index.keys()):
@@ -137,7 +137,7 @@ def _build_matrix_payload() -> dict[str, Any]:
     summary="Snapshot the RBAC matrix (roles × modules × permissions)",
     description=(
         "Returns the live PermissionRegistry as a roles-by-modules matrix "
-        "for the admin UI. Gated by ``audit.view`` (manager+) — the same "
+        "for the admin UI. Gated by ``audit.view`` (manager+) - the same "
         "permission that protects the audit log."
     ),
 )
@@ -162,9 +162,9 @@ def _is_admin_lockout(permission: str, new_min_role: Role) -> bool:
 
     The protected keys are:
 
-    * ``permissions.admin`` — the conceptual "edit the matrix" capability
+    * ``permissions.admin`` - the conceptual "edit the matrix" capability
       (currently implemented via the ``role=admin`` gate, but reserved).
-    * Anything matching ``system.permissions.*`` — future-proofing for a
+    * Anything matching ``system.permissions.*`` - future-proofing for a
       finer-grained admin permission split.
     """
     if permission == "permissions.admin":
@@ -229,7 +229,7 @@ async def update_permission_min_role(
 
     previous = permission_registry.set_min_role(permission_key, new_min_role)
 
-    # Audit log — entity_type=permission, entity_id=key, details carry
+    # Audit log - entity_type=permission, entity_id=key, details carry
     # the before/after for replay.
     await audit_log(
         session,

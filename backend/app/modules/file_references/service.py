@@ -4,12 +4,12 @@
 
 Three responsibilities:
 
-* :func:`validate_iso19650_name` — stateless validator that returns a
+* :func:`validate_iso19650_name` - stateless validator that returns a
   list of failure codes for a single filename.
-* :func:`scan_project` — iterate every file in a project across the 8
+* :func:`scan_project` - iterate every file in a project across the 8
   kinds, run the validator, and upsert :class:`FileNamingViolation`
   rows.
-* CRUD over :class:`FileReference` — the cross-entity link table.
+* CRUD over :class:`FileReference` - the cross-entity link table.
 
 The ISO 19650 parser splits the *base* of the filename (sans
 extension) on ``-``. The format is:
@@ -25,7 +25,7 @@ Field constraints (per docstring at top of the original brief):
     Type        2-4 alnum
     Role        2-4 alnum
     Number      4 digits
-    Status      2 alnum     (S0..S6 in practice — accepted as ``^S[0-6]$``
+    Status      2 alnum     (S0..S6 in practice - accepted as ``^S[0-6]$``
                             but more permissive in the parser to leave
                             room for project-specific status codes)
     Revision    2-3 alnum   (``P01``, ``P01.01`` collapsed without the
@@ -89,7 +89,7 @@ _REVISION_RE = re.compile(r"^[A-Za-z0-9]{2,8}$")
 def _strip_ext(filename: str) -> str:
     """Return the filename without its extension.
 
-    Multi-dot filenames keep everything before the final dot — a single
+    Multi-dot filenames keep everything before the final dot - a single
     extension only. ``A-B-C-D-0001.tar.gz`` → ``A-B-C-D-0001.tar``.
     """
     return Path(filename).stem
@@ -98,7 +98,7 @@ def _strip_ext(filename: str) -> str:
 def validate_iso19650_name(filename: str) -> Iso19650Result:
     """Validate a filename against the ISO 19650 format.
 
-    Returns every failure that applies — callers can render a single
+    Returns every failure that applies - callers can render a single
     banner listing the codes. ``parts`` is best-effort: even when the
     overall name is invalid, individual fields are surfaced so the
     IsoNameBuilder wizard can pre-fill.
@@ -123,7 +123,7 @@ def validate_iso19650_name(filename: str) -> Iso19650Result:
     if len(parts_split) < 7:
         codes.append("too-few-parts")
 
-    # Best-effort field mapping — index by position; missing fields stay None.
+    # Best-effort field mapping - index by position; missing fields stay None.
     pad = parts_split + [""] * (9 - len(parts_split)) if len(parts_split) < 9 else parts_split
     project = pad[0] if len(pad) > 0 else ""
     originator = pad[1] if len(pad) > 1 else ""
@@ -152,7 +152,7 @@ def validate_iso19650_name(filename: str) -> Iso19650Result:
     if not volume:
         codes.append("missing-volume")
     elif not _VOLUME_RE.match(volume):
-        # Treated as a structural breakage of the volume field —
+        # Treated as a structural breakage of the volume field -
         # represented under the same code so a one-bad-volume file
         # doesn't escalate to the catch-all "not-iso19650".
         codes.append("missing-volume")
@@ -166,7 +166,7 @@ def validate_iso19650_name(filename: str) -> Iso19650Result:
     if number and not _NUMBER_RE.match(number) or not number:
         codes.append("bad-number")
 
-    # Structural fields outside the seven we already gate — when both
+    # Structural fields outside the seven we already gate - when both
     # project and originator are also broken we surface the catch-all.
     proj_ok = bool(project and _PROJECT_RE.match(project))
     orig_ok = bool(originator and _ORIGINATOR_RE.match(originator))
@@ -186,7 +186,7 @@ def validate_iso19650_name(filename: str) -> Iso19650Result:
     # Optional fields: only emit a code if the user *supplied* a status
     # / revision and it fails the regex. Empty optional fields are fine.
     if status and not _STATUS_RE.match(status):
-        # Reuse "not-iso19650" — there's no dedicated optional-field
+        # Reuse "not-iso19650" - there's no dedicated optional-field
         # code by design, and these usually co-occur with another flag.
         if "not-iso19650" not in codes:
             codes.append("not-iso19650")
@@ -194,7 +194,7 @@ def validate_iso19650_name(filename: str) -> Iso19650Result:
         if "not-iso19650" not in codes:
             codes.append("not-iso19650")
 
-    # De-dupe while preserving order — the banner UI uses the first
+    # De-dupe while preserving order - the banner UI uses the first
     # entry as the "headline" code.
     seen: set[str] = set()
     ordered: list[str] = []
@@ -237,7 +237,7 @@ async def _iter_project_files(session: AsyncSession, project_id: uuid.UUID) -> l
         ).all()
         for did, name in rows:
             out.append(("document", str(did), name or ""))
-    except Exception:  # pragma: no cover — defensive across module pruning
+    except Exception:  # pragma: no cover - defensive across module pruning
         logger.exception("Naming scan: documents kind skipped")
 
     # ── photos ───────────────────────────────────────────────────
@@ -346,7 +346,7 @@ async def scan_project(
         result = validate_iso19650_name(filename)
         key = (file_kind, file_id)
         if result.is_valid:
-            # No row needed — if one existed it'll be cleared below.
+            # No row needed - if one existed it'll be cleared below.
             continue
         keep_keys.add(key)
         summary = result.violation_codes[0]
@@ -422,7 +422,7 @@ async def acknowledge_violation(
 ) -> NamingViolationResponse | None:
     """Mark a single violation as acknowledged.
 
-    Returns ``None`` when the row is missing — the router emits 404.
+    Returns ``None`` when the row is missing - the router emits 404.
     """
     stmt = select(FileNamingViolation).where(FileNamingViolation.id == violation_id)
     row = (await session.execute(stmt)).scalar_one_or_none()
@@ -433,7 +433,7 @@ async def acknowledge_violation(
         row.acknowledged_by_id = actor_id
         await session.flush()
         # After a flush that touched the row, server-side defaults
-        # (``updated_at`` onupdate trigger) may be unloaded — refresh
+        # (``updated_at`` onupdate trigger) may be unloaded - refresh
         # so ``model_validate`` doesn't trip greenlet lazy-load.
         await session.refresh(row)
     return NamingViolationResponse.model_validate(row)
@@ -450,7 +450,7 @@ async def create_reference(
     """Insert a new file → entity link.
 
     Idempotent w.r.t. the unique key ``(file_kind, file_id, target_type,
-    target_id, relation)`` — re-creating the same link returns the
+    target_id, relation)`` - re-creating the same link returns the
     existing row instead of raising.
     """
     if payload.file_kind not in ALLOWED_FILE_KINDS:
@@ -487,7 +487,7 @@ async def create_reference(
     try:
         await session.flush()
     except IntegrityError:
-        # Race window with a parallel writer — recover by re-fetching.
+        # Race window with a parallel writer - recover by re-fetching.
         await session.rollback()
         existing = (await session.execute(find_stmt)).scalar_one_or_none()
         if existing is None:
@@ -505,7 +505,7 @@ async def delete_reference(
     """Delete a single reference by id. ``False`` when missing.
 
     Scoped by ``project_id`` (verified by the router) so a reference id
-    from another project cannot be deleted — closes a cross-project IDOR
+    from another project cannot be deleted - closes a cross-project IDOR
     on the DELETE endpoint.
     """
     # IDOR fix: only delete when the row belongs to the verified project.

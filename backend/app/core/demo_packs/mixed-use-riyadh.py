@@ -3,7 +3,7 @@ from __future__ import annotations
 from app.core.demo_projects import DemoTemplate
 
 # ---------------------------------------------------------------------------
-# Partner pack: saudi-vision2030 — Mixed-Use Development, Riyadh (KSA)
+# Partner pack: saudi-vision2030 - Mixed-Use Development, Riyadh (KSA)
 # ---------------------------------------------------------------------------
 # Realistic flagship demo authored as a quantity surveyor / cost estimator.
 # Program: mixed-use development on King Fahd Road, Riyadh. Two-level
@@ -66,7 +66,7 @@ TEMPLATE = DemoTemplate(
         "price_level": "Riyadh 2026 (SAR, excl. VAT)",
     },
     sections=[
-        # ── 02 — Existing Conditions / Site Prep (أعمال الموقع) ───────────
+        # ── 02 - Existing Conditions / Site Prep (أعمال الموقع) ───────────
         (
             "02",
             "02 - أعمال الموقع والحفر (Existing Conditions & Earthworks)",
@@ -82,7 +82,7 @@ TEMPLATE = DemoTemplate(
                 ("02.08", "معالجة التربة ضد النمل الأبيض (Anti-termite soil treatment)", "m2", 4000, 9.50, {"masterformat": "31 31 16", "sbc": "SBC 201"}),
             ],
         ),
-        # ── 03 — Concrete (الأعمال الخرسانية) ────────────────────────────
+        # ── 03 - Concrete (الأعمال الخرسانية) ────────────────────────────
         (
             "03",
             "03 - الأعمال الخرسانية المسلحة (Concrete - SBC 304)",
@@ -102,7 +102,7 @@ TEMPLATE = DemoTemplate(
                 ("03.12", "معالجة وحماية الخرسانة من الحرارة (Hot-weather curing & protection)", "m2", 42000, 12.50, {"masterformat": "03 39 00", "sbc": "SBC 304"}),
             ],
         ),
-        # ── 04 — Masonry / Blockwork (أعمال البلوك) ──────────────────────
+        # ── 04 - Masonry / Blockwork (أعمال البلوك) ──────────────────────
         (
             "04",
             "04 - أعمال البلوك والمباني (Masonry & Blockwork)",
@@ -115,7 +115,7 @@ TEMPLATE = DemoTemplate(
                 ("04.05", "أربطة ومثبتات البلوك المعدنية (Masonry ties & wall starters)", "m2", 33000, 6.50, {"masterformat": "04 05 23", "sbc": "SBC 201"}),
             ],
         ),
-        # ── 05 — Metals (الأعمال المعدنية) ───────────────────────────────
+        # ── 05 - Metals (الأعمال المعدنية) ───────────────────────────────
         (
             "05",
             "05 - الأعمال المعدنية الإنشائية (Metals)",
@@ -127,7 +127,7 @@ TEMPLATE = DemoTemplate(
                 ("05.04", "أعمال معدنية متنوعة ودرابزين (Miscellaneous metals & handrails)", "lsum", 1, 480000.00, {"masterformat": "05 50 00", "sbc": "SBC 306"}),
             ],
         ),
-        # ── 07 — Waterproofing & Insulation (العزل) — heavy for climate ──
+        # ── 07 - Waterproofing & Insulation (العزل) - heavy for climate ──
         (
             "07",
             "07 - أعمال العزل المائي والحراري (Waterproofing & Thermal - SBC 601)",
@@ -143,7 +143,7 @@ TEMPLATE = DemoTemplate(
                 ("07.08", "معالجة مقاومة الحريق للفتحات (Firestopping to penetrations)", "lsum", 1, 220000.00, {"masterformat": "07 84 00", "sbc": "SBC 801"}),
             ],
         ),
-        # ── 08 — Openings: Facade / Glazing (الواجهات والزجاج) ───────────
+        # ── 08 - Openings: Facade / Glazing (الواجهات والزجاج) ───────────
         (
             "08",
             "08 - الواجهات والزجاج بحماية شمسية (Facade & Solar-Control Glazing)",
@@ -159,7 +159,7 @@ TEMPLATE = DemoTemplate(
                 ("08.08", "أبواب معدنية للخدمات والمخازن (Hollow-metal doors, plant/stores)", "pcs", 240, 1250.00, {"masterformat": "08 11 13", "sbc": "SBC 201"}),
             ],
         ),
-        # ── 09 — Finishes (التشطيبات) ───────────────────────────────────
+        # ── 09 - Finishes (التشطيبات) ───────────────────────────────────
         (
             "09",
             "09 - أعمال التشطيبات (Finishes)",
@@ -177,7 +177,7 @@ TEMPLATE = DemoTemplate(
                 ("09.10", "دهان أرضيات الجراج إيبوكسي (Epoxy floor coating, car park)", "m2", 14000, 58.00, {"masterformat": "09 67 00", "sbc": "SBC 201"}),
             ],
         ),
-        # ── 11/12 — Equipment & Furnishings (التجهيزات) ─────────────────
+        # ── 11/12 - Equipment & Furnishings (التجهيزات) ─────────────────
         (
             "11",
             "11 - التجهيزات الثابتة (Equipment & Furnishings)",
@@ -189,7 +189,7 @@ TEMPLATE = DemoTemplate(
                 ("11.04", "تجهيزات دورات المياه (Toilet accessories & partitions)", "pcs", 220, 1450.00, {"masterformat": "10 28 00", "sbc": "SBC 201"}),
             ],
         ),
-        # ── 14 — Conveying / Vertical Transport (المصاعد) ───────────────
+        # ── 14 - Conveying / Vertical Transport (المصاعد) ───────────────
         (
             "14",
             "14 - المصاعد والسلالم الكهربائية (Conveying Systems)",
@@ -200,7 +200,7 @@ TEMPLATE = DemoTemplate(
                 ("14.03", "سلالم كهربائية للقاعدة التجارية (Escalators, retail podium)", "pcs", 4, 420000.00, {"masterformat": "14 31 00", "sbc": "SBC 201"}),
             ],
         ),
-        # ── 23 — HVAC / District Cooling (التكييف) — large cooling load ─
+        # ── 23 - HVAC / District Cooling (التكييف) - large cooling load ─
         (
             "23",
             "23 - التكييف والتهوية وتبريد المناطق (HVAC & District Cooling - SBC 501)",
@@ -217,7 +217,7 @@ TEMPLATE = DemoTemplate(
                 ("23.09", "نظام التحكم بالضغط للسلالم (Stair pressurisation system)", "pcs", 8, 145000.00, {"masterformat": "23 34 23", "sbc": "SBC 801"}),
             ],
         ),
-        # ── 22 — Plumbing (السباكة) ─────────────────────────────────────
+        # ── 22 - Plumbing (السباكة) ─────────────────────────────────────
         (
             "22",
             "22 - أعمال السباكة والصرف (Plumbing & Drainage)",
@@ -233,7 +233,7 @@ TEMPLATE = DemoTemplate(
                 ("22.08", "سخانات مياه شمسية للشقق (Solar water heaters, apartments)", "pcs", 48, 6800.00, {"masterformat": "22 33 36", "sbc": "SBC 601"}),
             ],
         ),
-        # ── 26 — Electrical (الكهرباء) ──────────────────────────────────
+        # ── 26 - Electrical (الكهرباء) ──────────────────────────────────
         (
             "26",
             "26 - الأعمال الكهربائية (Electrical)",
@@ -251,7 +251,7 @@ TEMPLATE = DemoTemplate(
                 ("26.10", "نظام طاقة شمسية على السطح 250kWp (Rooftop solar PV 250kWp)", "lsum", 1, 1850000.00, {"masterformat": "48 14 00", "sbc": "SBC 601"}),
             ],
         ),
-        # ── 27/28 — ICT, Fire Alarm & Safety (الأنظمة المنخفضة والحريق) ──
+        # ── 27/28 - ICT, Fire Alarm & Safety (الأنظمة المنخفضة والحريق) ──
         (
             "28",
             "28 - أنظمة السلامة والإنذار والأمن (Fire, Life-Safety & Security - SBC 801)",
@@ -265,7 +265,7 @@ TEMPLATE = DemoTemplate(
                 ("28.06", "كيبلات وبنية تحتية للاتصالات والبيانات (Structured cabling & telecoms)", "lsum", 1, 1250000.00, {"masterformat": "27 10 00", "sbc": "SBC 201"}),
             ],
         ),
-        # ── 31/32 — External Works & Landscaping (الأعمال الخارجية) ─────
+        # ── 31/32 - External Works & Landscaping (الأعمال الخارجية) ─────
         (
             "32",
             "32 - الأعمال الخارجية وتنسيق الموقع (External Works & Landscaping)",

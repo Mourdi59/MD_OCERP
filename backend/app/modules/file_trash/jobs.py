@@ -4,11 +4,11 @@
 
 This module ships two entry points:
 
-* :func:`register_jobs` — registers a 24-hour periodic task with the
+* :func:`register_jobs` - registers a 24-hour periodic task with the
   process-wide asyncio scheduler. ``app.main`` calls this once at
-  startup. The function is idempotent — calling it twice silently
+  startup. The function is idempotent - calling it twice silently
   no-ops on the second call.
-* :func:`run_purge_once` — single-shot wrapper around
+* :func:`run_purge_once` - single-shot wrapper around
   :func:`purge_expired_trash` that opens its own short-lived session
   so it can be invoked from a Celery worker or a one-off CLI command
   without an outer SQLAlchemy context.
@@ -35,7 +35,7 @@ from app.modules.file_trash.service import purge_expired_trash
 
 logger = logging.getLogger(__name__)
 
-# Active task reference — ``None`` when no scheduler is running.
+# Active task reference - ``None`` when no scheduler is running.
 # Using the task object (rather than a bare bool) means the guard
 # is automatically invalidated when the task is cancelled or done
 # (e.g. a test's event-loop teardown or a uvicorn --reload cycle),
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 # instead of silently no-op-ing because the old bool was still ``True``.
 _ACTIVE_TASK: asyncio.Task[None] | None = None
 
-# Scheduler cadence — 24h is plenty given retention windows are
+# Scheduler cadence - 24h is plenty given retention windows are
 # measured in days and the cron is purely a clean-up safety net.
 _DEFAULT_INTERVAL_SECONDS: int = 24 * 60 * 60
 
@@ -64,7 +64,7 @@ async def run_purge_once() -> int:
             count = await purge_expired_trash(session)
             await session.commit()
             return count
-    except Exception:  # noqa: BLE001 — scheduler must never crash the loop
+    except Exception:  # noqa: BLE001 - scheduler must never crash the loop
         logger.exception("file_trash.purge_expired_trash failed; will retry next tick")
         return 0
 
@@ -77,7 +77,7 @@ async def _scheduler_loop(
 
     Logged at INFO when rows are purged, DEBUG when the tick is a
     no-op. Long-running enough that a single missed tick costs at
-    most 24 h of stale trash — not a correctness issue.
+    most 24 h of stale trash - not a correctness issue.
     """
     await asyncio.sleep(first_tick_delay_seconds)
     while True:
@@ -90,7 +90,7 @@ async def _scheduler_loop(
                 )
             else:
                 logger.debug("file_trash scheduler: no expired rows")
-        except asyncio.CancelledError:  # pragma: no cover — process shutdown
+        except asyncio.CancelledError:  # pragma: no cover - process shutdown
             raise
         except Exception:  # noqa: BLE001
             logger.exception("file_trash scheduler tick failed")
@@ -107,7 +107,7 @@ def register_jobs(
     Idempotent: if a live (non-done, non-cancelled) task is already
     registered the function returns ``None`` and leaves it alone.
     A completed or cancelled task is treated as *not running*, so a
-    new one is created — this correctly handles uvicorn --reload cycles
+    new one is created - this correctly handles uvicorn --reload cycles
     and test teardowns that cancel the previous task.
 
     Returns the created asyncio task so callers / tests can
@@ -121,7 +121,7 @@ def register_jobs(
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
-        # No event loop yet — the scheduler is purely informative
+        # No event loop yet - the scheduler is purely informative
         # in environments (e.g. sync tests) that haven't bound one.
         logger.debug(
             "file_trash.register_jobs: no running event loop; scheduler not started",

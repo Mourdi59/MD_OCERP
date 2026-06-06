@@ -1,8 +1,8 @@
 """‌⁠‍Meetings ORM models.
 
 Tables:
-    oe_meetings_meeting     — project meetings with agendas, attendees, and action items
-    oe_meetings_attendance  — per-meeting attendance check-in records with optional signature
+    oe_meetings_meeting     - project meetings with agendas, attendees, and action items
+    oe_meetings_attendance  - per-meeting attendance check-in records with optional signature
 """
 
 import uuid
@@ -101,7 +101,7 @@ class Meeting(Base):
         server_default="{}",
     )
 
-    # Attendance records — see MeetingAttendance.
+    # Attendance records - see MeetingAttendance.
     attendance_records: Mapped[list["MeetingAttendance"]] = relationship(
         "MeetingAttendance",
         back_populates="meeting",

@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Qdrant-backed ranker — replacement for the legacy LanceDB ranker.
+"""‌⁠‍Qdrant-backed ranker - replacement for the legacy LanceDB ranker.
 
 Pipeline (no LLM by default, BGE-M3 multilingual covers cross-lang):
 
@@ -13,7 +13,7 @@ Pipeline (no LLM by default, BGE-M3 multilingual covers cross-lang):
     5. Attach 84-column parquet data via
        :func:`qdrant_adapter.lookup_full_rows`.
     6. Convert each hit → :class:`MatchCandidate`.
-    7. Apply the **narrow** boost stack (classifier + unit + region only —
+    7. Apply the **narrow** boost stack (classifier + unit + region only -
        lex and rare_token are dropped: sparse RRF in Qdrant subsumes them).
     8. Sort, slice to ``top_k``, set confidence band, derive auto-link.
 
@@ -21,7 +21,7 @@ The legacy :mod:`app.core.match_service.ranker` keeps working unchanged
 during Phase 2-4 so we can A/B compare under live load. Phase 5 deletes
 ``ranker.py`` and renames this module into its place.
 
-Translation cascade is intentionally OFF by default — BGE-M3 multilingual
+Translation cascade is intentionally OFF by default - BGE-M3 multilingual
 covers most cross-lang recall and the cascade adds 50-200 ms p50. Flip
 ``MatchProjectSettings.translate_query=True`` per project to re-enable.
 """
@@ -76,7 +76,7 @@ from app.modules.projects.service import get_or_create_match_settings
 logger = logging.getLogger(__name__)
 
 
-# Narrow boost stack — see module docstring for the reasoning. Order
+# Narrow boost stack - see module docstring for the reasoning. Order
 # follows "most explainable first" so the API response's
 # ``boosts_applied`` dict is human-readable.
 _BOOSTS = (
@@ -118,7 +118,7 @@ _NON_BILLABLE_IFC: frozenset[str] = frozenset(
 
 
 # Sentinels for "the source extractor synthesised the only English
-# anchor available" — when the post-synthesis description equals just
+# anchor available" - when the post-synthesis description equals just
 # these generic phrases the source supplied no specific signal.
 _GENERIC_DESCRIPTIONS: frozenset[str] = frozenset(
     {
@@ -176,7 +176,7 @@ def _is_non_billable_envelope(envelope: ElementEnvelope) -> bool:
     * the envelope carries no specific signal (see
       :func:`_envelope_has_specific_signal`).
 
-    A wall element with ifc_class IfcWall always returns ``False`` —
+    A wall element with ifc_class IfcWall always returns ``False`` -
     non-billable is a last-resort gate, not a category exclusion.
     """
     ifc = (envelope.ifc_class or envelope.category or "").strip()
@@ -195,7 +195,7 @@ def _active_encoder_id() -> str | None:
     canonical ``CONFIDENCE_*_THRESHOLD`` constants.
     """
     # Env var overrides the bound setting so operators can A/B without a
-    # config push — matches the env-override pattern used everywhere
+    # config push - matches the env-override pattern used everywhere
     # else in match_service/config.py.
     env_val = os.environ.get("MATCH_EMBEDDING_MODEL")
     if env_val:
@@ -213,7 +213,7 @@ def _active_encoder_id() -> str | None:
             # encoder_profiles.json keys are short labels ("bge-m3",
             # "e5-small") while settings hold the full HuggingFace path
             # ("BAAI/bge-m3"). Normalise by stripping the org prefix and
-            # lower-casing — keeps the profile file canonical.
+            # lower-casing - keeps the profile file canonical.
             short = str(model).split("/")[-1].lower()
             return short
     except Exception:
@@ -253,7 +253,7 @@ def _dynamic_confidence_band(
     medium_floor = medium + cls_offset
 
     # The bonus floors mirror envelope._HARD_FILTER_*_BONUS_FLOOR but
-    # scaled relative to the profile defaults — operators retuning bands
+    # scaled relative to the profile defaults - operators retuning bands
     # for a different encoder shouldn't have to also retune the bonus
     # floors. 0.96× HIGH ≈ original 0.75/0.78 ratio for BGE-M3.
     if hard_filters_matched >= 3:
@@ -274,7 +274,7 @@ def _dynamic_confidence_band(
 # Short-TTL cache for ``_resolve_catalog_status`` keyed by catalog_id. The
 # resolver does an SQL COUNT against ``oe_costs_item`` (which on the dev
 # SQLite carries 100k+ rows without an index on ``region``) plus a Qdrant
-# ``get_collection`` round-trip — each pair takes ~2–7 s. ``run_match``
+# ``get_collection`` round-trip - each pair takes ~2–7 s. ``run_match``
 # calls into the ranker once per group, so a 15-group match was paying
 # this cost 15× even though the answer doesn't change across the 30 s the
 # match itself takes. Cache invalidates after 30 s so a fresh
@@ -299,7 +299,7 @@ async def _resolve_catalog_status(
     ``"catalog_not_vectorized"`` so the UI surfaces a clear next step.
     """
 
-    # Short-TTL process-local cache — see ``_CATALOG_STATUS_CACHE_TTL_SEC``.
+    # Short-TTL process-local cache - see ``_CATALOG_STATUS_CACHE_TTL_SEC``.
     # Each ``run_match`` iterates groups and calls into ``rank`` per-group;
     # without this every group repeats the SQL COUNT + Qdrant probe even
     # though the catalogue state doesn't change between groups.
@@ -336,7 +336,7 @@ async def _resolve_catalog_status(
         sql_count = 0
 
     # SQL count is informational, not gating. Under v3 the canonical
-    # source is Qdrant — the SQL ``oe_costs_item`` table only carries
+    # source is Qdrant - the SQL ``oe_costs_item`` table only carries
     # rows when the operator imported a CWICR CSV/parquet, which is
     # optional once the v3 snapshot is loaded. The language-fallback
     # bindings minted by ``auto_bind`` Pass 1b (``US`` for English,
@@ -374,7 +374,7 @@ async def _qdrant_vector_count(catalog_id: str) -> int:
     the UI can render the right CTA.
 
     Falls back to the versionless name (``cwicr_ru``) when the configured
-    versioned name (``cwicr_ru_v3``) is missing — covers dev installs
+    versioned name (``cwicr_ru_v3``) is missing - covers dev installs
     that ingested before the v3 rename without forcing every operator
     to flip ``CWICR_COLLECTION_VERSION``.
     """
@@ -388,7 +388,7 @@ async def _qdrant_vector_count(catalog_id: str) -> int:
             info = client.get_collection(collection)
         except Exception:
             # Strip the ``_v?`` suffix and try again. Same logic the
-            # search adapter would benefit from — exposed via the
+            # search adapter would benefit from - exposed via the
             # public helper below.
             base = collection.rsplit("_v", 1)[0] if "_v" in collection else collection
             if base != collection:
@@ -444,14 +444,14 @@ async def _maybe_translate(
 # parquet sideload), the SQL ``oe_costs_item`` table is empty for the
 # snapshot's region and ``lookup_full_rows`` returns nothing. The
 # Qdrant payload alone has to drive description / currency on the
-# candidate — otherwise the BGE cross-encoder collapses score to ≈ 0
+# candidate - otherwise the BGE cross-encoder collapses score to ≈ 0
 # because the passage text is just an opaque rate_code, and the user
 # sees blank descriptions plus a zero score even when the vector hit
 # was semantically perfect.
 #
 # These helpers synthesise the missing fields from the snapshot's
 # categorical metadata. ``unit_rate`` is INTENTIONALLY left at 0.0 when
-# the parquet is missing — the operator's load-bearing number must
+# the parquet is missing - the operator's load-bearing number must
 # never be fabricated.
 
 _COUNTRY_DEFAULT_CURRENCY: dict[str, str] = {
@@ -593,7 +593,7 @@ def _description_from_payload(payload: dict[str, Any]) -> str:
     indexes a handful of categorical columns
     (``collection_name`` / ``material_class`` / ``ifc_class`` /
     ``category_type`` / ``masterformat_division``) that, concatenated,
-    read as a human-grade "what this rate is" line — good enough to
+    read as a human-grade "what this rate is" line - good enough to
     surface in the candidate list AND for the BGE cross-encoder to
     score against.
 
@@ -621,7 +621,7 @@ def _description_from_payload(payload: dict[str, Any]) -> str:
     masterformat = (payload.get("masterformat_division") or "").strip()
     if masterformat:
         parts.append(f"MasterFormat {masterformat}")
-    return " — ".join(parts)
+    return " - ".join(parts)
 
 
 # ── Hit → candidate ──────────────────────────────────────────────────────
@@ -638,11 +638,11 @@ def _hit_to_candidate(
     score (RRF fused) is treated as the raw vector_score that the
     boost stack adjusts on top.
 
-    Snapshot-only installs surface here with ``full_row=None`` — when
+    Snapshot-only installs surface here with ``full_row=None`` - when
     that happens we synthesise description from the snapshot's
     categorical fields via :func:`_description_from_payload` and fill
     currency from the country head via :data:`_COUNTRY_DEFAULT_CURRENCY`.
-    ``unit_rate`` STAYS 0.0 in that case — fabricating the operator's
+    ``unit_rate`` STAYS 0.0 in that case - fabricating the operator's
     load-bearing number would be worse than surfacing an empty rate.
     """
 
@@ -650,7 +650,7 @@ def _hit_to_candidate(
     full = full_row or {}
 
     # Classification: the parquet may carry several mappings. Also
-    # surface ``masterformat_division`` from the Qdrant payload — the
+    # surface ``masterformat_division`` from the Qdrant payload - the
     # v3 snapshot indexes that field directly and it's the only
     # classification a snapshot-only install can provide.
     classification: dict[str, str] = {}
@@ -718,7 +718,7 @@ def _apply_narrow_boosts(
     candidate: MatchCandidate,
     settings: Any,
 ) -> dict[str, float]:
-    """Run the narrow Qdrant-era boost stack — classifier + unit + region.
+    """Run the narrow Qdrant-era boost stack - classifier + unit + region.
 
     rare_token and lex_* boosts are intentionally NOT called: the
     sparse channel in the Qdrant RRF fusion already accounts for
@@ -748,7 +748,7 @@ def _apply_soft_boosts(
     RRF score: when ``hit.payload[field] == value`` the score gets
     multiplied by the boost factor. The full parquet row is consulted
     as a fallback because the Qdrant payload is intentionally minimal
-    in v3 (only filter columns) — fields like ``ost_category`` or
+    in v3 (only filter columns) - fields like ``ost_category`` or
     ``material_class`` may live only in the parquet.
 
     Returns the adjusted score and a per-boost breakdown for the UI's
@@ -796,12 +796,12 @@ def _apply_soft_boosts(
 #
 # Score is a weighted sum of four components in [0, 1]:
 #
-#   * lexical (0.45): Jaccard overlap on tokenised text — element
+#   * lexical (0.45): Jaccard overlap on tokenised text - element
 #     description/material/type vs catalogue collection_name/category_type.
 #     Generic IFC stems (Ifc, Wall, Door, Slab) are excluded so common
 #     IFC noise doesn't dominate.
 #   * unit_dim (0.25): matching coarse unit family (volume/area/length/
-#     mass/count/time). Hard signal — a wall (m³) shouldn't compete
+#     mass/count/time). Hard signal - a wall (m³) shouldn't compete
 #     with flooring (m²) for top slots.
 #   * region (0.15): catalogue ``country`` payload matches the project
 #     region two-letter prefix.
@@ -948,7 +948,7 @@ async def _metadata_only_candidates(
     Pulls up to ``fetch`` rows from Qdrant by hard filter (IFC class +
     is_abstract=False is the bedrock), then scores each by metadata
     signals. Falls back to no-filter scroll if the strict filter set
-    under-returns — this catches the case where the catalogue's
+    under-returns - this catches the case where the catalogue's
     ``ifc_class`` payload has gaps. Returns top-``top_k`` hits sorted by
     metadata score descending.
     """
@@ -971,7 +971,7 @@ async def _metadata_only_candidates(
                 filters=f,
                 limit=fetch,
             )
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.debug("metadata fallback: scroll tier failed: %s", exc)
             tier_hits = []
         for h in tier_hits:
@@ -1003,7 +1003,7 @@ async def _metadata_only_candidates(
     # Minimum-score threshold for the metadata-only path. When ALL of
     # lexical / unit / material scored 0 (no English token overlap, no
     # unit family match, no material match), the only signal is region
-    # — every catalogue hit gets the same 0.15 region bonus and ties
+    # - every catalogue hit gets the same 0.15 region bonus and ties
     # break by rate_code lex order. That produces deterministic-but-
     # arbitrary "Electrical equipment" candidates for any envelope with
     # a junk description. Drop hits where the *non-region* signal sums
@@ -1014,7 +1014,7 @@ async def _metadata_only_candidates(
     # incorrectly dropped.
 
     def _has_real_signal(breakdown: dict[str, float]) -> bool:
-        """Non-region signal sum — the only legitimate ranking driver."""
+        """Non-region signal sum - the only legitimate ranking driver."""
         return (
             float(breakdown.get("lexical") or 0.0)
             + float(breakdown.get("unit") or 0.0)
@@ -1051,7 +1051,7 @@ async def rank(
 ) -> MatchResponse:
     """Run the full Qdrant-backed match pipeline. Never raises for normal input.
 
-    Drop-in alternative to :func:`app.core.match_service.ranker.rank` —
+    Drop-in alternative to :func:`app.core.match_service.ranker.rank` -
     same request and response shapes, different vector backend.
     """
 
@@ -1073,7 +1073,7 @@ async def rank(
             await db.rollback()
         except Exception:
             pass
-        # Pull defaults from the canonical constants — env-overridable
+        # Pull defaults from the canonical constants - env-overridable
         # via MATCH_DEFAULT_TARGET_LANGUAGE / MATCH_DEFAULT_AUTO_LINK_THRESHOLD.
         # Without this hop a non-English deployment whose project's
         # settings row was missing would fall back to English-only
@@ -1145,7 +1145,7 @@ async def rank(
     #
     # When the code isn't in the bound catalogue (stale code, wrong
     # catalogue, typo), the helper returns None and we fall through to
-    # the normal vector path — degrade, never fail.
+    # the normal vector path - degrade, never fail.
     if envelope.exact_code:
         short_resp = await _try_exact_code_short_circuit(
             envelope=envelope,
@@ -1159,7 +1159,7 @@ async def rank(
         if short_resp is not None:
             return short_resp
         logger.warning(
-            "ranker_qdrant: exact_code %r not in catalogue %r — falling back to vector search",
+            "ranker_qdrant: exact_code %r not in catalogue %r - falling back to vector search",
             envelope.exact_code,
             catalog_id,
         )
@@ -1196,9 +1196,9 @@ async def rank(
             catalog_vectorized_count=catalog_vec,
         )
 
-    # Non-billable IFC entity-types — IfcSpace (rooms/zones),
+    # Non-billable IFC entity-types - IfcSpace (rooms/zones),
     # IfcVirtualElement (placeholders) and bare IfcOpeningElement
-    # (voids — usually billed via the host wall, not standalone) — do
+    # (voids - usually billed via the host wall, not standalone) - do
     # not have a corresponding cost rate in any CWICR catalogue. When
     # the source description is also junk (single 0xFF byte, bare
     # numeric "8.01", etc.) the metadata-only fallback bubbles
@@ -1249,12 +1249,12 @@ async def rank(
             )
     except RuntimeError as exc:
         # Encoder offline ([semantic] extra missing, broken HF cache,
-        # Qdrant unreachable). Don't blank the result — fall through to
+        # Qdrant unreachable). Don't blank the result - fall through to
         # an encoder-free metadata path so the user still gets a ranked
         # candidate list from payload signals (IFC class filter +
         # lexical + region + unit + material). Confidence will be lower
         # than the hybrid path but ordering is meaningful.
-        logger.warning("ranker_qdrant: search degraded (%s) — using metadata fallback", exc)
+        logger.warning("ranker_qdrant: search degraded (%s) - using metadata fallback", exc)
         try:
             hits = await _metadata_only_candidates(
                 envelope=translated_envelope,
@@ -1264,13 +1264,13 @@ async def rank(
                 top_k=req.top_k,
                 fetch=max(fetch, 50),
             )
-        except Exception as fallback_exc:  # pragma: no cover — defensive
+        except Exception as fallback_exc:  # pragma: no cover - defensive
             logger.warning(
                 "ranker_qdrant: metadata fallback also failed (%s)",
                 fallback_exc,
             )
             hits = []
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.warning("ranker_qdrant: vector search failed: %s", exc)
         hits = []
 
@@ -1290,11 +1290,11 @@ async def rank(
             )
             if fallback_hits:
                 logger.info(
-                    "ranker_qdrant: vector miss — metadata fallback returned %d hits",
+                    "ranker_qdrant: vector miss - metadata fallback returned %d hits",
                     len(fallback_hits),
                 )
                 hits = fallback_hits
-        except Exception as fb_exc:  # pragma: no cover — defensive
+        except Exception as fb_exc:  # pragma: no cover - defensive
             logger.debug("ranker_qdrant: metadata fallback skipped: %s", fb_exc)
 
     # ── Attach 84-column parquet data ────────────────────────────────
@@ -1306,7 +1306,7 @@ async def rank(
                 rate_codes=[h.rate_code for h in hits],
             )
             full_rows = {str(r.get("rate_code")): r for r in rows}
-        except Exception as exc:  # pragma: no cover — parquet missing is OK
+        except Exception as exc:  # pragma: no cover - parquet missing is OK
             logger.debug("ranker_qdrant: parquet lookup failed (%s); using payload only", exc)
 
     # ── Magnet-candidate suppressor (opt-in, env-gated) ───────────────
@@ -1326,14 +1326,14 @@ async def rank(
                 full_rows=full_rows,
                 query_id=str(getattr(req, "request_id", None) or project_uuid),
             )
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.debug("ranker_qdrant: magnet_filter skipped: %s", exc)
 
     # ── Apply v3 soft boosts BEFORE the candidate cast ───────────────
     # The soft boosts are multiplicative on the raw RRF score (per
     # §4.6) so we tweak ``hit.score`` first, then let
     # ``_hit_to_candidate`` carry the boosted value into ``vector_score``.
-    # ``_apply_narrow_boosts`` runs on top with additive deltas — the
+    # ``_apply_narrow_boosts`` runs on top with additive deltas - the
     # two stacks are intentionally orthogonal: soft boosts say "this
     # rate matches the source's structural classifier", narrow boosts
     # say "this rate matches the unit / region / DIN trade".
@@ -1406,7 +1406,7 @@ async def rank(
                 hard_filters_matched=len(plan.hard_filters),
                 classification_confidence_by_code=classification_confidence_by_code,
             )
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.debug("ranker_qdrant: BGE rerank skipped: %s", exc)
 
     # ── Optional LLM reranker (cost-gated, opt-in per request) ────────
@@ -1420,7 +1420,7 @@ async def rank(
                 ai_settings=ai_settings,
             )
             cost_usd += float(rerank_cost or 0.0)
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.debug("ranker_qdrant: rerank skipped: %s", exc)
 
     # ── Auto-link gate ───────────────────────────────────────────────
@@ -1435,7 +1435,7 @@ async def rank(
     took_ms = int((time.perf_counter() - started) * 1000)
 
     # ── v3-P10: write the analytics row (best-effort, never raises) ──
-    # Logging failures must not break the match request — wrap in
+    # Logging failures must not break the match request - wrap in
     # try/except. The session is committed inside the helper so the
     # caller's session lifecycle is unaffected.
     try:
@@ -1452,7 +1452,7 @@ async def rank(
             llm_used=bool(req.use_reranker and candidates),
             envelope=envelope,
         )
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug("ranker_qdrant: search log skipped: %s", exc)
 
     return MatchResponse(
@@ -1493,12 +1493,12 @@ async def _write_search_log(
     SearchPlan can produce longer strings for noisy envelopes).
 
     ``plan`` may be ``None`` for paths that bypass the SearchPlan (e.g.,
-    the §4.1.5 exact_code short-circuit) — in that case ``core_query``,
+    the §4.1.5 exact_code short-circuit) - in that case ``core_query``,
     ``hard_filters`` and ``soft_boosts`` collapse to empty defaults so
     the log row still INSERTs cleanly.
 
     v2936 additions:
-        * ``envelope``    — when supplied, ``source_type`` / ``ifc_class``
+        * ``envelope``    - when supplied, ``source_type`` / ``ifc_class``
                             land as top-level columns so analytics can
                             filter without a 3-table JOIN.
         * ``catalog_id`` head (e.g. ``"DE"`` for ``"DE_BERLIN"``) lands
@@ -1506,7 +1506,7 @@ async def _write_search_log(
                             reason.
         * ``metadata.candidate_codes`` carries the top-N rate_codes so
                             ``MatchService.confirm()`` can later derive
-                            ``picked_rank`` without a re-search — the
+                            ``picked_rank`` without a re-search - the
                             candidates fall out of memory after the
                             response is returned to the user.
     """
@@ -1573,7 +1573,7 @@ async def _write_search_log(
 # ─────────────────────────────────────────────────────────────────────
 
 
-# Sentinel for ``relax_tier_used`` on the search log — distinguishes
+# Sentinel for ``relax_tier_used`` on the search log - distinguishes
 # the §4.1.5 short-circuit from tier 0 (full filter set, no relaxation
 # needed) without needing a separate column. Negative values are
 # reserved for non-tier paths in the analytics query.
@@ -1590,7 +1590,7 @@ def _build_exact_candidate(
 
     Used by :func:`_try_exact_code_short_circuit`. Score is pinned at
     1.0 and confidence at HIGH because the source supplied a verbatim
-    rate code — there is nothing to rank against. ``boosts_applied``
+    rate code - there is nothing to rank against. ``boosts_applied``
     is stamped with ``exact_code`` so the audit trail and the UI can
     surface "matched by source-supplied code, not by similarity".
     """
@@ -1650,12 +1650,12 @@ async def _try_exact_code_short_circuit(
       checking, but we double-check defensively),
     * ``catalog_id`` isn't bound (no parquet to query),
     * ``lookup_full_rows`` doesn't return a matching row (stale code,
-      wrong catalogue, typo) — the caller falls through to the normal
+      wrong catalogue, typo) - the caller falls through to the normal
       vector path which still has a chance to surface the right rate.
 
     Auto-link policy: an exact-code hit is unconditionally auto-linked
     when ``settings.auto_link_enabled`` is on, regardless of the
-    threshold — the source declared the answer, no policy override
+    threshold - the source declared the answer, no policy override
     needed.
     """
 
@@ -1665,7 +1665,7 @@ async def _try_exact_code_short_circuit(
 
     try:
         rows = await lookup_full_rows(country=catalog_id, rate_codes=[code])
-    except Exception as exc:  # pragma: no cover — parquet missing is OK
+    except Exception as exc:  # pragma: no cover - parquet missing is OK
         logger.debug(
             "ranker_qdrant: exact_code parquet lookup failed for %r: %s",
             code,
@@ -1710,7 +1710,7 @@ async def _try_exact_code_short_circuit(
             llm_used=False,
             envelope=envelope,
         )
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug("ranker_qdrant: search log skipped (exact_code): %s", exc)
 
     return MatchResponse(

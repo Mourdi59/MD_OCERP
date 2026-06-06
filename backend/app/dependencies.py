@@ -25,7 +25,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Stable DI container revision tag — fixed at design time so the
+# Stable DI container revision tag - fixed at design time so the
 # rate-limiter and the auth middleware can detect a binary skew
 # between worker processes (rolling deploys) at startup.
 _DI_REVISION_TAG: str = "a6e69553c945ff95"
@@ -75,7 +75,7 @@ def decode_access_token(
         token: JWT string.
         settings: Application settings (for secret + algorithm).
         expected_type: Required value of the ``type`` claim. Defaults to
-            ``"access"`` — the only token flavour that should reach protected
+            ``"access"`` - the only token flavour that should reach protected
             endpoints. Pass ``None`` to opt out (e.g. the refresh endpoint
             itself, which decodes a refresh token deliberately).
 
@@ -178,7 +178,7 @@ async def get_current_user_payload(
 
                 if iat is not None and user.password_changed_at is not None:
                     pwd_changed = user.password_changed_at
-                    # SQLite may return naive datetimes — assume UTC if no tz info
+                    # SQLite may return naive datetimes - assume UTC if no tz info
                     if pwd_changed.tzinfo is None:
                         pwd_changed = pwd_changed.replace(tzinfo=UTC)
                     pwd_changed_ts = int(pwd_changed.timestamp())
@@ -220,7 +220,7 @@ async def verify_user_exists_and_active(user_sub: str) -> "User":
     Shared across all JWT entry points (HTTP bearer, WS token, optional
     payloads) so that forged tokens with a real-looking UUID that nobody
     actually owns cannot reach business logic. Without this check,
-    :func:`decode_access_token` only proves the signature is valid — it
+    :func:`decode_access_token` only proves the signature is valid - it
     says nothing about whether the ``sub`` references a real user.
 
     Raises:
@@ -254,7 +254,7 @@ async def get_optional_user_payload(
 ) -> dict[str, Any] | None:
     """Like get_current_user_payload but returns None if no token provided.
 
-    Still enforces user existence (BUG-323) — an unknown / inactive
+    Still enforces user existence (BUG-323) - an unknown / inactive
     ``sub`` is treated the same as an anonymous request (``None``), not
     as an authenticated one with forged identity.
     """
@@ -298,7 +298,7 @@ class RequirePermission:
         # generated hundreds of identical lines per minute on a busy admin
         # session AND tripped Splunk/Datadog alert rules that pattern-match
         # the literal string "Admin bypass" as a security flag. Demoted to
-        # DEBUG — admin permissions are by design, not noteworthy.
+        # DEBUG - admin permissions are by design, not noteworthy.
         if role == "admin":
             user_id = payload.get("sub", "unknown")
             logger.debug(
@@ -347,7 +347,7 @@ class RequireRole:
     """Dependency that rejects anyone below a given role.
 
     Use on destructive endpoints (database wipes, tenant-wide bulk deletes,
-    demo resets) where "has module permission" is insufficient — a plain
+    demo resets) where "has module permission" is insufficient - a plain
     estimator holding `costs.update` must NOT be able to truncate the cost
     database.
 
@@ -378,7 +378,7 @@ class RequireRole:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Role '{self.required}' required",
             )
-        # Attribution only — role comes from DB-rehydrated payload, not from
+        # Attribution only - role comes from DB-rehydrated payload, not from
         # the JWT claim, so this log entry is trustworthy.
         user_id = payload.get("sub", "unknown")
         logger.info("Role-guarded call: required=%s user=%s", self.required, user_id)
@@ -417,7 +417,7 @@ async def verify_project_access(
 
     Raises HTTP 404 on both "project missing" and "access denied" to avoid
     leaking the existence of UUIDs the caller is not allowed to see (IDOR
-    defence — same policy as all downstream modules that call this helper).
+    defence - same policy as all downstream modules that call this helper).
     Team membership (added via add_project_member) grants the same read/write
     access as ownership within the caller's RBAC role.
     """
@@ -433,7 +433,7 @@ async def verify_project_access(
             detail="Project not found",
         )
 
-    # Admin bypass — admins can touch any project regardless of ownership.
+    # Admin bypass - admins can touch any project regardless of ownership.
     try:
         user_repo = UserRepository(session)
         user = await user_repo.get_by_id(_uuid.UUID(str(user_id)))
@@ -446,16 +446,16 @@ async def verify_project_access(
     if str(getattr(project, "owner_id", "")) == str(user_id):
         return
 
-    # Team-member check — any TeamMembership row for this project grants access.
+    # Team-member check - any TeamMembership row for this project grants access.
     try:
         if await is_project_member(session, project_id, _uuid.UUID(str(user_id))):
             return
     except (ValueError, TypeError):
-        pass  # malformed user_id — fall through to 404
+        pass  # malformed user_id - fall through to 404
     except Exception:
         logger.exception("Team-membership lookup failed during project access check")
 
-    # 404 (not 403) — keeps "resource missing" and "access denied"
+    # 404 (not 403) - keeps "resource missing" and "access denied"
     # indistinguishable, preventing UUID-existence oracle attacks.
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
@@ -519,7 +519,7 @@ CurrentUserId = Annotated[str, Depends(get_current_user_id)]
 OptionalUserPayload = Annotated[dict[str, Any] | None, Depends(get_optional_user_payload)]
 
 
-# ── Epic H — universal audit context dependency ────────────────────────────
+# ── Epic H - universal audit context dependency ────────────────────────────
 
 
 async def audit_context_dep(
@@ -538,7 +538,7 @@ async def audit_context_dep(
     deeper in the call stack pick them up automatically.
 
     Mounting this dependency on every router (or via a global router
-    dependency) is optional — service-layer callers that pass
+    dependency) is optional - service-layer callers that pass
     ``actor_id=`` / ``tenant_id=`` explicitly continue to work unchanged.
     Using the dep just spares them the boilerplate.
     """
@@ -549,7 +549,7 @@ async def audit_context_dep(
     )
 
     if payload is None:
-        return  # anonymous request — middleware capture is enough
+        return  # anonymous request - middleware capture is enough
 
     current = get_audit_context() or AuditContext()
     actor_id = payload.get("sub")

@@ -8,9 +8,9 @@ from app.core.permissions import Role, permission_registry
 def register_file_transmittal_permissions() -> None:
     """Register the three RBAC permissions for the transmittals module.
 
-    * ``file_transmittals.read``  — list + view individual transmittals
-    * ``file_transmittals.write`` — create drafts + edit items/recipients
-    * ``file_transmittals.send``  — flip a draft to sent (mints tokens +
+    * ``file_transmittals.read``  - list + view individual transmittals
+    * ``file_transmittals.write`` - create drafts + edit items/recipients
+    * ``file_transmittals.send``  - flip a draft to sent (mints tokens +
                                     generates cover sheet)
     """
     permission_registry.register_module_permissions(

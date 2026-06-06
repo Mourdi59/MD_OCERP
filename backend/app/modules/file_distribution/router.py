@@ -6,15 +6,15 @@ Mounted by the module loader at ``/api/v1/file-distribution``.
 
 Two sub-namespaces:
 
-* ``GET  /search/``               — cross-project ranked file search
-* ``GET  /lists/``                — list distribution lists
-* ``POST /lists/``                — create
-* ``PATCH /lists/{id}/``          — update
-* ``DELETE /lists/{id}/``         — delete
-* ``POST /lists/{id}/members/``   — add member
-* ``DELETE /lists/{lid}/members/{mid}/`` — remove member
-* ``GET  /subscriptions/``        — list user's subscriptions
-* ``POST /subscriptions/``        — subscribe to folder/kind
+* ``GET  /search/``               - cross-project ranked file search
+* ``GET  /lists/``                - list distribution lists
+* ``POST /lists/``                - create
+* ``PATCH /lists/{id}/``          - update
+* ``DELETE /lists/{id}/``         - delete
+* ``POST /lists/{id}/members/``   - add member
+* ``DELETE /lists/{lid}/members/{mid}/`` - remove member
+* ``GET  /subscriptions/``        - list user's subscriptions
+* ``POST /subscriptions/``        - subscribe to folder/kind
 * ``DELETE /subscriptions/{id}/``
 """
 
@@ -75,7 +75,7 @@ async def _resolve_accessible_project_ids(
     Mirrors ``verify_project_access`` semantics: admins see every
     project, everyone else only their own. Project membership outside
     ownership is a separate concern handled by the documents module
-    folder-permissions service — when that service is wired the
+    folder-permissions service - when that service is wired the
     callback used here can be expanded; for now ownership is the safe
     minimum.
     """
@@ -382,7 +382,7 @@ async def create_subscription(
     user_uuid = _user_uuid(current_user_id)
     # IDOR guard: file_distribution.subscribe is a global role; without this any
     # holder could subscribe to (and receive notifications about) files in a
-    # project they cannot access — a cross-project information leak.
+    # project they cannot access - a cross-project information leak.
     await verify_project_access(payload.project_id, str(user_uuid), session)
     service = SubscriptionService(session)
     try:

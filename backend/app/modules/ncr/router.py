@@ -35,7 +35,7 @@ _COST_IMPACT_RE = re.compile(r"^\s*([A-Za-z]{3})?\s*([\d.,]+)\s*$")
 def _parse_cost_impact(raw: str | None) -> tuple[str, str | None]:
     """Best-effort split of an NCR's free-text ``cost_impact`` into amount + ISO currency.
 
-    The NCR ``cost_impact`` column is free text (e.g. ``"BRL 12000"``) — amount and
+    The NCR ``cost_impact`` column is free text (e.g. ``"BRL 12000"``) - amount and
     currency jammed into one string. ``ChangeOrder.cost_impact`` is a numeric MoneyType
     whose ``_to_decimal`` coercion returns 0 for any non-numeric input, so passing the
     raw string silently zeroes the escalated change order's cost.
@@ -192,7 +192,7 @@ async def create_variation_from_ncr(
     if not ncr.cost_impact:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="NCR has no cost impact — cannot create a variation.",
+            detail="NCR has no cost impact - cannot create a variation.",
         )
 
     # Lazy import changeorders module
@@ -210,12 +210,12 @@ async def create_variation_from_ncr(
         # Money-correctness fix: ncr.cost_impact is free text like "BRL 12000".
         # Passing it raw to ChangeOrder.cost_impact (a numeric MoneyType) coerces
         # to Decimal('0'), silently dropping the cost, and the ChangeOrder.currency
-        # column was left blank — so the rollup treated the lost amount as base
+        # column was left blank - so the rollup treated the lost amount as base
         # currency. Split a clean numeric amount + any leading ISO code here.
         amount, parsed_currency = _parse_cost_impact(ncr.cost_impact)
 
         # Prefer the currency parsed from the NCR's own cost_impact; otherwise fall
-        # back to the project's real currency. NEVER hardcode "EUR" — load the
+        # back to the project's real currency. NEVER hardcode "EUR" - load the
         # project's currency, and leave blank ("") if the project has none set.
         project_currency = await session.scalar(select(Project.currency).where(Project.id == ncr.project_id))
         currency = parsed_currency or (project_currency or "")

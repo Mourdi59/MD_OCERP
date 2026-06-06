@@ -1,4 +1,4 @@
-"""AI Agents Pydantic schemas — request/response models."""
+"""AI Agents Pydantic schemas - request/response models."""
 
 from datetime import datetime
 from typing import Any
@@ -33,7 +33,7 @@ class AgentDescriptor(BaseModel):
 
     # True for user-authored agents (DB-backed, editable by their creator).
     is_custom: bool = False
-    # Present only for custom agents — the row id, so the UI can edit/delete.
+    # Present only for custom agents - the row id, so the UI can edit/delete.
     custom_id: UUID | None = None
 
 
@@ -72,7 +72,7 @@ class AgentStepResponse(BaseModel):
 
 
 class AgentRunResponse(BaseModel):
-    """Full run snapshot — status, totals, every step so far."""
+    """Full run snapshot - status, totals, every step so far."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -174,7 +174,7 @@ class GuidedAgentSpec(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    # "Act as a ..." — the expert role the agent should play.
+    # "Act as a ..." - the expert role the agent should play.
     role: str = Field("", max_length=200)
     # The single most important field: what should this agent help with / do.
     goal: str = Field(..., min_length=3, max_length=2000)
@@ -210,7 +210,7 @@ class CustomAgentCreateRequest(BaseModel):
 
 
 class CustomAgentUpdateRequest(BaseModel):
-    """Request body for ``PUT /ai-agents/custom/{id}`` — full replace.
+    """Request body for ``PUT /ai-agents/custom/{id}`` - full replace.
 
     Same shape as create; the agent is rewritten from these values. Keeping it
     a full replace (rather than a sparse patch) matches how the builder form
@@ -257,7 +257,7 @@ class CustomAgentResponse(BaseModel):
 
 
 class AgentMetadataResponse(BaseModel):
-    """The automation envelope of a custom agent — schedule, tools, triggers.
+    """The automation envelope of a custom agent - schedule, tools, triggers.
 
     Returned by the schedule/tools endpoints so the builder can re-hydrate the
     Schedule and Tools panels. ``next_run_at`` is an ISO-8601 UTC string the UI

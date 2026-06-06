@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Boost registry — the ranker iterates ``BOOSTS`` in order.
+"""‌⁠‍Boost registry - the ranker iterates ``BOOSTS`` in order.
 
 Each boost is a sync function ``(envelope, candidate, settings) ->
 dict[str, float]``. The ranker sums every reported delta into the
@@ -26,9 +26,9 @@ from app.core.match_service.envelope import ElementEnvelope, MatchCandidate
 BoostFn = Callable[[ElementEnvelope, MatchCandidate, Any], dict[str, float]]
 
 # Order doesn't affect math (sum is commutative) but it does affect the
-# ``boosts_applied`` insertion order shown in the API response — so we
+# ``boosts_applied`` insertion order shown in the API response - so we
 # keep them in "most explainable first" order: classifier → unit →
-# region. The ``lex`` and ``rare_token`` boosts were removed in v3 —
+# region. The ``lex`` and ``rare_token`` boosts were removed in v3 -
 # the Qdrant ranker handles sparse matching natively via the BAAI/bge-m3
 # sparse vector + RRF fusion, so duplicating that work in the boost
 # stack only added noise.
@@ -53,7 +53,7 @@ def apply_boosts(
     for fn in BOOSTS:
         try:
             delta = fn(envelope, candidate, settings)
-        except Exception:  # pragma: no cover — boosts must never crash ranking
+        except Exception:  # pragma: no cover - boosts must never crash ranking
             continue
         if delta:
             out.update(delta)

@@ -1,23 +1,23 @@
 """‌⁠‍Finance API routes.
 
 Endpoints:
-    GET    /                    — List invoices with filters
-    POST   /                    — Create invoice (auth required)
-    GET    /invoices/export      — Export invoices as Excel
-    GET    /invoices/{id}/br-pdf — Brazilian-styled invoice PDF (RPS layout)
-    GET    /payments             — List payments
-    POST   /payments             — Create payment (auth required)
-    GET    /budgets              — List budgets
-    POST   /budgets              — Create budget (auth required)
-    PATCH  /budgets/{id}         — Update budget (auth required)
-    POST   /budgets/import/file  — Import budgets from Excel/CSV (auth required)
-    GET    /budgets/export       — Export budgets as Excel
-    GET    /evm                  — List EVM snapshots
-    POST   /evm/snapshot         — Create EVM snapshot (auth required)
-    GET    /{id}                — Get single invoice
-    PATCH  /{id}                — Update invoice (auth required)
-    POST   /{id}/approve        — Approve invoice (auth required)
-    POST   /{id}/pay            — Mark invoice as paid (auth required)
+    GET    /                    - List invoices with filters
+    POST   /                    - Create invoice (auth required)
+    GET    /invoices/export      - Export invoices as Excel
+    GET    /invoices/{id}/br-pdf - Brazilian-styled invoice PDF (RPS layout)
+    GET    /payments             - List payments
+    POST   /payments             - Create payment (auth required)
+    GET    /budgets              - List budgets
+    POST   /budgets              - Create budget (auth required)
+    PATCH  /budgets/{id}         - Update budget (auth required)
+    POST   /budgets/import/file  - Import budgets from Excel/CSV (auth required)
+    GET    /budgets/export       - Export budgets as Excel
+    GET    /evm                  - List EVM snapshots
+    POST   /evm/snapshot         - Create EVM snapshot (auth required)
+    GET    /{id}                - Get single invoice
+    PATCH  /{id}                - Update invoice (auth required)
+    POST   /{id}/approve        - Approve invoice (auth required)
+    POST   /{id}/pay            - Mark invoice as paid (auth required)
 
 NOTE: Fixed-path routes (/payments, /budgets, /evm, /invoices/export) are
 registered BEFORE the parametric /{invoice_id} route so that FastAPI does not
@@ -126,7 +126,7 @@ async def _require_project_access(
 ) -> None:
     """Verify the current user owns (or is admin on) the referenced project.
 
-    Central choke-point for project-scoped finance endpoints — must be called
+    Central choke-point for project-scoped finance endpoints - must be called
     before reading or writing invoices/budgets/payments/EVM snapshots that
     belong to a specific project. Mirrors the pattern used by
     ``erp_chat.tools._require_project_access`` and the shared
@@ -134,7 +134,7 @@ async def _require_project_access(
 
     R7 hardening (2026-05-24): cross-tenant fetches now answer **404**
     rather than 403. A 403 leaks the existence of project UUIDs the
-    caller is not allowed to see — the global R7 standard (and the
+    caller is not allowed to see - the global R7 standard (and the
     shared ``verify_project_access`` helper) returns 404 on both
     "missing" and "access denied". Bringing finance in line closes the
     enumeration sidechannel for project IDs.
@@ -169,11 +169,11 @@ async def _require_project_access(
             user = await user_repo.get_by_id(user_id)
             if user is not None and getattr(user, "role", "") == "admin":
                 return
-        except Exception:  # noqa: BLE001 — best-effort admin check
+        except Exception:  # noqa: BLE001 - best-effort admin check
             pass
 
         if str(getattr(project, "owner_id", "")) != str(user_id):
-            # R7: 404 not 403 — never confirm a project UUID exists
+            # R7: 404 not 403 - never confirm a project UUID exists
             # for callers that don't own it. Mirrors the response shape
             # of the "project missing" branch above.
             raise HTTPException(
@@ -184,7 +184,7 @@ async def _require_project_access(
         raise
     except Exception as exc:  # noqa: BLE001
         logger.warning("Finance project access check failed for %s: %s", project_id, exc)
-        # Generic auth failure stays as 404 too — anything else would
+        # Generic auth failure stays as 404 too - anything else would
         # again let the caller distinguish "exists but I lack access"
         # from "doesn't exist".
         raise HTTPException(
@@ -332,7 +332,7 @@ async def create_invoice(
     "/invoices/",
     response_model=InvoiceListResponse,
     summary="List invoices (alias of GET /)",
-    description="Alias of ``GET /api/v1/finance/`` — returns the same paginated "
+    description="Alias of ``GET /api/v1/finance/`` - returns the same paginated "
     "list. Provided so that clients hitting ``/api/v1/finance/invoices`` get a "
     "sensible 200 instead of a UUID-parse 422.",
 )
@@ -458,13 +458,13 @@ async def export_invoices(
     )
 
 
-# ── Brazilian-styled invoice PDF (Tier-1 — pre-NF-e bridge) ─────────────────
+# ── Brazilian-styled invoice PDF (Tier-1 - pre-NF-e bridge) ─────────────────
 #
 # Path lives under ``/invoices/{invoice_id}/br-pdf/`` so FastAPI's static
 # prefix ``/invoices/`` wins over the bare ``/{invoice_id}`` parametric
 # route. See ``br_invoice_pdf.py`` for the rendering logic and the
 # disclaimer text explaining why this PDF is NOT a fiscal document
-# (NF-e / NFS-e SEFAZ integration is Tier-2 — see
+# (NF-e / NFS-e SEFAZ integration is Tier-2 - see
 # ``__brazil_tier2_followups.md``).
 
 
@@ -475,7 +475,7 @@ async def export_invoices(
         "Render the invoice as a one-page PDF in the Brazilian RPS "
         "(Recibo Provisório de Serviços) layout, with CNPJ / IE / Razão "
         "Social / código de serviço / retenções fields. NOT a fiscal "
-        "document — for full NF-e / NFS-e SEFAZ output see Tier-2 roadmap."
+        "document - for full NF-e / NFS-e SEFAZ output see Tier-2 roadmap."
     ),
     response_description="application/pdf stream",
 )
@@ -492,7 +492,7 @@ async def export_invoice_br_pdf(
     invoice = await _require_invoice_access(session, invoice_id, user_id)
     fresh = await service.get_invoice(invoice_id)
 
-    # Project context (best-effort — never block the PDF on project lookup)
+    # Project context (best-effort - never block the PDF on project lookup)
     project_dict: dict[str, Any] = {}
     try:
         from app.modules.projects.repository import ProjectRepository
@@ -503,7 +503,7 @@ async def export_invoice_br_pdf(
                 "name": getattr(proj, "name", "") or "",
                 "code": getattr(proj, "code", "") or "",
             }
-    except Exception:  # noqa: BLE001 — header is decorative
+    except Exception:  # noqa: BLE001 - header is decorative
         logger.debug("BR invoice PDF: project lookup failed", exc_info=True)
 
     invoice_dict: dict[str, Any] = {
@@ -536,7 +536,7 @@ async def export_invoice_br_pdf(
     )
 
     # Sanitise invoice_number before embedding in a quoted Content-Disposition
-    # header.  invoice_number is a user-controlled DB value — it can contain
+    # header.  invoice_number is a user-controlled DB value - it can contain
     # characters that would break the RFC 6266 quoted-string or inject
     # additional headers (CRLF injection).  Strip every character that is not
     # ASCII printable, remove double-quotes (which terminate the quoted-string
@@ -583,7 +583,7 @@ async def list_payments(
 ) -> PaymentListResponse:
     """List payments scoped to a single invoice or project.
 
-    Either ``invoice_id`` or ``project_id`` MUST be supplied — an unscoped
+    Either ``invoice_id`` or ``project_id`` MUST be supplied - an unscoped
     call would return payments across every tenant. Access to the referenced
     invoice/project is verified before any rows are read.
     """
@@ -629,7 +629,7 @@ async def list_payments(
     status_code=201,
     summary="Create payment",
     description="Record a payment against an invoice. Updates the invoice's paid amount. "
-    "MANAGER-only — recording a payment is a binding ledger entry, not a CRUD edit.",
+    "MANAGER-only - recording a payment is a binding ledger entry, not a CRUD edit.",
 )
 async def create_payment(
     data: PaymentCreate,
@@ -642,7 +642,7 @@ async def create_payment(
 
     R7 (2026-05-24): pinned to ``finance.record_payment`` (MANAGER+).
     Recording a payment row is a financial commitment that affects the
-    invoice's paid/outstanding state and downstream budget actuals — it
+    invoice's paid/outstanding state and downstream budget actuals - it
     cannot remain an EDITOR-level action.
     """
     await _require_invoice_access(session, data.invoice_id, user_id)
@@ -660,7 +660,7 @@ async def create_payment(
     description="Auto-create (or return the existing) accounts-receivable invoice for a "
     "certified progress claim. Idempotent on claim_id: a second call returns the same "
     "invoice with 200 rather than writing a duplicate. The claim must be in 'certified' "
-    "status (400 otherwise). MANAGER-only — it books revenue against the client.",
+    "status (400 otherwise). MANAGER-only - it books revenue against the client.",
 )
 async def create_invoice_from_claim(
     data: ClaimInvoiceRequest,
@@ -723,7 +723,7 @@ async def get_receivable_for_claim(
     "withholding_amount is omitted it is derived from the invoice retention_amount; when "
     "amount is omitted the invoice net (total - retention) is paid. Idempotent on "
     "idempotency_key. The cash leg (not the withheld retainage) is posted to the cost "
-    "spine. MANAGER-only — a payment is a binding ledger entry.",
+    "spine. MANAGER-only - a payment is a binding ledger entry.",
 )
 async def record_payment_with_withholding(
     invoice_id: uuid.UUID,
@@ -987,14 +987,14 @@ async def import_budgets_file(
         )
 
     # R7 (2026-05-24): magic-byte gate. The filename-extension check above
-    # is necessary but trivially bypassable — an attacker who renames a
+    # is necessary but trivially bypassable - an attacker who renames a
     # PE/ELF/script to ``payload.xlsx`` would pass the extension test and
     # land in the parser. ``require_signature`` rejects anything that
     # isn't a ZIP-container (xlsx/xls OLE) or plain-text/CSV (which has
     # no signature and surfaces as ``None``).
     #
     # CSV genuinely has no magic bytes so it returns ``None`` from
-    # ``detect`` — only require the signature check for the spreadsheet
+    # ``detect`` - only require the signature check for the spreadsheet
     # branches; plain CSV falls through to the parser as-is.
     fname_low = filename
     if fname_low.endswith((".xlsx", ".xls")):
@@ -1166,7 +1166,7 @@ async def export_budgets(
         ws.cell(row=row_idx, column=2, value=b.category or "")
         # BUG-069: use Decimal (not float) so large construction-budget values
         # (e.g. 123456789.99) don't suffer IEEE-754 rounding when Excel reads
-        # them back — openpyxl stores Decimal natively as a NUMERIC cell.
+        # them back - openpyxl stores Decimal natively as a NUMERIC cell.
         from decimal import Decimal as _Dec
         from decimal import InvalidOperation as _IOp
 
@@ -1572,7 +1572,7 @@ async def update_invoice(
     summary="Approve invoice",
     description="Transition an invoice to 'sent' (legacy alias 'approved') status. "
     "Only invoices in 'draft' or 'pending' status can be approved. "
-    "MANAGER-only — invoice approval is the financial-commitment gate.",
+    "MANAGER-only - invoice approval is the financial-commitment gate.",
 )
 async def approve_invoice(
     invoice_id: uuid.UUID,
@@ -1604,7 +1604,7 @@ async def approve_invoice(
     response_model=InvoiceResponse,
     summary="Mark invoice as paid",
     description="Transition an invoice to 'paid' status. Records the payment date. "
-    "MANAGER-only — marking an invoice paid is a binding ledger action. "
+    "MANAGER-only - marking an invoice paid is a binding ledger action. "
     "Idempotent: a second call against an already-paid invoice returns 400, "
     "not a duplicate ledger write.",
 )
@@ -1620,7 +1620,7 @@ async def pay_invoice(
     R7 (2026-05-24): pinned to ``finance.pay`` (MANAGER+). The FSM
     allowlist (``_INVOICE_STATUS_TRANSITIONS``) ensures a second click
     against an already-paid invoice cannot re-trigger budget-actual
-    recompute — it 400s on the disallowed ``paid -> paid`` transition
+    recompute - it 400s on the disallowed ``paid -> paid`` transition
     (idempotency by allowlist).
     """
     allowed, _ = approval_limiter.is_allowed(str(user_id))

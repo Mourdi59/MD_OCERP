@@ -8,9 +8,9 @@ from app.core.permissions import Role, permission_registry
 def register_file_tags_permissions() -> None:
     """Register permissions for the file_tags module.
 
-    * ``file_tags.read``   — any project member can see the tag list.
-    * ``file_tags.write``  — editor and up can create/rename/delete.
-    * ``file_tags.assign`` — editor and up can attach tags to files
+    * ``file_tags.read``   - any project member can see the tag list.
+    * ``file_tags.write``  - editor and up can create/rename/delete.
+    * ``file_tags.assign`` - editor and up can attach tags to files
       (bulk + single).
     """
     permission_registry.register_module_permissions(

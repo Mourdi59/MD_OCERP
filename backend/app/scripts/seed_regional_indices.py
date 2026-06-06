@@ -1,10 +1,10 @@
-"""‌⁠‍Seed regional cost indices (v3.12.0 — Stream B).
+"""‌⁠‍Seed regional cost indices (v3.12.0 - Stream B).
 
-Inserts ~50 sample rows into ``oe_regional_indices`` — 8 cities × 6
+Inserts ~50 sample rows into ``oe_regional_indices`` - 8 cities × 6
 trade categories. Factors are 1.0-baselined on Berlin, with values
 calibrated against open published city cost indices (BCIS for the UK,
 ENR for US, Eurostat construction price index for EU). They are
-representative averages — production deployments should overwrite the
+representative averages - production deployments should overwrite the
 ``OE_v3.12_seed_2026Q2`` rows with audited indices.
 
 Idempotent: a row already in the DB (by the table's UNIQUE
@@ -144,7 +144,7 @@ async def main() -> int:
         await conn.run_sync(Base.metadata.create_all)
 
     print("=" * 70)
-    print(f"  REGIONAL INDICES SEED — {_SEED_SOURCE} ({_SEED_DATE.isoformat()})")
+    print(f"  REGIONAL INDICES SEED - {_SEED_SOURCE} ({_SEED_DATE.isoformat()})")
     print("=" * 70)
 
     rows = _rows()
@@ -154,7 +154,7 @@ async def main() -> int:
     async with async_session_factory() as session:
         for row in rows:
             # Composite-key existence check (subcategory is NULL here
-            # so we use IS NULL explicitly — SQLAlchemy expands ``==
+            # so we use IS NULL explicitly - SQLAlchemy expands ``==
             # None`` correctly but the explicit form is more readable).
             existing_stmt = select(func.count(RegionalIndex.id)).where(
                 and_(

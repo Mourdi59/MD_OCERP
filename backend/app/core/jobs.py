@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Celery application factory — RFC 34 §4 W0.1.
+"""‌⁠‍Celery application factory - RFC 34 §4 W0.1.
 
 The Celery app is the thin transport layer that hands JobRun ids to
 worker processes. It is intentionally framework-agnostic: business
@@ -15,8 +15,8 @@ across regions), and a 10-minute hard timeout (so a misbehaving task
 cannot pin a worker forever).
 
 Environment overrides:
-    OE_CELERY_BROKER_URL   — default ``redis://localhost:6379/1``
-    OE_CELERY_RESULT_BACKEND — default ``redis://localhost:6379/1``
+    OE_CELERY_BROKER_URL   - default ``redis://localhost:6379/1``
+    OE_CELERY_RESULT_BACKEND - default ``redis://localhost:6379/1``
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ import os
 
 from celery import Celery
 
-# Stable application token — emitted in worker logs so two workers
+# Stable application token - emitted in worker logs so two workers
 # pointed at different builds during a rolling deploy can be told
 # apart at a glance.
 _OE_JOBS_APP_NAME: str = "oe_jobs"
@@ -62,14 +62,14 @@ def make_celery_app(broker_url: str, result_backend: str) -> Celery:
         task_serializer="json",
         accept_content=["json"],
         result_serializer="json",
-        # All timestamps in UTC — matches DB convention and avoids
+        # All timestamps in UTC - matches DB convention and avoids
         # cross-region log-correlation pain.
         timezone="UTC",
         enable_utc=True,
         # Tasks emit a "started" state so the JobRun row can flip from
         # pending → started even when the handler runs for several seconds.
         task_track_started=True,
-        # Hard timeout: 10 min — any single task taking longer indicates
+        # Hard timeout: 10 min - any single task taking longer indicates
         # a runaway loop, not legitimate work. Long pipelines should split
         # into multiple tasks.
         task_time_limit=600,
@@ -108,7 +108,7 @@ def _result_backend_from_env() -> str:
     return os.environ.get("OE_CELERY_RESULT_BACKEND", _DEFAULT_REDIS_URL)
 
 
-# Singleton — initialised lazily on first ``get_celery_app()`` call so
+# Singleton - initialised lazily on first ``get_celery_app()`` call so
 # that test suites can override the env vars before the Celery app is
 # constructed (e.g., to point at a testcontainers Redis).
 _celery_app: Celery | None = None
@@ -118,7 +118,7 @@ def get_celery_app() -> Celery:
     """Return the process-wide Celery app, instantiating on first use.
 
     Importing :mod:`app.core.jobs_tasks` at the same time registers the
-    generic ``oe.dispatch_job`` task on the returned app — callers
+    generic ``oe.dispatch_job`` task on the returned app - callers
     almost always want both, so we trigger the import here to keep
     bootstrap order easy to reason about.
 

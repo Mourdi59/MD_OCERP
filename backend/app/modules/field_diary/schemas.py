@@ -181,7 +181,7 @@ class FieldMagicLinkRequest(BaseModel):
 
 
 class FieldMagicLinkRequestResponse(BaseModel):
-    """Always 202 — does not reveal whether the phone is provisioned.
+    """Always 202 - does not reveal whether the phone is provisioned.
 
     In dev / test the plaintext link + PIN are returned so the caller can
     drive the consume flow without an SMS provider; in production these

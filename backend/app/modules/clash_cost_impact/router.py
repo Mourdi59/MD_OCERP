@@ -48,7 +48,7 @@ def _get_service(session: SessionDep) -> ClashCostImpactService:
 
 
 def _require_boq_read(payload: dict[str, Any]) -> None:
-    """Second permission gate — the cross-module ``boq.read`` requirement.
+    """Second permission gate - the cross-module ``boq.read`` requirement.
 
     The first ``clash.read`` gate is enforced by the route-level
     ``RequirePermission`` dependency; this in-body check completes the
@@ -60,7 +60,7 @@ def _require_boq_read(payload: dict[str, Any]) -> None:
     perms: list[str] = payload.get("permissions", []) or []
     if "boq.read" in perms:
         return
-    # Tolerate stale JWTs by falling through to the live registry —
+    # Tolerate stale JWTs by falling through to the live registry -
     # matches RequirePermission's stale-token branch.
     try:
         from app.core.permissions import permission_registry as _reg
@@ -118,7 +118,7 @@ async def get_clash_impact(
 #: Accepted ``status`` query values for the rollup endpoint. The two
 #: aggregate aliases are ``open`` (the open-statuses tuple) and ``all``
 #: (no filter); the remaining values are the per-row statuses surfaced
-#: by the clash module. Anything else returns 400 — silently accepting
+#: by the clash module. Anything else returns 400 - silently accepting
 #: arbitrary strings used to produce empty rollups that looked like a
 #: clean project, which is misleading on a money endpoint.
 _ALLOWED_STATUS_FILTERS = frozenset({"open", "all", "new", "active", "reviewed", "approved", "resolved", "ignored"})
@@ -136,8 +136,8 @@ async def get_project_rollup(
     status_filter: str = Query(
         default="open",
         alias="status",
-        description="Clash status filter. ``open`` (default) — clashes "
-        "still needing attention (new/active/reviewed). ``all`` — every "
+        description="Clash status filter. ``open`` (default) - clashes "
+        "still needing attention (new/active/reviewed). ``all`` - every "
         "clash regardless of status. Otherwise a literal status string "
         "from the clash module's vocabulary "
         "(``new``/``active``/``reviewed``/``resolved``/``ignored``).",
@@ -156,7 +156,7 @@ async def get_project_rollup(
 
     rollup = await service.rollup_for_project(project_id, status_filter=status_filter)
     if rollup is None:
-        # Should never fire — verify_project_access 404s already — but
+        # Should never fire - verify_project_access 404s already - but
         # keep the safety net so a transient race doesn't crash the call.
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

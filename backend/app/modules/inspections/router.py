@@ -351,7 +351,7 @@ async def create_ncr_from_inspection(
     re-inspection therefore needs the prior NCR closed first.
     """
     inspection = await service.get_inspection(inspection_id)
-    # Cross-tenant guard — must precede any business-logic branch that
+    # Cross-tenant guard - must precede any business-logic branch that
     # could mutate (or leak) the inspection's parent project.
     await verify_project_access(inspection.project_id, str(user_id), session)
 
@@ -408,7 +408,7 @@ async def create_ncr_from_inspection(
             label = item.get("question") or item.get("description") or "Unknown item"
             crit = " (critical)" if item.get("critical") else ""
             note = item.get("notes") or ""
-            note_suffix = f" — {note}" if note else ""
+            note_suffix = f" - {note}" if note else ""
             description_parts.append(f"  - {label}{crit}{note_suffix}")
     description = "\n".join(description_parts)
 

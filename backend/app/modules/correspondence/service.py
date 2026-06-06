@@ -1,4 +1,4 @@
-"""‌⁠‍Correspondence service — business logic for correspondence management."""
+"""‌⁠‍Correspondence service - business logic for correspondence management."""
 
 import logging
 import uuid
@@ -63,8 +63,8 @@ class CorrespondenceService:
         )
         correspondence = await self.repo.create(correspondence)
         # PII discipline: log only structural fields (ref number, direction,
-        # type, project id). Subject and notes can contain personal data —
-        # legal names, addresses, allegations — and structured-log sinks
+        # type, project id). Subject and notes can contain personal data -
+        # legal names, addresses, allegations - and structured-log sinks
         # outside our control (Sentry, Datadog) shouldn't see them.
         logger.info(
             "Correspondence created: %s (%s/%s) for project %s",
@@ -134,7 +134,7 @@ class CorrespondenceService:
             list(fields.keys()),
         )
         # Publish correspondence.updated so the vector indexer re-embeds the
-        # edited row (subject / notes may have changed) — item 16.
+        # edited row (subject / notes may have changed) - item 16.
         await _safe_publish(
             "correspondence.updated",
             {
@@ -169,7 +169,7 @@ class CorrespondenceService:
 
         The caller (router) is responsible for magic-byte validation and
         for choosing the server-side filename; this method only mutates
-        the JSON column. We avoid logging the path payload itself —
+        the JSON column. We avoid logging the path payload itself -
         attachment filenames may carry PII (e.g. ``CV_jane_doe.pdf``).
         """
         correspondence = await self.get_correspondence(correspondence_id)

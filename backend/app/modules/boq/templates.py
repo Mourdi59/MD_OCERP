@@ -5,14 +5,14 @@ Positions use a ``qty_factor`` that is multiplied by the user-provided gross
 floor area (GFA, in m2) to derive the actual quantity.
 
 Templates cover the most common building types worldwide:
-    - residential — Multi-family residential (apartments), 3-5 floors
-    - office — Commercial office, 4-8 floors, steel or RC frame
-    - warehouse — Logistics warehouse, single-story, steel portal frame
-    - school — Primary or secondary school, 2-3 floors
-    - hospital — General hospital or clinic, highly serviced
-    - hotel — 3-5 star hotel with restaurant and conference
-    - retail — Retail space or shopping mall, 1-3 floors
-    - infrastructure — Road bridge, overpass, or elevated highway section
+    - residential - Multi-family residential (apartments), 3-5 floors
+    - office - Commercial office, 4-8 floors, steel or RC frame
+    - warehouse - Logistics warehouse, single-story, steel portal frame
+    - school - Primary or secondary school, 2-3 floors
+    - hospital - General hospital or clinic, highly serviced
+    - hotel - 3-5 star hotel with restaurant and conference
+    - retail - Retail space or shopping mall, 1-3 floors
+    - infrastructure - Road bridge, overpass, or elevated highway section
 """
 
 from typing import Any

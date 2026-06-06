@@ -1,7 +1,7 @@
 """Pydantic schemas for the dashboard rollup endpoint.
 
 Each widget has its own concrete shape so the OpenAPI doc is useful, but
-the top-level response (``RollupResponse``) keys are dynamic — only the
+the top-level response (``RollupResponse``) keys are dynamic - only the
 widgets the caller asked for are populated. Unrequested widgets are
 absent (not ``None``) so the frontend can use ``in`` to detect coverage.
 
@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class _Widget(BaseModel):
-    """Common base — allow extra so we can extend payloads without re-shipping schemas."""
+    """Common base - allow extra so we can extend payloads without re-shipping schemas."""
 
     model_config = ConfigDict(extra="allow")
 
@@ -72,17 +72,17 @@ class BOQSummaryPayload(_Widget):
         description=("BOQs whose status is NOT in archived/closed/cancelled/rejected."),
     )
     # NOTE: ``total_value_eur`` is a legacy field name. It is NOT an
-    # FX-converted EUR equivalent — there is no cross-project rate table.
+    # FX-converted EUR equivalent - there is no cross-project rate table.
     # It is a RAW arithmetic sum of every project's BOQ total across
     # whatever currencies they use. When ``multi_currency`` is true it
     # mixes ISO currencies and must NOT be shown as a single headline
-    # figure — use ``by_currency`` instead. The name is retained only for
+    # figure - use ``by_currency`` instead. The name is retained only for
     # backward compatibility with existing consumers.
     total_value_eur: str = Field(
         description=(
             "Legacy raw cross-currency sum (NOT FX-converted). When "
             "multi_currency is true this blends ISO currencies and must "
-            "not be rendered as a single headline — use by_currency."
+            "not be rendered as a single headline - use by_currency."
         ),
     )
     by_currency: list[CurrencySubtotal] = Field(
@@ -235,7 +235,7 @@ class ChangeOrdersPayload(_Widget):
     # Legacy flat scalar kept for backward compatibility. When
     # ``multi_currency`` is true it blends ISO currencies (there is no
     # cross-project FX table) and must not be rendered as a single
-    # headline figure — use ``by_currency`` instead.
+    # headline figure - use ``by_currency`` instead.
     total_impact: str  # Decimal-as-string
     currency: str
     by_currency: list[ChangeOrderCurrencySubtotal] = Field(
@@ -289,7 +289,7 @@ class ProjectChangeOrdersPulsePayload(_Widget):
 
 
 class ProjectDiaryItem(BaseModel):
-    """Single diary header — shape matches the widget's ``DiaryItem``.
+    """Single diary header - shape matches the widget's ``DiaryItem``.
 
     ``weather_summary`` is a JSONB dict server-side; the widget already
     has a ``formatWeatherSummary`` helper that handles both shapes, so
@@ -407,7 +407,7 @@ class RollupResponse(BaseModel):
     project_compliance_summary: ProjectComplianceSummaryPayload | None = None
     project_budget_burn: ProjectBudgetBurnPayload | None = None
 
-    # Cache metadata — populated by the router so the frontend can
+    # Cache metadata - populated by the router so the frontend can
     # display a "last refreshed Xs ago" stamp without round-tripping
     # headers through React Query's transport layer.
     generated_at: str = Field(description="ISO-8601 timestamp.")
@@ -463,7 +463,7 @@ class WidgetConfigItem(BaseModel):
     Validates two layers:
       * ``widget_id`` is one of the known configurable widgets (10 of them).
       * Every key in ``config`` is allowed for that widget, with the right
-        type and within the documented bounds. Unknown keys reject — we
+        type and within the documented bounds. Unknown keys reject - we
         don't silently drop them because that has historically caused
         silent regressions when a config key was renamed.
     """
@@ -489,7 +489,7 @@ class WidgetConfigItem(BaseModel):
             return v
         spec = _WIDGET_CONFIG_SPEC[widget_id]
         if not v:
-            # Empty config is always valid — no per-widget defaults to apply.
+            # Empty config is always valid - no per-widget defaults to apply.
             return v
         for key, value in v.items():
             if key not in spec:

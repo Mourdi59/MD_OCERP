@@ -1,4 +1,4 @@
-"""‌⁠‍Correspondence event handlers — vector indexing subscribers.
+"""‌⁠‍Correspondence event handlers - vector indexing subscribers.
 
 Subscribes to ``correspondence.created`` / ``correspondence.updated`` /
 ``correspondence.deleted`` lifecycle events and keeps the
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 # Keep the ``oe_correspondence_correspondence`` collection in sync with the
 # live Correspondence rows.  Each handler opens its own short-lived
 # session, loads the row and forwards it to the adapter.  Failures are
-# logged and swallowed — vector indexing is best-effort and must never
+# logged and swallowed - vector indexing is best-effort and must never
 # break a normal CRUD path.
 
 

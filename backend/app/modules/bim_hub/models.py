@@ -3,11 +3,11 @@
 """‌⁠‍BIM Hub ORM models.
 
 Tables:
-    oe_bim_model        — imported BIM/CAD model metadata
-    oe_bim_element      — individual elements extracted from a model
-    oe_bim_boq_link     — links between BIM elements and BOQ positions
-    oe_bim_quantity_map  — rules for mapping BIM quantities to BOQ items
-    oe_bim_model_diff   — diff results between two model versions
+    oe_bim_model        - imported BIM/CAD model metadata
+    oe_bim_element      - individual elements extracted from a model
+    oe_bim_boq_link     - links between BIM elements and BOQ positions
+    oe_bim_quantity_map  - rules for mapping BIM quantities to BOQ items
+    oe_bim_model_diff   - diff results between two model versions
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from app.database import GUID, Base
 
 
 class BIMModel(Base):
-    """‌⁠‍Imported BIM/CAD model — one record per uploaded file version."""
+    """‌⁠‍Imported BIM/CAD model - one record per uploaded file version."""
 
     __tablename__ = "oe_bim_model"
 
@@ -84,7 +84,7 @@ class BIMElement(Base):
     (ISO 19650 Asset Information Model). ``asset_info`` holds the
     operational-phase metadata (manufacturer, warranty, serial) and
     ``is_tracked_asset`` flags the element as a real-world object that
-    persists after construction — pumps, AHUs, doors, elevators etc.
+    persists after construction - pumps, AHUs, doors, elevators etc.
     Most geometry-only elements (walls, floors) leave both fields at
     their defaults and are invisible to the Assets page.
     """
@@ -275,8 +275,8 @@ class BIMElementGroup(Base):
       is the source of truth and never auto-recomputes.
 
     Scope:
-    - ``project_id`` is required — a group always belongs to a project.
-    - ``model_id`` is optional — when set, the group is scoped to a single
+    - ``project_id`` is required - a group always belongs to a project.
+    - ``model_id`` is optional - when set, the group is scoped to a single
       model; when NULL, it spans every model in the project.
 
     Uniqueness:
@@ -345,7 +345,7 @@ class BIMElementGroup(Base):
 
 
 class BIMFederation(Base):
-    """‌⁠‍Federation — a named group of N BIM models with a shared origin.
+    """‌⁠‍Federation - a named group of N BIM models with a shared origin.
 
     A federation composes multiple per-discipline models (architectural,
     structural, MEP, …) into a single coordinated set. Each member model
@@ -353,7 +353,7 @@ class BIMFederation(Base):
     simply records which models belong together, in what z-order, and
     with what display hint (visibility + color).
 
-    Federation ownership tracks project ownership — the project access
+    Federation ownership tracks project ownership - the project access
     helper (``_verify_project_access``) is the sole authorization gate.
     """
 
@@ -386,7 +386,7 @@ class BIMFederation(Base):
         server_default="m",
     )
 
-    # Relationships — member links cascade on federation delete so we
+    # Relationships - member links cascade on federation delete so we
     # never strand orphaned link rows. Members themselves (BIMModel
     # rows) are NOT deleted; the federation is purely an overlay.
     members: Mapped[list[BIMFederationModel]] = relationship(
@@ -401,7 +401,7 @@ class BIMFederation(Base):
 
 
 class BIMFederationModel(Base):
-    """‌⁠‍Join row — one ``BIMModel`` participating in one ``BIMFederation``.
+    """‌⁠‍Join row - one ``BIMModel`` participating in one ``BIMFederation``.
 
     A model can belong to multiple federations (e.g. the structural
     model takes part in both a clash-detection federation and a coord-

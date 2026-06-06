@@ -2,18 +2,18 @@
 
 Three things live here:
 
-1. :func:`read_rows` — paginated row reader against the snapshot's
+1. :func:`read_rows` - paginated row reader against the snapshot's
    entities Parquet. Used by the ``GET /snapshots/{id}/rows`` endpoint
    and re-used by the export path so a "filtered query → export"
    round-trip can't drift.
 
-2. :func:`export_rows` — streams the same query out as CSV / XLSX /
+2. :func:`export_rows` - streams the same query out as CSV / XLSX /
    Parquet. CSV uses the stdlib ``csv`` writer (zero deps); XLSX uses
    ``openpyxl`` (already in base deps); Parquet uses ``pyarrow``.
 
-3. :class:`SnapshotImportStaging` — in-memory staging area for the
+3. :class:`SnapshotImportStaging` - in-memory staging area for the
    two-step import path. ``preview()`` parses + validates; ``commit()``
-   materialises (today: just returns the row count — actual mutation
+   materialises (today: just returns the row count - actual mutation
    into the snapshot is a T06 follow-up; the ADR-tracked path requires
    a snapshot-level "supplementary data" attachment that doesn't yet
    exist in the schema).
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 # In-process staging for two-step imports.
 #
 # A real deployment would back this with Redis + S3 so the preview
-# survives a worker restart. For T06 today, in-memory is enough — the
+# survives a worker restart. For T06 today, in-memory is enough - the
 # UI flow (preview → review → commit) happens inside one user session,
 # and the tests cover the round-trip.
 _STAGING: dict[str, _StagedImport] = {}
@@ -153,10 +153,10 @@ def _resolve_order_by(order_by: str | None) -> tuple[str, str] | None:
 
 
 def _is_safe_identifier(name: str) -> bool:
-    """Defensive check — only allow [A-Za-z0-9_.-] in column names so a
+    """Defensive check - only allow [A-Za-z0-9_.-] in column names so a
     user-supplied column can be quoted into SQL without injection
     surface. DuckDB's identifier quoting (\"col\") still needs the
-    underlying value to be reasonable — control chars are out either
+    underlying value to be reasonable - control chars are out either
     way.
     """
     if not name:
@@ -165,7 +165,7 @@ def _is_safe_identifier(name: str) -> bool:
 
 
 def _quote_ident(name: str) -> str:
-    """DuckDB identifier quoting — embed double quotes by doubling."""
+    """DuckDB identifier quoting - embed double quotes by doubling."""
     if not _is_safe_identifier(name):
         raise InvalidQueryError(
             f"column name contains unsupported characters: {name!r}",
@@ -197,7 +197,7 @@ async def read_rows(
 ) -> RowsResult:
     """Run a paginated, filtered SELECT against a snapshot's entities view.
 
-    Driven by :class:`DuckDBPool` — the pool already registers the
+    Driven by :class:`DuckDBPool` - the pool already registers the
     snapshot's Parquet file as the ``entities`` view, so we just compose
     the SQL on top.
     """
@@ -349,7 +349,7 @@ def export_to_format(
         )
     if fmt == "parquet":
         return _export_parquet(columns, rows), "application/octet-stream", "parquet"
-    # Defensive — list updated above so this branch is unreachable.
+    # Defensive - list updated above so this branch is unreachable.
     raise UnsupportedFormatError(  # pragma: no cover
         f"unsupported export format '{format}'.",
     )
@@ -491,7 +491,7 @@ def commit_import(
 ) -> dict[str, Any]:
     """Finalise a previously staged import.
 
-    Today this just returns the row count — full materialisation into a
+    Today this just returns the row count - full materialisation into a
     snapshot-side "supplementary data" Parquet is tracked as a T06
     follow-up (the schema for that attachment doesn't exist yet, and
     silently writing onto the entities Parquet would corrupt the
@@ -512,7 +512,7 @@ def commit_import(
         )
 
     rows_count = len(staged.rows)
-    # One-shot consumption — drop after commit so a replay can't double-count.
+    # One-shot consumption - drop after commit so a replay can't double-count.
     _STAGING.pop(staging_id, None)
     return {
         "snapshot_id": snapshot_id,

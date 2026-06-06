@@ -84,7 +84,7 @@ class ApprovalStepResponse(BaseModel):
 
 
 class ApprovalWorkflowCreate(BaseModel):
-    """Submit a file for approval — creates the workflow + steps."""
+    """Submit a file for approval - creates the workflow + steps."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 

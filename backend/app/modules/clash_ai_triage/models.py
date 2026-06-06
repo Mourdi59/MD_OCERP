@@ -3,12 +3,12 @@
 """‌⁠‍ORM models for the clash AI triage module.
 
 Tables:
-    oe_clash_triage_result — one LLM triage verdict for a clash subject.
+    oe_clash_triage_result - one LLM triage verdict for a clash subject.
 
 Audit-first design: the full ``raw_prompt`` and ``raw_response`` are
 persisted alongside the structured verdict so a reviewer can always
 trace why the LLM said what it said. The same ``(subject_id,
-prompt_version, model_name)`` triple is the cache key — calling triage
+prompt_version, model_name)`` triple is the cache key - calling triage
 twice with the same prompt against the same clash returns the persisted
 row, no fresh LLM call.
 
@@ -16,7 +16,7 @@ Subject polymorphism: a triage targets either a ``ClashResult`` (the
 run-scoped row, ``subject_type="clash"``) or a ``ClashIssue`` (the
 persistent identity across re-runs, ``subject_type="clash_issue"``). We
 deliberately store the foreign key as a plain GUID column rather than
-two FKs — the sibling ``ClashIssue`` table is owned by another agent and
+two FKs - the sibling ``ClashIssue`` table is owned by another agent and
 may be missing on dev DBs that pre-date its migration; the service layer
 degrades to ``subject_type="clash"`` in that case.
 """
@@ -49,7 +49,7 @@ class ClashTriageResult(Base):
     another LLM call. ``force_refresh=True`` writes a fresh row.
 
     ``raw_prompt`` and ``raw_response`` are kept for audit. They are the
-    SINGLE source of truth when a coordinator disputes a verdict — the
+    SINGLE source of truth when a coordinator disputes a verdict - the
     structured fields are derived from ``raw_response``, not from the
     other way around.
     """
@@ -65,7 +65,7 @@ class ClashTriageResult(Base):
         ),
         # History endpoint hot path: per-subject newest-first.
         Index("ix_clash_triage_subject_created", "subject_id", "created_at"),
-        # Confidence must be a probability in [0, 1] — guards against a
+        # Confidence must be a probability in [0, 1] - guards against a
         # bad LLM response slipping past schema validation.
         CheckConstraint(
             "confidence >= 0.0 AND confidence <= 1.0",
@@ -78,7 +78,7 @@ class ClashTriageResult(Base):
     # ``"clash_issue"`` → ``oe_clash_issue.id`` when that table is present.
     subject_type: Mapped[str] = mapped_column(String(16), nullable=False, default="clash", server_default="clash")
     subject_id: Mapped[uuid.UUID] = mapped_column(GUID(), nullable=False, index=True)
-    # Convenience column — the original clash_id even when the triage was
+    # Convenience column - the original clash_id even when the triage was
     # later promoted to a clash_issue subject. NULL on issue-only triages
     # where the clash row is no longer reachable. Lets the history endpoint
     # answer "show triages for clash X" without a runtime polymorphic JOIN.
@@ -93,14 +93,14 @@ class ClashTriageResult(Base):
     #       | modeling_error | duplicate | unclear
     category: Mapped[str] = mapped_column(String(32), nullable=False, default="unclear")
     confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, server_default="0.0")
-    # critical | high | medium | low — independent suggestion (the user's
+    # critical | high | medium | low - independent suggestion (the user's
     # confirmed severity stays on ``ClashResult.severity``).
     severity_suggested: Mapped[str] = mapped_column(
         String(16), nullable=False, default="medium", server_default="medium"
     )
     explanation: Mapped[str] = mapped_column(Text, nullable=False, default="")
     # reroute_pipe | add_sleeve | accept_intersection | ignore_duplicate
-    # | escalate_to_designer | request_more_info — NULL for ``unclear``.
+    # | escalate_to_designer | request_more_info - NULL for ``unclear``.
     suggested_action: Mapped[str | None] = mapped_column(String(48), nullable=True)
     # List of ``"key=value"`` strings the LLM said it leaned on.
     model_evidence_used: Mapped[list] = mapped_column(  # type: ignore[assignment]
@@ -119,7 +119,7 @@ class ClashTriageResult(Base):
     # ── Provenance ────────────────────────────────────────────────────────
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
 
-    def __repr__(self) -> str:  # pragma: no cover — debug aid
+    def __repr__(self) -> str:  # pragma: no cover - debug aid
         return (
             f"<ClashTriageResult subject={self.subject_type}:{self.subject_id} "
             f"cat={self.category} conf={self.confidence:.2f}>"

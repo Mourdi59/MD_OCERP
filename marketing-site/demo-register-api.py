@@ -9,17 +9,17 @@ own process.
 
 Endpoints
 ---------
-POST /register          — Demo signup with email verification flow.
-GET  /verify?token=X    — Confirms a demo signup, redirects to /demo.
-POST /license-request   — Commercial licence quote request.
-POST /inquiry           — General contact / custom-build inquiry.
-POST /subscribe         — Newsletter signup (footer + popup forms).
-POST /partners-apply    — Partner program application.
-GET  /health            — Liveness probe ({status, email backend}).
+POST /register          - Demo signup with email verification flow.
+GET  /verify?token=X    - Confirms a demo signup, redirects to /demo.
+POST /license-request   - Commercial licence quote request.
+POST /inquiry           - General contact / custom-build inquiry.
+POST /subscribe         - Newsletter signup (footer + popup forms).
+POST /partners-apply    - Partner program application.
+GET  /health            - Liveness probe ({status, email backend}).
 
 All POSTs are rate-limited per IP (sliding 1h window) and honeypot-
 protected via the form's ``_honey`` hidden field. Failed SMTP sends do
-NOT fail the request — submissions are persisted to JSONL first so
+NOT fail the request - submissions are persisted to JSONL first so
 the lead survives mail-server outages.
 
 Supports: SMTP (any provider) or Resend API. SMTP is preferred when
@@ -28,10 +28,10 @@ both are configured (this is the in-house hosting SMTP setup).
 Listens on port 8891.
 
 Environment variables:
-  SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM  — for SMTP
-  RESEND_API_KEY, RESEND_FROM                              — for Resend API
-  ADMIN_EMAIL                                              — admin notification
-  BASE_URL                                                 — site URL
+  SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM  - for SMTP
+  RESEND_API_KEY, RESEND_FROM                              - for Resend API
+  ADMIN_EMAIL                                              - admin notification
+  BASE_URL                                                 - site URL
 """
 
 import hashlib
@@ -58,7 +58,7 @@ PORT = 8891
 # Per-IP sliding-window throttle for the marketing form endpoints. We
 # keep one timestamp deque per (ip, bucket) pair and drop entries older
 # than the window. Memory stays bounded because we trim on every check
-# and only buckets that recently received traffic are retained — there
+# and only buckets that recently received traffic are retained - there
 # is a janitor thread that prunes idle buckets every 5 min.
 #
 # Caps are intentionally generous for legitimate users (5/h for the
@@ -67,11 +67,11 @@ PORT = 8891
 
 _RATE_WINDOW_SEC = 3600
 _RATE_LIMITS: dict[str, int] = {
-    "subscribe": 30,        # Newsletter — light, cheap, lots of legit re-tries
-    "inquiry": 5,           # Custom build / contact — heavier; humans rarely re-send
-    "partners_apply": 5,    # Partner application — same shape as inquiry
-    "license_request": 5,   # Mirrors inquiry — keep existing behaviour
-    "register": 5,          # Demo registration — keep existing behaviour
+    "subscribe": 30,        # Newsletter - light, cheap, lots of legit re-tries
+    "inquiry": 5,           # Custom build / contact - heavier; humans rarely re-send
+    "partners_apply": 5,    # Partner application - same shape as inquiry
+    "license_request": 5,   # Mirrors inquiry - keep existing behaviour
+    "register": 5,          # Demo registration - keep existing behaviour
 }
 
 _rate_state: dict[tuple[str, str], deque[float]] = {}
@@ -118,10 +118,10 @@ def _rate_state_janitor() -> None:
 # from polluting the demo-signups list and (more importantly) auto-
 # verifying themselves into the live demo. Two layers:
 #
-#   1. Junk-name detection — rejects literal "test", "тест", "123",
+#   1. Junk-name detection - rejects literal "test", "тест", "123",
 #      "asdf", repeated single chars, all-digit names, and obvious
 #      keyboard runs ("qwerty", "asdf", "zxcv").
-#   2. Disposable / fake email domain detection — rejects mailinator-
+#   2. Disposable / fake email domain detection - rejects mailinator-
 #      style throwaway addresses, plus the specific domains we already
 #      saw being abused in production data (lealking.com, nyspring.com,
 #      nazisat.com, agoalz.com, algarr.com).
@@ -151,7 +151,7 @@ _DISPOSABLE_EMAIL_DOMAINS: frozenset[str] = frozenset({
 })
 
 # Email local-part patterns we always reject (case-insensitive).
-# Tied to common spam shapes — be conservative.
+# Tied to common spam shapes - be conservative.
 _JUNK_LOCALPART_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"^test\d*$", re.I),
     re.compile(r"^tests\d*$", re.I),
@@ -188,14 +188,14 @@ def _validate_real_identity(data: dict) -> tuple[bool, str | None, str | None]:
     Returns (ok, field, message). When ok is False, field names the
     offending input ("firstName" / "lastName" / "email") and message
     is a user-facing string the form should display verbatim.
-    Backend is the source of truth — even if a client skips its own
+    Backend is the source of truth - even if a client skips its own
     validation, this gate runs before anything is persisted.
     """
     first = (data.get("firstName") or "").strip()
     last = (data.get("lastName") or "").strip()
     email = (data.get("email") or "").strip().lower()
 
-    # Names: minimum 2 chars each (covers "Li", "Wu", etc. — real),
+    # Names: minimum 2 chars each (covers "Li", "Wu", etc. - real),
     # rejects single-letter and empty after trim.
     if len(first) < 2:
         return False, "firstName", "Please enter your real first name."
@@ -212,7 +212,7 @@ def _validate_real_identity(data: dict) -> tuple[bool, str | None, str | None]:
         # All the same character ("aaa", "....", "----")
         if len(set(lc)) == 1 and len(lc) >= 2:
             return True
-        # Strip non-letters and check what's left — catches "123 abc"
+        # Strip non-letters and check what's left - catches "123 abc"
         letters_only = re.sub(r"[^a-zа-яё]", "", lc)
         if letters_only and letters_only in _JUNK_NAME_LITERALS:
             return True
@@ -220,12 +220,12 @@ def _validate_real_identity(data: dict) -> tuple[bool, str | None, str | None]:
 
     if _is_junk_name(first):
         return False, "firstName", (
-            "Please enter your real first name — placeholder values "
+            "Please enter your real first name - placeholder values "
             "like \"test\" or \"123\" are not allowed."
         )
     if _is_junk_name(last):
         return False, "lastName", (
-            "Please enter your real last name — placeholder values "
+            "Please enter your real last name - placeholder values "
             "like \"test\" or \"123\" are not allowed."
         )
 
@@ -238,21 +238,21 @@ def _validate_real_identity(data: dict) -> tuple[bool, str | None, str | None]:
 
     if domain in _DISPOSABLE_EMAIL_DOMAINS:
         return False, "email", (
-            "Please use a real email address — disposable and "
+            "Please use a real email address - disposable and "
             "throwaway addresses are not allowed for demo access."
         )
     # Sub-domain match (e.g. anything.mailinator.com)
     for bad in _DISPOSABLE_EMAIL_DOMAINS:
         if domain.endswith("." + bad):
             return False, "email", (
-                "Please use a real email address — disposable and "
+                "Please use a real email address - disposable and "
                 "throwaway addresses are not allowed for demo access."
             )
 
     for pat in _JUNK_LOCALPART_PATTERNS:
         if pat.match(local):
             return False, "email", (
-                "Please use your real email address — placeholder "
+                "Please use your real email address - placeholder "
                 "addresses like \"test@…\" or \"123@…\" are not allowed."
             )
 
@@ -268,7 +268,7 @@ def _validate_real_identity(data: dict) -> tuple[bool, str | None, str | None]:
 DATA_FILE = "/root/clawd/demo-registrations.jsonl"
 TOKENS_FILE = "/root/clawd/demo-tokens.json"
 LICENSE_DATA_FILE = "/root/clawd/license-requests.jsonl"
-# Marketing-site form leads — three new endpoints (newsletter / general
+# Marketing-site form leads - three new endpoints (newsletter / general
 # inquiry / partner application) all funnel into one of these JSONL files
 # so the existing ops tooling (tail, grep, jq, daily backup cron) keeps
 # working without per-form special-cases.
@@ -286,7 +286,7 @@ BASE_URL = os.environ.get("BASE_URL", "https://openconstructionerp.com")
 def _log_email_failure(endpoint: str, recipient: str, error: str) -> None:
     """Append one JSON line describing an outbound email delivery failure.
 
-    Swallows its own errors — logging the log failure is not useful and
+    Swallows its own errors - logging the log failure is not useful and
     we never want this helper to break the request flow.
     """
     try:
@@ -304,7 +304,7 @@ TIER_LABELS = {
     "starter": "Starter (on request)",
     "whitelabel": "White-label SaaS (up to 10 tenants)",
     "converters": "DDC cad2data converters",
-    "other": "Not sure yet — please advise",
+    "other": "Not sure yet - please advise",
 }
 
 SMTP_HOST = os.environ.get("SMTP_HOST", "")
@@ -350,7 +350,7 @@ def _send_smtp(to, subject, html_body, text_body=""):
         msg.attach(MIMEText(text_body, "plain", "utf-8"))
     msg.attach(MIMEText(html_body, "html", "utf-8"))
     # Port 465 is implicit TLS (SMTPS), 587/25 are plain + STARTTLS.
-    # Mixing them hangs forever — Hostinger uses 465 with SSL on connect.
+    # Mixing them hangs forever - Hostinger uses 465 with SSL on connect.
     if int(SMTP_PORT) == 465:
         with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15) as s:
             if SMTP_USER:
@@ -381,18 +381,18 @@ def make_license_admin_email(data, ref_id):
     """Internal notification to admin with full lead details."""
     name = f"{data.get('firstName', '')} {data.get('lastName', '')}".strip()
     tier_key = (data.get("tier") or "").lower()
-    tier_label = TIER_LABELS.get(tier_key, tier_key or "—")
+    tier_label = TIER_LABELS.get(tier_key, tier_key or "-")
     ref = data.get("ref") or "(direct)"
-    ref_first = data.get("ref_first_seen") or "—"
+    ref_first = data.get("ref_first_seen") or "-"
     utm = " / ".join(
         [
             data.get("utm_source") or "",
             data.get("utm_medium") or "",
             data.get("utm_campaign") or "",
         ]
-    ).strip(" /") or "—"
-    landing = data.get("landing_page") or "—"
-    msg = (data.get("message") or "").strip() or "—"
+    ).strip(" /") or "-"
+    landing = data.get("landing_page") or "-"
+    msg = (data.get("message") or "").strip() or "-"
     return f'''<!DOCTYPE html>
 <html><head><meta charset="UTF-8"></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:640px;margin:0 auto;padding:20px;color:#0f172a;">
@@ -420,7 +420,7 @@ def make_license_customer_email(data, ref_id):
     """Acknowledgement to the requester."""
     name = data.get("firstName", "").strip() or "there"
     tier_key = (data.get("tier") or "").lower()
-    tier_label = TIER_LABELS.get(tier_key, tier_key or "—")
+    tier_label = TIER_LABELS.get(tier_key, tier_key or "-")
     return f'''<!DOCTYPE html>
 <html><head><meta charset="UTF-8"></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#0f172a;">
@@ -486,9 +486,9 @@ def _make_generic_admin_email(data: dict, ref_id: str, kind: str) -> str:
         "<tr><td colspan=\"2\" style=\"padding:14px 0 6px;color:#64748b;"
         "font-size:12px;border-top:1px solid #e2e8f0;\">Attribution &amp; "
         "context</td></tr>",
-        _render_row("Submitted", data.get("server_time", "—"), muted=True),
-        _render_row("IP", data.get("ip", "—"), muted=True),
-        _render_row("User-Agent", data.get("user_agent", "—"), muted=True),
+        _render_row("Submitted", data.get("server_time", "-"), muted=True),
+        _render_row("IP", data.get("ip", "-"), muted=True),
+        _render_row("User-Agent", data.get("user_agent", "-"), muted=True),
     ])
 
     kind_label = {
@@ -531,7 +531,7 @@ def _make_generic_customer_email(data: dict, ref_id: str, kind: str) -> str:
     name = (data.get("name") or data.get("firstName") or "there").strip()
     body_intro = {
         "inquiry": (
-            "Thanks for reaching out — we read every message personally. "
+            "Thanks for reaching out - we read every message personally. "
             "I will reply within a few business days with the next step."
         ),
         "partner_application": (
@@ -539,7 +539,7 @@ def _make_generic_customer_email(data: dict, ref_id: str, kind: str) -> str:
             "We read every application personally; typical response time is "
             "1–3 business days."
         ),
-    }.get(kind, "Thanks for your message — we will get back to you shortly.")
+    }.get(kind, "Thanks for your message - we will get back to you shortly.")
 
     return (
         "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head>"
@@ -654,7 +654,7 @@ class Handler(BaseHTTPRequestHandler):
                     f"{(d.get('company') or '-')} · "
                     f"{d.get('name', '')} <{d.get('email', '')}>"
                 ),
-                customer_subject="Thanks — we received your message",
+                customer_subject="Thanks - we received your message",
             )
             return
         if self.path == "/subscribe":
@@ -671,7 +671,7 @@ class Handler(BaseHTTPRequestHandler):
                     f"{(d.get('audience_type') or '-')} · "
                     f"{d.get('company', '')} · {d.get('name', '')}"
                 ),
-                customer_subject="Thanks — your partner application is in",
+                customer_subject="Thanks - your partner application is in",
             )
             return
         if self.path != "/register":
@@ -758,7 +758,7 @@ class Handler(BaseHTTPRequestHandler):
                 "status": "queued_no_email",
                 "ref_id": ref_id,
                 "message": (
-                    "Saved — our email service is temporarily unreachable. "
+                    "Saved - our email service is temporarily unreachable. "
                     "An operator will reach out within one business day. "
                     "Reference: " + ref_id
                 ),
@@ -770,7 +770,7 @@ class Handler(BaseHTTPRequestHandler):
     # Three of the marketing endpoints (general inquiry, newsletter
     # subscribe, partner application) share the same lifecycle:
     # 1. Parse JSON body (reject on malformed input)
-    # 2. Apply honeypot check — silently 202 on bot fills so they
+    # 2. Apply honeypot check - silently 202 on bot fills so they
     #    don't learn the trick worked.
     # 3. Per-IP sliding-window rate limit -> 429 with Retry-After.
     # 4. Required-field validation -> 400 with offending field.
@@ -872,7 +872,7 @@ class Handler(BaseHTTPRequestHandler):
                 return
 
         # Identity gate (reuses the demo-registration gate when we have
-        # first/last name shaped data — skip if the form is name-only).
+        # first/last name shaped data - skip if the form is name-only).
         if data.get("firstName") and data.get("lastName") and data.get("email"):
             ok, bad_field, bad_message = _validate_real_identity(data)
             if not ok:
@@ -905,14 +905,14 @@ class Handler(BaseHTTPRequestHandler):
         data["kind"] = kind
         data["user_agent"] = self.headers.get("User-Agent", "")
 
-        # JSONL append — source of truth even when SMTP is down.
+        # JSONL append - source of truth even when SMTP is down.
         try:
             with open(data_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps(data, ensure_ascii=False) + "\n")
         except Exception as e:
             print(f"[ERROR] Save {kind}: {e}", file=sys.stderr)
 
-        # Admin notification — full lead. Best-effort; we already saved
+        # Admin notification - full lead. Best-effort; we already saved
         # the row so the failure mode is "I won't get pinged" rather
         # than "the lead vanishes".
         try:
@@ -922,7 +922,7 @@ class Handler(BaseHTTPRequestHandler):
             print(f"[WARN] Admin {kind} email failed: {e}", file=sys.stderr)
             _log_email_failure(f"{kind}:admin", ADMIN_EMAIL, str(e))
 
-        # Customer ack — only if we have an email and the form is not
+        # Customer ack - only if we have an email and the form is not
         # just a newsletter subscribe (subscribe sends its own confirm).
         try:
             if data.get("email"):
@@ -958,7 +958,7 @@ class Handler(BaseHTTPRequestHandler):
                 "message": "Please enter a valid email address.",
             })
             return
-        # Block disposable domains — same list as demo registration.
+        # Block disposable domains - same list as demo registration.
         local, _, domain = email.partition("@")
         domain = domain.strip(".")
         if domain in _DISPOSABLE_EMAIL_DOMAINS or any(
@@ -994,7 +994,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:
             print(f"[ERROR] Save subscribe: {e}", file=sys.stderr)
 
-        # Admin ping — informational, low-volume.
+        # Admin ping - informational, low-volume.
         try:
             admin_text = (
                 f"New newsletter subscriber:\n  Email: {email}\n"
@@ -1021,10 +1021,10 @@ class Handler(BaseHTTPRequestHandler):
                 "You are subscribed</h2>"
                 "<p style=\"font-size:14.5px;line-height:1.6;color:#334155;\">"
                 "Thanks for subscribing to OpenConstructionERP product updates. "
-                "We send a short digest when we ship a new release — usually "
+                "We send a short digest when we ship a new release - usually "
                 "monthly, never more than weekly.</p>"
                 "<p style=\"font-size:13px;color:#64748b;margin-top:18px;\">"
-                "If this wasn't you, just ignore this email — we will not add "
+                "If this wasn't you, just ignore this email - we will not add "
                 "you again.</p>"
                 "<p style=\"font-size:12px;color:#94a3b8;margin-top:22px;\">"
                 "<a href=\"https://openconstructionerp.com\" "
@@ -1068,7 +1068,7 @@ class Handler(BaseHTTPRequestHandler):
             })
             return
 
-        # Same anti-spam gate as demo signups — junk names and
+        # Same anti-spam gate as demo signups - junk names and
         # disposable email domains are blocked before we persist
         # anything or fire emails.
         ok, bad_field, bad_message = _validate_real_identity(data)
@@ -1085,7 +1085,7 @@ class Handler(BaseHTTPRequestHandler):
             )
             return
 
-        # Reference ID — short, monotonic-ish, easy to quote on the
+        # Reference ID - short, monotonic-ish, easy to quote on the
         # phone. Same shape Kristijan/partners will see in their
         # affiliate dashboard later.
         ref_id = "OCERP-" + datetime.now(timezone.utc).strftime("%Y%m%d") + "-" + secrets.token_hex(3).upper()
@@ -1096,7 +1096,7 @@ class Handler(BaseHTTPRequestHandler):
         data["reference_id"] = ref_id
         data["kind"] = "license_request"
 
-        # Persist before sending mail — if SMTP/Resend fails we
+        # Persist before sending mail - if SMTP/Resend fails we
         # still have the lead. JSONL append, one row per request.
         try:
             with open(LICENSE_DATA_FILE, "a", encoding="utf-8") as f:
@@ -1104,7 +1104,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:
             print(f"[ERROR] Save license request: {e}", file=sys.stderr)
 
-        # Admin notification — full lead + attribution. We deliberately
+        # Admin notification - full lead + attribution. We deliberately
         # don't fail the request when email delivery fails; the JSONL
         # is the source of truth and the form already returned success.
         try:
@@ -1160,7 +1160,7 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     server = HTTPServer(("0.0.0.0", PORT), Handler)
-    # Janitor for the per-IP rate-limit map — keeps memory bounded
+    # Janitor for the per-IP rate-limit map - keeps memory bounded
     # under sustained traffic. Daemon thread dies with the process.
     threading.Thread(
         target=_rate_state_janitor, name="rate-janitor", daemon=True

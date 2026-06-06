@@ -6,7 +6,7 @@ modules.
 
 Current guards:
 
-* :func:`reject_if_xlsx_bomb` — rejects ``.xlsx`` whose uncompressed XML
+* :func:`reject_if_xlsx_bomb` - rejects ``.xlsx`` whose uncompressed XML
   payload exceeds the cap (``openpyxl`` materialises the full decompressed
   sheet, so a 10 MB compressed file can expand to 10+ GB).
 """
@@ -31,7 +31,7 @@ def reject_if_xlsx_bomb(
 ) -> None:
     """‌⁠‍Raise 413 when the sum of uncompressed entries exceeds the cap.
 
-    Silent no-op for non-zip payloads (plain CSV, corrupt bytes) — the
+    Silent no-op for non-zip payloads (plain CSV, corrupt bytes) - the
     downstream parser produces the appropriate error in those cases.
     """
     if not content.startswith(b"PK"):

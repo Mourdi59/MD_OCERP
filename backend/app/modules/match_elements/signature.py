@@ -18,7 +18,7 @@ group-by attribute values. We normalise:
   * scrub units (the matcher quantities live elsewhere, not in the key)
 
 The plain-text label is kept alongside the digest so the library UI
-can render "IfcWall · Stahlbeton · 240mm" — the digest itself is just
+can render "IfcWall · Stahlbeton · 240mm" - the digest itself is just
 for fast equality lookup.
 """
 
@@ -30,7 +30,7 @@ import unicodedata
 from typing import Any
 
 _WS_RE = re.compile(r"\s+")
-# Only strip unit suffixes that follow a digit — otherwise word
+# Only strip unit suffixes that follow a digit - otherwise word
 # boundaries swallow trailing letters from IFC class names ("element"
 # → "elemen" because "t" was treated as the mass-tonne unit). The
 # lookbehind enforces a preceding digit so "240mm" / "1.5kg" / "3t"

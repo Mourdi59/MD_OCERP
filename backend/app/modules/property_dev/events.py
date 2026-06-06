@@ -96,7 +96,7 @@ def _coerce_uuid(value: Any) -> uuid.UUID | None:
 async def _with_service(handler):
     """Open a fresh session, build a PropertyDevService, call handler.
 
-    The event bus does not carry a session — subscribers must spin up
+    The event bus does not carry a session - subscribers must spin up
     their own. Mirrors the pattern in bi_dashboards/events.py.
     """
     from app.modules.property_dev.service import PropertyDevService
@@ -112,16 +112,16 @@ async def _with_service(handler):
             raise
 
 
-# ── Subscribers (task #137 — schedule/correspondence/documents) ─────────
+# ── Subscribers (task #137 - schedule/correspondence/documents) ─────────
 
 
 async def _on_schedule_milestone_reached(event: Event) -> dict[str, Any]:
     """React to a ``schedule.milestone.reached`` event.
 
     Payload (best-effort):
-        sales_contract_id?: UUID — when present, scope to that SPA.
-        milestone_event: str — e.g. ``foundation_complete``.
-        plot_id?: UUID — fallback when sales_contract_id is missing.
+        sales_contract_id?: UUID - when present, scope to that SPA.
+        milestone_event: str - e.g. ``foundation_complete``.
+        plot_id?: UUID - fallback when sales_contract_id is missing.
 
     Marks pending instalments whose ``milestone_event`` matches as due
     and auto-issues a demand letter for each affected line.
@@ -147,7 +147,7 @@ async def _on_schedule_milestone_reached(event: Event) -> dict[str, Any]:
                     return {"status": "ignored", "reason": "bad spa_id"}
                 touched = await svc._fire_milestone(spa_uuid, milestone_event)
             else:
-                # Fan out across every SPA — match by milestone alone.
+                # Fan out across every SPA - match by milestone alone.
                 # Only used in tests/diagnostics; production callers
                 # always supply spa_id.
                 instalments = await svc.instalments.list_due_for_milestone(milestone_event)
@@ -156,7 +156,7 @@ async def _on_schedule_milestone_reached(event: Event) -> dict[str, Any]:
                     touched += 1
             await session.commit()
             return {"status": "ok", "touched": touched}
-    except Exception as exc:  # noqa: BLE001 — never crash event loop
+    except Exception as exc:  # noqa: BLE001 - never crash event loop
         logger.warning("property_dev._on_schedule_milestone_reached failed: %s", exc)
         return {"status": "error", "error": str(exc)}
 
@@ -167,7 +167,7 @@ async def _on_correspondence_outbound_delivered(
     """React to ``correspondence.outbound.delivered`` for demand letters.
 
     Payload:
-        template: str — only INSTALMENT_DEMAND is handled here.
+        template: str - only INSTALMENT_DEMAND is handled here.
         instalment_id: UUID
         delivered_at?: str
         delivery_ref?: str
@@ -212,9 +212,9 @@ async def _on_documents_uploaded(event: Event) -> dict[str, Any]:
     """React to ``documents.uploaded`` for category=spa.
 
     Payload:
-        category: str — only ``spa`` is handled.
-        external_id: str — envelope id / doc ref.
-        sales_contract_id: UUID — required.
+        category: str - only ``spa`` is handled.
+        external_id: str - envelope id / doc ref.
+        sales_contract_id: UUID - required.
 
     Sets ``SalesContract.e_sign_envelope_id`` for cross-linking.
     """
@@ -399,7 +399,7 @@ async def _on_instalment_paid(event: Event) -> dict[str, Any] | None:
 def register_property_dev_event_subscribers() -> None:
     """Wire :class:`Event` subscribers for cross-module sources.
 
-    Idempotent — safe to call multiple times because each subscription
+    Idempotent - safe to call multiple times because each subscription
     appends to the underlying handler list (the framework keeps it
     de-duplicated at startup via module loader call-once semantics).
     """
@@ -543,10 +543,10 @@ async def _on_portal_buyer_signup(event: Event) -> dict[str, Any] | None:
         {
             "portal_user_id": "<uuid>",
             "email": "buyer@example.com",
-            "development_id": "<uuid?>",   # OPTIONAL — narrows the lookup
+            "development_id": "<uuid?>",   # OPTIONAL - narrows the lookup
         }
 
-    Only a single buyer match counts — multiple matches are logged and
+    Only a single buyer match counts - multiple matches are logged and
     skipped (the consistency rule
     ``property_dev.buyer_email_unique_in_dev`` will catch the duplicate).
     """
@@ -687,7 +687,7 @@ async def _on_snag_created_warranty_bridge(event: Event) -> dict[str, Any] | Non
 
     The bridge writes a ``raised`` claim with ``severity`` mirroring the
     snag. The UI surfaces it for triage; the bridge never auto-accepts
-    or auto-closes — that stays a human decision (the architecture guide principle
+    or auto-closes - that stays a human decision (the architecture guide principle
     7: AI-augmented, human-confirmed).
 
     Best-effort: errors are logged at DEBUG and never raised back into
@@ -720,7 +720,7 @@ async def _on_snag_created_warranty_bridge(event: Event) -> dict[str, Any] | Non
 
             handover = await session.get(_Handover, handover_id)
             if handover is None or not handover.completed_at:
-                # Pre-handover snags don't become warranty claims —
+                # Pre-handover snags don't become warranty claims -
                 # they belong on the snag list, not in warranty.
                 return {"status": "ignored", "reason": "pre-handover"}
 
@@ -794,7 +794,7 @@ async def _on_portal_message_received(event: Event) -> dict[str, Any] | None:
     Triggered by ``crm.lead.message_received`` published from the buyer
     portal's ``contact-agent`` endpoint. The :class:`CrmActivity` row is
     already persisted (and owner-scoped) by the router; this subscriber's
-    job is the second half of the flow the buyer was promised — an in-app
+    job is the second half of the flow the buyer was promised - an in-app
     notification so the agent actually sees the message land.
 
     Payload contract::
@@ -810,7 +810,7 @@ async def _on_portal_message_received(event: Event) -> dict[str, Any] | None:
 
     Skips cleanly when ``source != portal`` (the event name is generic
     and other CRM flows may reuse it) or when no agent could be resolved
-    (orphan buyer — nothing to notify; the activity still exists for a
+    (orphan buyer - nothing to notify; the activity still exists for a
     manual triage sweep). Best-effort: errors are logged at DEBUG and
     never raised back into the bus.
     """

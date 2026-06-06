@@ -1,7 +1,7 @@
 """‌⁠‍AI module data access layer.
 
 All database queries for AI settings and estimate jobs live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid

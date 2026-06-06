@@ -44,7 +44,7 @@ KNOWN_WIDGETS: frozenset[str] = frozenset(
         "budget_variance",
         "change_orders",
         "weather_site",
-        # Project-detail widgets (W23 P0 — single-project rollups on
+        # Project-detail widgets (W23 P0 - single-project rollups on
         # /projects/:id; each scoped to the requested project_id via the same
         # rollup endpoint). Replaces the per-widget useQuery fan-out that
         # used to cause 502 spikes on project-page load.
@@ -71,7 +71,7 @@ async def is_admin(session: AsyncSession, user_id: str) -> bool:
         return False
     try:
         user = await session.get(User, uid)
-    except Exception:  # noqa: BLE001 — defensive
+    except Exception:  # noqa: BLE001 - defensive
         return False
     return user is not None and getattr(user, "role", "") == "admin"
 
@@ -86,7 +86,7 @@ async def accessible_projects(
 
     Admins see all (non-archived). Regular users see only their own.
     When ``requested_ids`` is provided we silently drop ids that are
-    not accessible — never raise 403, the parent router returns 404 /
+    not accessible - never raise 403, the parent router returns 404 /
     empty per the IDOR posture.
     """
     admin = await is_admin(session, user_id)
@@ -124,7 +124,7 @@ def _to_decimal(value: Any) -> Decimal:
 
 
 def _money(value: Decimal) -> str:
-    """Format a Decimal as a string with 2dp — JS-safe."""
+    """Format a Decimal as a string with 2dp - JS-safe."""
     return f"{value.quantize(Decimal('0.01'))}"
 
 
@@ -198,9 +198,9 @@ async def compute_boq_summary(
             iso = updated_at.isoformat() if isinstance(updated_at, datetime) else str(updated_at)
             latest_boq = {
                 "id": str(boq_id),
-                "name": boq_name or "—",
+                "name": boq_name or "-",
                 "project_id": str(project_id),
-                "project_name": project_name_by_id.get(project_id, "—"),
+                "project_name": project_name_by_id.get(project_id, "-"),
                 "currency": project_currency_by_id.get(project_id, "EUR"),
                 "status": status_,
                 "updated_at": iso,
@@ -209,7 +209,7 @@ async def compute_boq_summary(
                 "grand_total": "0.00",
             }
 
-    # Per-project position aggregates — quantity/unit_rate/total stored
+    # Per-project position aggregates - quantity/unit_rate/total stored
     # as String in SQLite, so we sum in Python. Also collect per-BOQ totals
     # so we can attach the latest BOQ's own total/position_count.
     pos_stmt = (
@@ -259,7 +259,7 @@ async def compute_boq_summary(
     overall_zero_price = 0
     # Group BOQ value by the owning project's currency. There is no
     # cross-project rate table, so summing EUR + GBP + USD into one scalar
-    # is financially meaningless — keep per-currency subtotals and flag
+    # is financially meaningless - keep per-currency subtotals and flag
     # ``multi_currency`` (mirrors projects/router.py budget rollup).
     totals_by_currency_map: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
 
@@ -312,7 +312,7 @@ async def compute_boq_summary(
         "active_boqs": active_count,
         # Legacy flat scalar kept for backward compatibility. When
         # ``multi_currency`` is true it mixes currencies and must NOT be
-        # rendered as a single headline figure — use ``by_currency``.
+        # rendered as a single headline figure - use ``by_currency``.
         "total_value_eur": _money(overall_total),
         "by_currency": by_currency,
         "multi_currency": multi_currency,
@@ -341,7 +341,7 @@ async def compute_validation_score(
             "by_project": [],
         }
 
-    # Pull the most-recent N reports per project set — small payload (no
+    # Pull the most-recent N reports per project set - small payload (no
     # ``results`` column) ordered DESC so the Python "first-seen = latest"
     # shortcut works.  Cap at 10 × project count (at most ~500 for a
     # large install) so a project with thousands of historical reports
@@ -510,14 +510,14 @@ async def compute_schedule_critical(
 
     project_name_by_id = {p.id: p.name for p in projects}
 
-    # Total schedules across the caller's projects — one COUNT query, NOT a
+    # Total schedules across the caller's projects - one COUNT query, NOT a
     # per-project fan-out.
     sched_count_stmt = select(func.count(Schedule.id)).where(
         Schedule.project_id.in_(project_ids),
     )
     total_schedules = int((await session.execute(sched_count_stmt)).scalar() or 0)
 
-    # Cap at 1000 rows — the dashboard only ever shows the top-5 critical
+    # Cap at 1000 rows - the dashboard only ever shows the top-5 critical
     # activities. Without a limit, large schedules (5K+ activities per
     # project × 50 projects) pull megabytes of data into Python just to
     # sort and slice [:5]. Ordering by is_critical DESC puts flagged rows
@@ -559,9 +559,9 @@ async def compute_schedule_critical(
         "top": [
             {
                 "id": str(r[0]),
-                "name": r[1] or "—",
+                "name": r[1] or "-",
                 "project_id": str(r[2]),
-                "project_name": project_name_by_id.get(r[2], "—"),
+                "project_name": project_name_by_id.get(r[2], "-"),
                 "start_date": r[3],
                 "end_date": r[4],
                 "status": r[5],
@@ -630,7 +630,7 @@ async def compute_risk_top(
                 {
                     "id": str(rid),
                     "project_id": str(project_id),
-                    "project_name": project_name_by_id.get(project_id, "—"),
+                    "project_name": project_name_by_id.get(project_id, "-"),
                     "title": title,
                     "score": round(rank, 3),
                     "probability": prob,
@@ -836,7 +836,7 @@ async def compute_budget_variance(
         enriched.append(
             {
                 "project_id": str(project_id),
-                "project_name": project_name_by_id.get(project_id, "—"),
+                "project_name": project_name_by_id.get(project_id, "-"),
                 "currency": bucket["currency"] or project_currency_by_id.get(project_id, "EUR"),
                 "planned": _money(bucket["planned"]),
                 "actual": _money(bucket["actual"]),
@@ -895,7 +895,7 @@ async def compute_change_orders(
     # it with projects[0].currency is financially meaningless. We keep the
     # legacy ``total_impact`` scalar for back-compat (flagged by
     # ``multi_currency`` so the UI knows not to render it as a headline)
-    # and add an FX-correct per-currency breakdown — same shape as
+    # and add an FX-correct per-currency breakdown - same shape as
     # ``compute_boq_summary``.
     total_impact = Decimal("0")
     impact_by_currency: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
@@ -916,7 +916,7 @@ async def compute_change_orders(
         "open_count": len(open_rows),
         # Legacy flat scalar kept for backward compatibility. When
         # ``multi_currency`` is true it mixes ISO currencies and must NOT
-        # be rendered as a single headline figure — use ``by_currency``.
+        # be rendered as a single headline figure - use ``by_currency``.
         "total_impact": _money(total_impact),
         "currency": fallback_currency,
         "by_currency": by_currency,
@@ -925,13 +925,13 @@ async def compute_change_orders(
             {
                 "id": str(r[0]),
                 "project_id": str(r[1]),
-                "project_name": project_name_by_id.get(r[1], "—"),
+                "project_name": project_name_by_id.get(r[1], "-"),
                 "code": r[2],
                 "title": r[3],
                 "status": r[4],
                 "cost_impact": _money(_to_decimal(r[5])),
                 # Per-row currency, real project currency, or last-resort
-                # fallback — never a hardcoded "EUR".
+                # fallback - never a hardcoded "EUR".
                 "currency": r[6] or project_currency_by_id.get(r[1], "") or fallback_currency,
             }
             for r in top_pending
@@ -1008,12 +1008,12 @@ async def compute_weather_site(
 # ─── Project-detail widget aggregators (W23 P0) ─────────────────────────────
 #
 # These widgets sit on /projects/:id and used to do their own ``useQuery``
-# in ProjectWidgets.tsx — one HTTP call per widget = ~8 parallel requests
+# in ProjectWidgets.tsx - one HTTP call per widget = ~8 parallel requests
 # on every project-page load. The aggregators below mirror each widget's
 # original endpoint contract closely enough that the frontend can swap to
 # them without changing its render logic.
 #
-# Per-widget the function signature is ``(session, projects)`` — the
+# Per-widget the function signature is ``(session, projects)`` - the
 # rollup router scopes ``projects`` to the single requested project via
 # the ``project_ids=<id>`` query param, so these aggregators just operate
 # on whatever ``projects`` list they receive (1 element on /projects/:id,
@@ -1195,7 +1195,7 @@ async def compute_project_hse_incidents(
     keep the payload tiny.
 
     Investigations key on ``incident_ref`` (a SafetyIncident UUID) rather
-    than directly on ``project_id`` — same approach as
+    than directly on ``project_id`` - same approach as
     ``HSEAdvancedRepository.list_for_project``. Failures (e.g. safety
     module disabled) degrade to zero counts, matching the dashboard
     module's general "don't break the page" posture.
@@ -1223,7 +1223,7 @@ async def compute_project_hse_incidents(
         )
         incident_severity_by_id: dict[str, str | None] = {str(row[0]): row[1] for row in result.all()}
     except Exception:
-        # safety module missing — keep the page rendering with empty data.
+        # safety module missing - keep the page rendering with empty data.
         return {"items": [], "high": 0, "medium": 0, "low": 0, "total": 0}
 
     if not incident_severity_by_id:
@@ -1271,7 +1271,7 @@ async def compute_project_variations(
     """Open variation requests + disputed value rollup.
 
     Mirrors ``GET /v1/variations/variation-requests/?project_id=X``.
-    Frontend reads ``stats.open`` (counts) and ``stats.disputedValue`` —
+    Frontend reads ``stats.open`` (counts) and ``stats.disputedValue`` -
     we pre-compute both. ``disputed`` is read from the row's metadata
     JSON (``metadata_.disputed``); pre-W23 the widget assumed a column
     of that name, but the model only carries it as a metadata flag.
@@ -1435,7 +1435,7 @@ async def compute_project_budget_burn(
     Mirrors ``GET /v1/costmodel/projects/X/5d/dashboard/`` at the level
     of detail the widget actually uses (totals + currency; the spark
     series is left empty because the same N+1 fan-out concerns apply to
-    EVM snapshots — a dedicated time-series endpoint can light it up
+    EVM snapshots - a dedicated time-series endpoint can light it up
     later without changing the contract here). Money fields are Decimal-
     as-string per the architecture guide §10.
     """
@@ -1475,7 +1475,7 @@ async def compute_project_budget_burn(
         "planned_total": _money(planned),
         "actual_total": _money(actual),
         "currency": currency_seen or fallback_currency,
-        # Time series is intentionally empty for v1 — see docstring.
+        # Time series is intentionally empty for v1 - see docstring.
         "series": [],
     }
 
@@ -1514,7 +1514,7 @@ async def compute_rollup(
     """Compute the requested widget payloads in one go.
 
     A failure inside a single widget aggregator is logged + that widget
-    is dropped from the response — one disabled module (eg. ``oe_clash``
+    is dropped from the response - one disabled module (eg. ``oe_clash``
     removed on a slim install) must not break the rest of the dashboard.
     """
     result: dict[str, Any] = {}
@@ -1540,6 +1540,6 @@ async def compute_rollup(
                 await session.rollback()
             except Exception:  # noqa: BLE001
                 pass
-            # Skip — frontend treats absence as "module not available".
+            # Skip - frontend treats absence as "module not available".
             continue
     return result

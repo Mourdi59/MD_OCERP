@@ -1,4 +1,4 @@
-"""‌⁠‍Marketplace registry — static catalog of installable OpenEstimate modules.
+"""‌⁠‍Marketplace registry - static catalog of installable OpenEstimate modules.
 
 Provides a browsable catalog of add-ons: cost databases, vector indices,
 language packs, CAD converters, analytics, and integrations. Each entry
@@ -54,7 +54,7 @@ class MarketplaceModule:
 
 
 # ---------------------------------------------------------------------------
-# Registry — all available marketplace modules
+# Registry - all available marketplace modules
 # ---------------------------------------------------------------------------
 
 _DDC = "Data Driven Construction"
@@ -356,7 +356,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="vector-usa-usd",
         name="Vector Index: USA (USD)",
-        description="Semantic vector index for 55K+ CWICR US cost items. Enables AI-powered fuzzy search by description — find 'reinforced concrete slab' even if the DB entry says 'cast-in-place structural concrete'. Requires: pip install sentence-transformers.",
+        description="Semantic vector index for 55K+ CWICR US cost items. Enables AI-powered fuzzy search by description - find 'reinforced concrete slab' even if the DB entry says 'cast-in-place structural concrete'. Requires: pip install sentence-transformers.",
         category="vector_index",
         icon="Sparkles",
         version="1.2.0",
@@ -369,7 +369,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="vector-uk-gbp",
         name="Vector Index: UK (GBP)",
-        description="Semantic vector index for 55K+ CWICR UK cost items (NRM 1/2). Smart fuzzy search — match AI estimates to real BCIS-aligned rates. Requires: pip install sentence-transformers.",
+        description="Semantic vector index for 55K+ CWICR UK cost items (NRM 1/2). Smart fuzzy search - match AI estimates to real BCIS-aligned rates. Requires: pip install sentence-transformers.",
         category="vector_index",
         icon="Sparkles",
         version="1.2.0",
@@ -382,7 +382,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="vector-de-berlin",
         name="Vector Index: Germany (Berlin)",
-        description="Semantic vector index for 55K+ CWICR DACH cost items (DIN 276). Smart fuzzy search — match AI estimates to real BKI-aligned market rates. Requires: pip install sentence-transformers.",
+        description="Semantic vector index for 55K+ CWICR DACH cost items (DIN 276). Smart fuzzy search - match AI estimates to real BKI-aligned market rates. Requires: pip install sentence-transformers.",
         category="vector_index",
         icon="Sparkles",
         version="1.2.0",
@@ -500,7 +500,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-en",
         name="English",
-        description="English language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="English language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -512,7 +512,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-de",
         name="Deutsch (German)",
-        description="German language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="German language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -524,7 +524,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-fr",
         name="Francais (French)",
-        description="French language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="French language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -536,7 +536,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-es",
         name="Espanol (Spanish)",
-        description="Spanish language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Spanish language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -548,7 +548,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-pt",
         name="Portugues (Portuguese)",
-        description="Portuguese language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Portuguese language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -560,7 +560,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-ru",
         name="Russkij (Russian)",
-        description="Russian language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Russian language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -572,7 +572,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-ar",
         name="Arabic",
-        description="Arabic language pack with RTL support — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Arabic language pack with RTL support - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -584,7 +584,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-zh",
         name="Chinese (Simplified)",
-        description="Simplified Chinese language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Simplified Chinese language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -596,7 +596,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-ja",
         name="Japanese",
-        description="Japanese language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Japanese language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -608,7 +608,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-ko",
         name="Korean",
-        description="Korean language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Korean language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -620,7 +620,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-hi",
         name="Hindi",
-        description="Hindi language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Hindi language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -632,7 +632,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-sv",
         name="Svenska (Swedish)",
-        description="Swedish language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Swedish language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -644,7 +644,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-no",
         name="Norsk (Norwegian)",
-        description="Norwegian language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Norwegian language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -656,7 +656,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-da",
         name="Dansk (Danish)",
-        description="Danish language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Danish language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -668,7 +668,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-fi",
         name="Suomi (Finnish)",
-        description="Finnish language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Finnish language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -680,7 +680,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-nl",
         name="Nederlands (Dutch)",
-        description="Dutch language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Dutch language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -692,7 +692,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-pl",
         name="Polski (Polish)",
-        description="Polish language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Polish language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -704,7 +704,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-cs",
         name="Cestina (Czech)",
-        description="Czech language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Czech language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -716,7 +716,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-tr",
         name="Turkce (Turkish)",
-        description="Turkish language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Turkish language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",
@@ -728,7 +728,7 @@ MARKETPLACE_MODULES: list[MarketplaceModule] = [
     MarketplaceModule(
         id="lang-it",
         name="Italiano (Italian)",
-        description="Italian language pack — UI labels, validation messages, cost database descriptions, and report templates.",
+        description="Italian language pack - UI labels, validation messages, cost database descriptions, and report templates.",
         category="language",
         icon="Globe",
         version="1.0.0",

@@ -20,7 +20,7 @@ Why a slug (``name``) + display label (``display_name``)?
 
 
 async def on_startup() -> None:
-    """Module startup hook — register RBAC permissions."""
+    """Module startup hook - register RBAC permissions."""
     from app.modules.file_tags.permissions import register_file_tags_permissions
 
     register_file_tags_permissions()

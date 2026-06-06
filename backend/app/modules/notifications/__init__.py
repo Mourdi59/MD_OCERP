@@ -1,8 +1,8 @@
-"""‌⁠‍oe_notifications — in-app notification system with i18n keys and per-user preferences."""
+"""‌⁠‍oe_notifications - in-app notification system with i18n keys and per-user preferences."""
 
 
 async def on_startup() -> None:
-    """‌⁠‍Module startup hook — wire cross-module event subscribers + dispatchers.
+    """‌⁠‍Module startup hook - wire cross-module event subscribers + dispatchers.
 
     Three things happen on boot:
 
@@ -12,7 +12,7 @@ async def on_startup() -> None:
 
     2. ``register_dispatchers()`` (Epic B / B2) attaches the real email
        + webhook sinks to ``notifications.dispatch.email`` and
-       ``notifications.dispatch.webhook`` — pre-Epic-B these channels
+       ``notifications.dispatch.webhook`` - pre-Epic-B these channels
        silently dropped because nothing subscribed.
 
     3. ``start_scheduler()`` (Epic B / B4-B5) starts the in-process
@@ -29,7 +29,7 @@ async def on_startup() -> None:
     register_dispatchers()
     try:
         start_scheduler()
-    except Exception:  # noqa: BLE001 — worker is best-effort
+    except Exception:  # noqa: BLE001 - worker is best-effort
         import logging
 
         logging.getLogger(__name__).debug(

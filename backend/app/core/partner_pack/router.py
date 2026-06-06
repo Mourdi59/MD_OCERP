@@ -133,7 +133,7 @@ async def full_install_pack(body: FullInstallRequest, request: Request) -> FullI
     §5: apply the pack (modules + branding), surface its locale, load the CWICR
     relational cost DB and build the vector DB for the pack's region(s), and
     install up to ``demo_count`` fully-worked country demo projects. Every step
-    is fail-soft — a failed step is reported in the response and never aborts the
+    is fail-soft - a failed step is reported in the response and never aborts the
     rest, so this endpoint does not 404/500 for an unknown-region or
     embedding-model gap (it reports them as skipped). An unknown pack slug yields
     a single ``apply_pack`` step with ``status="error"``.
@@ -302,7 +302,7 @@ def partner_logo() -> Response:
         raise HTTPException(status_code=404, detail="No active partner pack")
     # Use the universal by-slug reader, not the pip-only _read_pack_resource.
     # In-app one-click installs activate *source-checkout* packs under packs/,
-    # which have no importable entry-point module — _read_pack_resource would
+    # which have no importable entry-point module - _read_pack_resource would
     # return None and the co-brand badge's <img> would 404 on every page.
     # read_pack_file resolves both pip-installed and filesystem packs.
     data = read_pack_file(active.slug, active.branding.logo_path)

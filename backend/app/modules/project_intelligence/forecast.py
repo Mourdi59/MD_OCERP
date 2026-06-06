@@ -210,14 +210,14 @@ def compute_cost_forecast(
         pv=_q_money(pv),
     )
 
-    # CPI = EV / AC — undefined with no actuals.
+    # CPI = EV / AC - undefined with no actuals.
     cpi: Decimal | None = (ev / ac) if ac != ZERO else None
     spi: Decimal | None = (ev / pv) if pv != ZERO else None
     forecast.cpi = _q_index(cpi) if cpi is not None else None
     forecast.spi = _q_index(spi) if spi is not None else None
 
     # EAC = BAC / CPI (typical method). Without a CPI we cannot project, so we
-    # fall back to BAC (the original plan) — an honest neutral default.
+    # fall back to BAC (the original plan) - an honest neutral default.
     if cpi is not None and cpi != ZERO:
         eac = bac / cpi
     else:
@@ -324,7 +324,7 @@ def project_schedule_slip(
     )
 
     # Schedule performance against the plan. With no planned progress yet we
-    # cannot project a variance (SPI_t undefined) — leave the dates None.
+    # cannot project a variance (SPI_t undefined) - leave the dates None.
     bl_finish = _parse_iso_date(baseline_finish)
     as_of = _parse_iso_date(data_date) or date.today()
 
@@ -402,7 +402,7 @@ def score_cost_overrun_risk(
     weighted_sum = ZERO
     rationale: list[str] = []
 
-    # CPI shortfall — the strongest single cost signal.
+    # CPI shortfall - the strongest single cost signal.
     if cpi is not None:
         cpi_d = Decimal(str(cpi))
         shortfall = max(ZERO, ONE - cpi_d)
@@ -415,7 +415,7 @@ def score_cost_overrun_risk(
         else:
             rationale.append(f"Cost performance index is on or above plan (CPI {cpi:.2f}).")
 
-    # SPI shortfall — schedule pressure.
+    # SPI shortfall - schedule pressure.
     if spi is not None:
         spi_d = Decimal(str(spi))
         shortfall = max(ZERO, ONE - spi_d)
@@ -425,7 +425,7 @@ def score_cost_overrun_risk(
         if spi_d < ONE:
             rationale.append(f"Schedule performance index is behind plan (SPI {spi:.2f}).")
 
-    # VAC ratio — projected overrun versus budget.
+    # VAC ratio - projected overrun versus budget.
     if vac is not None and bac is not None and bac != ZERO:
         overrun_ratio = max(ZERO, -vac / bac)  # negative VAC == over budget
         # A 20% overrun saturates the signal.
@@ -436,7 +436,7 @@ def score_cost_overrun_risk(
             pct = (overrun_ratio * Decimal("100")).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
             rationale.append(f"Forecast variance at completion is negative ({pct}% over budget).")
 
-    # Open high-severity risks — saturates at 5.
+    # Open high-severity risks - saturates at 5.
     risks_d = Decimal(max(0, open_high_severity_risks))
     risk_signal = min(ONE, risks_d / Decimal("5"))
     weighted_sum += risk_signal * weights["risks"]
@@ -450,7 +450,7 @@ def score_cost_overrun_risk(
     # Base score over the present signals (re-normalised).
     score = (weighted_sum / present_weight) if present_weight != ZERO else ZERO
 
-    # Schedule slip nudge — a late forecast finish adds up to +0.10.
+    # Schedule slip nudge - a late forecast finish adds up to +0.10.
     if finish_variance_days is not None and finish_variance_days > 0:
         nudge = min(Decimal("0.10"), Decimal(finish_variance_days) / Decimal("300"))
         score = min(ONE, score + nudge)

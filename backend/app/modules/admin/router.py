@@ -1,8 +1,8 @@
 """‌⁠‍Admin API routes.
 
 Endpoints:
-    POST /qa-reset                   — reset the demo dataset (triple-gated)
-    POST /cost-vector-reindex        — rebuild the ``oe_cost_items`` collection
+    POST /qa-reset                   - reset the demo dataset (triple-gated)
+    POST /cost-vector-reindex        - rebuild the ``oe_cost_items`` collection
 """
 
 from __future__ import annotations
@@ -27,13 +27,13 @@ logger = logging.getLogger(__name__)
 # Sub-router: GET /permissions/matrix (admin UI). Lives in a separate
 # file because the endpoint is auth-gated by ``audit.view`` rather than
 # the qa-reset triple-gate model used by the destructive endpoints in
-# this file — keeping them apart makes the security review trivial.
+# this file - keeping them apart makes the security review trivial.
 router.include_router(permissions_router)
 
 
 # Background-task registry for the cost-vector reindex.  Tracks one-shot
 # reindex runs by an opaque task_id so the operator can poll progress
-# from the same admin process. Stored in-memory only — restarting the
+# from the same admin process. Stored in-memory only - restarting the
 # process drops the history, which is fine for an operator endpoint.
 _REINDEX_TASKS: dict[str, dict[str, object]] = {}
 _REINDEX_TASKS_LOCK = asyncio.Lock()
@@ -47,7 +47,7 @@ class QAResetRequest(BaseModel):
     """‌⁠‍Body for POST /qa-reset.
 
     ``confirm_token`` must equal ``os.environ['QA_RESET_TOKEN']`` server-side.
-    ``tenant`` must equal ``"demo"`` — the only resettable tenant.
+    ``tenant`` must equal ``"demo"`` - the only resettable tenant.
     """
 
     tenant: str = Field(default="demo", description="Tenant to reset; only 'demo' is allowed.")
@@ -69,7 +69,7 @@ class QAResetResponse(BaseModel):
     summary="Reset demo dataset (QA crawler baseline)",
     description=(
         "Hard-deletes all projects owned by the demo accounts and re-seeds the "
-        "canonical 5 demo projects. Idempotent — safe to call repeatedly. "
+        "canonical 5 demo projects. Idempotent - safe to call repeatedly. "
         "Triple-gated by env (QA_RESET_ALLOWED=1), shared-secret token, and "
         "hostname check (refuses production). Use only against dev/staging."
     ),
@@ -129,10 +129,10 @@ class CostVectorReindexRequest(BaseModel):
 
     Same triple-gate model as qa-reset:
         * ``QA_RESET_ALLOWED=1`` env var (the existing operator flag is
-          reused to keep the surface area small — operators who already
+          reused to keep the surface area small - operators who already
           opted in for qa-reset get the reindex endpoint too)
         * ``confirm_token`` body field == ``QA_RESET_TOKEN`` env var
-        * Hostname must look dev/staging — never production
+        * Hostname must look dev/staging - never production
     """
 
     confirm_token: str = Field(min_length=1, description="Shared secret matching QA_RESET_TOKEN env.")
@@ -148,7 +148,7 @@ class CostVectorReindexRequest(BaseModel):
         default=500,
         ge=1,
         le=5000,
-        description="Embedding batch size — tune down on memory-tight hosts.",
+        description="Embedding batch size - tune down on memory-tight hosts.",
     )
 
 
@@ -158,7 +158,7 @@ class CostVectorReindexResponse(BaseModel):
     ``task_id`` is non-null when the row count exceeded the inline
     threshold and the reindex was scheduled as a background task; the
     operator can poll ``GET /cost-vector-reindex/status/{task_id}``
-    (not yet implemented in this phase — see backlog) to track
+    (not yet implemented in this phase - see backlog) to track
     completion. For inline runs ``task_id`` is None and ``indexed`` /
     ``took_ms`` carry the final result.
     """
@@ -201,7 +201,7 @@ async def _run_cost_reindex(*, batch_size: int, force: bool, task_id: str | None
                     )
                 ).scalar_one() or 0
             if indexed_count >= live_total > 0:
-                # Already in sync — bail out cheaply.
+                # Already in sync - bail out cheaply.
                 summary = {
                     "indexed": 0,
                     "took_ms": int((time.monotonic() - started) * 1000),
@@ -217,7 +217,7 @@ async def _run_cost_reindex(*, batch_size: int, force: bool, task_id: str | None
                         }
                 return summary
 
-        # Pull rows in batches — never materialise the entire table.
+        # Pull rows in batches - never materialise the entire table.
         indexed = 0
         async with async_session_factory() as session:
             offset = 0
@@ -296,7 +296,7 @@ async def cost_vector_reindex(
             detail={"code": exc.code, "message": exc.message},
         ) from exc
 
-    # Vector backend probe — fail fast if the optional extra is missing
+    # Vector backend probe - fail fast if the optional extra is missing
     # so the operator gets a clear error instead of a silent zero-op.
     try:
         import importlib.util  # noqa: PLC0415
@@ -399,7 +399,7 @@ async def cost_vector_reindex(
 async def cost_vector_reindex_status(task_id: str) -> dict[str, object]:
     """Return the current status of a previously scheduled reindex.
 
-    Returns 404 if the task_id is unknown — the operator typically
+    Returns 404 if the task_id is unknown - the operator typically
     polls this from a script that already has the id from the original
     POST response. The registry is in-memory, so a process restart
     drops history.

@@ -1,10 +1,10 @@
-"""‌⁠‍QMS service — business logic for the unified quality module.
+"""‌⁠‍QMS service - business logic for the unified quality module.
 
 Status transitions are guarded by explicit allow-lists. Illegal moves
 raise :class:`ValueError`; HTTP-layer translation happens in the router.
 
 Cross-module communication is fire-and-forget via
-:meth:`EventBus.publish_detached` — never await a subscriber while
+:meth:`EventBus.publish_detached` - never await a subscriber while
 holding a write session on SQLite.
 """
 
@@ -139,7 +139,7 @@ def _to_utc_iso(value: datetime | None) -> str | None:
     ``>=`` / ``<`` range comparisons that only preserve chronology when every
     value carries the **same** UTC offset. A naive client datetime produces an
     offset-less string (``"...T10:00:00"``) that sorts *before* an offset-bearing
-    one (``"...T10:00:00+00:00"``), silently corrupting the ordering — on both
+    one (``"...T10:00:00+00:00"``), silently corrupting the ordering - on both
     SQLite and PostgreSQL, but it bites harder on PG where this is the only
     ordering the planner has. Coercing every write to UTC-with-offset here keeps
     lexical order == chronological order regardless of what the client sent.
@@ -419,7 +419,7 @@ class QMSService:
             return
         required_rank = _SIGNER_ROLE_RANK.get(required_role)
         if required_rank is None:
-            # Required role is not on the authority ladder — cannot gate it.
+            # Required role is not on the authority ladder - cannot gate it.
             return
         signer_rank = _SIGNER_ROLE_RANK.get(signer_role, 0)
         if signer_rank < required_rank:
@@ -440,7 +440,7 @@ class QMSService:
 
         The signer is resolved as ``data.signer_user_id`` when supplied
         (sign on behalf of another member), otherwise ``default_signer_user_id``
-        — the authenticated caller. This lets the UI "sign as me" without
+        - the authenticated caller. This lets the UI "sign as me" without
         hand-typing a UUID.
 
         ``signer_ip`` / ``signer_user_agent`` capture non-repudiation context
@@ -615,7 +615,7 @@ class QMSService:
 
         # Approval integration (item 12 gap #4). A failed or conditional
         # result on a hold / witness point does not release the gate by
-        # itself — it needs a formal disposition. We fan out
+        # itself - it needs a formal disposition. We fan out
         # ``qms.inspection.approval_requested`` so the approval_routes engine
         # (which subscribes in its own module) can open an approval instance
         # against the inspection. Emitting an event rather than calling the
@@ -863,7 +863,7 @@ class QMSService:
         a UI / error message.
 
         This is the read-only seam other modules (task progression, change
-        orders) call before allowing a gated action — see
+        orders) call before allowing a gated action - see
         :meth:`assert_downstream_action_allowed`.
         """
         item = await self.repo.get_itp_item(itp_item_id)
@@ -1645,7 +1645,7 @@ class QMSService:
         If the caller passed an explicit non-empty value we honour it
         (FX-converted upstream). Otherwise fall back to
         ``Project.currency``. Empty string is returned only if the
-        project lookup fails and no fallback was provided — callers
+        project lookup fails and no fallback was provided - callers
         should surface that as a "currency unknown" indicator rather
         than silently substituting ``EUR``/``USD``.
         """
@@ -1660,7 +1660,7 @@ class QMSService:
             project = await proj_repo.get_by_id(project_id)
             if project is not None:
                 return getattr(project, "currency", "") or ""
-        except Exception:  # noqa: BLE001 — defensive log-and-degrade
+        except Exception:  # noqa: BLE001 - defensive log-and-degrade
             logger.exception(
                 "QMS COPQ: project currency lookup failed for %s",
                 project_id,
@@ -1683,7 +1683,7 @@ class QMSService:
 
             proj_repo = ProjectRepository(self.session)
             project = await proj_repo.get_by_id(project_id)
-        except Exception:  # noqa: BLE001 — defensive log-and-degrade
+        except Exception:  # noqa: BLE001 - defensive log-and-degrade
             logger.exception(
                 "QMS COPQ: project lookup failed for %s",
                 project_id,
@@ -1717,7 +1717,7 @@ class QMSService:
         ``amount * fx_rates[code]``. A bucket whose currency has no FX rate
         is summed in its own units anyway (never dropped) so a missing rate
         degrades visibly. Returns ``(total_in_base, base_currency,
-        per_currency_breakdown)`` — the breakdown lets the UI surface a
+        per_currency_breakdown)`` - the breakdown lets the UI surface a
         mixed-currency warning when conversion was incomplete.
         """
         by_currency = await self.repo.sum_ncr_cost_impact_by_currency(project_id)
@@ -1736,7 +1736,7 @@ class QMSService:
                     if factor > 0:
                         total += amount * factor
                         continue
-            # Same currency, no base known, or missing rate — add raw.
+            # Same currency, no base known, or missing rate - add raw.
             total += amount
         return total, base, by_currency
 
@@ -1815,7 +1815,7 @@ class QMSService:
 
         COPQ (Juran) = internal failure (NCRs + rework) + external failure
         (warranty) + delay penalty. Each component is optional; defaults
-        come from tenant config — here we surface them as explicit kwargs.
+        come from tenant config - here we surface them as explicit kwargs.
         """
         per_punch = rework_cost_per_punch or _DEFAULT_REWORK_COST_PER_PUNCH
         warranty = Decimal(str(warranty_cost or 0))
@@ -1871,7 +1871,7 @@ class QMSService:
 
         Each bucket is ``period_days`` wide. Optional ``work_type`` filters
         to a single trade by walking the inspection→ITP item→ITP plan
-        relation in-process (kept simple — datasets are small per period).
+        relation in-process (kept simple - datasets are small per period).
         """
         if today is None:
             today = date.today()
@@ -1889,7 +1889,7 @@ class QMSService:
             )
             work_type_plan_ids = {p.id for p in plans if p.work_type == work_type}
             if not work_type_plan_ids:
-                # No plans of this work_type — empty trend
+                # No plans of this work_type - empty trend
                 return {
                     "project_id": project_id,
                     "work_type": work_type,
@@ -2034,23 +2034,23 @@ class QMSService:
         recs: list[str] = []
         if fpy < 0.85 and inspections_total > 0:
             recs.append(
-                f"First-pass yield {fpy:.2%} below 85% target — review inspector training and rework root causes."
+                f"First-pass yield {fpy:.2%} below 85% target - review inspector training and rework root causes."
             )
         if findings_open > findings_closed:
             recs.append(
-                f"{findings_open} open findings vs {findings_closed} closed — "
+                f"{findings_open} open findings vs {findings_closed} closed - "
                 "increase CAPA closure cadence and review responsible owners."
             )
         if ncrs_raised > 0 and ncrs_closed / max(ncrs_raised, 1) < 0.5:
             recs.append(
-                f"Only {ncrs_closed}/{ncrs_raised} NCRs closed in period — escalate ageing NCRs to senior leadership."
+                f"Only {ncrs_closed}/{ncrs_raised} NCRs closed in period - escalate ageing NCRs to senior leadership."
             )
         if open_punch > 50:
             recs.append(
-                f"{open_punch} open punch items — schedule a rolling punch-down sprint before final inspection."
+                f"{open_punch} open punch items - schedule a rolling punch-down sprint before final inspection."
             )
         if not recs:
-            recs.append("QMS performance within thresholds — maintain current cadence.")
+            recs.append("QMS performance within thresholds - maintain current cadence.")
 
         return {
             "project_id": project_id,
@@ -2316,7 +2316,7 @@ def compute_copq_breakdown(
     warranty_cost: Decimal = Decimal("0"),
     delay_penalty_cost: Decimal = Decimal("0"),
 ) -> dict[str, Decimal]:
-    """Pure COPQ breakdown — used by tests and offline reporting."""
+    """Pure COPQ breakdown - used by tests and offline reporting."""
     rework = rework_cost_per_punch * Decimal(open_punch_count)
     total = ncr_cost + rework + warranty_cost + delay_penalty_cost
     return {

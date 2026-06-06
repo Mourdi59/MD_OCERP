@@ -1,16 +1,16 @@
 """‌⁠‍Service & Maintenance ORM models.
 
 Tables:
-    oe_service_contract               — customer-scoped service agreement
-    oe_service_asset                  — customer asset under contract
-    oe_service_ticket                 — incoming service request
-    oe_service_work_order             — dispatched on-site visit
-    oe_service_work_order_item        — labor / material / travel line item
-    oe_service_debrief                — P-C-S report after a visit
-    oe_service_sla_definition         — reusable SLA tier
-    oe_service_schedule               — PPM (recurring inspection) schedule
-    oe_service_recurring_schedule     — RRULE-driven recurring ticket template
-    oe_service_checklist              — reusable inspection checklist template
+    oe_service_contract               - customer-scoped service agreement
+    oe_service_asset                  - customer asset under contract
+    oe_service_ticket                 - incoming service request
+    oe_service_work_order             - dispatched on-site visit
+    oe_service_work_order_item        - labor / material / travel line item
+    oe_service_debrief                - P-C-S report after a visit
+    oe_service_sla_definition         - reusable SLA tier
+    oe_service_schedule               - PPM (recurring inspection) schedule
+    oe_service_recurring_schedule     - RRULE-driven recurring ticket template
+    oe_service_checklist              - reusable inspection checklist template
 """
 
 import uuid
@@ -37,7 +37,7 @@ class ServiceContract(Base):
     """‌⁠‍Service agreement between us (provider) and a customer (Contact).
 
     A contract scopes assets, tickets and work orders. It is *not* required
-    to be linked to a project — service work routinely spans many projects
+    to be linked to a project - service work routinely spans many projects
     or none at all (post-handover maintenance).
     """
 
@@ -71,7 +71,7 @@ class ServiceContract(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
-    # ISO date strings — match the convention used in safety/changeorders.
+    # ISO date strings - match the convention used in safety/changeorders.
     period_start: Mapped[str] = mapped_column(String(20), nullable=False)
     period_end: Mapped[str] = mapped_column(String(20), nullable=False)
 
@@ -160,7 +160,7 @@ class ServiceAsset(Base):
 
 
 class ServiceTicket(Base):
-    """A request for service — created manually or via customer portal."""
+    """A request for service - created manually or via customer portal."""
 
     __tablename__ = "oe_service_ticket"
     __table_args__ = (
@@ -228,7 +228,7 @@ class ServiceTicket(Base):
     )
     # ISO timestamp of when ``check_breaches()`` first observed this ticket
     # as breached. Distinct from sla_breach_notified_at because notification
-    # delivery (events, email) may fail or be retried — sla_breached_at is the
+    # delivery (events, email) may fail or be retried - sla_breached_at is the
     # ground-truth "breach happened" marker the dashboard uses.
     sla_breached_at: Mapped[str | None] = mapped_column(
         String(40),
@@ -236,7 +236,7 @@ class ServiceTicket(Base):
     )
     # Optional FK to a recurring schedule (RRULE-driven). NULL ⇒ ad-hoc ticket.
     # No DB-level FK declared so dropping a schedule never cascades into
-    # historical ticket loss — recurring schedules can be retired safely.
+    # historical ticket loss - recurring schedules can be retired safely.
     recurring_schedule_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(),
         nullable=True,
@@ -500,7 +500,7 @@ class ServiceRecurringSchedule(Base):
     """‌⁠‍RRULE-driven schedule that materialises ServiceTicket rows on a cadence.
 
     Distinct from ``ServiceSchedule`` (asset-scoped PPM with a fixed frequency
-    enum) — this row is project-scoped and uses iCalendar RFC 5545 RRULE
+    enum) - this row is project-scoped and uses iCalendar RFC 5545 RRULE
     syntax (e.g. ``FREQ=MONTHLY;BYMONTHDAY=1``). The cron worker scans for
     ``enabled & next_run_at < now`` and materialises one ticket per overdue
     occurrence, advancing ``next_run_at`` via the RRULE.

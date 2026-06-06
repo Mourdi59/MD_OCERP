@@ -1,4 +1,4 @@
-"""‌⁠‍BIM Hub service​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ — business logic for BIM data management.
+"""‌⁠‍BIM Hub service​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ - business logic for BIM data management.
 
 Stateless service layer. Handles:
 - BIM model CRUD
@@ -76,7 +76,7 @@ async def _safe_publish(
     data: dict[str, Any],
     source_module: str = "oe_bim_hub",
 ) -> None:
-    """‌⁠‍Publish event safely — ignores MissingGreenlet errors with SQLite async."""
+    """‌⁠‍Publish event safely - ignores MissingGreenlet errors with SQLite async."""
     try:
         event_bus.publish_detached(name, data, source_module=source_module)
     except Exception:
@@ -112,7 +112,7 @@ def _safe_float(value: Any) -> float | None:
 
     Position.quantity / unit_rate / total are stored as strings to avoid
     SQLite REAL precision loss. Aggregation endpoints surface them as JSON
-    floats for the viewer — ``None`` stays ``None``, empty stays ``None``.
+    floats for the viewer - ``None`` stays ``None``, empty stays ``None``.
     """
     if value is None or value == "":
         return None
@@ -133,7 +133,7 @@ def _safe_float(value: Any) -> float | None:
 # authoritatively at the *write boundary* of this module: every
 # ``Position.unit`` this service persists is normalised to a single
 # canonical ASCII token. (The validation rule file is owned by another
-# pass and must NOT be edited — normalising here makes both sides agree.)
+# pass and must NOT be edited - normalising here makes both sides agree.)
 _SUPERSCRIPT_UNIT_MAP = {
     "²": "2",  # SUPERSCRIPT TWO  (m²)
     "³": "3",  # SUPERSCRIPT THREE (m³)
@@ -146,7 +146,7 @@ def normalize_unit_token(raw: Any) -> str:
     ``m³`` → ``m3``, ``m²`` → ``m2``, ``M3`` → ``m3``. Whitespace is
     trimmed and the token is lower-cased so ``"M2"``/``"m²"``/``" m2 "``
     all collapse to ``"m2"``. Empty / ``None`` → ``""`` (caller decides
-    the fallback — we never invent a unit here). Unknown units pass
+    the fallback - we never invent a unit here). Unknown units pass
     through lower-cased and superscript-folded; rejecting a real-world
     unit would be worse UX than letting the estimator edit post-import.
     """
@@ -158,7 +158,7 @@ def normalize_unit_token(raw: Any) -> str:
     for sup, ascii_digit in _SUPERSCRIPT_UNIT_MAP.items():
         text = text.replace(sup, ascii_digit)
     text = text.lower()
-    # BUG-D-TKC-NEW-02 — German / European BOQ conventions abbreviate
+    # BUG-D-TKC-NEW-02 - German / European BOQ conventions abbreviate
     # count units WITH a trailing period: "Stk.", "St.", "Stck.", "Pos.".
     # Folding the trailing period(s)/whitespace here (the single unit
     # write/compare boundary) makes "Stk." collapse to "stk" so it hits
@@ -173,7 +173,7 @@ def normalize_unit_token(raw: Any) -> str:
 # Units that denote a *count of discrete items* (not a geometric
 # dimension). Linking BIM geometry to a count position must NOT
 # overwrite the estimator's hand-entered piece count with a volume /
-# area / weight — see E-XMOD-003.
+# area / weight - see E-XMOD-003.
 _COUNT_UNITS: frozenset[str] = frozenset(
     {
         "pcs",
@@ -306,7 +306,7 @@ async def _strip_orphaned_bim_links(
     BIM viewer's "linked tasks/activities/requirements" panel as well
     as any reverse-query helper.
 
-    Runs INLINE on the caller's session — must NOT open a new session.
+    Runs INLINE on the caller's session - must NOT open a new session.
     The previous implementation lived in an event subscriber that
     opened ``async_session_factory()``, but under SQLite write-lock
     contention (the upstream service is mid-transaction) the new
@@ -355,7 +355,7 @@ async def _strip_orphaned_bim_links(
                 len(targets),
                 cleaned_tasks,
             )
-    except Exception:  # noqa: BLE001 — best-effort, never break upstream
+    except Exception:  # noqa: BLE001 - best-effort, never break upstream
         logger.warning(
             "Orphan cleanup failed for tasks (project=%s)",
             project_id,
@@ -524,12 +524,12 @@ class BIMHubService:
         CASCADE on the DB foreign key handles element deletion automatically.
         Orphaned BIM-link references in JSON columns (Task.bim_element_ids,
         Activity.bim_element_ids, Requirement.metadata_["bim_element_ids"])
-        are cleaned lazily — callers that resolve these ids already tolerate
+        are cleaned lazily - callers that resolve these ids already tolerate
         missing elements, and a future background sweeper can purge stale
         references.  This keeps the delete O(1) w.r.t. element count so
         models with 7 000+ elements don't time out the HTTP request.
 
-        Blob cleanup is best-effort — a failure to remove the blobs MUST
+        Blob cleanup is best-effort - a failure to remove the blobs MUST
         NOT fail the delete operation (the DB row is already gone and the
         orphan sweeper can pick up any stragglers later).
         """
@@ -597,7 +597,7 @@ class BIMHubService:
                 scanned += 1
                 if model_dir.name in known_ids:
                     continue
-                # Orphan — compute size then remove.
+                # Orphan - compute size then remove.
                 try:
                     size = sum(f.stat().st_size for f in model_dir.rglob("*") if f.is_file())
                 except OSError:
@@ -778,8 +778,8 @@ class BIMHubService:
         document_name, document_category, link_type, confidence).
 
         Task briefs match ``bim_hub.schemas.TaskBrief`` (id, project_id,
-        title, status, task_type, due_date). Tasks are denormalised — each
-        ``Task`` row carries a JSON ``bim_element_ids`` array — so we load
+        title, status, task_type, due_date). Tasks are denormalised - each
+        ``Task`` row carries a JSON ``bim_element_ids`` array - so we load
         all project tasks once and filter in Python. This is cross-dialect
         safe and correct for the bounded sizes we expect (< a few thousand
         tasks per project).
@@ -787,7 +787,7 @@ class BIMHubService:
         Activity briefs match ``bim_hub.schemas.ActivityBrief`` (id, name,
         start_date, end_date, status, percent_complete). Activities are
         loaded through ``oe_schedule_schedule`` for the model's project and
-        filtered in Python on their ``bim_element_ids`` JSON array — same
+        filtered in Python on their ``bim_element_ids`` JSON array - same
         rationale as tasks.
 
         This avoids an N+1 by issuing:
@@ -829,7 +829,7 @@ class BIMHubService:
             if member_uuids:
                 base = base.where(BIMElement.id.in_(member_uuids))
             else:
-                # Group has no members — return empty result set.
+                # Group has no members - return empty result set.
                 base = base.where(False)  # type: ignore[arg-type]
 
         count_stmt = select(func.count()).select_from(base.subquery())
@@ -878,7 +878,7 @@ class BIMHubService:
                     except (TypeError, ValueError):
                         qty = None  # non-numeric quantity must not 500 the list
                 unit = info[3] if info else None
-                # v3 §10 — money goes through Pydantic as the raw 4dp string
+                # v3 §10 - money goes through Pydantic as the raw 4dp string
                 # from Position so Decimal() doesn't round-trip through float
                 # and re-introduce binary precision drift.
                 urate = str(info[4]) if info and info[4] is not None and str(info[4]).strip() else None
@@ -962,7 +962,7 @@ class BIMHubService:
         # ── Step 6: fetch Schedule Activities for this project and filter ──
         # Activities store ``bim_element_ids`` as a JSON list on each row.
         # We join through ``oe_schedule_schedule`` to scope by the model's
-        # project, then filter in Python — same cross-dialect reasoning as
+        # project, then filter in Python - same cross-dialect reasoning as
         # the task loop above.
         activity_briefs_by_element_id: dict[uuid.UUID, list[dict[str, Any]]] = {eid: [] for eid in element_ids}
         if element_ids:
@@ -1002,7 +1002,7 @@ class BIMHubService:
         # Requirements pin themselves to BIM elements via a JSON array
         # in ``Requirement.metadata_["bim_element_ids"]`` (no dedicated
         # column to keep migrations cheap).  We load every requirement
-        # in the project once and filter in Python — same cross-dialect
+        # in the project once and filter in Python - same cross-dialect
         # reasoning as the task and activity loops above.
         requirement_briefs_by_element_id: dict[uuid.UUID, list[dict[str, Any]]] = {eid: [] for eid in element_ids}
         if element_ids:
@@ -1044,7 +1044,7 @@ class BIMHubService:
         # ── Step 7: load latest ValidationReport for this model ──────────
         # Look up the most recent ``target_type='bim_model'`` report and
         # zip its per-element results into a dict keyed by element_id.
-        # Missing reports are fine — the router falls back to 'unchecked'.
+        # Missing reports are fine - the router falls back to 'unchecked'.
         #
         # To distinguish "report exists, element passed" from "no report
         # exists at all", we stash a sentinel entry under
@@ -1203,7 +1203,7 @@ class BIMHubService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="BIM model not found",
             )
-        # Pull every element for the model — pagination unnecessary here
+        # Pull every element for the model - pagination unnecessary here
         # because COBie is a handover snapshot, not an interactive view.
         # Large models (50k elements) still finish well under 10s in our
         # perf baseline with the existing paginated helper (limit=5000).
@@ -1235,8 +1235,8 @@ class BIMHubService:
         Rationale: the DDC "standard" Excel extract sometimes filters out
         entire categories (tapered roofs, planting, sketch lines, detail
         components). Those elements still have full property rows in the
-        Parquet dataframe and their meshes exist in the GLB scene — so
-        the user can CLICK them in the 3D viewer — but they have no
+        Parquet dataframe and their meshes exist in the GLB scene - so
+        the user can CLICK them in the 3D viewer - but they have no
         ``oe_bim_element`` row. When the user tries to link one to a BOQ
         position the request fails because ``BOQElementLink.bim_element_id``
         needs a real UUID FK. This method creates that row on demand so
@@ -1268,7 +1268,7 @@ class BIMHubService:
             if existing is not None:
                 return existing
 
-        # Not in DB — try to lazy-create from Parquet.
+        # Not in DB - try to lazy-create from Parquet.
         import asyncio
 
         from app.modules.bim_hub.dataframe_store import query_parquet, read_schema
@@ -1312,8 +1312,8 @@ class BIMHubService:
             # No Parquet (snapshot-seeded models ship geometry only) or no
             # matching row: still create a minimal placeholder element so
             # the mesh the user clicked in the 3D viewer can be linked to a
-            # BOQ position.  This is the whole point of ``ensure_element`` —
-            # "every visible mesh is linkable" — and it must not depend on a
+            # BOQ position.  This is the whole point of ``ensure_element`` -
+            # "every visible mesh is linkable" - and it must not depend on a
             # full DDC Parquet extract being present.  IDOR is already
             # enforced by the caller's ``_verify_model_access`` check.
             element = BIMElement(
@@ -1468,7 +1468,7 @@ class BIMHubService:
         storeys = {e.storey for e in created if e.storey}
 
         # Eagerly capture the model name and the freshly-assigned
-        # element PKs BEFORE ``update_fields`` — the repository helper
+        # element PKs BEFORE ``update_fields`` - the repository helper
         # calls ``session.expire_all()`` which invalidates every mapped
         # instance in this session (including ``model`` and every row
         # we just created).  Attribute access after expire triggers a
@@ -1493,7 +1493,7 @@ class BIMHubService:
             select(BIMElement).where(BIMElement.id.in_(created_ids)).options(selectinload(BIMElement.boq_links))
         )
         refreshed = list((await self.session.execute(refresh_stmt)).scalars().all())
-        # Preserve the insertion order the caller requested — the IN
+        # Preserve the insertion order the caller requested - the IN
         # filter above returns in arbitrary order.
         order_index = {rid: idx for idx, rid in enumerate(created_ids)}
         refreshed.sort(key=lambda e: order_index.get(e.id, len(order_index)))
@@ -1524,7 +1524,7 @@ class BIMHubService:
         Returns one row per ``(boq_position_id, link_type, confidence)`` with
         the full list of linked BIM element UUIDs and a handful of position
         fields. Powers the BIM viewer's "Linked BOQ" side-panel, which needs
-        the totals across the whole model — not just the 2000-element page
+        the totals across the whole model - not just the 2000-element page
         the enriched elements endpoint returns.
         """
         stmt = (
@@ -1548,7 +1548,7 @@ class BIMHubService:
         result = await self.session.execute(stmt)
         rows = result.all()
 
-        # Aggregate by (position_id, link_type, confidence) — matches how the
+        # Aggregate by (position_id, link_type, confidence) - matches how the
         # panel groups visually. A position with both ``manual`` and
         # ``rule_based`` links shows as two rows, which is what the user
         # expects to see.
@@ -1564,7 +1564,7 @@ class BIMHubService:
                     "boq_position_description": row.description,
                     "boq_position_quantity": _safe_float(row.quantity),
                     "boq_position_unit": row.unit,
-                    # v3 §10 — pass money values as their raw 4dp string so
+                    # v3 §10 - pass money values as their raw 4dp string so
                     # Pydantic Decimal coercion is exact (not float-rounded).
                     "boq_position_unit_rate": (
                         str(row.unit_rate) if row.unit_rate is not None and str(row.unit_rate).strip() else None
@@ -1655,7 +1655,7 @@ class BIMHubService:
         """Append ``element_id`` to ``Position.cad_element_ids`` if missing.
 
         Initialises the array when the column is NULL (legacy rows) and
-        skips duplicates. No-op when the position no longer exists — the
+        skips duplicates. No-op when the position no longer exists - the
         caller is responsible for verifying position existence beforehand.
         """
         pos = await self.session.get(Position, position_id)
@@ -1687,13 +1687,13 @@ class BIMHubService:
 
         Correctness invariants (these were the v1.9.0 defects):
 
-        * **E-XMOD-003** — a count position (``pcs``/``St``/``ea``/
+        * **E-XMOD-003** - a count position (``pcs``/``St``/``ea``/
           ``lsum``/…) must NEVER take volume/area/weight. It gets the
           number of linked elements (1 per element) so "7.5 pcs of
           walls" can no longer happen.
-        * **D-TKC-005** — a tonne position divides ``weight_kg`` by
+        * **D-TKC-005** - a tonne position divides ``weight_kg`` by
           1000 so 4000 kg → 4 t, not 4000 t.
-        * **D-TKC-028** — if NO dimensionally-correct quantity exists
+        * **D-TKC-028** - if NO dimensionally-correct quantity exists
           for the unit, the position is left untouched. We never fall
           back to "first non-zero numeric value" (which silently summed
           an area into a length position, etc.). The estimator's manual
@@ -1712,7 +1712,7 @@ class BIMHubService:
         unit = normalize_unit_token(pos.unit)
 
         # ── Count units: quantity = number of linked elements ─────────
-        # No geometric substitution — this is the E-XMOD-003 fix.
+        # No geometric substitution - this is the E-XMOD-003 fix.
         if unit in _COUNT_UNITS:
             count_total = 0
             for lnk in links:
@@ -1748,13 +1748,13 @@ class BIMHubService:
         }
         preferred_keys = _UNIT_TO_QKEY.get(unit, [])
         if not preferred_keys:
-            # D-TKC-028 — unknown / non-geometric unit and not a known
+            # D-TKC-028 - unknown / non-geometric unit and not a known
             # count unit: do NOT guess a dimension. Leaving the manual
             # quantity intact is strictly safer than summing an
             # arbitrary geometric value of the wrong dimension.
             logger.info(
                 "BOQ position %s unit %r has no dimensionally-correct "
-                "BIM quantity mapping — manual quantity left untouched "
+                "BIM quantity mapping - manual quantity left untouched "
                 "(no arbitrary fallback)",
                 position_id,
                 pos.unit,
@@ -1781,7 +1781,7 @@ class BIMHubService:
                     except (InvalidOperation, TypeError, ValueError):
                         continue
 
-            # D-TKC-028 — NO arbitrary fallback. An element that lacks
+            # D-TKC-028 - NO arbitrary fallback. An element that lacks
             # the dimensionally-correct quantity simply contributes 0.
             if value is not None and value > 0:
                 total += value * scale
@@ -1891,11 +1891,11 @@ class BIMHubService:
 
         Two modes, selected by ``request.dry_run``:
 
-        **dry_run=True (default)** — compute and return a preview only.
+        **dry_run=True (default)** - compute and return a preview only.
             No ``BOQElementLink`` rows and no ``Position`` rows are created.
             ``links_created`` and ``positions_created`` stay at 0.
 
-        **dry_run=False** — actually persist the result:
+        **dry_run=False** - actually persist the result:
             * For every rule with a resolvable ``boq_target``, create a
               ``BOQElementLink`` (link_type="rule_based", confidence="high",
               rule_id=rule.id) for each matched element, skipping any
@@ -1906,7 +1906,7 @@ class BIMHubService:
               with quantity = Σ(adjusted quantity across matched elements)
               and then the links are created against the new position.
             * Each rule's writes run inside a single savepoint
-              (``session.begin_nested``) — a failure while processing one
+              (``session.begin_nested``) - a failure while processing one
               rule rolls that rule back cleanly without aborting the
               others or the outer request transaction.
             * Also keeps ``Position.cad_element_ids`` in sync via
@@ -1923,7 +1923,7 @@ class BIMHubService:
         # ── Step 1: compute matches per rule (same math regardless of
         # dry_run so the preview stays identical across modes). ───────────
         # Tracks (element, rule) pairs that fired the rule but were
-        # then dropped because the quantity could not be extracted —
+        # then dropped because the quantity could not be extracted -
         # most often because the element is missing the property the
         # rule reads.  We surface this in the result so the dry-run
         # preview can show *why* a population is smaller than expected
@@ -2017,7 +2017,7 @@ class BIMHubService:
                         )
                         links_created += created_links
                         positions_created += created_positions
-                except Exception:  # noqa: BLE001 — per-rule isolation
+                except Exception:  # noqa: BLE001 - per-rule isolation
                     logger.exception(
                         "Failed to persist quantity map rule %s on model %s",
                         rule_id,
@@ -2032,7 +2032,7 @@ class BIMHubService:
         if skipped:
             logger.warning(
                 "Quantity maps: %d (element, rule) pair(s) skipped on "
-                "model %s — most common reason is a missing property "
+                "model %s - most common reason is a missing property "
                 "(rule expects something the BIM export did not provide). "
                 "First skipped pair: %s",
                 len(skipped),
@@ -2113,7 +2113,7 @@ class BIMHubService:
 
         for element, _raw, _adjusted in matches:
             if element.id in existing_elem_ids:
-                continue  # idempotent — dup UNIQUE would 500 us otherwise
+                continue  # idempotent - dup UNIQUE would 500 us otherwise
 
             link = BOQElementLink(
                 boq_position_id=position.id,
@@ -2126,7 +2126,7 @@ class BIMHubService:
             try:
                 await self.link_repo.create(link)
             except IntegrityError:
-                # Race with a concurrent writer — treat as already linked.
+                # Race with a concurrent writer - treat as already linked.
                 logger.debug(
                     "IntegrityError creating link pos=%s elem=%s (treated as duplicate)",
                     position.id,
@@ -2216,7 +2216,7 @@ class BIMHubService:
         if not isinstance(classification, dict):
             classification = {}
 
-        # Pick a free ordinal — "BIM-<short rule id>" — unlikely to clash.
+        # Pick a free ordinal - "BIM-<short rule id>" - unlikely to clash.
         ordinal = f"BIM-{str(rule.id)[:8]}"
 
         # Determine sort_order: after everything else.
@@ -2226,10 +2226,10 @@ class BIMHubService:
         # Pull a default unit_rate from the rule's boq_target dict if the
         # author prefilled one (e.g. via the "Suggest from CWICR" button
         # in the rule editor).  When non-zero we also compute the line
-        # total here so the new position lands fully priced — no second
+        # total here so the new position lands fully priced - no second
         # pass needed in the BOQ editor.
         #
-        # QR-004 — a rule author could prefill an arbitrary
+        # QR-004 - a rule author could prefill an arbitrary
         # ``unit_rate`` (e.g. ``1e308``) that landed verbatim in a
         # priced BOQ position with ``source='cad_import'``. We parse
         # via Decimal (locale-independent), reject non-finite /
@@ -2278,7 +2278,7 @@ class BIMHubService:
 
         line_total = total_qty * rate_decimal
 
-        # E-XMOD-020 — persist the canonical ASCII unit token (m³→m3)
+        # E-XMOD-020 - persist the canonical ASCII unit token (m³→m3)
         # so the new position is subject to the same RateVsBenchmark /
         # MeasurementConsistency rules as a hand-typed "m3".
         canonical_unit = normalize_unit_token(rule.unit) or "pcs"
@@ -2797,7 +2797,7 @@ class BIMHubService:
         ``element_count`` snapshot and returns the new list.
 
         This works for both dynamic and static groups, but a static group
-        will still overwrite its cached snapshot — callers that want to
+        will still overwrite its cached snapshot - callers that want to
         preserve a hand-curated static list should NOT call this method.
         """
         group = await self.get_element_group(group_id)
@@ -2815,15 +2815,15 @@ class BIMHubService:
 
         Supported filter keys (``filter_criteria``):
 
-        - ``element_type``: str | list[str] — exact match (OR across list).
-        - ``category``: str | list[str] — match against ``properties.category``.
-        - ``discipline``: str | list[str] — exact match.
-        - ``storey``: str | list[str] — exact match.
-        - ``property_filter``: dict[str, Any] — every key/value pair must be
+        - ``element_type``: str | list[str] - exact match (OR across list).
+        - ``category``: str | list[str] - match against ``properties.category``.
+        - ``discipline``: str | list[str] - exact match.
+        - ``storey``: str | list[str] - exact match.
+        - ``property_filter``: dict[str, Any] - every key/value pair must be
           present inside ``properties`` JSON. On Postgres we use the native
           JSONB containment operator (``@>``); on SQLite we fall back to
           loading the candidates and filtering in Python.
-        - ``name_contains``: str — case-insensitive substring match using
+        - ``name_contains``: str - case-insensitive substring match using
           ILIKE.
 
         Scope:
@@ -2854,7 +2854,7 @@ class BIMHubService:
                 return []
             base = base.where(BIMElement.model_id.in_(model_ids))
 
-        # element_type (str or list) — OR-match.
+        # element_type (str or list) - OR-match.
         element_type = criteria.get("element_type")
         if element_type:
             values = element_type if isinstance(element_type, list) else [element_type]
@@ -2862,7 +2862,7 @@ class BIMHubService:
             if values:
                 base = base.where(BIMElement.element_type.in_(values))
 
-        # discipline (str or list) — OR-match.
+        # discipline (str or list) - OR-match.
         discipline = criteria.get("discipline")
         if discipline:
             values = discipline if isinstance(discipline, list) else [discipline]
@@ -2870,7 +2870,7 @@ class BIMHubService:
             if values:
                 base = base.where(BIMElement.discipline.in_(values))
 
-        # storey (str or list) — OR-match.
+        # storey (str or list) - OR-match.
         storey = criteria.get("storey")
         if storey:
             values = storey if isinstance(storey, list) else [storey]
@@ -2878,12 +2878,12 @@ class BIMHubService:
             if values:
                 base = base.where(BIMElement.storey.in_(values))
 
-        # name_contains — case-insensitive substring.
+        # name_contains - case-insensitive substring.
         name_contains = criteria.get("name_contains")
         if name_contains:
             base = base.where(BIMElement.name.ilike(f"%{name_contains}%"))
 
-        # category — lives inside the JSON ``properties`` column.
+        # category - lives inside the JSON ``properties`` column.
         category = criteria.get("category")
         property_filter = criteria.get("property_filter") or {}
         if not isinstance(property_filter, dict):
@@ -2955,7 +2955,7 @@ class BIMHubService:
         stmt = select(BIMElement.id).where(BIMElement.model_id.in_(model_ids))
         return list((await self.session.execute(stmt)).scalars().all())
 
-    # ── Smart Views — property catalog + preview (canonical-format) ──────────
+    # ── Smart Views - property catalog + preview (canonical-format) ──────────
 
     async def get_smart_view_property_catalog(
         self,
@@ -3191,7 +3191,7 @@ class BIMHubService:
         """Bind an existing BIM model to a federation.
 
         Verifies that the BIM model exists AND belongs to the same project
-        as the federation — cross-project membership would break the
+        as the federation - cross-project membership would break the
         project-ownership authorization model.
         """
         federation = await self.get_federation(federation_id)
@@ -3209,12 +3209,12 @@ class BIMHubService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
-                    "BIM model belongs to a different project — federations "
+                    "BIM model belongs to a different project - federations "
                     "can only contain models from the same project"
                 ),
             )
         repo = BIMFederationRepository(self.session)
-        # Duplicate guard — the DB-level UniqueConstraint will also fire,
+        # Duplicate guard - the DB-level UniqueConstraint will also fire,
         # but a friendly 409 beats a raw IntegrityError 500.
         existing = await repo.find_member(federation_id, payload.bim_model_id)
         if existing is not None:
@@ -3331,7 +3331,7 @@ class BIMHubService:
         across 12 federated models" a one-click operation.
 
         Empty federations / federations whose members have no elements
-        return ``total_elements=0`` and ``classes=[]`` — the response is
+        return ``total_elements=0`` and ``classes=[]`` - the response is
         always well-formed.
         """
         # 1. Resolve federation + members (raises 404 when missing).
@@ -3359,7 +3359,7 @@ class BIMHubService:
         for member in members:
             existing = model_lookup.get(member.bim_model_id)
             if existing is None:
-                # Stale member referencing a deleted model — surface a
+                # Stale member referencing a deleted model - surface a
                 # neutral placeholder so the row is still countable.
                 model_lookup[member.bim_model_id] = (
                     f"model-{str(member.bim_model_id)[:8]}",
@@ -3404,7 +3404,7 @@ class BIMHubService:
             per_model[model_id] = per_model.get(model_id, 0) + int(element_count)
 
         # 5. Pull one representative element per class to extract the
-        #    sample_properties — capped at 6 keys so the UI tooltip
+        #    sample_properties - capped at 6 keys so the UI tooltip
         #    stays readable.
         #    A single subquery per class would be cleaner but Postgres
         #    + SQLite both run this fine as N small queries (N = number

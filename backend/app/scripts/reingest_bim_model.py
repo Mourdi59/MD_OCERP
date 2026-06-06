@@ -25,11 +25,11 @@ Usage
 
 Exit codes
 ----------
-* ``0`` — success (or dry-run completed).
-* ``1`` — model not found in DB.
-* ``2`` — ``original.{ext}`` blob missing on disk.
-* ``3`` — DDC conversion failed (returned zero elements).
-* ``4`` — DB transaction failed.
+* ``0`` - success (or dry-run completed).
+* ``1`` - model not found in DB.
+* ``2`` - ``original.{ext}`` blob missing on disk.
+* ``3`` - DDC conversion failed (returned zero elements).
+* ``4`` - DB transaction failed.
 
 The script is intentionally self-contained: it reuses the existing
 column-mapping logic from :func:`app.modules.boq.cad_import.parse_cad_excel`
@@ -105,7 +105,7 @@ async def _resolve_original_path(model_id: uuid.UUID) -> tuple[dict, Path] | Non
 
     ext = info["model_format"]
     key = bim_file_storage.original_cad_key(info["project_id"], info["id"], ext)
-    backend = bim_file_storage._backend()  # noqa: SLF001 — script-only
+    backend = bim_file_storage._backend()  # noqa: SLF001 - script-only
     if not await backend.exists(key):
         raise FileNotFoundError(
             f"Original CAD blob not found at storage key={key} "
@@ -118,7 +118,7 @@ async def _resolve_original_path(model_id: uuid.UUID) -> tuple[dict, Path] | Non
         abs_path = backend._path_for(key)  # noqa: SLF001
         return info, abs_path
     except AttributeError:
-        # Non-local backend (S3, etc) — materialise to a temp file.
+        # Non-local backend (S3, etc) - materialise to a temp file.
         raw = await backend.get(key)
         tmp = Path(tempfile.gettempdir()) / f"reingest_{info['id']}{ext}"
         tmp.write_bytes(raw)
@@ -135,8 +135,8 @@ def _ddc_invocation_v18(
 
     The flag-based CLI introduced in v18.3 supersedes the legacy
     ``[converter, input, output, mode]`` positional form that
-    ``_try_cad2data`` still emits.  We invoke twice — once for Excel
-    (no geometry) and once for the COLLADA pass (no Excel) — which
+    ``_try_cad2data`` still emits.  We invoke twice - once for Excel
+    (no geometry) and once for the COLLADA pass (no Excel) - which
     matches ``ifc_processor._try_cad2data``'s two-pass design.
     """
     return [
@@ -194,7 +194,7 @@ def _probe_ddc_cli_style(converter: Path) -> str:
         text = (proc.stdout + b"\n" + proc.stderr).decode("utf-8", errors="replace")
         if "--no-dae" in text or "--no-xlsx" in text or "-m,     --mode" in text:
             return "v18"
-    except Exception:  # noqa: BLE001 — probe failure is non-fatal
+    except Exception:  # noqa: BLE001 - probe failure is non-fatal
         pass
     return "legacy"
 
@@ -208,7 +208,7 @@ def _run_ddc_extraction(
     Tries the existing :func:`process_ifc_file` bridge first (which knows
     how to deal with placeholder geometry, DAE bboxes, GLB conversion,
     etc.).  When that returns zero elements we fall back to a direct DDC
-    invocation that supports the v18.3+ flag-based CLI — the bridge's
+    invocation that supports the v18.3+ flag-based CLI - the bridge's
     capability probe over-reports modern support and trips exit-15 on
     v18.3 binaries.  We then feed the resulting xlsx + dae back through
     the existing :func:`_excel_elements_to_bim_result` so the column
@@ -231,7 +231,7 @@ def _run_ddc_extraction(
     ext = original_path.suffix.lower().lstrip(".")
     converter = find_converter(ext)
     if converter is None:
-        logger.warning("No DDC converter found for ext=%s — cannot fall back", ext)
+        logger.warning("No DDC converter found for ext=%s - cannot fall back", ext)
         return result
 
     cli_style = _probe_ddc_cli_style(converter)
@@ -401,7 +401,7 @@ async def _replace_elements(
                 meta = dict(model.metadata_ or {})
                 meta["reingested_at"] = datetime.now(UTC).isoformat()
                 meta["reingest_source"] = "scripts.reingest_bim_model"
-                # Drop any leftover degraded-state warnings — we just
+                # Drop any leftover degraded-state warnings - we just
                 # imported real data, the model is no longer degraded.
                 if model.status in ("degraded", "needs_converter"):
                     model.status = "ready"
@@ -460,7 +460,7 @@ async def reingest_one(
     backup_path: Path | None = None
     if backup_rows:
         ts = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-        # Repo data/ dir — same location used by other admin scripts.
+        # Repo data/ dir - same location used by other admin scripts.
         backup_path = Path(__file__).resolve().parents[3] / "data" / f"reingest_backup_{info['id']}_{ts}.json"
 
     with tempfile.TemporaryDirectory(prefix="oe-reingest-") as tmp_str:
@@ -483,7 +483,7 @@ async def reingest_one(
 
         if element_count == 0:
             print(
-                "ERROR: DDC extraction produced zero elements — aborting.",
+                "ERROR: DDC extraction produced zero elements - aborting.",
                 file=sys.stderr,
             )
             return 3
@@ -529,7 +529,7 @@ async def reingest_one(
         )
     print("-" * 72)
     if dry_run:
-        print("(dry-run — no changes were committed)")
+        print("(dry-run - no changes were committed)")
     print()
     return 0
 
@@ -578,5 +578,5 @@ def main(argv: list[str] | None = None) -> int:
         return 130
 
 
-if __name__ == "__main__":  # pragma: no cover — direct CLI invocation
+if __name__ == "__main__":  # pragma: no cover - direct CLI invocation
     raise SystemExit(main())

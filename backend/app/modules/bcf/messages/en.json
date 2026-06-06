@@ -11,6 +11,6 @@
     "archive_invalid": "The uploaded file is not a valid .bcfzip archive",
     "import_passed": "Import completed successfully",
     "import_warnings": "Import completed with warnings",
-    "import_errors": "Import failed — see issues for details"
+    "import_errors": "Import failed - see issues for details"
   }
 }

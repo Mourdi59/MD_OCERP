@@ -3,15 +3,15 @@
 """File tag ORM models.
 
 Tables:
-    oe_file_tag             — the project-scoped tag definition.
-    oe_file_tag_assignment  — many-to-many anchor that attaches a tag to
+    oe_file_tag             - the project-scoped tag definition.
+    oe_file_tag_assignment  - many-to-many anchor that attaches a tag to
                               a single ``(file_kind, file_id)`` pair.
 
 Cascade rules:
     * Deleting the tag cascades to every assignment.
     * Deleting the underlying file is the responsibility of the
       file-manager dispatcher (it calls the bulk-unassign endpoint per
-      kind on delete) — there is no FK from ``file_id`` to a specific
+      kind on delete) - there is no FK from ``file_id`` to a specific
       table because the field is polymorphic.
 """
 

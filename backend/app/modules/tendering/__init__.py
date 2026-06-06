@@ -1,8 +1,8 @@
-"""‌⁠‍Tendering module — bid package management and comparison."""
+"""‌⁠‍Tendering module - bid package management and comparison."""
 
 
 async def on_startup() -> None:
-    """‌⁠‍Module startup hook — register permissions.
+    """‌⁠‍Module startup hook - register permissions.
 
     Mirrors every sibling module: without this hook
     ``register_tendering_permissions()`` is never invoked and the seven

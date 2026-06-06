@@ -1,4 +1,4 @@
-"""‌⁠‍Risk Register Pydantic schemas — request/response models.
+"""‌⁠‍Risk Register Pydantic schemas - request/response models.
 
 Defines create, update, and response schemas for risk register items.
 Numeric values (probability, impact_cost, risk_score, response_cost) are stored
@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 # ── v3 §10 money serialisation helper ─────────────────────────────────────
-# Mirrors backend/app/modules/boq/schemas.py — money fields are stored /
+# Mirrors backend/app/modules/boq/schemas.py - money fields are stored /
 # accepted as Decimal but emitted as plain decimal strings in JSON.
 def _serialise_money(v: Decimal | None) -> str | None:
     if v is None:
@@ -174,7 +174,7 @@ class RiskResponse(BaseModel):
     impact_schedule_days: int = 0
     impact_severity: str = "medium"
     risk_score: float = 0.0
-    # 5x5 PMBOK matrix scoring — computed server-side from probability +
+    # 5x5 PMBOK matrix scoring - computed server-side from probability +
     # impact_severity. The frontend heatmap depends on these being present.
     probability_score: int | None = None
     impact_score_cost: int | None = None
@@ -227,7 +227,7 @@ class RiskSummary(BaseModel):
     mitigated_count: int = 0
     top_risks: list[TopRisk] = Field(default_factory=list)
     # Project currency (data-driven, resolved from the owning project).
-    # "" means unknown — the UI must render a currency-less number rather
+    # "" means unknown - the UI must render a currency-less number rather
     # than mislabelling, e.g., AED exposure as EUR.
     currency: str = ""
     # Per-currency exposure breakdown. `total_exposure` is only meaningful
@@ -282,7 +282,7 @@ class RiskEscalationSweepResult(BaseModel):
     triggers: dict[str, int] = Field(default_factory=dict)
 
 
-# ── Monte Carlo simulation (v3.11 — T1) ──────────────────────────────────
+# ── Monte Carlo simulation (v3.11 - T1) ──────────────────────────────────
 
 
 class RiskSimulateRequest(BaseModel):
@@ -302,7 +302,7 @@ class RiskTornadoEntry(BaseModel):
     """One bar in the tornado / sensitivity chart.
 
     ``contribution`` is the mean probability-weighted impact this risk
-    contributed across the simulation — i.e. the expected value the risk
+    contributed across the simulation - i.e. the expected value the risk
     adds to the project's contingency. Sorted descending in the response
     so the frontend can take the top N for the chart without re-sorting.
     """
@@ -323,7 +323,7 @@ class RiskHistogramBin(BaseModel):
 class RiskSimulationResult(BaseModel):
     """Persisted-style Monte Carlo result for a project.
 
-    ``currency`` is data-driven (resolved from the owning project) — the
+    ``currency`` is data-driven (resolved from the owning project) - the
     UI must render currency-less totals when this is empty rather than
     silently mislabelling, e.g., AED exposure as EUR.
     """

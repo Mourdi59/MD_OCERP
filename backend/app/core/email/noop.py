@@ -3,7 +3,7 @@
 Drops every message silently after a single DEBUG log line.  Intended
 for automated test suites where you want the send path to execute (so
 template rendering and service-layer logic is exercised) but do not
-need to capture the result — use ``MemoryEmailBackend`` for that.
+need to capture the result - use ``MemoryEmailBackend`` for that.
 
 Distinct from the console backend: ``console`` logs at INFO so local
 developers see output; ``noop`` stays quiet so pytest output is clean.

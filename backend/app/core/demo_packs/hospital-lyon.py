@@ -4,14 +4,14 @@ from app.core.demo_projects import DemoTemplate
 
 # ---------------------------------------------------------------------------
 # Flagship demo: Centre Hospitalier (acute-care hospital), Lyon (France)
-# Standard: DPGF / fr / EUR — distinct healthcare archetype (vs school-paris,
+# Standard: DPGF / fr / EUR - distinct healthcare archetype (vs school-paris,
 # which is education).
 #
 # Program: New-build MCO acute-care hospital (medecine-chirurgie-obstetrique)
 # on the Lyon Confluence health campus. 320 beds, 7 storeys above grade +
 # 1 basement (logistics, technical plant, archives). GFA ~38 500 m2.
 # Reinforced-concrete superstructure (Eurocode 2) with a seismic primary
-# system designed to Eurocode 8 — Lyon is in seismic zone 3 (modere) per the
+# system designed to Eurocode 8 - Lyon is in seismic zone 3 (modere) per the
 # French zonage sismique (decret 2010-1255). Building envelope to RE 2020
 # tertiary thresholds; technical interstitial floors above the operating
 # theatres and imaging suites. ISO 14644 clean rooms for the 9 operating

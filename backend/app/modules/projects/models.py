@@ -3,20 +3,20 @@
 """‌⁠‍Project ORM models.
 
 Tables:
-    oe_projects_project          — construction estimation projects
-    oe_projects_wbs              — work breakdown structure nodes
-    oe_projects_milestone        — project milestones (payment, approval, handover)
-    oe_projects_match_settings   — per-project element-to-CWICR auto-match settings
+    oe_projects_project          - construction estimation projects
+    oe_projects_wbs              - work breakdown structure nodes
+    oe_projects_milestone        - project milestones (payment, approval, handover)
+    oe_projects_match_settings   - per-project element-to-CWICR auto-match settings
 """
 
 # ── Match-settings defaults (v2.8.0) ─────────────────────────────────────
 # Module-level constants so the model, schemas, service, and Alembic
-# migration all share a single source of truth — no magic numbers.
+# migration all share a single source of truth - no magic numbers.
 #
 # Values are env-overridable so a deploy that ships in a non-English
 # market (e.g. a Russian rollout) can change the default for fresh
 # projects without a code change. Existing projects keep whatever they
-# were saved with — these constants only pin the *new-row* default.
+# were saved with - these constants only pin the *new-row* default.
 import os as _os
 import uuid
 from datetime import datetime
@@ -81,7 +81,7 @@ class Project(Base):
         default=lambda: ["boq_quality"],
         server_default='["boq_quality"]',
     )
-    # ── Item #27 — compliance rule packs enforced at workflow gates ──────
+    # ── Item #27 - compliance rule packs enforced at workflow gates ──────
     # Jurisdiction-scoped bundles of validation rule sets (see
     # app.modules.contracts.compliance_packs.RULE_PACKS) that the contract
     # signature gate enforces on a draft → active transition. Defaults to the
@@ -140,7 +140,7 @@ class Project(Base):
     )
     work_calendar_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
-    # ── v2.6.0 — multi-currency + per-project VAT (RFC 37, Issues #88/#89/#93) ──
+    # ── v2.6.0 - multi-currency + per-project VAT (RFC 37, Issues #88/#89/#93) ──
     # ``fx_rates`` holds extra currencies the project uses alongside ``currency``
     # (the base). Shape:
     #     [{"code": "USD", "rate": "1200.50", "label": "US Dollar"}]
@@ -155,14 +155,14 @@ class Project(Base):
     )
     # ``default_vat_rate`` overrides the regional template's VAT row when a new
     # BOQ is seeded. Stored as a decimal-string percentage (e.g. ``"21"`` for
-    # 21%). NULL means "use regional default" — preserves pre-2.6 behaviour
+    # 21%). NULL means "use regional default" - preserves pre-2.6 behaviour
     # for projects that never set it.
     default_vat_rate: Mapped[str | None] = mapped_column(
         String(10),
         nullable=True,
     )
     # ``custom_units`` lets a project carry unit codes not in the canonical
-    # frontend list (Issue #93 item 3). Plain list of strings — order matters
+    # frontend list (Issue #93 item 3). Plain list of strings - order matters
     # because the UI shows custom units after the canonical set in the order
     # the user added them.
     custom_units: Mapped[list] = mapped_column(  # type: ignore[assignment]
@@ -180,7 +180,7 @@ class Project(Base):
         server_default="{}",
     )
 
-    # ── v2.9.4 — Per-project storage override (Issue #109) ──────────────
+    # ── v2.9.4 - Per-project storage override (Issue #109) ──────────────
     # When ``storage_uses_default`` is True (the default), all attachments
     # for this project land under the system-wide data dir resolved by the
     # documents / photos / sheets / BIM / DWG services. When False and
@@ -280,11 +280,11 @@ class ProjectWBS(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<ProjectWBS {self.code} — {self.name}>"
+        return f"<ProjectWBS {self.code} - {self.name}>"
 
 
 class ProjectMilestone(Base):
-    """Project milestone — payment, approval, handover, or general checkpoint.
+    """Project milestone - payment, approval, handover, or general checkpoint.
 
     Tracks planned vs actual dates and can link to payment percentages for
     progress-based invoicing workflows.
@@ -324,19 +324,19 @@ class MatchProjectSettings(Base):
 
     Captures the user's choices for the BIM/PDF/DWG/photo → catalog matcher:
 
-    * ``target_language`` — ISO-639 two-letter code of the CWICR catalog
+    * ``target_language`` - ISO-639 two-letter code of the CWICR catalog
       slice to search against (e.g. ``de``, ``bg``, ``en``). Free-form so
       newly seeded languages don't require a schema bump.
-    * ``classifier`` — optional classification standard the matcher should
+    * ``classifier`` - optional classification standard the matcher should
       bias towards (``din276`` / ``nrm`` / ``masterformat``) or ``none``
       to skip classification altogether (per A4 decision).
-    * ``auto_link_threshold`` — float in ``[0.0, 1.0]``; matches with a
+    * ``auto_link_threshold`` - float in ``[0.0, 1.0]``; matches with a
       score above this are auto-linked (only when ``auto_link_enabled``).
-    * ``auto_link_enabled`` — master toggle. False forces every match to
+    * ``auto_link_enabled`` - master toggle. False forces every match to
       go through human confirmation regardless of the threshold.
-    * ``mode`` — ``manual`` (default) or ``auto``. The user must opt in
+    * ``mode`` - ``manual`` (default) or ``auto``. The user must opt in
       to fully-automated linking.
-    * ``sources_enabled`` — JSON list, subset of
+    * ``sources_enabled`` - JSON list, subset of
       ``["bim", "pdf", "dwg", "photo"]``. Sources omitted from this list
       are skipped by the matcher service.
 
@@ -397,7 +397,7 @@ class MatchProjectSettings(Base):
     )
     # CWICR catalogue ID the project matches against
     # (e.g. "RU_STPETERSBURG", "DE_BERLIN", "USA_USD"). Nullable: a freshly
-    # created project has no binding — match endpoint returns a structured
+    # created project has no binding - match endpoint returns a structured
     # ``no_catalog_selected`` error and the UI surfaces an explicit picker.
     # No auto-pick from ``project.region`` because regions are coarse tags
     # (DACH / EU / US) while catalogue IDs are city-level (DE_BERLIN).
@@ -422,9 +422,9 @@ class ProjectProfile(Base):
     region, …) so the module set can be recomputed when the profile is
     edited. ``focus_mode_enabled`` is the user-facing master switch the
     sidebar reads: when false the nav shows every module ungreyed
-    (legacy behaviour) — the "this mode can be turned off" requirement.
+    (legacy behaviour) - the "this mode can be turned off" requirement.
 
-    The wizard *draft* is intentionally NOT here (doc §6.4) — drafts
+    The wizard *draft* is intentionally NOT here (doc §6.4) - drafts
     live in :class:`ProjectWizardDraft` with a TTL so a half-finished
     setup never pollutes a real project.
     """
@@ -503,7 +503,7 @@ class ProjectModule(Base):
     """Per-project module selection (concept doc §6.1 ``modules``).
 
     Presentation-only gating: this drives the sidebar's visual emphasis
-    (active + numbered vs greyed) — it never unloads a module or blocks
+    (active + numbered vs greyed) - it never unloads a module or blocks
     its API. ``ordinal`` is the global sequential number (doc §3.2);
     null for cross-cutting / disabled modules. ``source`` records why
     the module is in the set (core / region / preset / score / manual)
@@ -581,7 +581,7 @@ class ProjectWizardDraft(Base):
     setup never creates a real project. Promoted to a Project +
     ProjectProfile atomically on the wizard's final "Create" step.
     Rows older than ``WIZARD_DRAFT_TTL_DAYS`` are swept by a periodic
-    job (not part of Slice 1 — the column is here so the sweep has a
+    job (not part of Slice 1 - the column is here so the sweep has a
     timestamp to filter on).
     """
 

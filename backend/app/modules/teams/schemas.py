@@ -1,4 +1,4 @@
-"""‌⁠‍Teams Pydantic schemas — request/response models."""
+"""‌⁠‍Teams Pydantic schemas - request/response models."""
 
 import re
 from datetime import datetime
@@ -19,8 +19,8 @@ _CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 # by importing this tuple anywhere the whitelist is consulted.
 #
 # Two tiers:
-#   BASIC_TEAM_ROLES   — assignable by any project-admin/member
-#   ELEVATED_TEAM_ROLES — assignable ONLY by a project owner / system admin
+#   BASIC_TEAM_ROLES   - assignable by any project-admin/member
+#   ELEVATED_TEAM_ROLES - assignable ONLY by a project owner / system admin
 #                        (these inherit higher-effective-permission)
 BASIC_TEAM_ROLES: tuple[str, ...] = ("member", "lead", "estimator", "viewer")
 ELEVATED_TEAM_ROLES: tuple[str, ...] = ("owner", "project_manager")
@@ -122,7 +122,7 @@ class AddMemberRequest(BaseModel):
     """Add a user to a team.
 
     The role whitelist accepts both the legacy team-internal roles
-    (``member`` / ``lead`` — used by the bare /teams endpoints) and the
+    (``member`` / ``lead`` - used by the bare /teams endpoints) and the
     richer project-member role labels (``estimator`` / ``viewer`` /
     ``project_manager`` / ``owner``) surfaced by the Team Strip on
     ProjectDetailPage. Anything outside the whitelist is rejected with 422.

@@ -3,13 +3,13 @@
 Assembles the predictive cost + schedule + risk analytics for a project by
 reading from already-committed sibling modules **read-only**:
 
-* ``finance.EVMSnapshot`` (the latest EVM snapshot: BAC / EV / AC / PV) — the
+* ``finance.EVMSnapshot`` (the latest EVM snapshot: BAC / EV / AC / PV) - the
   same source ``full_evm.EVMService.calculate_forecast`` reads. We recompute
   the canonical Earned-Value formulas live (no row is written) via the pure
   helpers in :mod:`forecast`.
-* ``schedule`` activities + the schedule baseline finish — for the schedule
+* ``schedule`` activities + the schedule baseline finish - for the schedule
   slip projection.
-* ``risk`` register — open high-severity unmitigated risks feed the risk score.
+* ``risk`` register - open high-severity unmitigated risks feed the risk score.
 
 The service owns no models and writes nothing. It uses raw SQL through the
 request session (the same decoupled pattern :mod:`collector` uses) so it does

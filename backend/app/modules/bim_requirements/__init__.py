@@ -6,7 +6,7 @@ IDS XML, COBie, generic Excel/CSV, Revit Shared Parameters, BIMQ JSON.
 
 
 async def on_startup() -> None:
-    """‌⁠‍Module startup hook — register RBAC permissions."""
+    """‌⁠‍Module startup hook - register RBAC permissions."""
     from app.modules.bim_requirements.permissions import (
         register_bim_requirements_permissions,
     )

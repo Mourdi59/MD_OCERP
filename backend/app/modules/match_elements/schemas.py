@@ -89,19 +89,19 @@ class SessionCreate(BaseModel):
     # Accepts either a CWICR v3 region id ("DE_BERLIN", "US_BOSTON", ...
     # from ``CWICR_V3_CATALOGUES``) or a legacy ``CostDatabase`` UUID.
     # The wizard sends the region string from /api/v1/costs/catalogues-v3/
-    # while older callers (and tests) pass UUIDs — accept both and let
+    # while older callers (and tests) pass UUIDs - accept both and let
     # the service layer decide where to persist it. Previously this was
     # ``uuid.UUID | None``, which 422'd every wizard submission because
     # region ids contain underscores.
     catalogue_id: str | None = None
     construction_stage: ConstructionStage | None = None
-    # MAPPING_PROCESS.md §4.1.6 — free-form text inputs for the "text"
+    # MAPPING_PROCESS.md §4.1.6 - free-form text inputs for the "text"
     # source. List of strings (simple) or per-line dicts
     # ``{raw_text, project_country?, stage?, category?}``. Persisted on
     # ``MatchSession.metadata_["text_inputs"]`` and read back by
     # :class:`TextAdapter`. Ignored when ``source != "text"``.
     text_inputs: list[Any] | None = None
-    # MAPPING_PROCESS.md §4.1.5 — pre-parsed BoQ rows for the "boq"
+    # MAPPING_PROCESS.md §4.1.5 - pre-parsed BoQ rows for the "boq"
     # source. Each dict must have ``description``; recognised keys:
     # ``qty/quantity``, ``unit/uom``, ``code/rate_code`` (exact-match
     # shortcut), ``category/section``, ``source_lang``. Persisted on
@@ -117,7 +117,7 @@ class SessionCreate(BaseModel):
     # ``MatchSession.metadata_["pdf_rows"]`` and read back by
     # :class:`PdfAdapter`. Ignored when ``source != "pdf"``.
     pdf_rows: list[dict[str, Any]] | None = None
-    # MAPPING_PROCESS.md §3.1 / §4.1.4 — image source binding. Either
+    # MAPPING_PROCESS.md §3.1 / §4.1.4 - image source binding. Either
     # ``{"path": "<abs>", "mime": "image/jpeg", "filename"?: "..."}``
     # for a file already on the storage backend, or
     # ``{"data_b64": "<base64>", "mime": "image/png", "filename"?: "..."}``
@@ -136,7 +136,7 @@ class SessionUpdate(BaseModel):
     excluded_categories: list[str] | None = None
     auto_confirm_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
     use_net_quantities: bool | None = None
-    # See ``SessionCreate.catalogue_id`` — region string OR legacy UUID.
+    # See ``SessionCreate.catalogue_id`` - region string OR legacy UUID.
     catalogue_id: str | None = None
     is_archived: bool | None = None
     construction_stage: ConstructionStage | None = None
@@ -156,7 +156,7 @@ class SessionRead(BaseModel):
     # Returned as a float so the UI never has to parse a string back.
     auto_confirm_threshold: float
     use_net_quantities: bool
-    # See ``SessionCreate.catalogue_id`` — region string OR legacy UUID.
+    # See ``SessionCreate.catalogue_id`` - region string OR legacy UUID.
     catalogue_id: str | None = None
     is_archived: bool = False
     construction_stage: ConstructionStage | None = None
@@ -179,7 +179,7 @@ class SessionSummary(BaseModel):
     group_count: int
     confirmed_count: int
     applied_count: int
-    # v3 §10 — money as Decimal, serialised to JSON as a plain string.
+    # v3 §10 - money as Decimal, serialised to JSON as a plain string.
     total_value: Decimal = Decimal("0")
     currency: str | None
 
@@ -189,7 +189,7 @@ class SessionSummary(BaseModel):
 
 
 class GroupSummary(BaseModel):
-    """‌⁠‍One row in the group grid — summary fields only."""
+    """‌⁠‍One row in the group grid - summary fields only."""
 
     id: uuid.UUID
     group_key: str
@@ -202,7 +202,7 @@ class GroupSummary(BaseModel):
     # so the UI can colour-code or filter without re-deriving.
     trade: TradeBucket = "other"
     # True for IfcOpeningElement-style groups so the UI marks them
-    # with a "void" badge — useful when the user toggles them on.
+    # with a "void" badge - useful when the user toggles them on.
     is_subtractive: bool = False
     signature: str | None
     element_count: int
@@ -224,7 +224,7 @@ class GroupSummary(BaseModel):
     # UI can show what the row would map to without opening the panel.
     suggested_code: str | None = None
     suggested_description: str | None = None
-    # v3 §10 — money as Decimal, serialised to JSON as a plain string.
+    # v3 §10 - money as Decimal, serialised to JSON as a plain string.
     suggested_unit_rate: Decimal | None = None
     suggested_currency: str | None = None
     sample_names: list[str] = Field(default_factory=list)
@@ -304,7 +304,7 @@ class ConfirmMatchRequest(BaseModel):
     group_key: str
     # Real CostItem.id (or CatalogResource.id when method=resources).
     # None means the user is confirming the group as a "manual override"
-    # — a custom rate/description posted alongside.
+    # - a custom rate/description posted alongside.
     candidate_id: uuid.UUID | None = None
     method: Literal["vector", "lexical", "llm", "manual", "auto"] = "manual"
     confidence: float | None = None
@@ -326,10 +326,10 @@ class ApplyToBoqRequest(BaseModel):
 
 class ApplyResourcePreview(BaseModel):
     description: str
-    factor: float  # per unit of parent position — ratio, not currency
-    quantity: float  # factor × parent quantity — measurement, not money
+    factor: float  # per unit of parent position - ratio, not currency
+    quantity: float  # factor × parent quantity - measurement, not money
     unit: str
-    # v3 §10 — money as Decimal, serialised to JSON as a plain string.
+    # v3 §10 - money as Decimal, serialised to JSON as a plain string.
     unit_rate: Decimal = Decimal("0")
 
     @field_serializer("unit_rate", when_used="json")
@@ -343,7 +343,7 @@ class ApplyPositionPreview(BaseModel):
     description: str
     unit: str
     quantity: float  # measurement, not money
-    # v3 §10 — money as Decimal, serialised to JSON as a plain string.
+    # v3 §10 - money as Decimal, serialised to JSON as a plain string.
     unit_rate: Decimal = Decimal("0")
     currency: str
     line_total: Decimal = Decimal("0")
@@ -359,7 +359,7 @@ class ApplyToBoqResponse(BaseModel):
     boq_id: uuid.UUID | None
     positions_created: int
     positions: list[ApplyPositionPreview]
-    # v3 §10 — money as Decimal, serialised to JSON as a plain string.
+    # v3 §10 - money as Decimal, serialised to JSON as a plain string.
     grand_total: Decimal = Decimal("0")
     currency: str | None = None
 
@@ -374,7 +374,7 @@ class NoMatchRequest(BaseModel):
     # When action=custom:
     custom_description: str | None = None
     custom_unit: str | None = None
-    # v3 §10 — money as Decimal; accepts str/number on input.
+    # v3 §10 - money as Decimal; accepts str/number on input.
     custom_rate: Decimal | None = None
     save_to_my_catalogue: bool = False
     # When action=rfq:
@@ -437,7 +437,7 @@ class BIMModelOption(BaseModel):
 
 # ── Symbol signature suggestion (item #18) ───────────────────────────────
 #
-# Deterministic shape/symbol signature recogniser. NOT computer vision —
+# Deterministic shape/symbol signature recogniser. NOT computer vision -
 # raster CV symbol detection is the separate cv-pipeline service. This
 # ranks an already-structured descriptor against a built-in symbol library
 # and SUGGESTS (human confirms via the existing apply/confirm path).
@@ -570,7 +570,7 @@ class AnalyticsResponse(BaseModel):
     mean_picked_rank: float | None = None
     p95_picked_rank: float | None = None
     high_picked_rank_pct: float = 0.0  # share of picks at rank > 4
-    # Breakdowns — top-N by search volume
+    # Breakdowns - top-N by search volume
     by_country: list[AnalyticsBreakdown] = Field(default_factory=list)
     by_source_type: list[AnalyticsBreakdown] = Field(default_factory=list)
     by_ifc_class: list[AnalyticsBreakdown] = Field(default_factory=list)
@@ -578,7 +578,7 @@ class AnalyticsResponse(BaseModel):
     alerts: list[AnalyticsAlert] = Field(default_factory=list)
 
 
-# ── Visible pipeline (v3034 — 7-stage match wizard) ──────────────────────
+# ── Visible pipeline (v3034 - 7-stage match wizard) ──────────────────────
 
 StageName = Literal[
     "convert",
@@ -621,7 +621,7 @@ class StageListResponse(BaseModel):
 class RunStageRequest(BaseModel):
     """Re-run a single stage, optionally with tuned knobs.
 
-    All fields are optional — an empty body re-runs the stage with the
+    All fields are optional - an empty body re-runs the stage with the
     state already stored on its row (or the session defaults if it has
     never run). ``inputs`` replaces the stage's stored inputs envelope.
     """
@@ -658,7 +658,7 @@ class PromptTemplateRead(BaseModel):
 
 
 class PromptTemplateCreate(BaseModel):
-    """Create a user prompt — typically a fork of a system prompt.
+    """Create a user prompt - typically a fork of a system prompt.
 
     Pass ``forked_from_id`` to record provenance; the UI shows
     "edited from <system prompt name>". ``key`` must be one of the

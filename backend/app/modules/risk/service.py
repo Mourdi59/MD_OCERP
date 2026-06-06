@@ -1,4 +1,4 @@
-"""‌⁠‍Risk Register service — business logic for risk management.
+"""‌⁠‍Risk Register service - business logic for risk management.
 
 Stateless service layer. Handles:
 - Risk CRUD with auto-generated codes (R-001, R-002, ...)
@@ -33,7 +33,7 @@ async def _safe_publish(
     data: dict[str, Any],
     source_module: str = "oe_risk",
 ) -> None:
-    """‌⁠‍Publish event safely — best-effort, never blocks the caller."""
+    """‌⁠‍Publish event safely - best-effort, never blocks the caller."""
     try:
         event_bus.publish_detached(name, data, source_module=source_module)
     except Exception:
@@ -60,7 +60,7 @@ PROBABILITY_SCORE_MAP: list[tuple[float, int]] = [
 
 # Impact severity to 1-5 score for the canonical 5x5 PMBOK risk matrix.
 # Identical scale to SEVERITY_NUMERIC and likewise derived from the shared
-# schema vocabulary — kept as a separate name for call-site clarity.
+# schema vocabulary - kept as a separate name for call-site clarity.
 IMPACT_SCORE_MAP: dict[str, int] = dict(SEVERITY_NUMERIC)
 
 
@@ -102,7 +102,7 @@ class RiskService:
     async def _get_project_currency(self, project_id: uuid.UUID) -> str:
         """Return the owning project's configured currency.
 
-        Currency is strictly data-driven — it comes from the project record
+        Currency is strictly data-driven - it comes from the project record
         and nowhere else. When the project has no currency set (or the
         lookup fails) we return an empty string rather than fabricating a
         default (mirrors costmodel/finance). The UI renders a currency-less
@@ -291,7 +291,7 @@ class RiskService:
         await self.session.refresh(item)
 
         # On-update escalation hook: re-score may have crossed the threshold,
-        # or the metadata may carry a (now lapsed) review date. Idempotent —
+        # or the metadata may carry a (now lapsed) review date. Idempotent -
         # a no-op when the risk is already escalated or below threshold.
         await self._maybe_escalate(risk_id)
 
@@ -370,7 +370,7 @@ class RiskService:
             # complete. Beyond the in-flight "mitigating" and terminal
             # "closed" states, the canonical vocabulary (schemas.STATUS_VALUES)
             # and seed data also use the explicit "mitigated" state plus
-            # "monitoring" (mitigation applied, now being watched) — both were
+            # "monitoring" (mitigation applied, now being watched) - both were
             # previously excluded, understating the Mitigated stat card.
             if item.status in ("mitigating", "mitigated", "monitoring", "closed"):
                 mitigated_count += 1
@@ -391,7 +391,7 @@ class RiskService:
 
             # Risk score: ALWAYS recompute on the single canonical 0-5 scale
             # (probability x severity_numeric) instead of trusting the stored
-            # risk_score, which is heterogeneous — seed rows carry a
+            # risk_score, which is heterogeneous - seed rows carry a
             # cost-scaled value while API-created rows store 0-5
             # (F-PFO-RISK-06). Recomputing makes the average and ranking
             # scale-correct and comparable across seed + runtime data.
@@ -419,7 +419,7 @@ class RiskService:
         if len(non_empty) == 1:
             total_exposure = round(next(iter(non_empty.values())), 2)
         elif not non_empty and exposure_by_currency:
-            # All exposure is currency-less — a single (unknown) bucket.
+            # All exposure is currency-less - a single (unknown) bucket.
             total_exposure = round(sum(exposure_by_currency.values()), 2)
         else:
             total_exposure = 0.0
@@ -502,7 +502,7 @@ class RiskService:
 
         return cells
 
-    # ── Monte Carlo simulation (v3.11 — T1) ──────────────────────────────
+    # ── Monte Carlo simulation (v3.11 - T1) ──────────────────────────────
 
     async def simulate(
         self,
@@ -514,7 +514,7 @@ class RiskService:
         """Run a Monte Carlo simulation across this project's risks.
 
         Uses ``random.triangular(low, high, mode)`` per risk per iteration
-        — a PERT-style three-point estimate sampling — and multiplies each
+        - a PERT-style three-point estimate sampling - and multiplies each
         draw by ``probability_score / 5`` (the qualitative probability
         scale) to get the probability-weighted contribution. The
         per-iteration sums form the simulated distribution of project-
@@ -522,12 +522,12 @@ class RiskService:
         ``statistics.quantiles`` (inclusive method).
 
         ``mode``:
-          * ``"cost"``      — only sample the cost triple.
-          * ``"schedule"``  — only sample the schedule triple.
-          * ``"both"``      — sample both (independent draws).
+          * ``"cost"``      - only sample the cost triple.
+          * ``"schedule"``  - only sample the schedule triple.
+          * ``"both"``      - sample both (independent draws).
 
         Risks with no PERT triple in the requested mode contribute zero
-        — the qualitative 5x5 path keeps working untouched. Each risk
+        - the qualitative 5x5 path keeps working untouched. Each risk
         gets its ``last_simulation`` JSON updated with the full result
         snapshot so the drill-down survives a page refresh.
 
@@ -541,8 +541,8 @@ class RiskService:
         items = await self.repo.all_for_project(project_id)
         currency = await self._get_project_currency(project_id)
 
-        # Empty project — return an empty (but well-formed) result. The
-        # frontend's "Last run" chips render as "—" and the histogram
+        # Empty project - return an empty (but well-formed) result. The
+        # frontend's "Last run" chips render as "-" and the histogram
         # / tornado simply hide.
         if not items:
             return {
@@ -561,7 +561,7 @@ class RiskService:
             }
 
         # Build per-risk PERT triples. Where a triple is incomplete we
-        # fall back to (impact_cost, impact_cost, impact_cost) — i.e. a
+        # fall back to (impact_cost, impact_cost, impact_cost) - i.e. a
         # zero-variance point estimate that still folds the risk into
         # the simulation when only the qualitative path is populated.
         cost_triples: list[tuple[float, float, float]] = []
@@ -571,7 +571,7 @@ class RiskService:
 
         for item in items:
             # Probability weight on a 0..1 scale. Prefer the 1-5 PMBOK
-            # score (probability_score) — it's already discretised — and
+            # score (probability_score) - it's already discretised - and
             # fall back to the raw ``probability`` string if missing.
             if item.probability_score is not None:
                 weight = max(0.0, min(float(item.probability_score) / 5.0, 1.0))
@@ -622,7 +622,7 @@ class RiskService:
                     continue
                 if sample_cost:
                     lo, mid, hi = cost_triples[idx]
-                    # random.triangular(low, high, mode) — note the
+                    # random.triangular(low, high, mode) - note the
                     # argument order is (low, high, mode), NOT
                     # (low, mode, high). Easy off-by-one to make.
                     draw = random.triangular(lo, hi, mid) if hi > lo else mid
@@ -700,7 +700,7 @@ class RiskService:
 
         # Persist the snapshot on every risk so a page refresh keeps the
         # last-run drill-down. We read IDs into a Python list BEFORE the
-        # first update — RiskRepository.update_fields calls
+        # first update - RiskRepository.update_fields calls
         # ``session.expire_all()`` (see repo.py), which would otherwise
         # force a lazy-load of ``item.id`` on the second loop iteration
         # and trip MissingGreenlet on SQLAlchemy's sync cursor path.
@@ -751,7 +751,7 @@ def _pert_triple_or_point(
 
     * If all three are present and well-ordered, return them as floats.
     * If any are missing/unparseable, treat ``fallback`` as a zero-
-      variance point estimate (lo == mid == hi == fallback) — folds the
+      variance point estimate (lo == mid == hi == fallback) - folds the
       risk into the simulation without inventing data.
     * If the triple is mis-ordered (e.g. p10 > p90) we clamp it so
       ``random.triangular`` never raises.
@@ -773,7 +773,7 @@ def _pert_triple_or_point(
 def _percentiles(
     samples: list[float],
 ) -> tuple[float | None, float | None, float | None]:
-    """Return (P50, P80, P95) — inclusive method, no numpy dependency.
+    """Return (P50, P80, P95) - inclusive method, no numpy dependency.
 
     We sort once and index by rank; this matches
     ``statistics.quantiles(..., n=100, method='inclusive')[k-1]`` for
@@ -805,7 +805,7 @@ def _histogram(samples: list[float], *, bins: int = 10) -> list[dict[str, Any]]:
     lo = min(samples)
     hi = max(samples)
     if hi <= lo:
-        # All samples identical — collapse to a single point bin so the
+        # All samples identical - collapse to a single point bin so the
         # chart still has something to render.
         return [{"lower": round(lo, 2), "upper": round(hi, 2), "count": len(samples)}]
     width = (hi - lo) / bins

@@ -4,11 +4,11 @@
 
 Three permissions:
 
-* ``file_comments.read``    — list / get threads (every project member;
+* ``file_comments.read``    - list / get threads (every project member;
                               VIEWER tier).
-* ``file_comments.write``   — post / edit / delete one's own comment
+* ``file_comments.write``   - post / edit / delete one's own comment
                               (EDITOR tier).
-* ``file_comments.resolve`` — mark a thread resolved or reopen it
+* ``file_comments.resolve`` - mark a thread resolved or reopen it
                               (EDITOR tier; reopening a resolved thread
                               is the same gate so reviewers can correct
                               an over-eager resolve).

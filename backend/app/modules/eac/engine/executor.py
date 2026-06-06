@@ -4,7 +4,7 @@
 
 Runs a parsed :class:`EacRuleDefinition` against a sequence of canonical
 element rows (dicts that mirror the canonical Parquet schema produced
-by the DDC cad2data pipeline — never IFC bytes).
+by the DDC cad2data pipeline - never IFC bytes).
 
 This is the MVP execution engine that powers the ``/runs:dry-run`` and
 ``/runs`` endpoints. It is intentionally Python-only and does not yet
@@ -15,10 +15,10 @@ DuckDB from the test surface.
 
 Output modes covered (FR-1.6):
 
-* ``boolean``  — per-element pass/fail; ``passed`` count drives the run.
-* ``issue``    — every selected element with a failing predicate emits
+* ``boolean``  - per-element pass/fail; ``passed`` count drives the run.
+* ``issue``    - every selected element with a failing predicate emits
   an :class:`IssueResult` rendered from ``issue_template``.
-* ``aggregate`` — single numeric scalar produced by ``formula`` over
+* ``aggregate`` - single numeric scalar produced by ``formula`` over
   the matched element set (``SUM``/``AVG``/``COUNT``/``MIN``/``MAX``).
 
 ``clash`` mode is intentionally deferred; it requires a geometry kernel
@@ -216,18 +216,18 @@ def execute_rule(
         }
 
     The function never raises for per-element failures (timeout, missing
-    attribute) — those are surfaced via :class:`ElementResult.error` so a
+    attribute) - those are surfaced via :class:`ElementResult.error` so a
     single bad element doesn't poison the whole run. It *does* raise
     :class:`UnsupportedOutputModeError` for ``clash`` mode and
     :class:`ExecutionError` for malformed input.
     """
     if rule.output_mode == "clash":
-        raise UnsupportedOutputModeError("clash output mode requires the geometry kernel — see RFC 35 §1.6.4")
+        raise UnsupportedOutputModeError("clash output mode requires the geometry kernel - see RFC 35 §1.6.4")
 
-    # 1. Selector pass — filter to candidate elements.
+    # 1. Selector pass - filter to candidate elements.
     matched = [e for e in elements if _matches_selector(e, rule.selector)]
 
-    # 2. Predicate pass (if any) — for boolean / issue modes we need
+    # 2. Predicate pass (if any) - for boolean / issue modes we need
     #    a per-element verdict. For aggregate mode the predicate is
     #    optional and acts as an additional filter.
     if rule.output_mode == "aggregate":
@@ -543,7 +543,7 @@ def _eval_predicate(
 def _resolve_attribute(elem: dict[str, Any], ref: AttributeRef) -> Any:
     """Look up the value referenced by ``ref`` in ``elem``.
 
-    Returns :data:`MISSING` if the attribute is not present — callers
+    Returns :data:`MISSING` if the attribute is not present - callers
     distinguish absence from an explicit ``None`` value.
     """
     props = elem.get("properties") or {}
@@ -756,7 +756,7 @@ def _regex_match(value: Any, pattern: str, case_sensitive: bool) -> bool:
 
 
 def _looks_like_date(value: Any) -> bool:
-    """Cheap date detector — accept ISO-8601 dates / datetimes."""
+    """Cheap date detector - accept ISO-8601 dates / datetimes."""
     if value is None or not isinstance(value, str):
         return False
     return bool(
@@ -785,12 +785,12 @@ def _build_aggregate_bindings(
     every name that appears in ``formula`` to an empty list so functions
     like ``SUM([])=0`` / ``COUNT([])=0`` succeed instead of raising
     ``NameNotDefined``. ``AVG([])`` / ``MIN([])`` / ``MAX([])`` will
-    still raise — there is no sensible scalar for "average of nothing"
+    still raise - there is no sensible scalar for "average of nothing"
     and the safe-eval surface lets that bubble up as a typed error.
     """
     bindings: dict[str, list[Any]] = {}
 
-    # Quantities are the most common aggregation source — flatten them.
+    # Quantities are the most common aggregation source - flatten them.
     quantity_keys: set[str] = set()
     for elem in elements:
         quantity_keys.update((elem.get("quantities") or {}).keys())
@@ -823,7 +823,7 @@ def _build_aggregate_bindings(
 
             for name in collect_variable_names(parse_formula(formula)):
                 bindings.setdefault(name, [])
-        except Exception:  # noqa: BLE001 — caller will surface formula errors
+        except Exception:  # noqa: BLE001 - caller will surface formula errors
             pass
 
     return bindings

@@ -1,7 +1,7 @@
 """‌⁠‍NCR ORM models.
 
 Tables:
-    oe_ncr_ncr — non-conformance reports with root cause analysis and corrective actions
+    oe_ncr_ncr - non-conformance reports with root cause analysis and corrective actions
 """
 
 import uuid
@@ -53,4 +53,4 @@ class NCR(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<NCR {self.ncr_number} — {self.title[:40]} ({self.status})>"
+        return f"<NCR {self.ncr_number} - {self.title[:40]} ({self.status})>"

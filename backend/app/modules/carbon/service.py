@@ -1,4 +1,4 @@
-"""‌⁠‍Carbon & Sustainability service — pure carbon-math + orchestration.
+"""‌⁠‍Carbon & Sustainability service - pure carbon-math + orchestration.
 
 Pure functions:
     * normalise_quantity_to_factor_unit
@@ -13,7 +13,7 @@ Pure functions:
     * ingest_epd_document            (R7 deep-improve: high-level wrapper)
 
 Orchestration (DB-touching):
-    * CarbonService — wraps repositories, emits events, generates reports
+    * CarbonService - wraps repositories, emits events, generates reports
 """
 
 from __future__ import annotations
@@ -81,7 +81,7 @@ logger = logging.getLogger(__name__)
 # EPD documents must be one of: PDF (binary), XML (ILCD+EPD / EN 15804),
 # or JSON (EC3 / BuildingTransparency API). Any other binary content is
 # rejected at the boundary with HTTP 415, never 500. This is a defence-
-# in-depth gate alongside the MIME-type sniff in the router — the magic
+# in-depth gate alongside the MIME-type sniff in the router - the magic
 # byte check is authoritative.
 ALLOWED_EPD_MIME_TYPES: frozenset[str] = frozenset(
     {
@@ -133,7 +133,7 @@ def validate_epd_file_magic(payload: bytes) -> str:
     for fmt, signatures in EPD_MAGIC_BYTES.items():
         for sig in signatures:
             if head.startswith(sig):
-                # JSON: extra guard — must be parsable AND an object
+                # JSON: extra guard - must be parsable AND an object
                 # (arrays / scalars are not valid EPD documents).
                 if fmt == "json":
                     try:
@@ -328,7 +328,7 @@ def compute_scope1_co2e(
     """Pure: scope-1 emissions = litres × factor.
 
     ``fuel_type`` is accepted but the emission factor is the source of
-    truth — the caller is expected to supply the per-fuel factor.
+    truth - the caller is expected to supply the per-fuel factor.
     """
     _ = fuel_type  # accepted for API symmetry / future fuel-aware logic
     return Decimal(str(litres)) * Decimal(str(factor))
@@ -621,52 +621,52 @@ def validate_en15978_stage(stage: str) -> str:
 # GHG Conversion Factors 2024, EPA eGRID 2022 (US average), Umweltbundesamt
 # (DE 2023). Values rounded to 4 decimal places.
 GRID_FACTORS_DEFAULT: dict[tuple[str, int], dict[str, Any]] = {
-    # Germany — Umweltbundesamt
+    # Germany - Umweltbundesamt
     ("DE", 2023): {"factor": "0.3800", "method": "location", "source": "UBA 2023"},
     ("DE", 2022): {"factor": "0.4340", "method": "location", "source": "UBA 2022"},
     ("DE", 2021): {"factor": "0.4200", "method": "location", "source": "UBA 2021"},
-    # UK — DEFRA
+    # UK - DEFRA
     ("GB", 2024): {"factor": "0.2070", "method": "location", "source": "DEFRA 2024"},
     ("GB", 2023): {"factor": "0.2070", "method": "location", "source": "DEFRA 2023"},
     ("GB", 2022): {"factor": "0.1934", "method": "location", "source": "DEFRA 2022"},
-    # USA — EPA eGRID national average
+    # USA - EPA eGRID national average
     ("US", 2022): {"factor": "0.3856", "method": "location", "source": "EPA eGRID 2022"},
     ("US", 2021): {"factor": "0.3924", "method": "location", "source": "EPA eGRID 2021"},
-    # France — IEA
+    # France - IEA
     ("FR", 2023): {"factor": "0.0560", "method": "location", "source": "IEA 2023"},
-    # Spain — IEA
+    # Spain - IEA
     ("ES", 2023): {"factor": "0.1740", "method": "location", "source": "IEA 2023"},
-    # Italy — IEA
+    # Italy - IEA
     ("IT", 2023): {"factor": "0.2700", "method": "location", "source": "IEA 2023"},
-    # Netherlands — IEA
+    # Netherlands - IEA
     ("NL", 2023): {"factor": "0.3240", "method": "location", "source": "IEA 2023"},
-    # Poland — IEA
+    # Poland - IEA
     ("PL", 2023): {"factor": "0.7100", "method": "location", "source": "IEA 2023"},
-    # India — IEA
+    # India - IEA
     ("IN", 2023): {"factor": "0.7080", "method": "location", "source": "IEA 2023"},
-    # China — IEA
+    # China - IEA
     ("CN", 2023): {"factor": "0.5810", "method": "location", "source": "IEA 2023"},
-    # Brazil — IEA
+    # Brazil - IEA
     ("BR", 2023): {"factor": "0.0820", "method": "location", "source": "IEA 2023"},
-    # Australia — IEA
+    # Australia - IEA
     ("AU", 2023): {"factor": "0.5670", "method": "location", "source": "IEA 2023"},
-    # Canada — IEA
+    # Canada - IEA
     ("CA", 2023): {"factor": "0.1300", "method": "location", "source": "IEA 2023"},
-    # UAE — IEA
+    # UAE - IEA
     ("AE", 2023): {"factor": "0.4720", "method": "location", "source": "IEA 2023"},
-    # Saudi Arabia — IEA
+    # Saudi Arabia - IEA
     ("SA", 2023): {"factor": "0.6720", "method": "location", "source": "IEA 2023"},
-    # South Africa — IEA
+    # South Africa - IEA
     ("ZA", 2023): {"factor": "0.9410", "method": "location", "source": "IEA 2023"},
-    # Norway — IEA (largely hydropower)
+    # Norway - IEA (largely hydropower)
     ("NO", 2023): {"factor": "0.0190", "method": "location", "source": "IEA 2023"},
-    # Sweden — IEA
+    # Sweden - IEA
     ("SE", 2023): {"factor": "0.0090", "method": "location", "source": "IEA 2023"},
-    # Russia — IEA
+    # Russia - IEA
     ("RU", 2023): {"factor": "0.3970", "method": "location", "source": "IEA 2023"},
-    # Turkey — IEA
+    # Turkey - IEA
     ("TR", 2023): {"factor": "0.4380", "method": "location", "source": "IEA 2023"},
-    # Japan — IEA
+    # Japan - IEA
     ("JP", 2023): {"factor": "0.4360", "method": "location", "source": "IEA 2023"},
 }
 
@@ -715,7 +715,7 @@ def lookup_grid_factor_default(
     }
 
 
-# ── EPD identifier ingestion (parse only — no network IO in tests) ────────
+# ── EPD identifier ingestion (parse only - no network IO in tests) ────────
 
 
 def parse_epd_identifier(identifier: str) -> dict[str, Any]:
@@ -726,7 +726,7 @@ def parse_epd_identifier(identifier: str) -> dict[str, Any]:
         - "ice:concrete_c30_37"           → {source: ice, id: concrete_c30_37}
         - "ec3:abc123"                    → {source: ec3, id: abc123}
         - "epd_international:EPD-123-XYZ" → {source: epd_international, id: EPD-123-XYZ}
-        - bare URL — extract the source from the host:
+        - bare URL - extract the source from the host:
             https://www.oekobaudat.de/datensatz/.../ID
             https://www.environdec.com/library/epd-XYZ
             https://buildingtransparency.org/ec3/.../ID
@@ -926,7 +926,7 @@ class CarbonService:
         # ``EPDRecord.epd_id`` is unique. Reject a duplicate with a clean 409
         # instead of letting the DB raise an uncaught IntegrityError that
         # surfaces to the client as an opaque 500. We do BOTH a pre-flight
-        # lookup AND catch IntegrityError — the second guard closes a
+        # lookup AND catch IntegrityError - the second guard closes a
         # race-condition window between two concurrent ingests of the same
         # external EPD id.
         existing = await self.epd_repo.get_by_epd_id(data.epd_id)
@@ -1123,7 +1123,7 @@ class CarbonService:
         data: CarbonInventoryUpdate,
     ) -> CarbonInventory:
         inv = await self.get_inventory(inventory_id)
-        # 'archived' is a terminal state — refuse any update on an archived
+        # 'archived' is a terminal state - refuse any update on an archived
         # inventory. Otherwise a caller could resurrect it by PATCHing
         # status back to 'draft', silently un-freezing a footprint that
         # downstream targets and TCFD reports already consumed. This mirrors
@@ -1156,7 +1156,7 @@ class CarbonService:
                 detail="status must be 'baseline' or 'current'",
             )
         inv = await self.get_inventory(inventory_id)
-        # 'archived' is a terminal state — refuse to silently resurrect an
+        # 'archived' is a terminal state - refuse to silently resurrect an
         # archived inventory by re-finalising it. Callers must explicitly
         # PATCH it back to a non-archived status first.
         if inv.status == "archived":
@@ -1164,7 +1164,7 @@ class CarbonService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Cannot finalize an archived inventory",
             )
-        # Capture project_id BEFORE update_fields() — that call runs
+        # Capture project_id BEFORE update_fields() - that call runs
         # session.expire_all(), which expires every attribute on ``inv``;
         # reading inv.project_id afterwards would trigger a lazy DB reload
         # outside the async context (MissingGreenlet).
@@ -1245,7 +1245,7 @@ class CarbonService:
         offset: int = 0,
         limit: int = 500,
     ) -> tuple[list[EmbodiedCarbonEntry], int]:
-        # Allowlist the stage filter — any value is parameterised so there
+        # Allowlist the stage filter - any value is parameterised so there
         # is no SQL injection, but accepting arbitrary garbage triggers a
         # needless full-table scan that always returns zero rows. Reject early.
         if stage is not None:
@@ -1716,22 +1716,22 @@ class CarbonService:
         Parses the identifier (e.g. ``"oekobaudat:1.4.01.04"`` or a URL),
         derives ``source`` + canonical ID, and creates the EPDRecord
         atomically. The caller supplies the GWP because remote fetching is
-        deliberately not done synchronously inside the request — the
+        deliberately not done synchronously inside the request - the
         identifier is enough to dedupe and link to the public source.
 
         Conflict policy: duplicate (source, epd_id) is treated as an
-        update, not an error — keeps subsequent imports idempotent.
+        update, not an error - keeps subsequent imports idempotent.
         """
         parsed = parse_epd_identifier(identifier)
         # Compose a canonical epd_id by combining source + remote id, so it
         # de-dupes across re-imports and preserves the original raw URL.
         canonical_id = f"{parsed['source']}:{parsed['id']}"
         # Indexed lookup by canonical id (was: list-then-iterate, O(N) per call
-        # and unbounded — could scan thousands of EPDs on every ingest).
+        # and unbounded - could scan thousands of EPDs on every ingest).
         existing_match = await self.epd_repo.get_by_epd_id(canonical_id)
         gwp = Decimal(str(gwp_a1a3))
         if existing_match is not None:
-            # Capture PK BEFORE update_fields() — that call runs
+            # Capture PK BEFORE update_fields() - that call runs
             # session.expire_all(), which expires every attribute on
             # ``existing_match``; reading ``.id`` afterwards would trigger a
             # lazy DB reload outside the async context (MissingGreenlet).

@@ -1,13 +1,13 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""Smart Views preset library — out-of-box, ready-to-install views.
+"""Smart Views preset library - out-of-box, ready-to-install views.
 
 Each preset is a frozen :class:`SmartViewCreate`-compatible dict that the
 service layer can hand to :meth:`SmartViewService.install_preset` to
 materialise as a real ``oe_smart_view`` row. Presets are *templates*,
 not rows: they are NOT stored in the DB until a user installs them.
 Re-installing the same preset for the same (project, user) pair is
-idempotent — the service returns the existing row instead of creating
+idempotent - the service returns the existing row instead of creating
 a duplicate.
 
 Counter-intuitive design: presets do NOT carry a scope_id; the scope
@@ -29,13 +29,13 @@ from typing import Any
 # Every selector / action_args dict already conforms to the Pydantic
 # schemas in ``schemas.py``; the service revalidates on install.
 #
-# ``preset_id`` is a stable slug — never rename one once shipped (the
+# ``preset_id`` is a stable slug - never rename one once shipped (the
 # service uses it for the idempotency lookup).
 # ``category`` is a free-form bucket used by the UI to group cards
 # ("structure", "mep", "envelope", "doors", "spaces").
 
 BUILTIN_PRESETS: list[dict[str, Any]] = [
-    # 1) Walls by fire rating — colour every wall by its FireRating
+    # 1) Walls by fire rating - colour every wall by its FireRating
     #    property. Walls without a FireRating fall through to the
     #    default ``show_all`` action (visible, default tint).
     {
@@ -62,7 +62,7 @@ BUILTIN_PRESETS: list[dict[str, Any]] = [
             }
         ],
     },
-    # 2) MEP by discipline — three rules, one per discipline. Order
+    # 2) MEP by discipline - three rules, one per discipline. Order
     #    matters only for overlap (an element is at most one of the
     #    three IFC classes here so the rules never collide).
     {
@@ -75,7 +75,7 @@ BUILTIN_PRESETS: list[dict[str, Any]] = [
         ),
         "default_action": "show_all",
         "rules": [
-            # HVAC — IfcDuct* + IfcAirTerminal pattern via FlowSegment
+            # HVAC - IfcDuct* + IfcAirTerminal pattern via FlowSegment
             # entity name. Selector relies on `ifc_class` only.
             {
                 "id": "mep-flow-segment",
@@ -100,7 +100,7 @@ BUILTIN_PRESETS: list[dict[str, Any]] = [
             },
         ],
     },
-    # 3) Structural concrete C30/37+ — highlight beams / columns / slabs
+    # 3) Structural concrete C30/37+ - highlight beams / columns / slabs
     #    whose Material property contains "C30" (covers C30/37, C30/37 XC4,
     #    etc.). A regex selector is used because real-world Material
     #    strings are wildly inconsistent across exporters.
@@ -152,7 +152,7 @@ BUILTIN_PRESETS: list[dict[str, Any]] = [
             },
         ],
     },
-    # 4) Doors fire-rated — fire-rated doors green, others transparent.
+    # 4) Doors fire-rated - fire-rated doors green, others transparent.
     #    ``hide_all`` would over-hide context; using ``transparent`` keeps
     #    surrounding geometry as a ghost reference.
     {
@@ -185,7 +185,7 @@ BUILTIN_PRESETS: list[dict[str, Any]] = [
             },
         ],
     },
-    # 5) Exterior walls — show exterior walls only, hide interior.
+    # 5) Exterior walls - show exterior walls only, hide interior.
     #    Two rules: hide everything that is a wall + IsExternal=false,
     #    show everything that is a wall + IsExternal=true.
     {
@@ -224,8 +224,8 @@ BUILTIN_PRESETS: list[dict[str, Any]] = [
             },
         ],
     },
-    # 6) Spaces by zone — colour every IfcSpace by its LongName (room
-    #    name). Falls back to ObjectType if LongName is absent — but
+    # 6) Spaces by zone - colour every IfcSpace by its LongName (room
+    #    name). Falls back to ObjectType if LongName is absent - but
     #    the evaluator only consults the configured property, so we
     #    pick LongName as the most-populated of the two in practice.
     {

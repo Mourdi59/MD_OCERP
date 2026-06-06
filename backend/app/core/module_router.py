@@ -1,4 +1,4 @@
-"""‌⁠‍Module management API — list, enable, disable modules at runtime.
+"""‌⁠‍Module management API - list, enable, disable modules at runtime.
 
 Provides RESTful endpoints for the frontend Modules page to interact
 with the :class:`~app.core.module_loader.ModuleLoader`.

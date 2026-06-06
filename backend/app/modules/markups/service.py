@@ -1,4 +1,4 @@
-"""‌⁠‍Markups & Annotations service — business logic.
+"""‌⁠‍Markups & Annotations service - business logic.
 
 Stateless service layer. Handles:
 - Markup CRUD, bulk creation, and text search
@@ -125,7 +125,7 @@ class MarkupsService:
     async def create_markup(self, data: MarkupCreate, user_id: str) -> Markup:
         """Create a new markup annotation.
 
-        Epic C — ``file_version_id`` defaults to the current chain head
+        Epic C - ``file_version_id`` defaults to the current chain head
         for ``data.document_id`` so the viewer can later detect when
         the markup is on a stale revision (and fade it).
         """
@@ -263,7 +263,7 @@ class MarkupsService:
         await self.markup_repo.update_fields(markup_id, **fields)
         await self.session.refresh(item)
 
-        # Epic H — universal audit trail. Only emit a status-changed row
+        # Epic H - universal audit trail. Only emit a status-changed row
         # when status actually moved; ordinary geometry / colour edits
         # land in the audit table under ``action="updated"``.
         from app.core.audit_log import log_activity as _log_activity
@@ -291,7 +291,7 @@ class MarkupsService:
         """Delete a markup."""
         item = await self.get_markup(markup_id)  # Raises 404 if not found
 
-        # Epic H — record deletion before the row vanishes.
+        # Epic H - record deletion before the row vanishes.
         from app.core.audit_log import log_activity as _log_activity
 
         await _log_activity(
@@ -313,7 +313,7 @@ class MarkupsService:
     async def bulk_create_markups(self, markups_data: list[MarkupCreate], user_id: str) -> list[Markup]:
         """Create multiple markups at once (for import workflows).
 
-        Epic C — defaults ``file_version_id`` per item to the current
+        Epic C - defaults ``file_version_id`` per item to the current
         chain head if the caller omitted it (same rule as single create).
         """
         resolved_versions: list[uuid.UUID | None] = []

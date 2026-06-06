@@ -1,7 +1,7 @@
 """‌⁠‍TTL cache for the project ``region`` string used by match boosts.
 
 The ranker calls ``ProjectRepository(db).get_by_id(project_uuid)`` on every
-match request just to read ``project.region`` — a single string used by the
+match request just to read ``project.region`` - a single string used by the
 region boost. Under 50× concurrent load this turns into 50 hot SELECTs.
 
 This cache stores ``(region, expires_at)`` per project_uuid, keyed in-process.
@@ -11,7 +11,7 @@ that recovers on the next cache rotation.
 
 Concurrency:
     The cache is read by the asyncio loop only. We never block on the event
-    loop — the lookup is dict-bound. Inflight DB fetches are de-duplicated
+    loop - the lookup is dict-bound. Inflight DB fetches are de-duplicated
     via a per-key ``asyncio.Future`` so we don't get a thundering herd of
     50 concurrent SELECTs on a cold key.
 
@@ -37,7 +37,7 @@ _cache: dict[uuid.UUID, tuple[str | None, float]] = {}
 _inflight: dict[uuid.UUID, asyncio.Future[str | None]] = {}
 _lock = asyncio.Lock()
 
-# 60 seconds — a region change shows up on the next request; the staleness
+# 60 seconds - a region change shows up on the next request; the staleness
 # only affects the boost magnitude, never correctness.
 DEFAULT_TTL_SECONDS = 60.0
 
@@ -51,7 +51,7 @@ async def region_for(
     """‌⁠‍Return ``project.region`` for ``project_uuid`` with a TTL cache.
 
     Returns ``None`` if the project doesn't exist, the row has no region,
-    or the DB lookup fails — callers should treat ``None`` as "skip the
+    or the DB lookup fails - callers should treat ``None`` as "skip the
     region boost".
     """
     now = time.monotonic()
@@ -62,11 +62,11 @@ async def region_for(
             return region
 
     # Coalesce concurrent misses. Multiple requests arriving in the same
-    # event loop must share one DB fetch — otherwise a 50× concurrent
+    # event loop must share one DB fetch - otherwise a 50× concurrent
     # cold start re-issues 50 SELECTs (the very thing this cache exists
     # to prevent).
     async with _lock:
-        # Re-check inside the lock — another coroutine may have populated
+        # Re-check inside the lock - another coroutine may have populated
         # the cache while we were awaiting it.
         cached = _cache.get(project_uuid)
         if cached is not None and time.monotonic() < cached[1]:
@@ -104,7 +104,7 @@ async def _load(
             if region is not None:
                 region = str(region)
     except Exception as exc:
-        # Don't poison the cache for a transient DB hiccup — store None
+        # Don't poison the cache for a transient DB hiccup - store None
         # for the TTL so the burst doesn't hammer the DB but recovery
         # happens within a minute.
         logger.debug("region_for: DB fetch failed for %s: %s", project_uuid, exc)

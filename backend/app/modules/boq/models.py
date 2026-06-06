@@ -3,12 +3,12 @@
 """‌⁠‍BOQ ORM models.
 
 Tables:
-    oe_boq_boq — bill of quantities (one per project scope)
-    oe_boq_position — individual line items within a BOQ
-    oe_boq_markup — markup/overhead lines applied to a BOQ
-    oe_boq_activity_log — audit trail for BOQ mutations
-    oe_boq_snapshot — point-in-time BOQ state for version history
-    oe_boq_quantity_link — live model→position quantity binding
+    oe_boq_boq - bill of quantities (one per project scope)
+    oe_boq_position - individual line items within a BOQ
+    oe_boq_markup - markup/overhead lines applied to a BOQ
+    oe_boq_activity_log - audit trail for BOQ mutations
+    oe_boq_snapshot - point-in-time BOQ state for version history
+    oe_boq_quantity_link - live model→position quantity binding
 """
 
 import uuid
@@ -20,7 +20,7 @@ from app.database import GUID, Base
 
 
 class BOQ(Base):
-    """‌⁠‍Bill of Quantities — groups positions for a project."""
+    """‌⁠‍Bill of Quantities - groups positions for a project."""
 
     __tablename__ = "oe_boq_boq"
 
@@ -74,7 +74,7 @@ class BOQ(Base):
 
 
 class Position(Base):
-    """‌⁠‍Single line item in a BOQ — the core estimation entity."""
+    """‌⁠‍Single line item in a BOQ - the core estimation entity."""
 
     __tablename__ = "oe_boq_position"
     __table_args__ = (
@@ -83,7 +83,7 @@ class Position(Base):
         # repository.list_children, BOQ editor refresh, GAEB export).
         # Without the composite the planner has to fall back to
         # ``ix_oe_boq_position_boq_id`` + a temp B-tree sort on every
-        # request — 1.2 s on a 6 k-position BOQ. With it: ~12 ms.
+        # request - 1.2 s on a 6 k-position BOQ. With it: ~12 ms.
         # See alembic v3123_boq_fk_indexes for the prod migration.
         Index("ix_boq_position_boq_sort", "boq_id", "sort_order"),
         # Covers the tree-walk hot path
@@ -107,7 +107,7 @@ class Position(Base):
     ordinal: Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     unit: Mapped[str] = mapped_column(String(20), nullable=False)
-    # Money/quantity stored as String by design — SQLite's native Numeric
+    # Money/quantity stored as String by design - SQLite's native Numeric
     # degrades to REAL with precision loss, and JS JSON consumers lose
     # digits on large currency values via Number. Service layer coerces to
     # Decimal via ``_to_decimal`` for all arithmetic.
@@ -184,7 +184,7 @@ class Position(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Position {self.ordinal} — {self.description[:40]}>"
+        return f"<Position {self.ordinal} - {self.description[:40]}>"
 
 
 class BOQMarkup(Base):
@@ -196,20 +196,20 @@ class BOQMarkup(Base):
     cumulatively (percentage of direct cost + preceding markups).
 
     Columns:
-        boq_id — owning BOQ
-        name — human-readable label, e.g. "Site Overhead (BGK)"
-        markup_type — "percentage" | "fixed" | "per_unit"
-        category — semantic grouping: overhead, profit, tax, contingency, …
-        percentage — stored as string for SQLite compatibility (e.g. "8.0")
-        fixed_amount — used when markup_type is "fixed"
-        apply_to — "direct_cost" (default) or "cumulative"
-        sort_order — evaluation order (ascending)
-        is_active — soft toggle
+        boq_id - owning BOQ
+        name - human-readable label, e.g. "Site Overhead (BGK)"
+        markup_type - "percentage" | "fixed" | "per_unit"
+        category - semantic grouping: overhead, profit, tax, contingency, …
+        percentage - stored as string for SQLite compatibility (e.g. "8.0")
+        fixed_amount - used when markup_type is "fixed"
+        apply_to - "direct_cost" (default) or "cumulative"
+        sort_order - evaluation order (ascending)
+        is_active - soft toggle
     """
 
     __tablename__ = "oe_boq_markup"
     __table_args__ = (
-        # Covers ``WHERE boq_id=? ORDER BY sort_order, created_at`` —
+        # Covers ``WHERE boq_id=? ORDER BY sort_order, created_at`` -
         # the single read pattern for the markups grid (repository
         # ``list_for_boq``, BOQ total rollup, GAEB export markup write).
         Index("ix_boq_markup_boq_sort", "boq_id", "sort_order"),
@@ -251,22 +251,22 @@ class BOQActivityLog(Base):
     markup added, BOQ exported, etc.) for traceability and undo support.
 
     Columns:
-        project_id — optional project scope for project-wide queries
-        boq_id — optional BOQ scope
-        user_id — who performed the action
-        action — dot-notation action key, e.g. "position.created"
-        target_type — entity kind: "position", "boq", "markup", "section"
-        target_id — UUID of the affected entity (nullable for bulk ops)
-        description — human-readable summary, e.g. "Added position 01.01.0010"
-        changes — field-level diff, e.g. {"field": "quantity", "old": "100", "new": "150"}
-        metadata_ — additional context (module version, client IP, etc.)
+        project_id - optional project scope for project-wide queries
+        boq_id - optional BOQ scope
+        user_id - who performed the action
+        action - dot-notation action key, e.g. "position.created"
+        target_type - entity kind: "position", "boq", "markup", "section"
+        target_id - UUID of the affected entity (nullable for bulk ops)
+        description - human-readable summary, e.g. "Added position 01.01.0010"
+        changes - field-level diff, e.g. {"field": "quantity", "old": "100", "new": "150"}
+        metadata_ - additional context (module version, client IP, etc.)
     """
 
     __tablename__ = "oe_boq_activity_log"
     __table_args__ = (
         Index("ix_boq_activity_user_created", "user_id", "created_at"),
         Index("ix_boq_activity_target", "target_type", "target_id"),
-        # Audit-feed read paths — both per-project and per-BOQ activity
+        # Audit-feed read paths - both per-project and per-BOQ activity
         # streams are ordered by created_at DESC. The composites turn an
         # O(n) sequential scan of the (potentially huge) audit table into
         # an index-only range scan.
@@ -328,7 +328,7 @@ class BOQSnapshot(Base):
     __tablename__ = "oe_boq_snapshot"
     __table_args__ = (
         # Version-history list is ordered by created_at DESC scoped to
-        # one BOQ — composite turns the index seek into a range scan
+        # one BOQ - composite turns the index seek into a range scan
         # without a separate sort step.
         Index("ix_boq_snapshot_boq_created", "boq_id", "created_at"),
     )
@@ -363,42 +363,42 @@ class QuantityLink(Base):
     Records *how* a position's numeric field is derived from the canonical
     quantities of one or more model elements so the figure can be
     re-pulled when the source model revises. The link is a *rule*, never a
-    cached value — the current quantity always lives on
+    cached value - the current quantity always lives on
     :class:`Position`; this row only states the extraction recipe and the
     provenance of the last applied pull.
 
     Columns:
-        position_id — owning BOQ position (CASCADE on delete)
-        boq_id — denormalised owning BOQ for cheap per-BOQ listing/refresh
-        model_id — the BIM model the binding tracks (NOT version-pinned;
+        position_id - owning BOQ position (CASCADE on delete)
+        boq_id - denormalised owning BOQ for cheap per-BOQ listing/refresh
+        model_id - the BIM model the binding tracks (NOT version-pinned;
             ``compute_diff`` resolves the latest version on refresh)
-        element_stable_ids — list[str] of canonical element ``stable_id``s
+        element_stable_ids - list[str] of canonical element ``stable_id``s
             whose quantities feed this position
-        quantity_field — the canonical quantity key to read off each
+        quantity_field - the canonical quantity key to read off each
             element's ``quantities`` map, e.g. ``area_m2`` / ``volume_m3``
-        target_field — the Position numeric field the aggregate writes to;
+        target_field - the Position numeric field the aggregate writes to;
             currently always ``quantity`` (only field a model can drive)
-        aggregation — how multiple elements combine: ``sum`` (default),
+        aggregation - how multiple elements combine: ``sum`` (default),
             ``max``, ``min``, ``count``, ``first``
-        status — ``active`` (in sync) | ``stale`` (a refresh detected the
+        status - ``active`` (in sync) | ``stale`` (a refresh detected the
             source elements changed and a human has not yet applied) |
             ``broken`` (model/elements no longer resolvable)
-        source_model_version — the model ``version`` string captured at
+        source_model_version - the model ``version`` string captured at
             the last successful apply (provenance)
-        last_applied_quantity — the position quantity this link last
+        last_applied_quantity - the position quantity this link last
             wrote (provenance / staleness baseline), stored as a string
             for the same SQLite-precision reason as Position.quantity
-        last_pulled_at — ISO-8601 UTC timestamp of the last refresh probe
-        last_applied_at — ISO-8601 UTC timestamp of the last human apply
-        created_by / applied_by — user provenance (who bound / who applied)
-        metadata_ — module-extensible blob (last diff envelope etc.)
+        last_pulled_at - ISO-8601 UTC timestamp of the last refresh probe
+        last_applied_at - ISO-8601 UTC timestamp of the last human apply
+        created_by / applied_by - user provenance (who bound / who applied)
+        metadata_ - module-extensible blob (last diff envelope etc.)
     """
 
     __tablename__ = "oe_boq_quantity_link"
     __table_args__ = (
         Index("ix_boq_quantity_link_boq", "boq_id"),
         Index("ix_boq_quantity_link_status", "status"),
-        # "Find broken / stale links for this BOQ" — the dashboard
+        # "Find broken / stale links for this BOQ" - the dashboard
         # health card hits this on every BOQ open.
         Index("ix_boq_quantity_link_boq_status", "boq_id", "status"),
     )

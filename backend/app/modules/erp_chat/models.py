@@ -3,9 +3,9 @@ from __future__ import annotations
 """‌⁠‍ERP Chat ORM models.
 
 Tables:
-    oe_erp_chat_session         — chat session per user, optionally scoped to a project
-    oe_erp_chat_message         — individual messages within a session (user/assistant/tool/system)
-    oe_erp_chat_turn_feedback   — per-(message, user) thumbs up/down feedback (T8)
+    oe_erp_chat_session         - chat session per user, optionally scoped to a project
+    oe_erp_chat_message         - individual messages within a session (user/assistant/tool/system)
+    oe_erp_chat_turn_feedback   - per-(message, user) thumbs up/down feedback (T8)
 """
 
 import uuid
@@ -109,7 +109,7 @@ class ChatTurnFeedback(Base):
     """‌⁠‍User-supplied thumbs up/down on a single assistant message.
 
     One row per ``(message_id, user_id)``. Re-submitting on the same
-    pair updates the rating in place — see
+    pair updates the rating in place - see
     :meth:`ERPChatService.submit_feedback`.
     """
 

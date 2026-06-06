@@ -9,7 +9,7 @@ of being kept in PostgreSQL. The path is recorded on
 ``EacRun.spool_path`` so the client can request a presigned URL via
 ``GET /runs/{id}/results.parquet``.
 
-This module is the I/O envelope around pyarrow — pure conversion plus a
+This module is the I/O envelope around pyarrow - pure conversion plus a
 storage write. The actual decision to spool lives in
 ``runner.run_ruleset``; here we just turn ``ExecutionResult`` slices
 into Parquet bytes and persist them.
@@ -34,8 +34,8 @@ SPOOL_PREFIX = "eac/runs"
 
 
 # Parquet schema is fixed. Keeping it declarative (not derived from a
-# Pydantic model) means downstream readers — DuckDB queries, the
-# frontend's parquet-wasm decoder, ad-hoc Pandas — see a stable,
+# Pydantic model) means downstream readers - DuckDB queries, the
+# frontend's parquet-wasm decoder, ad-hoc Pandas - see a stable,
 # self-documenting contract regardless of how ExecutionResult evolves.
 _SCHEMA = pa.schema(
     [
@@ -177,7 +177,7 @@ def collect_overflow_rows(
 
     The runner persists the first N rows into the OLTP table; we spool
     everything from index ``skip`` onward. Keeping this projection
-    pure (no I/O) keeps the runner's hot loop simple — it just feeds
+    pure (no I/O) keeps the runner's hot loop simple - it just feeds
     us per-rule slices and the spool decides what's overflow.
     """
     rows = list(_execution_result_to_rows(run_id=run_id, rule_id=rule_id, result=result))

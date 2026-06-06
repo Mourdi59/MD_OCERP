@@ -9,12 +9,12 @@ single JSON-serialisable response.
 
 Three classes of output:
 
-* **Totals + distributions** — search volume, pick rate, score / latency
+* **Totals + distributions** - search volume, pick rate, score / latency
   / tier histograms. Powers the dashboard tiles.
-* **Per-dimension breakdowns** — the same metrics segmented by
+* **Per-dimension breakdowns** - the same metrics segmented by
   ``country``, ``source_type``, ``ifc_class`` so operators can spot
   "DE searches are great, RU is broken" without writing SQL.
-* **Alerts** — the §10 thresholds (low top_score, high picked_rank,
+* **Alerts** - the §10 thresholds (low top_score, high picked_rank,
   zero-hit rate). Each alert carries the offending metric, the threshold
   it crossed, and a spec reference for traceability.
 
@@ -57,8 +57,8 @@ _ZERO_HIT_PCT = float(os.getenv("MATCH_ALERT_ZERO_HIT_PCT", "0.10"))
 _MIN_SAMPLE = int(os.getenv("MATCH_ALERT_MIN_SAMPLE", "20"))
 """‌⁠‍Don't fire any alert until the window has at least this many rows.
 
-Without this guard a fresh deploy with two test queries — one of which
-happened to score 0.1 — would page the on-call team. The §10 thresholds
+Without this guard a fresh deploy with two test queries - one of which
+happened to score 0.1 - would page the on-call team. The §10 thresholds
 are statistical and need a real denominator."""
 
 _BREAKDOWN_LIMIT = 8
@@ -193,7 +193,7 @@ async def compute_match_analytics(
             latencies.append(float(r.took_ms))
         if r.hits_count == 0:
             zero_hit += 1
-        # "had_hard_filter" — non-empty hard_filters dict
+        # "had_hard_filter" - non-empty hard_filters dict
         had_filter = bool(r.hard_filters)
         if had_filter:
             with_filter += 1
@@ -248,7 +248,7 @@ async def compute_match_analytics(
                     title="Low-confidence searches above threshold",
                     detail=(
                         f"{low_score_pct:.1%} of {total} searches scored below "
-                        f"{_LOW_SCORE_VALUE:.2f} — likely catalogue gap or "
+                        f"{_LOW_SCORE_VALUE:.2f} - likely catalogue gap or "
                         "missing language coverage."
                     ),
                     metric=low_score_pct,
@@ -264,7 +264,7 @@ async def compute_match_analytics(
                     title="Users picking past suggested top-4",
                     detail=(
                         f"{high_rank_pct:.1%} of {with_pick} picks landed beyond rank "
-                        f"{_HIGH_RANK_VALUE:.0f} — re-rank model may need re-training."
+                        f"{_HIGH_RANK_VALUE:.0f} - re-rank model may need re-training."
                     ),
                     metric=high_rank_pct,
                     threshold=_HIGH_RANK_PCT,
@@ -279,7 +279,7 @@ async def compute_match_analytics(
                     title="Hard filters returning zero hits",
                     detail=(
                         f"{zero_hit_with_filter_pct:.1%} of {with_filter} filtered "
-                        "searches returned no candidates — relax-tier ladder may need tuning."
+                        "searches returned no candidates - relax-tier ladder may need tuning."
                     ),
                     metric=zero_hit_with_filter_pct,
                     threshold=_ZERO_HIT_PCT,

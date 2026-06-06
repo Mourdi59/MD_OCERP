@@ -1,10 +1,10 @@
-"""‌⁠‍Global search — searches across all modules simultaneously.
+"""‌⁠‍Global search - searches across all modules simultaneously.
 
 Usage:
     GET /api/v1/search?q=reinforced+concrete&project_id=xxx&limit=20
 
 Returns results from: BOQ positions, contacts, documents, RFIs,
-tasks, cost items, meetings, inspections, NCRs — ranked by relevance.
+tasks, cost items, meetings, inspections, NCRs - ranked by relevance.
 """
 
 import logging
@@ -59,7 +59,7 @@ async def global_search(
                     "module": "boq",
                     "type": "position",
                     "id": str(row.id),
-                    "title": f"{row.ordinal} — {row.description[:120]}",
+                    "title": f"{row.ordinal} - {row.description[:120]}",
                     "subtitle": f"{row.quantity} {row.unit}",
                     "url": f"/boq/{row.boq_id}",
                     "score": score,
@@ -154,7 +154,7 @@ async def global_search(
                     "module": "rfi",
                     "type": "rfi",
                     "id": str(row.id),
-                    "title": f"{row.rfi_number} — {row.subject[:120]}",
+                    "title": f"{row.rfi_number} - {row.subject[:120]}",
                     "subtitle": row.status,
                     "url": f"/projects/{row.project_id}/rfi",
                     "score": score,
@@ -215,7 +215,7 @@ async def global_search(
                     "module": "costs",
                     "type": "cost_item",
                     "id": str(row.id),
-                    "title": f"{row.code} — {row.description[:120]}",
+                    "title": f"{row.code} - {row.description[:120]}",
                     "subtitle": f"{row.rate} {row.currency}/{row.unit}",
                     "url": "/costs",
                     "score": score,
@@ -246,7 +246,7 @@ async def global_search(
                     "module": "meetings",
                     "type": "meeting",
                     "id": str(row.id),
-                    "title": f"{row.meeting_number} — {row.title[:120]}",
+                    "title": f"{row.meeting_number} - {row.title[:120]}",
                     "subtitle": row.meeting_date,
                     "url": f"/projects/{row.project_id}/meetings",
                     "score": score,
@@ -276,7 +276,7 @@ async def global_search(
                     "module": "inspections",
                     "type": "inspection",
                     "id": str(row.id),
-                    "title": f"{row.inspection_number} — {row.title[:120]}",
+                    "title": f"{row.inspection_number} - {row.title[:120]}",
                     "subtitle": row.status,
                     "url": f"/projects/{row.project_id}/inspections",
                     "score": score,
@@ -307,7 +307,7 @@ async def global_search(
                     "module": "ncr",
                     "type": "ncr",
                     "id": str(row.id),
-                    "title": f"{row.ncr_number} — {row.title[:120]}",
+                    "title": f"{row.ncr_number} - {row.title[:120]}",
                     "subtitle": f"{row.severity} / {row.status}",
                     "url": f"/projects/{row.project_id}/ncr",
                     "score": score,

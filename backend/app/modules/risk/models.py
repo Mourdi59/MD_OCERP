@@ -1,7 +1,7 @@
 """‌⁠‍Risk Register ORM models.
 
 Tables:
-    oe_risk_register — risk items with probability, impact, mitigation, and status
+    oe_risk_register - risk items with probability, impact, mitigation, and status
 """
 
 import uuid
@@ -82,7 +82,7 @@ class RiskItem(Base):
     escalation_trigger: Mapped[str | None] = mapped_column(String(20), nullable=True)
     escalation_threshold: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    # ── Monte Carlo / PERT three-point estimate (v3.11 — T1) ───────────
+    # ── Monte Carlo / PERT three-point estimate (v3.11 - T1) ───────────
     # Optional triples (optimistic / most-likely / pessimistic) used by
     # the quantitative Monte Carlo simulation. When unset the risk
     # contributes zero to the simulated distribution; the qualitative
@@ -113,4 +113,4 @@ class RiskItem(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<RiskItem {self.code} — {self.title[:40]} ({self.status})>"
+        return f"<RiskItem {self.code} - {self.title[:40]} ({self.status})>"

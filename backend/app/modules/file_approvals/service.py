@@ -74,7 +74,7 @@ def _burn_pdf_stamp(
         from reportlab.pdfgen import canvas
 
         from app.core.pdf_fonts import BODY_FONT, BOLD_FONT, register_pdf_fonts
-    except Exception:  # noqa: BLE001 — optional deps
+    except Exception:  # noqa: BLE001 - optional deps
         logger.debug(
             "pypdf / reportlab unavailable; sidecar fallback for stamp",
             exc_info=True,
@@ -101,7 +101,7 @@ def _burn_pdf_stamp(
         c = canvas.Canvas(overlay_buf, pagesize=(page_w, page_h))
         try:
             stroke = HexColor(template_color)
-        except Exception:  # noqa: BLE001 — invalid hex → fall back
+        except Exception:  # noqa: BLE001 - invalid hex → fall back
             stroke = HexColor("#16a34a")
         c.setStrokeColor(stroke)
         c.setFillColor(stroke)
@@ -130,7 +130,7 @@ def _burn_pdf_stamp(
         out = BytesIO()
         writer.write(out)
         return out.getvalue()
-    except Exception:  # noqa: BLE001 — never let stamp-burn crash final approve
+    except Exception:  # noqa: BLE001 - never let stamp-burn crash final approve
         logger.exception("PDF stamp overlay failed; sidecar fallback")
         return None
 
@@ -457,7 +457,7 @@ class ApprovalService:
                 key = f"{_STAMP_KEY_PREFIX}/{workflow.id}/{workflow.file_id}__stamped.json"
                 await backend.put(key, sidecar)
                 workflow.stamped_artifact_path = key
-        except Exception:  # noqa: BLE001 — never crash final approval
+        except Exception:  # noqa: BLE001 - never crash final approval
             logger.exception(
                 "Failed to persist stamped artifact for workflow %s",
                 workflow.id,
@@ -490,7 +490,7 @@ class ApprovalService:
                 data = await backend.get(key)
                 if data:
                     return data
-            except Exception:  # noqa: BLE001 — probe-style, keep looking
+            except Exception:  # noqa: BLE001 - probe-style, keep looking
                 continue
         return None
 
@@ -504,7 +504,7 @@ class ApprovalService:
                 if user.full_name:
                     return user.full_name
                 return user.email
-        except Exception:  # noqa: BLE001 — fall through
+        except Exception:  # noqa: BLE001 - fall through
             pass
         return str(approver_id)
 

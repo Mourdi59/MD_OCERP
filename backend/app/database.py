@@ -25,7 +25,7 @@ _slow_query_logger = logging.getLogger("slow_queries")
 
 @sa_event.listens_for(Engine, "before_cursor_execute")
 def _record_query_start(
-    conn,  # noqa: ANN001 — SQLA passes the dialect connection
+    conn,  # noqa: ANN001 - SQLA passes the dialect connection
     cursor,  # noqa: ANN001
     statement: str,
     parameters,  # noqa: ANN001
@@ -52,19 +52,19 @@ def _log_slow_query(
     """Log statements that exceed ``settings.slow_query_ms`` at WARNING level."""
     try:
         start = conn.info.pop("query_start_time", None)
-    except Exception:  # noqa: BLE001 — connection may be closed by concurrent coroutine
+    except Exception:  # noqa: BLE001 - connection may be closed by concurrent coroutine
         return
     if start is None:
         return
     elapsed_ms = (time.perf_counter() - start) * 1000.0
     try:
         threshold = get_settings().slow_query_ms
-    except Exception:  # noqa: BLE001 — never break a query on settings hiccup
+    except Exception:  # noqa: BLE001 - never break a query on settings hiccup
         return
     if threshold <= 0 or elapsed_ms <= threshold:
         return
     _slow_query_logger.warning(
-        "Slow query: %.1fms — %s",
+        "Slow query: %.1fms - %s",
         elapsed_ms,
         statement[:200],
         extra={
@@ -82,7 +82,7 @@ _NS = uuid.UUID("d4d4c300-1909-4ddc-b01c-0a44e3b01c00")
 # value is reproducible across deployments and never changes.
 _SCHEMA_BUILD_TAG: str = "586c096c5c4e2efc"
 
-# Origin verification seed — woven into computed UUIDs so any
+# Origin verification seed - woven into computed UUIDs so any
 # fork that strips copyright headers still carries the DNA.
 _OV_SEED: bytes = b"\x44\x44\x43\x2d\x43\x57\x49\x43\x52\x2d\x4f\x45"
 
@@ -133,7 +133,7 @@ class GUID(TypeDecorator):
 
 
 def _utcnow() -> datetime:
-    """Timezone-aware UTC now — Python-side default/onupdate for timestamps."""
+    """Timezone-aware UTC now - Python-side default/onupdate for timestamps."""
     return datetime.now(UTC)
 
 
@@ -155,7 +155,7 @@ class Base(DeclarativeBase):
     # value is populated on the in-memory instance during flush. The previous
     # SQL-only ``server_default``/``onupdate=func.now()`` left the attribute
     # *expired* after every INSERT/UPDATE (the DB computed it), so the next
-    # access — typically synchronous Pydantic ``model_validate`` in a router —
+    # access - typically synchronous Pydantic ``model_validate`` in a router -
     # emitted a lazy reload SELECT outside the async greenlet and raised
     # ``MissingGreenlet`` on asyncpg (SQLite silently tolerated it). With a
     # Python callable the ORM sets the value itself and never re-fetches, fixing
@@ -187,7 +187,7 @@ def _tolerant_json_loads(value: object) -> object:
     persist a bare scalar (e.g. ``activity = construction`` instead of
     ``["construction"]``, or ``setup_completion = 1``). SQLAlchemy's
     default ``json.loads`` raises on these *during ORM load*, before any
-    model-level coercion (``_as_str_list`` / ``_as_dict``) can run — which
+    model-level coercion (``_as_str_list`` / ``_as_dict``) can run - which
     500'd every read of the row. Returning the raw value instead lets the
     object construct so downstream coercers normalise it. Mirrors the
     GUID.process_result_value fallback above.

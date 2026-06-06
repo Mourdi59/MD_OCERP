@@ -1,4 +1,4 @@
-"""‌⁠‍Property Development Pydantic schemas — request/response models."""
+"""‌⁠‍Property Development Pydantic schemas - request/response models."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_valid
 # JS rounds to a float (precision loss past ~15 digits). The platform-wide
 # convention (mirrors boq/schemas.py BUG-B-011) is to emit money fields as
 # plain-decimal *strings* so the wire format is locale-neutral and exact.
-# This helper formats a Decimal as a fixed-point string ("12345.67" — not
+# This helper formats a Decimal as a fixed-point string ("12345.67" - not
 # "1.234567E+4"), defends against NaN/Inf (collapses to "0"), and tolerates
 # values that arrive as int/float when callers bypass the Pydantic input
 # coercion. Applied via ``@field_serializer(..., when_used="json")`` on
@@ -40,7 +40,7 @@ def _serialize_money_string(value: Any) -> str | None:
 # Regex for an ISO-4217 3-letter currency code (uppercase).
 _CURRENCY_PATTERN = r"^[A-Z]{3}$"
 
-# R6 (task #137) enum patterns — kept in module scope so router + tests can re-use.
+# R6 (task #137) enum patterns - kept in module scope so router + tests can re-use.
 _LEAD_SOURCE_PATTERN = r"^(web_form|walk_in|broker|referral|portal|other)$"
 _LEAD_STATUS_PATTERN = (
     r"^(new|qualified|viewing_scheduled|visited|quotation_sent|"
@@ -60,7 +60,7 @@ _CONTRACT_NUMBER_PATTERN = r"^SPA-[A-Z0-9-]{1,40}-\d{5}$"
 # ── Development ─────────────────────────────────────────────────────────
 
 
-# Allowed development "types" — kept as a regex pattern (not a Literal) so
+# Allowed development "types" - kept as a regex pattern (not a Literal) so
 # adding a new value is a single-line change. ``other`` is the catch-all.
 _DEV_TYPE_PATTERN = (
     r"^(residential|mixed_use|commercial|industrial|hospitality|"
@@ -628,7 +628,7 @@ class BuyerResponse(BaseModel):
     development_id: UUID
     plot_id: UUID | None = None
     portal_user_id: UUID | None = None
-    # Contacts module bridge — see app.modules.contacts.bridge.
+    # Contacts module bridge - see app.modules.contacts.bridge.
     contact_id: UUID | None = None
     full_name: str = ""
     email: str = ""
@@ -679,7 +679,7 @@ class BuyerContractRequest(BaseModel):
 
 
 class BuyerCancelRequest(BaseModel):
-    """Payload for /buyers/{id}/cancel — cancel + compute forfeiture."""
+    """Payload for /buyers/{id}/cancel - cancel + compute forfeiture."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -1155,7 +1155,7 @@ class SalesKanbanColumn(BaseModel):
 
 
 class SalesKanbanResponse(BaseModel):
-    """Kanban response — one column per buyer-status."""
+    """Kanban response - one column per buyer-status."""
 
     development_id: UUID
     columns: list[SalesKanbanColumn] = Field(default_factory=list)
@@ -1223,7 +1223,7 @@ class DevelopmentPnLResponse(BaseModel):
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# R6 — Lead / Reservation / SalesContract / PaymentSchedule / ContractParty
+# R6 - Lead / Reservation / SalesContract / PaymentSchedule / ContractParty
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -1305,7 +1305,7 @@ class LeadResponse(BaseModel):
     id: UUID
     development_id: UUID | None = None
     tenant_id: UUID | None = None
-    # Contacts module bridge — see app.modules.contacts.bridge.
+    # Contacts module bridge - see app.modules.contacts.bridge.
     contact_id: UUID | None = None
     source: str = "other"
     lead_score: Decimal = Decimal("0")
@@ -1371,7 +1371,7 @@ class ReservationCreate(BaseModel):
     lead_id: UUID | None = None
     buyer_id: UUID | None = None
     tenant_id: UUID | None = None
-    # Auto-generated when omitted — see ``next_reservation_number``.
+    # Auto-generated when omitted - see ``next_reservation_number``.
     reservation_number: str | None = Field(default=None, pattern=_RESERVATION_NUMBER_PATTERN)
     deposit_amount: Decimal = Field(..., ge=0)
     currency: str = Field(..., min_length=3, max_length=3)
@@ -1386,7 +1386,7 @@ class ReservationCreate(BaseModel):
 
 
 class ReservationUpdate(BaseModel):
-    """Partial update for a reservation (limited fields — FSM elsewhere)."""
+    """Partial update for a reservation (limited fields - FSM elsewhere)."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -1413,7 +1413,7 @@ class ReservationResponse(BaseModel):
     cooling_off_until: str | None = None
     expires_at: str | None = None
     status: str = "active"
-    # Pricing-engine snapshot captured at reservation create — see
+    # Pricing-engine snapshot captured at reservation create - see
     # ``property_dev.pricing_engine.PriceQuote``. Empty dict for legacy
     # rows pre-dating the snapshot column.
     price_breakdown_snapshot: dict[str, Any] = Field(default_factory=dict)
@@ -1542,7 +1542,7 @@ class SalesContractSendForSignatureRequest(BaseModel):
 
 
 class SalesContractSignRequest(BaseModel):
-    """Countersign — developer side. Buyer-side signing is per-party."""
+    """Countersign - developer side. Buyer-side signing is per-party."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -1751,7 +1751,7 @@ class ReservationExpiryBatchResponse(BaseModel):
     expired_ids: list[UUID] = Field(default_factory=list)
 
 
-# Marker for tooling — re-export _CURRENCY_PATTERN to suppress lint
+# Marker for tooling - re-export _CURRENCY_PATTERN to suppress lint
 # warning about unused module-scope constants when only schemas import.
 _USED_SENTINELS = (
     _CURRENCY_PATTERN,
@@ -1764,7 +1764,7 @@ _USED_SENTINELS = (
 
 
 # ════════════════════════════════════════════════════════════════════════
-# Task #138 — Broker / Commission / Escrow / PriceMatrix / Phase / Block
+# Task #138 - Broker / Commission / Escrow / PriceMatrix / Phase / Block
 # ════════════════════════════════════════════════════════════════════════
 
 
@@ -1795,7 +1795,7 @@ def _validate_iban(value: str) -> str:
     normalised = value.replace(" ", "").upper()
     if not _IBAN_RE.match(normalised):
         raise ValueError(
-            "Invalid IBAN format — expected 15-34 alphanumeric chars starting "
+            "Invalid IBAN format - expected 15-34 alphanumeric chars starting "
             "with 2-letter country code + 2-digit checksum"
         )
     return normalised
@@ -2606,7 +2606,7 @@ class ComplianceDashboardResponse(BaseModel):
     """Traffic-light + drill-down aggregated for a development.
 
     ``score`` is the engine-computed severity-weighted ratio (``None`` when
-    the report contained no compliance results — i.e. nothing was checked).
+    the report contained no compliance results - i.e. nothing was checked).
     """
 
     development_id: UUID
@@ -2680,7 +2680,7 @@ __all_task_138__ = (
 
 
 # ════════════════════════════════════════════════════════════════════════
-# Task #140 — Dashboards (heatmap / velocity / cashflow / ageing / funnel
+# Task #140 - Dashboards (heatmap / velocity / cashflow / ageing / funnel
 # / buyer-journey). All sourced from the full R6 schema (Phase / Block /
 # Lead / Reservation / SalesContract / Instalment / Escrow).
 # ════════════════════════════════════════════════════════════════════════
@@ -2912,11 +2912,11 @@ class BuyerJourneyResponse(BaseModel):
 # ── Sales-analytics dashboards (v3124) ──────────────────────────────────
 #
 # Five new dashboards aimed at a real-estate sales director:
-#   1. cohort-retention      — bookings grouped by reservation-month
-#   2. time-to-close         — days Lead → Reservation → Sale → Handover
-#   3. lead-source-attribution — conversion + revenue + CPA per source
-#   4. conversion-funnel     — Leads → Qualified → Reservation → Sale → Handover
-#   5. broker-performance    — per-broker leaderboard
+#   1. cohort-retention      - bookings grouped by reservation-month
+#   2. time-to-close         - days Lead → Reservation → Sale → Handover
+#   3. lead-source-attribution - conversion + revenue + CPA per source
+#   4. conversion-funnel     - Leads → Qualified → Reservation → Sale → Handover
+#   5. broker-performance    - per-broker leaderboard
 #
 # Every money field is a plain-decimal string (R8 convention). Every
 # percent field is a plain-decimal string (consistent with FunnelStage).
@@ -3173,7 +3173,7 @@ _SALES_CHANNELS = ("off_plan", "new_build", "resale")
 class PropertyDevHouseTypeCreate(BaseModel):
     """Create a custom house-type catalogue entry.
 
-    ``project_id`` is required for user-created entries — global presets
+    ``project_id`` is required for user-created entries - global presets
     are only inserted via the migration seed, never through the API.
 
     ``country_code`` may be NULL when the operator picks the "Other /
@@ -3273,7 +3273,7 @@ class PropertyDevHouseTypeResponse(BaseModel):
     updated_at: datetime
 
 
-# ── Pricing engine — PriceList / PriceListEntry / PricingRule ───────────
+# ── Pricing engine - PriceList / PriceListEntry / PricingRule ───────────
 
 
 _PRICE_LIST_STATUS_PATTERN = r"^(draft|active|superseded)$"
@@ -3335,7 +3335,7 @@ def _validate_condition_for_rule_type(rule_type: str, cond: dict[str, Any]) -> N
         return
 
     if rule_type == "friends_family":
-        # Optional 'buyer_tag' (defaults to 'ff') — anything goes.
+        # Optional 'buyer_tag' (defaults to 'ff') - anything goes.
         return
 
     if rule_type == "loyalty":
@@ -3399,7 +3399,7 @@ class PricingRuleUpdate(BaseModel):
 
 
 # ════════════════════════════════════════════════════════════════════════
-# Inventory Map — sales-floor block / floor / unit grid.
+# Inventory Map - sales-floor block / floor / unit grid.
 # ════════════════════════════════════════════════════════════════════════
 #
 # Differs from the analytics ``InventoryHeatmapResponse`` (task #140) on
@@ -3449,7 +3449,7 @@ class InventoryMapBlock(BaseModel):
 
 
 class InventoryMapSummary(BaseModel):
-    """KPI ribbon counters — one entry per Plot.status (incl. ``total``)."""
+    """KPI ribbon counters - one entry per Plot.status (incl. ``total``)."""
 
     total: int = 0
     available: int = 0
@@ -3509,7 +3509,7 @@ class InventoryMapBulkResult(BaseModel):
 # ════════════════════════════════════════════════════════════════════════
 #
 # Distinct from ``InventoryMapBulkResult`` above (which scopes hold /
-# release on the inventory map) — this envelope is shared by the five
+# release on the inventory map) - this envelope is shared by the five
 # sales-ops bulk endpoints under /bulk/*:
 #   * plot status flips OTHER than hold/release
 #   * reservation expiry extensions
@@ -3565,7 +3565,7 @@ _PLOT_STATUS_PATTERN = r"^(planned|reserved|under_construction|ready|sold|handed
 class PlotBulkStatusChange(BaseModel):
     """Bulk-flip a set of plots to a target status.
 
-    NOTE: this endpoint is for transitions OTHER than hold / release —
+    NOTE: this endpoint is for transitions OTHER than hold / release -
     those live on the inventory-map module (``bulk-hold`` / ``bulk-release``).
     Use this for milestone-driven flips (reserved → sold after deposit
     cleared) or remediation (sold → ready when an SPA fell through).
@@ -3816,7 +3816,7 @@ class BuyerBulkMerge(BaseModel):
 
     Re-points all FK references (reservations, sales_contracts, contract
     parties, warranty claims, buyer selections) from duplicates → primary,
-    then soft-deletes the duplicate rows. Atomic — all reps roll back if
+    then soft-deletes the duplicate rows. Atomic - all reps roll back if
     any single repoint fails.
     """
 

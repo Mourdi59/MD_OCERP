@@ -5,7 +5,7 @@ region groupings, and per-country defaults.  Used throughout the backend
 (project settings, report generation, export formatting) and exposed to the
 frontend via the ``/api/v1/i18n/`` endpoints.
 
-All dictionaries are plain Python literals — no database dependency, no I/O.
+All dictionaries are plain Python literals - no database dependency, no I/O.
 Import freely from any module.
 """
 
@@ -89,7 +89,7 @@ NUMBER_FORMATS: dict[str, dict[str, str | list[str]]] = {
 }
 
 # ---------------------------------------------------------------------------
-# Region groups — map marketing regions to ISO 3166-1 alpha-2 country codes
+# Region groups - map marketing regions to ISO 3166-1 alpha-2 country codes
 # ---------------------------------------------------------------------------
 
 REGION_GROUPS: dict[str, list[str]] = {

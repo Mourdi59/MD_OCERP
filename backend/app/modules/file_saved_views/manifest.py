@@ -9,7 +9,7 @@ manifest = ModuleManifest(
     version="1.0.0",
     display_name="File Saved Views",
     description=(
-        "Personal & shared smart-folder views for /files — serialise the "
+        "Personal & shared smart-folder views for /files - serialise the "
         "current filter (kind, query, sort, extension, tags, date range, "
         "custom keys) under a name and re-apply it with one click."
     ),

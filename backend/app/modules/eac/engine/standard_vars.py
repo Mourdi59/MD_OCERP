@@ -4,7 +4,7 @@
 
 These names are the ``${variable_name}`` references that the executor
 will hand-pull from each canonical-format element row at run time. They
-do NOT need an :class:`EacParameterAlias` entry — the validator skips
+do NOT need an :class:`EacParameterAlias` entry - the validator skips
 the alias-existence check when the name appears in :data:`STANDARD_VARIABLES`.
 
 A real attempt to use an unknown name (not standard, not a local var,

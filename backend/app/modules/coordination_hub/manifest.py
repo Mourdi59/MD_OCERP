@@ -10,7 +10,7 @@ manifest = ModuleManifest(
     description=(
         "Project-level Model Coordination dashboard: unifies federations, "
         "clashes, smart views, rule packs and BCF activity into one read-only "
-        "rollup with BOQ-impact totals. No new tables — pure aggregator over "
+        "rollup with BOQ-impact totals. No new tables - pure aggregator over "
         "the sibling BIM modules."
     ),
     author="OpenConstructionERP Core Team",

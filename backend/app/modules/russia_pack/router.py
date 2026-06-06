@@ -1,7 +1,7 @@
 """‌⁠‍Russia & CIS regional pack API routes.
 
 Endpoints:
-    GET /config  — Return the full Russia & CIS regional configuration
+    GET /config  - Return the full Russia & CIS regional configuration
 """
 
 import logging

@@ -1,4 +1,4 @@
-"""Address validation engine — Wave 26 of the worldwide-parameterisation audit.
+"""Address validation engine - Wave 26 of the worldwide-parameterisation audit.
 
 Per-country postcode patterns, required-field lists, and field ordering are
 loaded from the regional-pack ``address_validation`` keys.  The validator can
@@ -60,7 +60,7 @@ _COUNTRY_RULES: dict[str, dict[str, Any]] = {
         "state_required": False,
         "postcode_note": "Format: e.g. SW1A 1AA, EC2A 4BH",
     },
-    # Alias for GB — incoming addresses often carry "UK"
+    # Alias for GB - incoming addresses often carry "UK"
     "UK": {
         "postcode_regex": r"^[A-Z]{1,2}\d[A-Z\d]? \d[A-Z]{2}$",
         "required_fields": ["street", "city", "postcode", "country"],
@@ -97,7 +97,7 @@ _COUNTRY_RULES: dict[str, dict[str, Any]] = {
         "field_order": ["street", "city", "postcode", "country"],
         "state_required": False,
     },
-    # ── Middle East — UAE (postcode optional) ─────────────────────────────
+    # ── Middle East - UAE (postcode optional) ─────────────────────────────
     "AE": {
         "postcode_regex": None,  # No formal postcode system
         "required_fields": ["street", "city", "country"],
@@ -105,7 +105,7 @@ _COUNTRY_RULES: dict[str, dict[str, Any]] = {
         "state_required": False,
         "postcode_optional": True,
     },
-    # ── Middle East — Saudi Arabia (postcode optional) ────────────────────
+    # ── Middle East - Saudi Arabia (postcode optional) ────────────────────
     # Saudi Post introduced a 5-digit postcode system but it is not yet
     # universally enforced.
     "SA": {
@@ -205,7 +205,7 @@ def validate_address(
         )
         assert r.passed
 
-        # Invalid UK postcode — missing space
+        # Invalid UK postcode - missing space
         r = validate_address(
             {"street": "10 Downing St", "city": "London",
              "postcode": "SW1A2AA", "country": "GB"},
@@ -249,7 +249,7 @@ def validate_address(
                 )
             )
     elif not postcode_optional and "postcode" in rules.get("required_fields", []):
-        # Already caught by required-field check above — don't double-report.
+        # Already caught by required-field check above - don't double-report.
         pass
 
     # 3. State/province check (when country requires it)

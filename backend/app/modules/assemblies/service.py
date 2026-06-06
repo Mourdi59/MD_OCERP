@@ -1,4 +1,4 @@
-"""‌⁠‍Assembly service — business logic for Assemblies & Calculations management.
+"""‌⁠‍Assembly service - business logic for Assemblies & Calculations management.
 
 Stateless service layer. Handles:
 - Assembly CRUD with search and filtering
@@ -111,7 +111,7 @@ def _compute_typed_total(
     """Compute a component total using a type-aware formula.
 
     The default (unknown / overhead / subcontractor / cost-item rows)
-    stays the simple ``factor * quantity * unit_cost`` triple — the
+    stays the simple ``factor * quantity * unit_cost`` triple - the
     behaviour every existing assembly already relies on.
 
     Resource-typed rows take the same triple as a base, then layer the
@@ -125,13 +125,13 @@ def _compute_typed_total(
                     is encouraged to put hours in ``quantity``); the
                     final cost gets a burden uplift via
                     base × (1 + burden_pct/100).
-    * **equipment** base + (rental_days * fuel_cost_per_day) — fuel is
+    * **equipment** base + (rental_days * fuel_cost_per_day) - fuel is
                     additive because it's a separate line on most
                     rental contracts; if both ``rental_days`` and a
                     per-day ``fuel_cost`` are set we add their product.
 
     Returns a string for SQLite-safe storage. Negative or zero results
-    fall through to the unmodified triple — never punish the user with
+    fall through to the unmodified triple - never punish the user with
     a smaller total than the raw inputs imply.
     """
     base_str = _compute_component_total(factor, quantity, unit_cost)
@@ -180,7 +180,7 @@ def _str_to_float(value: str | None) -> float:
 
 
 # Upper bound for a metadata multiplier (waste_pct / burden_pct /
-# rental_days / fuel_cost). Mirrors ``schemas._NUM_MAX`` — far beyond
+# rental_days / fuel_cost). Mirrors ``schemas._NUM_MAX`` - far beyond
 # any real estimating value, yet keeps the typed-total product finite.
 _META_NUM_MAX = Decimal("1e12")
 
@@ -197,7 +197,7 @@ def _safe_meta_multiplier(raw: object) -> Decimal | None:
     non-finite / negative total (NEW-ASM-102).
 
     Returns ``None`` for anything that is not a finite, non-negative,
-    in-range number — the caller then treats the multiplier as absent
+    in-range number - the caller then treats the multiplier as absent
     (no-op), matching the existing "never punish the user with a
     smaller total than the raw inputs imply" fall-through contract
     rather than raising. Garbage never reaches the stored total.
@@ -213,7 +213,7 @@ def _safe_meta_multiplier(raw: object) -> Decimal | None:
     return dec
 
 
-# Upper bound for an imported component numeric — mirrors
+# Upper bound for an imported component numeric - mirrors
 # ``schemas._NUM_MAX``. Kept local (no cross-module import) so the
 # import path is self-contained; both are 1e12.
 _IMPORT_NUM_MAX = Decimal("1e12")
@@ -228,7 +228,7 @@ def _parse_import_decimal(raw: object, field: str, idx: int) -> Decimal:
     the EU locale comma ``'1,5'``) but strict about *validity*: garbage
     (``'abc'``, a nested dict / list), non-finite (NaN / Infinity, or a
     value large enough to overflow), and negatives are rejected with a
-    clean HTTP 422 — never an unhandled ``ValueError`` 500.
+    clean HTTP 422 - never an unhandled ``ValueError`` 500.
 
     Args:
         raw: The raw value pulled from the export payload.
@@ -242,7 +242,7 @@ def _parse_import_decimal(raw: object, field: str, idx: int) -> Decimal:
         HTTPException 422 if the value cannot be parsed to a sane number.
     """
     if isinstance(raw, (bool, dict, list)):
-        # bool is an int subclass — an explicit True/False is almost
+        # bool is an int subclass - an explicit True/False is almost
         # certainly a malformed export, not "1".
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -414,7 +414,7 @@ class AssemblyService:
         for an admin / unscoped listing. The list and stats endpoints
         thread the caller's id through so a VIEWER cannot enumerate other
         tenants' assemblies (the per-item endpoints already 404 on a
-        non-owner — this closes the matching leak in the collection).
+        non-owner - this closes the matching leak in the collection).
         """
         return await self.assembly_repo.list_all(
             q=q,
@@ -442,7 +442,7 @@ class AssemblyService:
             assembly_id: Target assembly identifier.
             data: Partial update payload.
             caller_user_id: ID of the calling user (for project re-parent
-                ownership check — NEW-ASM-106).
+                ownership check - NEW-ASM-106).
             caller_is_admin: When True, skip the cross-tenant project
                 ownership check (admins manage global templates).
 
@@ -453,7 +453,7 @@ class AssemblyService:
             HTTPException 404 if assembly not found.
             HTTPException 404 if a new ``project_id`` refers to a project
                 the caller does not own (returned as 404 not 403 to keep
-                the existence-oracle closed — matches the rest of this
+                the existence-oracle closed - matches the rest of this
                 module).
             HTTPException 409 if new code conflicts with an existing assembly.
         """
@@ -469,14 +469,14 @@ class AssemblyService:
         if "bid_factor" in fields:
             fields["bid_factor"] = str(fields["bid_factor"])
 
-        # NEW-ASM-106 — verify the caller owns the *new* project before
+        # NEW-ASM-106 - verify the caller owns the *new* project before
         # re-parenting. Without this, an authenticated owner of assembly
         # X could PATCH ``{"project_id": "<other-tenant's-project-id>"}``
         # and pollute the other tenant's per-project assembly listing
         # (``GET /assemblies/?project_id=...``). The owner_id of the
-        # assembly is unchanged — but the project filter is keyed off
+        # assembly is unchanged - but the project filter is keyed off
         # ``project_id``, so the assembly would show up under another
-        # tenant's project. 404 (not 403) — see docstring.
+        # tenant's project. 404 (not 403) - see docstring.
         if (
             "project_id" in fields
             and fields["project_id"] is not None
@@ -563,7 +563,7 @@ class AssemblyService:
 
         # Merge any FE-supplied metadata (waste_pct / burden_pct / crew /
         # rental_days / fuel_cost / vendor / productivity) before total
-        # computation — the typed formula reads these fields to apply
+        # computation - the typed formula reads these fields to apply
         # type-specific adjustments (waste uplift on material, burden on
         # labor, fuel add-on on equipment).
         comp_metadata: dict = dict(data.metadata or {})
@@ -754,7 +754,7 @@ class AssemblyService:
                     factor=_str_to_float(comp.factor),
                     quantity=_str_to_float(comp.quantity),
                     unit=comp.unit,
-                    # v3 §10 — money as Decimal; Pydantic coerces str→Decimal
+                    # v3 §10 - money as Decimal; Pydantic coerces str→Decimal
                     unit_cost=Decimal(str(comp.unit_cost or "0")),
                     total=Decimal(str(comp.total or "0")),
                     sort_order=comp.sort_order,
@@ -832,13 +832,13 @@ class AssemblyService:
 
         # ── Cross-currency handling (ASM-006, Issue #128) ───────────────
         # An assembly priced in a currency other than the target
-        # project's base used to be hard-refused with a 409 — which made
+        # project's base used to be hard-refused with a 409 - which made
         # every foreign-currency assembly impossible to place, even when
         # the project HAD an FX rate configured for that currency. We now
         # mirror how foreign-currency *resources* already behave: convert
         # via the project's ``fx_rates`` when a rate exists; otherwise let
         # it through with a visible, non-blocking ``currency_mismatch``
-        # flag — never silent corruption, never a dead end for the user.
+        # flag - never silent corruption, never a dead end for the user.
         from app.modules.boq.service import _project_fx_map
 
         currency_warning: dict | None = None
@@ -863,7 +863,7 @@ class AssemblyService:
 
         if asm_currency and project_currency and asm_currency != project_currency:
             # Project ``fx_rates`` projected to {CODE: "<base units per 1
-            # unit of foreign currency>"} — same convention the BOQ
+            # unit of foreign currency>"} - same convention the BOQ
             # resource rollup uses, so foreign→base is multiplication.
             fx_map = _project_fx_map(project)
             raw_rate = fx_map.get(asm_currency)
@@ -891,7 +891,7 @@ class AssemblyService:
                     ),
                 }
             else:
-                # No FX rate configured for this currency — proceed
+                # No FX rate configured for this currency - proceed
                 # anyway. The legacy hard 409 trapped the user with no
                 # UI escape hatch (Issue #128). Flag it loudly so the
                 # un-converted foreign value is visible, not silent.
@@ -909,11 +909,11 @@ class AssemblyService:
                 }
 
         # Determine effective rate (apply regional factor if provided).
-        # NEW-ASM-105 / ASM-007 — ``Decimal("Infinity")`` and
+        # NEW-ASM-105 / ASM-007 - ``Decimal("Infinity")`` and
         # ``Decimal("NaN")`` parse WITHOUT raising, so a poisoned
         # ``regional_factors`` value (or a legacy assembly whose stored
         # ``total_rate`` is non-finite) would otherwise propagate through
-        # the float() cast below into ``PositionCreate.unit_rate`` —
+        # the float() cast below into ``PositionCreate.unit_rate`` -
         # whose schema only enforces ``ge=0.0`` and happily accepts
         # ``inf``. The result is a BOQ position with a non-finite
         # ``unit_rate`` that serialises as ``null`` and corrupts every
@@ -931,7 +931,7 @@ class AssemblyService:
             except (InvalidOperation, ValueError):
                 factor = Decimal("1")
             if not factor.is_finite() or factor < 0:
-                # Garbage stored factor — silently skip (matches the
+                # Garbage stored factor - silently skip (matches the
                 # existing fall-through contract for an absent region).
                 effective_rate = base_rate
             else:
@@ -941,7 +941,7 @@ class AssemblyService:
         else:
             effective_rate = base_rate
 
-        # Issue #128 — when the assembly is priced in a foreign currency
+        # Issue #128 - when the assembly is priced in a foreign currency
         # for which the project has an FX rate, fold the conversion into
         # the rate (and the component money fields below) so the BOQ
         # position lands in the project's base currency. ``fx_multiplier``
@@ -949,7 +949,7 @@ class AssemblyService:
         # for same-currency / unconfigured-rate paths.
         effective_rate = effective_rate * fx_multiplier
         if not effective_rate.is_finite() or effective_rate < 0:
-            # Final guard — the product can also overflow when both
+            # Final guard - the product can also overflow when both
             # ``base_rate`` and ``fx_multiplier`` sit near the upper
             # bound. Land at 0 rather than poison the BOQ.
             effective_rate = Decimal("0")
@@ -978,7 +978,7 @@ class AssemblyService:
         # carry a structured M/L/E split (and a UI on /boq can render
         # "60% Mat · 30% Lab · 10% Eq" without re-walking the components).
         breakdown_totals: dict[str, Decimal] = {}
-        # Issue #128 — scale each component's money fields by the same FX
+        # Issue #128 - scale each component's money fields by the same FX
         # multiplier as the rate so the resource breakdown stays
         # consistent with the converted unit_rate.
         fx_mult_f = float(fx_multiplier)
@@ -1007,7 +1007,7 @@ class AssemblyService:
                 }
             )
 
-        # Compute the breakdown payload — totals per type plus
+        # Compute the breakdown payload - totals per type plus
         # percentages of the rolled subtotal.
         subtotal = sum(breakdown_totals.values(), Decimal("0"))
         resource_breakdown: dict[str, dict[str, float]] = {}
@@ -1038,11 +1038,11 @@ class AssemblyService:
                 "currency": (project_currency if currency_converted else assembly.currency),
                 "resources": resources,
                 # Standard key the BOQ UI reads to render the M/L/E
-                # mini-badge — see ``backend/app/modules/boq/models.py``
+                # mini-badge - see ``backend/app/modules/boq/models.py``
                 # docstring for the metadata vocabulary.
                 "resource_breakdown": resource_breakdown,
                 # Audit trail: exactly one of these is present when the
-                # assembly currency differed from the project's — a
+                # assembly currency differed from the project's - a
                 # ``currency_converted`` record (FX applied) or a
                 # non-blocking ``currency_mismatch`` flag (Issue #128).
                 **({"currency_converted": currency_converted} if currency_converted else {}),
@@ -1188,7 +1188,7 @@ class AssemblyService:
             by_category[cat] = by_category.get(cat, 0) + 1
 
         # Most-used: count BOQ positions that reference each assembly via
-        # their metadata (positions carry no ``assembly_id`` column — the
+        # their metadata (positions carry no ``assembly_id`` column - the
         # reference lives in ``metadata_['assembly_id']``), restricted to
         # the tenant's own assemblies so the banner never exposes another
         # owner's recipe names.
@@ -1323,7 +1323,7 @@ class AssemblyService:
         # ── Validate & parse every component BEFORE creating the
         # assembly row. A bad numeric yields a clean 422 instead of an
         # unhandled ValueError 500, AND we don't leave an orphan
-        # assembly behind when one component is malformed — the
+        # assembly behind when one component is malformed - the
         # export/import round-trip is a core "no vendor lock-in"
         # guarantee, so a partial import is worse than a clean refusal.
         parsed_components: list[dict] = []
@@ -1481,7 +1481,7 @@ class AssemblyService:
     ) -> dict[str, int]:
         """Get BOQ position usage counts for a list of assemblies.
 
-        Positions carry no ``assembly_id`` column — the reference lives in
+        Positions carry no ``assembly_id`` column - the reference lives in
         ``Position.metadata_['assembly_id']`` (set by ``apply_to_boq``).
         We therefore can't ``GROUP BY`` on a column, but we DON'T need to
         load every assembly-sourced position into Python either: a

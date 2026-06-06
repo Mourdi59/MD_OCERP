@@ -3,14 +3,14 @@
 Thin wrapper around :mod:`app.core.storage` that owns the key layout
 for BIM model blobs.  Lives in its own module so the refactor that
 moves BIM file I/O off the local filesystem stays isolated from
-``service.py`` / ``router.py`` — both of which are currently being
+``service.py`` / ``router.py`` - both of which are currently being
 edited by another agent for the Element Groups feature.
 
 Key layout
 ----------
 ::
 
-    bim/{project_id}/{model_id}/geometry.glb   (preferred — 8.8x faster)
+    bim/{project_id}/{model_id}/geometry.glb   (preferred - 8.8x faster)
     bim/{project_id}/{model_id}/geometry.dae   (fallback for pre-v1.5 models)
     bim/{project_id}/{model_id}/original.{ext}
 
@@ -129,7 +129,7 @@ async def save_original_cad_from_path(
     """Persist an original CAD upload from a file path (streaming).
 
     Use this instead of :func:`save_original_cad` when the upload is
-    multi-hundred-megabyte (RVT, IFC, PDF) — it avoids loading the file
+    multi-hundred-megabyte (RVT, IFC, PDF) - it avoids loading the file
     into memory.  ``size`` is purely for the log line; it's read from
     the path if not provided.
     """
@@ -173,7 +173,7 @@ async def find_geometry_key(
 def open_geometry_stream(key: str) -> AsyncIterator[bytes]:
     """Return an async iterator streaming a geometry blob.
 
-    Not ``async`` — the underlying ``open_stream`` is itself an async
+    Not ``async`` - the underlying ``open_stream`` is itself an async
     generator, so we just hand its iterator back to the caller.
     """
     return _backend().open_stream(key)
@@ -182,7 +182,7 @@ def open_geometry_stream(key: str) -> AsyncIterator[bytes]:
 def presigned_geometry_url(key: str, *, expires_in: int = 3600) -> str | None:
     """Return a presigned URL for the blob (S3 only).
 
-    ``None`` means the backend cannot presign — the caller should
+    ``None`` means the backend cannot presign - the caller should
     stream via :func:`open_geometry_stream` instead.
     """
     return _backend().url_for(key, expires_in=expires_in)
@@ -209,7 +209,7 @@ async def delete_model_blobs(
 # ──────────────────────────────────────────────────────────────────────────
 
 
-# Extensions of files we treat as "conversion artifacts" — these are kept
+# Extensions of files we treat as "conversion artifacts" - these are kept
 # forever so the /bim page can serve them instantly without re-conversion.
 _ARTIFACT_EXTENSIONS: Final[tuple[str, ...]] = (
     ".glb",
@@ -231,7 +231,7 @@ async def delete_original_cad(
     """Delete the raw uploaded ``original.{ext}`` blob.
 
     Returns ``True`` if a blob existed and was removed, ``False`` if no
-    blob was present.  Errors are swallowed and logged — the storage
+    blob was present.  Errors are swallowed and logged - the storage
     cleanup must never block conversion success.
 
     Used by the post-conversion success path when
@@ -275,13 +275,13 @@ async def compute_artifact_size_bytes(
 
     For the local backend this walks the model directory on disk
     (excluding ``original.*``).  For S3 this would be a ``list_objects_v2``
-    sweep — we fall back to counting the geometry-key candidates only,
+    sweep - we fall back to counting the geometry-key candidates only,
     which keeps the call cheap for the common case (single GLB).
     """
     backend = _backend()
     prefix = bim_model_prefix(project_id, model_id)
 
-    # Fast path — local backend has a base_dir we can walk directly.
+    # Fast path - local backend has a base_dir we can walk directly.
     base_dir = getattr(backend, "base_dir", None)
     if base_dir is not None:
         from pathlib import Path  # local import: avoids broadening top-of-module deps
@@ -304,7 +304,7 @@ async def compute_artifact_size_bytes(
                 continue
         return total
 
-    # Fallback (S3 etc.) — probe the well-known geometry keys.
+    # Fallback (S3 etc.) - probe the well-known geometry keys.
     total = 0
     for ext in _ARTIFACT_EXTENSIONS:
         if ext not in GEOMETRY_EXTENSIONS:
@@ -332,13 +332,13 @@ async def bulk_model_storage_summary(
     then bucket the results by ``{project}/{model_id}`` segment in
     Python.  Each value is a dict with:
 
-    * ``artifact_size_bytes`` — sum of bytes for everything that isn't
+    * ``artifact_size_bytes`` - sum of bytes for everything that isn't
       the raw ``original.*`` upload
-    * ``original_size_bytes`` — sum of bytes for ``original.*`` blobs
-      (``None`` if no raw upload remains — matches the
+    * ``original_size_bytes`` - sum of bytes for ``original.*`` blobs
+      (``None`` if no raw upload remains - matches the
       ``keep_original_cad=False`` production default semantics)
-    * ``geometry_exts`` — set of geometry extensions present (``.glb`` /
-      ``.dae`` / ``.gltf``) — empty set means "no geometry on disk"
+    * ``geometry_exts`` - set of geometry extensions present (``.glb`` /
+      ``.dae`` / ``.gltf``) - empty set means "no geometry on disk"
 
     Replaces the per-model fan-out of
     ``compute_artifact_size_bytes`` + ``has_original_cad`` +
@@ -354,7 +354,7 @@ async def bulk_model_storage_summary(
 
     When ``list_prefix`` isn't implemented by the backend (community
     backends predating v4.6.1), an empty dict is returned and the
-    caller MUST fall back to per-model probes — :func:`list_prefix_supported`
+    caller MUST fall back to per-model probes - :func:`list_prefix_supported`
     surfaces that capability check.
     """
     backend = _backend()
@@ -369,7 +369,7 @@ async def bulk_model_storage_summary(
         return {}
 
     summary: dict[str, dict[str, object]] = {}
-    # Keys are of shape "bim/{project_id}/{model_id}/<filename>" — split
+    # Keys are of shape "bim/{project_id}/{model_id}/<filename>" - split
     # on '/' and group by the model_id segment.
     prefix_with_slash = prefix.rstrip("/") + "/"
     for key, size_bytes in entries:

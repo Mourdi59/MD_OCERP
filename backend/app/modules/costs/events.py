@@ -1,4 +1,4 @@
-"""‌⁠‍Costs event handlers — vector indexing.
+"""‌⁠‍Costs event handlers - vector indexing.
 
 Subscribes to the existing ``costs.item.*`` and ``costs.items.*`` event
 families published by :class:`~app.modules.costs.service.CostItemService`
@@ -55,7 +55,7 @@ _BULK_DEBOUNCE_SECONDS = 1.5
 async def _index_one_by_id(item_id: uuid.UUID) -> None:
     """‌⁠‍Resolve one CostItem by id and push it to the vector store.
 
-    Opens its own short-lived session — the calling event-bus handler
+    Opens its own short-lived session - the calling event-bus handler
     is decoupled from the request transaction and must not reuse the
     request session (which is closed by the time detached events fire).
     """
@@ -133,7 +133,7 @@ async def _on_bulk_import(event: Event) -> None:
     """Trigger a delta reindex after a CWICR bulk import.
 
     The bulk event payload doesn't carry per-row ids. We use the lock
-    to coalesce overlapping calls — a typical CWICR load fires several
+    to coalesce overlapping calls - a typical CWICR load fires several
     events in quick succession (one per region file) and we'd rather
     do one full pass than four overlapping ones.
     """
@@ -145,7 +145,7 @@ async def _on_bulk_import(event: Event) -> None:
         return
 
     async with _BULK_LOCK:
-        # Light debounce — give the import transaction a moment to
+        # Light debounce - give the import transaction a moment to
         # settle so the rows we're about to read are committed and
         # visible across the connection pool.
         await asyncio.sleep(_BULK_DEBOUNCE_SECONDS)
@@ -193,7 +193,7 @@ def _register_handlers() -> None:
 
     Idempotent: safe to call multiple times when the test suite resets
     the bus and reloads the module. The bus deduplicates by callable
-    identity — re-registering the same function twice would create two
+    identity - re-registering the same function twice would create two
     invocations per event, so we keep registration in one place.
     """
     event_bus.subscribe("costs.item.created", _on_cost_item_created)

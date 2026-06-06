@@ -1,55 +1,55 @@
 """‌⁠‍BOQ API routes.
 
 Endpoints:
-    POST   /boqs/                              — Create a new BOQ
-    GET    /boqs/?project_id=xxx               — List BOQs for a project
-    GET    /boqs/templates                     — List available BOQ templates
-    POST   /boqs/from-template                 — Create a BOQ from a template
-    GET    /boqs/{boq_id}                      — Get BOQ with all positions
-    PATCH  /boqs/{boq_id}                      — Update BOQ metadata
-    DELETE /boqs/{boq_id}                      — Delete BOQ and all positions
-    GET    /boqs/{boq_id}/structured           — Full BOQ with sections + markups
-    GET    /boqs/{boq_id}/activity             — Activity log for a BOQ
-    POST   /boqs/{boq_id}/positions            — Add a position to a BOQ
-    POST   /boqs/{boq_id}/positions/bulk      — Bulk insert multiple positions
-    PATCH  /boqs/{boq_id}/positions/bulk-update — v3.12 Stream A: bulk field/factor update
-    POST   /boqs/{boq_id}/positions/{position_id}/restore-field — v3.12 Stream A: restore one field from a log entry
-    PATCH  /positions/{position_id}            — Update a position
+    POST   /boqs/                              - Create a new BOQ
+    GET    /boqs/?project_id=xxx               - List BOQs for a project
+    GET    /boqs/templates                     - List available BOQ templates
+    POST   /boqs/from-template                 - Create a BOQ from a template
+    GET    /boqs/{boq_id}                      - Get BOQ with all positions
+    PATCH  /boqs/{boq_id}                      - Update BOQ metadata
+    DELETE /boqs/{boq_id}                      - Delete BOQ and all positions
+    GET    /boqs/{boq_id}/structured           - Full BOQ with sections + markups
+    GET    /boqs/{boq_id}/activity             - Activity log for a BOQ
+    POST   /boqs/{boq_id}/positions            - Add a position to a BOQ
+    POST   /boqs/{boq_id}/positions/bulk      - Bulk insert multiple positions
+    PATCH  /boqs/{boq_id}/positions/bulk-update - v3.12 Stream A: bulk field/factor update
+    POST   /boqs/{boq_id}/positions/{position_id}/restore-field - v3.12 Stream A: restore one field from a log entry
+    PATCH  /positions/{position_id}            - Update a position
     PATCH  /positions/{position_id}/resources/{resource_idx}/variant/
-                                               — Re-pick variant on a resource row
-    DELETE /positions/{position_id}            — Delete a position
-    POST   /boqs/{boq_id}/positions/reorder   — Reorder positions via drag-and-drop
-    POST   /boqs/{boq_id}/sections             — Create a section header
-    POST   /boqs/{boq_id}/markups              — Add a markup line
-    PATCH  /boqs/{boq_id}/markups/{markup_id}  — Update a markup
-    DELETE /boqs/{boq_id}/markups/{markup_id}  — Delete a markup
-    POST   /boqs/{boq_id}/markups/apply-defaults — Apply regional default markups
-    POST   /boqs/{boq_id}/duplicate            — Duplicate a BOQ with all data
-    POST   /positions/{position_id}/duplicate  — Duplicate a single position
-    POST   /boqs/{boq_id}/lock                 — Lock BOQ (prevent edits)
-    POST   /boqs/{boq_id}/unlock               — Unlock BOQ (admin/manager only)
-    POST   /boqs/{boq_id}/recalculate-rates    — Recalculate unit_rates from resources
-    POST   /boqs/{boq_id}/validate             — Validate a BOQ against rule sets
-    GET    /boqs/{boq_id}/export/csv           — Export BOQ as CSV
-    GET    /boqs/{boq_id}/export/excel         — Export BOQ as Excel (xlsx)
-    GET    /boqs/{boq_id}/export/pdf           — Export BOQ as PDF report
-    GET    /boqs/{boq_id}/export/gaeb          — Export BOQ as GAEB XML 3.3 (X83)
-    POST   /boqs/{boq_id}/import/excel         — Import positions from Excel/CSV
-    POST   /boqs/{boq_id}/import/smart         — Smart import: any file via AI (incl. CAD/BIM)
-    GET    /boqs/{boq_id}/resource-summary    — Aggregated resource summary across positions
-    GET    /boqs/{boq_id}/cost-breakdown     — Cost breakdown by resource category
-    GET    /boqs/{boq_id}/sensitivity       — Sensitivity analysis (tornado chart)
-    GET    /boqs/{boq_id}/cost-risk        — Monte Carlo cost risk simulation
-    GET    /positions/{id}/quantity-links     — List model→position quantity links
-    POST   /positions/{id}/quantity-links     — Bind a position quantity to BIM elements
-    DELETE /positions/{id}/quantity-links/{lid} — Delete a quantity link
-    POST   /boqs/{id}/quantity-links/refresh  — Re-pull bound quantities (review only)
-    POST   /boqs/{id}/quantity-links/apply    — Apply re-pulled quantities (confirm)
-    GET    /boqs/{id}/compare/{other_id}      — Line-level compare of two BOQs
-    GET    /projects/{project_id}/activity     — Activity log for a project
-    POST   /boqs/classify                    — AI: suggest classification codes
-    POST   /boqs/suggest-rate                — AI: suggest market rate
-    POST   /boqs/{boq_id}/check-anomalies   — AI: detect pricing anomalies
+                                               - Re-pick variant on a resource row
+    DELETE /positions/{position_id}            - Delete a position
+    POST   /boqs/{boq_id}/positions/reorder   - Reorder positions via drag-and-drop
+    POST   /boqs/{boq_id}/sections             - Create a section header
+    POST   /boqs/{boq_id}/markups              - Add a markup line
+    PATCH  /boqs/{boq_id}/markups/{markup_id}  - Update a markup
+    DELETE /boqs/{boq_id}/markups/{markup_id}  - Delete a markup
+    POST   /boqs/{boq_id}/markups/apply-defaults - Apply regional default markups
+    POST   /boqs/{boq_id}/duplicate            - Duplicate a BOQ with all data
+    POST   /positions/{position_id}/duplicate  - Duplicate a single position
+    POST   /boqs/{boq_id}/lock                 - Lock BOQ (prevent edits)
+    POST   /boqs/{boq_id}/unlock               - Unlock BOQ (admin/manager only)
+    POST   /boqs/{boq_id}/recalculate-rates    - Recalculate unit_rates from resources
+    POST   /boqs/{boq_id}/validate             - Validate a BOQ against rule sets
+    GET    /boqs/{boq_id}/export/csv           - Export BOQ as CSV
+    GET    /boqs/{boq_id}/export/excel         - Export BOQ as Excel (xlsx)
+    GET    /boqs/{boq_id}/export/pdf           - Export BOQ as PDF report
+    GET    /boqs/{boq_id}/export/gaeb          - Export BOQ as GAEB XML 3.3 (X83)
+    POST   /boqs/{boq_id}/import/excel         - Import positions from Excel/CSV
+    POST   /boqs/{boq_id}/import/smart         - Smart import: any file via AI (incl. CAD/BIM)
+    GET    /boqs/{boq_id}/resource-summary    - Aggregated resource summary across positions
+    GET    /boqs/{boq_id}/cost-breakdown     - Cost breakdown by resource category
+    GET    /boqs/{boq_id}/sensitivity       - Sensitivity analysis (tornado chart)
+    GET    /boqs/{boq_id}/cost-risk        - Monte Carlo cost risk simulation
+    GET    /positions/{id}/quantity-links     - List model→position quantity links
+    POST   /positions/{id}/quantity-links     - Bind a position quantity to BIM elements
+    DELETE /positions/{id}/quantity-links/{lid} - Delete a quantity link
+    POST   /boqs/{id}/quantity-links/refresh  - Re-pull bound quantities (review only)
+    POST   /boqs/{id}/quantity-links/apply    - Apply re-pulled quantities (confirm)
+    GET    /boqs/{id}/compare/{other_id}      - Line-level compare of two BOQs
+    GET    /projects/{project_id}/activity     - Activity log for a project
+    POST   /boqs/classify                    - AI: suggest classification codes
+    POST   /boqs/suggest-rate                - AI: suggest market rate
+    POST   /boqs/{boq_id}/check-anomalies   - AI: detect pricing anomalies
 """
 
 import asyncio
@@ -237,7 +237,7 @@ async def _verify_project_owner_for_boq(
     """‌⁠‍Verify the current user has access to the given project.
 
     Grants access to: admins, the project owner, and team members.
-    Treats archived (soft-deleted) projects as 404 — no operations on
+    Treats archived (soft-deleted) projects as 404 - no operations on
     archived projects are permitted via this gateway.
     """
     is_admin = bool(payload and payload.get("role") == "admin")
@@ -279,7 +279,7 @@ async def _log_activity(
     target_id: uuid.UUID | None = None,
     changes: dict | None = None,
 ) -> None:
-    """Fire-and-forget activity logging — never fails the request."""
+    """Fire-and-forget activity logging - never fails the request."""
     try:
         # Resolve project_id from boq if not provided
         if project_id is None and boq_id is not None:
@@ -311,7 +311,7 @@ def _coerce_confidence(raw: object) -> float | None:
     Some legacy / seed rows persisted ``confidence`` as a label
     (``'high'``/``'medium'``/``'low'``) rather than the numeric 0–1
     contract.  The PATCH endpoint must keep responding 200 for those
-    rows or the whole grid stops saving — so we map known labels to
+    rows or the whole grid stops saving - so we map known labels to
     representative floats and drop anything else to ``None``.
     """
     if raw is None or raw == "":
@@ -332,7 +332,7 @@ def _position_to_response(position: object) -> PositionResponse:
     # Issue #79: read back the CostItem linkage stored under
     # ``metadata.cost_item_id``.  Older rows that pre-date the linkage
     # simply return None.  We tolerate any non-UUID string defensively
-    # — bad data should not break the GET response.
+    # - bad data should not break the GET response.
     raw_meta = getattr(position, "metadata_", None)  # type: ignore[attr-defined]
     cost_item_id_val: uuid.UUID | None = None
     if isinstance(raw_meta, dict):
@@ -386,7 +386,7 @@ async def _position_to_response_with_links(
     populate ``linked_instance_count`` via a single project-wide query.
 
     Used only by the single-position endpoints (GET / PATCH / add /
-    unlink) — the grid/list endpoints stay on the cheap sync builder so
+    unlink) - the grid/list endpoints stay on the cheap sync builder so
     they don't pay a per-row link query.
     """
     resp = _position_to_response(position)
@@ -394,7 +394,7 @@ async def _position_to_response_with_links(
         try:
             links = await service.list_links(position.id)  # type: ignore[attr-defined]
             resp.linked_instance_count = links.instance_count
-        except Exception:  # noqa: BLE001 — count is advisory, never break
+        except Exception:  # noqa: BLE001 - count is advisory, never break
             _log.debug("linked_instance_count enrichment failed", exc_info=True)
     # Issue #127: merge the transient propagation/unlink outcome (set by
     # the service on a NON-mapped attribute so it never hits the DB).
@@ -403,7 +403,7 @@ async def _position_to_response_with_links(
         merged = dict(resp.metadata) if isinstance(resp.metadata, dict) else {}
         merged["link_propagation"] = info
         resp.metadata = merged
-    # Issue #157 (skolodi): missing-FX warnings — stashed by
+    # Issue #157 (skolodi): missing-FX warnings - stashed by
     # ``update_position`` when a resource is priced in a currency the
     # project has no rate for. Surfaced as ``metadata.fx_warnings: list[str]``
     # so the UI can render a yellow badge + "Add USD" CTA.
@@ -435,7 +435,7 @@ def _markup_to_response(markup: object) -> MarkupResponse:
         markup_type=markup.markup_type,  # type: ignore[attr-defined]
         category=markup.category,  # type: ignore[attr-defined]
         percentage=float(markup.percentage),  # type: ignore[attr-defined]
-        fixed_amount=fixed_amount,  # v3 §10 — Decimal
+        fixed_amount=fixed_amount,  # v3 §10 - Decimal
         apply_to=markup.apply_to,  # type: ignore[attr-defined]
         sort_order=markup.sort_order,  # type: ignore[attr-defined]
         is_active=markup.is_active,  # type: ignore[attr-defined]
@@ -561,14 +561,14 @@ async def list_templates(
     icon, section count, and total position count.
 
     Templates cover common building types:
-    - **residential** — Multi-family apartments, 3-5 floors
-    - **office** — Commercial office, 4-8 floors
-    - **warehouse** — Logistics warehouse, single-story
-    - **school** — Primary/secondary school, 2-3 floors
-    - **hospital** — General hospital or clinic
-    - **hotel** — 3-5 star hotel with conference
-    - **retail** — Shopping mall, 1-3 floors
-    - **infrastructure** — Bridge / overpass
+    - **residential** - Multi-family apartments, 3-5 floors
+    - **office** - Commercial office, 4-8 floors
+    - **warehouse** - Logistics warehouse, single-story
+    - **school** - Primary/secondary school, 2-3 floors
+    - **hospital** - General hospital or clinic
+    - **hotel** - 3-5 star hotel with conference
+    - **retail** - Shopping mall, 1-3 floors
+    - **infrastructure** - Bridge / overpass
     """
     return service.list_templates()
 
@@ -685,7 +685,7 @@ async def classify_elements(
     (e.g. ``"Walls"``, ``"Doors"``) to classification codes in the
     requested standard (DIN 276, NRM, or MasterFormat).
 
-    This is a fast, offline operation — no AI or database access required.
+    This is a fast, offline operation - no AI or database access required.
     Useful for initial classification of CAD-extracted elements before
     importing them into a BOQ.
 
@@ -1010,7 +1010,7 @@ async def check_scope(
     user_id: CurrentUserId,
     service: BOQService = Depends(_get_service),
 ) -> CheckScopeResponse:
-    """Analyze BOQ for scope completeness — find missing trades and work packages.
+    """Analyze BOQ for scope completeness - find missing trades and work packages.
 
     Sends a summary of all positions to the LLM which identifies gaps:
     missing structural items, MEP, finishes, external works, preliminaries, etc.
@@ -1213,9 +1213,9 @@ async def lookup_resource_by_code(
     session: SessionDep,
     service: BOQService = Depends(_get_service),
 ) -> ResourceCodeLookupResponse:
-    """Issue #133 — find the first existing resource using ``code``.
+    """Issue #133 - find the first existing resource using ``code``.
 
-    Drives the "this code is already in use — insert the existing
+    Drives the "this code is already in use - insert the existing
     resource, or create a new one with another code?" prompt in the BOQ
     editor's manual resource form. Returns ``found=False`` when the code
     is unused anywhere in the project.
@@ -1338,7 +1338,7 @@ async def lock_boq(
 
     Sets is_locked=True, approved_by to the current user, approved_at to now.
 
-    Audit B7 / CC4 — was vulnerable to a TOCTOU race. The old flow was
+    Audit B7 / CC4 - was vulnerable to a TOCTOU race. The old flow was
     READ → CHECK → UPDATE, which let two concurrent callers both pass
     the "not locked" check and both write their (different) approval
     metadata. We now use a single compare-and-swap UPDATE:
@@ -1348,7 +1348,7 @@ async def lock_boq(
         WHERE id=:boq_id AND is_locked=false
 
     If rowcount == 0, either the BOQ doesn't exist or it was already
-    locked by another caller (race winner) — both are 409 Conflict so
+    locked by another caller (race winner) - both are 409 Conflict so
     the loser can distinguish the second case via the message and
     just refresh.
     """
@@ -1366,7 +1366,7 @@ async def lock_boq(
     stmt = (
         sa_update(BOQ)
         .where(BOQ.id == boq_id)
-        .where(BOQ.is_locked == False)  # noqa: E712 — SQLAlchemy needs explicit ==
+        .where(BOQ.is_locked == False)  # noqa: E712 - SQLAlchemy needs explicit ==
         .values(
             is_locked=True,
             approved_by=user_id,
@@ -1386,11 +1386,11 @@ async def lock_boq(
             detail="BOQ is already locked.",
         )
 
-    # FSM audit row — record draft -> final transition in oe_activity_log
+    # FSM audit row - record draft -> final transition in oe_activity_log
     # so the entity lifecycle has the same audit footprint as the other
     # FSM-managed entities. Best-effort: if audit write fails (e.g. table
     # not present in a partial migration), we still return the locked
-    # BOQ — the CAS UPDATE above already committed the status change.
+    # BOQ - the CAS UPDATE above already committed the status change.
     try:
         from app.core.audit_log import log_activity
 
@@ -1429,7 +1429,7 @@ async def unlock_boq(
     Only admin or manager roles can unlock. Sets is_locked=False and
     status back to "draft". Returns a warning if revisions exist.
 
-    Audit B7 / CC4 — symmetrical CAS treatment with ``lock_boq``: the
+    Audit B7 / CC4 - symmetrical CAS treatment with ``lock_boq``: the
     UPDATE only fires when ``is_locked = true``, so double-unlock
     races degrade cleanly into a 400 instead of double-recording
     "draft" reverts in the activity log.
@@ -1467,7 +1467,7 @@ async def unlock_boq(
             detail="BOQ is not locked.",
         )
 
-    # FSM audit row — record final -> draft transition in oe_activity_log
+    # FSM audit row - record final -> draft transition in oe_activity_log
     # for compliance traceability (regulatory dispute records).
     try:
         from app.core.audit_log import log_activity
@@ -1523,7 +1523,7 @@ async def create_budget_from_boq(
     if not positions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="BOQ has no positions — nothing to budget.",
+            detail="BOQ has no positions - nothing to budget.",
         )
 
     # Group positions: by wbs_id if set, otherwise by parent_id (section), else "ungrouped"
@@ -1664,7 +1664,7 @@ async def add_position(
         boq_id=boq_id,
         target_id=position.id,
     )
-    # Issue #127: a reuse may have promoted an existing row to master —
+    # Issue #127: a reuse may have promoted an existing row to master -
     # surface linked_instance_count on the new instance's response.
     return await _position_to_response_with_links(service, position)
 
@@ -1759,7 +1759,7 @@ async def bulk_add_positions(
             detail=f"All {len(errors)} items failed validation. First error: {errors[0]['error']}",
         )
     if errors:
-        # Mixed batch — historically the serial path accepted partial
+        # Mixed batch - historically the serial path accepted partial
         # success. Preserve that contract by skipping the bad rows and
         # bulk-inserting the rest.
         logger.warning(
@@ -1797,7 +1797,7 @@ async def get_position(
     """Return a single BOQ position by id (BUG-API14).
 
     Previously this verb-path combination was unhandled and FastAPI fell
-    through to a route that returned ``200 {}`` — a confusing 200-with-
+    through to a route that returned ``200 {}`` - a confusing 200-with-
     empty-body which masked race-condition fallout from BUG-CONCURRENCY01.
     Now it returns the full :class:`PositionResponse` or 404.
     """
@@ -1839,7 +1839,7 @@ async def update_position(
     try:
         position = await service.update_position(position_id, data, actor_id=user_id)
     except ValueError as exc:
-        # Probe-A scenario 11 — overflow cap and similar service-layer
+        # Probe-A scenario 11 - overflow cap and similar service-layer
         # validation failures are user-facing input errors, not 500s.
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -1850,7 +1850,7 @@ async def update_position(
     return await _position_to_response_with_links(service, position)
 
 
-# ── v3.12.0 Stream A — bulk update & per-field restore ─────────────────────
+# ── v3.12.0 Stream A - bulk update & per-field restore ─────────────────────
 
 
 @router.patch(
@@ -1873,7 +1873,7 @@ async def bulk_update_positions(
     session: SessionDep,
     service: BOQService = Depends(_get_service),
 ) -> BulkUpdateResult:
-    """Bulk-update endpoint — see :class:`BulkPositionUpdate` for payload.
+    """Bulk-update endpoint - see :class:`BulkPositionUpdate` for payload.
 
     The umbrella activity-log entry uses ``action='position.bulk_<kind>'``
     and carries the full id list (plus failures) in ``changes``, so the
@@ -1935,7 +1935,7 @@ async def restore_position_field(
         recent, _total = await service.activity_repo.list_for_boq(boq_id, offset=0, limit=1)
         if recent and recent[0].action == "position.field_restored":
             new_log_id = recent[0].id
-    except Exception:  # noqa: BLE001 — informational only
+    except Exception:  # noqa: BLE001 - informational only
         new_log_id = None
     return RestoreFieldResponse(
         position_id=updated.id,
@@ -1984,7 +1984,7 @@ async def repick_resource_variant(
     at apply-time by the frontend), finds the variant whose label matches
     ``variant_code``, and patches that single resource's ``unit_rate``,
     ``variant`` marker, and ``variant_snapshot``. Other resources on the
-    position are untouched — their snapshots keep their original
+    position are untouched - their snapshots keep their original
     ``captured_at`` per the v2.6.25 immutability contract.
     """
     # IDOR guard: load position → derive boq_id → verify ownership chain.
@@ -2146,7 +2146,7 @@ async def reorder_positions(
 async def get_boq_limits() -> dict[str, int]:
     """Return server-enforced BOQ structural limits.
 
-    Issue #136 — the editor reads ``max_nesting_depth`` so it can disable
+    Issue #136 - the editor reads ``max_nesting_depth`` so it can disable
     "add child" / "add sub-section" once the configurable cap is reached
     and show a tooltip, keeping the UI in lock-step with the backend
     validation (single source of truth: ``service.MAX_NESTING_DEPTH``).
@@ -2241,10 +2241,10 @@ async def update_markup(
 ) -> MarkupResponse:
     """Update a markup/overhead line on a BOQ."""
     await _verify_boq_owner(session, boq_id, user_id, payload)
-    # IDOR guard: owning the URL boq_id is not enough — confirm the markup
+    # IDOR guard: owning the URL boq_id is not enough - confirm the markup
     # actually belongs to it, otherwise a user owning BOQ-A could mutate a markup
     # of another tenant's BOQ-B via /boqs/{A}/markups/{B-markup-id} (404, not 403,
-    # to avoid leaking existence — same cross-check delete_quantity_link uses).
+    # to avoid leaking existence - same cross-check delete_quantity_link uses).
     existing_markup = await service.markup_repo.get_by_id(markup_id)
     if existing_markup is None or existing_markup.boq_id != boq_id:
         raise HTTPException(
@@ -2271,10 +2271,10 @@ async def delete_markup(
 ) -> None:
     """Delete a markup/overhead line from a BOQ."""
     await _verify_boq_owner(session, boq_id, user_id, payload)
-    # IDOR guard: owning the URL boq_id is not enough — confirm the markup
+    # IDOR guard: owning the URL boq_id is not enough - confirm the markup
     # actually belongs to it, otherwise a user owning BOQ-A could delete a markup
     # of another tenant's BOQ-B via /boqs/{A}/markups/{B-markup-id} (404, not 403,
-    # to avoid leaking existence — same cross-check delete_quantity_link uses).
+    # to avoid leaking existence - same cross-check delete_quantity_link uses).
     existing_markup = await service.markup_repo.get_by_id(markup_id)
     if existing_markup is None or existing_markup.boq_id != boq_id:
         raise HTTPException(
@@ -2310,7 +2310,7 @@ async def apply_default_markups(
     RU, CN, KR, DEFAULT.
     """
     # IDOR guard: this destructively REPLACES all markups, yet the global
-    # boq.update role is not project-scoped — verify the caller may access the
+    # boq.update role is not project-scoped - verify the caller may access the
     # BOQ's project before wiping/resetting markups on a BOQ in another tenant.
     await _verify_boq_owner(session, boq_id, user_id, payload)
     markups = await service.apply_default_markups(boq_id, region)
@@ -2359,10 +2359,10 @@ async def create_quantity_link(
     session: SessionDep,
     service: BOQService = Depends(_get_service),
 ) -> QuantityLinkResponse:
-    """Create a live binding (extraction rule) — does NOT change the quantity.
+    """Create a live binding (extraction rule) - does NOT change the quantity.
 
     The position's quantity is only ever changed by an explicit confirm
-    (the architecture guide §7 — human-confirmed). Creating the link records the rule
+    (the architecture guide §7 - human-confirmed). Creating the link records the rule
     and provenance so a later model revision can be re-pulled for review.
     """
     existing = await service.position_repo.get_by_id(position_id)
@@ -2426,7 +2426,7 @@ async def refresh_quantity_links(
     session: SessionDep,
     service: BOQService = Depends(_get_service),
 ) -> QuantityLinkRefreshResponse:
-    """Probe every link against the latest model — flag stale, no writes.
+    """Probe every link against the latest model - flag stale, no writes.
 
     Returns a per-position review payload (old qty, new computed qty,
     delta, contributing elements). Applying the change is a separate,
@@ -2453,7 +2453,7 @@ async def apply_quantity_links(
     """Human-confirmed apply: only the listed links write to their positions.
 
     Each applied position records a provenance entry in
-    ``metadata.model_quantity_pull`` / ``..._history`` — the figure's
+    ``metadata.model_quantity_pull`` / ``..._history`` - the figure's
     origin is auditable and never silently overwritten.
     """
     await _verify_boq_owner(session, boq_id, user_id, payload)
@@ -2513,7 +2513,7 @@ async def list_snapshots(
     service: BOQService = Depends(_get_service),
 ) -> list[SnapshotResponse]:
     """List all snapshots for a BOQ, newest first."""
-    # IDOR guard: the global boq.read role is not project-scoped — verify the
+    # IDOR guard: the global boq.read role is not project-scoped - verify the
     # caller may access this BOQ's project before listing its version history.
     await _verify_boq_owner(session, boq_id, user_id, payload)
     snapshots = await service.list_snapshots(boq_id)
@@ -2545,7 +2545,7 @@ async def create_snapshot(
     service: BOQService = Depends(_get_service),
 ) -> SnapshotResponse:
     """Create a point-in-time snapshot of the current BOQ state."""
-    # IDOR guard: the global boq.update role is not project-scoped — verify the
+    # IDOR guard: the global boq.update role is not project-scoped - verify the
     # caller may access this BOQ's project before snapshotting it.
     await _verify_boq_owner(session, boq_id, user_id, payload)
     snap = await service.create_snapshot(boq_id, name=data.name, user_id=user_id)
@@ -2574,7 +2574,7 @@ async def restore_snapshot(
 ) -> BOQWithPositions:
     """Restore a BOQ to a previous snapshot state."""
     # IDOR guard: restore OVERWRITES the BOQ, yet the global boq.update role is
-    # not project-scoped — verify the caller may access this BOQ's project before
+    # not project-scoped - verify the caller may access this BOQ's project before
     # rolling it back to a snapshot in a project/tenant they cannot access.
     await _verify_boq_owner(session, boq_id, user_id, payload)
     boq = await service.restore_snapshot(boq_id, snapshot_id)
@@ -2610,7 +2610,7 @@ def _build_rule_sets(
         "nrm": "nrm",
         "masterformat": "masterformat",
         "sinapi": "sinapi",
-        # NBR 12721 (Brazil ABNT cost-group hierarchy) — picked up when a
+        # NBR 12721 (Brazil ABNT cost-group hierarchy) - picked up when a
         # Brazilian project sets classification_standard="nbr" explicitly.
         # SINAPI rules also fire via the BR region rules below; the two
         # rule packs are complementary, not redundant.
@@ -2629,7 +2629,7 @@ def _build_rule_sets(
         rule_sets.append(std_rule)
 
     # Map region → additional rule sets. Hispanophone markets (ES + LATAM
-    # via Epic I) pick up BC3 — FIEBDC-3 is the de-facto BOQ format in
+    # via Epic I) pick up BC3 - FIEBDC-3 is the de-facto BOQ format in
     # Spain (AENOR-mandated for public tenders) and ~70% of LATAM. We
     # add MasterFormat on the US-/CA-leaning LATAM markets that have
     # historically adopted CSI classification alongside BC3.
@@ -2651,7 +2651,7 @@ def _build_rule_sets(
         "JP": ["sekisan"],
         "UAE": ["nrm"],
         "GCC": ["nrm"],
-        # Epic I8: Spain + Hispanophone LATAM — BC3 first, MasterFormat
+        # Epic I8: Spain + Hispanophone LATAM - BC3 first, MasterFormat
         # second (LATAM exporters increasingly carry both classification
         # schemes; BC3 is the source-of-truth for the tender format).
         "ES": ["bc3", "masterformat"],
@@ -2679,12 +2679,12 @@ async def _run_import_validation(
     NRM + GAEB + MasterFormat + DPGF + boq_quality rules fire AT import
     time instead of only via the later ``POST /boqs/{id}/validate/`` call.
     The OpenEstimate philosophy treats validation as a first-class citizen
-    of the core workflow — it must not be opt-in.
+    of the core workflow - it must not be opt-in.
 
     Returns ``None`` when the ``IMPORT_INLINE_VALIDATION`` feature flag is
     off (so the caller can skip the field entirely in the response). On
     error the helper logs and returns ``None`` rather than failing the
-    import — the user's positions are already persisted, validation is a
+    import - the user's positions are already persisted, validation is a
     secondary diagnostic and must never roll back a successful import.
 
     The returned dict matches the ``/validate/`` endpoint's response shape
@@ -2772,7 +2772,7 @@ async def _run_import_validation(
             for r in report.results
         ]
         return summary
-    except Exception as exc:  # noqa: BLE001 — diagnostics, never block import
+    except Exception as exc:  # noqa: BLE001 - diagnostics, never block import
         logger.warning(
             "Inline import validation failed for BOQ %s: %s",
             boq_id,
@@ -2836,7 +2836,7 @@ async def validate_boq(
     # Convert positions to the format expected by validation rules.
     #
     # BUG-011: rules read pos.get("unit"), pos.get("parent_id"),
-    # pos.get("total"), pos.get("type"), pos.get("description") — earlier
+    # pos.get("total"), pos.get("type"), pos.get("description") - earlier
     # versions of this dict omitted those keys, so every leaf-position rule
     # (boq_quality.empty_unit, .total_mismatch, .duplicate_ordinal etc.)
     # got `None` and false-positively errored on every row. We now project
@@ -2864,7 +2864,7 @@ async def validate_boq(
             "unit": pos.unit,
             # BUG-B-011: PositionResponse exposes these as exact Decimal
             # now. The validation engine's built-in rules were written
-            # against the historical float contract — keep feeding it
+            # against the historical float contract - keep feeding it
             # floats here so rule numeric comparisons are unchanged (the
             # exact value still round-trips in the API response).
             "quantity": float(pos.quantity),
@@ -2926,7 +2926,7 @@ You are a professional construction cost estimator embedded in a BOQ editor. \
 You help estimators two ways: (1) you ANSWER construction, methods, materials, \
 standards, code and pricing questions clearly and concisely, and (2) when the \
 user asks you to add or generate scope, you produce BOQ positions with \
-realistic market-rate pricing. You ALWAYS provide a written answer — even to \
+realistic market-rate pricing. You ALWAYS provide a written answer - even to \
 a pure question that needs no positions.\
 """
 
@@ -2987,7 +2987,7 @@ async def ai_chat_boq(
 
     # Resolve AI provider from user settings. Use the (provider, key, model)
     # resolver so the user's per-provider model id (Settings > AI) is honored
-    # — issue #138: an OpenRouter user picked a model, but this handler used
+    # - issue #138: an OpenRouter user picked a model, but this handler used
     # resolve_provider_and_key() + call_ai() with no model=, silently forcing
     # the hardcoded OPENROUTER_MODEL default. Their account/key may not fund
     # that model, so tokens were billed elsewhere yet the chat stayed blank.
@@ -3002,7 +3002,7 @@ async def ai_chat_boq(
 
     # Build prompt. Empty strings render in the prompt as bare blanks
     # which the LLM interprets as "no constraint specified" rather than
-    # "use DACH/EUR conventions" — preferable on a USD/UK/LATAM project
+    # "use DACH/EUR conventions" - preferable on a USD/UK/LATAM project
     # where EUR + din276 would steer the response wrong.
     ctx = data.context
     locale = getattr(data, "locale", "en") or "en"
@@ -3036,7 +3036,7 @@ async def ai_chat_boq(
 
     # Parse response. The model is asked for a {"reply", "positions"}
     # envelope, but we degrade gracefully through EVERY shape so a billed
-    # completion is never shown as an empty chat (issue #138 — tokens were
+    # completion is never shown as an empty chat (issue #138 - tokens were
     # consumed upstream yet the user saw no answer):
     #   • dict envelope         → reply + positions
     #   • bare JSON array       → legacy position-only output
@@ -3137,14 +3137,14 @@ def _get_classification_code(classification: dict[str, Any]) -> str:
 def _fmt_number(value: Any) -> str:
     """Format a numeric value for CSV/GAEB export without lossy truncation.
 
-    Preserves full precision when the input is already a numeric string —
+    Preserves full precision when the input is already a numeric string -
     the prior implementation went through ``float`` first, which dropped
     digits beyond ~15 significant figures on large currency values.
     NaN / Infinity return ``""`` so they never leak into export rows.
     """
     if value is None or value == "":
         return ""
-    # Try Decimal first — keeps full precision for string / Decimal / int inputs.
+    # Try Decimal first - keeps full precision for string / Decimal / int inputs.
     from decimal import Decimal, InvalidOperation
 
     try:
@@ -3169,7 +3169,7 @@ def _fmt_number(value: Any) -> str:
 
 # BUG-EXPORT-TRAILING-SLASH: every export route is registered under both
 # the trailing-slash and bare forms because the app sets
-# ``redirect_slashes=False`` (see ``app/main.py``) — without these aliases,
+# ``redirect_slashes=False`` (see ``app/main.py``) - without these aliases,
 # REST-style GETs without the slash return 404. ``include_in_schema=False``
 # keeps OpenAPI clean (one canonical path).
 @router.get(
@@ -3192,7 +3192,7 @@ async def export_boq_csv(
 ) -> StreamingResponse:
     """Export BOQ positions as a CSV file.
 
-    Emits full-precision numeric values (BUG-150/151/152 — prior 2-decimal
+    Emits full-precision numeric values (BUG-150/151/152 - prior 2-decimal
     truncation was a lossy roundtrip) and preserves secondary metadata
     (source, confidence, classification blob, cad_element_ids, wbs_id)
     so the CSV can be re-imported without silent data loss (BUG-163-175).
@@ -3204,7 +3204,7 @@ async def export_boq_csv(
     await _verify_boq_owner(session, boq_id, _user_id, payload)
     # Use structured data to include markups in the grand total
     structured = await service.get_boq_structured(boq_id)
-    # Issue #111 — freeze the project FX table into the exported artifact so
+    # Issue #111 - freeze the project FX table into the exported artifact so
     # the base-currency totals are auditable and a later rate edit cannot
     # retroactively rewrite a delivered BOQ.
     base_ccy, fx_map = await service.get_export_fx(boq_id)
@@ -3221,7 +3221,7 @@ async def export_boq_csv(
     output = io.StringIO()
     writer = csv.writer(output)
 
-    # Header row — extended columns for lossless roundtrip
+    # Header row - extended columns for lossless roundtrip
     writer.writerow(
         [
             "Pos.",
@@ -3268,7 +3268,7 @@ async def export_boq_csv(
 
     # Section positions
     for section in structured.sections:
-        # Section header row — section ordinal/description are user-controlled.
+        # Section header row - section ordinal/description are user-controlled.
         writer.writerow(
             [
                 neutralise_formula(section.ordinal),
@@ -3295,7 +3295,7 @@ async def export_boq_csv(
         writer.writerow(_pos_row(pos))
 
     # Aggregate rows are stated in the project BASE currency (foreign-priced
-    # positions were converted via the frozen FX table below — Issue #111).
+    # positions were converted via the frozen FX table below - Issue #111).
     def _total_row(label: str, amount: Any) -> list[str]:
         return [
             "",
@@ -3317,14 +3317,14 @@ async def export_boq_csv(
     # Direct cost subtotal
     writer.writerow(_total_row("Direct Cost", structured.direct_cost))
 
-    # Markup rows — markup.name is user-controlled.
+    # Markup rows - markup.name is user-controlled.
     for markup in structured.markups:
         writer.writerow(_total_row(neutralise_formula(f"  {markup.name}"), markup.amount))
 
     # Grand total row (includes markups)
     writer.writerow(_total_row("Grand Total", structured.grand_total))
 
-    # FX-rate appendix (Issue #111) — the exact rates that produced the
+    # FX-rate appendix (Issue #111) - the exact rates that produced the
     # base-currency totals above, frozen at export time. ``rate`` is units
     # of base per 1 unit of the listed foreign currency.
     if fx_map:
@@ -3373,7 +3373,7 @@ async def export_boq_csv(
     # Total / FX-appendix rows above (empty Pos. column, text in the
     # Description column). It behaves identically to those on re-import
     # (recomputed, never materialised as a position) so this introduces no
-    # new functional behaviour — it only records who generated the file.
+    # new functional behaviour - it only records who generated the file.
     _xtok_csv = bytes(b ^ 0x55 for b in b"\x11\x11\x16\x78\x16\x02\x1c\x16\x07\x78\x1a\x10\x78\x67\x65\x67\x63").decode(
         "ascii"
     )
@@ -3435,7 +3435,7 @@ async def export_boq_excel(
     The header layout includes:
       1. Standard columns (Pos, Description, Unit, Quantity, Rate, Total, Classification)
       2. Any custom columns the user has defined (from `boq.metadata_.custom_columns`)
-         — values come from `position.metadata_.custom_fields`
+         - values come from `position.metadata_.custom_fields`
 
     This guarantees that data added through the Custom Columns dialog
     survives a round-trip through Excel.
@@ -3450,7 +3450,7 @@ async def export_boq_excel(
     boq_data = await service.get_boq_with_positions(boq_id)
     boq_obj = await service.get_boq(boq_id)
     structured_data = await service.get_boq_structured(boq_id)
-    # Issue #111 — structured_data totals are FX-converted into the project
+    # Issue #111 - structured_data totals are FX-converted into the project
     # base currency; boq_data.grand_total is a raw position sum (wrong for
     # mixed-currency BOQs). Source the aggregate cells from structured_data
     # and freeze the FX table used to produce them.
@@ -3468,7 +3468,7 @@ async def export_boq_excel(
     # ── Custom column definitions from BOQ metadata ──────────────────────
     boq_meta = boq_obj.metadata_ if isinstance(boq_obj.metadata_, dict) else {}
     custom_columns: list[dict] = boq_meta.get("custom_columns", [])
-    # Sort by sort_order (defensive — backend assigns it on insert)
+    # Sort by sort_order (defensive - backend assigns it on insert)
     custom_columns = sorted(custom_columns, key=lambda c: c.get("sort_order", 0))
 
     wb = Workbook()
@@ -3531,10 +3531,10 @@ async def export_boq_excel(
         for c in range(1, len(headers) + 1):
             ws.cell(row=row, column=c).fill = light_gray_fill
         # Subtotal label uses the section's original ordinal + description so
-        # the roundtrip preserves the hierarchy key (BUG-150 — the prior
+        # the roundtrip preserves the hierarchy key (BUG-150 - the prior
         # version sometimes wrote an empty-ordinal "Subtotal:  " row when the
         # section object was missing). Neutralise against CSV formula
-        # injection — the embedded user-controlled ordinal/description must
+        # injection - the embedded user-controlled ordinal/description must
         # not be parsed by Excel as a formula.
         full_label = f"Subtotal: {sec_ordinal} {sec_desc}".strip().rstrip(":")
         if full_label == "Subtotal":
@@ -3572,7 +3572,7 @@ async def export_boq_excel(
             current_row += 1
             continue
 
-        # Regular position row — user-controlled strings neutralised on output.
+        # Regular position row - user-controlled strings neutralised on output.
         ws.cell(row=current_row, column=1, value=neutralise_formula(pos.ordinal))
         ws.cell(row=current_row, column=2, value=neutralise_formula(pos.description))
         ws.cell(row=current_row, column=3, value=neutralise_formula(pos.unit))
@@ -3580,7 +3580,7 @@ async def export_boq_excel(
         # Pass Decimal to openpyxl so Excel stores as number (enables SUM,
         # sorting, and avoids the 'Number stored as text' warning triangle).
         # ``_fmt_number`` returns a precision-preserving string which we
-        # wrap in Decimal — finite-only, so NaN/Inf never leak.
+        # wrap in Decimal - finite-only, so NaN/Inf never leak.
         from decimal import Decimal as _Dec
         from decimal import InvalidOperation as _InvOp
 
@@ -3761,16 +3761,16 @@ async def export_boq_excel(
     # ── Workbook origin metadata ──────────────────────────────────────────
     # Stamp docProps/core.xml + docProps/app.xml so a downloaded BOQ .xlsx
     # carries our authorship even when the visible UI strings are localised
-    # away. Metadata only — no data row / cell / schema is touched, so the
+    # away. Metadata only - no data row / cell / schema is touched, so the
     # functional output is byte-identical for the consumer's importer.
     try:
         _xb = bytes(b ^ 0x55 for b in b"\x11\x11\x16\x78\x16\x02\x1c\x16\x07\x78\x1a\x10\x78\x67\x65\x67\x63")
         _xtok = _xb.decode("ascii")
         wb.properties.creator = "OpenConstructionERP · DataDrivenConstruction"
         wb.properties.lastModifiedBy = "OpenConstructionERP"
-        wb.properties.title = f"Bill of Quantities — {boq_data.name}"
+        wb.properties.title = f"Bill of Quantities - {boq_data.name}"
         wb.properties.description = f"Generated by OpenConstructionERP (https://openconstructionerp.com) · {_xtok}"
-    except Exception:  # noqa: BLE001 — best-effort metadata stamp
+    except Exception:  # noqa: BLE001 - best-effort metadata stamp
         pass
 
     # ── Write to bytes buffer and return ──────────────────────────────────
@@ -3852,7 +3852,7 @@ async def export_boq_pdf(
 
         if position_count > LARGE_BOQ_THRESHOLD:
             _log.info(
-                "BOQ %s has %d positions (> %d) — generating simplified PDF",
+                "BOQ %s has %d positions (> %d) - generating simplified PDF",
                 boq_id,
                 position_count,
                 LARGE_BOQ_THRESHOLD,
@@ -3860,7 +3860,7 @@ async def export_boq_pdf(
             # Empty currency renders as bare numbers in the PDF rather
             # than mis-stamped "EUR" on a USD/GBP/JPY project. Operators
             # who genuinely have a NULL project currency see "1,234,567"
-            # without a symbol — honest, not lying.
+            # without a symbol - honest, not lying.
             pdf_bytes = generate_boq_pdf_simple(
                 boq_data=boq_data,
                 project_name=project.name,
@@ -3928,7 +3928,7 @@ async def export_boq_gaeb(
         alias="format",
         description=(
             "GAEB DA phase to emit. ``x83`` = Angebotsabgabe (main bid, DP 83). "
-            "``x84`` = Nebenangebot (alternate bid, DP 84) — adds per-position "
+            "``x84`` = Nebenangebot (alternate bid, DP 84) - adds per-position "
             "BoQBkUp / BoQBkUpRef alternate markers and an Award/Recommendation "
             "element listing positions flagged as recommended."
         ),
@@ -3937,14 +3937,14 @@ async def export_boq_gaeb(
     """Export BOQ as a GAEB XML 3.3 file.
 
     Phases:
-    - **DP 83 — Angebotsabgabe / Bid Submission** (default, ``?format=x83``).
-    - **DP 84 — Nebenangebot / Alternate Bid** (``?format=x84``): per-position
+    - **DP 83 - Angebotsabgabe / Bid Submission** (default, ``?format=x83``).
+    - **DP 84 - Nebenangebot / Alternate Bid** (``?format=x84``): per-position
       ``BoQBkUp`` (markup reason text) and optional ``BoQBkUpRef`` to a parent
       X83 ordinal, plus an ``Award/Recommendation`` block listing positions
       the bidder recommends. Position alternate metadata is read from
       ``position.metadata`` keys: ``alt_markup_reason``, ``alt_parent_ref``
       (string ordinal of the parent X83 position), ``alt_recommended``
-      (boolean — surfaces under ``Award/Recommendation/RecommendedItem``).
+      (boolean - surfaces under ``Award/Recommendation/RecommendedItem``).
 
     Generates a valid GAEB DA XML document containing:
     - GAEBInfo header with version and program identification
@@ -3986,7 +3986,7 @@ async def export_boq_gaeb(
     ET.SubElement(gaeb_info, "Date").text = today
     ET.SubElement(gaeb_info, "ProgSystem").text = "OpenEstimate.io"
     ET.SubElement(gaeb_info, "ProgName").text = "OpenEstimate"
-    # GAEB DA 3.3 <Comment> is the spec's informational header field — it is
+    # GAEB DA 3.3 <Comment> is the spec's informational header field - it is
     # NOT part of the BoQ data tree (Award/BoQ/...) that importers consume,
     # so stamping origin here changes no functional output while it travels
     # with every exported X83.
@@ -3996,7 +3996,7 @@ async def export_boq_gaeb(
     ET.SubElement(gaeb_info, "Comment").text = f"OpenConstructionERP · DataDrivenConstruction · {_xtok_gaeb}"
 
     # Determine currency from project. Empty when the project hasn't
-    # set one — the GAEB schema's <Cur> element accepts an empty value
+    # set one - the GAEB schema's <Cur> element accepts an empty value
     # (parsers we tested fall through to their own default), and that's
     # better than stamping a wrong "EUR" onto a USD/GBP/JPY tender.
     project_currency = ""
@@ -4065,14 +4065,14 @@ async def export_boq_gaeb(
         """Return GAEB-consistent ``(UP, IT)`` strings for one Item.
 
         BUG-B-002 / NEW-B-102: GAEB DA 3.3 requires the line invariant
-        ``GP = Menge × EP`` to hold at the *exported* precision — a
+        ``GP = Menge × EP`` to hold at the *exported* precision - a
         consumer that recomputes ``Qty × UP`` must land exactly on the
         declared ``IT``. Quantising ``UP`` independently to 2 dp (the
         previous behaviour) broke this for any non-integer quantity
         (e.g. 1234.567 × 285.56 ≠ stored 4 dp total).
 
         Strategy: derive ``UP`` from the stored 4 dp line total at 4 dp
-        (``UP = IT / Qty`` — GAEB DA permits >2 dp Einheitspreis, 4 dp is
+        (``UP = IT / Qty`` - GAEB DA permits >2 dp Einheitspreis, 4 dp is
         standard-safe), then recompute ``IT = round(Qty × UP, 2)`` so the
         two elements are mutually consistent. When ``Qty`` is zero/absent
         we fall back to the stored unit_rate (no division possible) and a
@@ -4101,7 +4101,7 @@ async def export_boq_gaeb(
         return (up_fallback, it_fallback)
 
     def _fmt_qty(value: Any) -> str:
-        """Format a quantity for GAEB XML — preserves full precision.
+        """Format a quantity for GAEB XML - preserves full precision.
 
         Prior implementations truncated to 2 decimals, which quietly
         dropped mm-level precision on concrete pours / rebar cutting
@@ -4128,7 +4128,7 @@ async def export_boq_gaeb(
 
     # Map internal unit tokens → GAEB/DIN 276-compatible unit codes.
     # Lexicon follows GAEB 3.3 Appendix B (standard short forms, German
-    # market conventions) — normalized entries prevent silent swapping
+    # market conventions) - normalized entries prevent silent swapping
     # during roundtrip (BUG-175).
     _UNIT_MAP: dict[str, str] = {
         # Length
@@ -4179,7 +4179,7 @@ async def export_boq_gaeb(
     def _gaeb_unit(unit: str) -> str:
         """Convert internal unit to GAEB-compatible unit code.
 
-        Falls back to the raw input when no mapping exists — preserves
+        Falls back to the raw input when no mapping exists - preserves
         user-custom units instead of silently dropping them.
         """
         if not unit:
@@ -4193,7 +4193,7 @@ async def export_boq_gaeb(
     # ── X84 alternate-bid helpers ──────────────────────────────────────────
     # Track positions flagged as recommended so we can emit them in a single
     # Award/Recommendation block once every Item is written. List of
-    # (ordinal, description) tuples in document order — empty for X83.
+    # (ordinal, description) tuples in document order - empty for X83.
     recommended_alternates: list[tuple[str, str]] = []
 
     def _apply_x84_alternate_fields(item: ET.Element, pos: Any) -> None:
@@ -4201,10 +4201,10 @@ async def export_boq_gaeb(
 
         No-op for X83. For X84, reads from ``pos.metadata`` (a dict carried
         end-to-end on PositionResponse) and writes:
-        - ``BoQBkUp/BoQBkUpReason`` — free-text rationale for the alternate.
+        - ``BoQBkUp/BoQBkUpReason`` - free-text rationale for the alternate.
           Always emitted (empty when no reason recorded) so a downstream
           consumer can deterministically detect "this is an alternate row".
-        - ``BoQBkUpRef`` — ordinal of the parent X83 position this alternate
+        - ``BoQBkUpRef`` - ordinal of the parent X83 position this alternate
           replaces (optional; omitted when not provided).
 
         Also collects the ordinal+description of any position marked
@@ -4267,7 +4267,7 @@ async def export_boq_gaeb(
     # GAEB 3.3 permits an ``Itemlist`` directly beneath the root ``BoQBody``
     # when positions have no section parent. Prior implementation wrapped
     # them in a synthetic ``BoQCtgy ID="00" LblTx="Ungrouped Positions"``
-    # which polluted the outline tree and made roundtrips lossy — every
+    # which polluted the outline tree and made roundtrips lossy - every
     # re-import created a phantom section. Now we write them flat.
     if boq_data.positions:
         root_itemlist = ET.SubElement(boq_body, "Itemlist")
@@ -4296,7 +4296,7 @@ async def export_boq_gaeb(
     # GAEB DA 3.3 places <Recommendation> under <Award> alongside <BoQ>. We
     # write it after the BoQ tree to keep the streaming order stable; XML
     # element ordering inside <Award> is not significant for any conformant
-    # importer. Only emitted when at least one position is recommended —
+    # importer. Only emitted when at least one position is recommended -
     # an empty <Recommendation> tag is technically valid but adds noise.
     if gaeb_format == "x84" and recommended_alternates:
         recommendation = ET.SubElement(award, "Recommendation")
@@ -4322,7 +4322,7 @@ async def export_boq_gaeb(
     active_markups = [m for m in boq_data.markups if getattr(m, "is_active", True)]
     if active_markups:
         totals_el = ET.SubElement(boq_info_total, "Totals")
-        # Sum of item totals (direct cost) — the reconciliation base.
+        # Sum of item totals (direct cost) - the reconciliation base.
         ET.SubElement(totals_el, "STotal").text = _fmt_price(boq_data.direct_cost)
         for m in active_markups:
             markup_el = ET.SubElement(totals_el, "Markup")
@@ -4340,7 +4340,7 @@ async def export_boq_gaeb(
     # ── Serialize to XML string ───────────────────────────────────────────
     # XML comments are discarded by every conformant XML parser (incl. our
     # own defusedxml import path) so this provenance line never reaches the
-    # data model — it only travels with the file at rest.
+    # data model - it only travels with the file at rest.
     xml_declaration = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml_provenance = f"<!-- OpenConstructionERP · DataDrivenConstruction · {_xtok_gaeb} -->\n"
     xml_body = ET.tostring(gaeb, encoding="unicode", xml_declaration=False)
@@ -4401,7 +4401,7 @@ _COLUMN_ALIASES: dict[str, list[str]] = {
         "class",
         # Brazilian estimators commonly label the classification column as
         # one of these in Excel exports from Orçafascio / Sienge / planilhas
-        # padrão SINAPI — recognising them avoids force-mapping to "ordinal".
+        # padrão SINAPI - recognising them avoids force-mapping to "ordinal".
         "sinapi",
         "código sinapi",
         "codigo sinapi",
@@ -4430,10 +4430,10 @@ def _match_column(header: str) -> str | None:
 def _detect_file_format(content_head: bytes) -> Literal["xlsx", "csv", "parquet", "unknown"]:
     """Identify an upload by its magic bytes (BUG-UPLOAD01).
 
-    File extensions are attacker-controlled — a ``.exe`` renamed to ``.xlsx``
+    File extensions are attacker-controlled - a ``.exe`` renamed to ``.xlsx``
     would otherwise be handed to ``openpyxl`` (best case: a parse exception;
     worst case: the bytes get persisted alongside trusted attachments).
-    Stdlib only — uses the existing ``app.core.file_signature.detect`` for
+    Stdlib only - uses the existing ``app.core.file_signature.detect`` for
     container types and a UTF-8 round-trip to confirm CSV is readable text.
 
     Returns one of: ``"xlsx"``, ``"csv"``, ``"parquet"``, ``"unknown"``.
@@ -4450,7 +4450,7 @@ def _detect_file_format(content_head: bytes) -> Literal["xlsx", "csv", "parquet"
     # Apache Parquet files begin (and end) with the ``PAR1`` magic.
     if content_head[:4] == b"PAR1":
         return "parquet"
-    # CSV has no magic — fall back to "is this valid UTF-8 / UTF-8-BOM /
+    # CSV has no magic - fall back to "is this valid UTF-8 / UTF-8-BOM /
     # latin-1 text?". Reject anything that contains a NUL byte (binary
     # garbage) or fails every common text codec. A short head is enough:
     # a 512-byte sample misclassifies astoundingly rarely on real CSVs.
@@ -4493,7 +4493,7 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
             # Dot is decimal separator: "1,234.56"
             text = text.replace(",", "")
     elif "," in text:
-        # Only commas — assume comma is decimal separator: "234,56"
+        # Only commas - assume comma is decimal separator: "234,56"
         text = text.replace(",", ".")
     try:
         return float(text)
@@ -4513,7 +4513,7 @@ def _parse_numeric_cell(value: Any) -> tuple[float | None, str | None]:
     if value is None:
         return 0.0, None
     if isinstance(value, bool):
-        # ``bool`` is an ``int`` subclass — explicitly reject so True/False
+        # ``bool`` is an ``int`` subclass - explicitly reject so True/False
         # is not silently accepted as 1/0 in a numeric column.
         return None, f"expected a number, got boolean {value!r}"
     if isinstance(value, (int, float)):
@@ -4522,7 +4522,7 @@ def _parse_numeric_cell(value: Any) -> tuple[float | None, str | None]:
     if not text:
         return 0.0, None
     parsed = _safe_float(text, default=float("nan"))
-    if parsed != parsed:  # NaN check — ``_safe_float`` returns NaN on miss
+    if parsed != parsed:  # NaN check - ``_safe_float`` returns NaN on miss
         return None, f"expected a number, got {text!r}"
     return parsed, None
 
@@ -4542,7 +4542,7 @@ def _parse_rows_from_csv(content_bytes: bytes) -> list[dict[str, Any]]:
         except UnicodeDecodeError:
             continue
     else:
-        raise ValueError("Unable to decode CSV file — unsupported encoding")
+        raise ValueError("Unable to decode CSV file - unsupported encoding")
 
     # Detect delimiter by sniffing first 4KB
     sniffer = csv.Sniffer()
@@ -4633,7 +4633,7 @@ def _parse_rows_from_excel(
 
 @router.post(
     "/boqs/{boq_id}/import/excel/",
-    summary="Import positions from Excel/CSV (deprecated — use /import/auto/)",
+    summary="Import positions from Excel/CSV (deprecated - use /import/auto/)",
     dependencies=[Depends(RequirePermission("boq.update"))],
 )
 async def import_boq_excel(
@@ -4645,7 +4645,7 @@ async def import_boq_excel(
     """Import BOQ positions from an Excel or CSV file.
 
     .. deprecated::
-        Epic I5 — clients should call ``POST /import/auto/`` and let
+        Epic I5 - clients should call ``POST /import/auto/`` and let
         the dispatcher pick the importer. This route remains supported
         for backwards compatibility but emits a ``Deprecation: true``
         response header.
@@ -4653,18 +4653,18 @@ async def import_boq_excel(
     Accepts a multipart file upload. The file must be .xlsx or .csv.
 
     Expected columns (all optional except Description):
-    - **Pos / Position / Ordinal / Nr.** — position ordinal number
-    - **Description / Beschreibung / Text** — description (required)
-    - **Unit / Einheit / ME** — unit of measurement
-    - **Quantity / Qty / Menge** — quantity
-    - **Unit Rate / Rate / EP / Einheitspreis** — unit rate
-    - **Total** (ignored — auto-calculated from quantity x rate)
-    - **Classification / DIN 276 / KG / NRM / Code** — classification code
+    - **Pos / Position / Ordinal / Nr.** - position ordinal number
+    - **Description / Beschreibung / Text** - description (required)
+    - **Unit / Einheit / ME** - unit of measurement
+    - **Quantity / Qty / Menge** - quantity
+    - **Unit Rate / Rate / EP / Einheitspreis** - unit rate
+    - **Total** (ignored - auto-calculated from quantity x rate)
+    - **Classification / DIN 276 / KG / NRM / Code** - classification code
 
     Returns:
         Summary with counts of imported, skipped, and error details per row.
     """
-    # Epic I5: deprecation signal — clients should migrate to /import/auto/.
+    # Epic I5: deprecation signal - clients should migrate to /import/auto/.
     response.headers["Deprecation"] = "true"
     response.headers["Link"] = '</api/v1/boq/boqs/{boq_id}/import/auto/>; rel="successor-version"'
     response.headers["Sunset"] = "Wed, 31 Dec 2026 23:59:59 GMT"
@@ -4724,7 +4724,7 @@ async def import_boq_excel(
     except ValueError as exc:
         # ValueError covers the curated parse errors raised by our
         # ``_parse_rows_from_*`` helpers (missing header row, undecodable
-        # text). Surface the message — it's already user-safe.
+        # text). Surface the message - it's already user-safe.
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Could not parse file: {exc}",
@@ -4733,7 +4733,7 @@ async def import_boq_excel(
         # BUG-UPLOAD02: openpyxl raises ``BadZipFile`` (zip header
         # corruption) and ``KeyError`` (missing sheet xml entries) on
         # malformed xlsx. Without this catch the request returns 500 with
-        # a full traceback — a footgun for log-exposed deployments.
+        # a full traceback - a footgun for log-exposed deployments.
         logger.warning("Malformed xlsx upload (%s): %s", type(exc).__name__, exc)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -4814,7 +4814,7 @@ async def import_boq_excel(
             unit_raw = str(row.get("unit", "")).strip()
             # Parse numeric fields with strict per-row validation
             # (BUG-IMPORT02). A non-empty cell that can't be coerced to a
-            # number used to silently default to 0.0 — the bad value would
+            # number used to silently default to 0.0 - the bad value would
             # then crash later in the cost rollup. We now surface the
             # offending row + column to the user.
             quantity_raw = row.get("quantity")
@@ -4876,10 +4876,10 @@ async def import_boq_excel(
 
             # Sanity caps: reject obvious tampering / typo errors before the
             # position reaches the DB. Numbers outside these bands are either
-            # fat-fingered by the client or — per QA fuzz — a deliberate
+            # fat-fingered by the client or - per QA fuzz - a deliberate
             # attempt to inflate the BOQ through an edited export file.
             _IMPORT_MAX_QUANTITY = 1e9
-            _IMPORT_MAX_UNIT_RATE = 1e8  # EUR/USD per unit — a steel beam is ~10k
+            _IMPORT_MAX_UNIT_RATE = 1e8  # EUR/USD per unit - a steel beam is ~10k
             if not (0 <= quantity <= _IMPORT_MAX_QUANTITY):
                 errors.append(
                     {
@@ -4899,7 +4899,7 @@ async def import_boq_excel(
                 )
                 continue
 
-            # Soft checks — imported, but surfaced in the UI so the user
+            # Soft checks - imported, but surfaced in the UI so the user
             # can spot tampered-export attacks (ENH-090 / BUG-154) and
             # data-quality issues.
             if _median_rate > 0 and unit_rate > _median_rate * 10:
@@ -4910,7 +4910,7 @@ async def import_boq_excel(
                         "severity": "warning",
                         "message": (
                             f"Unit rate {unit_rate:.2f} is >10× the file median "
-                            f"({_median_rate:.2f}) — possible typo or tampered export."
+                            f"({_median_rate:.2f}) - possible typo or tampered export."
                         ),
                     }
                 )
@@ -4920,7 +4920,7 @@ async def import_boq_excel(
                         "row": row_idx,
                         "ordinal": ordinal,
                         "severity": "info",
-                        "message": "Quantity is zero — position imported but contributes no cost.",
+                        "message": "Quantity is zero - position imported but contributes no cost.",
                     }
                 )
             if unit_rate == 0:
@@ -4929,7 +4929,7 @@ async def import_boq_excel(
                         "row": row_idx,
                         "ordinal": ordinal,
                         "severity": "info",
-                        "message": "Unit rate is zero — position imported without a rate.",
+                        "message": "Unit rate is zero - position imported without a rate.",
                     }
                 )
 
@@ -5034,7 +5034,7 @@ async def import_boq_excel(
 
 @router.post(
     "/boqs/{boq_id}/import/gaeb/",
-    summary="Import positions from GAEB XML 3.3 (deprecated — use /import/auto/)",
+    summary="Import positions from GAEB XML 3.3 (deprecated - use /import/auto/)",
     dependencies=[Depends(RequirePermission("boq.update"))],
 )
 async def import_boq_gaeb(
@@ -5046,17 +5046,17 @@ async def import_boq_gaeb(
     """Import BOQ positions from a GAEB XML 3.3 file (BUG-153).
 
     .. deprecated::
-        Epic I5 — clients should call ``POST /import/auto/`` and let
+        Epic I5 - clients should call ``POST /import/auto/`` and let
         the dispatcher pick the importer. This route remains supported
         for backwards compatibility but emits a ``Deprecation: true``
         response header.
 
     Supports the GAEB DA XML formats used across DACH tendering:
-      - **X83 / DP 83** — Angebotsabgabe (bid submission)
-      - **X84 / DP 84** — Nebenangebote (alternative bids)
-      - **X81** — Leistungsverzeichnis (BOQ skeleton)
+      - **X83 / DP 83** - Angebotsabgabe (bid submission)
+      - **X84 / DP 84** - Nebenangebote (alternative bids)
+      - **X81** - Leistungsverzeichnis (BOQ skeleton)
 
-    Namespace-agnostic parser — falls back to tag-local-name matching so
+    Namespace-agnostic parser - falls back to tag-local-name matching so
     files from different GAEB toolchains (iTWO, California.pro, Nevaris,
     etc.) all import without pre-normalization.
 
@@ -5067,7 +5067,7 @@ async def import_boq_gaeb(
 
     from defusedxml.ElementTree import fromstring as _safe_fromstring
 
-    # Epic I5: deprecation signal — clients should migrate to /import/auto/.
+    # Epic I5: deprecation signal - clients should migrate to /import/auto/.
     response.headers["Deprecation"] = "true"
     response.headers["Link"] = '</api/v1/boq/boqs/{boq_id}/import/auto/>; rel="successor-version"'
     response.headers["Sunset"] = "Wed, 31 Dec 2026 23:59:59 GMT"
@@ -5088,9 +5088,9 @@ async def import_boq_gaeb(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Uploaded file is empty.",
         )
-    # No upload size cap — per product policy.
+    # No upload size cap - per product policy.
 
-    # Parse XML defensively via defusedxml — blocks XXE, external-entity
+    # Parse XML defensively via defusedxml - blocks XXE, external-entity
     # expansion, billion-laughs, and DTD-based attacks on user input.
     try:
         root = _safe_fromstring(content)
@@ -5131,7 +5131,7 @@ async def import_boq_gaeb(
     def _extract_description(item: ET.Element) -> str:
         """Pull human-readable text out of GAEB's nested Description/CompleteText/DetailTxt/Text."""
         # Take the first non-empty <Text> we find anywhere in the item's
-        # subtree — description structures vary wildly between exporters.
+        # subtree - description structures vary wildly between exporters.
         for text_el in _find_all_descendants(item, "Text"):
             if text_el.text and text_el.text.strip():
                 return text_el.text.strip()
@@ -5143,7 +5143,7 @@ async def import_boq_gaeb(
         return ""
 
     # Build reverse map from the export lexicon so GAEB unit codes round-trip
-    # back to our internal tokens (BUG-175 — "Stk" → "pcs", "psch" → "lsum").
+    # back to our internal tokens (BUG-175 - "Stk" → "pcs", "psch" → "lsum").
     _GAEB_TO_INTERNAL: dict[str, str] = {
         "stk": "pcs",
         "st": "pcs",
@@ -5156,7 +5156,7 @@ async def import_boq_gaeb(
         key = (unit or "").strip().lower()
         return _GAEB_TO_INTERNAL.get(key, unit.strip()) if key else ""
 
-    # Locate the *top-level* BoQBody — the one directly inside <BoQ>.
+    # Locate the *top-level* BoQBody - the one directly inside <BoQ>.
     # A GAEB tree nests BoQBody recursively under each BoQCtgy, so
     # traversing ``_find_all_descendants`` would double-visit every Item.
     top_body: ET.Element | None = None
@@ -5178,7 +5178,7 @@ async def import_boq_gaeb(
     sections_seen: list[dict[str, str]] = []
 
     # Capture currency for round-trip metadata. Empty when the source
-    # GAEB doesn't carry <Cur> — preferable to a EUR fallback that
+    # GAEB doesn't carry <Cur> - preferable to a EUR fallback that
     # mis-stamps non-Eurozone tenders. Downstream code that needs a
     # currency falls back to project.currency at the consumer side.
     award = None
@@ -5255,9 +5255,9 @@ async def import_boq_gaeb(
                     "gaeb_currency": currency,
                 },
             )
-            # add_position is async — run it via await below.
+            # add_position is async - run it via await below.
             return position_data
-        except Exception as exc:  # noqa: BLE001 — narrow at caller
+        except Exception as exc:  # noqa: BLE001 - narrow at caller
             errors.append({"error": str(exc), "ordinal": ""})
             return None
 
@@ -5267,7 +5267,7 @@ async def import_boq_gaeb(
             local = _local(child.tag)
             if local == "BoQCtgy":
                 # The original _process_category helper builds positions but
-                # can't await — so refactor: collect items, then insert.
+                # can't await - so refactor: collect items, then insert.
                 pass
 
     # Second, simpler pass: collect every Item anywhere in the tree, attribute
@@ -5393,7 +5393,7 @@ async def import_boq_gaeb(
 
 async def _persist_imported_boq(
     boq_id: uuid.UUID,
-    imported: "ImportedBOQ",  # noqa: F821 — imported inside function body at call site
+    imported: "ImportedBOQ",  # noqa: F821 - imported inside function body at call site
     *,
     file_name: str,
     service: BOQService,
@@ -5424,7 +5424,7 @@ async def _persist_imported_boq(
             )
             await service.add_position(position_data)
             imported_count += 1
-        except Exception as exc:  # noqa: BLE001 — surface row-level errors
+        except Exception as exc:  # noqa: BLE001 - surface row-level errors
             persistence_errors.append(
                 {
                     "ordinal": row.ordinal,
@@ -5498,7 +5498,7 @@ async def import_boq_auto(
             if importer.detect(head, file_name):
                 chosen = importer
                 break
-        except Exception as exc:  # noqa: BLE001 — detect() must never raise
+        except Exception as exc:  # noqa: BLE001 - detect() must never raise
             logger.warning(
                 "Importer %s.detect() raised on %s: %s",
                 importer.__name__,
@@ -5508,15 +5508,15 @@ async def import_boq_auto(
             continue
 
     if chosen is None:
-        # No native importer claimed the file — fall back to smart_import
+        # No native importer claimed the file - fall back to smart_import
         # (LLM). Reset the upload buffer's position so smart_import can
         # re-read it. UploadFile's underlying SpooledTemporaryFile
         # supports seek() on the in-memory and on-disk variants alike.
         try:
             await file.seek(0)
-        except Exception:  # noqa: BLE001 — best-effort, smart_import is robust
+        except Exception:  # noqa: BLE001 - best-effort, smart_import is robust
             pass
-        # Smart import owns its own Deprecation header but that is fine —
+        # Smart import owns its own Deprecation header but that is fine -
         # the dispatcher is the path the caller wanted, so we set our own
         # method marker on the response.
         from fastapi import Response as _Response
@@ -5541,7 +5541,7 @@ async def import_boq_auto(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Could not parse file as {chosen.display_name}: {exc}",
         ) from exc
-    except Exception as exc:  # noqa: BLE001 — log + sanitise
+    except Exception as exc:  # noqa: BLE001 - log + sanitise
         logger.exception(
             "Importer %s.parse() unexpected failure on BOQ %s: %s",
             chosen.__name__,
@@ -5821,7 +5821,7 @@ async def _extract_from_cad(content: bytes, ext: str, filename: str) -> dict[str
 
 @router.post(
     "/boqs/{boq_id}/import/smart/",
-    summary="Smart import: any file via AI (deprecated — use /import/auto/)",
+    summary="Smart import: any file via AI (deprecated - use /import/auto/)",
     dependencies=[Depends(RequirePermission("boq.update"))],
 )
 async def smart_import(
@@ -5838,7 +5838,7 @@ async def smart_import(
     """Smart import: parse ANY file into BOQ positions using AI.
 
     .. deprecated::
-        Epic I5 — clients should call ``POST /import/auto/`` instead.
+        Epic I5 - clients should call ``POST /import/auto/`` instead.
         The dispatcher picks a native importer first (GAEB / BC3 /
         Excel) and only falls back to the LLM smart path on no match,
         which is usually what callers actually want. This route remains
@@ -5856,7 +5856,7 @@ async def smart_import(
     Returns:
         Summary with imported/error counts, method used, and AI model if applicable.
     """
-    # Epic I5: deprecation signal — clients should migrate to /import/auto/.
+    # Epic I5: deprecation signal - clients should migrate to /import/auto/.
     response.headers["Deprecation"] = "true"
     response.headers["Link"] = '</api/v1/boq/boqs/{boq_id}/import/auto/>; rel="successor-version"'
     response.headers["Sunset"] = "Wed, 31 Dec 2026 23:59:59 GMT"
@@ -5869,7 +5869,7 @@ async def smart_import(
 
         _proj = await ProjectRepository(session).get_by_id(boq_obj.project_id)
         _project_currency = (getattr(_proj, "currency", "") or "").strip()
-    except Exception:  # noqa: BLE001 — currency is best-effort, prompt tolerates blank
+    except Exception:  # noqa: BLE001 - currency is best-effort, prompt tolerates blank
         _project_currency = ""
 
     filename = (file.filename or "unknown").lower()
@@ -5882,12 +5882,12 @@ async def smart_import(
             detail="Uploaded file is empty.",
         )
 
-    # No upload size cap — per product policy.
+    # No upload size cap - per product policy.
 
     # ── 1. Extract text/data based on file type ────────────────────────
     if ext in ("xlsx", "xls"):
         # BUG-UPLOAD01b: smart-import path used to skip the xlsx-bomb
-        # guard that import_boq_excel calls — same DoS surface via this
+        # guard that import_boq_excel calls - same DoS surface via this
         # endpoint. Apply the same defence here before parsing.
         from app.core.upload_guards import reject_if_xlsx_bomb
 
@@ -6270,7 +6270,7 @@ async def get_resource_summary(
                 "total_cost": 0.0,
                 "rates": [],
                 "positions": set(),
-                # Variant surface — first-seen wins for the catalog/stats,
+                # Variant surface - first-seen wins for the catalog/stats,
                 # since variants are intrinsic to the abstract resource.
                 "available_variants": None,
                 "variant_stats": None,
@@ -6317,7 +6317,7 @@ async def get_resource_summary(
             entry["variant_defaults"].add(vdef)
 
         # Record a pointer back to this exact resource slot for fan-out
-        # re-pick. Skip for synthetic rows (resource_idx is None) — they
+        # re-pick. Skip for synthetic rows (resource_idx is None) - they
         # have no slot to patch.
         if resource_idx is not None:
             entry["position_refs"].append(ResourcePositionRef(position_id=pos_id, resource_idx=resource_idx))
@@ -6394,7 +6394,7 @@ async def get_resource_summary(
             )
         )
 
-    # v3 §10 — item.total_cost is Decimal now; sort key still works.
+    # v3 §10 - item.total_cost is Decimal now; sort key still works.
     resource_items.sort(key=lambda r: r.total_cost, reverse=True)
 
     # Dedupe variant pickers across summary rows. Two collapse scenarios:
@@ -6402,7 +6402,7 @@ async def get_resource_summary(
     #      KADX_KATO_KAKASA_KATO: two component rows under KALI-RI-KATO-KANE
     #      with identical 3-variant catalogs).
     #   2. Two rows carry the same variant-label set even with different
-    #      codes — happens when a position persisted the synthetic top-level
+    #      codes - happens when a position persisted the synthetic top-level
     #      resource alongside a component that mirrors it (BG_SOFIA shape:
     #      "Стоманени конструкции" appears as both the cost item's top
     #      variants and as component[0]).
@@ -6428,8 +6428,8 @@ async def get_resource_summary(
             if label_hash:
                 seen_hashes.add(label_hash)
 
-    # v3 §10 — totals stay in Decimal so cents don't drift. ABC percentages
-    # are ratios (0-100) and stay float — they index into the response's
+    # v3 §10 - totals stay in Decimal so cents don't drift. ABC percentages
+    # are ratios (0-100) and stay float - they index into the response's
     # ``abc_percentage`` field which is still float.
     from decimal import ROUND_HALF_UP as _RHU
     from decimal import Decimal as _Dec
@@ -6445,7 +6445,7 @@ async def get_resource_summary(
         by_type[item.type].count += 1
         by_type[item.type].total_cost = (by_type[item.type].total_cost + item.total_cost).quantize(_Q2, rounding=_RHU)
 
-    # Issue #106 — Pareto / ABC analysis. Items are already sorted by total_cost
+    # Issue #106 - Pareto / ABC analysis. Items are already sorted by total_cost
     # descending above, so we walk the cumulative percentage and assign the
     # standard 80/15/5 buckets. The thresholds are conventional, not
     # ISO-prescribed; they match the user's "what hurts the budget most" intent
@@ -6463,7 +6463,7 @@ async def get_resource_summary(
             item.abc_percentage = round(pct, 2)
             cumulative += pct
             # Use the cumulative threshold *before* this item rather than
-            # after — otherwise the single biggest item would always be
+            # after - otherwise the single biggest item would always be
             # classified A even on a flat distribution. Standard practice.
             if cumulative <= 80.0:
                 item.abc_class = "A"
@@ -6510,7 +6510,7 @@ async def enrich_resources(
         total_positions += 1
 
         # Pydantic strips the trailing underscore from the SQLAlchemy
-        # column name — PositionResponse exposes it as `metadata`.
+        # column name - PositionResponse exposes it as `metadata`.
         raw_meta = getattr(pos, "metadata", None) or getattr(pos, "metadata_", None)
         meta = dict(raw_meta) if raw_meta else {}
         existing_resources = meta.get("resources")
@@ -6933,7 +6933,7 @@ async def get_sensitivity(
 
     # BUG-B-011: PositionResponse.total is now an exact Decimal. This
     # sensitivity model multiplies by a float factor, so work in float
-    # locally (the exact value is preserved in storage / JSON response —
+    # locally (the exact value is preserved in storage / JSON response -
     # a ±10% sensitivity band does not need sub-cent exactness).
     base_total = float(sum(p.total for p in items))
 
@@ -7065,7 +7065,7 @@ async def get_cost_risk(
     items = [p for p in boq_data.positions if p.unit and p.unit.strip() != ""]
     # BUG-B-011: PositionResponse.total is now an exact Decimal; this
     # Monte-Carlo model runs in float (the exact value is preserved in
-    # storage / JSON response — a stochastic risk band does not need
+    # storage / JSON response - a stochastic risk band does not need
     # sub-cent exactness).
     base_total = float(sum(p.total for p in items))
 
@@ -7155,7 +7155,7 @@ async def get_cost_risk(
             )
         )
 
-    # Calculate risk drivers — positions sorted by their share of total variance
+    # Calculate risk drivers - positions sorted by their share of total variance
     position_variances: list[tuple[float, str, str]] = []
     for idx in range(n_positions):
         mean = position_sums[idx] / iterations
@@ -7213,7 +7213,7 @@ class CustomColumnCreate(BaseModel):
     """Request body for ``POST /boqs/{boq_id}/columns/``.
 
     Typed so a typo'd field (e.g. ``column_typ`` instead of ``column_type``)
-    is rejected with a clear 422 instead of being silently dropped — the
+    is rejected with a clear 422 instead of being silently dropped - the
     previous ``data: dict = Body(...)`` shape happily accepted unknown
     keys, which was a UX trap when the frontend evolved its schema. Using
     ``model_config = ConfigDict(extra='forbid')`` makes any unexpected
@@ -7229,14 +7229,14 @@ class CustomColumnCreate(BaseModel):
     sort_order: int | None = None  # Server assigns; accepted but overwritten.
     formula: str | None = None
     decimals: int | None = None
-    # v2.9.x — semantic hints for region-specific number columns. Backend
+    # v2.9.x - semantic hints for region-specific number columns. Backend
     # stores them verbatim; the frontend's value getter does the maths
     # against ``position.metadata.resources[]`` at render time. Storing
     # the hint (rather than a precomputed value) keeps section subtotals
     # and live-editing of resources working without an invalidation step.
     derived: Literal["resource_sum", "percentage_of_unit_rate"] | None = None
     # `resource_role` filters which `metadata.resources[]` entries a derived
-    # column aggregates. Accept either a single role or a list — the GAEB
+    # column aggregates. Accept either a single role or a list - the GAEB
     # "Sonstiges-EP" preset sweeps everything that isn't labor / material /
     # equipment, so it stores ``["other", "operator", "subcontractor"]`` to
     # keep Lohn + Material + Geräte + Sonstiges = unit_rate.
@@ -7264,7 +7264,7 @@ async def add_custom_column(
     """
     name = payload.name.strip().lower().replace(" ", "_")
     if not name or not name.isidentifier():
-        raise HTTPException(400, "Invalid column name — use alphanumeric + underscore")
+        raise HTTPException(400, "Invalid column name - use alphanumeric + underscore")
 
     reserved = {
         "ordinal",
@@ -7283,7 +7283,7 @@ async def add_custom_column(
     column_type = payload.column_type
 
     options = list(payload.options or [])
-    # v2.7.0/E — calculated columns carry a user-authored formula evaluated
+    # v2.7.0/E - calculated columns carry a user-authored formula evaluated
     # client-side by the BOQ formula engine. Backend is purely a passthrough:
     # we store the formula string + display decimals and trust the frontend
     # to evaluate (the engine is CSP-safe and lives in the browser anyway).
@@ -7301,7 +7301,7 @@ async def add_custom_column(
     from sqlalchemy.orm.attributes import flag_modified
 
     boq = await service.get_boq(boq_id)
-    # Build a fresh metadata dict with a fresh list — both via deep copy so
+    # Build a fresh metadata dict with a fresh list - both via deep copy so
     # SQLAlchemy doesn't see "same identity = no change". We then explicitly
     # flag_modified to defeat the JSON column's value-based dirty detection
     # which otherwise misses nested mutations.
@@ -7371,7 +7371,7 @@ async def delete_custom_column(
 # Variables are scoped to a single BOQ document and live on
 # ``boq.metadata_["variables"]`` as a JSON array. Two BOQs in the same
 # project can have independent ``$GFA`` values. Used by the formula
-# engine — ``=$GFA * 0.15`` resolves to a literal number at evaluation
+# engine - ``=$GFA * 0.15`` resolves to a literal number at evaluation
 # time. See plan ``inherited-knitting-dahl.md`` Phase B for design notes.
 
 # Match the spec from the plan: uppercase, alnum + underscore, max 32 chars.
@@ -7394,7 +7394,7 @@ class BOQVariable(BaseModel):
     @field_validator("name")
     @classmethod
     def _validate_name(cls, raw: str) -> str:
-        # Strip a stray leading "$" — easier than rejecting it.
+        # Strip a stray leading "$" - easier than rejecting it.
         cleaned = raw[1:] if raw.startswith("$") else raw
         cleaned = cleaned.strip()
         if not _VARIABLE_NAME_RE.match(cleaned):
@@ -7407,7 +7407,7 @@ class BOQVariable(BaseModel):
 def _coerce_variable_value(var: BOQVariable) -> str | float | int | None:
     """Sanitise a value to match the declared type. Stored values are
     used directly by the formula engine, so it's important that
-    ``type=number`` actually means a number — not the string ``"42"``."""
+    ``type=number`` actually means a number - not the string ``"42"``."""
     if var.value is None or var.value == "":
         return None
     if var.type == "number":
@@ -7419,7 +7419,7 @@ def _coerce_variable_value(var: BOQVariable) -> str | float | int | None:
                 f"Variable '${var.name}' is type=number but value is not numeric",
             ) from exc
     if var.type == "date":
-        # Don't parse — accept any non-empty string. The formula engine
+        # Don't parse - accept any non-empty string. The formula engine
         # treats date variables opaquely (mostly for display in tooltips).
         return str(var.value)
     return str(var.value)
@@ -7455,7 +7455,7 @@ async def replace_boq_variables(
 ) -> list[dict]:
     """Replace the entire variable list for a BOQ.
 
-    The plan calls for whole-list replacement (vs per-row CRUD) — the
+    The plan calls for whole-list replacement (vs per-row CRUD) - the
     list is small (≤50) and the editor UI sends the whole table back
     on save, so a single round-trip keeps state simple.
     """
@@ -7499,7 +7499,7 @@ async def replace_boq_variables(
 class RenumberRequest(BaseModel):
     """Options for the renumber endpoint.
 
-    All fields are optional — omitting the body keeps the legacy behaviour
+    All fields are optional - omitting the body keeps the legacy behaviour
     (gap-of-10 scheme, padded ordinals) so existing clients keep working.
     """
 
@@ -7521,14 +7521,14 @@ async def renumber_positions(
 
     Supported schemes:
 
-    * ``gap10`` (default) — ``01, 01.10, 01.20, 01.30, 02, 02.10`` — leaves
+    * ``gap10`` (default) - ``01, 01.10, 01.20, 01.30, 02, 02.10`` - leaves
       room to insert ``01.15`` between two positions later without
       renumbering everything else. Standard German tender output convention.
-    * ``gap100`` — ``01, 01.100, 01.200`` — same idea, even more headroom
+    * ``gap100`` - ``01, 01.100, 01.200`` - same idea, even more headroom
       for very large BOQs that may grow significantly post-tender.
-    * ``sequential`` — ``01, 01.01, 01.02, 01.03`` — compact and traditional;
+    * ``sequential`` - ``01, 01.01, 01.02, 01.03`` - compact and traditional;
       good for fixed-scope BOQs that won't get extra positions later.
-    * ``dotted`` — ``1, 1.1, 1.2, 1.3`` — short-form decimal numbering
+    * ``dotted`` - ``1, 1.1, 1.2, 1.3`` - short-form decimal numbering
       common in NRM-style measurement.
 
     The ``pad`` option controls whether top-level section numbers are
@@ -7576,7 +7576,7 @@ async def renumber_positions(
         """Mirror the canonical frontend isSection check (api.ts:136).
 
         Sections are stored with EITHER unit="" (demo seed convention) OR
-        unit="section" (create_section endpoint convention) — handle both.
+        unit="section" (create_section endpoint convention) - handle both.
         """
         u = (getattr(pos, "unit", "") or "").strip().lower()
         return u == "" or u == "section"
@@ -7637,7 +7637,7 @@ async def renumber_positions(
 #
 # These three routes plug the BOQ module into the cross-module semantic
 # memory layer (see ``app/core/vector_index.py``).  They are intentionally
-# uniform across every module that participates — only the adapter and
+# uniform across every module that participates - only the adapter and
 # the row loader differ.
 
 
@@ -7672,7 +7672,7 @@ async def boq_vector_reindex(
 
     Optional filters narrow the scope so users can reindex one project or
     even one BOQ at a time without re-embedding the entire tenant.  Set
-    ``purge_first=true`` to wipe the matching subset before re-encoding —
+    ``purge_first=true`` to wipe the matching subset before re-encoding -
     useful when the embedding model has changed.
     """
     from sqlalchemy import select
@@ -7710,7 +7710,7 @@ async def boq_position_similar(
 ) -> dict[str, Any]:
     """Return BOQ positions semantically similar to the given one.
 
-    By default the search is **cross-project** — that's the highest-value
+    By default the search is **cross-project** - that's the highest-value
     use case: estimators want to find how a similar position was priced
     in past projects so they can reuse the unit rate.  Pass
     ``cross_project=false`` to limit the search to the same project.
@@ -7759,7 +7759,7 @@ async def get_line_items(
     session: SessionDep,
     user_id: CurrentUserId,
     project_id: uuid.UUID = Query(..., description="Project scope"),
-    group: str = Query(default="cost", description="Grouping strategy — reserved; defaults to 'cost'"),
+    group: str = Query(default="cost", description="Grouping strategy - reserved; defaults to 'cost'"),
     top_n: int = Query(default=20, ge=1, le=200),
     service: BOQService = Depends(_get_service),
 ) -> list[LineItemResponse]:

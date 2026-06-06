@@ -1,4 +1,4 @@
-"""‌⁠‍Multi-collection embedding layer​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ — the cross-module semantic memory.
+"""‌⁠‍Multi-collection embedding layer​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ - the cross-module semantic memory.
 
 This is the foundation that lets every business module (BOQ, documents,
 tasks, risks, BIM elements, validation, chat, …) participate in the same
@@ -8,7 +8,7 @@ Architecture
 ============
 
 Each module ships a small ``vector_adapter.py`` that implements the
-:class:`EmbeddingAdapter` protocol — defining its collection name, the
+:class:`EmbeddingAdapter` protocol - defining its collection name, the
 canonical text to embed for each row, and the lightweight payload that
 should accompany the vector for hit rendering.  Hooking the adapter into
 the event bus is then ~5 lines per module.
@@ -25,7 +25,7 @@ Write paths (index_one / index_many / delete_one / reindex_collection)
 likewise wrap :func:`~app.core.vector.vector_index_collection` and
 :func:`~app.core.vector.vector_delete_collection`.
 
-All operations are **non-fatal** — if the vector backend is unavailable
+All operations are **non-fatal** - if the vector backend is unavailable
 (LanceDB not installed, Qdrant unreachable, embedding model failed to
 load) every helper logs a warning and returns an empty / no-op result.
 The caller never has to wrap us in try/except.
@@ -70,7 +70,7 @@ logger = logging.getLogger(__name__)
 
 #: UUID5 namespace seed used by deployment-stable hashes elsewhere in
 #: the project.  Derived once at design time so the value is reproducible
-#: across rebuilds and across environments — see
+#: across rebuilds and across environments - see
 #: ``uuid.uuid5(uuid.NAMESPACE_URL, ...)`` for the construction.
 _COLLECTION_NAMESPACE = "ff23af8d-4541-57b7-864c-baaaf9685dc0"
 
@@ -82,7 +82,7 @@ COLLECTION_BIM_ELEMENTS = "oe_bim_elements"
 COLLECTION_VALIDATION = "oe_validation"
 COLLECTION_CHAT = "oe_chat"
 COLLECTION_REQUIREMENTS = "oe_requirements"
-# Cost catalog (CWICR / RSMeans / custom) — feeds the element→catalog
+# Cost catalog (CWICR / RSMeans / custom) - feeds the element→catalog
 # match feature.  Embeds with the multilingual-e5-small ``passage:``
 # prefix so cross-language recall stays high; queries are issued via
 # the cost adapter's ``search`` method which applies the matching
@@ -90,7 +90,7 @@ COLLECTION_REQUIREMENTS = "oe_requirements"
 # ``cost_items`` LanceDB table (singular collection schema, all-MiniLM)
 # which is kept for backwards-compatibility with pre-built snapshots.
 COLLECTION_COSTS = "oe_cost_items"
-# Project-document collections (item 16 — semantic assistant over
+# Project-document collections (item 16 - semantic assistant over
 # RFI / submittals / correspondence).  Each is a thin wrapper over the
 # existing module table; the vectors live in LanceDB / Qdrant and the SQL
 # fallback in ``search.service`` covers the no-vector deploy path.
@@ -147,7 +147,7 @@ class VectorHit:
         module:        Short module name ("boq", "documents", …).
         project_id:    Project UUID, or empty string if cross-project.
         tenant_id:     Tenant UUID for multi-tenant filtering.
-        payload:       Decoded JSON payload — typically contains a
+        payload:       Decoded JSON payload - typically contains a
                        ``title`` field plus a few module-specific keys
                        like ``ordinal`` / ``status`` / ``unit``.
         collection:    Source collection name (set by the search wrapper).
@@ -164,7 +164,7 @@ class VectorHit:
 
     @property
     def title(self) -> str:
-        """‌⁠‍Best-effort display title — falls back to a text snippet."""
+        """‌⁠‍Best-effort display title - falls back to a text snippet."""
         title = self.payload.get("title")
         if isinstance(title, str) and title:
             return title
@@ -204,7 +204,7 @@ class EmbeddingAdapter(Protocol):
     """Protocol every per-module vector adapter must implement.
 
     Implementations live at ``app/modules/{module}/vector_adapter.py`` and
-    are tiny — just `to_text` and `to_payload` over the SQLAlchemy row.
+    are tiny - just `to_text` and `to_payload` over the SQLAlchemy row.
 
     Example
     -------
@@ -256,8 +256,8 @@ def _coerce_id(row_id: Any) -> str:
 
 # Hard character cap that protects the embedder when its tokenizer is
 # unavailable.  4000 chars works out to roughly 800-1200 tokens depending
-# on the language and tokenizer — well above the 512-token cap of every
-# small SBERT model we ship by default — so the model will silently
+# on the language and tokenizer - well above the 512-token cap of every
+# small SBERT model we ship by default - so the model will silently
 # truncate the tail.  When the tokenizer IS available we clip by tokens
 # instead so we never lose meaningful content past position N.
 _HARD_CHAR_CAP = 4000
@@ -269,7 +269,7 @@ _TOKEN_BUDGET = 510  # leave 2 tokens for [CLS] / [SEP]
 # this, two simultaneous reindex calls (e.g. the startup auto-backfill
 # racing against an admin clicking ``POST /vector/reindex/{name}/``)
 # can interleave purge + index ops and leave the vector store in an
-# inconsistent state — partial indexes, duplicate ids, ghost rows.
+# inconsistent state - partial indexes, duplicate ids, ghost rows.
 # The lock is per-collection so reindexing different collections in
 # parallel is still allowed.
 _REINDEX_LOCKS: dict[str, asyncio.Lock] = {}
@@ -318,11 +318,11 @@ def _safe_text(text: str | None) -> str:
                 ids = ids[:_TOKEN_BUDGET]
                 clipped = tokenizer.decode(ids, skip_special_tokens=True)
                 # Decoded text often has spurious leading whitespace from
-                # the tokenizer's piece prefix — strip it for consistency.
+                # the tokenizer's piece prefix - strip it for consistency.
                 return clipped.strip()
             return cleaned
     except Exception:
-        # Tokeniser not available or model not loaded yet — fall through
+        # Tokeniser not available or model not loaded yet - fall through
         # to the character-cap fallback below.
         pass
 
@@ -344,7 +344,7 @@ async def index_one(
     """Embed and upsert a single row into ``adapter.collection_name``.
 
     Returns ``True`` if the row was indexed, ``False`` otherwise.  Never
-    raises — every failure is logged and swallowed so the caller (typically
+    raises - every failure is logged and swallowed so the caller (typically
     an event-bus subscriber) can stay one-line.
     """
     try:
@@ -353,7 +353,7 @@ async def index_one(
             return False
         text = _safe_text(adapter.to_text(row))
         if not text:
-            # Nothing to embed — make sure any stale entry is removed.
+            # Nothing to embed - make sure any stale entry is removed.
             await delete_one(adapter, row_id)
             return False
         try:
@@ -523,7 +523,7 @@ async def search_collection(
     """Semantic search inside a single collection.
 
     ``adapter_or_name`` accepts either an EmbeddingAdapter instance or a
-    bare collection name string — useful when the unified search router
+    bare collection name string - useful when the unified search router
     fans out to collections without instantiating per-module adapters.
 
     Returns an empty list if the embedding model is unavailable, the
@@ -569,7 +569,7 @@ async def find_similar(
 
     Excludes the source row from the results.  When ``cross_project`` is
     True, the project filter is dropped so callers can find similar items
-    across the whole tenant — invaluable for risk lessons-learned reuse
+    across the whole tenant - invaluable for risk lessons-learned reuse
     and BOQ template suggestion.
     """
     row_id = _coerce_id(getattr(row, "id", None))
@@ -599,7 +599,7 @@ def reciprocal_rank_fusion(
     """Merge multiple ranked hit lists into a single global ranking.
 
     RRF is a parameter-free, score-agnostic fusion that works extremely
-    well for combining ranked lists from heterogeneous retrievers — here
+    well for combining ranked lists from heterogeneous retrievers - here
     each ranking comes from a different collection (BOQ, documents,
     tasks, …) and we want a single global "best of all worlds" list.
 
@@ -690,7 +690,7 @@ async def reindex_collection(
     """Backfill a collection from the ground up.
 
     If ``purge_first`` is True the entire collection is wiped before the
-    new rows are indexed — useful when the embedding model changes and a
+    new rows are indexed - useful when the embedding model changes and a
     full reindex is needed.
 
     Serialised by a per-collection ``asyncio.Lock`` so two concurrent
@@ -698,7 +698,7 @@ async def reindex_collection(
     auto-backfill racing an admin-triggered ``/vector/reindex/``) can
     not interleave their purge / index ops and leave the vector store
     in an inconsistent state.  Reindexes against DIFFERENT collections
-    still run in parallel — the locks are per-name.
+    still run in parallel - the locks are per-name.
 
     Returns ``{"indexed": int, "skipped": int, "purged": bool}``.
     """

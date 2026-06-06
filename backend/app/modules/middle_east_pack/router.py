@@ -1,7 +1,7 @@
 """‌⁠‍Middle East & GCC regional pack API routes.
 
 Endpoints:
-    GET /config  — Return the full Middle East regional configuration
+    GET /config  - Return the full Middle East regional configuration
 """
 
 import logging

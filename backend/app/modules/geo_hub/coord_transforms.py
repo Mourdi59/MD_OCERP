@@ -9,12 +9,12 @@ construction-ERP installer should stay LIGHTWEIGHT. ``pyproj`` is a
 What we ship out of the box:
 
 * WGS84 <-> ECEF (earth-centred earth-fixed Cartesian metres). Pure
-  numpy-free Python — the formulas are short and well-known.
+  numpy-free Python - the formulas are short and well-known.
 * WGS84 <-> Web Mercator (EPSG 3857). Pure Python.
 * WGS84 <-> local ENU (east-north-up tangent plane at an anchor). Used
   to place a tile relative to its Cesium-native bounding volume.
 * A ``transform(src_epsg, dst_epsg, x, y, z)`` umbrella that picks the
-  right pair above OR — if ``pyproj`` is importable — falls through to
+  right pair above OR - if ``pyproj`` is importable - falls through to
   it for anything more exotic (UTM, ETRS89, ...).
 
 This keeps the common path (WGS84 + Web Mercator) working in a 4 GB
@@ -35,7 +35,7 @@ _E2 = 1.0 - (_B / _A) ** 2  # eccentricity squared
 
 
 def _has_pyproj() -> bool:
-    try:  # pragma: no cover — depends on installer
+    try:  # pragma: no cover - depends on installer
         import pyproj  # noqa: F401
 
         return True
@@ -53,7 +53,7 @@ def wgs84_to_ecef(
 ) -> tuple[float, float, float]:
     """Convert WGS84 (lat, lon, alt) -> ECEF (X, Y, Z) in metres.
 
-    Standard formulas — see e.g. *Vermeille, "Direct transformation
+    Standard formulas - see e.g. *Vermeille, "Direct transformation
     from geocentric coordinates to geodetic coordinates", 2002*.
     """
     lat = math.radians(lat_deg)
@@ -72,7 +72,7 @@ def ecef_to_wgs84(
     y: float,
     z: float,
 ) -> tuple[float, float, float]:
-    """ECEF (m) -> WGS84 (lat_deg, lon_deg, alt_m) — Bowring's method.
+    """ECEF (m) -> WGS84 (lat_deg, lon_deg, alt_m) - Bowring's method.
 
     Closed-form approximation accurate to a few millimetres at the
     surface; perfectly fine for siting a tile bounding box.
@@ -150,7 +150,7 @@ def enu_to_ecef(
     ref_lon_deg: float,
     ref_alt_m: float = 0.0,
 ) -> tuple[float, float, float]:
-    """Inverse of :func:`ecef_to_enu` — local ENU back to ECEF."""
+    """Inverse of :func:`ecef_to_enu` - local ENU back to ECEF."""
     ref_ecef = wgs84_to_ecef(ref_lat_deg, ref_lon_deg, ref_alt_m)
     lat = math.radians(ref_lat_deg)
     lon = math.radians(ref_lon_deg)
@@ -196,7 +196,7 @@ def transform(
         lat, lon, alt = ecef_to_wgs84(x, y, z)
         return lat, lon, alt
 
-    if _has_pyproj():  # pragma: no cover — installer-dependent
+    if _has_pyproj():  # pragma: no cover - installer-dependent
         import pyproj
 
         transformer = pyproj.Transformer.from_crs(
@@ -208,7 +208,7 @@ def transform(
         return nx, ny, nz
 
     raise NotImplementedError(
-        f"transform({src_epsg} -> {dst_epsg}) requires pyproj — install openconstructionerp[geo] to enable it",
+        f"transform({src_epsg} -> {dst_epsg}) requires pyproj - install openconstructionerp[geo] to enable it",
     )
 
 

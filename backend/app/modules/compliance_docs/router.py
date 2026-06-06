@@ -2,7 +2,7 @@
 """‌⁠‍FastAPI router for the compliance documents tracker.
 
 All endpoints are owner-scoped via the existing
-:func:`app.dependencies.verify_project_access` guard — the same pattern
+:func:`app.dependencies.verify_project_access` guard - the same pattern
 the :mod:`app.modules.rfi.router` uses. Cross-project access surfaces
 as 404 (not 403) so the endpoint can't be turned into a UUID-existence
 oracle.
@@ -69,7 +69,7 @@ def _to_response(item: object) -> ComplianceDocResponse:
     if expires_at is not None:
         try:
             days_until_expiry = (expires_at - today).days
-        except TypeError:  # pragma: no cover — defensive
+        except TypeError:  # pragma: no cover - defensive
             days_until_expiry = 0
 
     resp = ComplianceDocResponse.model_validate(item)
@@ -113,7 +113,7 @@ async def list_expiring_soon(
 ) -> list[ComplianceDocResponse]:
     """Return docs that are already expired or due within their reminder window.
 
-    Designed for the dashboard widget — top N rows by ascending expiry.
+    Designed for the dashboard widget - top N rows by ascending expiry.
     """
     await verify_project_access(project_id, user_id, session)
     items = await service.list_expiring_soon(project_id, limit=limit)
@@ -209,7 +209,7 @@ async def upload_attachment(
     validate the file's leading bytes against
     :data:`_ALLOWED_ATTACHMENT_TYPES` (PDF, PNG, JPEG, GIF, WebP, Office
     ZIP, OLE, XML). Mismatches return 415. The stored MIME is derived
-    from the detected signature — never from the uploader's header — so
+    from the detected signature - never from the uploader's header - so
     later GETs can't be coerced into serving HTML / SVG / script.
     """
     # Project scoping: we must resolve the doc first so we can route
@@ -240,7 +240,7 @@ async def upload_attachment(
             detail=(f"Uploaded file exceeds the {_MAX_ATTACHMENT_BYTES} byte limit"),
         )
 
-    # Magic-byte gate — reject anything outside the allow-list.
+    # Magic-byte gate - reject anything outside the allow-list.
     try:
         detected = require_signature(
             content[:SIGNATURE_BYTES_REQUIRED],
@@ -270,7 +270,7 @@ async def upload_attachment(
         )
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to save file — storage error",
+            detail="Unable to save file - storage error",
         )
 
     relative_path = f"compliance_docs/attachments/{stored_filename}"

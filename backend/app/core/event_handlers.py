@@ -103,7 +103,7 @@ async def _handle_safety_observation_high_risk(event: Event) -> None:
         observation_number: str
         risk_score: int
         description: str
-        notify_user_ids: list[str] (UUIDs — if empty, falls back to project owner)
+        notify_user_ids: list[str] (UUIDs - if empty, falls back to project owner)
     """
     try:
         data = event.data
@@ -795,7 +795,7 @@ async def _handle_bim_model_ready(event: Event) -> None:
     Expected event.data:
         model_id: str (UUID)
         project_id: str (UUID)
-        boq_id: str (UUID, optional — target BOQ for new positions)
+        boq_id: str (UUID, optional - target BOQ for new positions)
     """
     try:
         data = event.data
@@ -1547,7 +1547,7 @@ async def _notify_ncr_created(event: Event) -> None:
         title: str
         severity: str
         created_by: str (UUID)
-        notify_user_ids: list[str] (UUIDs — if empty, falls back to project owner)
+        notify_user_ids: list[str] (UUIDs - if empty, falls back to project owner)
     """
     try:
         data = event.data
@@ -1661,7 +1661,7 @@ async def _notify_document_uploaded(event: Event) -> None:
 async def _dispatch_to_webhooks(event: Event) -> None:
     """Forward all events to registered webhooks.
 
-    This is a wildcard handler — it receives every event published on the
+    This is a wildcard handler - it receives every event published on the
     bus and dispatches it to matching WebhookEndpoint rows via the
     integrations module's WebhookService.
     """
@@ -1730,7 +1730,7 @@ def register_event_handlers() -> None:
     event_bus.subscribe("ncr.created", _notify_ncr_created)
     event_bus.subscribe("document.uploaded", _notify_document_uploaded)
 
-    # 24. Outgoing webhooks — wildcard handler forwards all events
+    # 24. Outgoing webhooks - wildcard handler forwards all events
     event_bus.subscribe("*", _dispatch_to_webhooks)
 
     logger.info("Registered %d cross-module event handlers", _HANDLER_COUNT)

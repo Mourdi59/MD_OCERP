@@ -1,13 +1,13 @@
 """‌⁠‍Validation API routes.
 
 Endpoints:
-    POST  /validation/run                    — Run validation on a BOQ
-    POST  /validation/import-ids             — Import IDS rules (multipart upload)
-    GET   /validation/reports?project_id=X   — List validation reports
-    GET   /validation/reports/{report_id}    — Get single report
-    GET   /validation/reports/{id}/sarif     — Export report as SARIF v2.1.0 JSON
-    DELETE /validation/reports/{report_id}   — Delete report
-    GET   /validation/rule-sets              — List available rule sets
+    POST  /validation/run                    - Run validation on a BOQ
+    POST  /validation/import-ids             - Import IDS rules (multipart upload)
+    GET   /validation/reports?project_id=X   - List validation reports
+    GET   /validation/reports/{report_id}    - Get single report
+    GET   /validation/reports/{id}/sarif     - Export report as SARIF v2.1.0 JSON
+    DELETE /validation/reports/{report_id}   - Delete report
+    GET   /validation/rule-sets              - List available rule sets
 """
 
 import logging
@@ -58,7 +58,7 @@ async def _require_project_access(
     Central choke-point for project-scoped validation endpoints. Mirrors
     the pattern used by ``finance.router._require_project_access``.
     Raises HTTP 403 if the user has no access. ``None`` project_id is a
-    no-op — callers that accept global aggregates must scope at the
+    no-op - callers that accept global aggregates must scope at the
     service layer.
     """
     if project_id is None:
@@ -87,7 +87,7 @@ async def _require_project_access(
             user = await user_repo.get_by_id(user_id)
             if user is not None and getattr(user, "role", "") == "admin":
                 return
-        except Exception:  # noqa: BLE001 — best-effort admin check
+        except Exception:  # noqa: BLE001 - best-effort admin check
             pass
 
         if str(getattr(project, "owner_id", "")) != str(user_id):
@@ -121,7 +121,7 @@ async def _require_report_access(
     return report
 
 
-# ── POST /run — Run validation on a BOQ ──────────────────────────────────
+# ── POST /run - Run validation on a BOQ ──────────────────────────────────
 
 
 @router.post(
@@ -181,7 +181,7 @@ async def run_validation(
     )
 
 
-# ── POST /check-bim-model — Run per-element BIM rules ───────────────────
+# ── POST /check-bim-model - Run per-element BIM rules ───────────────────
 
 
 @router.post(
@@ -201,7 +201,7 @@ async def check_bim_model(
     each failure back to the offending element. Large models are capped at
     ``MAX_RESULTS_PER_REPORT`` failures with a ``_truncated`` sentinel.
     """
-    # Ownership check — resolve the BIM model to its project first.
+    # Ownership check - resolve the BIM model to its project first.
     from app.modules.bim_hub.repository import BIMModelRepository
 
     model_repo = BIMModelRepository(session)
@@ -229,7 +229,7 @@ async def check_bim_model(
     return ValidationReportResponse.model_validate(report)
 
 
-# ── GET /reports — List validation reports ───────────────────────────────
+# ── GET /reports - List validation reports ───────────────────────────────
 
 
 @router.get(
@@ -251,7 +251,7 @@ async def list_reports(
     return [ValidationReportResponse.model_validate(r) for r in reports]
 
 
-# ── GET /reports/{report_id} — Get single report ─────────────────────────
+# ── GET /reports/{report_id} - Get single report ─────────────────────────
 
 
 @router.get(
@@ -270,7 +270,7 @@ async def get_report(
     return ValidationReportResponse.model_validate(report)
 
 
-# ── DELETE /reports/{report_id} — Delete report ──────────────────────────
+# ── DELETE /reports/{report_id} - Delete report ──────────────────────────
 
 
 @router.delete(
@@ -294,7 +294,7 @@ async def delete_report(
         )
 
 
-# ── POST /import-ids — Import buildingSMART IDS rules ─────────────────────
+# ── POST /import-ids - Import buildingSMART IDS rules ─────────────────────
 
 
 @router.post(
@@ -349,7 +349,7 @@ async def import_ids(
     }
 
 
-# ── GET /reports/{id}/sarif — Export report as SARIF v2.1.0 ───────────────
+# ── GET /reports/{id}/sarif - Export report as SARIF v2.1.0 ───────────────
 
 
 @router.get(
@@ -372,7 +372,7 @@ async def export_report_sarif(
     return JSONResponse(content=sarif_doc, media_type="application/sarif+json")
 
 
-# ── GET /rule-sets — List available rule sets ─────────────────────────────
+# ── GET /rule-sets - List available rule sets ─────────────────────────────
 
 
 @router.get(

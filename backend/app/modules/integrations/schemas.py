@@ -17,14 +17,14 @@ IntegrationType = Literal["teams", "slack", "telegram", "discord", "whatsapp", "
 
 
 # Secret-bearing keys inside ``IntegrationConfig.config`` that must NEVER
-# be echoed back in a response payload — even to the user who owns the
+# be echoed back in a response payload - even to the user who owns the
 # row. Two reasons: (1) browser-side leaks via XSS / screen sharing,
 # (2) the secret is already stored in the DB so the read-back has zero
 # legitimate use. Writes still flow through unchanged (Pydantic does not
 # validate output-only redaction on input).
 _SECRET_CONFIG_KEYS: frozenset[str] = frozenset(
     {
-        "webhook_url",  # Teams / Slack / Discord — full URL is the bearer credential
+        "webhook_url",  # Teams / Slack / Discord - full URL is the bearer credential
         "bot_token",  # Telegram bot token (BotFather-issued)
         "access_token",  # WhatsApp / generic OAuth bearer
         "api_key",  # Generic third-party API key
@@ -133,7 +133,7 @@ class IntegrationConfigUpdate(BaseModel):
     def _check_config_urls(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
         # On PATCH we don't know the integration_type without a DB hit, so
         # validate any webhook_url that's present regardless of type. False
-        # positives here are acceptable — webhooks should always target
+        # positives here are acceptable - webhooks should always target
         # routable external hosts.
         if v is None or "webhook_url" not in v:
             return v
@@ -148,7 +148,7 @@ class IntegrationConfigResponse(BaseModel):
     """Integration config returned from the API.
 
     The ``config`` field is auto-redacted on serialization so secrets
-    (webhook URLs, bot tokens, API keys) never leak back to the caller —
+    (webhook URLs, bot tokens, API keys) never leak back to the caller -
     even to the owner of the row. The UI can rely on the
     ``***REDACTED***`` marker as proof the secret is configured without
     ever seeing the actual material.
@@ -279,7 +279,7 @@ class WebhookResponse(BaseModel):
 
     @field_serializer("secret")
     def _redact_secret(self, v: str | None) -> str | None:
-        # Return the marker iff a secret was set, ``None`` otherwise — so
+        # Return the marker iff a secret was set, ``None`` otherwise - so
         # the UI can show "HMAC signing: enabled" without ever seeing the
         # key material.
         return _REDACTED_MARKER if v else None

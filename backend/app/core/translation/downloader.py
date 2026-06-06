@@ -1,6 +1,6 @@
 """‌⁠‍On-demand downloaders for MUSE bilingual dictionaries and IATE dumps.
 
-The user triggers these from the UI — we never download anything at boot
+The user triggers these from the UI - we never download anything at boot
 or at first use. Both targets land as TSVs in
 ``~/.openestimate/translations/{muse,iate}/{src}-{tgt}.tsv`` so the
 :mod:`app.core.translation.lookup` module finds them automatically.
@@ -17,13 +17,13 @@ IATE
 The IATE EU termbase ships as TBX (XML, ~600MB). Users download the
 ``IATE_export.tbx.zip`` from `https://iate.europa.eu/` and pass the local
 path to :func:`process_iate_tbx`. We then walk the TBX with
-``defusedxml`` (already in base deps — XXE-safe), pull out
+``defusedxml`` (already in base deps - XXE-safe), pull out
 ``<termEntry>`` blocks, and split into per-language-pair TSV files.
 
 Progress callbacks
 ~~~~~~~~~~~~~~~~~~
 All long-running downloaders accept ``on_progress: Callable[[float], None]``.
-The float is in [0.0, 1.0]. Callbacks are best-effort — any exception
+The float is in [0.0, 1.0]. Callbacks are best-effort - any exception
 raised by the callback is logged and swallowed so a buggy UI handler
 can't break the download.
 """
@@ -50,7 +50,7 @@ _MUSE_URL = "https://dl.fbaipublicfiles.com/arrival/dictionaries/{src}-{tgt}.txt
 _DOWNLOAD_TIMEOUT = httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0)
 
 
-# IATE allowlist — any URL passed to ``download_iate_dump`` must start
+# IATE allowlist - any URL passed to ``download_iate_dump`` must start
 # with one of these prefixes. Without this, an authenticated user could
 # weaponize the backend as an SSRF probe (cloud metadata, internal
 # services, etc.).  Set the env var ``OE_IATE_EXTRA_HOSTS`` to a
@@ -67,7 +67,7 @@ _IATE_ALLOWED_PREFIXES: tuple[str, ...] = (
 
 def _iate_allowlist() -> tuple[str, ...]:
     """‌⁠‍Resolve the IATE allowlist at call time so env-var overrides are honored."""
-    import os  # noqa: PLC0415 — lazy so tests can monkeypatch via env
+    import os  # noqa: PLC0415 - lazy so tests can monkeypatch via env
 
     extra_raw = os.environ.get("OE_IATE_EXTRA_HOSTS", "")
     extra: tuple[str, ...] = tuple(p.strip() for p in extra_raw.split(",") if p.strip().startswith("https://"))
@@ -81,7 +81,7 @@ async def _emit_progress(cb: ProgressCallback | None, value: float) -> None:
         ret = cb(value)
         if asyncio.iscoroutine(ret):
             await ret
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug("Progress callback raised: %s", exc)
 
 
@@ -135,7 +135,7 @@ async def download_muse_pair(
                         await _emit_progress(on_progress, received / total)
 
     # Convert MUSE format (space-separated source/target pairs, one per
-    # line) to TSV. Run in executor — the file may be 30-50MB.
+    # line) to TSV. Run in executor - the file may be 30-50MB.
     def _convert() -> None:
         with (
             tmp_path.open("r", encoding="utf-8", errors="replace") as fin,
@@ -196,7 +196,7 @@ async def download_iate_dump(
         )
         raise ValueError(msg)
 
-    # SSRF guard — the URL is user-supplied via the API. Without an
+    # SSRF guard - the URL is user-supplied via the API. Without an
     # allowlist an authenticated user could pivot the backend to fetch
     # AWS metadata (169.254.169.254), internal services, or attacker-
     # controlled redirects. We pin to the official IATE host plus a small
@@ -265,9 +265,9 @@ async def process_iate_tbx(
     target_dir = dictionary_dir(root) / "iate"
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    # XML parsing in an executor — the TBX is huge.
+    # XML parsing in an executor - the TBX is huge.
     def _parse() -> dict[str, Path]:
-        from defusedxml import ElementTree as ET  # noqa: N817 — stdlib convention
+        from defusedxml import ElementTree as ET  # noqa: N817 - stdlib convention
 
         # Streaming iterparse keeps memory bounded.
         out_files: dict[str, Any] = {}  # pair -> open file handle
@@ -320,7 +320,7 @@ async def process_iate_tbx(
                             for t in lang_terms[tgt_lang]:
                                 fh.write(f"{s}\t{t}\t1.0\n")
 
-                # Free memory — iterparse retains the parsed tree by
+                # Free memory - iterparse retains the parsed tree by
                 # default, which is fatal on a 600MB file.
                 elem.clear()
         finally:

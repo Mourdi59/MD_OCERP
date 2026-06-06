@@ -44,7 +44,7 @@ def extract_quantities(raw: dict[str, Any]) -> dict[str, float]:
     """‌⁠‍Pull recognised quantity keys out of an arbitrary raw element dict.
 
     Looks at both the top level (``raw["area_m2"]``) and a nested
-    ``geometry`` block (``raw["geometry"]["area_m2"]``) — the canonical
+    ``geometry`` block (``raw["geometry"]["area_m2"]``) - the canonical
     format puts dimensions inside ``geometry``.
     """
     out: dict[str, float] = {}
@@ -105,7 +105,7 @@ def build_envelope_base(
     ``source_lang`` defaults to empty (not ``"en"``) when the raw input
     doesn't carry a language tag. An empty source_lang short-circuits
     the translation cascade in :func:`ranker._maybe_translate` so the
-    search runs verbatim against the catalogue — which is what BGE-M3's
+    search runs verbatim against the catalogue - which is what BGE-M3's
     multilingual encoder wants. Hardcoding ``"en"`` here would force
     a redundant en→catalogue-language translation pass for elements
     extracted from a non-English BIM model that just happened to lack

@@ -1,16 +1,16 @@
 """‌⁠‍Enterprise Workflows API routes.
 
 Endpoints:
-    GET    /                         — List workflows
-    POST   /                         — Create workflow (auth required)
-    GET    /{id}                     — Get single workflow
-    PATCH  /{id}                     — Update workflow (auth required)
-    DELETE /{id}                     — Delete workflow (auth required)
-    GET    /requests                 — List approval requests
-    POST   /requests                 — Submit approval request (auth required)
-    GET    /requests/{id}            — Get single approval request
-    POST   /requests/{id}/approve    — Approve request (auth required)
-    POST   /requests/{id}/reject     — Reject request (auth required)
+    GET    /                         - List workflows
+    POST   /                         - Create workflow (auth required)
+    GET    /{id}                     - Get single workflow
+    PATCH  /{id}                     - Update workflow (auth required)
+    DELETE /{id}                     - Delete workflow (auth required)
+    GET    /requests                 - List approval requests
+    POST   /requests                 - Submit approval request (auth required)
+    GET    /requests/{id}            - Get single approval request
+    POST   /requests/{id}/approve    - Approve request (auth required)
+    POST   /requests/{id}/reject     - Reject request (auth required)
 """
 
 import uuid
@@ -208,7 +208,7 @@ async def cancel_request(
 ) -> ApprovalRequestResponse:
     """Withdraw a pending approval request.
 
-    Only the original requester (or an admin) may cancel — closes the
+    Only the original requester (or an admin) may cancel - closes the
     "once submitted, stuck forever" gap surfaced by QA.
     """
     request = await service.cancel_request(request_id, user_id=user_id)

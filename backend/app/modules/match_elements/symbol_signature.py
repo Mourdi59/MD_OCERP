@@ -3,7 +3,7 @@
 """Deterministic symbol/shape signature recogniser for match-elements.
 
 This module is a small, fully deterministic increment toward
-"item #18 — ML quantity extraction / symbol recognition". It does NOT
+"item #18 - ML quantity extraction / symbol recognition". It does NOT
 do computer vision. There is no trained model, no raster pixel access,
 no YOLO / PaddleOCR, and no heavy dependency. It works exclusively on
 the *structured* descriptors that the canonical format (or an existing
@@ -37,7 +37,7 @@ What it does, deterministically:
 
 The output is a *suggestion*. Nothing is auto-applied. Confidence is an
 honest blend of category agreement, dimension-ratio fit, and property
-keyword hits — never a fabricated certainty.
+keyword hits - never a fabricated certainty.
 """
 
 from __future__ import annotations
@@ -231,7 +231,7 @@ def compute_signature(descriptor: dict[str, Any]) -> ShapeSignature:
     dims = extract_dimensions(descriptor.get("quantities"))
 
     ratios: dict[str, float] = {}
-    # "aspect": longer horizontal extent over shorter horizontal extent —
+    # "aspect": longer horizontal extent over shorter horizontal extent -
     # distinguishes slender rectangles (a door panel) from squarish ones
     # (a fixture footprint). Computed from the two largest linear extents
     # among {length, width, height} so it works regardless of which pair a
@@ -245,14 +245,14 @@ def compute_signature(descriptor: dict[str, Any]) -> ShapeSignature:
         r = _ratio(linear[0], linear[1])
         if r is not None:
             ratios["aspect"] = round(r, 4)
-    # "slenderness": vertical extent over the larger horizontal extent —
+    # "slenderness": vertical extent over the larger horizontal extent -
     # high for columns/pipes (tall, thin), low for slabs/walls panels.
     if "height" in dims:
         plan = max((dims.get(k, 0.0) for k in ("length", "width", "diameter")), default=0.0)
         r = _ratio(dims["height"], plan)
         if r is not None:
             ratios["slenderness"] = round(r, 4)
-    # "planarity": area over volume (1/thickness proxy) — high for thin
+    # "planarity": area over volume (1/thickness proxy) - high for thin
     # plate-like things (walls, ducts), low for chunky members.
     if "area" in dims and "volume" in dims:
         r = _ratio(dims["area"], dims["volume"])
@@ -336,7 +336,7 @@ class SymbolArchetype:
     keyword_hints: frozenset[str] = frozenset()
 
 
-# Built-in seed library. Ranges are deliberately broad and conservative —
+# Built-in seed library. Ranges are deliberately broad and conservative -
 # this is a heuristic recogniser, not a calibrated model. Each archetype's
 # defining ratios reflect typical building-element proportions in metres.
 _SEED_LIBRARY: tuple[SymbolArchetype, ...] = (

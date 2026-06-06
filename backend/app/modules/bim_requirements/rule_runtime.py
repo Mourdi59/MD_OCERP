@@ -12,14 +12,14 @@ The runtime treats elements as plain dicts with at least these keys
 
 * ``id`` (str)
 * ``ifc_class`` (str, optional)
-* ``classification`` (dict[str, str], optional) — e.g. ``{"din276": "330"}``
+* ``classification`` (dict[str, str], optional) - e.g. ``{"din276": "330"}``
 * ``properties`` (dict[str, Any], optional)
-* ``quantities`` (dict[str, Any], optional) — e.g. ``{"area": 37.5}``
+* ``quantities`` (dict[str, Any], optional) - e.g. ``{"area": 37.5}``
 
 The reason we use plain dicts (instead of the ORM model from
 ``bim_hub``) is to keep this module unit-testable and reusable: callers
-can feed it any source of element-shaped data — DB rows, IFC parser
-output, even hand-written test fixtures — without dragging the DB layer
+can feed it any source of element-shaped data - DB rows, IFC parser
+output, even hand-written test fixtures - without dragging the DB layer
 into the test boundary.
 """
 
@@ -109,7 +109,7 @@ def _get_value(element: dict[str, Any], key: str) -> Any:
 def _to_number(value: Any) -> float | None:
     """Coerce to float; return None if not numeric."""
     if value is None or isinstance(value, bool):
-        # Booleans subclass int — exclude them so `True > 0` doesn't pass
+        # Booleans subclass int - exclude them so `True > 0` doesn't pass
         # a numeric comparison rule by accident.
         return None
     if isinstance(value, (int, float)):
@@ -138,7 +138,7 @@ def evaluate_predicate(predicate: Predicate, actual: Any) -> bool:
     """Evaluate one operator against an actual value.
 
     Returns ``True`` when the predicate holds, ``False`` otherwise. Never
-    raises — a malformed predicate is impossible because the
+    raises - a malformed predicate is impossible because the
     :class:`Predicate` model validated it at load time, and an
     impossible-to-evaluate combination (e.g. ``gt`` against a non-numeric
     string) just yields ``False``.
@@ -349,9 +349,9 @@ def evaluate_rule_pack(
 
     The pack summary distinguishes three states:
 
-    * **passed**   — every applicable rule passed against this element
-    * **failed**   — at least one applicable rule failed against this element
-    * **not_applicable** — no rule's selector matched this element
+    * **passed**   - every applicable rule passed against this element
+    * **failed**   - at least one applicable rule failed against this element
+    * **not_applicable** - no rule's selector matched this element
 
     Result rows are emitted only for *applicable* (rule, element) pairs;
     "not_applicable" is reported only as an aggregate to keep the result

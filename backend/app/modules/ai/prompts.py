@@ -38,11 +38,11 @@ USER_FENCE_MAX_LEN = 15000
 def sanitize_user_text(text: str | None, *, max_len: int = USER_FENCE_MAX_LEN) -> str:
     """Strip control characters and hard-truncate user-supplied text.
 
-    Audit AI1 — last-line defence applied to any free-form string that
+    Audit AI1 - last-line defence applied to any free-form string that
     will end up inside a prompt sent to an LLM:
 
     * Removes every C0 / C1 control byte except ``\\n``, ``\\r`` and
-      ``\\t`` — these are the characters attackers use to forge fake
+      ``\\t`` - these are the characters attackers use to forge fake
       "role" boundaries (``\\x00``, ``\\x1b[`` ANSI sequences, raw
       bidi-override marks, etc.).
     * Caps the length so a single user request can't crowd the system
@@ -75,7 +75,7 @@ def sanitize_user_text(text: str | None, *, max_len: int = USER_FENCE_MAX_LEN) -
 def fence_user_content(text: str, *, max_len: int = USER_FENCE_MAX_LEN) -> str:
     """Wrap user-controlled text in a 'data not instructions' fence.
 
-    Audit AI1 — primary mitigation against indirect prompt injection.
+    Audit AI1 - primary mitigation against indirect prompt injection.
     The wrapped block carries an explicit hint that everything between
     the open/close tags is **data** (a document to estimate, not
     instructions to follow). Any closing-tag forgeries inside the
@@ -182,7 +182,7 @@ Rules:
 - Use dimension-based quantity estimation from the photo
 - Include ONLY works that are DIRECTLY VISIBLE or clearly implied
 - Do NOT guess interior finishes from an exterior photo
-- Be CONSERVATIVE with quantities — measure carefully from the photo
+- Be CONSERVATIVE with quantities - measure carefully from the photo
 - Calculate total = quantity * unit_rate
 - Location: {location}
 - Currency: {currency}
@@ -224,7 +224,7 @@ Rules:
 - Include classification codes if visible (DIN 276, NRM, MasterFormat)
 - Handle multi-language documents (German, English, Russian, etc.)
 - Skip header/footer/summary rows
-- Be thorough — it is better to include too many items than too few
+- Be thorough - it is better to include too many items than too few
 - Return ONLY the JSON array, no other text
 """
 
@@ -248,7 +248,7 @@ Extract every line item you can find and return as a JSON array:
 ]
 
 Rules:
-- Read ALL text in the image carefully — OCR every row
+- Read ALL text in the image carefully - OCR every row
 - Extract ALL items, even if quantities or rates are missing (use 0)
 - Preserve original descriptions as closely as possible
 - Detect the unit from context (m2, m3, kg, pcs, lsum, m, t, h)
@@ -257,7 +257,7 @@ Rules:
 - Include classification codes if visible (DIN 276, NRM, MasterFormat)
 - Handle multi-language documents (German, English, Russian, etc.)
 - Skip header/footer/summary rows
-- Be thorough — it is better to include too many items than too few
+- Be thorough - it is better to include too many items than too few
 - Return ONLY the JSON array, no other text
 """
 

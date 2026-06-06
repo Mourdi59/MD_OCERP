@@ -341,7 +341,7 @@ def load_rule_pack(source: str | Path, *, text: str | None = None) -> RulePack:
             raise RulePackParseError(f"Cannot read rule pack file: {exc}", path=path) from exc
 
     try:
-        raw = yaml.load(text, Loader=_StrictSafeLoader)  # noqa: S506 — strict subclass
+        raw = yaml.load(text, Loader=_StrictSafeLoader)  # noqa: S506 - strict subclass
     except yaml.YAMLError as exc:
         line = None
         if hasattr(exc, "problem_mark") and exc.problem_mark is not None:
@@ -359,7 +359,7 @@ def load_rule_pack(source: str | Path, *, text: str | None = None) -> RulePack:
         return RulePack.model_validate(raw)
     except Exception as exc:  # ValidationError or our raised ValueError
         # We deliberately do not import pydantic's ValidationError as the
-        # only catchable type — Pydantic may also raise built-in ValueError
+        # only catchable type - Pydantic may also raise built-in ValueError
         # via field_validators. Both serialize cleanly via str().
         raise RulePackParseError(str(exc), path=path) from exc
 

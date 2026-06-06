@@ -1,20 +1,20 @@
 """‌⁠‍Bid Management ORM models.
 
 Tables:
-    oe_bid_management_package           — bid packages (formal RFx)
-    oe_bid_management_line_item         — scope line items inside a package
-    oe_bid_management_invitation        — invitation to a bidder
-    oe_bid_management_bidder            — denormalised bidder snapshot
-    oe_bid_management_submission        — submitted envelope from a bidder
-    oe_bid_management_submission_line   — priced line in a submission
-    oe_bid_management_qa                — Q&A thread on a package
-    oe_bid_management_comparison        — leveling header (one per package)
-    oe_bid_management_leveling          — per-bidder leveling row
-    oe_bid_management_award             — award decision (one per package)
-    oe_bid_management_rejection         — formal rejection record
+    oe_bid_management_package           - bid packages (formal RFx)
+    oe_bid_management_line_item         - scope line items inside a package
+    oe_bid_management_invitation        - invitation to a bidder
+    oe_bid_management_bidder            - denormalised bidder snapshot
+    oe_bid_management_submission        - submitted envelope from a bidder
+    oe_bid_management_submission_line   - priced line in a submission
+    oe_bid_management_qa                - Q&A thread on a package
+    oe_bid_management_comparison        - leveling header (one per package)
+    oe_bid_management_leveling          - per-bidder leveling row
+    oe_bid_management_award             - award decision (one per package)
+    oe_bid_management_rejection         - formal rejection record
 
 All cross-module references (tender_id, contact_id, subcontractor_id,
-contract_template_ref) are plain UUID / string columns — no SQLAlchemy
+contract_template_ref) are plain UUID / string columns - no SQLAlchemy
 ForeignKey crossing module boundaries.
 """
 
@@ -39,7 +39,7 @@ class BidPackage(Base):
         nullable=False,
         index=True,
     )
-    # Plain UUID — references oe_tendering_tender.id but no FK so the
+    # Plain UUID - references oe_tendering_tender.id but no FK so the
     # tendering module can be reorganised/swapped without breaking us.
     tender_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     code: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
@@ -148,7 +148,7 @@ class BidInvitation(Base):
         nullable=False,
         index=True,
     )
-    # Plain UUID — references oe_subcontractors_subcontractor.id OR
+    # Plain UUID - references oe_subcontractors_subcontractor.id OR
     # oe_contacts_contact.id, no FK.
     bidder_ref_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     invitee_email: Mapped[str] = mapped_column(String(255), nullable=False, default="")
@@ -307,7 +307,7 @@ class BidSubmissionLine(Base):
     inclusion_status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="included", server_default="included"
     )
-    # US public works flag — Davis-Bacon Act 40 USC 3142 / state
+    # US public works flag - Davis-Bacon Act 40 USC 3142 / state
     # prevailing wage laws. Auditable per submission line.
     prevailing_wage_applicable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
 
@@ -337,7 +337,7 @@ class BidQA(Base):
     asked_by_email: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     answer: Mapped[str] = mapped_column(Text, nullable=False, default="")
     answered_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    # No FK to users — keeps the module decoupled.
+    # No FK to users - keeps the module decoupled.
     answered_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     visible_to_bidder_ids: Mapped[list] = mapped_column(  # type: ignore[assignment]
@@ -352,7 +352,7 @@ class BidQA(Base):
 
 
 class BidComparison(Base):
-    """Leveling header — one per package, holds scoring rule + recommendation."""
+    """Leveling header - one per package, holds scoring rule + recommendation."""
 
     __tablename__ = "oe_bid_management_comparison"
 
@@ -456,7 +456,7 @@ class BidLeveling(Base):
 
 
 class BidAward(Base):
-    """Award decision — one per package."""
+    """Award decision - one per package."""
 
     __tablename__ = "oe_bid_management_award"
 
@@ -481,10 +481,10 @@ class BidAward(Base):
     )
     currency: Mapped[str] = mapped_column(String(10), nullable=False, default="")
     decision_summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    # No FK to users — plain UUID/string.
+    # No FK to users - plain UUID/string.
     decision_signed_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     decision_signed_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    # Plain string — references a template id from documents/contracts module.
+    # Plain string - references a template id from documents/contracts module.
     contract_template_ref: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     notified_others_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
 

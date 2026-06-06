@@ -1,4 +1,4 @@
-"""Management of Change (MoC) API routes — mounted at /api/v1/moc/."""
+"""Management of Change (MoC) API routes - mounted at /api/v1/moc/."""
 
 from __future__ import annotations
 
@@ -225,7 +225,7 @@ async def update_moc_impact(
     await verify_project_access(entry.project_id, str(user_id), session)
     # IDOR guard: confirm the impact belongs to the requested entry BEFORE
     # mutating it, mirroring ``delete_moc_impact``. Checking after the write
-    # is fragile — it relies on the request-scoped session rolling back the
+    # is fragile - it relies on the request-scoped session rolling back the
     # flushed change on the 404, which breaks if ``update_impact`` ever
     # commits explicitly or the rollback-on-exception behaviour changes.
     impact = await svc.get_impact(impact_id)

@@ -1,11 +1,11 @@
-"""‌⁠‍Tasks vector adapter — feeds the ``oe_tasks`` collection.
+"""‌⁠‍Tasks vector adapter - feeds the ``oe_tasks`` collection.
 
 Each :class:`~app.modules.tasks.models.Task` row is embedded as the
 title plus description, task metadata and any checklist item texts.
 The result is upserted into the multi-collection vector store via the
 helpers in :mod:`app.core.vector_index`.
 
-The adapter is intentionally narrow — it knows nothing about the event
+The adapter is intentionally narrow - it knows nothing about the event
 bus or HTTP routing.  Wiring lives in :mod:`app.modules.tasks.events`
 and ``router.py`` respectively.
 """
@@ -74,5 +74,5 @@ class TaskVectorAdapter:
         return str(project_id)
 
 
-# Singleton instance — adapters are stateless so one shared object is fine.
+# Singleton instance - adapters are stateless so one shared object is fine.
 task_vector_adapter = TaskVectorAdapter()

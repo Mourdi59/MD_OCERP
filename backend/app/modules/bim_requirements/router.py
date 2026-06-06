@@ -321,7 +321,7 @@ async def validate_against_model(
 # ── Rules-as-Code (YAML) ──────────────────────────────────────────────────
 #
 # These two endpoints back the *rules-as-YAML* feature. The intent is that
-# rule packs live as plain YAML files in a Git repo — diffable, reviewable,
+# rule packs live as plain YAML files in a Git repo - diffable, reviewable,
 # and free of any proprietary editor. ``preview-yaml`` parses + dry-runs
 # without persisting anything; ``install-from-yaml`` commits the pack to a
 # project's requirement set so the existing /validate endpoint can use it.

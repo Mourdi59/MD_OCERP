@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍HTTP-facing service layer — keeps the router thin.
+"""‌⁠‍HTTP-facing service layer - keeps the router thin.
 
 Loads the acting user's AISettings (so the translation cascade and
 rerank tier can use their key) and verifies project ownership before
@@ -46,7 +46,7 @@ async def _load_ai_settings(db: AsyncSession, user_id: str | None) -> Any:
 
         stmt = select(AISettings).where(AISettings.user_id == uuid.UUID(user_id))
         return (await db.execute(stmt)).scalar_one_or_none()
-    except Exception as exc:  # pragma: no cover — AI module optional
+    except Exception as exc:  # pragma: no cover - AI module optional
         logger.debug("ai_settings load skipped: %s", exc)
         return None
 
@@ -128,7 +128,7 @@ async def submit_feedback(
 # ── Phase 4: accept-match consolidated flow ─────────────────────────────
 
 
-# Quantity inference order — area takes precedence over volume because
+# Quantity inference order - area takes precedence over volume because
 # walls/slabs are most often estimated per m². Length covers linear
 # elements (pipes, beams, kerb), and 1.0 is the safe fallback so the BOQ
 # row still rolls up at the candidate's unit_rate even when the envelope
@@ -181,16 +181,16 @@ def _build_match_metadata(
     Captures the full provenance trail so a later auditor can answer
     "where did this rate come from?" without joining the audit log:
 
-    * ``cost_item_code`` — the CWICR code that was matched.
-    * ``match_score`` / ``match_vector_score`` — final and pre-boost
+    * ``cost_item_code`` - the CWICR code that was matched.
+    * ``match_score`` / ``match_vector_score`` - final and pre-boost
       score; lets downstream tooling distinguish "high vector recall +
       tiny boost" from "low recall, big boost".
-    * ``match_boosts_applied`` — full boost trail (classifier, unit, lex…).
-    * ``match_confidence_band`` — high/medium/low at the moment of accept.
-    * ``matched_at`` — UTC ISO-8601 timestamp of the accept call.
-    * ``matched_by_user_id`` — acting user; ``None`` for admin/service
+    * ``match_boosts_applied`` - full boost trail (classifier, unit, lex…).
+    * ``match_confidence_band`` - high/medium/low at the moment of accept.
+    * ``matched_at`` - UTC ISO-8601 timestamp of the accept call.
+    * ``matched_by_user_id`` - acting user; ``None`` for admin/service
       callers that don't carry a sub claim.
-    * ``bim_element_id`` — cross-reference back to the source BIM element.
+    * ``bim_element_id`` - cross-reference back to the source BIM element.
     """
     return {
         "cost_item_code": accepted.code,
@@ -239,7 +239,7 @@ async def _resolve_audit_entry_id(
             pass
     try:
         return (await db.execute(stmt)).scalar_one_or_none()
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug("audit entry lookup skipped: %s", exc)
         return None
 
@@ -257,7 +257,7 @@ async def _link_bim_element(
     Returns ``True`` when a link was created, ``False`` when the link
     couldn't be made (BIM element doesn't exist, ``bim_hub`` module
     unavailable, etc). Any failure is logged at debug level and
-    swallowed so a missing BIM module never blocks the accept flow —
+    swallowed so a missing BIM module never blocks the accept flow -
     the BOQ position is still created.
     """
     try:
@@ -282,7 +282,7 @@ async def _link_bim_element(
             user_id=user_id,
         )
         return True
-    except Exception as exc:  # noqa: BLE001 — best-effort
+    except Exception as exc:  # noqa: BLE001 - best-effort
         logger.debug("BIM link create skipped: %s", exc)
         return False
 
@@ -385,7 +385,7 @@ async def accept_match(
         created = False
         cost_link_created = True
     else:
-        # Fresh position — pick an auto-ordinal so the user doesn't have
+        # Fresh position - pick an auto-ordinal so the user doesn't have
         # to. We reuse the BIM-NNN namespace for ai_match too: it never
         # collides with manual MasterFormat/DIN ordinals (03, 32.07.1)
         # and signals at-a-glance that the row came from automation.
@@ -453,7 +453,7 @@ async def accept_match(
     }
 
 
-# Match-sourced ordinal prefix — kept distinct from "BIM-NNN" used by the
+# Match-sourced ordinal prefix - kept distinct from "BIM-NNN" used by the
 # manual AddToBOQModal so an auditor can grep the BOQ for AI-accepted rows.
 _MATCH_ORDINAL_PREFIX = "AI-"
 _MATCH_ORDINAL_PAD = 3

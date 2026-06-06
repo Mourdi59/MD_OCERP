@@ -1,4 +1,4 @@
-"""‌⁠‍Document Management Pydantic schemas — request/response models.
+"""‌⁠‍Document Management Pydantic schemas - request/response models.
 
 Defines create, update, and response schemas for documents.
 """
@@ -44,7 +44,7 @@ class DocumentUpdate(BaseModel):
         pattern=r"^(architectural|structural|mechanical|electrical|plumbing|civil)$",
     )
     # ISO 19650 Gate-B precondition (SHARED → PUBLISHED). Not a stored column
-    # — captured into the document's metadata compliance block by the
+    # - captured into the document's metadata compliance block by the
     # service. MVP accepts any non-empty string as a signature.
     approver_signature: str | None = Field(default=None, max_length=255)
 
@@ -59,7 +59,7 @@ class DocumentUpdate(BaseModel):
 
         A suitability-only PATCH (no ``cde_state`` in the body) cannot be
         validated at the schema level because the document's current state
-        is unknown here — the service performs that authoritative check
+        is unknown here - the service performs that authoritative check
         against the live row. A blank code is always allowed (suitability
         is optional).
         """
@@ -216,7 +216,7 @@ class SheetResponse(BaseModel):
 
 
 class SheetVersionHistory(BaseModel):
-    """Version history for a sheet — list of all revisions."""
+    """Version history for a sheet - list of all revisions."""
 
     current: SheetResponse
     history: list[SheetResponse] = Field(default_factory=list)
@@ -323,11 +323,11 @@ class ShareLinkCreate(BaseModel):
     """Create a password-protected share link for a document.
 
     Both fields are optional:
-        * ``password`` — when omitted (or empty), the link is open
+        * ``password`` - when omitted (or empty), the link is open
           and any recipient who knows the URL can download.
-        * ``expires_in_days`` — when omitted, the service defaults to
+        * ``expires_in_days`` - when omitted, the service defaults to
           30 days (R7 audit: previously ``None`` meant *never*, which
-          is too permissive for a downloadable file URL — even with
+          is too permissive for a downloadable file URL - even with
           password protection, a leaked URL would remain valid until
           manually revoked). ``0`` is rejected as a likely typo;
           callers wanting "immediately expire" should DELETE instead.
@@ -373,7 +373,7 @@ class ShareLinkListItem(BaseModel):
 
 
 class ShareLinkPublicInfo(BaseModel):
-    """Public probe response — what the recipient sees before unlocking.
+    """Public probe response - what the recipient sees before unlocking.
 
     Intentionally omits ``download_count`` and ``id``/``created_by`` so
     nothing about the owner or usage history leaks to recipients.
@@ -393,7 +393,7 @@ class ShareLinkAccessRequest(BaseModel):
 
 
 class ShareLinkAccessResponse(BaseModel):
-    """Successful unlock — recipient receives the authenticated download URL."""
+    """Successful unlock - recipient receives the authenticated download URL."""
 
     download_url: str
     filename: str
@@ -405,7 +405,7 @@ class ShareLinkAccessResponse(BaseModel):
 class FolderPermissionCreate(BaseModel):
     """Owner-supplied grant payload.
 
-    ``scope_path`` is optional — when omitted the grant applies to
+    ``scope_path`` is optional - when omitted the grant applies to
     every file of ``scope_kind`` in the project (a "kind-wide"
     grant).  Empty-string and explicit ``null`` are treated the same.
     """

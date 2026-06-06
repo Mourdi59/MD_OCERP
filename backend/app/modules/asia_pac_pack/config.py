@@ -14,11 +14,11 @@ PACK_CONFIG: dict[str, Any] = {
     "paper_size": "A4",
     "date_format": "DD/MM/YYYY",
     "number_format": "1,234.56",
-    # ── Standards — Australia ────────────────────────────────────────────────
+    # ── Standards - Australia ────────────────────────────────────────────────
     "standards": [
         {
             "code": "AIQS",
-            "name": "AIQS — Australian Institute of Quantity Surveyors",
+            "name": "AIQS - Australian Institute of Quantity Surveyors",
             "country": "AU",
             "description": "Professional standards for quantity surveying in Australia",
         },
@@ -32,7 +32,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "NATSPEC",
-            "name": "NATSPEC — National Specification System",
+            "name": "NATSPEC - National Specification System",
             "country": "AU",
             "description": (
                 "National building specification system maintained by Construction Information Systems Limited"
@@ -42,25 +42,25 @@ PACK_CONFIG: dict[str, Any] = {
             "code": "ASMM",
             "name": "Australian Standard Method of Measurement of Building Works",
             "country": "AU",
-            "description": "5th edition — standard measurement rules for building works",
+            "description": "5th edition - standard measurement rules for building works",
         },
-        # ── Standards — New Zealand ──────────────────────────────────────────
+        # ── Standards - New Zealand ──────────────────────────────────────────
         {
             "code": "NZIQS",
-            "name": "NZIQS — NZ Institute of Quantity Surveyors",
+            "name": "NZIQS - NZ Institute of Quantity Surveyors",
             "country": "NZ",
             "description": "Professional standards for quantity surveying in New Zealand",
         },
         {
             "code": "NZS_3910",
-            "name": "NZS 3910 — Conditions of Contract for Building and Civil",
+            "name": "NZS 3910 - Conditions of Contract for Building and Civil",
             "country": "NZ",
             "description": "Standard form of contract widely used in NZ construction",
         },
-        # ── Standards — Japan ────────────────────────────────────────────────
+        # ── Standards - Japan ────────────────────────────────────────────────
         {
             "code": "SEKKISAN",
-            "name": "積算基準 (Sekkisan Kijun) — Construction Cost Estimation Standards",
+            "name": "積算基準 (Sekkisan Kijun) - Construction Cost Estimation Standards",
             "country": "JP",
             "description": (
                 "Japanese government cost estimation standards published by "
@@ -69,32 +69,32 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "JBCI",
-            "name": "JBCI — Japan Building Cost Information",
+            "name": "JBCI - Japan Building Cost Information",
             "country": "JP",
             "description": "Construction cost indices published by the Building Research Institute",
         },
         {
             "code": "KENCHIKU_SEKISAN",
-            "name": "建築積算 (Kenchiku Sekkisan) — Building Quantity Surveying",
+            "name": "建築積算 (Kenchiku Sekkisan) - Building Quantity Surveying",
             "country": "JP",
             "description": "Professional standards by BSIJ (Building Surveyors Institute of Japan)",
         },
-        # ── Standards — Singapore ────────────────────────────────────────────
+        # ── Standards - Singapore ────────────────────────────────────────────
         {
             "code": "BCA_SG",
-            "name": "BCA — Building and Construction Authority (Singapore)",
+            "name": "BCA - Building and Construction Authority (Singapore)",
             "country": "SG",
             "description": "Regulatory standards and buildability/constructability framework",
         },
         {
             "code": "SISV",
-            "name": "SISV — Singapore Institute of Surveyors and Valuers",
+            "name": "SISV - Singapore Institute of Surveyors and Valuers",
             "country": "SG",
             "description": "Professional measurement and cost standards for Singapore",
         },
         {
             "code": "SMM_SG",
-            "name": "SMM — Singapore Standard Method of Measurement",
+            "name": "SMM - Singapore Standard Method of Measurement",
             "country": "SG",
             "description": "Measurement rules for building works in Singapore",
         },
@@ -103,37 +103,37 @@ PACK_CONFIG: dict[str, Any] = {
     "contract_types": [
         {
             "code": "AS_4000",
-            "name": "AS 4000 — General Conditions of Contract",
+            "name": "AS 4000 - General Conditions of Contract",
             "country": "AU",
             "description": "Standards Australia general conditions for construction",
         },
         {
             "code": "AS_4902",
-            "name": "AS 4902 — Design and Construct",
+            "name": "AS 4902 - Design and Construct",
             "country": "AU",
             "description": "Standards Australia design-and-construct contract",
         },
         {
             "code": "ABIC_MW",
-            "name": "ABIC MW — Major Works Contract",
+            "name": "ABIC MW - Major Works Contract",
             "country": "AU",
             "description": "Australian Building Industry Contract for major works",
         },
         {
             "code": "NZS_3910_CONTRACT",
-            "name": "NZS 3910 — Standard Contract",
+            "name": "NZS 3910 - Standard Contract",
             "country": "NZ",
             "description": "NZ standard conditions of contract for building and civil",
         },
         {
             "code": "PSSCOC_SG",
-            "name": "PSSCOC — Public Sector Standard Conditions of Contract",
+            "name": "PSSCOC - Public Sector Standard Conditions of Contract",
             "country": "SG",
             "description": "Singapore public sector standard contract conditions",
         },
         {
             "code": "SIA_SG",
-            "name": "SIA — Singapore Institute of Architects Conditions",
+            "name": "SIA - Singapore Institute of Architects Conditions",
             "country": "SG",
             "description": "Standard private-sector building contract in Singapore",
         },
@@ -174,7 +174,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "HK_NO_GST",
-            "name": "Hong Kong — No GST/VAT",
+            "name": "Hong Kong - No GST/VAT",
             "type": "none",
             "country": "HK",
             "rate_pct": "0",
@@ -182,7 +182,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "MY_SST",
-            "name": "Malaysia SST — Sales Tax",
+            "name": "Malaysia SST - Sales Tax",
             "type": "sales_tax",
             "country": "MY",
             "rate_pct": "10",

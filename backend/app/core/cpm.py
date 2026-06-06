@@ -135,8 +135,8 @@ async def calculate_cpm(
         - lag: int (days, can be negative)
 
     Calendar dict (optional):
-        - work_days: list[int] — weekday indices (0=Mon, 6=Sun)
-        - exceptions: list[str] — ISO date strings for holidays
+        - work_days: list[int] - weekday indices (0=Mon, 6=Sun)
+        - exceptions: list[str] - ISO date strings for holidays
 
     Returns a list of activity dicts with computed CPM fields:
         - early_start, early_finish, late_start, late_finish: int (day offsets)
@@ -211,7 +211,7 @@ async def calculate_cpm(
             if in_degree[succ_id] == 0:
                 queue.append(succ_id)
 
-    # If not all activities were sorted, there's a cycle — process remaining
+    # If not all activities were sorted, there's a cycle - process remaining
     if len(topo_order) < len(act_map):
         remaining = [aid for aid in act_map if aid not in set(topo_order)]
         logger.warning("CPM: detected cycle involving %d activities", len(remaining))

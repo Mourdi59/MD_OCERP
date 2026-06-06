@@ -1,11 +1,11 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Region boost — rewards candidates from the project's region.
+"""‌⁠‍Region boost - rewards candidates from the project's region.
 
 CWICR ships one regional file per market (``DE_BERLIN``, ``GB_LONDON``,
 ``USA_NEWYORK``, ...). When the project says "DACH" the matcher should
 prefer DACH-priced candidates even if a UK candidate has marginally
-higher cosine similarity — the unit rate in the wrong region is a
+higher cosine similarity - the unit rate in the wrong region is a
 useless number.
 
 This boost is deliberately small (5 %) because regional preference
@@ -37,7 +37,7 @@ _log = logging.getLogger(__name__)
 #    least one CWICR catalogue gets a `"<iso>": ("<ISO>_",)` row at
 #    import time so a project pinned to ``HR_ZAGREB`` (the CWICR
 #    region) or just ``HR`` (bare country code) automatically gets a
-#    Croatian-rate boost — without anyone having to remember to add
+#    Croatian-rate boost - without anyone having to remember to add
 #    Croatia to a hand-edited table here.
 #
 # Result: the boost stays consistent with whatever regions the catalogue
@@ -52,16 +52,16 @@ _log = logging.getLogger(__name__)
 #     germanic, slavic, arabic, nordic) group countries by primary
 #     working language. Picked when the operator wants the matcher to
 #     consider semantically-equivalent rates from any country sharing
-#     the language — e.g. an ES-Madrid project willing to accept MX or
+#     the language - e.g. an ES-Madrid project willing to accept MX or
 #     AR rates as fallback when ES coverage is thin.
-# The two are NOT auto-merged — picking "ES" stays single-country to
+# The two are NOT auto-merged - picking "ES" stays single-country to
 # avoid surprise. Operators opt into language coupling explicitly.
 #
 # Two-layer composition:
-#   1. ``_HARDCODED_REGION_GROUPS`` — the baseline 17 groups inlined
+#   1. ``_HARDCODED_REGION_GROUPS`` - the baseline 17 groups inlined
 #      below. Acts as the defensive fallback when the YAML file is
 #      missing, malformed, or pyyaml is unavailable. Boot never breaks.
-#   2. ``data/match/region_groups.yaml`` — operator-extendable mapping
+#   2. ``data/match/region_groups.yaml`` - operator-extendable mapping
 #      loaded at import time. Merged into the baseline (YAML wins on
 #      key conflicts) so post-Phase-A additions (ASEAN, MENA_AR,
 #      ANGLO_AFRICA, ANDEAN, CAUCASUS, ...) ship without a Python edit.
@@ -198,7 +198,7 @@ def _normalise_prefix(value: str) -> str:
     ``ID_JAKARTA_<area>`` row. We keep it for symmetry with the data
     spec and for future sub-city granularity.
 
-    Empty / non-string values are dropped silently — bad YAML rows
+    Empty / non-string values are dropped silently - bad YAML rows
     must never crash boot.
     """
     if not isinstance(value, str):
@@ -227,7 +227,7 @@ def _load_region_groups_from_yaml() -> dict[str, tuple[str, ...]]:
     try:
         import yaml  # type: ignore[import-not-found]
     except ImportError:
-        _log.warning("pyyaml unavailable — region_groups.yaml extension disabled, matcher uses hardcoded baseline only")
+        _log.warning("pyyaml unavailable - region_groups.yaml extension disabled, matcher uses hardcoded baseline only")
         return {}
 
     # backend/app/core/match_service/boosts/region.py → repo root via 5x ``parents``.
@@ -235,7 +235,7 @@ def _load_region_groups_from_yaml() -> dict[str, tuple[str, ...]]:
     yaml_path = repo_root / "data" / "match" / "region_groups.yaml"
     if not yaml_path.is_file():
         _log.debug(
-            "region_groups.yaml not found at %s — using hardcoded baseline",
+            "region_groups.yaml not found at %s - using hardcoded baseline",
             yaml_path,
         )
         return {}
@@ -245,7 +245,7 @@ def _load_region_groups_from_yaml() -> dict[str, tuple[str, ...]]:
             raw = yaml.safe_load(fh)
     except (OSError, yaml.YAMLError) as exc:  # type: ignore[attr-defined]
         _log.warning(
-            "region_groups.yaml at %s could not be parsed (%s) — using hardcoded baseline",
+            "region_groups.yaml at %s could not be parsed (%s) - using hardcoded baseline",
             yaml_path,
             exc,
         )
@@ -253,7 +253,7 @@ def _load_region_groups_from_yaml() -> dict[str, tuple[str, ...]]:
 
     if not isinstance(raw, dict):
         _log.warning(
-            "region_groups.yaml at %s top-level is not a mapping — using hardcoded baseline",
+            "region_groups.yaml at %s top-level is not a mapping - using hardcoded baseline",
             yaml_path,
         )
         return {}
@@ -261,7 +261,7 @@ def _load_region_groups_from_yaml() -> dict[str, tuple[str, ...]]:
     groups = raw.get("groups")
     if not isinstance(groups, dict):
         _log.warning(
-            "region_groups.yaml at %s has no ``groups`` mapping — using hardcoded baseline",
+            "region_groups.yaml at %s has no ``groups`` mapping - using hardcoded baseline",
             yaml_path,
         )
         return {}
@@ -272,7 +272,7 @@ def _load_region_groups_from_yaml() -> dict[str, tuple[str, ...]]:
             continue
         if not isinstance(codes, (list, tuple)):
             _log.warning(
-                "region_groups.yaml group %r value is not a list — skipped",
+                "region_groups.yaml group %r value is not a list - skipped",
                 name,
             )
             continue
@@ -345,24 +345,24 @@ def _project_region_prefixes(settings: Any) -> tuple[str, ...]:
     region = region_raw.strip()
     if "_" in region:
         # Already a fully-qualified CWICR region code (e.g. "DE_BERLIN").
-        # Return the *exact* code — a candidate with the same code will
+        # Return the *exact* code - a candidate with the same code will
         # match via ``startswith()``. Appending an extra underscore
         # would break the equality case (``"DE_BERLIN".startswith("DE_BERLIN_")``
-        # is False). Tuple-form is mandatory — a bare string would be
+        # is False). Tuple-form is mandatory - a bare string would be
         # iterated character-by-character downstream.
         upper = region.upper().rstrip("_")
         return (upper,)
 
     key = region.lower()
     # Group aliases (DACH, UK, Benelux, …) win over single-country
-    # prefixes — operators picking "Iberia" expect ES+PT, not just one.
+    # prefixes - operators picking "Iberia" expect ES+PT, not just one.
     if key in _REGION_GROUP_ALIASES:
         return _REGION_GROUP_ALIASES[key]
     return _AUTO_COUNTRY_PREFIXES.get(key, ())
 
 
 def boost(
-    envelope: ElementEnvelope,  # noqa: ARG001 — interface symmetry
+    envelope: ElementEnvelope,  # noqa: ARG001 - interface symmetry
     candidate: MatchCandidate,
     settings: Any,
 ) -> dict[str, float]:

@@ -1,13 +1,13 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""‌⁠‍Smart Views Pydantic schemas — request / response models.
+"""‌⁠‍Smart Views Pydantic schemas - request / response models.
 
 The :class:`SmartViewRule` is the heart of the API surface: a single
 rule has a *selector* (which elements does it match?) and an *action*
 (what does it do to them?). The evaluator in ``evaluator.py``
-consumes the validated rules directly — every field listed here is a
+consumes the validated rules directly - every field listed here is a
 public contract.
 
-Rule example — "Color walls by FireRating"::
+Rule example - "Color walls by FireRating"::
 
     {
       "id": "rule-1",
@@ -89,12 +89,12 @@ class SmartViewSelector(BaseModel):
 
     # Maps onto either the indexed ``BIMElement.element_type`` column or
     # the source-native ``properties.ifc_class`` JSON key. The evaluator
-    # tries both — Revit-sourced elements use ``element_type``, IFC ones
+    # tries both - Revit-sourced elements use ``element_type``, IFC ones
     # often surface the strict entity name under ``properties.ifc_class``.
     ifc_class: str | None = Field(default=None, max_length=100)
     # Property name to inspect (free-form key inside
     # ``BIMElement.properties``). Required for every operator other than
-    # ``ifc_class``-only selectors — enforced by the model_validator.
+    # ``ifc_class``-only selectors - enforced by the model_validator.
     property: str | None = Field(default=None, max_length=200)
     operator: (
         Literal[
@@ -126,14 +126,14 @@ class SmartViewSelector(BaseModel):
 
     @model_validator(mode="after")
     def _check_consistency(self) -> SmartViewSelector:
-        """Cross-field consistency — operator/value/property must align."""
+        """Cross-field consistency - operator/value/property must align."""
         # An empty selector is meaningless. Require at least one of
         # ifc_class / property to be set.
         if not self.ifc_class and not self.property:
             raise ValueError("selector must define at least one of 'ifc_class' or 'property'")
 
         if self.operator is None:
-            # Bare ``ifc_class`` selector — no operator/value/property
+            # Bare ``ifc_class`` selector - no operator/value/property
             # constraints to check.
             return self
 
@@ -169,7 +169,7 @@ class SmartViewSelector(BaseModel):
                 raise ValueError(f"operator 'regex' pattern too long (max {MAX_REGEX_LENGTH} chars)")
             return self
 
-        # eq / neq / contains — value is required.
+        # eq / neq / contains - value is required.
         if self.value is None:
             raise ValueError(f"operator {self.operator!r} requires a non-null 'value'")
         return self
@@ -193,7 +193,7 @@ class SmartViewActionArgs(BaseModel):
     opacity: float | None = None
     # Used by action='color' to bucket-colour every match by a property
     # value (deterministic HCL hash). ``color`` and ``color_by_property``
-    # are mutually exclusive — ``color_by_property`` wins if both are
+    # are mutually exclusive - ``color_by_property`` wins if both are
     # present.
     color_by_property: str | None = Field(default=None, max_length=200)
 
@@ -224,7 +224,7 @@ class SmartViewActionArgs(BaseModel):
 class SmartViewRule(BaseModel):
     """‌⁠‍A single rule: (selector → action).
 
-    ``order`` decides the evaluation order — lower runs first; later
+    ``order`` decides the evaluation order - lower runs first; later
     rules overwrite earlier ones (last-write-wins). Two rules with the
     same ``order`` resolve by their stable ``id`` (lexicographic) so
     behaviour is deterministic across saves.
@@ -272,7 +272,7 @@ class SmartViewUpdate(BaseModel):
 
     Every field is optional so the UI can do a per-field patch without
     re-sending the rules list (which can be several KB on a long view).
-    The scope is intentionally NOT updatable — a view's owner / scope
+    The scope is intentionally NOT updatable - a view's owner / scope
     is fixed at creation time.
     """
 
@@ -294,7 +294,7 @@ class SmartViewUpdate(BaseModel):
 class SmartViewResponse(BaseModel):
     """Response shape for read / list / create / update endpoints.
 
-    ``share_token`` surfaces only when the authoring user is the caller —
+    ``share_token`` surfaces only when the authoring user is the caller -
     the service layer redacts it for everyone else (a project-scoped
     view's token must not leak to collaborators who don't own it). The
     field is exposed as a plain string so the UI can build the share
@@ -323,7 +323,7 @@ class SmartViewPresetSummary(BaseModel):
 
     Returned by ``SmartViewService.list_presets`` so the UI can render
     install cards without needing to know the rule schema in detail.
-    The full rule list is intentionally NOT included — clients install
+    The full rule list is intentionally NOT included - clients install
     by id (``preset_id``) and the service re-validates the canonical
     template on the server side. That avoids drift where a stale UI
     bundle persists an old rule list against a freshly-shipped preset.
@@ -341,7 +341,7 @@ class SmartViewPresetSummary(BaseModel):
 class SmartViewShareInfo(BaseModel):
     """Returned by ``create_share_token`` / surfaced in the share modal.
 
-    ``url`` is the server-side absolute path to the share landing page —
+    ``url`` is the server-side absolute path to the share landing page -
     the front-end converts it to an absolute URL when copying to
     clipboard. Keeping the path here (not a fully-qualified URL) avoids
     hardcoding the deployment host in the service layer.
@@ -371,7 +371,7 @@ class SmartViewEvaluateResponse(BaseModel):
     """Payload returned by ``POST /smart-views/{id}/evaluate``.
 
     ``states`` is keyed by element ``stable_id`` (the GUID the source
-    file gave the element, *not* the internal UUID — it survives
+    file gave the element, *not* the internal UUID - it survives
     re-imports). ``legend`` is populated only when at least one rule
     uses ``color_by_property``.
     """

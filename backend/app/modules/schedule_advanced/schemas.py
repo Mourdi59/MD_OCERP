@@ -1,4 +1,4 @@
-"""‌⁠‍Schedule Advanced Pydantic schemas — request / response models.
+"""‌⁠‍Schedule Advanced Pydantic schemas - request / response models.
 
 Covers all 10 LPS entities plus aggregate response schemas for the
 LPS dashboard, PPC chart, RNC pareto, baseline delta, and look-ahead.
@@ -549,7 +549,7 @@ class CPMDependencyInput(BaseModel):
 
 
 class CPMRequest(BaseModel):
-    """Payload for /cpm — runs forward + backward pass."""
+    """Payload for /cpm - runs forward + backward pass."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -572,7 +572,7 @@ class CPMActivityResult(BaseModel):
 
 
 class CPMResponse(BaseModel):
-    """Response from /cpm — per-activity schedule + project finish."""
+    """Response from /cpm - per-activity schedule + project finish."""
 
     project_finish_workday: int = 0
     critical_path_count: int = 0
@@ -580,7 +580,7 @@ class CPMResponse(BaseModel):
 
 
 class TIARequest(BaseModel):
-    """Payload for /tia — time-impact-analysis."""
+    """Payload for /tia - time-impact-analysis."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -591,7 +591,7 @@ class TIARequest(BaseModel):
 
 
 class TIAResponse(BaseModel):
-    """Response from /tia — schedule slip + critical-path drift."""
+    """Response from /tia - schedule slip + critical-path drift."""
 
     original_finish_workday: int = 0
     impacted_finish_workday: int = 0
@@ -614,7 +614,7 @@ class EVMActivityInput(BaseModel):
 
 
 class EVMRequest(BaseModel):
-    """Payload for /evm — earned value computation at a given workday."""
+    """Payload for /evm - earned value computation at a given workday."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -623,7 +623,7 @@ class EVMRequest(BaseModel):
 
 
 class EVMResponse(BaseModel):
-    """Response from /evm — full EVM dashboard."""
+    """Response from /evm - full EVM dashboard."""
 
     bac: Decimal = Decimal("0")
     pv: Decimal = Decimal("0")
@@ -675,7 +675,7 @@ class ConstraintReadinessResponse(BaseModel):
     blockers: list[ConstraintReadinessBlocker] = Field(default_factory=list)
 
 
-# ── CPM Slice 1 — persisted compute + leveling + weekly commitments ────────
+# ── CPM Slice 1 - persisted compute + leveling + weekly commitments ────────
 
 
 class CPMComputeSummary(BaseModel):
@@ -715,7 +715,7 @@ class LevelResourcesShift(BaseModel):
 
 
 class LevelResourcesResponse(BaseModel):
-    """Response for /level-resources — only changed activities listed."""
+    """Response for /level-resources - only changed activities listed."""
 
     schedule_id: UUID
     shifts: list[LevelResourcesShift] = Field(default_factory=list)
@@ -900,7 +900,7 @@ class LineOfBalanceBar(BaseModel):
 
     ``start_day`` / ``end_day`` are 0-based working-day indices relative to
     the takt schedule's day-zero. The chart plots the bar from
-    ``(start_day, location)`` to ``(end_day, next location)`` — the diagonal
+    ``(start_day, location)`` to ``(end_day, next location)`` - the diagonal
     that gives line-of-balance its name.
     """
 

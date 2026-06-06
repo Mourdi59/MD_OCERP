@@ -4,7 +4,7 @@ Implements a minimal but correct ``Invoice`` parser for the OASIS UBL 2.1
 syntax used by the PEPPOL BIS Billing 3.0 specification (EN 16931).
 
 We accept the document as long as it has the required header fields
-(invoice ID, supplier endpoint, monetary totals) — strict EN 16931
+(invoice ID, supplier endpoint, monetary totals) - strict EN 16931
 business-rule validation is performed downstream by validators (or
 by an external service like a Peppol Access Point).
 
@@ -28,11 +28,11 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Inbound PEPPOL XML arrives from an external Access Point — it is
+# Inbound PEPPOL XML arrives from an external Access Point - it is
 # untrusted. defusedxml neutralises XXE / billion-laughs / external-DTD
 # attacks. If it is unavailable we MUST refuse to parse rather than fall
 # back to the unsafe stdlib parser (which resolves external entities).
-try:  # pragma: no cover — single-line import preference
+try:  # pragma: no cover - single-line import preference
     from defusedxml import ElementTree as ET  # type: ignore
 
     _XML_HARDENED = True
@@ -169,8 +169,8 @@ def parse_peppol_invoice(xml_source: bytes | str) -> PeppolInvoiceParsed:
         raise PeppolParseError(f"XML parse error: {exc}") from exc
     except PeppolParseError:
         raise
-    except Exception as exc:  # noqa: BLE001 — defusedxml raises EntitiesForbidden,
-        # DTDForbidden, ExternalReferenceForbidden — none subclass ParseError.
+    except Exception as exc:  # noqa: BLE001 - defusedxml raises EntitiesForbidden,
+        # DTDForbidden, ExternalReferenceForbidden - none subclass ParseError.
         # Treat any boundary failure as a bad document (HTTP 400), never 500.
         raise PeppolParseError(
             f"Rejected unsafe or malformed XML: {type(exc).__name__}",
@@ -296,7 +296,7 @@ def parse_peppol_invoice(xml_source: bytes | str) -> PeppolInvoiceParsed:
     )
 
 
-# Endpoint-ID regex helpers — PEPPOL endpoints encode scheme + value, e.g.
+# Endpoint-ID regex helpers - PEPPOL endpoints encode scheme + value, e.g.
 # ``9930:DE123456789`` (Germany VAT) or ``0088:5790000436026`` (GLN)
 _ENDPOINT_RE = re.compile(r"^(?P<scheme>\d{4}):(?P<value>.+)$")
 

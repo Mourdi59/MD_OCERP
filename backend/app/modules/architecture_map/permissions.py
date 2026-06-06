@@ -2,7 +2,7 @@
 """‌⁠‍Architecture Map module permission definitions.
 
 The architecture manifest leaks substantial structural detail about the
-deployed system — every module's file list, every ORM model + table name +
+deployed system - every module's file list, every ORM model + table name +
 column types, inter-module dependency edges. That is gold for an attacker
 mapping an unknown ERP instance ("which models exist? which routes
 deserve probing?") and adds nothing for an estimator / project manager

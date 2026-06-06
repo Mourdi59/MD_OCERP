@@ -1,4 +1,4 @@
-"""‌⁠‍AI Advisor — generates project recommendations using the LLM service.
+"""‌⁠‍AI Advisor - generates project recommendations using the LLM service.
 
 Reuses the existing AI client from app.modules.ai.ai_client.
 Falls back to rule-based recommendations when no LLM is configured.
@@ -122,7 +122,7 @@ async def _call_ai_logged(
             prompt=prompt,
             max_tokens=max_tokens,
         )
-    except Exception as exc:  # noqa: BLE001 — observability point, re-raised
+    except Exception as exc:  # noqa: BLE001 - observability point, re-raised
         logger.info(
             "project_intelligence.llm_call",
             extra={
@@ -273,7 +273,7 @@ async def _resolve_provider(session: AsyncSession) -> tuple[str, str, str | None
     """Resolve (provider, key, model_override). None if no LLM configured.
 
     The model override (Settings > AI) is returned so the advisor honors the
-    user's chosen model instead of a hardcoded provider default — issue #138.
+    user's chosen model instead of a hardcoded provider default - issue #138.
     """
     try:
         from app.modules.ai.ai_client import resolve_provider_key_model
@@ -424,7 +424,7 @@ async def _retrieve_relevant_chunks(
     if not response.hits:
         return ""
 
-    lines: list[str] = ["Relevant context (semantic retrieval — verify before quoting):"]
+    lines: list[str] = ["Relevant context (semantic retrieval - verify before quoting):"]
     for hit in response.hits:
         snippet = hit.snippet or hit.text or ""
         if len(snippet) > 280:
@@ -463,7 +463,7 @@ async def answer_question(
             # Pull semantically relevant chunks from BOQ / documents / tasks /
             # risks / BIM elements via the unified vector search layer.  This
             # turns the advisor from a structured-stats summarizer into a
-            # genuine RAG agent — answers stay anchored in real evidence
+            # genuine RAG agent - answers stay anchored in real evidence
             # instead of hallucinating from the structured project state alone.
             project_id = str(getattr(state, "project_id", "")) or None
             rag_context = await _retrieve_relevant_chunks(question, project_id)

@@ -11,7 +11,7 @@ unit/group, German unit abbreviations) as-is.
 This module ships a lookup table per supported locale that maps the known
 German tokens to their localized equivalents. The lookup is applied at
 response time in :mod:`app.modules.costs.router` so the on-disk CostItem
-rows are not mutated — keeping the existing CWICR loader (v2.6.23) and the
+rows are not mutated - keeping the existing CWICR loader (v2.6.23) and the
 SQLite cache untouched.
 
 Design notes
@@ -20,7 +20,7 @@ Design notes
   is one new JSON file; missing translations fall back to the German
   source value (so a half-translated catalogue is never blank, only
   partially localised).
-* **Identity map** for ``de.json`` — guarantees the lookup always
+* **Identity map** for ``de.json`` - guarantees the lookup always
   resolves, simplifies tests, and lets a German user see the canonical
   source even when the loader auto-translates (they explicitly want
   German).
@@ -28,19 +28,19 @@ Design notes
   (``", "`` for unit lists, ``", "`` + ``"="`` for ``key=value`` group
   lists). Each token is translated independently, so a never-before-seen
   token doesn't poison its neighbours.
-* **No external dependencies** — pure Python + json. Translations are
+* **No external dependencies** - pure Python + json. Translations are
   cached after first load (LRU-style dict).
 
 Public API
 ----------
-* :func:`load_translations` — read a locale's JSON dict (cached).
-* :func:`translate_token` — translate a single short token, falls back
+* :func:`load_translations` - read a locale's JSON dict (cached).
+* :func:`translate_token` - translate a single short token, falls back
   to the input on miss.
-* :func:`translate_unit_list` — handles compound CWICR unit strings like
+* :func:`translate_unit_list` - handles compound CWICR unit strings like
   ``"100 Stück, kg, t, St"``.
-* :func:`translate_group_list` — handles compound CWICR group strings like
+* :func:`translate_group_list` - handles compound CWICR group strings like
   ``"m²=Geonetze und Geogitter, Stück=Geotextilien"``.
-* :func:`localize_cost_row` — convenience wrapper that augments a single
+* :func:`localize_cost_row` - convenience wrapper that augments a single
   CostItem-shaped dict with ``*_localized`` mirror fields.
 """
 
@@ -58,7 +58,7 @@ logger = logging.getLogger(__name__)
 _SEP = ", "
 _GROUP_KV_SEP = "="
 
-# Locales for which we ship a JSON file.  Order is documentation only —
+# Locales for which we ship a JSON file.  Order is documentation only -
 # the actual list is derived from the directory contents at load time.
 SUPPORTED_LOCALES = (
     "de",
@@ -92,7 +92,7 @@ def load_translations(locale: str) -> dict[str, str]:
     Returns:
         ``{de_token: localized_token}`` dict, or an empty dict when the
         locale has no JSON file. Empty-dict means "fall back to German
-        source value for every key" — never raises.
+        source value for every key" - never raises.
     """
     loc = (locale or "").strip().lower()
     if not loc:
@@ -106,7 +106,7 @@ def load_translations(locale: str) -> dict[str, str]:
         with path.open("r", encoding="utf-8") as fh:
             raw = json.load(fh)
         if not isinstance(raw, dict):
-            logger.warning("Translation file %s is not a JSON object — ignoring", path)
+            logger.warning("Translation file %s is not a JSON object - ignoring", path)
             return {}
         # Coerce values to str so a typo `42` int doesn't crash str.format.
         return {str(k): str(v) for k, v in raw.items()}
@@ -118,7 +118,7 @@ def load_translations(locale: str) -> dict[str, str]:
 def translate_token(token: str, locale: str) -> str:
     """‌⁠‍Translate a single fixed-vocabulary token, falling back to the input.
 
-    The lookup is exact (case-sensitive) — CWICR tokens are stable
+    The lookup is exact (case-sensitive) - CWICR tokens are stable
     so a fuzzy match is unnecessary and would introduce false positives
     for free-form variant labels that happen to start the same way.
 
@@ -128,7 +128,7 @@ def translate_token(token: str, locale: str) -> str:
 
     Returns:
         Localized token if known, otherwise the input unchanged so the UI
-        still shows *something* readable. The fallback is intentional —
+        still shows *something* readable. The fallback is intentional -
         the user spec says "better wrong than misleading", which here
         means: leave a German term untranslated rather than guessing.
     """
@@ -184,22 +184,22 @@ def localize_cost_row(
 ) -> tuple[dict[str, str], dict, list[dict]]:
     """Augment a CostItem row with ``*_localized`` mirror fields.
 
-    The original German values stay where they are — UIs that haven't
+    The original German values stay where they are - UIs that haven't
     migrated to read the ``_localized`` mirror keep working.  The mirror
     fields appear next to the source so the frontend can do a simple
     ``localized || source`` fallback without a second API call.
 
     Touched fields:
-        * ``classification.category_localized`` — fixes ``"BAUARBEITEN"``.
-        * ``metadata.variant_stats.unit_localized`` — fixes ``"100 Stück"``.
-        * ``metadata.variant_stats.group_localized`` — fixes
+        * ``classification.category_localized`` - fixes ``"BAUARBEITEN"``.
+        * ``metadata.variant_stats.unit_localized`` - fixes ``"100 Stück"``.
+        * ``metadata.variant_stats.group_localized`` - fixes
           ``"m²=Geonetze und Geogitter"``.
-        * Per-component ``components[i].unit_localized`` — fixes
+        * Per-component ``components[i].unit_localized`` - fixes
           ``"Std."`` / ``"Masch.-Std."`` (German hour abbreviations
           that leak through from the resource sheet).
 
     Returns:
-        ``(classification, metadata, components)`` — same objects, mutated
+        ``(classification, metadata, components)`` - same objects, mutated
         in place and also returned for ergonomic chaining.
     """
     cls = classification or {}

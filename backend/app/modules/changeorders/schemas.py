@@ -1,4 +1,4 @@
-"""‌⁠‍Change Order Pydantic schemas — request/response models.
+"""‌⁠‍Change Order Pydantic schemas - request/response models.
 
 Defines create, update, and response schemas for change orders and their items.
 Monetary values (cost_impact, cost_delta, quantities, rates) are exposed as
@@ -15,13 +15,13 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-# Bound ints at PostgreSQL INT4 max — anything above is clearly bad input and
+# Bound ints at PostgreSQL INT4 max - anything above is clearly bad input and
 # would overflow the underlying column.
 _INT32_MAX = 2_147_483_647
 
 
 def _validate_decimal(v: str, field_name: str = "value") -> str:
-    """‌⁠‍Validate that a string is a valid decimal number (allows negative — CO
+    """‌⁠‍Validate that a string is a valid decimal number (allows negative - CO
     cost impacts can be credits)."""
     try:
         Decimal(v)
@@ -67,7 +67,7 @@ class ChangeOrderCreate(BaseModel):
         pattern=r"^(client_request|design_change|unforeseen|regulatory|error)$",
     )
     schedule_impact_days: int = Field(default=0, ge=0, le=_INT32_MAX)
-    # Empty when the caller does not specify one — the service resolves it
+    # Empty when the caller does not specify one - the service resolves it
     # from the project's currency. NEVER default to a literal "EUR" here
     # (task #217): that silently mis-stamps non-Eurozone projects.
     currency: str = Field(default="", max_length=10)
@@ -87,7 +87,7 @@ class ChangeOrderUpdate(BaseModel):
 
     Status transitions must go through the dedicated action endpoints
     (``/submit``, ``/approve``, ``/reject``). Sending ``status`` here
-    returns 422 instead of silently ignoring it — the silent-ignore
+    returns 422 instead of silently ignoring it - the silent-ignore
     behaviour was :bug:`385` and made the whole CO workflow look
     non-functional.
     """
@@ -109,7 +109,7 @@ class ChangeOrderUpdate(BaseModel):
     linked_rfi_ids: list[UUID] | None = Field(default=None, max_length=50)
     status: str | None = Field(
         default=None,
-        description="Reserved — use /submit, /approve, /reject to change status.",
+        description="Reserved - use /submit, /approve, /reject to change status.",
     )
 
     @field_validator("status")
@@ -169,7 +169,7 @@ class ChangeOrderResponse(BaseModel):
     # BUG-351: rejection writes its own dedicated columns (never reuses
     # ``approved_*``). Exposing them on the wire lets the UI render an honest
     # "Rejected by X on DATE" card. A CO rejected straight from 'submitted'
-    # sets only ``rejected_*`` — without these fields the rejection was
+    # sets only ``rejected_*`` - without these fields the rejection was
     # invisible to users.
     rejected_by: str | None = None
     submitted_at: str | None = None
@@ -267,7 +267,7 @@ class ChangeOrderItemUpdate(BaseModel):
         return _validate_non_negative_decimal(v)
 
 
-# ── Approval-chain schemas (T3 — Procore-style multi-step approval) ──────────
+# ── Approval-chain schemas (T3 - Procore-style multi-step approval) ──────────
 
 
 class ApprovalStartRequest(BaseModel):
@@ -326,9 +326,9 @@ class ChangeOrderSummary(BaseModel):
     total_cost_impact: str = "0"
     total_time_impact_days: int = 0
     total_schedule_impact_days: int = 0
-    # The project's BASE currency — the only currency ``total_cost_impact`` /
+    # The project's BASE currency - the only currency ``total_cost_impact`` /
     # ``total_approved_amount`` are expressed in. Empty only when the project
-    # carries no currency — never a literal "EUR" (task #217).
+    # carries no currency - never a literal "EUR" (task #217).
     currency: str = ""
     # Approved change orders priced in a FOREIGN currency that has no FX rate
     # in ``Project.fx_rates`` are excluded from the base-currency total (money

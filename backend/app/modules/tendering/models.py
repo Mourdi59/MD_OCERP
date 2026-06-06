@@ -1,8 +1,8 @@
 """‌⁠‍Tendering ORM models.
 
 Tables:
-    oe_tendering_package — tender/bid packages linked to a project and BOQ
-    oe_tendering_bid — individual bids submitted against a package
+    oe_tendering_package - tender/bid packages linked to a project and BOQ
+    oe_tendering_bid - individual bids submitted against a package
 """
 
 import uuid

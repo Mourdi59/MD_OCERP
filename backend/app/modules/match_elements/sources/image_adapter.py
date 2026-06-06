@@ -1,8 +1,8 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Image source adapter — single photo / drawing snapshot to /match-elements.
+"""‌⁠‍Image source adapter - single photo / drawing snapshot to /match-elements.
 
-Implements MAPPING_PROCESS.md §3.1 / §4.1.4 — the "Image" source type.
+Implements MAPPING_PROCESS.md §3.1 / §4.1.4 - the "Image" source type.
 The estimator uploads one PNG/JPG/WebP (a site photo, a hand-sketched
 detail, a screenshot of a CAD elevation), and Claude / GPT-4V via the
 existing :mod:`app.modules.ai` service is asked to enumerate the
@@ -10,7 +10,7 @@ visible construction elements as a structured JSON array. Each item
 becomes a :class:`SourceElement` and flows through the same matcher
 pipeline as BIM/DWG/text envelopes.
 
-No CV / OCR / IfcOpenShell here — vision-LLM only. The the architecture guide ban on
+No CV / OCR / IfcOpenShell here - vision-LLM only. The the architecture guide ban on
 heavy CAD libraries (and on IfcOpenShell specifically) is honoured by
 keeping this adapter pure-Python: HTTP call out, JSON in.
 
@@ -24,7 +24,7 @@ The image arrives at session-creation time and lives on
     {"data_b64": "<base64 encoded bytes>",   "mime": "image/png",
      "filename": "sketch.png"}
 
-The path form is preferred — large photos (5 MB+) bloat JSON columns
+The path form is preferred - large photos (5 MB+) bloat JSON columns
 and slow session-list pagination. The base64 form exists as a fallback
 for tests and ad-hoc /api calls that don't have a backing storage path.
 
@@ -127,7 +127,7 @@ If the image is not a construction drawing/photo, return [].
 """
 
 
-# System prompt — kept short. The role guides the model to enumerate
+# System prompt - kept short. The role guides the model to enumerate
 # elements rather than describe the picture in prose.
 _SYSTEM_PROMPT: str = (
     "You are a construction estimator. Return only a JSON array of "
@@ -142,7 +142,7 @@ def _parse_ai_response(text: str) -> list[dict[str, Any]]:
     handles (markdown code fences, surrounding prose, partial JSON), but
     also coerces unexpected response shapes (single dict, ``None``, dict
     wrapping a list under ``items``/``elements``) into a flat list. A
-    parse failure returns ``[]`` rather than crashing — the adapter has
+    parse failure returns ``[]`` rather than crashing - the adapter has
     to be robust against malformed LLM output.
     """
     if not text:
@@ -187,7 +187,7 @@ def _coerce_ifc_class(raw: Any) -> str | None:
     """Coerce the LLM's ``ifc_class_guess`` to one of the allowed classes.
 
     Strings outside the whitelist are dropped to ``None`` rather than
-    forwarded — better that a downstream group-by sees "unclassified"
+    forwarded - better that a downstream group-by sees "unclassified"
     than that the matcher receives a hallucinated IFC class that never
     appears in CWICR's classification index.
     """
@@ -250,7 +250,7 @@ def _quantities_for(unit: str | None, qty: float | None) -> dict[str, float]:
 def _read_image_bytes(image: dict[str, Any]) -> tuple[bytes, str] | None:
     """Resolve the image dict into ``(bytes, mime)`` or ``None``.
 
-    Accepts either a ``path`` (preferred for production — the file
+    Accepts either a ``path`` (preferred for production - the file
     lives on the storage backend) or an inline ``data_b64`` (used by
     ad-hoc API callers and tests that don't write to disk first).
 
@@ -294,7 +294,7 @@ class ImageSourceAdapter:
     Output goes through the same matcher pipeline as BIM/DWG/text
     envelopes.
 
-    The adapter is deliberately stateless — one async call per session
+    The adapter is deliberately stateless - one async call per session
     per ``iter_elements`` invocation. We don't cache the LLM response
     here because the surrounding service layer caches at the group level
     (``MatchGroup.methods`` JSON) and re-running the LLM on session
@@ -316,7 +316,7 @@ class ImageSourceAdapter:
     def _image_metadata(self) -> dict[str, Any] | None:
         """Return the ``image`` dict from session metadata, or ``None``.
 
-        Empty dict / non-dict shapes count as missing — callers treat
+        Empty dict / non-dict shapes count as missing - callers treat
         that as "no image, return []".
         """
         if self.match_session is None:
@@ -334,14 +334,14 @@ class ImageSourceAdapter:
     ) -> list[dict[str, Any]]:
         """Call the AI vision pipeline and return the parsed item list.
 
-        Catches every error path — missing API key, network failure,
-        4xx response, malformed JSON — and degrades to an empty list
+        Catches every error path - missing API key, network failure,
+        4xx response, malformed JSON - and degrades to an empty list
         with a warning log. The adapter never raises HTTPException;
         the surrounding service treats an empty list as "no elements
         extracted from this image" and keeps the session usable.
         """
         # Late imports keep the match-elements module decoupled from
-        # the AI module at import time — so a tenant that disabled
+        # the AI module at import time - so a tenant that disabled
         # the AI module entirely doesn't break match-elements imports.
         try:
             from app.modules.ai.ai_client import call_ai, resolve_provider_and_key
@@ -352,7 +352,7 @@ class ImageSourceAdapter:
 
         # Resolve the most-recent AI settings row. The match-elements
         # session has no per-user binding (the matcher never stores
-        # ``user_id``) so we pick the first usable settings row — for
+        # ``user_id``) so we pick the first usable settings row - for
         # single-tenant deploys this is correct, and multi-tenant
         # deploys gate vision on a system-level key anyway.
         provider: str | None = None
@@ -392,12 +392,12 @@ class ImageSourceAdapter:
                         provider, api_key = resolve_provider_and_key(settings_row)
                     except ValueError:
                         provider, api_key = None, None
-            except Exception as exc:  # noqa: BLE001 — AI is best-effort
+            except Exception as exc:  # noqa: BLE001 - AI is best-effort
                 logger.warning("ImageAdapter: settings lookup failed: %s", exc)
 
         if not provider or not api_key:
             logger.warning(
-                "ImageAdapter: no AI provider configured — returning []",
+                "ImageAdapter: no AI provider configured - returning []",
             )
             return []
 
@@ -412,7 +412,7 @@ class ImageSourceAdapter:
                 image_base64=image_b64,
                 image_media_type=mime,
             )
-        except Exception as exc:  # noqa: BLE001 — vision is best-effort
+        except Exception as exc:  # noqa: BLE001 - vision is best-effort
             logger.warning("ImageAdapter: AI call failed: %s", exc)
             return []
 
@@ -425,7 +425,7 @@ class ImageSourceAdapter:
         by ``list_categories`` (the chip-bar refresh path) doesn't re-hit
         the LLM. The cache is per-adapter-instance, not per-session, so
         a second adapter constructed inside the same request still
-        re-fetches — that matches the BoQ / Text adapter behaviour.
+        re-fetches - that matches the BoQ / Text adapter behaviour.
         """
         cache: list[dict[str, Any]] | None = getattr(self, "_items_cache", None)
         if cache is not None:
@@ -450,7 +450,7 @@ class ImageSourceAdapter:
 
     async def list_attribute_keys(
         self,
-        project_id: uuid.UUID,  # noqa: ARG002 — image adapter is session-scoped
+        project_id: uuid.UUID,  # noqa: ARG002 - image adapter is session-scoped
         bim_model_id: uuid.UUID | None = None,  # noqa: ARG002
     ) -> list[str]:
         """Return the union of attribute keys present on the parsed items.
@@ -462,7 +462,7 @@ class ImageSourceAdapter:
         keys: set[str] = {"ifc_class", "category", "name", "material", "ai_confidence"}
         for item in await self._items():
             keys.update(k for k in item if isinstance(k, str))
-        # Drop quantity-bearing columns from the chip-bar — they belong
+        # Drop quantity-bearing columns from the chip-bar - they belong
         # to ``quantities``, not group-by.
         for q in ("qty_estimate", "unit_estimate", "ifc_class_guess", "material_guess", "confidence"):
             keys.discard(q)
@@ -477,7 +477,7 @@ class ImageSourceAdapter:
     ) -> list[tuple[str, int]]:
         """Group parsed items by their (coerced) ``ifc_class`` hint.
 
-        Falls back to ``"Image"`` when the LLM didn't return a class —
+        Falls back to ``"Image"`` when the LLM didn't return a class -
         matches the "Text" / "BoQ" defaults on text/boq adapters.
         """
         counter: Counter[str] = Counter()
@@ -493,7 +493,7 @@ class ImageSourceAdapter:
         bim_model_id: uuid.UUID | None = None,  # noqa: ARG002
         filters: dict[str, list[Any]] | None = None,
         excluded_categories: list[str] | None = None,
-        use_net_quantities: bool = True,  # noqa: ARG002 — image has no openings
+        use_net_quantities: bool = True,  # noqa: ARG002 - image has no openings
     ) -> list[SourceElement]:
         """Convert each parsed item to a :class:`SourceElement`."""
         excluded = {str(c) for c in (excluded_categories or []) if c}
@@ -527,7 +527,7 @@ class ImageSourceAdapter:
                 str(material_guess).strip() if isinstance(material_guess, str) and material_guess.strip() else None
             )
 
-            # Always normalise confidence to 'low' in metadata — the
+            # Always normalise confidence to 'low' in metadata - the
             # surrounding pipeline reads ``ai_confidence`` to gate
             # auto-confirm. Image-source matches are noisy by definition.
             ai_confidence = "low"

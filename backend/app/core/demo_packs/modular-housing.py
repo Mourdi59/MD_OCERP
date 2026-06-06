@@ -12,7 +12,7 @@ from app.core.demo_projects import DemoTemplate
 # facade and commissioning).
 #
 # Classification: NRM 1 elements are used to keep the scheme legible to a UK/EU
-# quantity surveyor, with a FACTORY/SITE work-breakdown layered on top — this
+# quantity surveyor, with a FACTORY/SITE work-breakdown layered on top - this
 # mirrors how offsite cost plans are usually presented (split by where the
 # value is created, then mapped back to elements for benchmarking).
 #
@@ -50,7 +50,7 @@ TEMPLATE = DemoTemplate(
     currency="EUR",
     locale="en",
     address={
-        # Real address: NDSM Wharf, Amsterdam-Noord — an established hub for
+        # Real address: NDSM Wharf, Amsterdam-Noord - an established hub for
         # large-scale volumetric / offsite residential delivery in the EU.
         "street": "NDSM-Plein 28",
         "city": "Amsterdam",

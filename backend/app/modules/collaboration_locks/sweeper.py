@@ -109,7 +109,7 @@ def start_sweeper() -> None:
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
-        logger.debug("no running loop — sweeper will be started by on_startup")
+        logger.debug("no running loop - sweeper will be started by on_startup")
         return
     _task = loop.create_task(_sweeper_loop(), name="collab_lock_sweeper")
 

@@ -41,7 +41,7 @@ class FileFavorite(Base):
     ``pinned`` is a tri-state bit: an unpinned row is a *favourite*; a
     pinned row is an *elevated favourite* that sorts first in the
     Recently Viewed strip. A user can have many pinned files per
-    project (no per-project pin cap — UX surfaces the top N only).
+    project (no per-project pin cap - UX surfaces the top N only).
     """
 
     __tablename__ = "oe_file_favorite"

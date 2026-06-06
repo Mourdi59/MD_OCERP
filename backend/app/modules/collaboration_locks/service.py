@@ -7,7 +7,7 @@ Responsibilities
 * Resolve the display name for a user (so the conflict response can
   say "Locked by Anna Schmidt" instead of a raw UUID).
 * Publish ``collab.lock.*`` events on the global event bus so the
-  presence hub — and any other subscriber — can react.
+  presence hub - and any other subscriber - can react.
 * Normalise the 409-conflict payload so the frontend has a single
   shape to branch on.
 
@@ -183,7 +183,7 @@ class CollabLockService:
             )
             raise LockConflictError(payload)
 
-        # Race that resolved to "nobody won" — treat as conflict to
+        # Race that resolved to "nobody won" - treat as conflict to
         # make the caller retry rather than spuriously succeed.
         raise LockConflictError(
             CollabLockConflict(
@@ -235,7 +235,7 @@ class CollabLockService:
     async def release(self, *, lock_id: uuid.UUID, user_id: uuid.UUID) -> None:
         row = await self.repo.get_by_id(lock_id)
         if row is None:
-            # Idempotent release — nothing to do.
+            # Idempotent release - nothing to do.
             return
         if row.user_id != user_id:
             raise NotLockHolderError("Only the holder may release a lock")

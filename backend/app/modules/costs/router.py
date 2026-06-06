@@ -106,7 +106,7 @@ class CertaintyBatchRequest(BaseModel):
     Carries the cost-item ids visible on one list page so the certainty
     badges can be resolved in a single round-trip instead of one HTTP
     request per row (an N+1 the list view fired on every page). Bounded
-    to 200 ids — comfortably above the 10-row default page size while
+    to 200 ids - comfortably above the 10-row default page size while
     still capping the ``IN()`` fan-out.
     """
 
@@ -121,7 +121,7 @@ class CertaintyBatchRequest(BaseModel):
 # ── Region → currency map ─────────────────────────────────────────────────
 #
 # CWICR catalogues are imported per-region, but the parquet files don't
-# carry an explicit currency column — every rate is denominated in the
+# carry an explicit currency column - every rate is denominated in the
 # region's local currency. We resolve the right ISO 4217 code at ingestion
 # time (so rates persist with their true currency) AND lazily on read for
 # legacy rows that landed with ``currency = ''`` before this map existed.
@@ -129,7 +129,7 @@ class CertaintyBatchRequest(BaseModel):
 # Single source of truth: the v3 catalogue registry
 # (:data:`CWICR_V3_CATALOGUES`) already declares the ISO currency of every
 # region DDC ships. Deriving the map from it means new catalogue rows are
-# covered automatically and the two can never drift — the old hand-kept
+# covered automatically and the two can never drift - the old hand-kept
 # literal omitted ~18 live regions (KES/GHS/KRW/THB/VND/…) and silently
 # mislabeled their rates as EUR.
 #
@@ -143,7 +143,7 @@ _REGION_CURRENCY_LEGACY: dict[str, str] = {
     "IE_DUBLIN": "EUR",
     "USA_NEWYORK": "USD",
     "SA_RIYADH": "SAR",
-    # NOTE: ``PT_SAOPAULO`` is intentionally NOT registered — it was a
+    # NOTE: ``PT_SAOPAULO`` is intentionally NOT registered - it was a
     # mislabeled tag (São Paulo is Brazil; canonical key is ``BR_SAOPAULO``,
     # supplied by the v3 registry). A stray ``PT_SAOPAULO`` row should hit
     # the unknown-region path, not silently resolve.
@@ -153,7 +153,7 @@ _REGION_CURRENCY_LEGACY: dict[str, str] = {
 def _build_region_currency_map() -> dict[str, str]:
     """Derive ``{region: ISO currency}`` from the v3 catalogue + legacy aliases."""
     out: dict[str, str] = {cat.region: cat.currency for cat in CWICR_V3_CATALOGUES if cat.currency}
-    # Legacy/alias keys only fill gaps — never override a canonical v3 entry.
+    # Legacy/alias keys only fill gaps - never override a canonical v3 entry.
     for region, currency in _REGION_CURRENCY_LEGACY.items():
         out.setdefault(region, currency)
     return out
@@ -165,7 +165,7 @@ _REGION_CURRENCY: dict[str, str] = _build_region_currency_map()
 # CWICR region tags follow the convention ``<2-letter country>_<UPPERCASE city>``
 # (a few legacy tags use a 3-letter prefix like ``USA_``). Anything that doesn't
 # match this shape is almost certainly junk / a typo and should not be silently
-# resolved to "EUR" — we log a warning so operations can spot the bad row.
+# resolved to "EUR" - we log a warning so operations can spot the bad row.
 _REGION_FORMAT_RE = _re.compile(r"^[A-Z]{2,3}_[A-Z0-9]+$")
 
 
@@ -183,7 +183,7 @@ def _resolve_currency(
     """‌⁠‍Return the catalogue currency, deriving it from region when empty.
 
     The CWICR import historically stored ``currency = ''`` because the source
-    parquet doesn't carry the field — every rate is in the region's local
+    parquet doesn't carry the field - every rate is in the region's local
     currency. This helper plugs that hole without forcing a re-import.
 
     Resolution order:
@@ -194,12 +194,12 @@ def _resolve_currency(
         3. ``""`` (unset) when the region is unknown or malformed.
 
     A genuinely unknown region returns an EMPTY string rather than a wrong
-    "EUR" — mislabeling a Kenyan/Thai/Korean rate as EUR silently corrupts
+    "EUR" - mislabeling a Kenyan/Thai/Korean rate as EUR silently corrupts
     every downstream cross-currency conversion, whereas an empty currency is
     honestly "unknown" and is rendered as such (and skipped by FX maths).
     When the region can't be resolved a structured warning is emitted via
-    ``logger.warning`` and — if a ``warnings`` list is supplied by the caller
-    — a short human-readable message is appended so the route handler can
+    ``logger.warning`` and - if a ``warnings`` list is supplied by the caller
+    - a short human-readable message is appended so the route handler can
     surface it to the API response (frontend renders as a non-blocking toast).
     """
     if isinstance(currency, str):
@@ -222,7 +222,7 @@ def _resolve_currency(
                 if mapped:
                     return mapped
                 msg = (
-                    f"Unknown region {normalized!r} — no entry in _REGION_CURRENCY "
+                    f"Unknown region {normalized!r} - no entry in _REGION_CURRENCY "
                     f"(add it to the CWICR catalogue registry); currency left unset."
                 )
                 logger.warning(msg)
@@ -245,7 +245,7 @@ def _extract_cost_breakdown(metadata: dict[str, Any] | None) -> dict[str, float]
     """‌⁠‍Pull labor / material / equipment numbers out of CWICR metadata.
 
     The CWICR ingest stamps these as ``round(value, 2)`` only when the
-    source row carries a non-zero figure — so an absent key really means
+    source row carries a non-zero figure - so an absent key really means
     "no data" (not "zero"). Returns ``None`` when none of the three keys
     are present so the tooltip can hide the breakdown section gracefully.
     """
@@ -263,14 +263,14 @@ def _slim_autocomplete_metadata(metadata: dict[str, Any] | None) -> dict[str, An
     """Project metadata to a tooltip-sized payload.
 
     Keeps:
-      * ``variant_stats`` — rendered as the "N variants" hint.
-      * ``variant_count`` — derived count when ``variants`` is present.
-      * ``labor_hours`` / ``workers_per_unit`` — small auxiliary numbers.
-      * ``scope_of_work`` — ordered list of work steps (truncated to 8
+      * ``variant_stats`` - rendered as the "N variants" hint.
+      * ``variant_count`` - derived count when ``variants`` is present.
+      * ``labor_hours`` / ``workers_per_unit`` - small auxiliary numbers.
+      * ``scope_of_work`` - ordered list of work steps (truncated to 8
         entries to keep the payload bounded). Surfaced in the BOQ grid
         as an inline (i) hint next to the description.
 
-    Strips the heavy ``variants`` array — full variant data is fetched
+    Strips the heavy ``variants`` array - full variant data is fetched
     lazily via ``GET /v1/costs/{id}/`` when the user actually applies
     the suggestion. The slim payload is bounded to roughly < 200 B per
     item so the autocomplete response stays snappy on slow links.
@@ -312,7 +312,7 @@ def _resolve_cost_locale(
       3. ``"en"`` fallback.
 
     The CWICR translations module uses its own SUPPORTED_LOCALES (16 entries)
-    independently of ``app.core.i18n`` (20 entries) — they overlap but the
+    independently of ``app.core.i18n`` (20 entries) - they overlap but the
     CWICR set adds ``ro``, ``bg``, ``hr``, ``id``, ``th``, ``vi`` that the
     UI-strings i18n doesn't ship yet.  Pulling the locale here keeps the
     cost-data path decoupled from the broader request-locale middleware so
@@ -327,7 +327,7 @@ def _resolve_cost_locale(
             return norm
 
     # 2. First entry of Accept-Language. Quality-weighted parsing isn't
-    #    necessary here — the costs UI only needs a single best-match,
+    #    necessary here - the costs UI only needs a single best-match,
     #    and the existing AcceptLanguageMiddleware already does the
     #    full RFC 7231 dance for the rest of the app.
     if accept_language:
@@ -353,7 +353,7 @@ def _localize_response_payload(
     ``metadata`` for its DeclarativeBase namespace).  ``model_dump(
     by_alias=True)`` therefore emits the alias, and frontend clients
     already key off ``metadata_`` (see ``api.ts``
-    ``CostItemMetadata``) — keep that contract intact.
+    ``CostItemMetadata``) - keep that contract intact.
     """
     payload = item_response.model_dump(by_alias=True, mode="json")
     cls = payload.get("classification") or {}
@@ -400,7 +400,7 @@ async def autocomplete_cost_items(
     equipment) and a thinned ``metadata_`` block so the BOQ description
     cell can render a rich hover tooltip (Phase F, v2.7.0) without a
     second round-trip. The variant array itself is intentionally omitted
-    to keep the per-item delta well under 200 B — callers that need the
+    to keep the per-item delta well under 200 B - callers that need the
     full variant catalog should hit ``GET /v1/costs/{id}/`` on hover.
     """
     resolved_locale = _resolve_cost_locale(locale, accept_language)
@@ -414,7 +414,7 @@ async def autocomplete_cost_items(
                 query_vec = encode_texts([q])[0]
                 results = vector_search(query_vec, region=region, limit=limit)
                 if results:
-                    # Vector results may not have components — look them up from DB
+                    # Vector results may not have components - look them up from DB
                     codes = [r.get("code", "") for r in results]
                     components_map: dict[str, list[dict[str, Any]]] = {}
                     metadata_map: dict[str, dict[str, Any]] = {}
@@ -458,7 +458,7 @@ async def autocomplete_cost_items(
         except Exception:
             logger.debug("Cost search: vector search failed, falling back to text", exc_info=True)
 
-    # Standard text search — the "items WITH components first" priority
+    # Standard text search - the "items WITH components first" priority
     # is pushed into SQL so we fetch exactly ``limit`` rows here (was
     # ``limit*3`` + Python sort). On a 110k-row catalogue this cut the
     # per-keystroke cost from ~80 ms (24-row fetch + 24-row Python sort)
@@ -538,7 +538,7 @@ async def search_cost_items(
     q: str | None = Query(
         default=None,
         description=(
-            "Free-text search — substring (ILIKE) match against code OR "
+            "Free-text search - substring (ILIKE) match against code OR "
             "description. Canonical param: ``search`` and ``query`` are "
             "silently aliased to ``q`` at this boundary. SQL ILIKE is "
             "always evaluated; the vector layer is a best-effort re-rank "
@@ -557,7 +557,7 @@ async def search_cost_items(
     name: str | None = Query(
         default=None,
         description=(
-            "Substring (ILIKE) filter against code only — CostItem rows "
+            "Substring (ILIKE) filter against code only - CostItem rows "
             "have no separate name column, so the catalog code IS the "
             "name. AND-combined with ``q``."
         ),
@@ -596,7 +596,7 @@ async def search_cost_items(
     lite: bool = Query(
         default=False,
         description=(
-            "Return a slim payload — strip the per-row ``components`` "
+            "Return a slim payload - strip the per-row ``components`` "
             "array (cwicr items can carry 16+ resource entries averaging "
             "~31 KB/row) and reduce ``metadata_`` to ``variant_stats`` only. "
             "Adds a ``components_count`` integer so list UIs can still show "
@@ -655,7 +655,7 @@ async def search_cost_items(
     # Fast-path: when no text/category filters are present and we already
     # know the per-region totals from the prewarmed stats cache, skip the
     # COUNT(*) over the filtered subquery on the first page. The user's
-    # bug report — "Add from Database" modal hangs — was traced to this
+    # bug report - "Add from Database" modal hangs - was traced to this
     # cold-cache count: 18 s on a 277 k-row catalog. Subsequent pages use
     # cursors which already skip the count, so this only affects page 1.
     skip_count_via_cache = False
@@ -694,13 +694,13 @@ async def search_cost_items(
         items, total, has_more, next_cursor = await service.search_costs_paginated(query)
     resolved_locale = _resolve_cost_locale(locale, accept_language)
 
-    # Currency-fallback warnings — accumulate per-row issues so the FE can
+    # Currency-fallback warnings - accumulate per-row issues so the FE can
     # surface one non-blocking toast per request instead of one per row.
     # _resolve_currency() (called from the schema validator + the manual
     # payload paths below) appends de-duplicated messages here.
     currency_warnings: list[str] = []
 
-    # Lite payload trim — drops the heavy ``components`` array and trims
+    # Lite payload trim - drops the heavy ``components`` array and trims
     # ``metadata_`` to a small whitelist. CWICR rows average ~38 KB each
     # (31 KB components + 6.6 KB metadata); a 10-row page is 380 KB on
     # the wire, which dominates the perceived load time of /costs even
@@ -767,7 +767,7 @@ async def search_cost_items(
         "has_more": has_more,
     }
     # ``warnings``: non-fatal data-quality issues the FE renders as a single
-    # transient toast (one entry per distinct message — duplicates already
+    # transient toast (one entry per distinct message - duplicates already
     # collapsed by _resolve_currency). Omitted when empty so clients that
     # don't know about the field see no change in the response shape.
     if currency_warnings:
@@ -871,7 +871,7 @@ async def region_stats(
 
 @router.delete(
     "/actions/clear-region/{region}",
-    # Wholesale region wipe — admin only. ``costs.delete`` alone would let
+    # Wholesale region wipe - admin only. ``costs.delete`` alone would let
     # any editor nuke a whole regional cost database. Keeps parity with
     # ``/actions/clear-database/`` which already requires admin.
     dependencies=[Depends(RequireRole("admin"))],
@@ -912,13 +912,13 @@ async def get_vector_status() -> dict:
 
 @router.get("/vector/download-status/")
 async def vector_download_status() -> dict:
-    """Embedder load state — used by /modules to poll while a model is being
+    """Embedder load state - used by /modules to poll while a model is being
     pulled from HuggingFace on first vector install.
 
     Returns the active model name (whichever of ``embedding_model_name`` or
     ``embedding_model_fallback`` successfully loaded), a coarse ``status``
     flag (``ready`` once the singleton is materialised, ``unavailable``
-    otherwise — typically while the model is still downloading or after
+    otherwise - typically while the model is still downloading or after
     both candidates failed to load), and the configured embedding
     dimension.
 
@@ -989,7 +989,7 @@ async def vector_v3_status(
         "",
         description=(
             "Region or country code (e.g. DE, DE_BERLIN, USA_USD). "
-            "Resolves to the per-language v3 collection — "
+            "Resolves to the per-language v3 collection - "
             "DE_BERLIN → cwicr_de_v3, USA_USD → cwicr_en_v3, etc. "
             "Empty string returns the engine state without a collection probe."
         ),
@@ -1000,7 +1000,7 @@ async def vector_v3_status(
             "Optional project id. When provided, the response includes "
             "``language_mismatch`` describing whether the project's bound "
             "cost catalogue speaks a different language than the project "
-            "region — used to surface a 'wrong catalogue' warning on /match-elements."
+            "region - used to surface a 'wrong catalogue' warning on /match-elements."
         ),
     ),
 ) -> dict[str, Any]:
@@ -1008,7 +1008,7 @@ async def vector_v3_status(
 
     Used by the match-elements page to surface a "vector DB ready / missing"
     banner in the same style as the BIM converter status panel. Single
-    Qdrant probe — does NOT trigger reindexing; that lives on /costs.
+    Qdrant probe - does NOT trigger reindexing; that lives on /costs.
 
     When ``project_id`` is supplied, also returns ``language_mismatch``
     diagnostics so the UI can warn about a cross-language catalogue
@@ -1032,13 +1032,13 @@ async def vector_v3_status(
         "status_band": "disconnected",
     }
 
-    # Cross-language binding diagnostics — independent of Qdrant probe so
+    # Cross-language binding diagnostics - independent of Qdrant probe so
     # the warning fires even when the engine is offline.
     #
     # IDOR gate (Round-7): the diagnostics read MatchProjectSettings for
     # the supplied project. Verify the authenticated caller owns the
     # project (or is admin) before exposing it. Anonymous callers skip
-    # the diagnostics entirely — surfacing them anonymously would leak
+    # the diagnostics entirely - surfacing them anonymously would leak
     # whether arbitrary project UUIDs exist + their bound catalogue.
     if project_id is not None:
         sub = (user or {}).get("sub") if user else None
@@ -1046,7 +1046,7 @@ async def vector_v3_status(
             try:
                 await verify_project_access(project_id, str(sub), db)
             except HTTPException:
-                # Caller does not own the project — return the engine
+                # Caller does not own the project - return the engine
                 # status payload WITHOUT the language_mismatch diagnostic
                 # so we neither 404 the unrelated probe nor leak the row.
                 payload["language_mismatch"] = {
@@ -1071,7 +1071,7 @@ async def vector_v3_status(
     payload["collection"] = country_to_collection(country)
 
     if base.get("engine") != "qdrant":
-        # LanceDB or other backend — v3 collection naming doesn't apply.
+        # LanceDB or other backend - v3 collection naming doesn't apply.
         payload["status_band"] = "non_qdrant"
         return payload
 
@@ -1118,15 +1118,15 @@ async def _detect_language_mismatch(
     Returns a structured payload that the UI can render as either a
     ``ok`` / ``mismatch`` banner. The "mismatch" status fires when the
     bound ``cost_database_id`` resolves to a different ISO-639-1 code
-    than the project's region — almost always a sign that
+    than the project's region - almost always a sign that
     ``auto_bind_dominant_catalogue`` picked by row count before the
     language-aware fix landed (#236).
 
     Status values:
-        - ``unknown``      — project not found, or no region set
-        - ``unbound``      — project has no cost_database_id yet
-        - ``ok``           — languages match (or both fall back to default)
-        - ``mismatch``     — project language ≠ catalogue language
+        - ``unknown``      - project not found, or no region set
+        - ``unbound``      - project has no cost_database_id yet
+        - ``ok``           - languages match (or both fall back to default)
+        - ``mismatch``     - project language ≠ catalogue language
     """
     from sqlalchemy import select  # noqa: PLC0415
 
@@ -1159,7 +1159,7 @@ async def _detect_language_mismatch(
 
         if out["project_language"] and out["bound_language"]:
             out["status"] = "ok" if out["project_language"] == out["bound_language"] else "mismatch"
-    except Exception:  # pragma: no cover — defensive
+    except Exception:  # pragma: no cover - defensive
         logger.debug("language mismatch probe failed", exc_info=True)
     return out
 
@@ -1194,7 +1194,7 @@ async def embedder_status() -> dict[str, Any]:
         "extra_name": "semantic",     # hint for advanced users
     }
 
-    Always returns 200 — the UI distinguishes states from the payload,
+    Always returns 200 - the UI distinguishes states from the payload,
     not from HTTP status, so a missing-extra install can render a clean
     install card instead of an error toast.
     """
@@ -1219,7 +1219,7 @@ async def embedder_status() -> dict[str, Any]:
         missing.append("qdrant-client")
 
     # Probe whether the encoder has been initialised in this worker
-    # without forcing a load — qdrant_adapter._encoder is a module-level
+    # without forcing a load - qdrant_adapter._encoder is a module-level
     # singleton that is None until the first /qdrant-search hits.
     model_loaded = False
     try:
@@ -1249,7 +1249,7 @@ async def embedder_status() -> dict[str, Any]:
 
 @router.get("/qdrant-search/")
 async def qdrant_smoke_search(
-    q: str = Query(..., min_length=1, description="Query text — passed verbatim as the CORE query"),
+    q: str = Query(..., min_length=1, description="Query text - passed verbatim as the CORE query"),
     country: str = Query("DE", description="Region or country code, e.g. DE, DE_BERLIN, USA_USD"),
     limit: int = Query(10, ge=1, le=50),
     is_abstract: bool | None = Query(False, description="Drop aggregator headers (None to leave open)"),
@@ -1292,7 +1292,7 @@ async def qdrant_smoke_search(
     except (ImportError, ModuleNotFoundError) as exc:
         # The optional [semantic] extra (qdrant_client / FlagEmbedding) is
         # not installed. A lazy ``from qdrant_client...`` deep inside
-        # search() raised a bare ModuleNotFoundError — never echo the raw
+        # search() raised a bare ModuleNotFoundError - never echo the raw
         # "No module named 'qdrant_client'" text to the client (NEW-B-105).
         logger.info("CWICR Qdrant search unavailable (optional extra missing): %s", exc)
         raise HTTPException(
@@ -1341,7 +1341,7 @@ async def qdrant_smoke_search(
     # Either ``JSONResponse`` (when the vector backend is unavailable → 503)
     # or a plain ``dict`` (happy path). FastAPI can't auto-derive a single
     # response model from that union, and we want the bare-dict happy-path
-    # serialisation untouched — so we opt out of response-model generation.
+    # serialisation untouched - so we opt out of response-model generation.
     response_model=None,
 )
 async def vectorize_cost_items(
@@ -1367,7 +1367,7 @@ async def vectorize_region(
 ) -> JSONResponse | dict:
     """Embed and index the cost items of one region into the vector DB.
 
-    Uses FastEmbed/ONNX (all-MiniLM-L6-v2, 384d) locally — no API key needed.
+    Uses FastEmbed/ONNX (all-MiniLM-L6-v2, 384d) locally - no API key needed.
     Default backend: LanceDB (embedded, no Docker required).
 
     Returns ``503 Service Unavailable`` (as a ``JSONResponse``) when the vector
@@ -1416,7 +1416,7 @@ async def vectorize_region(
             content={
                 "indexed": 0,
                 "message": "Vector indexing is not available: embedding model loading "
-                "timed out. The model may need to be downloaded first — try again later.",
+                "timed out. The model may need to be downloaded first - try again later.",
             },
             status_code=503,
         )
@@ -1811,7 +1811,7 @@ async def restore_qdrant_snapshot(
             )
             logger.info("Created Qdrant collection: %s", collection_name)
 
-        # Upload snapshot via multipart — client.recover_snapshot() only
+        # Upload snapshot via multipart - client.recover_snapshot() only
         # accepts URIs the Qdrant SERVER can fetch (http://, s3://, file://
         # on the server's own disk). Our snapshot sits on the app container,
         # so we POST the bytes directly to /collections/{name}/snapshots/upload.
@@ -1821,7 +1821,7 @@ async def restore_qdrant_snapshot(
         if not qdrant_url:
             raise HTTPException(
                 status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "Qdrant URL not configured — set QDRANT_URL or CWICR_QDRANT_URL",
+                "Qdrant URL not configured - set QDRANT_URL or CWICR_QDRANT_URL",
             )
         ok = await asyncio.to_thread(
             restore_snapshot_file,
@@ -1846,7 +1846,7 @@ async def restore_qdrant_snapshot(
     duration = round(time.monotonic() - start, 1)
 
     # Get collection info after restore. ``CollectionInfo.vectors_count``
-    # was removed in newer qdrant-client — read ``points_count`` first and
+    # was removed in newer qdrant-client - read ``points_count`` first and
     # fall back resiliently so a client version bump can't crash this.
     try:
         col_info = client.get_collection(collection_name)
@@ -1884,7 +1884,7 @@ async def restore_qdrant_snapshot(
 # `/vector/restore-snapshot/{db_id}` above ships the legacy 3072-dim snapshots
 # and writes into per-region collections (`cwicr_de_berlin`, …). The v3 path
 # below ships BGE-M3 v3 snapshots and writes into per-language collections
-# (`cwicr_de_v3`, …) — the schema the production /match-elements pipeline
+# (`cwicr_de_v3`, …) - the schema the production /match-elements pipeline
 # already searches against. Once Phase 5 cleanup retires the 3072 path, the
 # legacy endpoint goes away; until then they coexist so existing installs
 # don't break.
@@ -1908,8 +1908,8 @@ def _snapshot_error_hint(err: str) -> str | None:
     ``newest_clocks.json`` (and occasionally other clock/WAL files)
     during snapshot recovery because Windows Defender real-time
     scanning holds a handle on the file Qdrant has just written and
-    is trying to ``fsync``. The download succeeds — only the final
-    sync fails — so the user sees "could not fetch or restore" with
+    is trying to ``fsync``. The download succeeds - only the final
+    sync fails - so the user sees "could not fetch or restore" with
     no obvious cause. Surface a concrete fix instead of leaving them
     to grep the backend log.
     """
@@ -1919,17 +1919,17 @@ def _snapshot_error_hint(err: str) -> str | None:
     if "os error 5" in low or "access is denied" in low:
         return (
             "Windows Defender is locking files in Qdrant's storage folder during "
-            "fsync. The download succeeded — only the final disk write was blocked. "
+            "fsync. The download succeeded - only the final disk write was blocked. "
             "Fix: open PowerShell AS ADMINISTRATOR and run:\n"
             '  Add-MpPreference -ExclusionPath "$env:USERPROFILE\\.openestimator"\n'
-            "Then click Install again. (No restart needed — Qdrant picks it up "
+            "Then click Install again. (No restart needed - Qdrant picks it up "
             "on the next attempt.) GUI alternative: Settings → Update & Security → "
             "Windows Security → Virus & threat protection → Manage settings → "
             "Add or remove exclusions → Folder → pick %USERPROFILE%\\.openestimator."
         )
     if "no space left" in low or "out of space" in low or "disk full" in low:
         return (
-            "Disk is full — the BGE-M3 snapshot needs ~1–2 GB free during restore. "
+            "Disk is full - the BGE-M3 snapshot needs ~1–2 GB free during restore. "
             "Free up space on the drive holding ~/.openestimator and retry."
         )
     if "status - 404" in low or "404 not found" in low:
@@ -1951,7 +1951,7 @@ def _v3_qdrant_url() -> str | None:
 
     Prefers ``settings.cwicr_qdrant_url`` (the dedicated v3 setting);
     falls back to ``settings.qdrant_url`` which the legacy adapter uses
-    — in single-server dev they point at the same instance and the
+    - in single-server dev they point at the same instance and the
     fallback removes one configuration step. Returns ``None`` when
     neither is set so the caller can surface a clear "no server" error.
     """
@@ -1969,18 +1969,18 @@ async def list_v3_catalogues() -> dict:
     from this endpoint. Each row gets a flag, name, currency, size,
     and a status suitable for picking the right CTA:
 
-    * ``loaded`` — the collection exists on the configured Qdrant server
+    * ``loaded`` - the collection exists on the configured Qdrant server
       and has at least one point. Multiple regions sharing a language
       (USA_USD + GB_LONDON → cwicr_en_v3) all report ``loaded`` because
       the search-time collection is populated; per-region cache state
       is exposed separately as ``snapshot_cached``.
-    * ``installing`` — reserved; current implementation runs the install
+    * ``installing`` - reserved; current implementation runs the install
       synchronously, so the only way to see this state is via the
       transient cache file probe. Kept in the schema so the frontend
       can reuse it once we move to background jobs.
-    * ``available`` — DDC has published the v3 snapshot but it's not
+    * ``available`` - DDC has published the v3 snapshot but it's not
       installed on this server. The "Install" CTA is enabled.
-    * ``coming_soon`` — registry knows the region but the snapshot
+    * ``coming_soon`` - registry knows the region but the snapshot
       hasn't shipped yet. CTA is disabled with a "coming soon" hint.
     """
     from app.modules.costs.cwicr_v3_catalogue import CWICR_V3_CATALOGUES
@@ -1998,7 +1998,7 @@ async def list_v3_catalogues() -> dict:
 
             server_collections = set(_probe(qdrant_url=qdrant_url))
             server_reachable = True
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.debug("v3 catalogues: server probe failed: %s", exc)
 
     catalogues: list[dict] = []
@@ -2064,7 +2064,7 @@ async def install_v3_catalogue(
 
     Implementation note: this endpoint deliberately does NOT use
     Qdrant's multipart ``/snapshots/upload`` because its default
-    ``service.max_request_size_mb`` is 32 MB — every v3 BGE-M3 snapshot
+    ``service.max_request_size_mb`` is 32 MB - every v3 BGE-M3 snapshot
     is several times that. The recover-from-URL endpoint
     (``PUT /collections/{name}/snapshots/recover``) has Qdrant download
     the file itself with no body-size ceiling.
@@ -2121,11 +2121,11 @@ async def install_v3_catalogue(
 
     # Restore via the recover-from-URL path. Qdrant's multipart
     # ``snapshots/upload`` endpoint is bounded by
-    # ``service.max_request_size_mb`` (default 32 MB) — every BGE-M3 v3
+    # ``service.max_request_size_mb`` (default 32 MB) - every BGE-M3 v3
     # snapshot is 400–800 MB and gets rejected with HTTP 500 "An error
     # occurred processing field: snapshot". The recover-from-URL
     # endpoint instead has Qdrant download the file itself with no body
-    # size limit, then restore inline. The Qdrant call is synchronous —
+    # size limit, then restore inline. The Qdrant call is synchronous -
     # it returns once the restore finishes (5–15 min on a typical link
     # for 400 MB). We run it in the executor so the event loop stays
     # responsive for other tenants' requests during the wait.
@@ -2367,12 +2367,12 @@ async def list_loaded_databases(
     LanceDB vector count, so the Match-panel selector can surface three
     distinct UI states without an extra round-trip:
 
-    * ``count == 0``                              — never happens (the
+    * ``count == 0``                              - never happens (the
                                                     catalogue wouldn't be
                                                     listed) but guarded.
-    * ``count > 0`` and ``vectorized_count == 0`` — "Catalogue loaded but
+    * ``count > 0`` and ``vectorized_count == 0`` - "Catalogue loaded but
                                                     not vectorised yet"
-    * ``count > 0`` and ``vectorized_count > 0``  — ready for matching
+    * ``count > 0`` and ``vectorized_count > 0``  - ready for matching
 
     Cheap: the SQL count comes from a single ``GROUP BY region`` against
     the indexed ``region`` column; the vector count comes from
@@ -2715,7 +2715,7 @@ async def import_cost_file(
     Returns:
         Summary with counts of imported, skipped, and error details per row.
     """
-    # Validate file extension (advisory — magic-byte gate below is the
+    # Validate file extension (advisory - magic-byte gate below is the
     # real check; extensions are attacker-controlled).
     filename = (file.filename or "").lower()
     if not filename.endswith((".xlsx", ".csv", ".xls")):
@@ -2750,7 +2750,7 @@ async def import_cost_file(
     # Round-7 magic-byte gate: filename extension lies; sniff the first
     # 16 bytes against a hard allow-list. Excel files (xlsx) are ZIP
     # containers ("PK\x03\x04"); .xls are OLE compound docs; CSVs have
-    # no magic — we accept ``None`` ONLY when the body decodes as text
+    # no magic - we accept ``None`` ONLY when the body decodes as text
     # with a common delimiter.
     head = content[:SIGNATURE_BYTES_REQUIRED]
     signature = detect_signature(head)
@@ -2760,7 +2760,7 @@ async def import_cost_file(
         # Reject anything that's actually a binary container masquerading
         # as ".csv" (the classic .exe → .csv renamed-malware vector).
         if signature is not None and signature not in {"xml"}:
-            # A real CSV would sniff as None (no magic) — anything we
+            # A real CSV would sniff as None (no magic) - anything we
             # recognised as a container is a mismatch.
             raise HTTPException(
                 status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -2769,10 +2769,10 @@ async def import_cost_file(
         if b"\x00" in head:
             raise HTTPException(
                 status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail="CSV upload contains NUL bytes — likely a binary file with a renamed extension.",
+                detail="CSV upload contains NUL bytes - likely a binary file with a renamed extension.",
             )
     else:
-        # .xlsx / .xls — must be a real ZIP or OLE container.
+        # .xlsx / .xls - must be a real ZIP or OLE container.
         try:
             require_signature(
                 head,
@@ -2852,7 +2852,7 @@ async def import_cost_file(
             # Parse rate
             rate = _safe_float(row.get("rate"), default=0.0)
 
-            # Parse currency — empty if absent, never country-default.
+            # Parse currency - empty if absent, never country-default.
             currency = str(row.get("currency", "")).strip().upper()
 
             # Build classification
@@ -2930,7 +2930,7 @@ _GITHUB_CWICR_FILES: dict[str, str] = {
     "AR_DUBAI": "AR___DDC_CWICR/AR_DUBAI_workitems_costs_resources_DDC_CWICR.parquet",
     "ZH_SHANGHAI": "ZH___DDC_CWICR/ZH_SHANGHAI_workitems_costs_resources_DDC_CWICR.parquet",
     "HI_MUMBAI": "HI___DDC_CWICR/HI_MUMBAI_workitems_costs_resources_DDC_CWICR.parquet",
-    # New regions added 2026-04-28 — DDC CWICR repo grew from 11 to 30 country
+    # New regions added 2026-04-28 - DDC CWICR repo grew from 11 to 30 country
     # folders.  Each entry is a single 55K-row parquet keyed on a stable
     # ``{LANG}_{CITY}`` id; the city portion matches the upstream filename so
     # the resolver in `_find_cwicr_file` keeps working for local DDC_Toolkit
@@ -3045,7 +3045,7 @@ def _download_cwicr_from_github_sync(db_id: str) -> Path | None:
         )
         _LAST_DOWNLOAD_ERROR[db_id] = (
             f"GitHub download for '{db_id}' returned {size} bytes (expected ≥ 1 KB). "
-            f"URL: {url}. Likely upstream 404 or proxy strip — try re-checking "
+            f"URL: {url}. Likely upstream 404 or proxy strip - try re-checking "
             f"https://github.com/datadrivenconstruction/OpenConstructionEstimate-DDC-CWICR "
             f"is reachable from this network."
         )
@@ -3101,7 +3101,7 @@ async def _find_cwicr_file(db_id: str) -> Path | None:
             if f.name.startswith(db_id) and f.suffix == ".xlsx":
                 return f
 
-    # Priority 4: Download from GitHub (fallback — runs in thread to not block event loop)
+    # Priority 4: Download from GitHub (fallback - runs in thread to not block event loop)
     downloaded = await _download_cwicr_from_github(db_id)
     if downloaded:
         return downloaded
@@ -3110,7 +3110,7 @@ async def _find_cwicr_file(db_id: str) -> Path | None:
 
 
 @router.post(
-    # No trailing slash — sibling endpoints (``/vector/load-github/{db_id}``,
+    # No trailing slash - sibling endpoints (``/vector/load-github/{db_id}``,
     # ``/vector/restore-snapshot/{db_id}``) are also slash-less, and the
     # frontend calls this one without a slash too. Prior version had a stray
     # trailing slash that caused 404 Not Found on every region click.
@@ -3208,12 +3208,12 @@ async def load_cwicr_region(db_id: str, session: AsyncSession) -> dict:
             "duration_seconds": duration,
         }
 
-    # Find the file (async — GitHub download runs in thread pool)
+    # Find the file (async - GitHub download runs in thread pool)
     cwicr_path = await _find_cwicr_file(db_id)
     if not cwicr_path:
         # Surface the most-specific download failure so the user knows
         # whether it's a backend version, a network issue, or a 0-byte
-        # cache stuck on disk — instead of a generic "not found".
+        # cache stuck on disk - instead of a generic "not found".
         last_error = _LAST_DOWNLOAD_ERROR.get(db_id)
         detail = f"CWICR database '{db_id}' not found."
         if last_error:
@@ -3246,7 +3246,7 @@ async def load_cwicr_region(db_id: str, session: AsyncSession) -> dict:
 
     settings = get_settings()
     # The worker loads into PostgreSQL via a short-lived sync SQLAlchemy engine
-    # built from ``database_sync_url`` — never a stray local SQLite file.
+    # built from ``database_sync_url`` - never a stray local SQLite file.
     # Prefer the live process env: embedded PG (v6 default) sets
     # DATABASE_URL/DATABASE_SYNC_URL there after the Settings cache is built, so
     # the cached pydantic values can be stale/empty (mirrors auto_migrate +
@@ -3298,7 +3298,7 @@ async def load_cwicr_region(db_id: str, session: AsyncSession) -> dict:
         logger.debug("parquet cache clear failed (non-fatal)", exc_info=True)
 
     # Schema-level failures (e.g. parquet missing the required ``rate_code``
-    # column) must surface as 422 Unprocessable Entity — the file was
+    # column) must surface as 422 Unprocessable Entity - the file was
     # uploaded fine, the server understood it, but the payload doesn't
     # carry the columns this endpoint needs. The previous silent 200 made
     # the failure invisible to monitoring + client retry logic. The body
@@ -3443,7 +3443,7 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
     if "rate_code" not in df.columns:
         return {"imported": 0, "skipped": 0, "total_rows": total_rows, "error": "no rate_code column"}
 
-    # 2. Vectorized processing — use groupby.first() instead of iterrows
+    # 2. Vectorized processing - use groupby.first() instead of iterrows
     if "rate_original_name" in df.columns and "rate_final_name" in df.columns:
         df["_desc"] = (
             df["rate_original_name"].fillna("").astype(str) + " " + df["rate_final_name"].fillna("").astype(str)
@@ -3497,7 +3497,7 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
     grouped = df.groupby("rate_code", sort=False).agg(agg_cols)
     _log.info("Grouped %d unique items from %d rows in %.1fs", len(grouped), total_rows, time.monotonic() - start)
 
-    # 3. Build insert tuples (vectorized — no Python loop over rows)
+    # 3. Build insert tuples (vectorized - no Python loop over rows)
     def _safe_float(v: object) -> float:
         if v is None:
             return 0.0
@@ -3547,16 +3547,16 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
 
     # ── Per-component variants index (from Abstract resource rows) ──
     # Each rate_code can have several "Абстрактный ресурс" / "Abstract
-    # resource" rows — one per variable component (e.g. formwork type +
+    # resource" rows - one per variable component (e.g. formwork type +
     # board type + crane type). Each row carries its own
     # ``price_abstract_resource_variable_parts`` list. We index by
     # (rate_code, resource_code) so we can stamp the variant catalog onto
-    # the matching component below — replacing the previous "first row
+    # the matching component below - replacing the previous "first row
     # wins, dump on the cost item" behaviour that lost 2 of 3 variant
     # slots on KANE_RINE_KAKARI_KARI and similar rates.
     def _strip_unit_prefix(tok: str) -> str:
         # First per-unit token can be prefixed with a unit marker
-        # (e.g. ``м3=20688.85``) — strip it so we can parse the number.
+        # (e.g. ``м3=20688.85``) - strip it so we can parse the number.
         if "=" in tok:
             return tok.split("=", 1)[1].strip()
         return tok
@@ -3586,7 +3586,7 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
             # ``common_start`` is the shared abstract-resource base name
             # (e.g. "Beton, Sortenliste C") that prefixes every variant's
             # variable_part. Read it BEFORE building variants so each row's
-            # ``full_label`` = ``common_start + label`` — what the BOQ
+            # ``full_label`` = ``common_start + label`` - what the BOQ
             # resource row + Resource Summary display after a pick. The
             # picker still renders ``label`` (variable part only) in its
             # accordion rows because ``stats.common_start`` shows the base
@@ -3631,7 +3631,7 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
     # position is performed (e.g. "Установка телескопических стоек." /
     # "Bodenbearbeitung nach Maß." / "Préparation du sol."). The companion
     # ``is_scope`` flag is set in EN/RU exports but stays False in DE/FR
-    # exports, so we don't gate on it — instead we treat any row with a
+    # exports, so we don't gate on it - instead we treat any row with a
     # non-empty ``work_composition_text`` AND an empty ``resource_name`` as
     # a scope step. Verified universal across all 16 cached regional
     # parquets (168 120 scope rows in each, 0 overlaps with resource rows).
@@ -3664,7 +3664,7 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
         ].copy()
         res_df = res_df[res_df["resource_name"].fillna("").str.len() > 0]
         if _cost_col in res_df.columns:
-            # Keep abstract-resource rows even with cost==0 — they're a
+            # Keep abstract-resource rows even with cost==0 - they're a
             # variant slot the user picks from. Without this carve-out
             # KAME-LI-MENE-KAPU and similar amortisation/option rows get
             # silently dropped and the user loses one of their variant
@@ -3735,7 +3735,7 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
             ctype_arr = ctype_arr.mask(_is_mach & (_row_type == "Electricity"), "electricity")
             res_df["_type"] = ctype_arr
 
-            # Build records via zip over numpy arrays — much faster than iterrows
+            # Build records via zip over numpy arrays - much faster than iterrows
             rc_arr = res_df["_rc"].to_numpy()
             name_arr = res_df["_name"].to_numpy()
             code_arr = res_df["_code"].to_numpy()
@@ -3746,7 +3746,7 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
             type_arr = res_df["_type"].to_numpy()
 
             # strict=True surfaces array length drift immediately instead of
-            # silently truncating component rows mid-import — important for a
+            # silently truncating component rows mid-import - important for a
             # cost-data pipeline where a missing column would otherwise corrupt
             # the assembly composition without leaving any audit trail.
             for rc, nm, cd, un, qt, rt, cs, tp in zip(
@@ -3784,11 +3784,11 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
         _log.info("Built resources for %d rate_codes in %.1fs", len(resources_by_code), time.monotonic() - start)
 
     # 5. Build the insert rows. ``db_file`` carries the sync SQLAlchemy URL
-    # (postgresql://...) of the target cluster — see the caller. Every row is
+    # (postgresql://...) of the target cluster - see the caller. Every row is
     # accumulated and handed to ``_pg_bulk_insert_cost_rows`` (COPY into a
     # staging table + ON CONFLICT DO NOTHING) below.
 
-    # CWICR parquet carries no currency column — every rate is denominated in
+    # CWICR parquet carries no currency column - every rate is denominated in
     # the region's local currency. Resolve it ONCE from ``db_id`` (constant for
     # the whole import) so each row persists its true ISO currency instead of
     # the empty string that read-side fallbacks then had to paper over.
@@ -3834,7 +3834,7 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
             if v > 0:
                 metadata[mkey] = round(v, 2)
 
-        # ── Scope of work — ordered steps describing HOW the position is
+        # ── Scope of work - ordered steps describing HOW the position is
         # performed (e.g. "Установка телескопических стоек."). Sourced from
         # rows flagged ``is_scope=True`` and pre-indexed above.
         steps = scope_by_code.get(code)
@@ -3846,7 +3846,7 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
         pu_vals_raw = _split_bul(row.get("price_abstract_resource_est_price_all_values_per_unit"))
         pu_vals = [_strip_unit_prefix(t) for t in pu_vals_raw]
         # Some rate rows have an empty ``..._all_values`` series and only
-        # the per-unit one is populated — fall back so the legacy picker
+        # the per-unit one is populated - fall back so the legacy picker
         # still gets a catalog instead of dropping it on import.
         if labels and len(values) != len(labels) and len(pu_vals) == len(labels):
             values = pu_vals
@@ -3855,7 +3855,7 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
         # distinguishing tail (e.g. "C25/30 delivered"). The picker renders
         # ``common_start`` once as a header and the rows show only the
         # variable tails. ``full_label`` = ``common_start + variable_part``
-        # is what the BOQ resource row displays after a pick — replacing
+        # is what the BOQ resource row displays after a pick - replacing
         # the position's default description so the user sees the actual
         # concrete material chosen.
         common_start = _safe_str(row.get("price_abstract_resource_common_start"))[:240]
@@ -3940,7 +3940,7 @@ def _process_and_insert_cwicr(parquet_path: str, db_id: str, db_file: str) -> di
 
 
 def _build_cwicr_items(df: pd.DataFrame, db_id: str) -> list[dict[str, Any]]:  # noqa: F821
-    """Legacy — kept for reference but no longer called."""
+    """Legacy - kept for reference but no longer called."""
     import math
 
     import pandas as pd_local
@@ -4028,7 +4028,7 @@ def _build_cwicr_items(df: pd.DataFrame, db_id: str) -> list[dict[str, Any]]:  #
                 "description": desc[:500],
                 "unit": unit,
                 "rate": str(round(rate, 2)),
-                # CWICR parquets don't carry a currency column — every rate
+                # CWICR parquets don't carry a currency column - every rate
                 # is denominated in the region's local currency. Resolve
                 # via the central region map so the picker shows the right
                 # ISO code (e.g. RU_STPETERSBURG → RUB, not USD fallback).
@@ -4047,8 +4047,8 @@ def _build_cwicr_items(df: pd.DataFrame, db_id: str) -> list[dict[str, Any]]:  #
 
     return result_items
 
-    # Old processing code removed — now handled by _build_cwicr_items() + batch insert above
-    pass  # unreachable — function returns above
+    # Old processing code removed - now handled by _build_cwicr_items() + batch insert above
+    pass  # unreachable - function returns above
 
 
 async def _bulk_insert_costs(session: AsyncSession, items: list[dict]) -> int:
@@ -4304,7 +4304,7 @@ async def match_cwicr(
     available), ``semantic`` (requires the ``[semantic]`` extra), and
     ``hybrid`` (blends both, falls back to lexical when deps absent).
     """
-    _ = user_id  # accept anonymous — matches /autocomplete + /search
+    _ = user_id  # accept anonymous - matches /autocomplete + /search
     return await match_cwicr_items(
         session,
         request.query,
@@ -4325,7 +4325,7 @@ async def match_cwicr_from_position(
     """Resolve a Position by id and run the CWICR matcher on its description.
 
     Returns 404 if the position does not exist.  Empty list is returned
-    (200) when the position has no description — that's the BOQ editor's
+    (200) when the position has no description - that's the BOQ editor's
     "scroll past empty rows" UX path.
     """
     _ = user_id
@@ -4342,7 +4342,7 @@ async def match_cwicr_from_position(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
-# ── Cost Intelligence (v3.12.0 — Stream B) ────────────────────────────────
+# ── Cost Intelligence (v3.12.0 - Stream B) ────────────────────────────────
 
 
 @router.get("/regional-adjust/", response_model=RegionalAdjustResponse)
@@ -4351,26 +4351,26 @@ async def regional_adjust(
     user: OptionalUserPayload,
     region: str = Query(..., min_length=2, max_length=64, description="Region code, e.g. DE_BERLIN"),
     category: str = Query(..., min_length=2, max_length=64, description="Category key"),
-    # Round-7: ``Decimal`` for money — FastAPI parses the query string
+    # Round-7: ``Decimal`` for money - FastAPI parses the query string
     # without going through ``float``. The response model serialises
     # the values back out as strings so JS clients keep exact precision.
     base_rate: Decimal = Query(..., ge=0, description="Unit rate in the catalogue's currency"),
     subcategory: str | None = Query(
         default=None,
         max_length=64,
-        description="Optional finer slice — falls back to the whole-category row when absent.",
+        description="Optional finer slice - falls back to the whole-category row when absent.",
     ),
 ) -> RegionalAdjustResponse:
     """‌⁠‍Preview the same rate in a different region.
 
-    RSMeans-style city cost index lookup — multiplies ``base_rate`` by
+    RSMeans-style city cost index lookup - multiplies ``base_rate`` by
     the most recent ``factor`` on file for ``(region, category)``.
     When no factor exists, returns a 1:1 passthrough so the frontend
     can render the row without branching on null.
 
     Read-only and public (parity with autocomplete / search). The
     estimator is expected to confirm before applying the adjusted rate
-    onto a BOQ position — no auto-apply.
+    onto a BOQ position - no auto-apply.
     """
     _ = user  # accept anonymous
     svc = RegionalIndexService(session)
@@ -4418,12 +4418,12 @@ async def get_cost_item_certainty_batch(
     The list view renders one badge per visible row; fetching them
     individually fires N HTTP requests per page (one per row), which is
     a per-keystroke N+1 against the usage ledger. This endpoint folds
-    the whole visible page into two grouped queries — ``count(*)`` and
-    ``max(used_at)`` keyed by ``cost_item_id`` — then classifies each
+    the whole visible page into two grouped queries - ``count(*)`` and
+    ``max(used_at)`` keyed by ``cost_item_id`` - then classifies each
     band in Python, so the page costs one request regardless of row
     count.
 
-    Unknown ids are silently dropped (the badge is decorative — a
+    Unknown ids are silently dropped (the badge is decorative - a
     missing row simply renders nothing on the client). Duplicate ids in
     the request collapse to one result. Public, mirroring the
     single-item endpoint.
@@ -4452,12 +4452,12 @@ async def get_cost_item_certainty_batch(
     )
     from app.modules.costs.models import CostItemUsage
 
-    # Only items that actually exist get a badge — resolve their ``source``
+    # Only items that actually exist get a badge - resolve their ``source``
     # in one pass so the band carries the correct provenance label.
     item_rows = await session.execute(select(CostItem.id, CostItem.source).where(CostItem.id.in_(ordered_ids)))
     source_by_id: dict[uuid.UUID, str] = {row[0]: (row[1] or "manual") for row in item_rows.all()}
 
-    # Two grouped aggregates over the usage ledger — frequency + last use —
+    # Two grouped aggregates over the usage ledger - frequency + last use -
     # instead of one query per id. The composite index on
     # ``(cost_item_id, used_at)`` covers both.
     usage_rows = await session.execute(
@@ -4514,10 +4514,10 @@ async def get_cost_item_certainty(
 
     Aggregates the usage ledger into:
 
-    * ``frequency`` — total recorded uses across all projects.
-    * ``age_days`` — days since the most recent use (``999999`` when
+    * ``frequency`` - total recorded uses across all projects.
+    * ``age_days`` - days since the most recent use (``999999`` when
       the item has never been used).
-    * ``confidence_badge`` — bucketed band per the rules documented on
+    * ``confidence_badge`` - bucketed band per the rules documented on
       ``schemas.CertaintyBadge``.
 
     Returns 404 when ``item_id`` does not exist in ``oe_costs_item``.
@@ -4567,14 +4567,14 @@ async def record_cost_item_usage(
         try:
             used_by = uuid.UUID(str(sub))
         except (TypeError, ValueError):
-            # Anonymous / demo-token id may be non-UUID — silently drop.
+            # Anonymous / demo-token id may be non-UUID - silently drop.
             used_by = None
 
     # IDOR guard: when the caller is authenticated, verify they can see the
     # target project before we record a usage row attributed to it. Without
     # this check, any authenticated user could attribute apply-events to any
     # project UUID they happen to know. Anonymous callers (no usable sub)
-    # skip the check — the demo / pre-auth analytics path is preserved
+    # skip the check - the demo / pre-auth analytics path is preserved
     # (the unauth ledger row has ``used_by = NULL`` so it can't be used to
     # forge an identity-attributed history).
     if used_by is not None:

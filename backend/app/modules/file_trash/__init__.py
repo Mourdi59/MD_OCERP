@@ -12,7 +12,7 @@ appropriate kind repository.
 
 
 async def on_startup() -> None:
-    """Module startup hook — register RBAC permissions."""
+    """Module startup hook - register RBAC permissions."""
     from app.modules.file_trash.permissions import register_file_trash_permissions
 
     register_file_trash_permissions()

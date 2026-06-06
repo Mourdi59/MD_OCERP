@@ -1,4 +1,4 @@
-"""‌⁠‍Resources Pydantic schemas — request/response models (Pydantic v2)."""
+"""‌⁠‍Resources Pydantic schemas - request/response models (Pydantic v2)."""
 
 from datetime import datetime
 from decimal import Decimal
@@ -432,7 +432,7 @@ class LevelingBooking(BaseModel):
     """A single assignment contributing to an over-allocated bucket.
 
     Identifies the booking a planner could shift or spread to relieve the
-    overload. Read-only — no mutation is performed by the leveling endpoint.
+    overload. Read-only - no mutation is performed by the leveling endpoint.
     """
 
     assignment_id: UUID
@@ -448,8 +448,8 @@ class LevelingSuggestion(BaseModel):
     """A human-confirmed leveling action proposed for one overloaded bucket.
 
     ``action`` is advisory only:
-        * ``shift``  — move the smallest contributing booking out of the bucket.
-        * ``spread`` — reduce the booking's allocation so the bucket fits capacity.
+        * ``shift``  - move the smallest contributing booking out of the bucket.
+        * ``spread`` - reduce the booking's allocation so the bucket fits capacity.
     """
 
     action: str

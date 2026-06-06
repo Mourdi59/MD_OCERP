@@ -1,4 +1,4 @@
-"""‌⁠‍Transmittals service — business logic for transmittal management.
+"""‌⁠‍Transmittals service - business logic for transmittal management.
 
 Stateless service layer. Handles:
 - Transmittal CRUD with auto-numbering
@@ -66,7 +66,7 @@ class TransmittalService:
         makes the loser fail with :class:`IntegrityError`; we roll back and
         retry with a freshly-bumped suffix up to
         ``_TRANSMITTAL_CREATE_MAX_RETRIES`` times. If every retry collides
-        (high contention) we surface HTTP 409 so the client retries — never
+        (high contention) we surface HTTP 409 so the client retries - never
         silently writing a duplicate. Mirrors the rfi create_rfi pattern.
         """
         last_exc: Exception | None = None
@@ -223,7 +223,7 @@ class TransmittalService:
         if transmittal.is_locked:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Issued transmittals cannot be deleted — they are part of the audit trail",
+                detail="Issued transmittals cannot be deleted - they are part of the audit trail",
             )
         await self.repo.delete(transmittal_id)
         logger.info("Transmittal deleted: %s", transmittal.transmittal_number)
@@ -258,7 +258,7 @@ class TransmittalService:
 
         updated = await self.repo.get(transmittal_id)
 
-        # Epic H — universal audit trail.
+        # Epic H - universal audit trail.
         from app.core.audit_log import log_activity as _log_activity
 
         await _log_activity(
@@ -390,7 +390,7 @@ class TransmittalService:
             responded_at=now,
         )
 
-        # Check if all recipients responded — auto-close if so
+        # Check if all recipients responded - auto-close if so
         transmittal = await self.repo.get(transmittal_id)
         if transmittal is not None:
             all_responded = all(r.responded_at is not None for r in transmittal.recipients)

@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""app.core.tax — unified VAT/GST rate lookup.
+"""app.core.tax - unified VAT/GST rate lookup.
 
 Aggregates ``vat_rates`` dicts from all regional pack configs and exposes a
 single :func:`get_vat_rate` entry point so callers never need to know which
@@ -14,43 +14,43 @@ Design rules (Wave 25 / task #168):
 - Countries not covered by any pack raise :class:`VATNotApplicable`.
 
 Sources (cited in commit message, summarised here for reference):
-- DE: Umsatzsteuergesetz §12 — standard 19 %, reduced 7 %, zero 0 %
+- DE: Umsatzsteuergesetz §12 - standard 19 %, reduced 7 %, zero 0 %
   (European Commission VAT Rates Database 2026-01)
-- AT: Umsatzsteuergesetz §10 — standard 20 %, reduced 10 %, zero 0 %
+- AT: Umsatzsteuergesetz §10 - standard 20 %, reduced 10 %, zero 0 %
   (EC VAT Rates Database 2026-01)
-- CH: MWSTG Art. 25 — standard 8.1 %, reduced 2.6 %, zero 0 %
+- CH: MWSTG Art. 25 - standard 8.1 %, reduced 2.6 %, zero 0 %
   (ESTV / Swiss Federal Tax Administration, effective 2024-01-01)
-- GB: HMRC VAT Notice 700 — standard 20 %, reduced 5 %, zero 0 %
+- GB: HMRC VAT Notice 700 - standard 20 %, reduced 5 %, zero 0 %
   (HMRC, effective April 2011, still current 2026)
-- AU: A New Tax System (Goods and Services Tax) Act 1999 — standard 10 %
+- AU: A New Tax System (Goods and Services Tax) Act 1999 - standard 10 %
   (ATO, GST; 'zero' = GST-free supplies = 0 %)
-- NZ: Goods and Services Tax Act 1985 — standard 15 %
+- NZ: Goods and Services Tax Act 1985 - standard 15 %
   (IRD New Zealand; 'zero' = zero-rated supplies = 0 %)
-- JP: Consumption Tax Act — standard 10 %, reduced 8 %
+- JP: Consumption Tax Act - standard 10 %, reduced 8 %
   (NTA Japan, effective October 2019)
-- SG: GST Act — standard 9 % (effective 1 Jan 2024), zero 0 %
+- SG: GST Act - standard 9 % (effective 1 Jan 2024), zero 0 %
   (IRAS Singapore, GST rate increase 2024)
-- AE: Federal Decree-Law No. 8 of 2017 — standard 5 %
+- AE: Federal Decree-Law No. 8 of 2017 - standard 5 %
   (UAE FTA, effective 1 Jan 2018)
-- SA: Royal Decree No. M/113 — standard 15 %
+- SA: Royal Decree No. M/113 - standard 15 %
   (ZATCA, increased from 5 % effective 1 Jul 2020)
-- BH: Decree-Law No. 48 of 2018 — standard 10 %
+- BH: Decree-Law No. 48 of 2018 - standard 10 %
   (NBR Bahrain, increased from 5 % effective 1 Jan 2022)
-- OM: Royal Decree No. 121/2020 — standard 5 %
+- OM: Royal Decree No. 121/2020 - standard 5 %
   (Oman Tax Authority, effective 16 Apr 2021)
-- IN: CGST Act 2017 — principal rate 18 % (works contracts), reduced 12 %
+- IN: CGST Act 2017 - principal rate 18 % (works contracts), reduced 12 %
   (GST Council; 'standard' = 18 % construction services)
-- MX: Ley del IVA Art. 1 — standard 16 %
+- MX: Ley del IVA Art. 1 - standard 16 %
   (SAT Mexico 2026; border-zone 8 % captured as 'reduced')
-- AR: Ley 23.349 — standard 21 %, reduced 10.5 %
+- AR: Ley 23.349 - standard 21 %, reduced 10.5 %
   (AFIP Argentina 2026)
-- CL: Ley 825 — standard 19 %
+- CL: Ley 825 - standard 19 %
   (SII Chile 2026)
-- CO: Estatuto Tributario Art. 468 — standard 19 %
+- CO: Estatuto Tributario Art. 468 - standard 19 %
   (DIAN Colombia 2026)
-- PE: TUO IGV SUNAT — standard 18 % (IGV 16 % + IPM 2 %)
+- PE: TUO IGV SUNAT - standard 18 % (IGV 16 % + IPM 2 %)
   (SUNAT Peru 2026)
-- RU: НК РФ ст. 164 — standard 20 %, reduced 10 %, zero 0 %
+- RU: НК РФ ст. 164 - standard 20 %, reduced 10 %, zero 0 %
   (FNS Russia 2026)
 - US: No federal VAT; state/local sales tax varies by jurisdiction.
   (IRS; Tax Foundation State Sales Tax Rates 2026)
@@ -66,7 +66,7 @@ class VATNotApplicable(Exception):
 
     This covers:
     - Countries with no VAT system (e.g. US, where only state-level sales
-      tax applies — not modelled as a single federal rate).
+      tax applies - not modelled as a single federal rate).
     - Countries not yet covered by any regional pack's ``vat_rates`` dict.
     - A ``kind`` key that does not exist for an otherwise-covered country.
     """
@@ -88,7 +88,7 @@ class VATNotApplicable(Exception):
 #
 # Populated from each regional pack's ``vat_rates`` dict (Wave 25).
 # Rate values are stored as strings and coerced to Decimal on first access
-# (lazy — avoids import-time Decimal allocation for unused entries).
+# (lazy - avoids import-time Decimal allocation for unused entries).
 #
 # sentinel _RATES_BUILT guards one-time lazy init to keep import fast.
 
@@ -104,8 +104,8 @@ _RAW: dict[str, dict[str, str]] = {
     "NZ": {"standard": "0.15", "zero": "0.00"},
     "JP": {"standard": "0.10", "reduced": "0.08"},
     "SG": {"standard": "0.09", "zero": "0.00"},
-    # HK has no GST/VAT — raises VATNotApplicable
-    # MY SST is not a VAT system — raises VATNotApplicable
+    # HK has no GST/VAT - raises VATNotApplicable
+    # MY SST is not a VAT system - raises VATNotApplicable
     # ── Middle East ───────────────────────────────────────────────────────
     "AE": {"standard": "0.05", "zero": "0.00"},
     "SA": {"standard": "0.15", "zero": "0.00"},
@@ -122,10 +122,10 @@ _RAW: dict[str, dict[str, str]] = {
     "CO": {"standard": "0.19", "zero": "0.00"},
     "PE": {"standard": "0.18", "zero": "0.00"},
     # BR uses a fragmented indirect tax system (ISS, ICMS, PIS/COFINS)
-    # not equivalent to a simple VAT rate — raises VATNotApplicable
+    # not equivalent to a simple VAT rate - raises VATNotApplicable
     # ── Russia / CIS ──────────────────────────────────────────────────────
     "RU": {"standard": "0.20", "reduced": "0.10", "zero": "0.00"},
-    # ── US — no federal VAT ──────────────────────────────────────────────
+    # ── US - no federal VAT ──────────────────────────────────────────────
     # US deliberately absent; get_vat_rate('US', ...) → VATNotApplicable
 }
 

@@ -6,19 +6,19 @@ that apply to any BIM/IFC model regardless of jurisdiction. They are the
 
 Rules declared here:
 
-* ``bim.wall.has_thickness`` — every Wall must have a thickness > 0
-* ``bim.structural.has_material`` — every Structural* element must declare
+* ``bim.wall.has_thickness`` - every Wall must have a thickness > 0
+* ``bim.structural.has_material`` - every Structural* element must declare
   a ``material`` property
-* ``bim.wall.has_fire_rating`` — every Wall should have ``fire_rating``
+* ``bim.wall.has_fire_rating`` - every Wall should have ``fire_rating``
   (warning, not error)
-* ``bim.door.has_dimensions`` — every Door must have both width and height
-* ``bim.window.has_dimensions`` — every Window must have both width and
+* ``bim.door.has_dimensions`` - every Door must have both width and height
+* ``bim.window.has_dimensions`` - every Window must have both width and
   height
-* ``bim.mep.has_system`` — MEP elements must declare ``system`` or
+* ``bim.mep.has_system`` - MEP elements must declare ``system`` or
   ``system_type``
-* ``bim.element.has_storey`` — every element should have ``storey``
+* ``bim.element.has_storey`` - every element should have ``storey``
   populated (warning)
-* ``bim.element.name_not_none`` — every element must have a meaningful
+* ``bim.element.name_not_none`` - every element must have a meaningful
   name (warning)
 
 Usage::
@@ -28,7 +28,7 @@ Usage::
     for rule in BIM_UNIVERSAL_RULES:
         ...
 
-The list is considered immutable at import time — do NOT mutate it from
+The list is considered immutable at import time - do NOT mutate it from
 callers. Instead, filter it:
 ``[r for r in BIM_UNIVERSAL_RULES if r.rule_id in requested]``.
 """
@@ -49,7 +49,7 @@ WALL_HAS_THICKNESS = BIMElementRule(
         "cannot be used for takeoff or costing."
     ),
     element_filter={"element_type_startswith": ["wall", "ifcwall"]},
-    # MUST be a number > 0 — a presence-only check let thickness_m=0 (or the
+    # MUST be a number > 0 - a presence-only check let thickness_m=0 (or the
     # non-numeric string "0,24") pass and defeated the takeoff/costing
     # guarantee the rule name makes (E-BIM-010).
     require_any_positive_quantity=["thickness_m", "thickness", "width_m", "width"],
@@ -85,7 +85,7 @@ WALL_HAS_FIRE_RATING = BIMElementRule(
     description=(
         "Walls without a 'fire_rating' property cannot be validated "
         "against fire-compartment design requirements. Treated as a "
-        "warning — many temporary or non-compartmenting walls are exempt."
+        "warning - many temporary or non-compartmenting walls are exempt."
     ),
     element_filter={"element_type_startswith": ["wall", "ifcwall"]},
     property_checks=[{"property": "fire_rating", "must_exist": True}],
@@ -148,7 +148,7 @@ ELEMENT_HAS_STOREY = BIMElementRule(
     severity="warning",
     description=(
         "Elements not assigned to a storey cannot be included in "
-        "storey-based reports or takeoff breakdowns. Warning only — "
+        "storey-based reports or takeoff breakdowns. Warning only - "
         "site-wide elements like terrain or foundations are legitimately "
         "storey-less."
     ),
@@ -161,7 +161,7 @@ ELEMENT_NAME_NOT_NONE = BIMElementRule(
     severity="warning",
     description=(
         "Elements with name == '' or 'None' indicate a broken export or "
-        "an unnamed family instance. Warning severity — the rest of the "
+        "an unnamed family instance. Warning severity - the rest of the "
         "data may still be usable."
     ),
     require_name=True,
@@ -187,7 +187,7 @@ def get_rules_by_ids(rule_ids: list[str] | None) -> list[BIMElementRule]:
     """‌⁠‍Return the subset of ``BIM_UNIVERSAL_RULES`` matching ``rule_ids``.
 
     If ``rule_ids`` is ``None`` or empty, the full enabled set is returned.
-    Unknown ids are silently skipped — callers can verify by comparing
+    Unknown ids are silently skipped - callers can verify by comparing
     lengths if strict behaviour is needed.
     """
     if not rule_ids:

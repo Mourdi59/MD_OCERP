@@ -2,17 +2,17 @@
 """‌⁠‍Clash detection ORM models.
 
 Tables:
-    oe_clash_run          — one interference/clearance analysis over N models
-    oe_clash_result       — a single clashing element pair within a run
-    oe_clash_issue        — persistent identity of a clash across re-runs
-    oe_clash_suppression  — per-project "ignore this signature" rule
+    oe_clash_run          - one interference/clearance analysis over N models
+    oe_clash_result       - a single clashing element pair within a run
+    oe_clash_issue        - persistent identity of a clash across re-runs
+    oe_clash_suppression  - per-project "ignore this signature" rule
 
 A ``ClashResult`` snapshots the participating elements' name / discipline /
 model so the result list stays meaningful even after the source model is
 re-imported and the ``oe_bim_element`` rows are replaced. ``id`` /
 ``created_at`` / ``updated_at`` come from :class:`app.database.Base`.
 
-A ``ClashIssue`` is the stable identity of a clash *across* re-runs —
+A ``ClashIssue`` is the stable identity of a clash *across* re-runs -
 keyed by the spatial+pair signature (see :mod:`clash.service`). Each
 result row points at one issue; the issue tracks first-seen / last-seen
 runs, the smart status (new / persisted / resolved / ignored / archived)
@@ -68,7 +68,7 @@ class ClashRun(Base):
     )
     # Which interference an engine pass reports (Navisworks-style Type
     # selector): 'hard' (interpenetration only), 'clearance' (proximity
-    # only) or 'both' (hard, then clearance for the non-hard pairs — the
+    # only) or 'both' (hard, then clearance for the non-hard pairs - the
     # historical behaviour and the back-compatible default).
     clash_type: Mapped[str] = mapped_column(String(16), nullable=False, default="both", server_default="both")
     # Federated noise filter: when true only cross-model pairs are
@@ -77,14 +77,14 @@ class ClashRun(Base):
     ignore_same_model: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     # Hard-clash penetration threshold (metres). A pair counts as a hard
     # clash when the bounding-box interpenetration on its tightest axis
-    # exceeds this value — filters out the cosmetic touch of coincident
+    # exceeds this value - filters out the cosmetic touch of coincident
     # faces (slab-on-wall) while still catching real interferences.
     tolerance_m: Mapped[float] = mapped_column(Float, nullable=False, default=0.01, server_default="0.01")
     # Clearance threshold (metres). 0 disables the soft pass; >0 also
     # reports element pairs that do NOT intersect but sit within this gap
     # (e.g. maintenance access around an AHU).
     clearance_m: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, server_default="0.0")
-    # 'cross_discipline' (skip same-discipline pairs — the common default),
+    # 'cross_discipline' (skip same-discipline pairs - the common default),
     # 'all' (every pair), 'selected' (only discipline_filter pairs) or
     # 'selection_sets' (Navisworks-style Set A × Set B, e.g. walls×pipes).
     mode: Mapped[str] = mapped_column(
@@ -110,13 +110,13 @@ class ClashRun(Base):
     summary: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         JSON, nullable=False, default=dict, server_default="{}"
     )
-    # Wave A4 — per-discipline-pair tolerance overrides. Each entry is
+    # Wave A4 - per-discipline-pair tolerance overrides. Each entry is
     # ``{id, discipline_a, discipline_b, tolerance_m, severity_override,
     # enabled}`` (see :class:`ClashRule` in ``schemas.py``). The engine
     # consults this list during the broad phase: the first matching
     # enabled rule swaps in its ``tolerance_m`` for the run-wide value
     # (and stamps its ``severity_override`` onto the result). Order
-    # matters — the first match wins. Defaults to ``[]`` so legacy
+    # matters - the first match wins. Defaults to ``[]`` so legacy
     # runs / fresh runs without rules behave exactly as before.
     rules: Mapped[list] = mapped_column(  # type: ignore[assignment]
         JSON, nullable=False, default=list, server_default="[]"
@@ -187,7 +187,7 @@ class ClashResult(Base):
     # the run summary can group by the multi-dimensional
     # ``discipline_system`` axis (e.g. "Mechanical · Supply Air" ×
     # "Structural · Beams"). Empty when the source element carried no
-    # system metadata — the grouping selector hides that dimension when
+    # system metadata - the grouping selector hides that dimension when
     # no row resolved a system (graceful degradation). Stored on the row
     # (not joined live) so the result table stays meaningful after the
     # source model is re-imported.
@@ -195,7 +195,7 @@ class ClashResult(Base):
     b_element_system: Mapped[str] = mapped_column(String(100), nullable=False, default="", server_default="")
     a_model_id: Mapped[uuid.UUID] = mapped_column(GUID(), nullable=False)
     b_model_id: Mapped[uuid.UUID] = mapped_column(GUID(), nullable=False)
-    # Storey (level) index each element sits on — clustered from real
+    # Storey (level) index each element sits on - clustered from real
     # geometry Z by the geometry loader. NULL when the model has no GLB
     # or the loader did not resolve a level. Powers the ``level_matrix``
     # in the run summary, which is the meaningful coordination grid for
@@ -226,9 +226,9 @@ class ClashResult(Base):
     # rows; backfilled by the engine on every fresh result.
     signature: Mapped[str] = mapped_column(String(16), nullable=False, default="", server_default="")
     # Smart-issue identity. ``signature_hash`` is the full SHA-1 (40 hex)
-    # of the canonical signature input — element-pair stable ids (or weak
+    # of the canonical signature input - element-pair stable ids (or weak
     # ifc_class/material fallback for GUID-less DWG sources) + spatial-
-    # grid-bucketed clash-box centroid + clash_type — so two re-runs of
+    # grid-bucketed clash-box centroid + clash_type - so two re-runs of
     # the same physical interference hash to the same value even after
     # sub-mm geometry drift. ``issue_id`` points at the persistent
     # :class:`ClashIssue` for triage continuity.
@@ -238,13 +238,13 @@ class ClashResult(Base):
         ForeignKey("oe_clash_issue.id", ondelete="SET NULL"),
         nullable=True,
     )
-    # ``strong`` (sha1 over real stable_ids — DDC/IFC) vs ``weak`` (sha1
+    # ``strong`` (sha1 over real stable_ids - DDC/IFC) vs ``weak`` (sha1
     # over ifc_class|material|sorted_quantity_keys for GUID-less sources
     # like DWG). Surfaced in the UI as a confidence chip on the issue.
     signature_quality: Mapped[str] = mapped_column(String(8), nullable=False, default="strong", server_default="strong")
     # Tolerance (mm) used when this signature was computed. A re-run with
     # a different tolerance treats the same physical pair as a *new*
-    # signature on purpose — coordinators want to see "this clash got
+    # signature on purpose - coordinators want to see "this clash got
     # picked up because we tightened the threshold" as new work, not as
     # a persisted issue. Stored on the row so the diff can explain it.
     tolerance_at_signature_time_mm: Mapped[float] = mapped_column(
@@ -261,7 +261,7 @@ class ClashResult(Base):
     comments: Mapped[list] = mapped_column(  # type: ignore[assignment]
         JSON, nullable=False, default=list, server_default="[]"
     )
-    # Wave A3 — collaboration. Watcher user-ids (strings) subscribed to
+    # Wave A3 - collaboration. Watcher user-ids (strings) subscribed to
     # this clash; powers the fan-out on triage / comment events.
     # ``history`` is an additive audit trail of
     # ``{ts, actor, field, before, after}`` entries appended every time
@@ -275,17 +275,17 @@ class ClashResult(Base):
     history: Mapped[list] = mapped_column(  # type: ignore[assignment]
         JSON, nullable=False, default=list, server_default="[]"
     )
-    # Wave A2 — open-ended JSON envelope for engine-derived annotations
+    # Wave A2 - open-ended JSON envelope for engine-derived annotations
     # that are NOT authoritative state (the user-confirmed ``severity`` /
     # ``status`` / ``assigned_to`` columns remain the source of truth).
-    # Currently carries ``severity_suggestion`` — a one-step-up advisory
+    # Currently carries ``severity_suggestion`` - a one-step-up advisory
     # bump on deep hard clashes (``penetration_m > 0.10``) that the UI
     # surfaces as a "Suggested: …" chip next to the badge. SQLAlchemy
     # reserves ``metadata`` on Base; the column is mapped as ``meta``.
     meta: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         JSON, nullable=False, default=dict, server_default="{}"
     )
-    # Wave A4 — run-scoped spatial cluster id assigned by the
+    # Wave A4 - run-scoped spatial cluster id assigned by the
     # post-detection DBSCAN over (cx, cy, cz). NULL marks DBSCAN noise
     # (a lone clash with no neighbours within ``eps_m``) or rows from
     # runs that pre-date clustering. Looked up against
@@ -305,7 +305,7 @@ class ClashCluster(Base):
     The DBSCAN pass groups clash centroids that sit within ``eps_m`` of
     each other into ``cluster_id`` buckets (per :class:`ClashRun`); this
     table caches a short human-style label for each non-noise bucket
-    (e.g. "MEP × Structural — Level 3") plus its member count, so the
+    (e.g. "MEP × Structural - Level 3") plus its member count, so the
     review-table chip group renders without a per-render heuristic
     re-derivation. Noise rows (``cluster_id IS NULL``) have no row here.
     """
@@ -322,14 +322,14 @@ class ClashCluster(Base):
         nullable=False,
     )
     # Run-scoped integer cluster index produced by ``_cluster_results``.
-    # Unique per run (the index above is non-unique deliberately — a
+    # Unique per run (the index above is non-unique deliberately - a
     # cluster can be re-labelled, and SQLite + alembic round-trips are
     # easier without a unique constraint we don't strictly need).
     cluster_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    # Short, human-style heuristic label (no LLM call) — derived from the
+    # Short, human-style heuristic label (no LLM call) - derived from the
     # dominant discipline pair + storey of the cluster's members.
     label: Mapped[str] = mapped_column(String(255), nullable=False, default="", server_default="")
-    # Member count — number of clash results assigned to this cluster.
+    # Member count - number of clash results assigned to this cluster.
     # Stored so the chip count never requires a join against results.
     size: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
@@ -340,7 +340,7 @@ class ClashCluster(Base):
 class ClashIssue(Base):
     """‌⁠‍Smart-issue identity of a clash across re-runs.
 
-    A :class:`ClashResult` is *run-scoped* — the same physical interference
+    A :class:`ClashResult` is *run-scoped* - the same physical interference
     re-appears as a fresh row on every re-run. The ``ClashIssue`` is the
     *persistent* identity behind those rows: keyed by the project-scoped
     ``signature_hash``, it tracks first-seen / last-seen runs, a smart
@@ -349,20 +349,20 @@ class ClashIssue(Base):
 
     Status transitions:
 
-        new        — created this run, has matching result rows
-        persisted  — present in N>1 consecutive runs
-        resolved   — gone from the latest run (was present in the prior)
-        ignored    — manually suppressed (see :class:`ClashSuppression`)
-        archived   — absent for ``_ARCHIVE_AFTER_MISSING`` consecutive runs
+        new        - created this run, has matching result rows
+        persisted  - present in N>1 consecutive runs
+        resolved   - gone from the latest run (was present in the prior)
+        ignored    - manually suppressed (see :class:`ClashSuppression`)
+        archived   - absent for ``_ARCHIVE_AFTER_MISSING`` consecutive runs
 
     Each project has its own monotonic counter (``server_assigned_id``)
-    so ids are stable + readable + scoped — the same number never appears
+    so ids are stable + readable + scoped - the same number never appears
     on two projects.
     """
 
     __tablename__ = "oe_clash_issue"
     __table_args__ = (
-        # The signature is unique per project — same signature on two
+        # The signature is unique per project - same signature on two
         # projects must resolve to two distinct issues (no cross-project
         # carry-over). Two indexes power the hot paths: lookup-by-hash on
         # upsert, status filter on the list endpoint.
@@ -386,7 +386,7 @@ class ClashIssue(Base):
         ForeignKey("oe_projects_project.id", ondelete="CASCADE"),
         nullable=False,
     )
-    # Full SHA-1 hex (40 chars) of the canonical signature input — see
+    # Full SHA-1 hex (40 chars) of the canonical signature input - see
     # :func:`app.modules.clash.service._compute_signature_hash`. Lower-case
     # by convention; the comparator is byte-exact.
     signature_hash: Mapped[str] = mapped_column(String(40), nullable=False)
@@ -436,7 +436,7 @@ class ClashSuppression(Base):
     Suppressing a signature flips every matching :class:`ClashIssue` to
     ``ignored`` and prevents the same signature from re-surfacing as
     ``new`` in future runs (it stays ``ignored`` while the suppression
-    is in place). Scoped to a single project — suppressing ``ABC...`` on
+    is in place). Scoped to a single project - suppressing ``ABC...`` on
     Project A has zero effect on Project B even if a clash there carries
     the same hash.
     """
@@ -476,7 +476,7 @@ class ClashProfile(Base):
 
     A *profile* is a named snapshot of every run parameter a coordinator
     tunes (tolerance, clearance, mode, discipline filter, selection sets,
-    per-discipline-pair rules, spatial grid) minus the model selection —
+    per-discipline-pair rules, spatial grid) minus the model selection -
     so the same coordination policy can be launched again on a fresh model
     set with one click. Profiles are project-local (each project has its
     own library) and mutable; they are templates, not history. ``name`` is
@@ -487,7 +487,7 @@ class ClashProfile(Base):
 
     __tablename__ = "oe_clash_profile"
     __table_args__ = (
-        # One profile name per project — same name on two projects is fine,
+        # One profile name per project - same name on two projects is fine,
         # two on one project is not (the picker keys on name).
         UniqueConstraint("project_id", "name", name="uq_clash_profile_project_name"),
         Index("ix_clash_profile_project", "project_id"),

@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """‌⁠‍Pydantic request/response schemas for the Pipeline Builder REST API.
 
-The wire contract is PINNED — the frontend is built against it in
+The wire contract is PINNED - the frontend is built against it in
 parallel. Graph JSON shape:
 
     {"nodes": [{"id","type","params","position":{"x","y"}}],
@@ -43,8 +43,8 @@ class GraphEdge(BaseModel):
     id: str
     source: str
     target: str
-    sourceHandle: str | None = None  # noqa: N815 — xyflow wire field name.
-    targetHandle: str | None = None  # noqa: N815 — xyflow wire field name.
+    sourceHandle: str | None = None  # noqa: N815 - xyflow wire field name.
+    targetHandle: str | None = None  # noqa: N815 - xyflow wire field name.
 
 
 class Graph(BaseModel):
@@ -68,7 +68,7 @@ class PipelineCreate(BaseModel):
 
 
 class PipelineUpdate(BaseModel):
-    """Body for ``PUT /pipelines/{id}`` — every field optional (partial)."""
+    """Body for ``PUT /pipelines/{id}`` - every field optional (partial)."""
 
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
@@ -108,7 +108,7 @@ class PipelineDetail(BaseModel):
 
 
 class RunRequest(BaseModel):
-    """Body for ``POST /pipelines/{id}/run`` — empty for a manual trigger."""
+    """Body for ``POST /pipelines/{id}/run`` - empty for a manual trigger."""
 
     model_config = ConfigDict(extra="allow")
 

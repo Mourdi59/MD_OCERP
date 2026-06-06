@@ -1,10 +1,10 @@
 """‌⁠‍Requirements & Quality Gates ORM models.
 
 Tables:
-    oe_requirements_set — container linking requirements to a project
-    oe_requirements_item — individual EAC (Entity-Attribute-Constraint) triplets
-    oe_requirements_gate_result — results of running quality gates
-    oe_requirement_deliverable — ISO 19650 EIR deliverable rows per requirement
+    oe_requirements_set - container linking requirements to a project
+    oe_requirements_item - individual EAC (Entity-Attribute-Constraint) triplets
+    oe_requirements_gate_result - results of running quality gates
+    oe_requirement_deliverable - ISO 19650 EIR deliverable rows per requirement
 """
 
 import uuid
@@ -129,10 +129,10 @@ class GateResult(Base):
     """Result of executing a quality gate on a requirement set.
 
     Gates:
-        1 — Completeness: all requirements have entity+attribute+constraint
-        2 — Consistency: no conflicting constraints for the same entity+attribute
-        3 — Coverage: requirements cover all BOQ positions
-        4 — Compliance: requirements align with project standard (DIN 276, NRM, etc.)
+        1 - Completeness: all requirements have entity+attribute+constraint
+        2 - Consistency: no conflicting constraints for the same entity+attribute
+        3 - Coverage: requirements cover all BOQ positions
+        4 - Compliance: requirements align with project standard (DIN 276, NRM, etc.)
     """
 
     __tablename__ = "oe_requirements_gate_result"
@@ -167,7 +167,7 @@ class GateResult(Base):
 class RequirementDeliverable(Base):
     """‌⁠‍ISO 19650 Employer Information Requirements (EIR) deliverable row.
 
-    Each requirement may demand one or more information deliverables —
+    Each requirement may demand one or more information deliverables -
     a 3D model at LOD 300, a schedule, a COBie export, a property-set
     submittal. The matrix view (rows = requirements, cols = deliverable
     types) is reconstructed by grouping rows of this table.

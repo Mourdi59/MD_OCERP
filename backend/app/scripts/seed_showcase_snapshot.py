@@ -3,7 +3,7 @@
 A fresh install ships ``showcase_snapshot.json.gz`` (built by
 ``export_showcase_snapshot``). When the demo account has no projects yet
 this loader bulk-restores that snapshot so a new user immediately sees
-the whole platform working end-to-end in seven languages — a real
+the whole platform working end-to-end in seven languages - a real
 CWICR-resource estimate, linked BIM model, WBS, cost-model / EVM and
 every operational module filled, each in the project's own language and
 currency.
@@ -16,7 +16,7 @@ Design constraints (this runs inside application boot):
 * **Idempotent.** ``INSERT OR REPLACE`` keyed on the deterministic ids;
   re-running repairs rather than duplicates. If all 7 projects already
   exist it is a no-op.
-* **No prerequisites.** The snapshot is self-contained — it does not
+* **No prerequisites.** The snapshot is self-contained - it does not
   need the CWICR base, per-language CSVs or any network access. Every
   BOQ position embeds its localized resource breakdown already.
 * **Owner re-mapping.** The snapshot's demo/estimator/manager user ids
@@ -75,13 +75,13 @@ def seed_showcase_from_snapshot(
 
     Returns a status dict. ``status`` is one of:
     ``ok`` (loaded), ``already`` (all 7 present, nothing to do),
-    ``skipped`` (no artifact / not sqlite — caller should fall back),
-    ``error`` (unexpected — caller should fall back).
+    ``skipped`` (no artifact / not sqlite - caller should fall back),
+    ``error`` (unexpected - caller should fall back).
     """
     # ``con`` is hoisted so the ``finally`` can always release the SQLite
     # write lock. If a per-table INSERT trips a NOT NULL/constraint mid-
     # snapshot (e.g. when a model gained a NOT NULL column whose default
-    # is Python-side only — see #154 / oe_safety_incident.osha_recordable),
+    # is Python-side only - see #154 / oe_safety_incident.osha_recordable),
     # leaving the implicit transaction open keeps SQLite write-locked.
     # Subsequent boot steps then cascade as "database is locked".
     con: sqlite3.Connection | None = None
@@ -101,7 +101,7 @@ def seed_showcase_from_snapshot(
         con.row_factory = sqlite3.Row
         cur = con.cursor()
 
-        # sqlite sanity — a non-sqlite file would already have failed to
+        # sqlite sanity - a non-sqlite file would already have failed to
         # connect, but be explicit about the project table existing.
         have_proj = cur.execute(
             "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='oe_projects_project'"
@@ -144,7 +144,7 @@ def seed_showcase_from_snapshot(
                 continue
             live_cols = [r[1] for r in cur.execute(f"PRAGMA table_info({name})")]
             if not live_cols:
-                # table no longer exists in this schema version — skip
+                # table no longer exists in this schema version - skip
                 logger.warning("showcase snapshot: table %s absent, skipping", name)
                 continue
             live_set = set(live_cols)
@@ -161,7 +161,7 @@ def seed_showcase_from_snapshot(
                 cur.executemany(sql, batch)
             except sqlite3.IntegrityError as exc:
                 # A single table failing (e.g. a column added post-snapshot
-                # with no server_default) must not abort the whole seed —
+                # with no server_default) must not abort the whole seed -
                 # skip the table, surface a warning, and keep going. The
                 # outer ``finally`` still rolls back the partial txn for
                 # the bad table because we ``con.rollback()`` here.
@@ -186,19 +186,19 @@ def seed_showcase_from_snapshot(
             "tables": loaded_tables,
             "rows": loaded_rows,
         }
-    except Exception as exc:  # noqa: BLE001 — boot must never break
+    except Exception as exc:  # noqa: BLE001 - boot must never break
         logger.warning("showcase snapshot load failed: %s", exc)
         if con is not None:
             try:
                 con.rollback()
-            except Exception:  # noqa: BLE001 — best-effort cleanup
+            except Exception:  # noqa: BLE001 - best-effort cleanup
                 pass
         return {"status": "error", "reason": str(exc)[:200]}
     finally:
         if con is not None:
             try:
                 con.close()
-            except Exception:  # noqa: BLE001 — best-effort cleanup
+            except Exception:  # noqa: BLE001 - best-effort cleanup
                 pass
 
 

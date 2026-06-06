@@ -61,29 +61,29 @@ class ElementEnvelope(BaseModel):
     these fields directly. The query builder routes them to either
     Qdrant ``hard_filters`` or ``soft_boosts`` based on the
     "if classifier errs, would the right answer be discarded?" rule
-    from §4.2.1 — BIM Pset values are hard, DWG / heuristic guesses
+    from §4.2.1 - BIM Pset values are hard, DWG / heuristic guesses
     are soft. Each is optional so existing callers don't break.
 
     Attributes (v3):
         ifc_class: Verbatim ``IfcWall`` / ``IfcSlab`` / ``IfcBeam`` from
-            the BIM extractor. Hard filter when present — IFC class is
+            the BIM extractor. Hard filter when present - IFC class is
             authoritative for source-of-truth IFC files.
         ifc_predefined_type: ``"PARTITIONING"``, ``"FLOOR"``, etc.
             Hard filter when present.
         ost_category: Revit ``OST_Walls`` / ``OST_Floors`` from the
-            Revit RVT export. Soft boost — Revit families occasionally
+            Revit RVT export. Soft boost - Revit families occasionally
             mislabel category vs ifc_class.
-        material_class: Normalised material bucket — ``"concrete"``,
+        material_class: Normalised material bucket - ``"concrete"``,
             ``"steel"``, ``"wood"``, ``"ceramic"``. Soft boost.
         nominal_size_mm: Integer mm thickness / diameter / nominal size.
-            Soft boost — sized rates within ±10% range still rank well.
-        is_external: Pset ``IsExternal`` — hard filter when present
+            Soft boost - sized rates within ±10% range still rank well.
+        is_external: Pset ``IsExternal`` - hard filter when present
             (BIM Pset is trustworthy).
-        is_loadbearing: Pset ``LoadBearing`` — hard filter when present.
-        is_structural: ``StructuralUsage == "Bearing"`` from Revit —
+        is_loadbearing: Pset ``LoadBearing`` - hard filter when present.
+        is_structural: ``StructuralUsage == "Bearing"`` from Revit -
             hard filter when present.
         construction_stage_hint: User-picked stage (``"02_Demolition"``
-            … ``"13_Sitework"``). Hard filter when present — the user
+            … ``"13_Sitework"``). Hard filter when present - the user
             explicitly narrowed the search.
     """
 
@@ -92,7 +92,7 @@ class ElementEnvelope(BaseModel):
     source: SourceType
     # Empty string is a valid value: the upstream extractor didn't
     # detect a language tag. The translation cascade short-circuits on
-    # empty source_lang and runs the search verbatim — preferable to
+    # empty source_lang and runs the search verbatim - preferable to
     # the historical ``"en"`` default, which forced an English-source
     # assumption on every untagged element.
     source_lang: str = Field(default="", max_length=8)
@@ -114,7 +114,7 @@ class ElementEnvelope(BaseModel):
     is_structural: bool | None = None
     construction_stage_hint: str | None = Field(default=None, max_length=32)
 
-    # Verbatim CWICR rate_code carried over from the source — set when
+    # Verbatim CWICR rate_code carried over from the source - set when
     # the upstream extractor knows the exact match (e.g., a BoQ row with
     # a populated ``Code`` column, or a manual override). When present,
     # the ranker short-circuits the Qdrant fan-out and pulls the rate
@@ -123,17 +123,17 @@ class ElementEnvelope(BaseModel):
     # catalogue (stale code, wrong catalogue, typo).
     exact_code: str | None = Field(default=None, max_length=128)
 
-    # Project-context fields — populated by the caller (service.run_match)
+    # Project-context fields - populated by the caller (service.run_match)
     # so matchers can scope candidate search by the project's expected
     # currency / region without a per-group project lookup. Empty string
     # means "no preference" (matchers degrade to global search).
     #
     # The lexical matcher uses ``project_currency`` as a hard SQL filter:
     # for a USD project we don't want EUR candidates pretending to be
-    # USD rates — return no candidates instead and let the UI render
+    # USD rates - return no candidates instead and let the UI render
     # "no rates loaded for USD" so the operator loads the right
     # catalogue. This is what makes /match-elements universal across
-    # currency zones — it never lies about the rate's currency.
+    # currency zones - it never lies about the rate's currency.
     project_currency: str = Field(default="", max_length=8)
     project_region: str = Field(default="", max_length=32)
 
@@ -142,7 +142,7 @@ class MatchCandidate(BaseModel):
     """‌⁠‍One ranked CWICR position returned to the caller.
 
     The candidate exposes both the raw vector score and the post-boost
-    final score. Field names match the eval-harness contract — every
+    final score. Field names match the eval-harness contract - every
     candidate dict the harness reads has at minimum ``code`` and
     ``unit_rate`` accessible.
 
@@ -179,7 +179,7 @@ class MatchCandidate(BaseModel):
 
 
 # Lower thresholds applied when the candidate is supported by hard
-# filter matches or a high-quality classification signal — see v3-P9
+# filter matches or a high-quality classification signal - see v3-P9
 # MAPPING_PROCESS.md §6.4. Three or more hard filters that survive into
 # the SearchPlan (e.g., ifc_class + is_loadbearing + construction_stage)
 # tighten the search so much that a moderate vector score still earns
@@ -201,15 +201,15 @@ def confidence_band_for(
     semantics (pure threshold check). The two extra arguments power the
     v3 §6.4 derivation:
 
-    * ``hard_filters_matched`` — count of *hard* SearchPlan predicates
+    * ``hard_filters_matched`` - count of *hard* SearchPlan predicates
       whose value is also present (and matches) on the candidate's
       Qdrant payload. Ignored when ``0``. ``≥3`` lets a vector score
       ≥0.75 promote to HIGH; ``≥1`` lets ≥0.60 promote to MEDIUM.
-    * ``classification_confidence`` — value from the candidate's CWICR
+    * ``classification_confidence`` - value from the candidate's CWICR
       payload; ``"high"`` shifts the floors slightly downward,
       ``"low"`` shifts them upward. ``None`` is a no-op.
 
-    The bonuses are additive, not multiplicative — they relax the
+    The bonuses are additive, not multiplicative - they relax the
     *floor* required to clear a band, never above the original
     ``CONFIDENCE_HIGH_THRESHOLD`` (so a high score with no hard filter
     support still lands in HIGH).
@@ -223,7 +223,7 @@ def confidence_band_for(
 
     if hard_filters_matched >= _HARD_FILTER_BONUS_MIN_COUNT:
         # 3+ hard filters: the search was narrow enough that 0.75 is
-        # convincing — drop the HIGH floor for this candidate only.
+        # convincing - drop the HIGH floor for this candidate only.
         high_floor = min(high_floor, _HARD_FILTER_HIGH_BONUS_FLOOR + cls_offset)
     if hard_filters_matched >= _HARD_FILTER_MEDIUM_MIN_COUNT:
         medium_floor = min(medium_floor, _HARD_FILTER_MEDIUM_BONUS_FLOOR + cls_offset)
@@ -260,17 +260,17 @@ class MatchResponse(BaseModel):
     ``auto_linked`` is set when (and only when) the project's settings
     have ``auto_link_enabled=True`` AND the highest candidate's score
     crossed the configured ``auto_link_threshold``. The matcher itself
-    never writes the link into BOQ — that's a separate confirmed-action
+    never writes the link into BOQ - that's a separate confirmed-action
     step (Phase 4).
 
     ``status`` is the structured signal the UI uses to render explicit
     empty states instead of letting the user wonder why ``candidates``
     is ``[]``:
 
-    * ``ok``                     — search ran, candidates returned (may be 0).
-    * ``no_catalog_selected``    — project hasn't picked a CWICR catalogue yet.
-    * ``catalog_not_vectorized`` — picked catalogue has zero vectors indexed.
-    * ``no_catalogs_loaded``     — no CWICR catalogue has been loaded at all.
+    * ``ok``                     - search ran, candidates returned (may be 0).
+    * ``no_catalog_selected``    - project hasn't picked a CWICR catalogue yet.
+    * ``catalog_not_vectorized`` - picked catalogue has zero vectors indexed.
+    * ``no_catalogs_loaded``     - no CWICR catalogue has been loaded at all.
 
     ``catalog_id`` and ``catalog_count`` mirror the picked catalogue so the
     UI can render the badge ("📚 RU_STPETERSBURG · 55,719 / 1,000 vectorised")

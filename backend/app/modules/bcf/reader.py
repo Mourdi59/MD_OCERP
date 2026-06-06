@@ -1,5 +1,5 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""‌⁠‍BCF 3.0 zip reader — mirror of :mod:`app.modules.bcf.writer`.
+"""‌⁠‍BCF 3.0 zip reader - mirror of :mod:`app.modules.bcf.writer`.
 
 Why a second parser?
 --------------------
@@ -14,7 +14,7 @@ clash export, and it produces frozen / immutable dataclasses that the
 Design constraints (per task brief)
 -----------------------------------
 1. **Stdlib only.** ``zipfile``, ``xml.etree``, ``defusedxml`` (already a
-   project dep — disables DTD / external-entity attacks), ``io``, ``re``,
+   project dep - disables DTD / external-entity attacks), ``io``, ``re``,
    ``hashlib``. No lxml, no bcfzip-py.
 2. **Zip-bomb defence.** Configurable caps on total uncompressed size
    (default 100 MB) and entry count (default 10 000).
@@ -23,7 +23,7 @@ Design constraints (per task brief)
    raises :class:`BCFSecurityError` before any read happens.
 4. **Resilient per-topic.** A malformed ``markup.bcf`` inside one topic
    folder is captured in :attr:`ParsedTopic.parse_error` instead of
-   aborting the whole archive — the importer can then surface a
+   aborting the whole archive - the importer can then surface a
    structured ``errors`` entry per topic without losing the good ones.
 5. **Frozen / hashable.** Every dataclass is ``frozen=True`` with
    ``tuple`` collections, so a parse result is safely sharable across
@@ -31,17 +31,17 @@ Design constraints (per task brief)
 
 Public surface
 --------------
-* :class:`BCFReader`           — entry point (``from_bytes``, ``from_file``)
-* :class:`ParsedBCF`           — top-level archive DTO
-* :class:`ParsedProject`       — project.bcfp contents
-* :class:`ParsedExtensions`    — extensions.xml enums
-* :class:`ParsedTopic`         — Topic + nested Comments / Viewpoints
+* :class:`BCFReader`           - entry point (``from_bytes``, ``from_file``)
+* :class:`ParsedBCF`           - top-level archive DTO
+* :class:`ParsedProject`       - project.bcfp contents
+* :class:`ParsedExtensions`    - extensions.xml enums
+* :class:`ParsedTopic`         - Topic + nested Comments / Viewpoints
 * :class:`ParsedComment`
-* :class:`ParsedViewpoint`     — camera + components + clipping planes
+* :class:`ParsedViewpoint`     - camera + components + clipping planes
 * :class:`ParsedClippingPlane`
-* :class:`BCFReaderError`      — base error for unrecoverable problems
-* :class:`BCFSecurityError`    — zip-bomb / path-traversal
-* :class:`BCFFormatError`      — not a bcf zip, no bcf.version
+* :class:`BCFReaderError`      - base error for unrecoverable problems
+* :class:`BCFSecurityError`    - zip-bomb / path-traversal
+* :class:`BCFFormatError`      - not a bcf zip, no bcf.version
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
 
 # defusedxml is a transitive runtime dep (see pyproject.toml). Using its
-# ElementTree shim disables entity expansion / external-entity loading —
+# ElementTree shim disables entity expansion / external-entity loading -
 # the standard hardening for any path that ingests third-party XML.
 from defusedxml import ElementTree as ET  # noqa: N817
 
@@ -153,7 +153,7 @@ class ParsedTopic:
     """A single ``markup.bcf`` Topic + its comments / viewpoints / snapshots.
 
     A topic with a structural problem in its ``markup.bcf`` is still
-    returned, but with :attr:`parse_error` populated — the caller can
+    returned, but with :attr:`parse_error` populated - the caller can
     then surface a structured per-topic error report without losing the
     good neighbours.
     """
@@ -205,7 +205,7 @@ class ParsedExtensions:
 
 @dataclass(frozen=True)
 class ParsedBCF:
-    """The parsed archive — root return type of :class:`BCFReader`."""
+    """The parsed archive - root return type of :class:`BCFReader`."""
 
     version: str
     project: ParsedProject | None
@@ -242,8 +242,8 @@ def _parse_dt(raw: str | None) -> datetime | None:
         2026-05-21T12:34:56Z              (UTC zulu)
         2026-05-21T12:34:56+02:00         (offset)
         2026-05-21T12:34:56.123456+02:00  (fractional)
-        2026-05-21T12:34:56               (naive — assumed UTC)
-        2026-05-21                        (date only — midnight UTC)
+        2026-05-21T12:34:56               (naive - assumed UTC)
+        2026-05-21                        (date only - midnight UTC)
     """
     if not raw:
         return None
@@ -325,7 +325,7 @@ def _normalize_guid(guid: str | None) -> str:
 
 
 def _is_safe_guid(guid: str) -> bool:
-    """Mirror :func:`writer._safe_dir` — accept UUID or hex signature."""
+    """Mirror :func:`writer._safe_dir` - accept UUID or hex signature."""
     g = _normalize_guid(guid)
     return bool(_GUID_RE.match(g) or _HEX_SIG_RE.match(g))
 
@@ -379,10 +379,10 @@ class BCFReader:
         Raises:
             BCFSecurityError: zip bomb, path traversal, entry-count cap.
             BCFFormatError: not a ZIP / no ``bcf.version`` / version is
-                not 3.0 (the reader is the 3.0 surface — sibling parser
+                not 3.0 (the reader is the 3.0 surface - sibling parser
                 handles 2.1).
         """
-        # Hard size cap before we even open the archive — prevents
+        # Hard size cap before we even open the archive - prevents
         # zip-bomb headers from making us touch a multi-GB payload.
         if len(raw) > self.max_total_bytes:
             raise BCFSecurityError(f"BCF archive is {len(raw)} bytes, exceeds cap {self.max_total_bytes}")
@@ -401,7 +401,7 @@ class BCFReader:
             # ── bcf.version ─────────────────────────────────────────
             version = self._read_version(zf, lower_names)
             if not version.startswith("3"):
-                # 3.0 only — the sibling 2.1 reader lives in bcf_xml.py.
+                # 3.0 only - the sibling 2.1 reader lives in bcf_xml.py.
                 raise BCFFormatError(f"Reader supports BCF 3.x only; got {version!r}")
 
             # ── project.bcfp (optional) ─────────────────────────────
@@ -425,7 +425,7 @@ class BCFReader:
     def _enforce_safety(self, zf: zipfile.ZipFile) -> None:
         """Reject path-traversal, count and uncompressed-size limits.
 
-        Walks ``zf.infolist`` once — every member is checked before any
+        Walks ``zf.infolist`` once - every member is checked before any
         ``read()`` happens. A single bad entry aborts the whole parse
         (a malicious archive shouldn't get partial-results).
         """
@@ -441,7 +441,7 @@ class BCFReader:
                 raise BCFSecurityError(f"BCF archive uncompressed size exceeds cap ({total} > {self.max_total_bytes})")
 
     def _parse_xml(self, raw: bytes):
-        """Defused XML parse — disables DTD / external entities."""
+        """Defused XML parse - disables DTD / external entities."""
         return ET.fromstring(raw)
 
     def _read_version(self, zf: zipfile.ZipFile, lower_names: dict[str, str]) -> str:
@@ -463,7 +463,7 @@ class BCFReader:
         return vid
 
     def _read_project(self, zf: zipfile.ZipFile, lower_names: dict[str, str]) -> ParsedProject | None:
-        """Read ``project.bcfp`` — both ProjectInfo and ProjectExtension layouts."""
+        """Read ``project.bcfp`` - both ProjectInfo and ProjectExtension layouts."""
         key = lower_names.get("project.bcfp")
         if key is None:
             return None
@@ -872,7 +872,7 @@ class BCFReader:
 # ── BCF 2.1 timezone helper (Python <3.11 compat) ─────────────────────────
 #
 # Some authoring tools emit Indian / Nepalese half-hour offsets ("+05:30",
-# "+05:45") which Python parses fine — but we still document the support
+# "+05:45") which Python parses fine - but we still document the support
 # matrix here so a future maintainer doesn't try to "simplify" _parse_dt.
 _FRACTIONAL_OFFSETS_OK = (
     timezone(timedelta(hours=5, minutes=30)),

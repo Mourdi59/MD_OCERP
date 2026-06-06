@@ -21,7 +21,7 @@ with the raw response intact rather than hallucinate a verdict.
 
 
 async def on_startup() -> None:
-    """‌⁠‍Module startup hook — register RBAC permissions."""
+    """‌⁠‍Module startup hook - register RBAC permissions."""
     from app.modules.clash_ai_triage.permissions import (
         register_clash_ai_triage_permissions,
     )

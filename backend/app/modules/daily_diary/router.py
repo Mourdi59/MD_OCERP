@@ -227,7 +227,7 @@ async def unlock_diary(
 
     The original archive signature is preserved (its hash continues to
     point at the pre-edit snapshot) so the integrity break is forensic
-    and traceable. An archived diary cannot be unlocked — see the 409
+    and traceable. An archived diary cannot be unlocked - see the 409
     body ``code=diary_archived_cannot_unlock`` for that case.
     """
     existing = await service.get_diary(diary_id)
@@ -1075,7 +1075,7 @@ async def extract_photo_gps(
 
     The base64 payload is gated by magic-byte detection against the photo
     allow-list (jpeg/png/gif/webp/heic/heif/tiff). SVG, scripts, PE / ELF
-    binaries — anything that is not an actual raster image — is rejected
+    binaries - anything that is not an actual raster image - is rejected
     with 415 BEFORE Pillow ever sees the bytes. This stops a caller from
     using the EXIF endpoint as a generic file-sniffer / parser-fuzz vector.
     """
@@ -1087,7 +1087,7 @@ async def extract_photo_gps(
         from fastapi import HTTPException
 
         raise HTTPException(422, f"Invalid base64 image: {exc}") from exc
-    # Magic-byte gate FIRST — Pillow is happy to attempt to decode all sorts
+    # Magic-byte gate FIRST - Pillow is happy to attempt to decode all sorts
     # of formats and an attacker-shaped payload could exercise its parsers
     # in unexpected ways. The detector reads only the first 16 bytes.
     try:

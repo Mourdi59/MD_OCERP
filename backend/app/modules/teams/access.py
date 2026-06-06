@@ -6,8 +6,8 @@ than inlining a fresh copy of the TeamMembership query.
 
 Two helpers are provided:
 
-* :func:`is_project_member` — async boolean check used in route guards.
-* :func:`member_project_ids_subquery` — synchronous scalar subquery used
+* :func:`is_project_member` - async boolean check used in route guards.
+* :func:`member_project_ids_subquery` - synchronous scalar subquery used
   in ORM ``WHERE … IN (…)`` clauses for list/aggregate endpoints.
 """
 
@@ -55,7 +55,7 @@ def member_project_ids_subquery(user_id: uuid.UUID):
 
         Project.id.in_(member_project_ids_subquery(user_id))
 
-    This is a *synchronous* factory — it returns a subquery object, not a
+    This is a *synchronous* factory - it returns a subquery object, not a
     coroutine.  The actual DB round-trip happens when the parent query executes.
     """
     from app.modules.teams.models import Team, TeamMembership

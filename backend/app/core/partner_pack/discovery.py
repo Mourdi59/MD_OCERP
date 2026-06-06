@@ -1,4 +1,4 @@
-"""Discover partner packs — via pip entry-points and via the repo ``packs/`` dir.
+"""Discover partner packs - via pip entry-points and via the repo ``packs/`` dir.
 
 A partner pack registers via the entry-point group
 ``openconstructionerp.partner_packs``::
@@ -13,14 +13,14 @@ The value must point at a module-level attribute that is either:
 In addition to pip-installed packs, ``discover_packs()`` also scans the
 monorepo ``packs/`` directory so that source-checkout packs are listable on
 the /modules page WITHOUT being pip-installed. Filesystem-discovered packs are
-listable but are NEVER auto-activated — only an explicit ``OE_PARTNER_PACK``
+listable but are NEVER auto-activated - only an explicit ``OE_PARTNER_PACK``
 env var activates a pack (see ``get_active_pack``).
 
 At boot, ``discover_packs()`` enumerates every source. ``get_active_pack()``
 picks one based on the precedence:
 
   1. env var ``OE_PARTNER_PACK`` (matches manifest.slug)
-  2. None  — the platform runs in vanilla OCERP mode
+  2. None  - the platform runs in vanilla OCERP mode
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ _PACKS_DIR = _REPO_ROOT / "packs"
 # Name of the declarative manifest a dropped (data-dir) pack must contain.
 # Unlike repo/source-checkout packs (which ship a Python ``manifest.py`` that
 # the core imports), data-dir packs ship a serialized ``PartnerPackManifest``
-# as JSON and are NEVER executed — see ``_discover_data_dir_packs``.
+# as JSON and are NEVER executed - see ``_discover_data_dir_packs``.
 DATA_DIR_MANIFEST_FILENAME = "manifest.json"
 
 # Sub-directory of the runtime data dir scanned for dropped packs. A pack
@@ -77,7 +77,7 @@ def _load_one(ep: EntryPoint) -> PartnerPackManifest | None:
     try:
         target = ep.load()
         return _coerce_manifest(target)
-    except Exception as exc:  # noqa: BLE001 — boot-time best-effort
+    except Exception as exc:  # noqa: BLE001 - boot-time best-effort
         logger.warning(
             "Partner pack '%s' failed to load: %s. Skipping.",
             ep.name,
@@ -131,7 +131,7 @@ def _load_manifest_from_file(manifest_path: Path) -> PartnerPackManifest | None:
             )
             return None
         return _coerce_manifest(manifest)
-    except Exception as exc:  # noqa: BLE001 — best-effort filesystem scan
+    except Exception as exc:  # noqa: BLE001 - best-effort filesystem scan
         logger.warning(
             "Filesystem partner pack at %s failed to load: %s. Skipping.",
             manifest_path,
@@ -177,11 +177,11 @@ def _discover_filesystem_packs() -> list[PartnerPackManifest]:
 # (where the DB + partner_pack_state.json live) gets a ``packs/`` sub-folder
 # that IS scanned. A dropped pack is purely declarative: a ``manifest.json``
 # (a serialized PartnerPackManifest) plus its assets. We NEVER import or exec
-# anything from a data-dir pack — that is the security crux of this feature.
+# anything from a data-dir pack - that is the security crux of this feature.
 
 
 def _data_dir_packs_dir(data_dir: Path | None = None) -> Path:
-    """Return ``<data_dir>/packs`` — the scanned drop folder for dropped packs."""
+    """Return ``<data_dir>/packs`` - the scanned drop folder for dropped packs."""
     return _resolve_data_dir(data_dir) / PACKS_SUBDIR
 
 
@@ -196,7 +196,7 @@ def _load_data_dir_manifest(manifest_path: Path) -> PartnerPackManifest | None:
     try:
         raw = manifest_path.read_text(encoding="utf-8")
         return PartnerPackManifest.model_validate_json(raw)
-    except Exception as exc:  # noqa: BLE001 — best-effort filesystem scan
+    except Exception as exc:  # noqa: BLE001 - best-effort filesystem scan
         logger.warning(
             "Data-dir partner pack manifest %s is invalid: %s. Skipping.",
             manifest_path,
@@ -227,7 +227,7 @@ def _extract_dropped_zip(zip_path: Path, packs_dir: Path) -> None:
 
     The extraction is staged and validated member-by-member (see
     ``_safe_extract``). A zip that is structurally broken or contains no valid
-    ``manifest.json`` is left untouched and logged — never crashes discovery,
+    ``manifest.json`` is left untouched and logged - never crashes discovery,
     never executes anything. If a folder of the same name already exists the
     zip is assumed already extracted and skipped (idempotent on rescan).
 
@@ -236,7 +236,7 @@ def _extract_dropped_zip(zip_path: Path, packs_dir: Path) -> None:
     """
     target = packs_dir / zip_path.stem
     if target.exists():
-        return  # Already extracted (or a same-named folder exists) — idempotent.
+        return  # Already extracted (or a same-named folder exists) - idempotent.
 
     if not zipfile.is_zipfile(zip_path):
         logger.warning("Dropped pack %s is not a valid zip archive. Ignoring.", zip_path)
@@ -266,7 +266,7 @@ def _extract_dropped_zip(zip_path: Path, packs_dir: Path) -> None:
         logger.info("Extracted dropped partner pack %s -> %s", zip_path.name, target)
     except UnsafeArchiveError as exc:
         logger.warning("Refusing to extract unsafe dropped pack %s: %s", zip_path, exc)
-    except Exception as exc:  # noqa: BLE001 — a bad drop must never crash discovery
+    except Exception as exc:  # noqa: BLE001 - a bad drop must never crash discovery
         logger.warning("Failed to extract dropped pack %s: %s", zip_path, exc)
     finally:
         shutil.rmtree(staging, ignore_errors=True)
@@ -326,7 +326,7 @@ def install_dropped_zip(zip_bytes: bytes, data_dir: Path | None = None) -> Partn
     problem so the caller can return a clear 400. The flow is:
 
       1. structural zip check + member-by-member safety validation (staged
-         temp extraction — nothing lands in a scanned path until validated),
+         temp extraction - nothing lands in a scanned path until validated),
       2. locate the declarative ``manifest.json`` (root or single sub-folder),
       3. validate it against :class:`PartnerPackManifest` (NEVER executed),
       4. atomically move the validated tree into ``<data_dir>/packs/<slug>/``,
@@ -371,12 +371,12 @@ def install_dropped_zip(zip_bytes: bytes, data_dir: Path | None = None) -> Partn
             )
         try:
             manifest = PartnerPackManifest.model_validate_json(manifest_file.read_text(encoding="utf-8"))
-        except Exception as exc:  # noqa: BLE001 — surface the validation reason
+        except Exception as exc:  # noqa: BLE001 - surface the validation reason
             raise PackInstallError(f"{DATA_DIR_MANIFEST_FILENAME} is not a valid partner-pack manifest: {exc}") from exc
 
         target = packs_dir / manifest.slug
         if target.exists():
-            # Don't clobber an existing same-slug pack — make the conflict explicit.
+            # Don't clobber an existing same-slug pack - make the conflict explicit.
             raise PackInstallError(
                 f"a pack with slug '{manifest.slug}' is already installed; remove it first or rename this one"
             )
@@ -406,7 +406,7 @@ def discover_packs() -> list[PartnerPackManifest]:
     by_slug: dict[str, PartnerPackManifest] = {}
 
     # Data-dir drops first (lowest precedence), then filesystem, then
-    # entry-points — so a pip-installed pack always wins on a slug collision.
+    # entry-points - so a pip-installed pack always wins on a slug collision.
     for manifest in _discover_data_dir_packs():
         by_slug[manifest.slug] = manifest
     for manifest in _discover_filesystem_packs():
@@ -454,7 +454,7 @@ def get_active_pack() -> PartnerPackManifest | None:
         from app.core.partner_pack.state import get_applied_slug
 
         applied = get_applied_slug()
-    except Exception:  # noqa: BLE001 — state file is best-effort
+    except Exception:  # noqa: BLE001 - state file is best-effort
         applied = None
     if applied:
         m = get_pack_by_slug(applied)
@@ -501,7 +501,7 @@ def get_active_pack_module_name() -> str | None:
         eps = entry_points().get(ENTRY_POINT_GROUP, [])  # type: ignore[assignment]
     for ep in eps:
         if ep.name == active.slug:
-            # ep.value is "module:attr" — return the module part
+            # ep.value is "module:attr" - return the module part
             return ep.value.split(":", 1)[0]
     return None
 
@@ -604,7 +604,7 @@ def read_pack_file(slug: str, relpath: str) -> bytes | None:
     if not rel or ".." in Path(rel.replace("\\", "/")).parts:
         return None
 
-    # 1) pip-installed pack — read via importlib.resources.
+    # 1) pip-installed pack - read via importlib.resources.
     mod_name = _entrypoint_module_for_slug(slug)
     if mod_name:
         try:
@@ -619,14 +619,14 @@ def read_pack_file(slug: str, relpath: str) -> bytes | None:
         ):
             pass
 
-    # 2) source-checkout pack — read from the packs/ directory, sandboxed.
+    # 2) source-checkout pack - read from the packs/ directory, sandboxed.
     pkg_dir = _fs_package_dir_for_slug(slug)
     if pkg_dir:
         data = _read_sandboxed(pkg_dir, rel)
         if data is not None:
             return data
 
-    # 3) dropped (data-dir) pack — assets sit beside manifest.json, sandboxed.
+    # 3) dropped (data-dir) pack - assets sit beside manifest.json, sandboxed.
     dropped_dir = _data_dir_package_dir_for_slug(slug)
     if dropped_dir:
         return _read_sandboxed(dropped_dir, rel)

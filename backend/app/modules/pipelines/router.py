@@ -3,7 +3,7 @@
 """‌⁠‍Pipeline Builder REST API.
 
 Auto-mounted by the module loader at ``/api/v1/pipelines`` (kebab-case of
-the ``pipelines`` directory). The wire contract is PINNED — the frontend
+the ``pipelines`` directory). The wire contract is PINNED - the frontend
 is built against it in parallel; do not deviate.
 
 Endpoints:
@@ -140,7 +140,7 @@ async def create_pipeline(
     """Create a new (unpublished) pipeline.
 
     When a ``project_id`` is supplied the caller MUST have access to that
-    project — otherwise an authenticated user could bind a pipeline (and
+    project - otherwise an authenticated user could bind a pipeline (and
     every future run + node-state output of that pipeline) to a project
     they do not own (cross-tenant write IDOR).
     """
@@ -210,7 +210,7 @@ async def delete_pipeline(pipeline_id: str, session: SessionDep, user_id: Curren
 @router.post("/{pipeline_id}/run", response_model=RunAccepted)
 async def run_pipeline(
     pipeline_id: str,
-    body: RunRequest,  # noqa: ARG001 — accepted for the pinned contract.
+    body: RunRequest,  # noqa: ARG001 - accepted for the pinned contract.
     session: SessionDep,
     user_id: CurrentUserId,
 ) -> RunAccepted:

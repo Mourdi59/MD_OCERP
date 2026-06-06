@@ -7,7 +7,7 @@ Input shape mirrors ``backend/app/modules/takeoff/schemas.py``
 ``description`` text plus a couple of derived dimensions
 (``quantity`` / ``unit`` / ``measurement_value``).
 
-This extractor is fully functional in v2.8.0 — PDF takeoff is the
+This extractor is fully functional in v2.8.0 - PDF takeoff is the
 primary user-facing source besides BIM.
 """
 
@@ -98,7 +98,7 @@ def _quantities_from_takeoff(raw: dict[str, Any]) -> dict[str, float]:
 def extract(raw: dict[str, Any]) -> ElementEnvelope:
     """Build an :class:`ElementEnvelope` from a takeoff/PDF element dict.
 
-    PDF takeoff rarely surfaces a structured material — we only have a
+    PDF takeoff rarely surfaces a structured material - we only have a
     free-form description. So we hint at classification using the
     category alone (coarse 3-digit DIN / 1-2-segment NRM / 6-digit
     MasterFormat) when an upstream ``classification`` is missing.

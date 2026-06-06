@@ -24,7 +24,7 @@ from app.modules.bi_dashboards.models import (
 
 
 class BIDashboardsRepository:
-    """‌⁠‍Single repository per module — entity-typed methods stay grouped."""
+    """‌⁠‍Single repository per module - entity-typed methods stay grouped."""
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -347,8 +347,8 @@ class BIDashboardsRepository:
     ) -> list[ReportSchedule]:
         """Return every schedule (enabled or not) for the given reports.
 
-        Unlike :meth:`list_schedules` — which is the scheduler's
-        due-soon picker and is restricted to ``enabled`` rows — this
+        Unlike :meth:`list_schedules` - which is the scheduler's
+        due-soon picker and is restricted to ``enabled`` rows - this
         returns the full set so the UI can show paused schedules too.
         Returns an empty list for an empty ``report_ids`` (no SQL issued).
         """
@@ -498,7 +498,7 @@ class BIDashboardsRepository:
         The selection picks the newest ``limit`` rows (``period_start``
         descending, ``computed_at`` descending as a deterministic
         tie-breaker for same-day persists), then reverses them so callers
-        — trend lists, sparklines, ``changed_by_more_than`` deltas —
+        - trend lists, sparklines, ``changed_by_more_than`` deltas -
         receive points in chronological order. Returning them newest-first
         previously flipped every trend chart and inverted the
         period-over-period delta in the UI.

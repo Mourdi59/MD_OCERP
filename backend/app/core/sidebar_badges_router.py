@@ -1,4 +1,4 @@
-"""‌⁠‍Sidebar badge counts — single lightweight endpoint.
+"""‌⁠‍Sidebar badge counts - single lightweight endpoint.
 
 Returns open/active item counts for Tasks, RFIs, and Safety
 in a single response so the sidebar can display notification badges

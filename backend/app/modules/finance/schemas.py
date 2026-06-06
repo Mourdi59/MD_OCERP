@@ -1,4 +1,4 @@
-"""‌⁠‍Finance Pydantic schemas — request/response models."""
+"""‌⁠‍Finance Pydantic schemas - request/response models."""
 
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_valid
 
 
 # ── v3 §10 money serialisation helper ─────────────────────────────────────
-# Mirrors backend/app/modules/boq/schemas.py — money fields are stored /
+# Mirrors backend/app/modules/boq/schemas.py - money fields are stored /
 # accepted as Decimal but emitted as plain decimal strings in JSON.
 def _serialise_money(v: Decimal | None) -> str | None:
     if v is None:
@@ -110,7 +110,7 @@ class InvoiceCreate(BaseModel):
     )
     invoice_number: str | None = Field(default=None, max_length=50, examples=["INV-2026-0042"])
     # Phase 2.5: invoice_date may be empty when an invoice is being drafted
-    # (TBD) — seeded data and frontend drafts both produce "". Validate format
+    # (TBD) - seeded data and frontend drafts both produce "". Validate format
     # only when a value is supplied. (BUG-FINANCE01)
     invoice_date: str = Field(
         default="",
@@ -263,10 +263,10 @@ class PaymentCreate(BaseModel):
     currency_code: str = Field(default="", max_length=10)
     exchange_rate_snapshot: str = Field(default="1", max_length=50)
     reference: str | None = Field(default=None, max_length=255)
-    # R7: idempotency key — supply a stable token per payment attempt;
+    # R7: idempotency key - supply a stable token per payment attempt;
     # a second POST with the same key returns the existing row (no duplicate).
     idempotency_key: str | None = Field(default=None, max_length=64)
-    # R7: refund flag — positive amount with is_refund=True decreases net_paid.
+    # R7: refund flag - positive amount with is_refund=True decreases net_paid.
     is_refund: bool = Field(default=False)
     # ── Gap E (Wave 6): retainage withholding ──────────────────────────────
     # Amount of retainage held back from the certified gross at payment time.
@@ -343,7 +343,7 @@ class PaymentListResponse(BaseModel):
 
 
 class ClaimInvoiceRequest(BaseModel):
-    """Body for ``POST /invoices/from-claim`` — turn a certified claim into AR.
+    """Body for ``POST /invoices/from-claim`` - turn a certified claim into AR.
 
     The claim itself carries the gross / retention / net figures and the
     contract carries the project + counterparty, so the caller only has to name
@@ -594,7 +594,7 @@ class EVMListResponse(BaseModel):
 class FinanceDashboardResponse(BaseModel):
     """Aggregated finance KPIs for a project or across all projects.
 
-    v3 §10 — money fields are Decimal-as-string in JSON.
+    v3 §10 - money fields are Decimal-as-string in JSON.
     ``cash_flow_net`` and ``budget_consumed_pct`` are not in the deferred
     list and stay float (one is a derived signed delta, the other a
     percentage ratio).
@@ -621,7 +621,7 @@ class FinanceDashboardResponse(BaseModel):
     # dashboard this is the project's own currency and every foreign-currency
     # record has been FX-converted into it via Project.fx_rates; for a
     # cross-project rollup it is the dominant currency. Empty string when no
-    # financial record carries a currency yet — the UI then renders amounts
+    # financial record carries a currency yet - the UI then renders amounts
     # without a currency symbol rather than mislabelling them (task #217).
     currency: str = ""
     # True when financial records span more than one currency. The totals are
@@ -656,7 +656,7 @@ class FinanceDashboardResponse(BaseModel):
 class LedgerEntryCreate(BaseModel):
     """Payload for create_ledger_transaction().
 
-    Represents a balanced double-entry transaction — the service enforces
+    Represents a balanced double-entry transaction - the service enforces
     debit_amount == credit_amount before writing any rows.
     """
 

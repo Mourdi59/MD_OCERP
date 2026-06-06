@@ -7,19 +7,19 @@ import-time coupling. They are registered idempotently via
 
 Subscriptions:
 
-* ``safety.incident.created`` — the base safety module records the
+* ``safety.incident.created`` - the base safety module records the
   incident. We re-publish two derived events the platform listens on:
 
-  - ``contracts.risk_register_update`` — risk-register projection (BI / contracts
+  - ``contracts.risk_register_update`` - risk-register projection (BI / contracts
     risk owners). Even though no canonical RiskRegister table exists today,
     the event is the canonical signal so when contracts grows one it picks
     up the history.
-  - ``bi_dashboards.kpi_recompute`` — BI projections (TRIR / LTIFR / days
+  - ``bi_dashboards.kpi_recompute`` - BI projections (TRIR / LTIFR / days
     without LTI) re-compute for the affected project.
 
-* ``hse.capa.completed`` — when a CAPA closes we likewise nudge BI.
+* ``hse.capa.completed`` - when a CAPA closes we likewise nudge BI.
 
-All subscribers are fail-soft — any exception is swallowed at debug.
+All subscribers are fail-soft - any exception is swallowed at debug.
 """
 
 from __future__ import annotations
@@ -119,7 +119,7 @@ async def _on_qms_ncr_safety_check(event: Event) -> None:
     The QMS module publishes the NCR raise event with severity. We listen
     for that and republish ``hse_advanced.if_safety_related`` so HSE
     workflows can pick up safety-impacting NCRs that didn't originate as
-    incidents. The check is heuristic — title/description contains "safety"
+    incidents. The check is heuristic - title/description contains "safety"
     or severity is "critical".
     """
     data = event.data or {}

@@ -1,4 +1,4 @@
-"""Webhook Leads service — security, payload mapping, lead creation.
+"""Webhook Leads service - security, payload mapping, lead creation.
 
 Pure helpers (no I/O) for credential hashing, signature verification,
 IP-allowlist matching, and JSON-path extraction are kept at module level
@@ -10,18 +10,18 @@ Security model
 The public ingestion endpoint never trusts the platform JWT session.
 Instead it authenticates the *caller* against the per-source credential:
 
-* ``api_key`` — caller sends ``X-Api-Key: <key>``; compared in constant
+* ``api_key`` - caller sends ``X-Api-Key: <key>``; compared in constant
   time against ``sha256(key)`` stored on the source.
-* ``hmac``   — caller sends ``X-Webhook-Signature: <hexdigest>``; the
+* ``hmac``   - caller sends ``X-Webhook-Signature: <hexdigest>``; the
   digest is recomputed as ``HMAC-SHA256(secret, RAW_BODY_BYTES)`` and
   compared in constant time. Verification is over the **raw request
   body bytes**, never a reparsed JSON re-serialisation.
-* ``jwt``    — caller sends ``Authorization: Bearer <jwt>``; the JWT is
+* ``jwt``    - caller sends ``Authorization: Bearer <jwt>``; the JWT is
   verified HS256 against the source secret.
 
 In addition: an optional per-source IP allowlist and a per-source
-sliding-window rate limit. Every attempt — accepted, rejected, or
-errored — writes a :class:`WebhookLog` row.
+sliding-window rate limit. Every attempt - accepted, rejected, or
+errored - writes a :class:`WebhookLog` row.
 """
 
 from __future__ import annotations
@@ -130,7 +130,7 @@ def ip_allowed(remote_ip: str, allowlist: list[str] | None) -> bool:
     """Return True when ``remote_ip`` is permitted.
 
     An empty / missing allowlist means "any IP". Otherwise the remote IP
-    must match an entry exactly (CIDR is intentionally out of scope —
+    must match an entry exactly (CIDR is intentionally out of scope -
     operators list explicit egress IPs of their marketing/ad platform).
     """
     if not allowlist:
@@ -164,7 +164,7 @@ def extract_path(payload: Any, dotted_path: str) -> Any:
     """Resolve a dotted JSON path against ``payload``.
 
     Numeric segments index into lists (``items.0.name``). Returns ``None``
-    if any segment is missing rather than raising — a missing optional
+    if any segment is missing rather than raising - a missing optional
     field must not abort the whole ingestion.
     """
     current: Any = payload
@@ -216,7 +216,7 @@ def map_payload_to_lead(
 
     Returns ``(lead_fields, missing_required)``. ``missing_required`` lists
     the ``target_field`` names whose mapping was marked required but whose
-    resolved value was absent/empty — the caller turns a non-empty list
+    resolved value was absent/empty - the caller turns a non-empty list
     into a 422.
     """
     lead_fields: dict[str, Any] = {}
@@ -241,7 +241,7 @@ def map_payload_to_lead(
 
 
 class WebhookAuthError(Exception):
-    """Raised by :meth:`authenticate_source` — carries an HTTP status.
+    """Raised by :meth:`authenticate_source` - carries an HTTP status.
 
     Caught by the router so an audit log is always written before the
     response is returned.
@@ -464,7 +464,7 @@ class WebhookLeadsService:
 
         ``headers`` keys are expected lower-cased. ``presented_secret_for_test``
         lets callers (and tests) recover the verifying secret without DB
-        round-trips — production passes the live source's plaintext secret
+        round-trips - production passes the live source's plaintext secret
         is *not* available (only the hash), so HMAC/JWT verification uses
         the stored hash semantics described below.
         """
@@ -538,7 +538,7 @@ class WebhookLeadsService:
         """
         source = await self.source_repo.get_by_slug(source_slug)
 
-        # Unknown slug — still auditable.
+        # Unknown slug - still auditable.
         if source is None:
             log = await self._write_log(
                 source=None,

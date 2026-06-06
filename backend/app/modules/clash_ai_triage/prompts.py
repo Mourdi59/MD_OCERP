@@ -5,7 +5,7 @@
 WHY THIS FILE IS IN THE REPO
 ============================
 Competitive tools (Revizto, Navisworks AI, etc.) ship "AI clash triage"
-as a paid black box — you cannot see the prompt, you cannot tune it,
+as a paid black box - you cannot see the prompt, you cannot tune it,
 you cannot reason about why a verdict was produced. OpenConstructionERP
 takes the opposite stance: the prompt lives HERE, in version control,
 and a coordinator who reads English can audit every word the LLM is
@@ -22,14 +22,14 @@ STRUCTURE
 =========
 Two templates are used per LLM call:
 
-* ``SYSTEM_PROMPT_V1`` — sets the assistant's persona, declares the
+* ``SYSTEM_PROMPT_V1`` - sets the assistant's persona, declares the
   STRICT JSON schema the model must return, and lists the
   category-discrimination rules in plain English.
-* ``USER_PROMPT_V1`` — interpolates the actual clash's evidence (element
+* ``USER_PROMPT_V1`` - interpolates the actual clash's evidence (element
   types, materials, trade pair, clearance, location, prior triage if
   this is a re-run) into a fact sheet for the LLM to reason against.
 
-The model is asked to return JSON ONLY — no prose, no markdown code
+The model is asked to return JSON ONLY - no prose, no markdown code
 fences. The service layer still parses defensively (extract JSON from
 markdown fences as a fallback) but a well-behaved model honours the
 "no commentary" rule on the very first try.
@@ -66,10 +66,10 @@ PROMPT_VERSION: str = "v1.0"
 _MAX_FIELD_CHARS: int = 600
 
 
-# ── Templates (USER-TUNABLE — edit + bump PROMPT_VERSION) ───────────────────
+# ── Templates (USER-TUNABLE - edit + bump PROMPT_VERSION) ───────────────────
 
-#: System prompt — sets persona, declares output schema, lists the
-#: category-discrimination rules. Read this before you call the LLM —
+#: System prompt - sets persona, declares output schema, lists the
+#: category-discrimination rules. Read this before you call the LLM -
 #: the model will follow these rules verbatim.
 SYSTEM_PROMPT_V1: str = (
     "You are a senior BIM coordinator triaging a single clash detected "
@@ -102,7 +102,7 @@ SYSTEM_PROMPT_V1: str = (
     "confidence<0.4."
 )
 
-#: User prompt — interpolated per call with the specific clash evidence.
+#: User prompt - interpolated per call with the specific clash evidence.
 #: Placeholders are documented inline so a non-developer reading this
 #: file knows exactly what each token holds.
 USER_PROMPT_V1: str = (
@@ -128,7 +128,7 @@ USER_PROMPT_V1: str = (
 # ── Retry / repair prompt (used after invalid JSON) ─────────────────────────
 
 #: Follow-up sent after the LLM returned non-JSON on its first try.
-#: Kept terse on purpose — the model already knows the schema from
+#: Kept terse on purpose - the model already knows the schema from
 #: ``SYSTEM_PROMPT_V1``; this just re-asserts the format.
 RETRY_PROMPT_V1: str = (
     "Your previous response was not valid JSON. Respond again with the "
@@ -140,7 +140,7 @@ RETRY_PROMPT_V1: str = (
 
 
 # Characters that can carry prompt-control intent if echoed back into the
-# LLM payload. We strip them entirely — they are not load-bearing in
+# LLM payload. We strip them entirely - they are not load-bearing in
 # any of our real evidence fields (IFC GUIDs / materials / floats).
 _DANGEROUS_PATTERN = re.compile(
     "[`"
@@ -180,7 +180,7 @@ _DANGEROUS_PATTERN = re.compile(
 )
 
 # Lines starting with these tokens are classic prompt-injection trailers
-# (the user controls part of the input — properties blobs, descriptions —
+# (the user controls part of the input - properties blobs, descriptions -
 # and an attacker could embed "Ignore previous instructions…"). We don't
 # silently drop them (that would hide the attack); we wrap them in a
 # visible "[SUSPICIOUS]" prefix so the LLM sees them as data, not as a
@@ -198,7 +198,7 @@ def _sanitise(value: Any, *, max_chars: int = _MAX_FIELD_CHARS) -> str:
     """Render ``value`` as a single-line, length-capped, injection-safe string.
 
     * Non-strings are ``str()``-coerced (so a dict ``properties`` blob
-      lands as ``{'k': 'v'}`` — readable enough for the LLM).
+      lands as ``{'k': 'v'}`` - readable enough for the LLM).
     * Backticks and control characters are stripped (no markdown-fence
       injection, no NULL-byte payloads).
     * Lines starting with a known injection trigger are tagged

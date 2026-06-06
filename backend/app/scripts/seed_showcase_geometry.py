@@ -1,13 +1,13 @@
 """Restore bundled 3D geometry for the showcase BIM models.
 
 The localized 7-project showcase snapshot (``showcase_snapshot.json.gz``)
-ships *database rows* only — it has no mesh blobs.  On a lightweight
+ships *database rows* only - it has no mesh blobs.  On a lightweight
 self-hosted install that means the 14 showcase BIM models exist in the
 model list but the 3D viewer has nothing to render, so the geometry
 endpoint returns ``404 geometry_missing`` (issue #168).
 
 To make the showcase render out-of-the-box, the two distinct hero meshes
-(an architectural IFC export and a structural RVT export — every showcase
+(an architectural IFC export and a structural RVT export - every showcase
 project reuses one of the two) are shipped gzip-compressed next to this
 module under ``showcase_geometry/`` (~3.4 MB total).  This seeder
 decompresses them once and writes a ``geometry.glb`` blob for each of the
@@ -66,7 +66,7 @@ async def seed_showcase_geometry() -> dict[str, Any]:
     """Write a ``geometry.glb`` blob for each showcase model that lacks one.
 
     Returns a small summary dict ``{restored, skipped, missing, total}``.
-    Never raises — geometry seeding must never block application startup.
+    Never raises - geometry seeding must never block application startup.
     """
     manifest = _load_manifest()
     if not manifest:

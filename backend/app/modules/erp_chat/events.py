@@ -1,10 +1,10 @@
-"""‌⁠‍ERP Chat event handlers — vector indexing.
+"""‌⁠‍ERP Chat event handlers - vector indexing.
 
 Subscribes to ``erp_chat.message.*`` events and keeps the ``oe_chat``
 vector collection in sync with persisted ChatMessage rows.
 
 Only user / assistant messages with non-empty content actually get
-embedded — the adapter drops everything else.
+embedded - the adapter drops everything else.
 """
 
 from __future__ import annotations

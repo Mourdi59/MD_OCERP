@@ -2,7 +2,7 @@
 """‌⁠‍Smart Views business logic.
 
 The service layer is the single source of truth for the **scoping
-rules** — RBAC at the router decides *whether* a caller may touch the
+rules** - RBAC at the router decides *whether* a caller may touch the
 feature at all; the service decides *which rows* they may touch. The
 counter-intuitive split (instead of just a per-row owner check) buys
 the user-/project-/federation- scoped sharing model BIMcollab Zoom
@@ -42,7 +42,7 @@ from app.modules.smart_views.schemas import (
 
 # Salt is namespaced so a leaked JWT secret cannot be replayed against
 # another itsdangerous surface (or vice-versa). The value is constant
-# across the install — the JWT secret IS the actual entropy source.
+# across the install - the JWT secret IS the actual entropy source.
 _SHARE_SIGNER_SALT = "oe.smart_views.share.v1"
 
 logger = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ class SmartViewService:
         JWT secret. We choose ``URLSafeSerializer`` over the *Timed*
         variant because share links are explicitly revocable (the
         column is nulled on revoke) and an expiring token would make
-        UX worse without adding security — a stolen token is mitigated
+        UX worse without adding security - a stolen token is mitigated
         by revoke, not by a TTL.
         """
         cached = getattr(self, "_share_signer_cache", None)
@@ -79,7 +79,7 @@ class SmartViewService:
         """Generate a signed token whose payload is the view id + nonce.
 
         The nonce ensures that revoke→re-share produces a *different*
-        token even if the JWT secret is unchanged — otherwise an old
+        token even if the JWT secret is unchanged - otherwise an old
         copy of a revoked link would silently start working again on
         the next share. ``secrets.token_urlsafe(16)`` gives 128 bits.
         """
@@ -109,7 +109,7 @@ class SmartViewService:
         """Build the response payload, redacting share_token for non-authors.
 
         The DB-level uniqueness on ``share_token`` already prevents an
-        accidental leak via the list endpoint — but a project-scoped
+        accidental leak via the list endpoint - but a project-scoped
         view's token still must not surface to collaborators who don't
         own the row. We blanket-redact unless ``viewer_id`` equals the
         ``created_by`` user.
@@ -128,7 +128,7 @@ class SmartViewService:
         ``clash`` / ``bcf`` / ``bim_hub``: a viewer sees their own
         projects. Admins are short-circuited at the router level via
         the live JWT ``role`` claim, so we do not need to special-case
-        admin here — they get the full list because the router skips
+        admin here - they get the full list because the router skips
         the scoping check entirely.
         """
         stmt = select(Project.id).where(Project.owner_id == user_id)
@@ -145,12 +145,12 @@ class SmartViewService:
 
         Mapping:
 
-        * ``user``       — ``scope_id`` must equal the caller's user id.
+        * ``user``       - ``scope_id`` must equal the caller's user id.
                            A user cannot create a "private" view on
                            someone else's behalf.
-        * ``project``    — the project must exist and the caller must
+        * ``project``    - the project must exist and the caller must
                            own it (admin bypass happens at the router).
-        * ``federation`` — the federation must exist and its project
+        * ``federation`` - the federation must exist and its project
                            must be owned by the caller.
         """
         if scope_type == "user":
@@ -202,7 +202,7 @@ class SmartViewService:
         user_id: uuid.UUID,
         accessible_project_ids: set[uuid.UUID],
     ) -> bool:
-        """Visibility predicate — see :class:`SmartViewRepository`."""
+        """Visibility predicate - see :class:`SmartViewRepository`."""
         if view.scope_type == "user":
             return view.scope_id == user_id
         if view.scope_type == "project":
@@ -227,7 +227,7 @@ class SmartViewService:
         """Visibility predicate that handles federation→project lookup.
 
         For ``user`` / ``project`` scopes this is equivalent to
-        :meth:`_can_read` — no extra DB hit. For ``federation`` scope
+        :meth:`_can_read` - no extra DB hit. For ``federation`` scope
         we resolve the federation's ``project_id`` and check it is in
         the caller's accessible project set. The N+1 cost is one extra
         ``session.get`` per federation-scoped row touched (capped to
@@ -243,7 +243,7 @@ class SmartViewService:
         return False
 
     def _can_write(self, view: SmartView, *, user_id: uuid.UUID) -> bool:
-        """Mutation predicate — only the author can edit/delete their view."""
+        """Mutation predicate - only the author can edit/delete their view."""
         return view.created_by == user_id
 
     # ── Cross-module visibility event (#103) ──────────────────────────
@@ -261,7 +261,7 @@ class SmartViewService:
         under a federation scope, downstream consumers (the BIM viewer
         sidebar cache, the federation hub's permission badge) must be
         told to drop their cached list. We emit a single event the bus
-        can fan out — subscribers are responsible for their own
+        can fan out - subscribers are responsible for their own
         invalidation strategy. Fire-and-forget so the request still
         commits cleanly even if a subscriber raises.
         """
@@ -349,7 +349,7 @@ class SmartViewService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SmartView not found")
         project_ids = set(await self._accessible_project_ids(user_id))
         if not await self._can_read_async(view, user_id=user_id, accessible_project_ids=project_ids):
-            # 404, not 403 — same UUID-existence-leak hardening the
+            # 404, not 403 - same UUID-existence-leak hardening the
             # other modules use.
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SmartView not found")
         return self._response_for(view, viewer_id=user_id)
@@ -389,7 +389,7 @@ class SmartViewService:
         await self.session.flush()
         # Refresh ``updated_at`` (the ``onupdate=func.now()`` trigger
         # mutates the column at flush time, but the ORM marks the
-        # attribute expired — accessing it from the sync Pydantic
+        # attribute expired - accessing it from the sync Pydantic
         # validator would attempt a synchronous lazy reload and trip
         # MissingGreenlet under the async session).
         await self.session.refresh(view)
@@ -461,7 +461,7 @@ class SmartViewService:
     def list_presets() -> list[SmartViewPresetSummary]:
         """Return the catalogue of built-in presets.
 
-        Pure / static — does not touch the DB. The UI calls this to
+        Pure / static - does not touch the DB. The UI calls this to
         render the install cards in the SmartViews panel's "Presets"
         tab. We deliberately do NOT return the full rule list: install
         happens by ``preset_id`` so the server's canonical rule set is
@@ -491,7 +491,7 @@ class SmartViewService:
         Idempotent: if a view authored by ``user_id`` with the same
         ``name`` already exists under (``scope_type``, ``scope_id``),
         the existing row is returned instead of creating a duplicate.
-        That matches user mental model — re-clicking "Install" twice
+        That matches user mental model - re-clicking "Install" twice
         in a row should never produce two identical cards.
 
         We validate the preset's rule list through the same Pydantic
@@ -509,7 +509,7 @@ class SmartViewService:
         # Scope verification reuses the same guard create_view uses.
         await self._verify_scope(scope_type=scope_type, scope_id=scope_id, user_id=user_id)
 
-        # Idempotency lookup — same author + same scope + same name.
+        # Idempotency lookup - same author + same scope + same name.
         # We deliberately key on name (not preset_id) because a user
         # may freely rename an installed preset; re-installing then
         # should produce a *new* view, not silently bring back the
@@ -550,7 +550,7 @@ class SmartViewService:
 
         Only the authoring user may share the view. Calling this on a
         view that already has a token rotates the token (old links
-        stop working immediately) — that doubles as the "rotate" UX
+        stop working immediately) - that doubles as the "rotate" UX
         without needing a separate endpoint.
         """
         view = await self.repo.get_by_id(view_id)
@@ -602,10 +602,10 @@ class SmartViewService:
         await self._emit_visibility_changed(view, reason="unshared")
 
     async def resolve_share_token(self, token: str) -> SmartViewResponse:
-        """Look up a SmartView by share token — UNAUTHENTICATED path.
+        """Look up a SmartView by share token - UNAUTHENTICATED path.
 
         The token must:
-          (a) carry a valid signature (else 404 — never 401, to avoid
+          (a) carry a valid signature (else 404 - never 401, to avoid
               leaking the existence of the share endpoint to scanners);
           (b) decode to a UUID that matches an extant ``share_token``
               column value (a non-matching but signature-valid token

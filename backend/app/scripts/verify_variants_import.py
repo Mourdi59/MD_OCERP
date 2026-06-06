@@ -9,7 +9,7 @@ Usage:
 
 Two sections:
   (A) Synthetic sample using the column names from the implementation plan
-      (these may not exist in any current parquet — see report).
+      (these may not exist in any current parquet - see report).
   (B) Real-parquet check: load ENG_TORONTO and report which abstract columns
       are actually present, plus run a parallel parse using the parquet's
       real column names mapped onto the same logic.
@@ -120,7 +120,7 @@ REAL_COLS = {
 
 def section_a_synthetic() -> None:
     print("=" * 70)
-    print("(A) SYNTHETIC ROWS — using plan's column names")
+    print("(A) SYNTHETIC ROWS - using plan's column names")
     print("=" * 70)
     bul = "\u2022"
     sample = {
@@ -162,7 +162,7 @@ def section_a_synthetic() -> None:
 
 def section_b_real_parquet(parquet_path: Path) -> None:
     print("=" * 70)
-    print(f"(B) REAL PARQUET — {parquet_path.name}")
+    print(f"(B) REAL PARQUET - {parquet_path.name}")
     print("=" * 70)
     if not parquet_path.exists():
         print(f"  parquet not found at {parquet_path}; skipping")
@@ -182,7 +182,7 @@ def section_b_real_parquet(parquet_path: Path) -> None:
     print(f"real-name cols present in this parquet: {len(real_present)}/{len(REAL_COLS)}")
     print()
 
-    # Run plan-name parse on first 5 abstract rows — expect empty results
+    # Run plan-name parse on first 5 abstract rows - expect empty results
     # because the plan's column names don't match.
     if "row_type" in df.columns:
         ab = df[df["row_type"] == "Abstract resource"].head(5)
@@ -195,7 +195,7 @@ def section_b_real_parquet(parquet_path: Path) -> None:
         print(f"  [{i}] rate_code={rate!r}  variants_count={len(md.get('variants', []))}")
     print()
 
-    # Run real-name parse on the same rows — expect non-empty results.
+    # Run real-name parse on the same rows - expect non-empty results.
     print("--- parsing 5 abstract rows using REAL parquet column names ---")
     for i, (idx, row) in enumerate(ab.iterrows()):
         md = parse_variants(row.to_dict(), REAL_COLS)

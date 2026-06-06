@@ -1,9 +1,9 @@
 """‌⁠‍Takeoff ORM models.
 
 Tables:
-    oe_takeoff_document        — uploaded PDF documents for quantity takeoff
-    oe_takeoff_measurement     — measurement annotations (distance, area, count, etc.)
-    oe_takeoff_cad_session     — persistent CAD extraction sessions (replaces in-memory cache)
+    oe_takeoff_document        - uploaded PDF documents for quantity takeoff
+    oe_takeoff_measurement     - measurement annotations (distance, area, count, etc.)
+    oe_takeoff_cad_session     - persistent CAD extraction sessions (replaces in-memory cache)
 """
 
 import uuid
@@ -133,7 +133,7 @@ class TakeoffMeasurement(Base):
     points: Mapped[list] = mapped_column(  # type: ignore[assignment]
         JSON, nullable=False, default=list, server_default="[]"
     )  # [{x, y}, ...]
-    # Round-6 audit (2026-05-22) — these four columns feed BOQ totals.
+    # Round-6 audit (2026-05-22) - these four columns feed BOQ totals.
     # Migrated Float → Numeric(18, 6) so PDF takeoff matches the dwg_takeoff
     # precision regime (v3097_dwg_takeoff_decimal_quantities).
     measurement_value: Mapped[Decimal | None] = mapped_column(_MEASURE_NUMERIC, nullable=True)
@@ -142,7 +142,7 @@ class TakeoffMeasurement(Base):
     volume: Mapped[Decimal | None] = mapped_column(_MEASURE_NUMERIC, nullable=True)
     perimeter: Mapped[Decimal | None] = mapped_column(_MEASURE_NUMERIC, nullable=True)
     count_value: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # ``scale_pixels_per_unit`` stays Float — it's a UI calibration ratio
+    # ``scale_pixels_per_unit`` stays Float - it's a UI calibration ratio
     # (px-per-metre) used as a divisor and never persisted into a money
     # rollup. Migrating it would force every existing PDF takeoff session
     # in production to be re-calibrated for no precision gain.

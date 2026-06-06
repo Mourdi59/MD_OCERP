@@ -1,4 +1,4 @@
-"""‌⁠‍Cost item service — business logic for cost database management.
+"""‌⁠‍Cost item service - business logic for cost database management.
 
 Stateless service layer. Handles:
 - Cost item CRUD
@@ -65,8 +65,8 @@ def encode_cursor(code: str, item_id: str) -> str:
 def decode_cursor(token: str) -> tuple[str, str] | None:
     """‌⁠‍Decode a cursor back to ``(code, id)``.
 
-    Returns ``None`` for any malformed input — empty / wrong base64 /
-    non-JSON / missing keys — so callers can map the failure to a 400
+    Returns ``None`` for any malformed input - empty / wrong base64 /
+    non-JSON / missing keys - so callers can map the failure to a 400
     without distinguishing the underlying cause.
     """
     if not token or not isinstance(token, str):
@@ -164,7 +164,7 @@ class CostItemService:
     ) -> list[CostItem]:
         """Autocomplete-tuned search delegating to the repository.
 
-        See :meth:`CostItemRepository.search_for_autocomplete` — pushes
+        See :meth:`CostItemRepository.search_for_autocomplete` - pushes
         the "items WITH components first" priority into the SQL
         ORDER BY so the router never has to over-fetch + re-sort.
         """
@@ -220,7 +220,7 @@ class CostItemService:
         the total from another aggregate (e.g. the prewarmed
         ``_region_cache["stats"]`` totals) and wants to skip the COUNT(*)
         on the first page. Cursor-paginated requests still skip count
-        automatically — this flag is for first-page no-filter fast paths.
+        automatically - this flag is for first-page no-filter fast paths.
         """
         decoded_cursor: tuple[str, str] | None = None
         if query.cursor:
@@ -265,10 +265,10 @@ class CostItemService:
     ) -> list[dict[str, Any]]:
         """Return the classification tree, optionally filtered by region.
 
-        ``depth`` (1..4) limits how many classification levels to return —
+        ``depth`` (1..4) limits how many classification levels to return -
         callers asking for a fast first paint pass ``depth=2`` and lazily
         drill deeper with ``parent_path``. Caching is the router's job
-        (``_category_tree_cache``) — keep this layer stateless so
+        (``_category_tree_cache``) - keep this layer stateless so
         background callers (e.g. event handlers) don't share a stale
         snapshot with HTTP clients.
         """
@@ -419,11 +419,11 @@ class CostItemService:
         """Return ranked CWICR cost items that best match a BIM element.
 
         Ranking factors (in priority order):
-          1. Classification overlap — same OmniClass / UniFormat / DIN-276 code
+          1. Classification overlap - same OmniClass / UniFormat / DIN-276 code
           2. Element type keyword match in description (e.g. element_type='Walls'
              matches 'wall', 'wall panel', 'concrete wall')
-          3. Material match — ``properties['material']`` vs description
-          4. Family/type match — ``name`` vs description
+          3. Material match - ``properties['material']`` vs description
+          4. Family/type match - ``name`` vs description
           5. Tag overlap with element discipline / category
 
         Returns at most ``limit`` results, sorted by score descending.  Each

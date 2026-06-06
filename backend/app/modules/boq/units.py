@@ -11,7 +11,7 @@ strict allowlist meant every regional CWICR import re-surfaced the same
   fragment ("ton" / "tonne" / "tonnes" → "t"),
 * otherwise return the input lowercased and stripped, regardless of
   script (Latin, Cyrillic, Greek, CJK, accented),
-* reject only the genuinely unsafe shapes — empty, > 30 chars,
+* reject only the genuinely unsafe shapes - empty, > 30 chars,
   control characters, HTML / SQL / quote characters, or a non-letter /
   non-digit leading character.
 
@@ -75,7 +75,7 @@ APPROVED_UNITS: Final[frozenset[str]] = frozenset(
         "days",
         "wk",
         "month",
-        # internal sentinel: section header rows have unit="section" — kept
+        # internal sentinel: section header rows have unit="section" - kept
         # in the canonical table so existing section-create paths round-trip
         # cleanly through any future ``PositionResponse`` re-validation.
         "section",
@@ -83,18 +83,18 @@ APPROVED_UNITS: Final[frozenset[str]] = frozenset(
 )
 
 
-# Canonical aliases — common synonyms that should bucket into the same
+# Canonical aliases - common synonyms that should bucket into the same
 # canonical unit so aggregations don't fragment.  Locale-specific spellings
 # (Cyrillic / CJK / accented) deliberately don't appear here: we keep them
 # verbatim so the BOQ shows what the estimator typed.
 _UNIT_ALIASES: Final[dict[str, str]] = {
-    # mass — metric tonne synonyms
+    # mass - metric tonne synonyms
     "ton": "t",
     "tons": "t",
     "tonne": "t",
     "tonnes": "t",
     "mt": "t",
-    # length — meter / metre
+    # length - meter / metre
     "metre": "m",
     "metres": "m",
     "meter": "m",
@@ -177,14 +177,14 @@ def normalise_unit(unit: str | None) -> str | None:
 
     Resolution order:
       1. canonical alias from :data:`_UNIT_ALIASES` (e.g. "ton" → "t",
-         "hour" → "hr") — aliases are checked first so synonyms collapse
+         "hour" → "hr") - aliases are checked first so synonyms collapse
          into one bucket regardless of whether they happen to also appear
          in the catalogue
       2. exact match in :data:`APPROVED_UNITS` (case-insensitive)
-      3. CWICR-style multi-prefix forms like "100 EA", "1000 m" — returned
+      3. CWICR-style multi-prefix forms like "100 EA", "1000 m" - returned
          as ``"<N> <unit>"`` with the trailing token canonicalised through
          the alias table when possible
-      4. anything else — passed through, lower-cased, with surrounding
+      4. anything else - passed through, lower-cased, with surrounding
          whitespace stripped (Cyrillic, CJK, Greek, accented Latin,
          percent / squared / cubed glyphs all preserved verbatim)
 
@@ -210,7 +210,7 @@ def normalise_unit(unit: str | None) -> str | None:
         return lower
     # Multi-prefix form: "100 EA" / "1000 m" / "10 kg".  Detect by
     # splitting on the first whitespace run rather than a regex so the
-    # implementation stays Unicode-clean — Python's ``str.split`` already
+    # implementation stays Unicode-clean - Python's ``str.split`` already
     # respects every Unicode whitespace code point.
     parts = stripped.split(None, 1)
     if len(parts) == 2 and parts[0].isdigit() and 1 <= len(parts[0]) <= 6:
@@ -228,7 +228,7 @@ def is_approved_unit(unit: str | None) -> bool:
     """Return True when ``unit`` has a safe shape (i.e.
     :func:`normalise_unit` doesn't reject it).
 
-    Note: this is *not* membership in :data:`APPROVED_UNITS` — that strict
+    Note: this is *not* membership in :data:`APPROVED_UNITS` - that strict
     test still exists as plain set membership for callers (GAEB exporter,
     aggregations) that need to know whether a unit maps to a canonical
     QU code.  The schema validator uses the looser shape test so locale-

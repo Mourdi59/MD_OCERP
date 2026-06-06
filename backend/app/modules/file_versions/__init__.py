@@ -11,7 +11,7 @@ flagged ``superseded`` and a new row becomes ``is_current=True``.
 
 
 async def on_startup() -> None:
-    """Module startup hook — register RBAC permissions."""
+    """Module startup hook - register RBAC permissions."""
     from app.modules.file_versions.permissions import register_file_version_permissions
 
     register_file_version_permissions()

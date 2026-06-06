@@ -12,7 +12,7 @@ Design choices vs the doc:
 
 * Per-module 5-axis YAML tags for all 88 modules are explicitly a
   later calibration task (doc CAVEAT #3). For Slice 1 the **activity**
-  axis is *derived from preset membership* — a module that appears in
+  axis is *derived from preset membership* - a module that appears in
   preset P is by definition highly relevant to P's activity. That is
   data-driven, needs no hand-tuning, and stays correct as presets
   evolve. Role / phase / size use small curated maps with sensible
@@ -401,7 +401,7 @@ def assign_ordinals(
 ) -> dict[str, int | None]:
     """Global sequential numbering (doc §3.2) over *enabled, non
     cross-cutting* modules, in phase order. Cross-cutting + disabled get
-    ``None`` (no number — they live in the "Сквозные" / "Available more"
+    ``None`` (no number - they live in the "Сквозные" / "Available more"
     sections)."""
 
     ordinals: dict[str, int | None] = {}

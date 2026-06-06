@@ -1,12 +1,12 @@
 """Procurement ORM models.
 
 Tables:
-    oe_procurement_po            — purchase orders
-    oe_procurement_po_item       — purchase order line items
-    oe_procurement_goods_receipt — goods receipts against POs
-    oe_procurement_gr_item       — goods receipt line items
-    oe_procurement_requisition   — material requisitions (R7 FSM)
-    oe_procurement_req_item      — requisition line items
+    oe_procurement_po            - purchase orders
+    oe_procurement_po_item       - purchase order line items
+    oe_procurement_goods_receipt - goods receipts against POs
+    oe_procurement_gr_item       - goods receipt line items
+    oe_procurement_requisition   - material requisitions (R7 FSM)
+    oe_procurement_req_item      - requisition line items
 """
 
 import uuid
@@ -51,7 +51,7 @@ class PurchaseOrder(Base):
     po_type: Mapped[str] = mapped_column(String(50), nullable=False, default="standard")
     issue_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
     delivery_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    # Empty by default — service inherits the parent project's currency so
+    # Empty by default - service inherits the parent project's currency so
     # no PO silently shows EUR when the project is non-EUR (task #217).
     currency_code: Mapped[str] = mapped_column(String(10), nullable=False, default="")
     amount_subtotal: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
@@ -63,7 +63,7 @@ class PurchaseOrder(Base):
     # computed = amount_total × percent / 100 and ``retainage_held`` nets
     # off whatever has already been released. ``retainage_released_amount``
     # is the cumulative Decimal-string total released so far. Money is
-    # never blended across currencies — every value stays in the PO's own
+    # never blended across currencies - every value stays in the PO's own
     # ``currency_code`` (the report rolls up per-currency).
     retention_percent: Mapped[Decimal] = mapped_column(
         Numeric(5, 2),
@@ -115,7 +115,7 @@ class PurchaseOrder(Base):
         """Computed retention withheld = amount_total × retention_percent / 100.
 
         Quantised to four decimal places to match the NUMERIC(18, 4) precision
-        of the release-log column. Never blends currencies — the result is in
+        of the release-log column. Never blends currencies - the result is in
         this PO's own ``currency_code``.
         """
         try:
@@ -338,7 +338,7 @@ class MaterialRequisitionItem(Base):
     )
     description: Mapped[str] = mapped_column(String(500), nullable=False)
     unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    # Qty at each lifecycle stage — all stored as Decimal-strings (R7)
+    # Qty at each lifecycle stage - all stored as Decimal-strings (R7)
     quantity_requested: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
     quantity_ordered: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
     quantity_received: Mapped[str] = mapped_column(String(50), nullable=False, default="0")

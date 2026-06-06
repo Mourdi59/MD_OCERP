@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 MAX_RESULTS_PER_REPORT = 5000
 # Hard ceiling on elements pulled into memory for one validation pass.
 # Combined with up-to-N requirements this drives the worst-case loop:
-# 50k × 50 reqs = 2.5M evals — already several seconds of CPU. Beyond
+# 50k × 50 reqs = 2.5M evals - already several seconds of CPU. Beyond
 # this we surface a "model too large for synchronous validation" error
 # rather than blocking the worker for minutes.
 MAX_ELEMENTS_PER_VALIDATION = 50_000
@@ -70,7 +70,7 @@ def _read_attribute(elem: Any, attribute: str) -> object:
     quantities = getattr(elem, "quantities", None) or {}
     if name in quantities:
         return quantities[name]
-    # Quantities are sometimes capitalised — normalise both sides.
+    # Quantities are sometimes capitalised - normalise both sides.
     for k, v in quantities.items():
         if k.lower() == name.lower():
             return v
@@ -116,7 +116,7 @@ def _matches_entity(elem: Any, entity: str) -> bool:
     # Honour wildcards explicitly (Walls* / IfcWall*)
     if any(ch in pattern for ch in "*?[]"):
         return fnmatch(etype_lower, pattern_lower)
-    # Plural/singular tolerance — "Walls" matches "Wall" and vice versa
+    # Plural/singular tolerance - "Walls" matches "Wall" and vice versa
     if etype_lower.startswith(pattern_lower) or pattern_lower.startswith(etype_lower):
         # Only consider the trailing piece an inflection if it is short
         diff = abs(len(pattern_lower) - len(etype_lower))
@@ -207,7 +207,7 @@ async def validate_requirement_set_against_model(
                         "status": "info",
                         "passed": True,
                         "message": (
-                            f"Requirement '{req.entity}.{req.attribute}' matched no elements in this model — skipped."
+                            f"Requirement '{req.entity}.{req.attribute}' matched no elements in this model - skipped."
                         ),
                         "element_id": None,
                         "element_name": None,
@@ -282,7 +282,7 @@ async def validate_requirement_set_against_model(
                 "passed": False,
                 "message": (
                     f"Result list truncated at {MAX_RESULTS_PER_REPORT} "
-                    f"entries — narrow the requirement set or pre-filter "
+                    f"entries - narrow the requirement set or pre-filter "
                     f"the model before re-running."
                 ),
                 "element_id": None,

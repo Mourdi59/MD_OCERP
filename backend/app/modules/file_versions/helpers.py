@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """Helpers for wiring upload paths into the version-chain service.
 
-Epic C — Document Versioning Unification (deep coordination)
+Epic C - Document Versioning Unification (deep coordination)
 ============================================================
 
 The version-chain key is ``(project_id, file_kind, canonical_name)``.
@@ -15,7 +15,7 @@ Rules
 -----
 * Whitespace is stripped (matches ``FileVersionService._canonicalize``).
 * Case is preserved so ``Plan.pdf`` and ``PLAN.PDF`` form distinct chains
-  — the file manager renders both literally and a forced-lowercase rule
+  - the file manager renders both literally and a forced-lowercase rule
   would silently merge them.
 * Sheets without a ``sheet_number`` fall back to a deterministic
   composite (``page-NN of source.pdf``) so a multi-page split still
@@ -23,7 +23,7 @@ Rules
 * Photos use ``filename``; BIM models use ``name``; documents use
   ``name``.
 
-The helper accepts either an ORM object (preferred — the upload path
+The helper accepts either an ORM object (preferred - the upload path
 just hands its freshly-created row over) or a raw ``str``. The raw
 form is useful in tests and in the CDE cross-link path where only the
 filename is known.
@@ -52,7 +52,7 @@ def canonical_name_for(file_kind: str, entity: Any) -> str:
 
     Returns:
         Canonical name (whitespace-stripped, case-preserving). Never
-        empty — falls back to ``"untitled"`` so the chain key always
+        empty - falls back to ``"untitled"`` so the chain key always
         has a non-trivial value.
 
     Raises:
@@ -70,7 +70,7 @@ def canonical_name_for(file_kind: str, entity: Any) -> str:
         return _strip(getattr(entity, "name", "") or "") or "untitled"
 
     if file_kind == "photo":
-        # ProjectPhoto.filename — the on-disk name, sanitized at upload.
+        # ProjectPhoto.filename - the on-disk name, sanitized at upload.
         return _strip(getattr(entity, "filename", "") or "") or "untitled"
 
     if file_kind == "sheet":

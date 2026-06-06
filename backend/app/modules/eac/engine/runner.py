@@ -11,7 +11,7 @@ The :func:`run_ruleset` coroutine is the top-level entry that the
 4. Persists an :class:`EacRun` row with summary metrics + per-element
    :class:`EacRunResultItem` rows for inspection.
 
-The runner intentionally lives next to the executor — the executor is
+The runner intentionally lives next to the executor - the executor is
 pure, the runner is the I/O envelope around it. Tests for the runner
 exercise the persistence path with an in-memory SQLite session.
 
@@ -55,7 +55,7 @@ logger = logging.getLogger(__name__)
 
 # Per-run cap on EacRunResultItem rows persisted into PostgreSQL.
 # Beyond this we set EacRun.summary_json["spilled_to_parquet"]=True and
-# stop inserting hot rows — Parquet spill is wired up in a separate
+# stop inserting hot rows - Parquet spill is wired up in a separate
 # follow-up (RFC 35 §1.6 "cold rows"). The cap protects the OLTP table
 # from a runaway 500k-element model.
 HOT_RESULT_ITEM_CAP = 100_000
@@ -89,14 +89,14 @@ async def dry_run_rule(
 ) -> ExecutionResult:
     """‌⁠‍Validate + execute ``rule_definition`` against ad-hoc ``elements``.
 
-    No persistence — used by the rule editor's "Test" panel and by
+    No persistence - used by the rule editor's "Test" panel and by
     ``POST /rules:dry-run``. Returns the executor's
     :class:`ExecutionResult` so callers can render per-element verdicts.
 
     Two validation passes run before execution:
 
-    1. **Pydantic shape check** — catches malformed payloads.
-    2. **Semantic validator** (``engine.validator.validate_rule``) —
+    1. **Pydantic shape check** - catches malformed payloads.
+    2. **Semantic validator** (``engine.validator.validate_rule``) -
        formula safe-eval AST, ``between`` ordering, ReDoS reject,
        local-var cycle detection, alias-existence (when a session is
        supplied). Skipped if no session is given so unit-test callers
@@ -111,7 +111,7 @@ async def dry_run_rule(
         raise ExecutionError(f"invalid rule definition: {exc}") from exc
 
     # Semantic validation (alias / formula / ReDoS / between-ordering).
-    # We only run it when a session is provided — pure unit tests pass
+    # We only run it when a session is provided - pure unit tests pass
     # ``session=None`` and rely on the executor's own per-step errors.
     if session is not None:
         from app.modules.eac.engine.validator import validate_rule as _validate
@@ -140,7 +140,7 @@ async def run_ruleset(
     :class:`EacRunResultItem` rows and returns the run record.
 
     The caller is responsible for resolving ``elements`` from whichever
-    source is appropriate — the canonical Parquet table, a BIMElement
+    source is appropriate - the canonical Parquet table, a BIMElement
     query, or a unit-test fixture. Decoupling that lookup from the
     runner keeps the persistence path testable without standing up a
     real model loader.
@@ -149,7 +149,7 @@ async def run_ruleset(
     if ruleset is None:
         raise ExecutionError(f"ruleset {ruleset_id} not found")
     if ruleset.tenant_id != tenant_id:
-        # Defence-in-depth — the router must already have authorised the
+        # Defence-in-depth - the router must already have authorised the
         # caller, but we re-check so worker-side runs can't be tricked
         # into touching another tenant's data.
         raise ExecutionError("ruleset/tenant mismatch")
@@ -180,7 +180,7 @@ async def run_ruleset(
 
     # Cooperative cancellation: imported lazily to avoid a hard import
     # cycle between runner -> api -> runner. The runner only needs the
-    # ``is_cancelled`` query — the registry write happens in service.cancel.
+    # ``is_cancelled`` query - the registry write happens in service.cancel.
     from app.modules.eac.engine.api import is_cancelled as _is_cancelled
 
     for rule in rules:
@@ -257,7 +257,7 @@ async def run_ruleset(
             persisted_rows += 1
 
         if spilled:
-            # Stop iterating the rest of the rules for this run — once
+            # Stop iterating the rest of the rules for this run - once
             # the hot table is full there is nothing useful we can store
             # without the Parquet spool path. The summary records the
             # spill so the UI can warn the user.
@@ -407,7 +407,7 @@ def bim_element_to_canonical(row: Any) -> dict[str, Any]:
     """Project a :class:`BIMElement` ORM row into the executor's canonical shape.
 
     Kept here (rather than on the BIMElement model) because the canonical
-    contract is owned by EAC — every other consumer should go through
+    contract is owned by EAC - every other consumer should go through
     this function so the field-name mapping has exactly one source of
     truth.
     """

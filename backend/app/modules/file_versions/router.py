@@ -4,10 +4,10 @@
 
 Endpoints (auto-mounted at ``/api/v1/file-versions/``):
 
-    GET    /                          — list versions for a file (chain)
-    GET    /{version_id}/             — single version detail
-    POST   /                          — register a new version
-    POST   /{version_id}/restore/     — promote a historical version
+    GET    /                          - list versions for a file (chain)
+    GET    /{version_id}/             - single version detail
+    POST   /                          - register a new version
+    POST   /{version_id}/restore/     - promote a historical version
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ async def list_versions(
 
     Looks up the file's chain by row id; the service walks the chain
     via the matching ``(project_id, file_kind, canonical_name)`` so
-    every historical row participates — not just rows that share the
+    every historical row participates - not just rows that share the
     incoming ``file_id``.
     """
     if kind not in FILE_KINDS:

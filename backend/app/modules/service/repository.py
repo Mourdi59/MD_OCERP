@@ -1,7 +1,7 @@
 """‌⁠‍Data access layer for the Service & Maintenance module.
 
 One repository class per entity. Each class is a thin async-SQLAlchemy wrapper
-that the service layer composes. Kept deliberately dumb — no business logic.
+that the service layer composes. Kept deliberately dumb - no business logic.
 """
 
 from __future__ import annotations

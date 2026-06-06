@@ -1,4 +1,4 @@
-"""‌⁠‍Requirement vector adapter​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ — feeds the ``oe_requirements`` collection.
+"""‌⁠‍Requirement vector adapter​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ - feeds the ``oe_requirements`` collection.
 
 Each :class:`~app.modules.requirements.models.Requirement` row is
 embedded as the EAC triplet (entity / attribute / constraint) plus the
@@ -10,13 +10,13 @@ Why this matters
 ================
 
 Requirements are the bridge between client intent and the executed
-project — semantically searching them lets the AI advisor answer
+project - semantically searching them lets the AI advisor answer
 questions like *"are there any requirements about fire-rating on
 exterior walls?"* and the global Cmd+Shift+K modal lets estimators find
 the original constraint a BOQ position is meant to satisfy.
 
 The same adapter is also reused by the cross-module "Similar items"
-panel — when a user opens a requirement detail, they get a one-click
+panel - when a user opens a requirement detail, they get a one-click
 list of related requirements pulled from past projects.
 
 Implements the :class:`~app.core.vector_index.EmbeddingAdapter` protocol.
@@ -40,7 +40,7 @@ class RequirementVectorAdapter:
         """‌⁠‍Build the canonical text that gets embedded.
 
         Concatenates the EAC triplet, unit, category, priority, status
-        and free-form notes — all the textual fields the user might
+        and free-form notes - all the textual fields the user might
         plausibly search by.  Format is " | "-separated key=value pairs
         which the multilingual model handles well.
         """
@@ -63,7 +63,7 @@ class RequirementVectorAdapter:
         if row.status:
             parts.append(f"status={row.status}")
         if row.notes:
-            # Notes are free-form prose — kept verbatim because that's
+            # Notes are free-form prose - kept verbatim because that's
             # often where the most semantically rich content lives.
             parts.append(row.notes.strip())
         # Embed a sample of pinned BIM element ids so semantic search
@@ -104,7 +104,7 @@ class RequirementVectorAdapter:
         """Resolve the owning project id via the parent RequirementSet.
 
         Returns ``None`` if the requirement isn't attached to a set yet
-        (should never happen in practice — defensive coding).
+        (should never happen in practice - defensive coding).
         """
         rs = getattr(row, "requirement_set", None)
         if rs is not None and getattr(rs, "project_id", None):
@@ -112,5 +112,5 @@ class RequirementVectorAdapter:
         return None
 
 
-# Singleton instance — adapters are stateless so one shared object is fine.
+# Singleton instance - adapters are stateless so one shared object is fine.
 requirement_vector_adapter = RequirementVectorAdapter()

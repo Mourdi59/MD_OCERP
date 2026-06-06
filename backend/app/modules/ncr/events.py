@@ -18,7 +18,7 @@ Subscriptions:
 
 * ``ncr.closed_with_cost_impact`` → publish ``moc.candidate_from_ncr`` so
   the MoC module (or any subscriber) can auto-propose a Management-of-
-  Change entry for scope-affecting NCRs. Cheap fan-out — no DB write here.
+  Change entry for scope-affecting NCRs. Cheap fan-out - no DB write here.
 
 All handlers are fail-soft: any exception is swallowed at debug. Cross-
 session writes are SQLite-deadlock-gated via :func:`_can_open_isolated_session`.
@@ -72,7 +72,7 @@ _FINDING_SEVERITY_TO_NCR_SEVERITY = {
 async def _on_qms_finding_raised(event: Event) -> None:
     """``qms.audit.finding_raised`` → mirror as an NCR row.
 
-    Only major / minor non-conformances are mirrored — observations and
+    Only major / minor non-conformances are mirrored - observations and
     improvement opportunities are kept inside QMS to avoid noise on the
     NCR dashboard. Idempotent on ``source_finding_id``.
     """
@@ -95,7 +95,7 @@ async def _on_qms_finding_raised(event: Event) -> None:
 
     try:
         async with async_session_factory() as session:
-            # Idempotency — check for an existing NCR with this finding marker.
+            # Idempotency - check for an existing NCR with this finding marker.
             stmt = select(NCR).where(NCR.project_id == project_id)
             existing = (await session.execute(stmt)).scalars().all()
             finding_id_s = str(finding_id)
@@ -159,7 +159,7 @@ async def _on_clash_high_severity(event: Event) -> None:
     A high-severity clash is a coordination finding; a *critical* one (or a
     reviewer who confirms a clash) is a formal non-conformance that belongs
     in the NCR workflow. We therefore only materialise an NCR when the
-    severity is ``critical`` or the trigger is ``confirmed`` — routine high
+    severity is ``critical`` or the trigger is ``confirmed`` - routine high
     clashes stay on the clash board (and become a punch item via the
     punchlist bridge) to avoid NCR-dashboard noise.
 
@@ -187,7 +187,7 @@ async def _on_clash_high_severity(event: Event) -> None:
     result_id_s = str(result_id)
     try:
         async with async_session_factory() as session:
-            # Idempotency — bail if an NCR already links this clash.
+            # Idempotency - bail if an NCR already links this clash.
             existing = (
                 await session.execute(
                     select(NCR.id).where(
@@ -295,7 +295,7 @@ async def _on_validation_errors_found(event: Event) -> None:
     report_id_s = str(report_id)
     try:
         async with async_session_factory() as session:
-            # Idempotency — bail if an NCR already links this validation report.
+            # Idempotency - bail if an NCR already links this validation report.
             # Match metadata in Python (as the QMS bridge does) rather than via a
             # JSONB path operator, so the check never depends on column-type quirks.
             existing_rows = (await session.execute(select(NCR).where(NCR.project_id == project_id))).scalars().all()

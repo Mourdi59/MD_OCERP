@@ -1,4 +1,4 @@
-"""‌⁠‍Requirements & Quality Gates service​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ — business logic.
+"""‌⁠‍Requirements & Quality Gates service​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ - business logic.
 
 Stateless service layer. Handles:
 - RequirementSet and Requirement CRUD
@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 
 async def _safe_publish(name: str, data: dict[str, Any]) -> None:
-    """‌⁠‍Best-effort event publish — never raises into the calling path.
+    """‌⁠‍Best-effort event publish - never raises into the calling path.
 
     The vector indexer in :mod:`app.modules.requirements.events` and any
     future cross-module subscriber consume the events emitted here.
@@ -199,7 +199,7 @@ class RequirementsService:
         """Delete every requirement whose id is in the list.
 
         Ids that do not exist or belong to a different set are
-        silently skipped — but the count is reported so callers can
+        silently skipped - but the count is reported so callers can
         flag a "you asked for 100, we deleted 87" mismatch in the UI.
 
         Runs as a single transaction so a partial delete never leaks
@@ -436,7 +436,7 @@ class RequirementsService:
         Stores the array under ``metadata_["bim_element_ids"]`` so we
         don't need a schema migration just for this link type.  By
         default the new ids are **merged** with whatever was there
-        previously (additive linking — no accidental data loss).  Pass
+        previously (additive linking - no accidental data loss).  Pass
         ``replace=True`` to overwrite the array entirely.
 
         After mutation we publish ``requirements.requirement.linked_bim``
@@ -452,7 +452,7 @@ class RequirementsService:
                 detail="Requirement not found",
             )
 
-        # Normalise + deduplicate the incoming ids — accept anything that
+        # Normalise + deduplicate the incoming ids - accept anything that
         # round-trips through str(uuid) so the caller doesn't have to
         # pre-coerce.
         clean_ids: list[str] = []
@@ -520,13 +520,13 @@ class RequirementsService:
 
         Dialect-aware:
 
-        * **PostgreSQL** — uses the JSONB ``@>`` containment operator
+        * **PostgreSQL** - uses the JSONB ``@>`` containment operator
           at the SQL level so the database does the filtering and we
           only ship matching rows over the wire.  This is O(matching)
           instead of O(all-in-project), with a btree-style speedup
           when ``metadata_`` has a GIN index (which the v1.4.7
           migration adds).
-        * **SQLite (and any other dialect without JSONB)** — falls
+        * **SQLite (and any other dialect without JSONB)** - falls
           back to the previous Python-side scan since SQLite has no
           portable JSON-array-contains operator we can rely on across
           versions.
@@ -584,10 +584,10 @@ class RequirementsService:
         Gates form an ordered pipeline; each gate may only run once all
         lower-numbered gates have been evaluated without a hard ``fail``:
 
-            1 — Completeness: all requirements have entity+attribute+constraint
-            2 — Consistency: no conflicting constraints for same entity+attribute
-            3 — Coverage: requirements cover BOQ positions (linked_position_id)
-            4 — Compliance: requirements align with project standard
+            1 - Completeness: all requirements have entity+attribute+constraint
+            2 - Consistency: no conflicting constraints for same entity+attribute
+            3 - Coverage: requirements cover BOQ positions (linked_position_id)
+            4 - Compliance: requirements align with project standard
 
         Raises:
             HTTPException 400: gate_number outside 1-4.
@@ -608,7 +608,7 @@ class RequirementsService:
         # prerequisites have been evaluated produces a meaningless verdict
         # (e.g. "Compliance: pass" on a structurally-incomplete set).  Gate
         # N may only run once gates 1..N-1 have each been executed AND none
-        # of them ended in a hard ``fail`` — a failing upstream gate must be
+        # of them ended in a hard ``fail`` - a failing upstream gate must be
         # resolved (and re-run to a pass/warning) before the pipeline can
         # advance.  This is enforced at the service layer so every caller
         # (router, SDK, future schedulers) inherits the guard.
@@ -854,16 +854,16 @@ class RequirementsService:
 
         Combines two layers of checks:
 
-        1. **Structural** — must-priority requirements have a unit,
+        1. **Structural** - must-priority requirements have a unit,
            ``range`` values match ``min-max``, ``min``/``max`` values
            are numeric. Cheap and standard-agnostic.
-        2. **Standard-specific** — when a requirement has a
+        2. **Standard-specific** - when a requirement has a
            ``classification`` entry under its ``metadata_`` (DIN 276
            Kostengruppe, MasterFormat division, NRM element), it is
            cross-checked against the rule registry's known cost-group /
            element / division codes for the project's standard. A code
            that exists locally but is not in the standard's allowlist
-           is flagged as an *unknown_code* finding (not an error — the
+           is flagged as an *unknown_code* finding (not an error - the
            project may legitimately use a custom local code).
         """
         findings: list[dict[str, Any]] = []
@@ -880,11 +880,11 @@ class RequirementsService:
 
             project_row = self.session.sync_session.get(Project, req_set.project_id)  # type: ignore[attr-defined]
             project_standard = (getattr(project_row, "classification_standard", "") or "").lower()
-        except Exception:  # noqa: BLE001 — best-effort lookup
+        except Exception:  # noqa: BLE001 - best-effort lookup
             project_standard = ""
 
         # Reasonable allow-lists per standard (subset that covers the
-        # 80% common case — the validation engine has the exhaustive
+        # 80% common case - the validation engine has the exhaustive
         # registry; here we only need a sanity check at gate time).
         _DIN276_PREFIXES = {"1", "2", "3", "4", "5", "6", "7", "8"}
         _NRM_PREFIXES = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
@@ -949,7 +949,7 @@ class RequirementsService:
                     )
 
             # Standard-specific classification sanity check. The code
-            # lives under ``metadata_["classification"][<standard>]`` —
+            # lives under ``metadata_["classification"][<standard>]`` -
             # an unknown prefix is reported as INFO so the gate doesn't
             # fail a legitimately custom code; the issue is still
             # surfaced so reviewers can choose to map it.

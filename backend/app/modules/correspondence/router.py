@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 # On-disk storage for correspondence attachments. Path layout mirrors
 # punchlist (``uploads/<module>/<bucket>/``) so the prod backup script
-# already picks it up. The directory is created lazily on first upload —
+# already picks it up. The directory is created lazily on first upload -
 # fresh installs that never use the feature don't need to ship the dir.
 ATTACHMENTS_DIR = Path("uploads/correspondence/attachments")
 
@@ -225,7 +225,7 @@ async def upload_attachment(
     ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
     ext = Path(file.filename or "attachment.bin").suffix or ".bin"
     # Strip any path separators that survived in the suffix (defence in
-    # depth — Path.suffix already returns at most one segment).
+    # depth - Path.suffix already returns at most one segment).
     ext = ext.replace("/", "").replace("\\", "")
     safe_name = f"{correspondence_id}_{uuid.uuid4().hex[:8]}{ext}"
     filepath = ATTACHMENTS_DIR / safe_name
@@ -239,7 +239,7 @@ async def upload_attachment(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to save attachment — storage error",
+            detail="Unable to save attachment - storage error",
         ) from exc
 
     relative_path = f"correspondence/attachments/{safe_name}"
@@ -255,7 +255,7 @@ _UPLOADS_BASE = Path("uploads")
 
 # Media types we are willing to hand back, keyed by stored extension. Anything
 # not in this map is served as ``application/octet-stream`` so the browser
-# downloads rather than renders it — defence in depth against an HTML/SVG
+# downloads rather than renders it - defence in depth against an HTML/SVG
 # payload that slipped past the upload magic-byte gate.
 _DOWNLOAD_MEDIA_TYPES = {
     ".pdf": "application/pdf",
@@ -298,7 +298,7 @@ async def download_attachment(
     file_path = (_UPLOADS_BASE / relative_path).resolve()
     uploads_base = _UPLOADS_BASE.resolve()
 
-    # Path-traversal / symlink guard — the stored path is trusted (we derived
+    # Path-traversal / symlink guard - the stored path is trusted (we derived
     # it), but resolve-then-relative_to is cheap insurance against a poisoned
     # row or a future code path that stores a client-influenced value.
     try:

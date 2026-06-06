@@ -1,8 +1,8 @@
 """‌⁠‍Enterprise Workflows ORM models.
 
 Tables:
-    oe_workflows_approval  — configurable approval workflow definitions
-    oe_workflows_request   — individual approval requests against workflows
+    oe_workflows_approval  - configurable approval workflow definitions
+    oe_workflows_request   - individual approval requests against workflows
 """
 
 import uuid

@@ -1,5 +1,5 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""Geo Hub Pydantic schemas — request / response models."""
+"""Geo Hub Pydantic schemas - request / response models."""
 
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ class GeoAnchorCreate(BaseModel):
     epsg_code: int = Field(default=4326, gt=0, le=999999)
     region_code: str | None = Field(default=None, pattern=_REGION_CODE_PATTERN)
     address: str | None = Field(default=None, max_length=500)
-    # Horizontal accuracy in metres. Hard upper bound at 10 km — anything
+    # Horizontal accuracy in metres. Hard upper bound at 10 km - anything
     # coarser than that is "country-level" precision and should be
     # represented via the precision metadata on the GeoAnchor, not a
     # numeric uncertainty disc on the map (which Cesium would draw as
@@ -82,7 +82,7 @@ class GeoAnchorUpdate(BaseModel):
     epsg_code: int | None = Field(default=None, gt=0, le=999999)
     region_code: str | None = Field(default=None, pattern=_REGION_CODE_PATTERN)
     address: str | None = Field(default=None, max_length=500)
-    # Horizontal accuracy in metres. Hard upper bound at 10 km — anything
+    # Horizontal accuracy in metres. Hard upper bound at 10 km - anything
     # coarser than that is "country-level" precision and should be
     # represented via the precision metadata on the GeoAnchor, not a
     # numeric uncertainty disc on the map (which Cesium would draw as
@@ -125,7 +125,7 @@ class GeoAnchorResponse(BaseModel):
 
 class TilesetCreate(BaseModel):
     """Create a Tileset record (usually populated by the job, not the
-    user — but exposing it is handy for tests and re-registrations)."""
+    user - but exposing it is handy for tests and re-registrations)."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -442,7 +442,7 @@ def _check_corners(v: list[Any]) -> list[Any]:
 
 
 def _check_crop_polygon(v: dict[str, Any] | None) -> dict[str, Any] | None:
-    """Light GeoJSON Polygon shape check — defers full validation to client."""
+    """Light GeoJSON Polygon shape check - defers full validation to client."""
     if v is None:
         return None
     if not isinstance(v, dict):
@@ -494,7 +494,7 @@ class GeoRasterOverlayCreate(BaseModel):
 
 
 class GeoRasterOverlayUpdate(BaseModel):
-    """Partial update — corners, opacity, crop polygon, visibility."""
+    """Partial update - corners, opacity, crop polygon, visibility."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -630,7 +630,7 @@ class PunchlistPinResponse(BaseModel):
 class AnchoredProjectResponse(BaseModel):
     """A single locatable project for the Global map's project-pin layer.
 
-    Returned by ``GET /api/v1/geo-hub/projects`` — projects the caller can
+    Returned by ``GET /api/v1/geo-hub/projects`` - projects the caller can
     access that have a location, either a registered ``GeoAnchor`` OR
     ``lat``/``lng`` coordinates on their address. Used by the global Geo
     Hub to drop a pin per project on the earth-scale view (no tilesets at
@@ -657,7 +657,7 @@ class AnchoredProjectResponse(BaseModel):
     project_type: str | None = None
     status: str | None = None
     # Free-text project address as captured on the project (NOT the
-    # geocoded display name on the anchor) — the frontend compares this
+    # geocoded display name on the anchor) - the frontend compares this
     # against ``address`` to surface a drift indicator when the user
     # edited the address after the first geocode.
     project_address_text: str | None = None
@@ -716,7 +716,7 @@ class BulkAnchorFromAddressResponse(BaseModel):
 class GeocodeSuggestionResponse(BaseModel):
     """A single Nominatim search hit for the autocomplete dropdown.
 
-    Returned by ``GET /api/v1/geo-hub/geocode/suggest`` — projected from
+    Returned by ``GET /api/v1/geo-hub/geocode/suggest`` - projected from
     the upstream Nominatim payload so the frontend can render a country
     flag + display name + lat/lon preview without parsing the raw OSM
     response.
@@ -745,7 +745,7 @@ class GeocodeSuggestResponse(BaseModel):
     query: str
     suggestions: list[GeocodeSuggestionResponse] = Field(default_factory=list)
     # ``true`` when the geocoder is disabled via env (operator opt-out
-    # or sanctioned region) — the frontend uses this to switch from
+    # or sanctioned region) - the frontend uses this to switch from
     # "no matches" to "service disabled" copy.
     geocoder_disabled: bool = False
 

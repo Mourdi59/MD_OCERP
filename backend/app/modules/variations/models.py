@@ -98,9 +98,9 @@ class VariationRequest(Base):
     # NEC4 60-65). Free string so unsupported standards still record.
     contract_standard: Mapped[str] = mapped_column(String(20), nullable=False, default="", server_default="")
     contract_clause_ref: Mapped[str] = mapped_column(String(60), nullable=False, default="", server_default="")
-    # NEC4 Cl. 62.3 — Contractor's quotation deadline (8 weeks default).
+    # NEC4 Cl. 62.3 - Contractor's quotation deadline (8 weeks default).
     quotation_due_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    # NEC4 Cl. 62.5 — Project Manager's assessment deadline (4 weeks
+    # NEC4 Cl. 62.5 - Project Manager's assessment deadline (4 weeks
     # after quotation submitted).
     assessment_due_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
@@ -116,7 +116,7 @@ class VariationRequest(Base):
 
 
 class VariationOrder(Base):
-    """Issued variation order — the formal contract-changing document."""
+    """Issued variation order - the formal contract-changing document."""
 
     __tablename__ = "oe_variations_order"
     __table_args__ = (UniqueConstraint("project_id", "code", name="uq_oe_variations_order_project_code"),)
@@ -143,7 +143,7 @@ class VariationOrder(Base):
     status: Mapped[str] = mapped_column(String(40), nullable=False, default="issued", index=True)
     # Soft link (plain UUID, no DB FK to oe_changeorders_*)
     reference_change_order_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
-    # Plain UUID soft link to oe_contracts.contract — set when VO bumps a
+    # Plain UUID soft link to oe_contracts.contract - set when VO bumps a
     # contract's total_value. NO DB FK across modules.
     affected_contract_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     # Contract standard + sub-clause reference (carried through from VR
@@ -265,7 +265,7 @@ class SiteMeasurement(Base):
 class DayworkSheet(Base):
     """Daywork sheet -- time-and-material work outside scope.
 
-    BS 6079-1:2019 §6.4.2 — daywork accounting separates labour / plant /
+    BS 6079-1:2019 §6.4.2 - daywork accounting separates labour / plant /
     material with a markup applied for overheads + profit. The
     ``markup_percent`` column stores that markup (typically 10–25%); when
     set, ``total_amount`` includes the markup and ``subtotal_amount``
@@ -375,7 +375,7 @@ class DisruptionClaim(Base):
     decision_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     decided_amount: Mapped[Decimal | None] = mapped_column(MoneyType(), nullable=True)
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    # AICPA measured-mile fields — units per hour at baseline vs impacted.
+    # AICPA measured-mile fields - units per hour at baseline vs impacted.
     baseline_productivity: Mapped[Decimal | None] = mapped_column(MoneyType(scale=6), nullable=True)
     impacted_productivity: Mapped[Decimal | None] = mapped_column(MoneyType(scale=6), nullable=True)
     unit_of_measure: Mapped[str] = mapped_column(String(30), nullable=False, default="", server_default="")
@@ -417,7 +417,7 @@ class ExtensionOfTimeClaim(Base):
     # Affected schedule-activity (string ref so we don't FK across module
     # boundary). Either a UUID-string of oe_tasks_task or a free name.
     affected_activity_ref: Mapped[str] = mapped_column(String(255), nullable=False, default="", server_default="")
-    # TIA result — days the project completion is forecast to slip.
+    # TIA result - days the project completion is forecast to slip.
     tia_delta_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tia_computed_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
 

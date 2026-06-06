@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍BIM source adapter — reads ``oe_bim_element`` for the match-elements module.
+"""‌⁠‍BIM source adapter - reads ``oe_bim_element`` for the match-elements module.
 
 The adapter joins through ``oe_bim_model`` to scope by project, returning
 ``SourceElement`` records that carry both the raw and net quantities the
@@ -15,7 +15,7 @@ Net-quantity logic for Phase A:
     * ``length_m`` and ``count`` always pass through unchanged.
 
 The DDC cad2data converters store opening info under the ``properties``
-JSON keys above; older imports without those keys degrade gracefully —
+JSON keys above; older imports without those keys degrade gracefully -
 gross == net.
 """
 
@@ -47,7 +47,7 @@ _GROUP_BY_KEY_ORDER = (
 # Hard cap on elements pulled per session. A 100k-element model would
 # otherwise materialize the whole BIMElement table in memory before the
 # service even starts grouping. The Python-side filter below still
-# evaluates per row, so the cap is "the first N matching rows" — paired
+# evaluates per row, so the cap is "the first N matching rows" - paired
 # with element_count desc grouping, the cap rarely matters in practice
 # but protects against OOM on pathological imports.
 _MAX_ELEMENTS_PER_SESSION = 200_000
@@ -89,7 +89,7 @@ def _read_attr(element: BIMElement, key: str) -> Any:
     props = element.properties or {}
     if key in props:
         return props.get(key)
-    # Fall back to a case-insensitive scan — Revit family params arrive
+    # Fall back to a case-insensitive scan - Revit family params arrive
     # with various capitalisations.
     key_lower = key.lower()
     for k, v in props.items():
@@ -264,7 +264,7 @@ class BIMSourceAdapter:
                 if skip:
                     continue
 
-            # Build the unified attributes dict — group-by reads from this.
+            # Build the unified attributes dict - group-by reads from this.
             attrs: dict[str, Any] = {
                 "ifc_class": elem.element_type,
                 "category": elem.element_type,
@@ -273,7 +273,7 @@ class BIMSourceAdapter:
                 "name": elem.name,
                 "type_name": _read_attr(elem, "type_name"),
             }
-            # Pass through every property key — group-by can target any of them.
+            # Pass through every property key - group-by can target any of them.
             attrs.update(props)
 
             # Revit (RVT) elements arrive with a native OST category name
@@ -281,7 +281,7 @@ class BIMSourceAdapter:
             # IFC class. Crosswalk it so ``ifc_class`` carries a canonical
             # ``IfcXxx`` the label table + Qdrant hard filter understand,
             # while keeping the original Revit category for the soft boost.
-            # Genuine IFC inputs already start with "Ifc" — they pass
+            # Genuine IFC inputs already start with "Ifc" - they pass
             # through unchanged and gain no extra keys, so an IFC model's
             # attrs stay byte-for-byte identical to before.
             raw_category = elem.element_type

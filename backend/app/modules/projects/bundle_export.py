@@ -1,16 +1,16 @@
 """‌⁠‍Project-bundle export (Issue #109).
 
-Generates a ``.ocep`` zip — *OpenConstructionERP Project* — for a single
+Generates a ``.ocep`` zip - *OpenConstructionERP Project* - for a single
 project. Supports split-scope bundles so users with large BIM/DWG attachments
 can email the metadata-only zip while sharing geometry separately:
 
-* ``metadata_only`` — DB rows only (projects, BOQ, schedule, risks, …)
-* ``documents``     — metadata + Document/Photo/Sheet rows and their files
-* ``bim``           — metadata-of-bim + every BIMModel.canonical_file_path file
-                      (BIMElement rows are off by default — they can balloon
+* ``metadata_only`` - DB rows only (projects, BOQ, schedule, risks, …)
+* ``documents``     - metadata + Document/Photo/Sheet rows and their files
+* ``bim``           - metadata-of-bim + every BIMModel.canonical_file_path file
+                      (BIMElement rows are off by default - they can balloon
                       to 50k+ rows; user toggle covers them)
-* ``dwg``           — metadata + DwgDrawing rows + their .dwg/.dxf files
-* ``full``          — every attachment kind in one bundle
+* ``dwg``           - metadata + DwgDrawing rows + their .dwg/.dxf files
+* ``full``          - every attachment kind in one bundle
 
 Bundle layout (POSIX paths, always forward-slash):
 
@@ -69,7 +69,7 @@ ENGINE_VERSION = "2.9.4"
 # Listed in FK-dependency order so that import inserts parents before
 # children. Each entry: (key, module_path, class_name, optional flag).
 # The "optional" flag means we silently skip the table if its module is
-# not loaded — keeps the bundle viable when the user has disabled a
+# not loaded - keeps the bundle viable when the user has disabled a
 # regional / heavy module.
 
 _BUNDLE_TABLES_CORE: list[tuple[str, str, str, bool]] = [
@@ -421,7 +421,7 @@ async def _collect_attachment_paths(
     ``opts`` says should be in the bundle.
 
     Missing-on-disk paths are silently skipped so a half-cleaned-up project
-    still exports successfully — we'd rather lose a file than the whole
+    still exports successfully - we'd rather lose a file than the whole
     bundle.
     """
     out: list[tuple[str, str]] = []
@@ -527,7 +527,7 @@ async def export_bundle(
 ) -> bytes:
     """Build the .ocep zip for one project and return its bytes.
 
-    For projects with multi-GB attachments callers should split scope —
+    For projects with multi-GB attachments callers should split scope -
     e.g. ship metadata_only over email, then bim separately.
     """
     opts = _options_from_scope(options)
@@ -549,7 +549,7 @@ async def export_bundle(
             table_data[key] = rows
         record_counts[key] = len(rows)
 
-    # 2. Collect attachments (paths only — we hash + read inside the zip
+    # 2. Collect attachments (paths only - we hash + read inside the zip
     # writer so streaming-friendly memory profile).
     attachments = await _collect_attachment_paths(session, project_id, opts)
 
@@ -644,7 +644,7 @@ async def preview_bundle(
     for key, mod, cls, _opt in all_tables:
         rows = await _rows_for_table(session, project_id, key, mod, cls)
         counts[key] = len(rows)
-        # Quick row-size estimate — JSON tends to be ~120 bytes/row median;
+        # Quick row-size estimate - JSON tends to be ~120 bytes/row median;
         # we sample the first row to get a closer figure.
         if rows:
             sample = json.dumps(rows[0], default=str).encode("utf-8")
@@ -683,7 +683,7 @@ def _readme_md(manifest: BundleManifest, attachment_count: int) -> str:
         "",
         "## How to open",
         "",
-        "1. Install OpenConstructionERP — `pip install openconstructionerp` or download from openconstructionerp.com.",
+        "1. Install OpenConstructionERP - `pip install openconstructionerp` or download from openconstructionerp.com.",
         "2. Run `openestimate serve` and sign in.",
         "3. Use **Files → Import project bundle** and select this `.ocep` file.",
         "",

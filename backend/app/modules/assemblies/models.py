@@ -1,10 +1,10 @@
 """‌⁠‍Assembly ORM models.
 
 Tables:
-    oe_assemblies_assembly — composite cost items (calculations / recipes)
-    oe_assemblies_component — individual line items within an assembly
-    oe_assemblies_template  — platform-wide canonical templates (v3.13.0
-        Assembly Library) — read-only, catalogue-agnostic recipes that
+    oe_assemblies_assembly - composite cost items (calculations / recipes)
+    oe_assemblies_component - individual line items within an assembly
+    oe_assemblies_template  - platform-wide canonical templates (v3.13.0
+        Assembly Library) - read-only, catalogue-agnostic recipes that
         match against the project's bound cost catalogue at apply time.
 """
 
@@ -66,11 +66,11 @@ class Assembly(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Assembly {self.code} — {self.name[:40]}>"
+        return f"<Assembly {self.code} - {self.name[:40]}>"
 
 
 class Component(Base):
-    """‌⁠‍A single line item within an assembly — links to a cost database entry."""
+    """‌⁠‍A single line item within an assembly - links to a cost database entry."""
 
     __tablename__ = "oe_assemblies_component"
 
@@ -96,7 +96,7 @@ class Component(Base):
     description: Mapped[str] = mapped_column(String(500), nullable=False)
     # First-class resource_type ("material" / "labor" / "equipment" /
     # "operator" / "subcontractor" / "overhead"). Promoted from metadata
-    # in v2940 — see migration for back-fill rules. Nullable because
+    # in v2940 - see migration for back-fill rules. Nullable because
     # legacy rows may still be untyped until a user revisits them.
     resource_type: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     factor: Mapped[str] = mapped_column(String(50), nullable=False, default="1.0")
@@ -123,7 +123,7 @@ class Component(Base):
 class AssemblyTemplate(Base):
     """A canonical, platform-wide assembly template (Assembly Library, v3.13.0).
 
-    Templates are read-only for end users — they are the starting points
+    Templates are read-only for end users - they are the starting points
     estimators clone or apply to a BOQ. Each component is defined by a
     catalogue-agnostic ``cost_match_query`` (free text such as
     "concrete C30/37 ready-mix") that the apply endpoint resolves against
@@ -134,7 +134,7 @@ class AssemblyTemplate(Base):
     Columns
     -------
     name
-        Canonical English name. Unique — the seeder upserts by this key.
+        Canonical English name. Unique - the seeder upserts by this key.
     name_translations
         JSON dict ``{lang: localised_name}``. The first slice ships DE +
         RU + ES; more languages join in subsequent slices.
@@ -148,7 +148,7 @@ class AssemblyTemplate(Base):
         JSON list of component dicts. See ``templates_seed`` for the
         contract.
     classification
-        JSON ``{"din276": "...", "masterformat": "..."}`` — the recipe's
+        JSON ``{"din276": "...", "masterformat": "..."}`` - the recipe's
         cost-classification anchor used by the BOQ side for grouping
         and validation.
     tags

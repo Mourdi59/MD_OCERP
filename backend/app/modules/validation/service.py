@@ -137,7 +137,7 @@ class ValidationModuleService:
         await self.repo.create(db_report)
 
         # Publish a standardized event so the vector indexer (and any
-        # future cross-module subscriber) can react.  Best-effort —
+        # future cross-module subscriber) can react.  Best-effort -
         # publish failures must never break a successful validation run.
         try:
             from app.core.events import event_bus

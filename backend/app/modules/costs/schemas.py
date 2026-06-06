@@ -25,7 +25,7 @@ DecimalMoney = Annotated[
 
 logger = logging.getLogger(__name__)
 
-# Canonical CWICR region shape — ``<2-3 letter country>_<UPPERCASE city>``.
+# Canonical CWICR region shape - ``<2-3 letter country>_<UPPERCASE city>``.
 # Anything else is junk / a typo and we log a warning rather than silently
 # resolving it to EUR.
 _REGION_FORMAT_RE = re.compile(r"^[A-Z]{2,3}_[A-Z0-9]+$")
@@ -141,7 +141,7 @@ class CostItemResponse(BaseModel):
     # Round-7: money serialised as string. CostItem.rate is stored as
     # String(50) in the model (SQLite Decimal compat), so we accept any
     # numeric-coercible value at validate time and emit a string in
-    # responses — JSON clients then parse with their own BigDecimal /
+    # responses - JSON clients then parse with their own BigDecimal /
     # Decimal libraries without going through float.
     rate: DecimalMoney
     currency: str
@@ -166,7 +166,7 @@ class CostItemResponse(BaseModel):
         surface the right ISO 4217 code without a backfill migration.
 
         Logs a warning when the region is malformed or unknown so the
-        offending row can be tracked down — the route handler picks the
+        offending row can be tracked down - the route handler picks the
         same warning up via ``_resolve_currency()`` to surface it on the
         API response for the FE toast.
         """
@@ -180,13 +180,13 @@ class CostItemResponse(BaseModel):
             else:
                 mapped = _REGION_CURRENCY_FALLBACK.get(normalized)
                 if mapped:
-                    # Bypass strict-frozen guard via __dict__ — the model is
+                    # Bypass strict-frozen guard via __dict__ - the model is
                     # mutable by default, but we go direct to skip any future
                     # ConfigDict(frozen=True) regression.
                     self.__dict__["currency"] = mapped
                 else:
                     logger.warning(
-                        "Unknown region %r — no entry in _REGION_CURRENCY_FALLBACK; currency falls back to EUR.",
+                        "Unknown region %r - no entry in _REGION_CURRENCY_FALLBACK; currency falls back to EUR.",
                         normalized,
                     )
         return self
@@ -210,7 +210,7 @@ class CostAutocompleteItem(BaseModel):
     description: str
     unit: str
     rate: DecimalMoney
-    # ISO 4217 currency. Non-optional for the frontend's apply path —
+    # ISO 4217 currency. Non-optional for the frontend's apply path -
     # callers stamp it onto the BOQ resource entry so each rate keeps its
     # native currency instead of silently coercing to the BOQ base.
     currency: str = "EUR"
@@ -228,7 +228,7 @@ class CostAutocompleteItem(BaseModel):
             "source row carries CWICR's ``cost_of_working_hours`` / "
             "``total_value_machinery_equipment`` / "
             "``total_material_cost_per_position`` columns. Absent when the "
-            "row has no breakdown — the tooltip then hides the breakdown "
+            "row has no breakdown - the tooltip then hides the breakdown "
             "section gracefully."
         ),
     )
@@ -252,7 +252,7 @@ class CostSearchQuery(BaseModel):
     q: str | None = Field(
         default=None,
         description=(
-            "Free-text search — matches substring (ILIKE) against code OR "
+            "Free-text search - matches substring (ILIKE) against code OR "
             "description. Canonical param. Aliases ``search`` and ``query`` "
             "are silently mapped to this at the API boundary."
         ),
@@ -314,7 +314,7 @@ class CostSearchPaginatedResponse(BaseModel):
     Backwards compatibility:
         - When the caller does NOT send ``cursor``, ``total`` is populated
           (cached for 30s by the router) so existing clients keep working.
-        - When the caller DOES send ``cursor``, ``total`` is ``None`` —
+        - When the caller DOES send ``cursor``, ``total`` is ``None`` -
           counting on every page is wasteful and the frontend doesn't
           need it after the first page.
         - ``next_cursor`` is ``None`` on the last page.
@@ -331,7 +331,7 @@ class CostSearchPaginatedResponse(BaseModel):
     )
     total: int | None = Field(
         default=None,
-        description="Total row count — only populated on the FIRST page (no cursor).",
+        description="Total row count - only populated on the FIRST page (no cursor).",
     )
     limit: int
     offset: int
@@ -351,7 +351,7 @@ class CategoryTreeNode(BaseModel):
         description=(
             "Classification segment name. Use the sentinel "
             "'__unspecified__' when the source row has a NULL/empty value "
-            "for this depth — frontends localize this key."
+            "for this depth - frontends localize this key."
         ),
     )
     count: int = Field(..., ge=0, description="Number of cost items under this branch.")
@@ -419,7 +419,7 @@ class SuggestCostsForElementRequest(BaseModel):
 class CwicrMatchRequest(BaseModel):
     """Request body for ``POST /costs/match``.
 
-    The matcher is intentionally permissive on input — empty / whitespace
+    The matcher is intentionally permissive on input - empty / whitespace
     queries simply produce an empty result set rather than raising 422,
     so the BOQ editor can call it on every keystroke without guards.
     """
@@ -453,7 +453,7 @@ class CwicrMatchFromPositionRequest(BaseModel):
     region: str | None = Field(default=None, max_length=50)
 
 
-# ── Cost Intelligence (v3.12.0 — Stream B) ────────────────────────────────
+# ── Cost Intelligence (v3.12.0 - Stream B) ────────────────────────────────
 
 
 # Six high-level categories the v3.12.0 regional matrix supports. Extra
@@ -488,7 +488,7 @@ class RegionalIndexResponse(BaseModel):
 class RegionalAdjustResponse(BaseModel):
     """Adjusted unit-rate preview for ``GET /v1/costs/regional-adjust``.
 
-    Returns the same shape whether or not a matching index row exists —
+    Returns the same shape whether or not a matching index row exists -
     when no row is found ``factor_applied`` is ``1.0`` and ``source`` is
     ``"baseline"``, so the frontend can render the value without
     branching on null. The estimator still sees ``adjusted_rate ==
@@ -514,9 +514,9 @@ class CertaintyBadge(BaseModel):
     Drives the green / yellow / red dot rendered next to a cost item in
     the BOQ rate picker. Thresholds (see ``service.compute_certainty``):
 
-    * green  — ``frequency >= 10`` AND ``age_days < 365``
-    * yellow — ``frequency in [3, 9]`` OR ``age_days in [365, 1095]``
-    * red    — everything else (rarely used or very stale)
+    * green  - ``frequency >= 10`` AND ``age_days < 365``
+    * yellow - ``frequency in [3, 9]`` OR ``age_days in [365, 1095]``
+    * red    - everything else (rarely used or very stale)
     """
 
     cost_item_id: UUID
@@ -526,7 +526,7 @@ class CertaintyBadge(BaseModel):
         ge=0,
         description=(
             "Days since the most recent recorded use. ``999999`` when "
-            "the item has never been used — that's the red threshold."
+            "the item has never been used - that's the red threshold."
         ),
     )
     source: str = Field(..., description="Underlying CostItem.source (cwicr, rsmeans, manual, …)")
@@ -542,7 +542,7 @@ class RecordUsageRequest(BaseModel):
 
     Called from the BOQ apply-rate path so the certainty badge for the
     next user of the same rate reflects up-to-date frequency. The body
-    is intentionally small — the cost-item id is in the URL and the
+    is intentionally small - the cost-item id is in the URL and the
     timestamp is server-stamped.
     """
 

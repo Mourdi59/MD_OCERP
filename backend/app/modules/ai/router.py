@@ -1,15 +1,15 @@
 """‌⁠‍AI Estimation API routes.
 
 Endpoints:
-    GET    /ai/settings                          — Get user's AI settings
-    PATCH  /ai/settings                          — Update API keys and preferences
-    POST   /ai/quick-estimate                    — Text description -> AI -> BOQ items
-    POST   /ai/photo-estimate                    — Photo upload -> AI Vision -> BOQ items
-    POST   /ai/file-estimate                     — Any file (PDF/Excel/CAD/image) -> AI -> BOQ items
-    POST   /ai/estimate/{job_id}/create-boq      — Save AI estimate as a real BOQ
-    POST   /ai/estimate/{job_id}/enrich          — Enrich estimate items with cost DB matches
-    GET    /ai/estimate/{job_id}                 — Get estimate job status and results
-    POST   /ai/advisor/chat                      — AI Cost Advisor chat
+    GET    /ai/settings                          - Get user's AI settings
+    PATCH  /ai/settings                          - Update API keys and preferences
+    POST   /ai/quick-estimate                    - Text description -> AI -> BOQ items
+    POST   /ai/photo-estimate                    - Photo upload -> AI Vision -> BOQ items
+    POST   /ai/file-estimate                     - Any file (PDF/Excel/CAD/image) -> AI -> BOQ items
+    POST   /ai/estimate/{job_id}/create-boq      - Save AI estimate as a real BOQ
+    POST   /ai/estimate/{job_id}/enrich          - Enrich estimate items with cost DB matches
+    GET    /ai/estimate/{job_id}                 - Get estimate job status and results
+    POST   /ai/advisor/chat                      - AI Cost Advisor chat
 """
 
 import logging
@@ -174,7 +174,7 @@ async def get_ai_settings(
     """‌⁠‍Get the current user's AI settings.
 
     Returns the configured providers and preferred model.
-    API keys are masked — the response only indicates whether each key is set.
+    API keys are masked - the response only indicates whether each key is set.
     """
     return await service.get_ai_settings(user_id)
 
@@ -195,9 +195,9 @@ async def update_ai_settings(
     Only provided (non-null) fields are updated.
 
     Supported providers:
-    - **Anthropic Claude** (anthropic_api_key) — recommended, best quality
-    - **OpenAI** (openai_api_key) — GPT-4o
-    - **Google Gemini** (gemini_api_key) — fast and affordable
+    - **Anthropic Claude** (anthropic_api_key) - recommended, best quality
+    - **OpenAI** (openai_api_key) - GPT-4o
+    - **Google Gemini** (gemini_api_key) - fast and affordable
 
     Preferred model options: `claude-sonnet`, `gpt-4o`, `gemini-flash`
     """
@@ -257,7 +257,7 @@ async def test_ai_connection(
     settings = await service.settings_repo.get_by_user_id(uid)
 
     # Resolve the API key for the requested provider. Keys are stored
-    # Fernet-encrypted — passing the ciphertext straight to the provider
+    # Fernet-encrypted - passing the ciphertext straight to the provider
     # triggers a 401 ("AI API key is invalid or expired") even for a
     # fresh, valid key the user just pasted.
     key_attr = f"{provider}_api_key"
@@ -273,7 +273,7 @@ async def test_ai_connection(
         return {
             "success": False,
             "message": (
-                f"Stored {provider} key could not be decrypted — the backend encryption key "
+                f"Stored {provider} key could not be decrypted - the backend encryption key "
                 "has rotated since the key was saved. Please re-enter and save it in Settings."
             ),
             "latency_ms": None,
@@ -370,7 +370,7 @@ async def quick_estimate(
     # R7 audit: when the caller links the job to a project we must
     # verify they actually own / can access that project. Without the
     # check, any authenticated user could write AI estimate jobs that
-    # reference projects belonging to other tenants — useful for log
+    # reference projects belonging to other tenants - useful for log
     # poisoning, cross-tenant cost-context smuggling, and as a stepping
     # stone for the create_boq_from_estimate flow.
     if request.project_id is not None:
@@ -416,7 +416,7 @@ async def photo_estimate(
             detail=(f"Unsupported image type: {content_type}. Accepted: {', '.join(sorted(ALLOWED_IMAGE_TYPES))}"),
         )
 
-    # No upload size cap — per product policy.
+    # No upload size cap - per product policy.
     image_bytes = await file.read()
     if not image_bytes:
         raise HTTPException(
@@ -453,7 +453,7 @@ async def photo_estimate(
                 detail=f"Invalid project_id format: {project_id}",
             ) from exc
         # R7 audit: enforce project access on the linkage (same rationale
-        # as quick_estimate — see comment there).
+        # as quick_estimate - see comment there).
         await verify_project_access(parsed_project_id, user_id, service.session)
 
     return await service.photo_estimate(
@@ -468,7 +468,7 @@ async def photo_estimate(
     )
 
 
-# ── Photo category suggestion (Lane 7 — never auto-applied) ─────────────────
+# ── Photo category suggestion (Lane 7 - never auto-applied) ─────────────────
 
 
 @router.post(
@@ -486,7 +486,7 @@ async def photo_category_suggest(
 
     Uses the configured AI vision provider when a key is set, otherwise a
     transparent keyword heuristic over filename / caption / tags. The result
-    is a SUGGESTION only — the caller decides whether to apply it. Returns
+    is a SUGGESTION only - the caller decides whether to apply it. Returns
     ``{suggested_category, confidence, source}`` or ``{suggested_category: null}``
     when no signal is found.
     """
@@ -567,7 +567,7 @@ async def file_estimate(
             detail=(f"Unsupported file type: .{ext}. Accepted: {', '.join(f'.{e}' for e in sorted(_EXT_CATEGORY))}"),
         )
 
-    # No upload size cap — per product policy.
+    # No upload size cap - per product policy.
     content = await file.read()
     if not content:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File is empty.")
@@ -576,7 +576,7 @@ async def file_estimate(
     # controlled (the request multipart filename is fully client-supplied),
     # so we must also confirm the file's actual signature matches the
     # category we're about to dispatch into. CSV/text files have no
-    # reliable magic byte — skip the check for that category only.
+    # reliable magic byte - skip the check for that category only.
     _CATEGORY_SIG_ALLOW: dict[str, frozenset[str]] = {
         "pdf": frozenset({"pdf"}),
         "excel": frozenset({"zip", "ole"}),
@@ -607,7 +607,7 @@ async def file_estimate(
                 detail=f"Invalid project_id: {project_id}",
             ) from exc
         # R7 audit: enforce project access on the linkage (same rationale
-        # as quick_estimate — see comment there).
+        # as quick_estimate - see comment there).
         await verify_project_access(parsed_project_id, user_id, service.session)
 
     return await service.file_estimate(
@@ -776,7 +776,7 @@ async def enrich_estimate(
 
         # 5b. If vector search returned nothing, fall back to text search.
         #     Batch all keywords into ONE OR query per item (mirroring
-        #     advisor_chat) instead of one query per keyword — keeps the
+        #     advisor_chat) instead of one query per keyword - keeps the
         #     query count at 1 (or 2 when a region retry is needed) per item.
         if not matches:
             try:
@@ -824,7 +824,7 @@ async def enrich_estimate(
             except Exception as txt_err:
                 logger.warning("Text search failed for item %d (%s): %s", idx, description[:30], txt_err)
 
-        # 5c. Prefer matches with the same unit — boost their score
+        # 5c. Prefer matches with the same unit - boost their score
         if item_unit:
             for m in matches:
                 if m["unit"].lower() == item_unit.lower():
@@ -911,7 +911,7 @@ async def advisor_chat(
     response: Response,
     _remaining: int = Depends(check_ai_rate_limit),
 ) -> dict:
-    """AI Cost Advisor — answer questions about costs using the cost database.
+    """AI Cost Advisor - answer questions about costs using the cost database.
 
     Body: ``{message: str, project_id?: str, region?: str}``
 
@@ -992,7 +992,7 @@ async def advisor_chat(
             ]
         )
         context = (
-            f"Cost database results (may or may not be relevant — use only if they "
+            f"Cost database results (may or may not be relevant - use only if they "
             f"actually match the user's question):\n{items_text}"
         )
     else:
@@ -1010,7 +1010,7 @@ async def advisor_chat(
         except Exception:
             logger.debug("AI advisor: project context lookup failed", exc_info=True)
 
-    # 4. Build prompt — locale-aware, allows general knowledge
+    # 4. Build prompt - locale-aware, allows general knowledge
     _LOCALE_NAMES = {
         "en": "English",
         "de": "German",
@@ -1037,7 +1037,7 @@ async def advisor_chat(
     lang_name = _LOCALE_NAMES.get(locale, "English")
 
     system_prompt = (
-        f"You are an AI Cost Advisor for construction projects — a smart, interactive "
+        f"You are an AI Cost Advisor for construction projects - a smart, interactive "
         f"assistant that helps estimators with costs, materials, methods, and regulations.\n\n"
         f"CRITICAL: You MUST respond ONLY in {lang_name}. Every word must be in {lang_name}.\n\n"
         f"## Conversation style\n"
@@ -1054,7 +1054,7 @@ async def advisor_chat(
         f"- If the user provides enough context (specific region, material, project), "
         f"answer directly with data.\n"
         f"- If a project is active (see project context below), use its region/currency "
-        f"as default context — but still confirm if the question is broad.\n\n"
+        f"as default context - but still confirm if the question is broad.\n\n"
         f"## Data rules\n"
         f"- Use cost database items when they are relevant to the question\n"
         f"- IGNORE database items that are clearly unrelated\n"
@@ -1064,7 +1064,7 @@ async def advisor_chat(
         f"- Give ranges (min–max) not single numbers\n"
         f"- Suggest cost-saving alternatives when appropriate\n"
         f"- Format with markdown: use **bold** for key numbers, bullet lists for comparisons\n"
-        f"- Never say 'data not available' — either ask for clarification or provide "
+        f"- Never say 'data not available' - either ask for clarification or provide "
         f"general estimates with a note about accuracy"
     )
 
@@ -1094,7 +1094,7 @@ async def advisor_chat(
         f"{context}{project_context}\n\n"
         f"{history_text}"
         f"User message: {message}\n\n"
-        f"Respond in {lang_name}. This is a continuing conversation — use the history above "
+        f"Respond in {lang_name}. This is a continuing conversation - use the history above "
         f"for context. The user may be answering your previous question or selecting an option "
         f"you offered. If the user selected an option, answer that specific topic directly "
         f"with data. Do NOT ask the same clarifying questions again."
@@ -1119,7 +1119,7 @@ async def advisor_chat(
         answer = text
     except ValueError as exc:
         # call_ai (and resolve_provider_key_model) raise *sanitized* ValueErrors
-        # — they never echo credentials, only actionable detail such as the
+        # - they never echo credentials, only actionable detail such as the
         # rejected model id, "invalid/expired key", "rate limit", or "no key
         # configured". Surface that real message instead of collapsing every
         # failure into a vague "AI is not configured" (which mis-described
@@ -1148,7 +1148,7 @@ async def advisor_chat(
             answer = str(exc)
         used_db = False
     except Exception as exc:
-        # Truly unexpected (non-ValueError) failure — body may carry raw
+        # Truly unexpected (non-ValueError) failure - body may carry raw
         # upstream detail, so fall back to a generic localized message.
         logger.warning(
             "advisor_chat: unexpected AI error for user=%s error=%r",
@@ -1164,7 +1164,7 @@ async def advisor_chat(
         answer = _err_msgs.get(locale, "AI is not configured. Please set up an AI provider in Settings.")
         used_db = False
 
-    # 6. Build source references — only include if items seem relevant
+    # 6. Build source references - only include if items seem relevant
     sources = (
         [
             {
@@ -1186,7 +1186,7 @@ async def advisor_chat(
         # Check if the AI actually used any source codes in its response
         codes_in_answer = any(it.get("code", "xxx") in answer for it in context_items[:5])
         if not codes_in_answer:
-            sources = []  # AI ignored the DB items — don't show irrelevant sources
+            sources = []  # AI ignored the DB items - don't show irrelevant sources
 
     return {
         "answer": answer,

@@ -343,7 +343,7 @@ class ProgressClaimLineRepository(_CRUDBase):
     ) -> list[tuple[ProgressClaimLine, str]]:
         """‌⁠‍All claim lines for a contract + their parent claim status.
 
-        Single JOIN query — replaces an N+1 (one claim-line query per
+        Single JOIN query - replaces an N+1 (one claim-line query per
         progress claim) in the SoV-status rollup.
         """
         stmt = (

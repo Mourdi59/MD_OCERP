@@ -3,7 +3,7 @@
 """File search ORM models.
 
 Table:
-    oe_file_search_index — one row per (project, file_kind, file_id);
+    oe_file_search_index - one row per (project, file_kind, file_id);
                             extracted full text + OCR engine metadata.
                             On Postgres an additional ``tsv_vector``
                             generated column (added by the migration)

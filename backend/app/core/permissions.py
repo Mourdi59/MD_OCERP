@@ -35,7 +35,7 @@ class Role(StrEnum):
     VIEWER = "viewer"  # Read-only access
     # ── Field-worker surface (mobile/tablet, see
     # docs/architecture/FIELD_WORKER_MOBILE_DESIGN.md). DESIGN-STAGE
-    # placeholders — the permission set is intentionally empty until
+    # placeholders - the permission set is intentionally empty until
     # the pilot router lands so adding the enum value does not
     # accidentally widen any existing endpoint's scope.
     SITE_INSPECTOR = "site_inspector"  # QA/HSE inspector, read-broad write-narrow
@@ -49,7 +49,7 @@ class Role(StrEnum):
 # default-`-1` lookup (the legacy fallback shape used by
 # `role_has_permission`) cannot accidentally promote a field worker
 # above a viewer. Anywhere the legacy `-1` floor is read, it must be
-# audited as part of the field-pilot landing PR — see the design doc
+# audited as part of the field-pilot landing PR - see the design doc
 # §11 Risk #3.
 ROLE_HIERARCHY: dict[Role, int] = {
     Role.FIELD_WORKER: -2,
@@ -62,7 +62,7 @@ ROLE_HIERARCHY: dict[Role, int] = {
 }
 
 
-# Alias map — legacy / industry-specific role names that should behave like
+# Alias map - legacy / industry-specific role names that should behave like
 # one of the canonical four roles. Keeps the core Role enum small while
 # allowing construction-industry titles ("estimator", "surveyor", ...) to
 # work without manual migration. Values are ALWAYS canonical Role members.
@@ -148,7 +148,7 @@ class PermissionRegistry:
 
         min_role = self._permissions.get(permission)
         if min_role is None:
-            # Unknown permission — deny by default
+            # Unknown permission - deny by default
             logger.warning("Unknown permission checked: %s", permission)
             return False
 
@@ -196,7 +196,7 @@ class PermissionRegistry:
         """Update the minimum role for an existing permission.
 
         Returns the previous ``min_role`` so callers can audit the delta.
-        Raises ``KeyError`` if the permission is not registered — we never
+        Raises ``KeyError`` if the permission is not registered - we never
         silently create permissions through the admin UI.
         """
         previous = self._permissions.get(permission)
@@ -232,14 +232,14 @@ permission_registry = PermissionRegistry()
 #
 # Each preset is a callable (permission_key) -> Role:
 #
-#   • viewer-default   — viewer can read, everything else stays Editor+.
-#   • editor-default   — editor can read/create/update, manager+ for
+#   • viewer-default   - viewer can read, everything else stays Editor+.
+#   • editor-default   - editor can read/create/update, manager+ for
 #                        delete / destructive actions, admin for "system."
-#   • manager-default  — manager can do almost anything; admin still owns
+#   • manager-default  - manager can do almost anything; admin still owns
 #                        system-level toggles.
 #
 # Presets are intentionally derived from the permission key shape rather
-# than from a hard-coded list — this keeps them working even as new
+# than from a hard-coded list - this keeps them working even as new
 # modules register new permissions.
 
 
@@ -283,7 +283,7 @@ PRESETS: dict[str, "callable"] = {
 def register_field_role_permissions() -> None:
     """Register the field-worker surface permission set.
 
-    DESIGN-STAGE STUB — intentionally empty until the pilot
+    DESIGN-STAGE STUB - intentionally empty until the pilot
     ``/api/v1/field/*`` router lands. See
     ``docs/architecture/FIELD_WORKER_MOBILE_DESIGN.md`` §4 for the
     full permission matrix the pilot will fill in.
@@ -300,7 +300,7 @@ def register_field_role_permissions() -> None:
       * ``daily_diary.close``          → SITE_FOREMAN (sign-off)
       * ``daily_diary.sign``           → MANAGER (unchanged)
 
-    TODO (phase 2 — design-doc §4.2):
+    TODO (phase 2 - design-doc §4.2):
       * ``hse_advanced.report_incident`` → FIELD_WORKER
       * ``ncr.flag``                     → FIELD_WORKER
       * ``inspections.create``           → SITE_INSPECTOR
@@ -309,7 +309,7 @@ def register_field_role_permissions() -> None:
 
     Until those permissions are registered here, the three field
     roles can sign in (the ``Role`` enum members exist) but every
-    permission check returns False — by design.
+    permission check returns False - by design.
     """
     # Intentionally empty. See module docstring above.
     return
@@ -331,12 +331,12 @@ def register_core_permissions() -> None:
             "system.validation_rules.list": Role.VIEWER,
             # Audit log + viewer (audit_router.py + future admin UI).
             # Without these, `RequirePermission("audit.view")` resolved to an
-            # unknown permission and fell through to the ADMIN-role bypass —
+            # unknown permission and fell through to the ADMIN-role bypass -
             # technically safe but the gate was effectively ADMIN-only by
             # accident, and "audit.delete" was completely unreachable.
             "audit.view": Role.MANAGER,
             "audit.delete": Role.ADMIN,
-            # Epic H §H9 — GDPR right-to-erasure on activity-log rows.
+            # Epic H §H9 - GDPR right-to-erasure on activity-log rows.
             # ADMIN-only by design: a redact mutates compliance records.
             "audit.redact": Role.ADMIN,
         },

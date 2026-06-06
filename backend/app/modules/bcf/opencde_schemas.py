@@ -1,14 +1,14 @@
-"""OpenCDE BCF-API 3.0 — Pydantic request/response schemas.
+"""OpenCDE BCF-API 3.0 - Pydantic request/response schemas.
 
 These shapes mirror the buildingSMART OpenCDE BCF-API 3.0 JSON schemas
 (``release_3_0/Schemas_draft-03``). Field NAMES use snake_case in Python
 but every model is configured with ``populate_by_name=True`` and accepts
-either snake_case or the spec's canonical names — so a BCF Manager
+either snake_case or the spec's canonical names - so a BCF Manager
 plugin (Revit / Archicad / Navisworks) that sends the wire form ``topic_status``
 and ``"creation_author"`` works without translation.
 
 Distinct from :mod:`app.modules.bcf.schemas` (the legacy native CRUD
-shapes) — the OpenCDE wire format has its own field set (authorization
+shapes) - the OpenCDE wire format has its own field set (authorization
 sub-object, server_assigned_id, project_actions, current_user) and we
 keep the two surfaces decoupled so the BCF Manager protocol can evolve
 independently of our internal native API.
@@ -40,7 +40,7 @@ class TopicAuthorization(BaseModel):
 
     Tells the BCF Manager client which verbs the current caller may use
     against THIS topic. Computed dynamically per request from the caller's
-    RBAC permissions — never persisted.
+    RBAC permissions - never persisted.
     """
 
     topic_actions: list[TopicAction] = Field(default_factory=list)
@@ -71,7 +71,7 @@ class BCFProject(BaseModel):
 
 
 class BCFExtensions(BaseModel):
-    """OpenCDE ``Extensions`` document — the JSON twin of ``extensions.xml``.
+    """OpenCDE ``Extensions`` document - the JSON twin of ``extensions.xml``.
 
     Lists of allowed values that the server expects on incoming topics +
     the user directory the caller can browse for ``assigned_to`` /
@@ -135,7 +135,7 @@ class TopicCreatePayload(TopicBase):
 
 
 class TopicUpdatePayload(BaseModel):
-    """Payload of ``PUT /projects/{id}/topics/{guid}`` — every field optional."""
+    """Payload of ``PUT /projects/{id}/topics/{guid}`` - every field optional."""
 
     model_config = ConfigDict(populate_by_name=True, extra="ignore")
 
@@ -206,7 +206,7 @@ class BCFCommentResponse(BaseModel):
 
 
 class Point(BaseModel):
-    """A 3-component point — OpenCDE Point shape."""
+    """A 3-component point - OpenCDE Point shape."""
 
     x: float = 0.0
     y: float = 0.0
@@ -214,7 +214,7 @@ class Point(BaseModel):
 
 
 class Direction(BaseModel):
-    """A 3-component direction — OpenCDE Direction shape."""
+    """A 3-component direction - OpenCDE Direction shape."""
 
     x: float = 0.0
     y: float = 0.0
@@ -253,7 +253,7 @@ class ClippingPlane(BaseModel):
 
 
 class Line(BaseModel):
-    """OpenCDE Line — annotation geometry."""
+    """OpenCDE Line - annotation geometry."""
 
     start_point: Point = Field(default_factory=Point)
     end_point: Point = Field(default_factory=Point)
@@ -271,7 +271,7 @@ class BitmapPayload(BaseModel):
 
 
 class VisibilityExceptions(BaseModel):
-    """``Components/Visibility/Exceptions`` — list of component refs."""
+    """``Components/Visibility/Exceptions`` - list of component refs."""
 
     component: list[dict[str, Any]] = Field(default_factory=list)
 
@@ -285,7 +285,7 @@ class Visibility(BaseModel):
 
 
 class Components(BaseModel):
-    """OpenCDE Components — selection + visibility + colouring."""
+    """OpenCDE Components - selection + visibility + colouring."""
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -295,7 +295,7 @@ class Components(BaseModel):
 
 
 class SnapshotInfo(BaseModel):
-    """``snapshot`` block on a viewpoint — metadata only.
+    """``snapshot`` block on a viewpoint - metadata only.
 
     The image bytes are NOT returned inline: the dedicated
     ``GET .../snapshot`` endpoint streams the raw ``image/png``.

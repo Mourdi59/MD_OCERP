@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Classifier boost — rewards candidates whose classification matches the hint."""
+"""‌⁠‍Classifier boost - rewards candidates whose classification matches the hint."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def _group_prefix(code: str) -> str:
     for sep in (".", " "):
         if sep in code:
             return code.split(sep, 1)[0]
-    # Bare 3-digit code like "330" — the candidate prefix == itself.
+    # Bare 3-digit code like "330" - the candidate prefix == itself.
     return code
 
 
@@ -68,7 +68,7 @@ def boost(
 
     cand_code = _normalise_code(getattr(candidate, _CLASSIFIER_FIELDS[classifier], ""))
     if not cand_code:
-        # Some candidates don't carry the chosen classifier — fall back to
+        # Some candidates don't carry the chosen classifier - fall back to
         # the candidate's classification dict (for envelopes where we
         # already enriched the candidate model with that field).
         cand_code = _normalise_code(candidate.classification.get(classifier, ""))
@@ -86,7 +86,7 @@ def boost(
     # Last fallback: prefix containment so a hint like ``"330"`` matches
     # ``"330.10.020"``. We require ≥ 3 characters so a 2-digit operator
     # typo like ``"33"`` doesn't sweep up every code starting with 33.
-    # Only the forward direction (cand starts with hint) is allowed —
+    # Only the forward direction (cand starts with hint) is allowed -
     # the reverse direction would treat a candidate like ``"33"`` as a
     # match for a fully-qualified ``"330.10.020"`` hint, which is
     # over-broad. Document: forward containment only, min 3 chars.

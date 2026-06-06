@@ -12,7 +12,7 @@ Design notes:
 
 * The subscribers open their own short-lived session via
   :func:`async_session_factory` and gate on PostgreSQL, exactly like the
-  wave-5 cross-module subscribers — a cross-session write on SQLite's
+  wave-5 cross-module subscribers - a cross-session write on SQLite's
   single writer would deadlock the request transaction, and the engine
   publishes detached so the request session is already free.
 * They only ever drive transitions the existing submittal FSM permits,
@@ -21,7 +21,7 @@ Design notes:
 * They are fail-soft: any error is logged at debug and swallowed so a
   downstream hiccup never breaks the foreground decision that produced
   the event.
-* Projects with **no** configured route never reach here at all — the
+* Projects with **no** configured route never reach here at all - the
   submittal keeps today's direct ``/approve`` / ``/review`` behaviour
   with zero breakage.
 """

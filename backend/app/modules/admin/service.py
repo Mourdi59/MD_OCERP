@@ -1,4 +1,4 @@
-"""‌⁠‍Admin service — qa-reset implementation.
+"""‌⁠‍Admin service - qa-reset implementation.
 
 Resets the demo dataset to a known baseline so the QA crawler can run
 idempotently. Three independent gates protect the destructive path:
@@ -35,7 +35,7 @@ DEMO_EMAILS: tuple[str, ...] = (
 )
 
 # Hostnames that look like dev/staging/qa. A hostname not in this list is
-# treated as production — the gate refuses to run.
+# treated as production - the gate refuses to run.
 SAFE_HOSTNAME_SUBSTRINGS: tuple[str, ...] = (
     "localhost",
     "127.0.0.1",
@@ -120,7 +120,7 @@ async def _resolve_demo_user_ids(session: AsyncSession) -> list:
 
 
 async def _sanity_user_count(session: AsyncSession) -> None:
-    """Abort if total users > ceiling — production safeguard."""
+    """Abort if total users > ceiling - production safeguard."""
     from sqlalchemy import func
 
     total = (await session.execute(select(func.count()).select_from(User))).scalar() or 0
@@ -147,7 +147,7 @@ async def reset_demo_data(session: AsyncSession) -> dict:
         logger.info("qa-reset: no demo users present, skipping wipe")
 
     # Delete all projects owned by demo users. CASCADE on FK takes care of
-    # BOQ rows, positions, schedules, finance, etc. — we don't enumerate
+    # BOQ rows, positions, schedules, finance, etc. - we don't enumerate
     # every per-module table because the cascades are already set up.
     deleted_projects = 0
     if demo_user_ids:
@@ -182,7 +182,7 @@ async def reset_demo_data(session: AsyncSession) -> dict:
     except ImportError:
         logger.warning("qa-reset: demo_projects module not available; skipping reseed")
 
-    # Audit log entry — best-effort, never blocks.
+    # Audit log entry - best-effort, never blocks.
     try:
         from app.core.audit import audit_log
 

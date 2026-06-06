@@ -4,17 +4,17 @@
 Three pure functions take bytes in and return PNG bytes + dimensions
 out:
 
-* :func:`pdf_to_png` — PyMuPDF rasterises a single PDF page at a
+* :func:`pdf_to_png` - PyMuPDF rasterises a single PDF page at a
   reasonable DPI for a globe overlay.
-* :func:`dwg_top_view_to_png` — Pillow renders a DDC-canonical JSON's
+* :func:`dwg_top_view_to_png` - Pillow renders a DDC-canonical JSON's
   2D elements (lines + polygons) in orthographic top-down projection.
-* :func:`image_passthrough` — PNG/JPEG bytes are decoded only to read
+* :func:`image_passthrough` - PNG/JPEG bytes are decoded only to read
   the dimensions; the original bytes are stored verbatim so re-uploads
   preserve the user's source quality.
 
 None of these touch storage. The service layer owns blob keys.
 
-Defaults are tuned for "site plan on a satellite map" use cases — DPI
+Defaults are tuned for "site plan on a satellite map" use cases - DPI
 high enough to keep text legible when the overlay covers a few hundred
 metres, but low enough to keep the upload pipeline snappy.
 """
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_PDF_DPI: int = 200
 # Cap the rasterisation surface so a malicious PDF page with absurd
 # dimensions (some surveying tools emit 2 m × 2 m PDFs) can't OOM the
-# worker. 16 megapixels is still ~4000 × 4000 — plenty.
+# worker. 16 megapixels is still ~4000 × 4000 - plenty.
 MAX_RASTER_PIXELS: int = 16 * 1024 * 1024
 
 
@@ -62,9 +62,9 @@ def pdf_to_png(
             raise ValueError("PDF has no pages")
         idx = min(page, page_count) - 1
         pdf_page = doc.load_page(idx)
-        # ``Matrix`` scaler — fitz default is 72 DPI; scale_factor = dpi/72.
+        # ``Matrix`` scaler - fitz default is 72 DPI; scale_factor = dpi/72.
         scale = max(dpi, 36) / 72.0
-        # Cap the surface — fitz silently truncates instead of OOMing,
+        # Cap the surface - fitz silently truncates instead of OOMing,
         # but we'd rather fail explicit with a clear error.
         bbox = pdf_page.rect
         est_pixels = int(bbox.width * scale) * int(bbox.height * scale)
@@ -122,7 +122,7 @@ def dwg_top_view_to_png(
     img = Image.new("RGB", (width_px, height_px), background)
     draw = ImageDraw.Draw(img, "RGBA")
 
-    # Y axis flipped — DWG / canonical "up" is positive Y, image "up"
+    # Y axis flipped - DWG / canonical "up" is positive Y, image "up"
     # is negative Y. Mirror so the drawing reads correctly.
     def _to_px(p: tuple[float, float]) -> tuple[float, float]:
         return (

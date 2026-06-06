@@ -70,7 +70,7 @@ TEMPLATE = DemoTemplate(
         "cost_region": "CA_TORONTO",
     },
     sections=[
-        # ── Division 31 — Earthwork & Shoring ──────────────────────────
+        # ── Division 31 - Earthwork & Shoring ──────────────────────────
         (
             "31",
             "Division 31 - Earthwork & Shoring",
@@ -90,7 +90,7 @@ TEMPLATE = DemoTemplate(
                 ("31.12", "Geotechnical investigation and instrumentation", "lsum", 1, 78000.00, {"masterformat": "31 09 00"}),
             ],
         ),
-        # ── Division 03 — Concrete ─────────────────────────────────────
+        # ── Division 03 - Concrete ─────────────────────────────────────
         (
             "03",
             "Division 03 - Concrete",
@@ -115,7 +115,7 @@ TEMPLATE = DemoTemplate(
                 ("03.17", "Concrete cure and seal", "m2", 210000, 4.20, {"masterformat": "03 39 00"}),
             ],
         ),
-        # ── Division 04 — Masonry ──────────────────────────────────────
+        # ── Division 04 - Masonry ──────────────────────────────────────
         (
             "04",
             "Division 04 - Masonry",
@@ -129,7 +129,7 @@ TEMPLATE = DemoTemplate(
                 ("04.6", "Precast lintels and sills", "m", 920, 98.00, {"masterformat": "04 05 00"}),
             ],
         ),
-        # ── Division 05 — Metals ───────────────────────────────────────
+        # ── Division 05 - Metals ───────────────────────────────────────
         (
             "05",
             "Division 05 - Metals",
@@ -145,7 +145,7 @@ TEMPLATE = DemoTemplate(
                 ("05.8", "Architecturally exposed entry feature steel", "t", 18, 12500.00, {"masterformat": "05 12 00"}),
             ],
         ),
-        # ── Division 07 — Thermal & Moisture / Window-Wall ─────────────
+        # ── Division 07 - Thermal & Moisture / Window-Wall ─────────────
         (
             "07",
             "Division 07 - Thermal & Moisture Protection",
@@ -166,7 +166,7 @@ TEMPLATE = DemoTemplate(
                 ("07.13", "Spray fireproofing, transfer level steel", "m2", 4200, 19.50, {"masterformat": "07 81 00"}),
             ],
         ),
-        # ── Division 08 — Openings (incl. Window-Wall) ─────────────────
+        # ── Division 08 - Openings (incl. Window-Wall) ─────────────────
         (
             "08",
             "Division 08 - Openings",
@@ -186,7 +186,7 @@ TEMPLATE = DemoTemplate(
                 ("08.12", "Overhead coiling doors, parking and loading", "pcs", 6, 12500.00, {"masterformat": "08 33 00"}),
             ],
         ),
-        # ── Division 09 — Finishes ─────────────────────────────────────
+        # ── Division 09 - Finishes ─────────────────────────────────────
         (
             "09",
             "Division 09 - Finishes",
@@ -211,7 +211,7 @@ TEMPLATE = DemoTemplate(
                 ("09.17", "Suite appliance package, ENERGY STAR", "suite", 412, 6800.00, {"masterformat": "11 31 00"}),
             ],
         ),
-        # ── Division 14 — Conveying Systems (Elevators) ────────────────
+        # ── Division 14 - Conveying Systems (Elevators) ────────────────
         (
             "14",
             "Division 14 - Conveying Systems",
@@ -224,7 +224,7 @@ TEMPLATE = DemoTemplate(
                 ("14.5", "Destination-dispatch control and group supervisory", "lsum", 1, 185000.00, {"masterformat": "14 28 00"}),
             ],
         ),
-        # ── Division 21 — Fire Suppression ─────────────────────────────
+        # ── Division 21 - Fire Suppression ─────────────────────────────
         (
             "21",
             "Division 21 - Fire Suppression",
@@ -236,7 +236,7 @@ TEMPLATE = DemoTemplate(
                 ("21.4", "Portable extinguishers and hose cabinets", "pcs", 240, 480.00, {"masterformat": "21 10 00"}),
             ],
         ),
-        # ── Division 22 — Plumbing ─────────────────────────────────────
+        # ── Division 22 - Plumbing ─────────────────────────────────────
         (
             "22",
             "Division 22 - Plumbing",
@@ -254,7 +254,7 @@ TEMPLATE = DemoTemplate(
                 ("22.10", "Pipe insulation", "m", 14800, 18.00, {"masterformat": "22 07 00"}),
             ],
         ),
-        # ── Division 23 — HVAC ─────────────────────────────────────────
+        # ── Division 23 - HVAC ─────────────────────────────────────────
         (
             "23",
             "Division 23 - Heating, Ventilation & Air Conditioning",
@@ -275,7 +275,7 @@ TEMPLATE = DemoTemplate(
                 ("23.13", "Testing, balancing and commissioning", "lsum", 1, 285000.00, {"masterformat": "23 05 93"}),
             ],
         ),
-        # ── Division 26 — Electrical ───────────────────────────────────
+        # ── Division 26 - Electrical ───────────────────────────────────
         (
             "26",
             "Division 26 - Electrical",
@@ -298,7 +298,7 @@ TEMPLATE = DemoTemplate(
                 ("26.15", "Structured cabling, security and intercom", "lsum", 1, 385000.00, {"masterformat": "27 10 00"}),
             ],
         ),
-        # ── Division 32 — Exterior Improvements (Sitework) ─────────────
+        # ── Division 32 - Exterior Improvements (Sitework) ─────────────
         (
             "32",
             "Division 32 - Exterior Improvements",

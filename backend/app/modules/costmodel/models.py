@@ -1,9 +1,9 @@
 """‌⁠‍5D Cost Model ORM models.
 
 Tables:
-    oe_costmodel_snapshot — monthly EVM snapshots (planned, earned, actual)
-    oe_costmodel_budget_line — budget tracking per BOQ position or category
-    oe_costmodel_cash_flow — monthly cash flow entries
+    oe_costmodel_snapshot - monthly EVM snapshots (planned, earned, actual)
+    oe_costmodel_budget_line - budget tracking per BOQ position or category
+    oe_costmodel_cash_flow - monthly cash flow entries
     oe_costmodel_control_account - Cost Spine control accounts (CBS tree)
     oe_costmodel_cost_line - Cost Spine cost lines (one row per scope item)
 """
@@ -43,13 +43,13 @@ class CostSnapshot(Base):
         ),
     )
     planned_cost: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="0", doc="BCWS — Budgeted Cost of Work Scheduled"
+        String(50), nullable=False, default="0", doc="BCWS - Budgeted Cost of Work Scheduled"
     )
     earned_value: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="0", doc="BCWP — Budgeted Cost of Work Performed"
+        String(50), nullable=False, default="0", doc="BCWP - Budgeted Cost of Work Performed"
     )
     actual_cost: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="0", doc="ACWP — Actual Cost of Work Performed"
+        String(50), nullable=False, default="0", doc="ACWP - Actual Cost of Work Performed"
     )
     forecast_eac: Mapped[str] = mapped_column(String(50), nullable=False, default="0", doc="Estimate At Completion")
     spi: Mapped[str] = mapped_column(String(10), nullable=False, default="0", doc="Schedule Performance Index")

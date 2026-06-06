@@ -1,7 +1,7 @@
 """‌⁠‍Direct upload routes.
 
 Endpoints:
-    PUT  /local/{token}    — Consume an HMAC-signed token minted by
+    PUT  /local/{token}    - Consume an HMAC-signed token minted by
                               :meth:`LocalStorageBackend.presigned_put_url`
                               and stream the request body into the storage
                               backend (single PUT or multipart part).
@@ -29,7 +29,7 @@ is uploaded as a single multipart part. Otherwise the body is written to
 
 This route is only valid against the local backend. When
 ``STORAGE_BACKEND=s3`` the S3 backend itself mints true presigned URLs
-that bypass this app — calling here returns HTTP 400 to prevent
+that bypass this app - calling here returns HTTP 400 to prevent
 silent misroutes during operator misconfiguration.
 """
 
@@ -82,7 +82,7 @@ async def _read_body(request: Request) -> bytes:
     if content_length is not None and content_length <= _INLINE_BODY_LIMIT_BYTES:
         return await request.body()
 
-    # Streaming path — also used when Content-Length is missing.
+    # Streaming path - also used when Content-Length is missing.
     chunks: list[bytes] = []
     async for chunk in request.stream():
         if chunk:
@@ -101,7 +101,7 @@ async def put_local_upload(token: str, request: Request) -> LocalUploadResponse:
     The signature is verified via
     :func:`app.core.storage._verify_local_upload_token`; tampered or
     expired tokens return 403. When the active backend is not a
-    :class:`LocalStorageBackend`, the route returns 400 — the matching
+    :class:`LocalStorageBackend`, the route returns 400 - the matching
     S3 backend mints true presigned URLs that bypass this app entirely.
     """
     backend = get_storage_backend()
@@ -134,7 +134,7 @@ async def put_local_upload(token: str, request: Request) -> LocalUploadResponse:
     part_number = payload.get("part_number")
 
     if isinstance(upload_id, str) and upload_id and isinstance(part_number, int):
-        # Multipart path — reconstruct a session reference and write one
+        # Multipart path - reconstruct a session reference and write one
         # part. The local backend's upload_part only consults
         # session.upload_id and session.backend so we don't need the
         # original started_at/metadata; "now" is a perfectly valid
@@ -167,7 +167,7 @@ async def put_local_upload(token: str, request: Request) -> LocalUploadResponse:
             size_bytes=part.size_bytes,
         )
 
-    # Single-shot PUT path — write the whole body at the canonical key.
+    # Single-shot PUT path - write the whole body at the canonical key.
     try:
         await backend.put(key, body)
     except ValueError as exc:

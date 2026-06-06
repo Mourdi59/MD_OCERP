@@ -11,7 +11,7 @@ def register_procurement_permissions() -> None:
         ``procurement.create`` permission and pinned to MANAGER. The
         PO → Invoice conversion crosses into the finance module and
         creates a payable that bypasses the normal invoice approval
-        chain — EDITORs can still draft POs and goods receipts, but
+        chain - EDITORs can still draft POs and goods receipts, but
         only MANAGER+ may turn one into a vendor invoice (which is a
         binding financial commitment downstream).
     """

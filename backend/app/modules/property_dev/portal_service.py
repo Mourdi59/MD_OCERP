@@ -1,4 +1,4 @@
-"""Buyer self-service portal — JWT magic-link service.
+"""Buyer self-service portal - JWT magic-link service.
 
 This module implements the buyer-facing portal that NEVER authenticates
 through the internal JWT auth (buyers have no internal accounts). The
@@ -10,7 +10,7 @@ flow is:
 2. ``issue_token`` mints a JWT with ``scope='portal'`` and persists the
    ``jti`` on :class:`oe_propdev_portal_token` for audit + revocation.
    The full URL ``{frontend_origin}/buyer-portal/{token}`` is emailed
-   to the buyer (out of scope for this service — caller handles email).
+   to the buyer (out of scope for this service - caller handles email).
 3. The buyer opens the link. Frontend hits ``POST /verify/`` which
    decodes the JWT, looks up the ``jti`` row, rejects revoked /
    expired / wrong-scope tokens, and returns buyer summary.
@@ -24,7 +24,7 @@ Design notes:
 * The token is stateless on the wire (JWT-signed with ``JWT_SECRET``)
   so verify is fast and doesn't need a DB round-trip for the crypto
   check. The DB lookup is then ONLY for the revocation list + audit
-  trail — adding a single ``SELECT WHERE jwt_id = ?`` per request,
+  trail - adding a single ``SELECT WHERE jwt_id = ?`` per request,
   always satisfied by the unique index on ``jwt_id``.
 * The ``scope='portal'`` claim is mandatory. The existing R5 token
   ``decode_access_token`` rejects portal tokens for internal endpoints
@@ -57,11 +57,11 @@ from app.modules.property_dev.models import (
 logger = logging.getLogger(__name__)
 
 
-# Token TTL — 30 days per spec. Kept as a module-level constant so the
+# Token TTL - 30 days per spec. Kept as a module-level constant so the
 # tests can monkey-patch it without reaching into the settings object.
 PORTAL_TOKEN_TTL_DAYS: int = 30
 
-# JWT scope claim — must match exactly. Any token missing this claim
+# JWT scope claim - must match exactly. Any token missing this claim
 # (or carrying a different one) is rejected as not-a-portal-token.
 PORTAL_TOKEN_SCOPE: str = "portal"
 
@@ -76,12 +76,12 @@ class PortalTokenError(Exception):
 
     Two distinct error codes:
 
-    * ``portal_token_invalid_or_expired`` — default. Covers four failure
+    * ``portal_token_invalid_or_expired`` - default. Covers four failure
       modes (signature mismatch / missing claims / row missing / expired
       / revoked) collapsed into one code so the response can't be used
       as an existence oracle for forged-but-DB-missing vs genuinely
       expired tokens (anti-enumeration, spec §10).
-    * ``portal_token_already_used`` — magic-link has already been
+    * ``portal_token_already_used`` - magic-link has already been
       redeemed via ``/verify/``. Industry-standard single-use semantics
       (Slack/Notion/Linear). The frontend surfaces a dedicated
       "request a new login link" CTA on this code so the buyer knows
@@ -100,7 +100,7 @@ class PortalTokenError(Exception):
 
 @dataclass(slots=True)
 class PortalContext:
-    """Resolved portal session — opaque handle the router uses."""
+    """Resolved portal session - opaque handle the router uses."""
 
     token_row: PortalToken
     buyer: Buyer
@@ -128,7 +128,7 @@ class PortalLinkService:
         """Mint a fresh portal JWT + persist its ``jti`` for revocation.
 
         Returns ``(token_string, row)``. The token string is opaque to
-        the caller — it should be passed verbatim into the email body
+        the caller - it should be passed verbatim into the email body
         and the audit row should be returned in the UI panel.
         """
         buyer = await self.session.get(Buyer, buyer_id)
@@ -188,7 +188,7 @@ class PortalLinkService:
         *,
         now: datetime,
     ) -> bool:
-        """Single-use redemption — flip ``consumed_at`` NULL → ``now`` atomically.
+        """Single-use redemption - flip ``consumed_at`` NULL → ``now`` atomically.
 
         Implemented as ONE SQL UPDATE with ``WHERE consumed_at IS NULL``
         so concurrent verify requests on the same token cannot both
@@ -196,9 +196,9 @@ class PortalLinkService:
         read-then-write that could lose to a concurrent writer.
 
         Returns:
-            ``True``  — row was previously unconsumed and is now marked
+            ``True``  - row was previously unconsumed and is now marked
                         consumed (this caller "won" the race).
-            ``False`` — row was already consumed (either by an earlier
+            ``False`` - row was already consumed (either by an earlier
                         call or by a concurrent winner).
         """
         stmt = (
@@ -235,7 +235,7 @@ class PortalLinkService:
                 tokens raise ``PortalTokenError`` with code
                 ``portal_token_already_used``. When ``False`` (every
                 buyer-facing endpoint after the first verify), the
-                token's consumed state is NOT checked — continued
+                token's consumed state is NOT checked - continued
                 access uses the same JWT as a session token until
                 its expiry or revocation, per the spec's
                 "session JWT stays multi-use" constraint.
@@ -274,7 +274,7 @@ class PortalLinkService:
         row = (await self.session.execute(stmt)).scalar_one_or_none()
         if row is None:
             # Token was never registered (forged / from a different DB)
-            # — reject the same way as expired so the caller can't
+            # - reject the same way as expired so the caller can't
             # distinguish forged-but-DB-missing from genuinely expired.
             raise PortalTokenError()
         if row.revoked_at is not None:
@@ -299,10 +299,10 @@ class PortalLinkService:
 
         buyer = await self.session.get(Buyer, row.buyer_id)
         if buyer is None:
-            # Buyer deleted after token issuance — equivalent to revoked.
+            # Buyer deleted after token issuance - equivalent to revoked.
             raise PortalTokenError()
 
-        # Single-use redemption gate — only triggered by the /verify/
+        # Single-use redemption gate - only triggered by the /verify/
         # route (consume=True). If the magic-link was already redeemed,
         # the atomic UPDATE returns rowcount=0 and we surface the
         # distinct ``portal_token_already_used`` code so the frontend
@@ -332,13 +332,13 @@ class PortalLinkService:
             )
 
         # Best-effort audit write. Failures here MUST NOT block the
-        # request — the buyer is already cryptographically verified and
+        # request - the buyer is already cryptographically verified and
         # losing a single audit timestamp is the lesser harm.
         try:
             row.last_used_at = now
             row.last_used_ip = (client_ip or "")[:64] or None
             await self.session.flush()
-        except Exception:  # noqa: BLE001 — audit is best-effort
+        except Exception:  # noqa: BLE001 - audit is best-effort
             logger.warning(
                 "portal_token: failed to bump last_used_at for jti=%s",
                 jti,

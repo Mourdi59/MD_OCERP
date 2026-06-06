@@ -1,18 +1,18 @@
-"""‌⁠‍Notification service — business logic for in-app notifications.
+"""‌⁠‍Notification service - business logic for in-app notifications.
 
 Stateless service layer.  Wraps the repository and provides convenience
 helpers like ``notify_users`` for bulk delivery.
 
 Event publishing (slice E):
-    notifications.notification.created  — new notification row
-    notifications.notification.read     — single mark-read
-    notifications.notification.bulk_read — mark-all-read
-    notifications.notification.deleted  — single delete
+    notifications.notification.created  - new notification row
+    notifications.notification.read     - single mark-read
+    notifications.notification.bulk_read - mark-all-read
+    notifications.notification.deleted  - single delete
 
 Preferences + digest (Wave 3 / T9):
-    set_preference / get_preferences           — per-channel user prefs
-    enqueue_or_dispatch                        — pref-aware fan-out
-    flush_digest_queue                         — hourly/daily batch flush
+    set_preference / get_preferences           - per-channel user prefs
+    enqueue_or_dispatch                        - pref-aware fan-out
+    flush_digest_queue                         - hourly/daily batch flush
 """
 
 import logging
@@ -36,7 +36,7 @@ _logger_ev = logging.getLogger(__name__ + ".events")
 
 
 async def _safe_publish(name: str, data: dict, source_module: str = "oe_notifications") -> None:
-    """‌⁠‍Best-effort event publish — never blocks the caller on failure."""
+    """‌⁠‍Best-effort event publish - never blocks the caller on failure."""
     try:
         event_bus.publish_detached(name, data, source_module=source_module)
     except Exception:
@@ -224,7 +224,7 @@ class NotificationService:
 
         Channel must be one of ``email|inapp|webhook|none``; digest must be
         one of ``realtime|hourly|daily``.  Validation is enforced by the
-        Pydantic schema at the router edge — service layer trusts callers.
+        Pydantic schema at the router edge - service layer trusts callers.
         """
         uid = uuid.UUID(str(user_id)) if not isinstance(user_id, uuid.UUID) else user_id
         stmt = select(NotificationPreference).where(
@@ -268,7 +268,7 @@ class NotificationService:
         event_type: str,
         channel: str,
     ) -> NotificationPreference | None:
-        """Internal helper — look up a single pref row."""
+        """Internal helper - look up a single pref row."""
         stmt = select(NotificationPreference).where(
             NotificationPreference.user_id == user_id,
             NotificationPreference.event_type == event_type,
@@ -448,7 +448,7 @@ class NotificationService:
 
 
 async def _DIGEST_FLUSHER(channel: str = "email") -> int:
-    """Stub background-task hook — opens its own session + flushes once.
+    """Stub background-task hook - opens its own session + flushes once.
 
     Real cron / Celery wiring is out of scope for T9; the router exposes a
     manual-trigger endpoint that calls this so operators (and tests) can

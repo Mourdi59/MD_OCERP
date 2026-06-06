@@ -1,9 +1,9 @@
 """Management of Change (MoC) ORM models.
 
 Tables:
-    oe_moc_entry   — MoC header: a proposed change to engineering scope,
+    oe_moc_entry   - MoC header: a proposed change to engineering scope,
                      safety procedure, design or contract baseline.
-    oe_moc_impact  — Impact-assessment line items attached to a MoC entry.
+    oe_moc_impact  - Impact-assessment line items attached to a MoC entry.
 
 State machine (per OSHA PSM / ISO 55000 / IEC 61511):
     proposed  -> reviewed   (risk review completed)
@@ -24,7 +24,7 @@ from app.database import GUID, Base
 
 
 class MoCEntry(Base):
-    """Management-of-Change entry — the change proposal header."""
+    """Management-of-Change entry - the change proposal header."""
 
     __tablename__ = "oe_moc_entry"
     __table_args__ = (UniqueConstraint("project_id", "code", name="uq_oe_moc_entry_project_code"),)
@@ -59,7 +59,7 @@ class MoCEntry(Base):
     schedule_delta_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     currency: Mapped[str] = mapped_column(String(10), nullable=False, default="")
     status: Mapped[str] = mapped_column(String(40), nullable=False, default="proposed", index=True)
-    # Soft cross-module links (no DB FK — avoids circular module dependency).
+    # Soft cross-module links (no DB FK - avoids circular module dependency).
     variation_request_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     variation_order_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     change_order_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)

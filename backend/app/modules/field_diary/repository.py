@@ -157,7 +157,7 @@ class FieldSyncLedgerRepository(_BaseRepo):
         """List a worker's applied ops, newest first, optionally since an ISO time.
 
         Scoped to ``(project_id, user_id)`` so a worker only ever sees their own
-        op history on the session project (no cross-project leak — the caller
+        op history on the session project (no cross-project leak - the caller
         passes the session's pinned project + user).
         """
         stmt = select(FieldSyncLedger).where(

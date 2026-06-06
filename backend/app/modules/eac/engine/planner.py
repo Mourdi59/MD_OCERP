@@ -7,11 +7,11 @@ Compiles a parsed :class:`EacRuleDefinition` into an
 ``SELECT`` statement that the EAC-1.4 executor will run against the
 canonical Parquet table.
 
-The structural shape of the SQL is what matters here — actual execution
+The structural shape of the SQL is what matters here - actual execution
 is the next ticket. The planner therefore:
 
 * generates a ``SELECT`` over a notional canonical table
-  (``elements`` — placeholder name; the executor will swap it),
+  (``elements`` - placeholder name; the executor will swap it),
 * compiles the predicate tree into a SQL boolean expression,
 * compiles the selector tree into a parallel boolean expression
   ANDed onto the predicate,
@@ -21,7 +21,7 @@ is the next ticket. The planner therefore:
 * projects the canonical columns the rule needs.
 
 Every value that travels through the planner exits in
-``parameters`` — never via inline string interpolation.
+``parameters`` - never via inline string interpolation.
 """
 
 from __future__ import annotations
@@ -90,7 +90,7 @@ class ExecutionPlan:
     """‌⁠‍Structured execution plan ready for the DuckDB layer.
 
     ``duckdb_sql`` is a parameterised SQL string. ``parameters`` carries
-    the bind values referenced by ``?``-placeholders in the SQL —
+    the bind values referenced by ``?``-placeholders in the SQL -
     the executor passes both directly into ``connection.execute(...)``.
     """
 
@@ -130,7 +130,7 @@ class _PlanBuilder:
 
 def plan_rule(
     parsed: EacRuleDefinition,
-    model_version_id: uuid.UUID | None = None,  # noqa: ARG001 — used by EAC-1.4
+    model_version_id: uuid.UUID | None = None,  # noqa: ARG001 - used by EAC-1.4
 ) -> ExecutionPlan:
     """Compile a rule definition into an :class:`ExecutionPlan`."""
     builder = _PlanBuilder()
@@ -178,7 +178,7 @@ def _compile_selector(selector: EntitySelector, builder: _PlanBuilder) -> str:
         return "(NOT " + _compile_selector(selector.child, builder) + ")"
 
     # Leaf selectors. Each maps to a column or a JSON path on the
-    # canonical Parquet schema. The actual schema lives in EAC-1.4 —
+    # canonical Parquet schema. The actual schema lives in EAC-1.4 -
     # the names below are the placeholders we'll resolve there.
     if isinstance(selector, CategorySelector):
         return _in_clause("category", selector.values, builder)
@@ -224,7 +224,7 @@ def _compile_selector(selector: EntitySelector, builder: _PlanBuilder) -> str:
             clauses.append(f"(length_m <= {builder.bind(selector.max_length_m)})")
         return "(" + " AND ".join(clauses or ["TRUE"]) + ")"
 
-    # Defensive fallback — the schema is closed by Pydantic so this
+    # Defensive fallback - the schema is closed by Pydantic so this
     # branch is never reached in practice. ``TRUE`` keeps the SQL valid
     # if a future selector kind lands without a planner update.
     return "TRUE"
@@ -252,7 +252,7 @@ def _compile_predicate(predicate: Predicate, builder: _PlanBuilder) -> str:
     if isinstance(predicate, NotPredicate):
         return "(NOT " + _compile_predicate(predicate.child, builder) + ")"
 
-    # Triplet — attribute + constraint.
+    # Triplet - attribute + constraint.
     if isinstance(predicate, TripletPredicate):
         return _compile_triplet(predicate, builder)
 
@@ -295,7 +295,7 @@ def _escape(value: str) -> str:
     """Escape single quotes for a SQL identifier path.
 
     The values that flow through this helper are CONFIGURATION (alias
-    ids, pset names, attribute names) — not user data. The validator
+    ids, pset names, attribute names) - not user data. The validator
     rejects malformed values upstream; this is defence-in-depth.
     """
     return value.replace("'", "''")
@@ -327,7 +327,7 @@ def _constraint_to_sql(
         op = "BETWEEN" if constraint.inclusive else "BETWEEN"
         # DuckDB ``BETWEEN`` is inclusive; for exclusive bounds the
         # executor rewrites to (col > min AND col < max). We keep the
-        # SQL inclusive here — the executor applies the open-interval
+        # SQL inclusive here - the executor applies the open-interval
         # form when needed.
         return f"({column_expr} {op} {builder.bind(constraint.min)} AND {builder.bind(constraint.max)})"
     if isinstance(constraint, NotBetweenConstraint):

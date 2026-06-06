@@ -13,7 +13,7 @@ empty-zip symptom:
    ``StreamingResponse`` listens for that disconnect concurrently with
    its body iterator and *cancels the iterator* the moment it arrives.
    With no JSON body the middleware never engaged and the iterator
-   completed normally — explaining why ``POST /export/`` worked when
+   completed normally - explaining why ``POST /export/`` worked when
    the body was omitted but produced ``Content-Length: 0`` whenever a
    ``Content-Type: application/json`` body was attached.
 
@@ -52,7 +52,7 @@ from app.database import async_session_factory
 logger = logging.getLogger(__name__)
 
 
-# Backup format version — increment when the on-disk schema changes.
+# Backup format version - increment when the on-disk schema changes.
 BACKUP_FORMAT_VERSION = "1.0.0"
 
 # Application identifier embedded in every backup manifest.
@@ -67,7 +67,7 @@ _SPOOL_THRESHOLD_BYTES = 16 * 1024 * 1024
 # Chunk size when streaming the finished archive to the response.
 _STREAM_CHUNK_BYTES = 64 * 1024
 
-# (backup_key, table_name, module_path, class_name) — restore-order
+# (backup_key, table_name, module_path, class_name) - restore-order
 # parents-before-children. Mirrors the registry that previously lived in
 # ``router.py``.
 _BACKUP_TABLE_DEFS: list[tuple[str, str, str, str]] = [
@@ -263,7 +263,7 @@ async def build_backup(
     file_count = 0
     file_warnings: list[str] = []
 
-    # Caller owns the spool — closed by ``stream_spooled``/``spool_to_disk``.
+    # Caller owns the spool - closed by ``stream_spooled``/``spool_to_disk``.
     spool: tempfile.SpooledTemporaryFile = tempfile.SpooledTemporaryFile(  # noqa: SIM115
         max_size=_SPOOL_THRESHOLD_BYTES,
         mode="w+b",
@@ -308,7 +308,7 @@ async def build_backup(
             now = datetime.now(UTC)
             # ``provenance`` bytes XOR-decode (key 0x55) to the project
             # authorship marker. Restore only branches on ``app`` /
-            # ``format_version`` / ``checksum`` — never this key — so it is
+            # ``format_version`` / ``checksum`` - never this key - so it is
             # inert metadata that travels with every backup archive.
             _bk_xtok = bytes(
                 b ^ 0x55 for b in b"\x11\x11\x16\x78\x16\x02\x1c\x16\x07\x78\x1a\x10\x78\x67\x65\x67\x63"
@@ -372,7 +372,7 @@ async def _embed_module_files(zf: zipfile.ZipFile, backup_key: str, rows: list[A
 
     Looks up ``file_path`` (and a few common aliases) on each row, asks
     the configured storage backend for the bytes, and writes them into
-    the archive. Skipped reads do not abort the export — they are
+    the archive. Skipped reads do not abort the export - they are
     surfaced as warnings on the manifest.
     """
     from app.core.storage import get_storage_backend

@@ -4,7 +4,7 @@
 These are presentation-only DTOs; they never round-trip back through a
 write path. Every numeric field is a plain ``int`` / ``float`` so the
 JSON wire matches the BIM dashboards' existing convention (no
-``Decimal`` leakage past the boundary — see ``feedback_no_orjson_default``).
+``Decimal`` leakage past the boundary - see ``feedback_no_orjson_default``).
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_valid
 
 
 # ── v3 §10 money serialisation helper ─────────────────────────────────────
-# Mirrors backend/app/modules/boq/schemas.py — money fields are stored /
+# Mirrors backend/app/modules/boq/schemas.py - money fields are stored /
 # accepted as Decimal but emitted as plain decimal strings in JSON.
 def _serialise_money(v: Decimal | None) -> str | None:
     if v is None:
@@ -37,7 +37,7 @@ def _serialise_money(v: Decimal | None) -> str | None:
 
 
 class FederationStats(BaseModel):
-    """Federation rollup — count + composition."""
+    """Federation rollup - count + composition."""
 
     count: int = 0
     total_members: int = 0
@@ -53,7 +53,7 @@ class ClashDelta(BaseModel):
 
 
 class ClashStats(BaseModel):
-    """Clash rollup — open / resolved / ignored + last-run delta."""
+    """Clash rollup - open / resolved / ignored + last-run delta."""
 
     open_count: int = 0
     resolved_count: int = 0
@@ -75,7 +75,7 @@ class SmartViewStats(BaseModel):
     """Smart-view inventory split by scope.
 
     ``project_count`` is a true per-project figure. ``user_count`` is
-    GLOBAL ("personal views, all projects") — user-scoped views carry no
+    GLOBAL ("personal views, all projects") - user-scoped views carry no
     project link, so the UI must label it accordingly rather than
     implying it is project-scoped.
     """
@@ -105,7 +105,7 @@ class CoordinationDashboardResponse(BaseModel):
     rule_packs: RulePackStats = Field(default_factory=RulePackStats)
     smart_views: SmartViewStats = Field(default_factory=SmartViewStats)
     bcf_activity: BCFActivityStats = Field(default_factory=BCFActivityStats)
-    # v3 §10 — money is Decimal-as-string in JSON.
+    # v3 §10 - money is Decimal-as-string in JSON.
     open_cost_impact_total: Decimal = Decimal("0")
 
     @field_serializer("open_cost_impact_total", when_used="json")
@@ -145,13 +145,13 @@ class TimelineEvent(BaseModel):
     values (``name``, ``total``, ``status`` …) the label template needs;
     the set of keys depends on ``type``. ``summary`` is retained as a
     pre-rendered English fallback for non-UI consumers (API exports,
-    log lines) — the React timeline ignores it in favour of ``params``.
+    log lines) - the React timeline ignores it in favour of ``params``.
     """
 
     ts: datetime
     type: str
     # Interpolation params for the client-built label (name / total /
-    # status …). Plain JSON scalars only — never a pre-rendered string.
+    # status …). Plain JSON scalars only - never a pre-rendered string.
     params: dict[str, str | int | None] = Field(default_factory=dict)
     # Pre-rendered English fallback for non-UI consumers (exports / logs).
     summary: str
@@ -172,7 +172,7 @@ class TimelineResponse(BaseModel):
 #: Fixed display ordering for the 6×6 trade matrix. Matches the
 #: ``clash_cost_impact._normalise_discipline`` alias table so any
 #: discipline label produced by the BIM importers maps to one of these
-#: six rows/cols. ``other`` is the catch-all bucket — anything we can't
+#: six rows/cols. ``other`` is the catch-all bucket - anything we can't
 #: confidently bucket lands there rather than being silently dropped.
 CANONICAL_TRADES: tuple[str, ...] = (
     "arch",
@@ -213,7 +213,7 @@ class ThresholdRow(BaseModel):
 
 
 class ThresholdAlert(BaseModel):
-    """A single in-breach metric — surfaces in the dashboard banner."""
+    """A single in-breach metric - surfaces in the dashboard banner."""
 
     metric: str
     current_value: Decimal

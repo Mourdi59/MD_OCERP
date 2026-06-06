@@ -1,4 +1,4 @@
-"""Base agent framework — Tool protocol, registry, Agent + AgentRunner.
+"""Base agent framework - Tool protocol, registry, Agent + AgentRunner.
 
 The runner implements a ReAct loop:
 
@@ -8,15 +8,15 @@ The runner implements a ReAct loop:
 The LLM itself is abstracted behind :class:`LLMBridge` so tests can plug in
 a scripted mock and production can use the existing ``ai`` module client.
 
-Safety guards (cost runaway prevention) — all configurable per agent:
+Safety guards (cost runaway prevention) - all configurable per agent:
 
-* ``max_iterations``      — hard ReAct-loop cap (failure_reason="iter_limit").
-* ``max_total_tokens``    — sum tokens across all steps; halts when exceeded
+* ``max_iterations``      - hard ReAct-loop cap (failure_reason="iter_limit").
+* ``max_total_tokens``    - sum tokens across all steps; halts when exceeded
                             (failure_reason="token_limit").
-* ``max_wall_seconds``    — total wall-clock budget for the run
+* ``max_wall_seconds``    - total wall-clock budget for the run
                             (failure_reason="wall_timeout").
-* ``llm_step_timeout``    — per-LLM-call timeout (failure_reason="llm_timeout").
-* ``max_observation_chars`` — truncate tool output so an oversized read
+* ``llm_step_timeout``    - per-LLM-call timeout (failure_reason="llm_timeout").
+* ``max_observation_chars`` - truncate tool output so an oversized read
                               (10MB PDF, full DB dump) doesn't blow up the
                               next-step LLM prompt cost.
 
@@ -87,7 +87,7 @@ class Tool(Protocol):
 
     Implementations may be either Tool *instances* (an object with the
     three attributes + an async ``run``) or any object that quacks the
-    same shape — keeps the registry tolerant of duck typing.
+    same shape - keeps the registry tolerant of duck typing.
     """
 
     name: str
@@ -111,7 +111,7 @@ class FunctionTool:
 
         The runner injects ``__agent_context__`` into every call so tools
         that need the invoking user / project can re-verify permission.
-        Tools that ignore the context have it stripped transparently —
+        Tools that ignore the context have it stripped transparently -
         we only forward keys the underlying callable actually accepts.
         """
         ctx = args.pop("__agent_context__", None)
@@ -126,7 +126,7 @@ class FunctionTool:
                 else:
                     sig_params.add(p.name)
         except (TypeError, ValueError):
-            accepts_var_kw = True  # builtins / C-extensions — be permissive
+            accepts_var_kw = True  # builtins / C-extensions - be permissive
         if ctx is not None and (accepts_var_kw or "__agent_context__" in sig_params):
             args["__agent_context__"] = ctx
         result = self.func(**args)
@@ -144,7 +144,7 @@ class ToolRegistry:
     Module-level registries (e.g. the global registry the BOQ-drafter
     populates at import time) and per-run registries (a test may install
     a few mocks just for one ``AgentRunner.run`` call) both use the same
-    class — there's nothing magical about the global instance.
+    class - there's nothing magical about the global instance.
     """
 
     def __init__(self) -> None:
@@ -182,18 +182,18 @@ global_tool_registry = ToolRegistry()
 class Agent:
     """Declarative agent metadata.
 
-    The agent does NOT carry behaviour itself — :class:`AgentRunner` reads
+    The agent does NOT carry behaviour itself - :class:`AgentRunner` reads
     these attributes and drives the actual loop. Subclassing is therefore
     optional; most agents just instantiate :class:`Agent` with the right
     values.
 
     Safety caps (see module docstring for rationale):
 
-    * ``max_iterations``  — ReAct-loop step cap.
-    * ``max_total_tokens`` — aborts when total token usage exceeds this.
-    * ``max_wall_seconds`` — total wall-clock budget for the whole run.
-    * ``llm_step_timeout`` — per-LLM-call timeout (seconds).
-    * ``max_observation_chars`` — clip oversized tool outputs.
+    * ``max_iterations``  - ReAct-loop step cap.
+    * ``max_total_tokens`` - aborts when total token usage exceeds this.
+    * ``max_wall_seconds`` - total wall-clock budget for the whole run.
+    * ``llm_step_timeout`` - per-LLM-call timeout (seconds).
+    * ``max_observation_chars`` - clip oversized tool outputs.
     """
 
     name: str
@@ -212,7 +212,7 @@ class Agent:
     max_observation_chars: int = DEFAULT_MAX_OBSERVATION_CHARS
 
     # ── Presentation metadata (purely for the UI catalogue) ─────────────────
-    # These never affect the loop — they let the frontend render a rich,
+    # These never affect the loop - they let the frontend render a rich,
     # grouped, self-explanatory agent gallery instead of a flat list of
     # slugs. ``display_name`` falls back to a humanised ``name`` when blank.
     display_name: str = ""
@@ -248,7 +248,7 @@ def list_agents() -> list[Agent]:
     return list(_agents.values())
 
 
-# ── LLM bridge (forward decl — concrete implementation in llm.py) ──────────
+# ── LLM bridge (forward decl - concrete implementation in llm.py) ──────────
 
 
 LLMItem = dict[str, Any]  # {"type": "tool_call", "name": str, "args": dict}
@@ -303,7 +303,7 @@ class AgentResult:
 class AgentRunner:
     """Drives the ReAct loop for an :class:`Agent`.
 
-    The runner is stateless — every call to :meth:`run` builds a fresh
+    The runner is stateless - every call to :meth:`run` builds a fresh
     message history. Persistence is the caller's responsibility
     (``service.AgentService`` writes :class:`StepRecord`\\s to
     :class:`models.AgentStep` as the loop progresses, but the runner
@@ -541,7 +541,7 @@ class AgentRunner:
 
                 # Forward the user/project context to tools that opt in.
                 # Tools sniff ``__agent_context__`` and re-verify the user's
-                # permission before performing privileged actions — we never
+                # permission before performing privileged actions - we never
                 # trust the LLM's elevated runner context implicitly.
                 #
                 # SECURITY: any ``__agent_context__`` the LLM tried to forge
@@ -556,7 +556,7 @@ class AgentRunner:
                     raw_observation = await tool.run(call_args)
                     observation = _truncate_observation(raw_observation, obs_cap)
                     obs_step = StepRecord(role="observation", content=observation)
-                except Exception as exc:  # tool failure isn't fatal — feed it back to LLM
+                except Exception as exc:  # tool failure isn't fatal - feed it back to LLM
                     observation = {"error": str(exc)[:300]}
                     obs_step = StepRecord(role="observation", content=observation)
                 steps.append(obs_step)
@@ -565,7 +565,7 @@ class AgentRunner:
                 messages.append({"role": "tool", "name": tool_name, "content": observation})
                 continue
 
-            # Unknown LLM item shape — record and bail out gracefully.
+            # Unknown LLM item shape - record and bail out gracefully.
             err_step = StepRecord(
                 role="error",
                 content={"reason": "bad_llm_item", "item": item},
@@ -582,7 +582,7 @@ class AgentRunner:
                 failure_reason="bad_llm_item",
             )
 
-        # Loop exhausted — cap hit, no final answer.
+        # Loop exhausted - cap hit, no final answer.
         cap_step = StepRecord(
             role="error",
             content={"reason": "iter_limit", "max_iterations": agent.max_iterations},

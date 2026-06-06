@@ -1,11 +1,11 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Match feedback loop — captures user confirmations for offline tuning.
+"""‌⁠‍Match feedback loop - captures user confirmations for offline tuning.
 
 Every time the user accepts, rejects, or hand-overrides a match
 suggestion the router calls :func:`record_feedback`. The captured
 ``AuditEntry`` carries the full envelope, the top candidates we
-showed, and what the user actually picked — enough signal to retrain
+showed, and what the user actually picked - enough signal to retrain
 boost weights and augment the golden set.
 """
 
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 def _candidate_payload(candidate: MatchCandidate) -> dict[str, Any]:
-    """‌⁠‍Compact dict for audit storage — drops fields a downstream
+    """‌⁠‍Compact dict for audit storage - drops fields a downstream
     re-ranker can recompute from ``code`` (description, currency, etc.)
     while keeping the score / boost trail."""
     return {
@@ -54,13 +54,13 @@ async def record_feedback(
         element_envelope: The envelope the matcher saw.
         accepted_candidate: The candidate the user accepted (if any).
         rejected_candidates: Candidates the user explicitly rejected.
-        user_chose_code: Free-form code the user typed in instead — set
+        user_chose_code: Free-form code the user typed in instead - set
             when the user disagreed with every suggestion and went
             manual.
         user_id: Acting user UUID for audit attribution.
 
     Returns:
-        ``None`` — failures are logged at debug level and swallowed so
+        ``None`` - failures are logged at debug level and swallowed so
         feedback collection never blocks the user-facing flow.
     """
     project_str = str(project_id)
@@ -82,5 +82,5 @@ async def record_feedback(
             user_id=user_id,
             details=payload,
         )
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug("match feedback audit_log skipped: %s", exc)

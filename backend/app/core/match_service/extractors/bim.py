@@ -14,7 +14,7 @@ Input shape mirrors ``backend/app/modules/cad/`` canonical elements:
 
 The extractor synthesises a description from category + material + fire
 rating because the canonical block doesn't always carry a free-form
-description (BIM tools name elements ``"Wall:Generic 200mm:1234"`` —
+description (BIM tools name elements ``"Wall:Generic 200mm:1234"`` -
 not useful for embedding).
 """
 
@@ -67,7 +67,7 @@ def _auto_classifier_hint(
 # so the dense channel has English content even when the source name is
 # a single foreign-language word (e.g., a Dutch IFC's ``"traphek"``).
 # Without this, BGE-M3 must cross-lingual the Dutch word against an
-# English catalogue with no English context whatsoever — recall collapses.
+# English catalogue with no English context whatsoever - recall collapses.
 _IFC_CLASS_TO_ENGLISH: dict[str, str] = {
     "ifcwall": "wall",
     "ifcwallstandardcase": "wall",
@@ -151,7 +151,7 @@ def _synthesise_description(raw: dict[str, Any]) -> str:
     noun), then the source name only when it looks meaningful, then
     material + properties. The English IFC anchor is critical when the
     source name is foreign-language (Dutch "traphek", German "Wand") and
-    the catalogue is English — without it BGE-M3 has no English seed at
+    the catalogue is English - without it BGE-M3 has no English seed at
     all and recall collapses.
     """
     parts: list[str] = []
@@ -161,20 +161,20 @@ def _synthesise_description(raw: dict[str, Any]) -> str:
     name = str(raw.get("name") or "").strip()
     description = str(raw.get("description") or "").strip()
 
-    # English anchor from the IFC class — ALWAYS first so the dense
+    # English anchor from the IFC class - ALWAYS first so the dense
     # channel has something the catalogue can latch onto.
     english = _ifc_class_english(category)
     if english:
         parts.append(english)
     elif category:
-        # Unknown IFC class — fall back to the raw value (still better
+        # Unknown IFC class - fall back to the raw value (still better
         # than nothing). Strip a leading "Ifc" prefix so the encoder
         # sees ``"Wall"`` instead of ``"IfcWall"`` (the latter is an
         # internal token that doesn't appear in catalogue descriptions).
         bare = category[3:] if category.lower().startswith("ifc") else category
         parts.append(bare.lower())
 
-    # Free-form description / name — only when they pass the meaningful
+    # Free-form description / name - only when they pass the meaningful
     # check, so junk bytes like 0xFF don't poison the query.
     if description and description not in parts and _is_meaningful(description):
         parts.append(description)
@@ -206,7 +206,7 @@ def _normalise_ifc_class(raw: dict[str, Any]) -> str | None:
 
     Looks at ``raw["ifc_class"]`` first (some upstream pipelines set it
     directly), then falls back to ``raw["category"]`` when it starts
-    with ``Ifc`` — the BIM canonical format puts the entity-type there
+    with ``Ifc`` - the BIM canonical format puts the entity-type there
     verbatim. Normalises ``IfcWallStandardCase`` →
     ``IfcWallStandardCase`` (keep case-sensitive shape the catalogue
     payload uses), but discards values that don't have the ``Ifc``
@@ -215,7 +215,7 @@ def _normalise_ifc_class(raw: dict[str, Any]) -> str | None:
 
     Without this populated, the SearchPlan never emits an
     ``ifc_class`` hard filter even though the catalogue's payload index
-    has ~28k rows tagged with it — recall on structural elements
+    has ~28k rows tagged with it - recall on structural elements
     suffered as a result.
     """
 
@@ -291,7 +291,7 @@ def extract(raw: dict[str, Any]) -> ElementEnvelope:
     # Populate ``ifc_class`` from the source's IFC entity-type so the
     # SearchPlan can pin it as a hard filter. The check inside
     # ``build_search_plan`` also verifies the bound catalogue actually
-    # carries the ``ifc_class`` payload field — collections that don't
+    # carries the ``ifc_class`` payload field - collections that don't
     # (e.g., raw DDC v3 snapshots) silently drop the predicate, so this
     # is safe to populate unconditionally.
     ifc_class = _normalise_ifc_class(raw)
@@ -309,15 +309,15 @@ def extract(raw: dict[str, Any]) -> ElementEnvelope:
     if pred_type:
         envelope.ifc_predefined_type = str(pred_type)[:64]
 
-    # ``material_class`` powers a soft boost — never a hard filter — so
+    # ``material_class`` powers a soft boost - never a hard filter - so
     # we collapse free-form material strings onto the canonical token
     # set (``concrete`` / ``masonry`` / ``timber`` / ``steel`` / …).
     material_class = _normalise_material_class(raw)
     if material_class:
         envelope.material_class = material_class
 
-    # Pset trinary booleans — hard filters when explicitly True (per
-    # MAPPING_PROCESS.md §4.2.1). False rarely helps as a filter — most
+    # Pset trinary booleans - hard filters when explicitly True (per
+    # MAPPING_PROCESS.md §4.2.1). False rarely helps as a filter - most
     # catalogue rates don't carry a definitely-not-external flag.
     for src_key, dst_attr in (
         ("is_external", "is_external"),
@@ -332,7 +332,7 @@ def extract(raw: dict[str, Any]) -> ElementEnvelope:
         if isinstance(v, bool) and v:
             setattr(envelope, dst_attr, True)
 
-    # ``nominal_size_mm`` — pull the integer thickness when the
+    # ``nominal_size_mm`` - pull the integer thickness when the
     # geometry block carries one. The catalogue's soft boost matches
     # within ±10% so a 220mm-wall envelope still picks up the 200mm
     # boost.

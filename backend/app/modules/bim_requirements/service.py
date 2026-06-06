@@ -547,7 +547,7 @@ class BIMRequirementService:
                 return actual is None
             return str(actual).lower() == str(expected).lower()
 
-        # Unknown constraint type — pass if value exists
+        # Unknown constraint type - pass if value exists
         return actual is not None
 
     # ── Rules-as-Code (YAML) install ──────────────────────────────────────
@@ -572,7 +572,7 @@ class BIMRequirementService:
 
         Args:
             project_id: Owner project for the new requirement set.
-            yaml_text: Raw YAML source — typically pasted into the
+            yaml_text: Raw YAML source - typically pasted into the
                 ``/install-from-yaml`` endpoint body.
             user_id: Importing user (for audit).
 
@@ -642,7 +642,7 @@ class BIMRequirementService:
                     "unit": primary.unit,
                     "metric": rule.assertion.set_vs_set.metric,
                 }
-            else:  # pragma: no cover — schema-validated
+            else:  # pragma: no cover - schema-validated
                 continue
 
             element_filter: dict[str, object] = {}
@@ -676,7 +676,7 @@ class BIMRequirementService:
         await self.session.flush()
 
         logger.info(
-            "Installed YAML rule pack '%s' (v%s) — %d rules — into set %s",
+            "Installed YAML rule pack '%s' (v%s) - %d rules - into set %s",
             pack.pack.id,
             pack.pack.version,
             len(created),

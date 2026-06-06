@@ -86,7 +86,7 @@ def compute_next_run_at(
 ) -> datetime:
     """‌⁠‍Return the next UTC datetime a schedule should fire.
 
-    Pure function — testable without a DB. ``time_of_day`` is ``HH:MM``
+    Pure function - testable without a DB. ``time_of_day`` is ``HH:MM``
     in UTC for simplicity (real impl would honour ``timezone``).
     """
     now = base or _now()
@@ -151,7 +151,7 @@ def compute_next_run_at(
             target_time,
         )
 
-    # Unknown frequency — fall back to 1 day out
+    # Unknown frequency - fall back to 1 day out
     return now + timedelta(days=1)
 
 
@@ -170,7 +170,7 @@ class BIDashboardsService:
     async def bootstrap_system_kpis(self) -> int:
         """Upsert one ``KPIDefinition`` row per registered system KPI.
 
-        Idempotent — safe to call on every boot. Returns the number of
+        Idempotent - safe to call on every boot. Returns the number of
         KPI rows touched.
         """
         meta_list = _kpis.list_system_kpis()
@@ -472,7 +472,7 @@ class BIDashboardsService:
             breakdown: dict[str, Any] = {}
             from_cache = False
 
-            # Try cached snapshot first. SQLite returns naive datetimes —
+            # Try cached snapshot first. SQLite returns naive datetimes -
             # assume UTC so the comparison against ``now`` (always tz-aware)
             # doesn't TypeError.
             snap = latest_snapshots.get(widget.id)
@@ -555,13 +555,13 @@ class BIDashboardsService:
         """Evaluate every widget on a dashboard, optionally cross-filtered.
 
         When ``cross_filter_enabled`` is False on the dashboard the
-        ``filters`` argument is ignored — every widget returns its
+        ``filters`` argument is ignored - every widget returns its
         unfiltered headline KPI value, matching :meth:`render_dashboard`'s
         existing static contract.
 
         When ``cross_filter_enabled`` is True the filter dict is
         propagated to each widget's KPI call. ``project_id`` and
-        ``period_start`` / ``period_end`` are first-class — anything else
+        ``period_start`` / ``period_end`` are first-class - anything else
         is forwarded as ``filters=`` to the KPI formula (each KPI ignores
         keys it doesn't recognise, so unknown keys degrade gracefully).
         """
@@ -589,7 +589,7 @@ class BIDashboardsService:
                         project_id_val = value if isinstance(value, uuid.UUID) else uuid.UUID(str(value))
                     except Exception:
                         # Unparseable project_id is treated like any other
-                        # unknown key — silently dropped, not 500'd.
+                        # unknown key - silently dropped, not 500'd.
                         pass
                 elif key == "period_start" and value:
                     try:
@@ -605,8 +605,8 @@ class BIDashboardsService:
                     kpi_filters[key] = value
 
         now = _now()
-        # Perf (audit #7): when no filters narrow the result — the common
-        # "just opened the board" case — every widget's unfiltered value is
+        # Perf (audit #7): when no filters narrow the result - the common
+        # "just opened the board" case - every widget's unfiltered value is
         # identical to the one ``render_dashboard`` just computed and cached.
         # Reuse that fresh snapshot instead of recomputing each KPI from
         # scratch, so a single dashboard open computes each widget once
@@ -653,12 +653,12 @@ class BIDashboardsService:
                     breakdown = cached[2]
                 # When cross-filter is OFF we deliberately call compute
                 # with NO project/period/filter args. That mirrors the
-                # static render path byte-for-byte — important for the
+                # static render path byte-for-byte - important for the
                 # forward-compat contract: dashboards that haven't opted
                 # in must keep returning today's values.
                 elif cross_filter:
                     # Fall back to widget.config_json["project_id"] when the
-                    # caller didn't supply one — preserves the per-widget
+                    # caller didn't supply one - preserves the per-widget
                     # default project binding used by render_dashboard.
                     effective_project = project_id_val
                     if effective_project is None and isinstance(
@@ -693,7 +693,7 @@ class BIDashboardsService:
                     unit = computation.unit
                     breakdown = computation.breakdown or {}
 
-            # Optional ``series`` for line/bar charts — pulled from the
+            # Optional ``series`` for line/bar charts - pulled from the
             # KPI history (cheapest source of a time-axis). For non-
             # chart widgets we omit it to keep the payload light. Read from
             # the batch-prefetched cache to avoid an N+1 per chart widget.
@@ -1065,7 +1065,7 @@ class BIDashboardsService:
         legacy single-KPI + threshold path is used.
         """
         now = _now()
-        # Throttle check — SQLite can return tz-naive datetimes; normalise
+        # Throttle check - SQLite can return tz-naive datetimes; normalise
         last_triggered = alert.last_triggered_at
         if last_triggered is not None and last_triggered.tzinfo is None:
             last_triggered = last_triggered.replace(tzinfo=UTC)
@@ -1193,7 +1193,7 @@ class BIDashboardsService:
 
         ``period_start`` / ``period_end`` / ``filters`` are forwarded to
         the KPI formula so the headline aggregate reflects the same scope
-        the caller requested — previously these request fields were
+        the caller requested - previously these request fields were
         silently dropped, so a period-filtered drill-down returned the
         all-time aggregate, contradicting its own row list.
         """
@@ -1292,7 +1292,7 @@ class BIDashboardsService:
         """Add ``user_ids`` to a filter's ``shared_with_user_ids_json``.
 
         Caller must be the owner (or global admin via the router-level
-        ownership check). Idempotent — duplicates are de-duped.
+        ownership check). Idempotent - duplicates are de-duped.
         """
         sf = await self.repo.get_filter(filter_id)
         if sf is None:
@@ -1300,7 +1300,7 @@ class BIDashboardsService:
 
             raise HTTPException(status_code=404, detail="Filter not found")
         # Only the owner may share. An unowned filter (``owner_user_id`` is
-        # NULL — e.g. a seeded global/role filter) has no owner, so no
+        # NULL - e.g. a seeded global/role filter) has no owner, so no
         # caller passes this check: previously the ``is not None`` guards
         # short-circuited the comparison to False and let any authenticated
         # user share such a filter with arbitrary users (IDOR). 404 (not
@@ -1372,7 +1372,7 @@ class BIDashboardsService:
                 history=history,
                 unit=result.unit,
             )
-        # PNG would need cairosvg or matplotlib — outside the no-mocks bar.
+        # PNG would need cairosvg or matplotlib - outside the no-mocks bar.
         # Return SVG so caller can convert client-side if desired.
         return export_widget_svg(
             widget_label=widget_label,

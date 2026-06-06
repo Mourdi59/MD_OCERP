@@ -3,13 +3,13 @@
 
 Three verbs:
 
-* ``clash_triage.read`` — list triage history + read the current prompt
+* ``clash_triage.read`` - list triage history + read the current prompt
   templates. Viewer-level: anyone who can read clashes can audit the AI
   layer's verdicts and inspect the prompt they were produced with.
-* ``clash_triage.execute`` — actually call the LLM (single + batch +
+* ``clash_triage.execute`` - actually call the LLM (single + batch +
   replay). Editor-level because it has a real cost (LLM tokens) and
   produces a persisted triage row.
-* ``clash_triage.manage_prompts`` — reserved for a future prompt-editor
+* ``clash_triage.manage_prompts`` - reserved for a future prompt-editor
   UI (currently the prompt is read-only in-app; tuning is a deploy-time
   edit to ``prompts.py``). Manager-level so a future write surface
   cannot widen accidentally.

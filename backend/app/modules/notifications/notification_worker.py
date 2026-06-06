@@ -1,22 +1,22 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""Background notification worker — periodic digest flush + cleanup.
+"""Background notification worker - periodic digest flush + cleanup.
 
 Epic B / B4-B5: replaces the previous "manual /digest/flush endpoint
 only" dispatch model with two recurring tasks that fire on a fixed
 cadence:
 
-* :func:`flush_email_digest_periodic`  — every 5 minutes flush every
+* :func:`flush_email_digest_periodic`  - every 5 minutes flush every
   email digest row whose ``scheduled_for`` has elapsed.  Keeps the
   user inbox at most 5 minutes behind the requested cadence
   (``hourly`` / ``daily`` semantics live in the pref row; the worker
   is dialect-agnostic and just drains everything that has matured).
 
-* :func:`flush_inapp_digest_periodic` — every 5 minutes flush the
+* :func:`flush_inapp_digest_periodic` - every 5 minutes flush the
   same way for the in-app channel so users on the "daily summary"
   cadence still get a roll-up without an admin click.
 
-* :func:`cleanup_old_notifications`   — every 24 hours delete
+* :func:`cleanup_old_notifications`   - every 24 hours delete
   notifications older than the configured retention window
   (default 90 days).
 
@@ -25,7 +25,7 @@ Scheduler choice
 The project's documented Celery+Redis is optional; many deployments
 run without a broker.  This module ships a tiny in-process asyncio
 loop that the FastAPI lifespan starts on app boot.  A future PR can
-add a Celery shim that calls the same async helpers — they're shaped
+add a Celery shim that calls the same async helpers - they're shaped
 as pure coroutines so swapping the driver is a one-file change.
 """
 
@@ -127,7 +127,7 @@ async def _run_periodically(
 
     Errors inside the periodic body are logged and swallowed so a
     single bad iteration cannot kill the schedule.  The first run
-    happens after the first interval — no startup race-condition with
+    happens after the first interval - no startup race-condition with
     half-mounted modules.
     """
     while not shutdown.is_set():

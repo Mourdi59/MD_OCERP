@@ -61,7 +61,7 @@ router = APIRouter(tags=["submittals"])
 logger = logging.getLogger(__name__)
 
 # Magic-byte allow-list for direct submittal-attachment uploads.
-# Submittals are shop drawings, product data, samples, test reports —
+# Submittals are shop drawings, product data, samples, test reports -
 # the realistic format set is PDFs, vector CAD (DWG/DXF/IFC/GLB), Office
 # ZIP containers, and site photos. ``xml`` is excluded deliberately: the
 # stdlib detector tolerates ``<html>...`` as XML and HTML payloads have
@@ -90,7 +90,7 @@ _ALLOWED_ATTACHMENT_TYPES = frozenset(
 # already covers it; created lazily on first upload.
 ATTACHMENTS_DIR = Path("uploads/submittals/attachments")
 
-# Per-file upload cap — submittal attachments occasionally include large
+# Per-file upload cap - submittal attachments occasionally include large
 # RVT exports / BIM glTF files. 50 MB matches the documents-module cap
 # in v4.2.3 and bounds memory at a couple of attachments per request.
 _MAX_UPLOAD_BYTES = 50 * 1024 * 1024
@@ -408,10 +408,10 @@ async def get_submittal_approval(
 # ── Attachments ──────────────────────────────────────────────────────────
 #
 # Two flavours of attachment:
-#   * Direct upload (``POST /attachments/upload/``) — raw bytes pass through
+#   * Direct upload (``POST /attachments/upload/``) - raw bytes pass through
 #     the magic-byte gate before they are written to disk. New in R4+R5,
 #     mirroring correspondence / compliance_docs / punchlist gates.
-#   * Document link (``POST /attachments/``) — references an already-
+#   * Document link (``POST /attachments/``) - references an already-
 #     uploaded ``Document`` row by id. Retained for backwards compat with
 #     existing front-end flows; the magic-byte gate runs in the documents
 #     module at the original upload site.
@@ -498,13 +498,13 @@ async def upload_submittal_attachment(
     """
     from datetime import UTC, datetime
 
-    # IDOR gate must run BEFORE we read any bytes — a caller without
+    # IDOR gate must run BEFORE we read any bytes - a caller without
     # project access never causes us to touch the disk or learn whether
     # the submittal exists.
     submittal = await service.get_submittal(submittal_id)
     await verify_project_access(submittal.project_id, str(user_id), session)
 
-    # Reject closed submittals — they're terminal and should not accept
+    # Reject closed submittals - they're terminal and should not accept
     # late attachments. ``draft`` and the active FSM states are fine.
     if submittal.status == "closed":
         raise HTTPException(
@@ -512,7 +512,7 @@ async def upload_submittal_attachment(
             detail="Cannot attach files to a closed submittal",
         )
 
-    # Snapshot row attributes BEFORE update_fields — that helper expires
+    # Snapshot row attributes BEFORE update_fields - that helper expires
     # the ORM row so a later lazy-attribute access (project_id, status)
     # would trigger MissingGreenlet under async context.
     project_id_s = str(submittal.project_id)
@@ -569,7 +569,7 @@ async def upload_submittal_attachment(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to save attachment — storage error",
+            detail="Unable to save attachment - storage error",
         ) from exc
 
     relative_path = f"submittals/attachments/{safe_name}"
@@ -627,7 +627,7 @@ async def add_submittal_attachment(
 
     The Document must already exist (upload via ``POST /api/documents/``);
     this endpoint creates the association and stores it inside the
-    submittal's metadata — no new table required.
+    submittal's metadata - no new table required.
     """
     from datetime import UTC, datetime
 
@@ -644,7 +644,7 @@ async def add_submittal_attachment(
     meta = dict(getattr(submittal, "metadata_", {}) or {})
     attachments: list[dict] = list(meta.get("attachments", []) or [])
 
-    # Reject duplicates — idempotency for retry-safe clients.
+    # Reject duplicates - idempotency for retry-safe clients.
     if any(str(a.get("document_id")) == str(data.document_id) for a in attachments if isinstance(a, dict)):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -682,7 +682,7 @@ async def remove_submittal_attachment(
 ) -> None:
     """Remove a document attachment reference from a submittal.
 
-    Does not delete the underlying Document — use
+    Does not delete the underlying Document - use
     ``DELETE /api/documents/{id}`` for that.
     """
     submittal = await service.get_submittal(submittal_id)

@@ -12,13 +12,13 @@ risk is auto-escalated **exactly once per trigger**:
    than adding a new table), tagged ``auto_escalation: True`` so re-runs
    recognise it;
 4. a ``risk.escalated`` event is emitted (a notifications subscriber fans
-   it out — this module only emits).
+   it out - this module only emits).
 
 Idempotency
 -----------
 The pure :func:`evaluate_risk` decides whether a risk *should* escalate
 given the current row state. A risk that is already ``escalated`` never
-escalates again — so the on-update hook and the periodic sweep can both
+escalates again - so the on-update hook and the periodic sweep can both
 run repeatedly without producing duplicate actions or duplicate events.
 When a risk is de-escalated (severity drops below threshold AND its review
 is brought current) the engine clears the flag so a future re-crossing can
@@ -129,7 +129,7 @@ def severity_product(
     """Compute the 1-25 PMBOK product, defaulting missing scores to 0.
 
     A risk that has never been scored on the 5x5 matrix (both None)
-    contributes a product of 0 and can never trip the severity trigger —
+    contributes a product of 0 and can never trip the severity trigger -
     only an explicit review-date lapse would escalate it. This is correct:
     we never invent a severity for an unscored risk.
     """
@@ -150,7 +150,7 @@ def evaluate_risk(
 ) -> EscalationDecision:
     """Decide whether a risk should escalate, clear, or stay put.
 
-    Pure function — no I/O. Used by both the on-update hook and the sweep,
+    Pure function - no I/O. Used by both the on-update hook and the sweep,
     and directly unit-testable.
 
     Args:
@@ -194,7 +194,7 @@ def evaluate_risk(
             review_lapsed=review_lapsed,
         )
     if not meets_trigger and already_escalated:
-        # Conditions resolved — reset so a future re-crossing can fire again.
+        # Conditions resolved - reset so a future re-crossing can fire again.
         return EscalationDecision(
             should_escalate=False,
             should_clear=True,
@@ -266,10 +266,10 @@ class RiskEscalationService:
 
     Two entry points:
 
-    * :meth:`evaluate_one` — the on-update hook. Call after a risk is
+    * :meth:`evaluate_one` - the on-update hook. Call after a risk is
       created or updated; escalates that single risk if it now crosses the
       threshold.
-    * :meth:`sweep` — the periodic system pass. Iterates every (or one
+    * :meth:`sweep` - the periodic system pass. Iterates every (or one
       project's) un-escalated risk and escalates those whose review date
       has lapsed or whose severity crosses the threshold. The central app
       schedules this exactly like the reports scheduler (it must REPORT the
@@ -292,7 +292,7 @@ class RiskEscalationService:
         """Evaluate and (if warranted) escalate a single risk.
 
         Returns True iff this call escalated the risk. Safe to call on
-        every update — a no-op for risks that do not cross a trigger or are
+        every update - a no-op for risks that do not cross a trigger or are
         already escalated.
         """
         risk = await self.session.get(RiskItem, risk_id)
@@ -430,7 +430,7 @@ async def _emit_escalated(
     severity_product: int,
     threshold: int,
 ) -> None:
-    """Emit ``risk.escalated`` — best-effort, never blocks the caller.
+    """Emit ``risk.escalated`` - best-effort, never blocks the caller.
 
     A notifications subscriber elsewhere fans this out (email / in-app).
     We only emit; we never wire notifications here (stay in-lane).

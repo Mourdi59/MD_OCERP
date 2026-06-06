@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍DSL evaluator — AST → :class:`ValidationRule` instance.
+"""‌⁠‍DSL evaluator - AST → :class:`ValidationRule` instance.
 
 Given a :class:`~app.core.validation.dsl.parser.RuleDefinition` produced
 by :func:`~app.core.validation.dsl.parser.parse_definition`, this module
@@ -77,7 +77,7 @@ def _resolve_path(
     bindings: dict[str, Any],
     path: tuple[str, ...],
 ) -> Any:
-    """‌⁠‍Walk a dotted path through ``bindings`` (dicts only — no attrs)."""
+    """‌⁠‍Walk a dotted path through ``bindings`` (dicts only - no attrs)."""
     if not path:
         return _MISSING
     head, *rest = path
@@ -90,7 +90,7 @@ def _resolve_path(
                 return _MISSING
             current = current[segment]
         else:
-            # Refuse to traverse non-dict values — no attr access.
+            # Refuse to traverse non-dict values - no attr access.
             return _MISSING
     return current
 
@@ -128,13 +128,13 @@ def _evaluate_comparison(expr: Comparison, bindings: dict[str, Any]) -> bool:
             return False
         return left in right
 
-    # Equality is total — works on any pair of scalars.
+    # Equality is total - works on any pair of scalars.
     if expr.op == "==":
         return left == right
     if expr.op == "!=":
         return left != right
 
-    # Ordering — both sides must be numeric or both strings; missing
+    # Ordering - both sides must be numeric or both strings; missing
     # field on either side counts as "comparison fails".
     if left is None or right is None:
         return False
@@ -149,7 +149,7 @@ def _evaluate_comparison(expr: Comparison, bindings: dict[str, Any]) -> bool:
         if expr.op == ">=":
             return left >= right
     except TypeError:
-        # Mixed string/number — treat as failed comparison rather than
+        # Mixed string/number - treat as failed comparison rather than
         # raising; the engine logs the calling rule for diagnostics.
         return False
 
@@ -181,16 +181,16 @@ def _evaluate_aggregation(expr: Aggregation, bindings: dict[str, Any]) -> Any:
 
         Recognised field-reference shapes:
 
-        * ``position.quantity`` — first segment is the iteration variable
+        * ``position.quantity`` - first segment is the iteration variable
           (e.g. ``forEach: position``); strip it and walk the remainder
           off ``item``.
-        * ``positions`` (matching the scope leaf) — degenerate case;
+        * ``positions`` (matching the scope leaf) - degenerate case;
           treat as "the item itself" so users can write ``count: positions``
           for "count of all positions in scope".
-        * ``quantity`` — bare leaf; walk straight off ``item``.
+        * ``quantity`` - bare leaf; walk straight off ``item``.
         * In single-assert mode (no explicit ``forEach``), the first
           path segment is treated as a placeholder iterator and
-          stripped — so ``sum: p.amount`` works without requiring the
+          stripped - so ``sum: p.amount`` works without requiring the
           author to introduce a forEach block just for the aggregator.
 
         Returns ``(value, refers_to_whole_item)`` so callers can branch
@@ -214,7 +214,7 @@ def _evaluate_aggregation(expr: Aggregation, bindings: dict[str, Any]) -> Any:
         if expr.field is None:
             return len(items)
         # If the field path resolves to the whole item (degenerate case
-        # explained above), behave like ``count`` with no field — i.e.
+        # explained above), behave like ``count`` with no field - i.e.
         # count every item in scope. Otherwise count items where the
         # resolved value is truthy.
         if expr.field.path == (scope_leaf,) and scope_leaf is not None:
@@ -395,7 +395,7 @@ def _run(
             )
         return results
 
-    # Single assert — evaluate once over the resolved scope.
+    # Single assert - evaluate once over the resolved scope.
     scope_leaf = definition.scope.split(".")[-1] if definition.scope else None
     bindings: dict[str, Any] = {
         "data": context.data,

@@ -1,9 +1,9 @@
 """‌⁠‍Change Order ORM models.
 
 Tables:
-    oe_changeorders_order   — change order header with status, cost/schedule impact
-    oe_changeorders_item    — individual line items within a change order
-    oe_changeorder_approval — ordered per-approver decisions (Procore-style chain)
+    oe_changeorders_order   - change order header with status, cost/schedule impact
+    oe_changeorders_item    - individual line items within a change order
+    oe_changeorder_approval - ordered per-approver decisions (Procore-style chain)
 """
 
 import uuid
@@ -47,7 +47,7 @@ class ChangeOrder(Base):
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="draft", index=True)
     submitted_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     approved_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    # BUG-351: rejection populates its own fields — previously ``approved_by``
+    # BUG-351: rejection populates its own fields - previously ``approved_by``
     # was reused on reject, which made UIs show the rejector as the approver.
     rejected_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     # ISO-8601 timestamp strings ("2026-05-30T16:33:01.947702+00:00" = 32 chars).
@@ -85,7 +85,7 @@ class ChangeOrder(Base):
     )
 
     # T3: Procore-style commitment / RFI links. Stored as JSON arrays of
-    # UUID strings rather than association tables — the cardinality is
+    # UUID strings rather than association tables - the cardinality is
     # tiny (typically <10 entries per CO) and the data is read-heavy /
     # display-only, so the indirection isn't worth a join. The column is
     # nullable for backward compat with COs created before v3082; the
@@ -102,7 +102,7 @@ class ChangeOrder(Base):
         default=list,
         server_default="[]",
     )
-    # Cursor into ``approvals`` — points at the active ``step_order`` of
+    # Cursor into ``approvals`` - points at the active ``step_order`` of
     # the in-flight chain. ``None`` means no chain has been started (a
     # legacy CO using the single-step ``approve`` endpoint). Indexed so
     # "pending my approval" boards can scan it cheaply without joining
@@ -128,7 +128,7 @@ class ChangeOrder(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<ChangeOrder {self.code} — {self.title[:40]} ({self.status})>"
+        return f"<ChangeOrder {self.code} - {self.title[:40]} ({self.status})>"
 
 
 class ChangeOrderItem(Base):
@@ -183,7 +183,7 @@ class ChangeOrderApproval(Base):
 
     The FK to ``oe_users_user`` is ``SET NULL`` rather than ``CASCADE``
     because we want the audit trail of who decided what to survive a
-    user being removed — the row becomes "decision recorded, decider
+    user being removed - the row becomes "decision recorded, decider
     deleted" instead of vanishing.
     """
 

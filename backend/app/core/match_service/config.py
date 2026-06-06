@@ -1,13 +1,13 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Match-service tunables — every magic number lives here.
+"""‌⁠‍Match-service tunables - every magic number lives here.
 
 Boost weights, score clamps, fuzzy-match cutoffs, reranker model name,
 and cost caps. The defaults here were calibrated on the v2.8.0 golden
-set (``backend/tests/eval/golden_set.yaml``) — keep them in sync if you
+set (``backend/tests/eval/golden_set.yaml``) - keep them in sync if you
 re-tune.
 
-v3 — bands re-pinned for BGE-M3 (2026-05-10): ``CONFIDENCE_HIGH`` 0.85
+v3 - bands re-pinned for BGE-M3 (2026-05-10): ``CONFIDENCE_HIGH`` 0.85
 → 0.78, ``CONFIDENCE_MEDIUM`` 0.70 → 0.62, ``AUTO_CONFIRM_DEFAULT``
 0.95 → 0.88. The BGE-M3 RRF score distribution sits ~5–8 points lower
 than the e5-small + LanceDB cosine the v2.8.0 numbers were tuned on.
@@ -104,7 +104,7 @@ BOOST_WEIGHTS: BoostWeights = BoostWeights(
 SCORE_FLOOR: float = 0.0
 SCORE_CEIL: float = 1.0
 
-# Confidence-band thresholds — pinned for BGE-M3 + Qdrant RRF as of
+# Confidence-band thresholds - pinned for BGE-M3 + Qdrant RRF as of
 # 2026-05-10. The earlier defaults (HIGH=0.85 / MEDIUM=0.70) were
 # calibrated against e5-small + LanceDB cosine; BGE-M3's RRF-fused
 # score distribution sits roughly 5-8 points lower for the same
@@ -117,7 +117,7 @@ CONFIDENCE_MEDIUM_THRESHOLD: float = _env_float("MATCH_CONFIDENCE_MEDIUM", 0.62)
 # Default auto-confirm threshold for new MatchSessions. Each session can
 # override per-project via the API; this is the factory default. A
 # session-scoped slider is still the right UX for per-project trust
-# calibration — this constant only changes what new sessions inherit.
+# calibration - this constant only changes what new sessions inherit.
 # v3: lowered 0.95 → 0.88 because a 0.95 BGE-M3 RRF score is essentially
 # a perfect match. We want auto-confirm to catch HIGH-band hits (≥0.78
 # under the re-calibrated thresholds), so 0.88 sits comfortably above
@@ -144,14 +144,14 @@ SEARCH_OVERFETCH: int = _env_int("MATCH_SEARCH_OVERFETCH", 3)
 
 # ── Query-text shaping ───────────────────────────────────────────────────
 
-# Concise queries embed best with E5 — long property dumps add noise.
+# Concise queries embed best with E5 - long property dumps add noise.
 QUERY_MAX_CHARS: int = _env_int("MATCH_QUERY_MAX_CHARS", 200)
 
 
 # ── Reranker (optional LLM tier) ─────────────────────────────────────────
 
 # Re-ranks the top-K with an LLM only when the caller opts in
-# (``MatchRequest.use_reranker=True``). Default off — reranking the
+# (``MatchRequest.use_reranker=True``). Default off - reranking the
 # full top-10 of every match request would burn ~$0.02 each.
 RERANK_TOP_K: int = _env_int("MATCH_RERANK_TOP_K", 5)
 RERANK_MAX_TOKENS: int = _env_int("MATCH_RERANK_MAX_TOKENS", 1024)
@@ -208,7 +208,7 @@ def _load_encoder_profiles_raw() -> dict[str, Any]:
         with _ENCODER_PROFILE_PATH.open("r", encoding="utf-8") as fh:
             data = json.load(fh)
         if not isinstance(data, dict):
-            logger.debug("MATCH config: encoder_profiles.json root is not an object — ignoring")
+            logger.debug("MATCH config: encoder_profiles.json root is not an object - ignoring")
             return {}
         return data
     except FileNotFoundError:
@@ -225,7 +225,7 @@ def _load_lex_profiles_raw() -> dict[str, Any]:
         with _LEX_PROFILE_PATH.open("r", encoding="utf-8") as fh:
             data = json.load(fh)
         if not isinstance(data, dict):
-            logger.debug("MATCH config: lex_thresholds.json root is not an object — ignoring")
+            logger.debug("MATCH config: lex_thresholds.json root is not an object - ignoring")
             return {}
         return data
     except FileNotFoundError:
@@ -287,7 +287,7 @@ def confidence_thresholds_for_model(
 
     Falls back to the canonical ``CONFIDENCE_HIGH_THRESHOLD`` /
     ``CONFIDENCE_MEDIUM_THRESHOLD`` constants (and ``0.40`` for low)
-    when the profile file is missing or the model is unknown — so legacy
+    when the profile file is missing or the model is unknown - so legacy
     call sites keep working unchanged.
     """
     prof = _load_encoder_profile(model_id)
@@ -328,12 +328,12 @@ def lex_thresholds_for_language(lang: str | None) -> tuple[int, int]:
 def boost_weights_for_standard(standard: str | None) -> dict[str, float]:
     """‌⁠‍Resolve boost weights for a classification ``standard``.
 
-    Stub for T3.2 — currently returns the canonical ``BOOST_WEIGHTS`` as
+    Stub for T3.2 - currently returns the canonical ``BOOST_WEIGHTS`` as
     a plain dict regardless of ``standard``. The API surface lets future
     per-standard tuning (DIN 276 vs. NRM vs. MasterFormat) layer in
     without changing the ranker call sites.
     """
-    # ``standard`` intentionally ignored for now — see T3.2 in
+    # ``standard`` intentionally ignored for now - see T3.2 in
     # MATCH_HARDCODE_REGISTRY.md.
     del standard
     return asdict(BOOST_WEIGHTS)

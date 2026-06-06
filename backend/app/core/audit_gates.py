@@ -4,7 +4,7 @@ The CDE ISO 19650 workflow uses a "Gate B" check on the
 SHARED → PUBLISHED transition: the request body MUST carry a non-empty
 ``approver_signature``. Lots of other FSM transitions in the codebase
 want the same shape of precondition (e.g. RFI close with a "resolution
-summary", change order approve with a signed PDF reference) — Epic H
+summary", change order approve with a signed PDF reference) - Epic H
 extracts the check into a tiny registry so future gates can be added
 declaratively without sprinkling more bespoke ``if`` blocks across the
 service layer.
@@ -12,7 +12,7 @@ service layer.
 The registry is intentionally minimal: each gate is a pure function
 ``(payload) -> tuple[bool, str | None]`` returning ``(False, "reason")``
 when the gate refuses and ``(True, None)`` when it lets the transition
-through. The CDE service keeps its existing 400-error contract — the
+through. The CDE service keeps its existing 400-error contract - the
 registry helper raises an ``HTTPException(status_code=400)`` on failure
 so caller code paths stay byte-identical.
 """
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 # A gate is a function that inspects the request payload and decides
 # whether the transition should be allowed. ``payload`` is the raw
-# (already-validated) request object — typically a Pydantic model. The
+# (already-validated) request object - typically a Pydantic model. The
 # gate returns ``(ok, reason)`` so the caller can raise its own error
 # with a precise message in the negative path.
 GateFn = Callable[[Any], tuple[bool, str | None]]
@@ -57,7 +57,7 @@ class _GateRegistry:
     def enforce(self, gate_code: str | None, payload: Any) -> None:
         """Run the gate keyed by ``gate_code``; 400 on refusal.
 
-        Unknown gate codes are a no-op — registries are additive, and
+        Unknown gate codes are a no-op - registries are additive, and
         the CDE state-machine emits gate codes (``GATE_A``, ``GATE_C``,
         …) that may not yet have a paired precondition. The current
         contract for CDE Gate B is preserved verbatim: the same
@@ -76,7 +76,7 @@ class _GateRegistry:
             )
 
 
-# Module-level singleton — register at import time.
+# Module-level singleton - register at import time.
 gate_registry = _GateRegistry()
 
 

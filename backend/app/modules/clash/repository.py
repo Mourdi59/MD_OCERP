@@ -23,7 +23,7 @@ from app.modules.clash.schemas import (
     SEVERITY_ORDER,
 )
 
-# Property keys already surfaced by the four built-in facets — never
+# Property keys already surfaced by the four built-in facets - never
 # re-advertised as an open-ended ``property:<key>`` grouping.
 _BUILTIN_PROPERTY_KEYS = frozenset(
     {
@@ -74,8 +74,8 @@ class ClashRepository:
     ) -> tuple[list[tuple[str, int]], list[tuple[str, int]]]:
         """Distinct element_type and discipline facets (+ counts).
 
-        Only counts elements that carry a bounding box — i.e. exactly the
-        elements the clash broad phase will actually feed — so the Set A /
+        Only counts elements that carry a bounding box - i.e. exactly the
+        elements the clash broad phase will actually feed - so the Set A /
         Set B pickers never advertise a type that can't clash. Returns
         ``(element_types, disciplines)``, each a list of
         ``(value, count)`` sorted by count desc then value.
@@ -120,7 +120,7 @@ class ClashRepository:
 
     @staticmethod
     def _ifc_entity_of(props: dict | None) -> str:
-        """Raw IFC entity (``IfcWall``…) — only present on IFC sources."""
+        """Raw IFC entity (``IfcWall``…) - only present on IFC sources."""
         p = props or {}
         for key in ("ifc_type", "ifc_entity", "IfcEntity"):
             v = p.get(key)
@@ -130,7 +130,7 @@ class ClashRepository:
 
     @staticmethod
     def _is_scalar(v: object) -> bool:
-        """A property value usable as a facet — not a dict/list container.
+        """A property value usable as a facet - not a dict/list container.
 
         ``bool`` is a scalar (it survives the ``int`` subclass check too);
         ``None`` is treated as "absent" by the callers, never as a value.
@@ -152,7 +152,7 @@ class ClashRepository:
         Returns, in one scan, the type / category / ifc_entity value
         counters, the per-property-*key* coverage counter
         (``prop_key_c``), the value counter for a specific
-        ``property_key`` (``prop_val_c`` — empty when ``property_key`` is
+        ``property_key`` (``prop_val_c`` - empty when ``property_key`` is
         ``None``), and the per-key distinct-value sets used to drop
         near-unique keys. Only bounding-box-carrying elements are scanned
         (exactly what the broad phase feeds).
@@ -275,7 +275,7 @@ class ClashRepository:
             chosen = _sorted(cat_c)
         elif group_by == "ifc_entity":
             chosen = _sorted(ifc_c)
-        else:  # "type" — the default / safe fallback
+        else:  # "type" - the default / safe fallback
             chosen = _sorted(type_c)
         return chosen, avail, available_props
 
@@ -317,7 +317,7 @@ class ClashRepository:
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
     async def get_profile_by_name(self, project_id: uuid.UUID, name: str) -> ClashProfile | None:
-        """Find a profile by its (project-unique) name — duplicate guard."""
+        """Find a profile by its (project-unique) name - duplicate guard."""
         stmt = select(ClashProfile).where(
             ClashProfile.project_id == project_id,
             ClashProfile.name == name,
@@ -375,7 +375,7 @@ class ClashRepository:
             base = base.where(ClashResult.clash_type == clash_type)
         if discipline:
             base = base.where((ClashResult.a_discipline == discipline) | (ClashResult.b_discipline == discipline))
-        # Symmetric pair filter — the coordination-hub trade matrix drill-
+        # Symmetric pair filter - the coordination-hub trade matrix drill-
         # down passes both halves, and a clash (X,Y) must match whether it
         # was stored as (X,Y) or (Y,X). When only one half is given, fall
         # back to the single-discipline behaviour (matches either column).
@@ -460,7 +460,7 @@ class ClashRepository:
         return None
 
     async def results_for_export(self, run_id: uuid.UUID, result_ids: list[uuid.UUID] | None) -> list[ClashResult]:
-        """Resolve the export selection — explicit ids or all OPEN clashes."""
+        """Resolve the export selection - explicit ids or all OPEN clashes."""
         stmt = select(ClashResult).where(ClashResult.run_id == run_id)
         if result_ids:
             stmt = stmt.where(ClashResult.id.in_(result_ids))
@@ -495,7 +495,7 @@ class ClashRepository:
         return (await self.session.execute(stmt)).scalar_one_or_none()
 
     async def get_issue(self, project_id: uuid.UUID, issue_id: uuid.UUID) -> ClashIssue | None:
-        """Fetch a single smart issue (project-scoped — IDOR-safe)."""
+        """Fetch a single smart issue (project-scoped - IDOR-safe)."""
         stmt = select(ClashIssue).where(
             ClashIssue.id == issue_id,
             ClashIssue.project_id == project_id,
@@ -511,7 +511,7 @@ class ClashRepository:
 
         Computed as ``COUNT(*) + 1`` over the project's issues. We don't
         need true gap-free monotonicity (an issue can never be deleted
-        through the public API — only archived), and ``COUNT`` is index-
+        through the public API - only archived), and ``COUNT`` is index-
         backed via ``ix_clash_issue_project`` so this stays cheap.
         Concurrent run executions on the same project are serialized at
         the request level (one FastAPI worker per ``create_run`` call),
@@ -534,7 +534,7 @@ class ClashRepository:
         Returns ``(rows, total)`` where ``rows`` is
         ``[(ClashIssue, member_count), ...]`` and ``member_count`` is the
         number of :class:`ClashResult` rows pointing at the issue. One
-        round-trip per page — the count subquery is on the indexed
+        round-trip per page - the count subquery is on the indexed
         ``issue_id`` column so even a large project stays cheap.
         """
         base = select(ClashIssue).where(ClashIssue.project_id == project_id)
@@ -635,7 +635,7 @@ class ClashRepository:
         """Project-scoped fetch of many issues by id (IDOR-safe).
 
         Issues whose ``id`` isn't in the project are silently dropped so
-        the caller sees only authorized rows — same defensive pattern the
+        the caller sees only authorized rows - same defensive pattern the
         single-issue ``get_issue`` follows. Empty input → empty list.
         """
         if not issue_ids:

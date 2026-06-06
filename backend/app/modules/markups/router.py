@@ -2,28 +2,28 @@
 
 Endpoints:
     Markups:
-        POST   /                            — Create markup
-        GET    /?project_id=X&...           — List with filters
-        GET    /{id}                        — Get single markup
-        PATCH  /{id}                        — Update markup
-        DELETE /{id}                        — Delete markup
-        POST   /bulk                        — Bulk create markups
-        GET    /export?project_id=X&format= — Export to CSV
-        GET    /summary?project_id=X        — Aggregated stats
+        POST   /                            - Create markup
+        GET    /?project_id=X&...           - List with filters
+        GET    /{id}                        - Get single markup
+        PATCH  /{id}                        - Update markup
+        DELETE /{id}                        - Delete markup
+        POST   /bulk                        - Bulk create markups
+        GET    /export?project_id=X&format= - Export to CSV
+        GET    /summary?project_id=X        - Aggregated stats
 
     Scales:
-        POST   /scales/                     — Save scale config
-        GET    /scales/?document_id=X       — List scales
-        DELETE /scales/{id}                 — Delete scale
+        POST   /scales/                     - Save scale config
+        GET    /scales/?document_id=X       - List scales
+        DELETE /scales/{id}                 - Delete scale
 
     Stamps:
-        POST   /stamps/templates            — Create stamp template
-        GET    /stamps/templates?project_id= — List templates
-        PATCH  /stamps/templates/{id}       — Update template
-        DELETE /stamps/templates/{id}       — Delete template
+        POST   /stamps/templates            - Create stamp template
+        GET    /stamps/templates?project_id= - List templates
+        PATCH  /stamps/templates/{id}       - Update template
+        DELETE /stamps/templates/{id}       - Delete template
 
     BOQ Link:
-        POST   /{id}/link-to-boq           — Link markup to BOQ position
+        POST   /{id}/link-to-boq           - Link markup to BOQ position
 """
 
 import logging
@@ -195,7 +195,7 @@ async def bulk_create_markups(
         logger.exception("Unable to bulk create markups")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to bulk create markups — operation aborted",
+            detail="Unable to bulk create markups - operation aborted",
         )
 
 
@@ -212,7 +212,7 @@ async def create_markup(
 ) -> MarkupResponse:
     """Create a new markup annotation.
 
-    Project membership is verified before persisting — a caller cannot
+    Project membership is verified before persisting - a caller cannot
     plant a markup into a project they do not belong to by supplying an
     arbitrary ``project_id`` (404 maps both "no such project" and "not
     your project" to the same response shape).
@@ -227,7 +227,7 @@ async def create_markup(
         logger.exception("Unable to create markup")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to create markup — please try again",
+            detail="Unable to create markup - please try again",
         )
 
 
@@ -270,10 +270,10 @@ async def list_markups(
 
     Pagination follows the platform standard ``offset`` + ``limit`` (max 200).
     The pre-existing ``page`` query param meant *drawing page* and collided
-    with the platform's "page-of-results" convention — it is preserved as a
+    with the platform's "page-of-results" convention - it is preserved as a
     deprecated alias for one release. Use ``document_page`` going forward.
 
-    Project membership is verified before returning anything — a non-member
+    Project membership is verified before returning anything - a non-member
     cannot enumerate markup ids by guessing project_ids (404 maps both
     "no such project" and "not your project" to the same response shape).
     """
@@ -383,7 +383,7 @@ async def create_scale(
         logger.exception("Unable to create scale config")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to create scale config — calibration failed",
+            detail="Unable to create scale config - calibration failed",
         )
 
 
@@ -438,7 +438,7 @@ async def delete_scale(
 
     Scales are scoped per document, not per project. Until documents
     grow a project FK we restrict deletion to the user who calibrated
-    the scale — anyone else gets 403.
+    the scale - anyone else gets 403.
     """
     existing = await service.scale_repo.get_by_id(config_id)
     if existing is None:
@@ -492,7 +492,7 @@ async def _authorize_stamp_mutation(
     """Reject cross-tenant mutation of stamp templates.
 
     Project-scoped templates (project_id set) require project membership.
-    User-private templates (project_id null) only the owner can mutate —
+    User-private templates (project_id null) only the owner can mutate -
     seed stamps stored with owner_id='' are read-only via this gate.
     """
     existing = await service.stamp_repo.get_by_id(template_id)
@@ -572,7 +572,7 @@ async def create_markup_comment(
 ) -> MarkupCommentResponse:
     """Append a threaded comment to a markup.
 
-    Any project member (including viewers) can comment — comment authoring
+    Any project member (including viewers) can comment - comment authoring
     is intentionally not gated behind ``markups.create`` because reviewers
     must be able to leave feedback without write access to drawings.
     """
@@ -587,7 +587,7 @@ async def create_markup_comment(
         logger.exception("Unable to create markup comment")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to create comment — please try again",
+            detail="Unable to create comment - please try again",
         )
 
 
@@ -602,7 +602,7 @@ async def delete_markup_comment(
     """Delete a comment.
 
     Only the comment author OR the parent project's owner may delete. A
-    non-author viewer hits 403 here even though they can post — symmetric
+    non-author viewer hits 403 here even though they can post - symmetric
     with how comment threads work elsewhere in the app.
     """
     parent = await service.get_markup(markup_id)

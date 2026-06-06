@@ -3,12 +3,12 @@
 """File Favourites API routes.
 
 Mounted at ``/api/v1/file-favorites/`` (kebab-cased per the loader
-convention). All endpoints are per-user — a caller can only see /
+convention). All endpoints are per-user - a caller can only see /
 mutate their own favourite rows.
 
-    GET    /                          — list current user's favourites
-    POST   /                          — star (or pin) a file
-    DELETE /                          — un-star (by kind+id, body or query)
+    GET    /                          - list current user's favourites
+    POST   /                          - star (or pin) a file
+    DELETE /                          - un-star (by kind+id, body or query)
 """
 
 from __future__ import annotations
@@ -119,7 +119,7 @@ async def unstar_file(
     file_kind: str = Query(..., min_length=1, max_length=32),
     file_id: str = Query(..., min_length=1, max_length=64),
 ) -> None:
-    """Remove a favourite. Idempotent — missing rows return 204."""
+    """Remove a favourite. Idempotent - missing rows return 204."""
     if file_kind not in FAVORITE_KINDS:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

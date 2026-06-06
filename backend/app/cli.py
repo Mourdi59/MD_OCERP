@@ -1,4 +1,4 @@
-"""‌⁠‍OpenConstructionERP CLI — run the platform from the command line.
+"""‌⁠‍OpenConstructionERP CLI - run the platform from the command line.
 
 The happy path for a new user is two commands:
 
@@ -32,7 +32,7 @@ from pathlib import Path
 # ── Console encoding hardening ────────────────────────────────────────────
 # On Windows + Anaconda Python the default console encoding is cp1252,
 # which crashes on any non-ASCII character (em-dash, arrow, box-drawing,
-# etc.). This is the same family of bug that killed v1.3.9 — silent or
+# etc.). This is the same family of bug that killed v1.3.9 - silent or
 # noisy failure on Windows. We try to switch stdout/stderr to UTF-8 if
 # possible; otherwise we fall back to ASCII-only output.
 try:
@@ -132,7 +132,7 @@ def _bar() -> str:
 # rows). The previous "Standard" font wrapped the 19-character name onto
 # multiple visual rows on a typical 80-col terminal, which looked crooked;
 # the "small" font fits the full name on one row with the trailing "ERP"
-# inline. Generated once with pyfiglet and pasted in — no runtime dep.
+# inline. Generated once with pyfiglet and pasted in - no runtime dep.
 _BANNER_ART = r"""  ___                 ___             _               _   _          ___ ___ ___
  / _ \ _ __  ___ _ _ / __|___ _ _  __| |_ _ _ _  _ __| |_(_)___ _ _ | __| _ \ _ \
 | (_) | '_ \/ -_) ' \ (__/ _ \ ' \(_-<  _| '_| || / _|  _| / _ \ ' \| _||   /  _/
@@ -195,10 +195,10 @@ def _setup_env(data_dir: Path, host: str, port: int) -> None:
 
     # Embedded PostgreSQL (no Docker) is the DEFAULT runtime: boot a real
     # in-process PG16 and point DATABASE_URL/DATABASE_SYNC_URL at it. There is no
-    # SQLite fallback — if the cluster cannot start we exit with an actionable
+    # SQLite fallback - if the cluster cannot start we exit with an actionable
     # message. The operator opts out by supplying an external DATABASE_URL (then
     # is_requested() returns False and boot is skipped). Must run before any
-    # ``from app...`` import that builds the engine — _setup_env is that earliest
+    # ``from app...`` import that builds the engine - _setup_env is that earliest
     # point for every command.
     from app.core import embedded_pg
 
@@ -358,7 +358,7 @@ def check_frontend_bundled() -> Check:
     return Check(
         "Frontend bundle",
         "warn",
-        "no frontend found — server will run API only",
+        "no frontend found - server will run API only",
         "Reinstall the pip package to get the bundled UI, or run `npm run build` in frontend/",
     )
 
@@ -390,7 +390,7 @@ def check_core_tabular_deps() -> list[Check]:
       - the BIM Excel parser (openpyxl + pandas)
       - parquet seed data for classifications & cost databases
 
-    A missing install here is a hard ERROR, not a warning — the app
+    A missing install here is a hard ERROR, not a warning - the app
     will boot but the first onboarding step will 500.
     """
     from importlib.util import find_spec
@@ -425,7 +425,7 @@ def check_ai_provider_keys() -> Check:
       1. Settings / environment variables (OPENAI_API_KEY, ANTHROPIC_API_KEY, ...)
       2. ``~/.openestimate/config.json`` (CLI-managed overrides)
 
-    This only reports INFO-level WARN when none are set — AI is optional.
+    This only reports INFO-level WARN when none are set - AI is optional.
     """
     # 1. Settings-level keys (env vars, .env file, pydantic-settings).
     env_key_names = (
@@ -481,7 +481,7 @@ def check_optional_extras() -> list[Check]:
 
     out: list[Check] = []
 
-    # Embedded vector search (LanceDB) — used by the local semantic search
+    # Embedded vector search (LanceDB) - used by the local semantic search
     # path for cost-database matching. Optional: code falls back to keyword
     # match when missing.
     if _present("lancedb"):
@@ -497,7 +497,7 @@ def check_optional_extras() -> list[Check]:
         )
 
     # Semantic embeddings (sentence-transformers + Qdrant client).
-    # Renamed from `[ai]` in v1.3.14 — the old extra is still an alias.
+    # Renamed from `[ai]` in v1.3.14 - the old extra is still an alias.
     if _present("sentence_transformers"):
         out.append(Check("Semantic search [semantic]", "ok", "sentence-transformers installed"))
     else:
@@ -719,7 +719,7 @@ def cmd_init_db(args: argparse.Namespace) -> None:
     # without table-creation lag.
     import asyncio
 
-    # Mirrors the list in main.py's startup hook — keep the two lists in
+    # Mirrors the list in main.py's startup hook - keep the two lists in
     # sync when adding a new module.
     _module_names = [
         "ai",
@@ -769,7 +769,7 @@ def cmd_init_db(args: argparse.Namespace) -> None:
 
     # Track import failures so we can report them loudly. Silently
     # swallowing these (as the pre-v1.3.14 code did) led to "no such
-    # table" errors at runtime — the user saw "Ready." during init-db
+    # table" errors at runtime - the user saw "Ready." during init-db
     # and then the server 500'd on the first query to a missing model.
     failed_imports: list[tuple[str, str]] = []
     imported_ok = 0
@@ -789,7 +789,7 @@ def cmd_init_db(args: argparse.Namespace) -> None:
                 logger.warning("init-db: failed to import app.modules.%s.models: %s", name, exc)
             except Exception as exc:  # noqa: BLE001
                 # Non-ImportError (e.g. syntax error, attribute error) is
-                # still a real problem — record it.
+                # still a real problem - record it.
                 failed_imports.append((name, f"{type(exc).__name__}: {exc}"))
                 logger.warning(
                     "init-db: %s while importing app.modules.%s.models: %s",
@@ -904,7 +904,7 @@ def cmd_upgrade(args: argparse.Namespace) -> None:
     (``start.bat``) that points at a private venv under
     ``%LOCALAPPDATA%\\OpenConstructionERP\\venv``. Running ``pip install
     --upgrade openconstructionerp`` in any other shell upgrades the user's
-    GLOBAL Python — the venv keeps its old wheel, and the launcher keeps
+    GLOBAL Python - the venv keeps its old wheel, and the launcher keeps
     reporting the old version even though pip claims success. This command
     avoids the trap by always invoking ``sys.executable -m pip`` so the
     upgrade lands in the same env that ``serve`` runs in.
@@ -1008,7 +1008,7 @@ def print_welcome(*, next_command_hint: bool = True) -> None:
 
 
 def cmd_welcome(_args: argparse.Namespace) -> None:
-    """Print the welcome screen and exit — no server, no I/O."""
+    """Print the welcome screen and exit - no server, no I/O."""
     print_welcome(next_command_hint=True)
 
 
@@ -1017,7 +1017,7 @@ def _prompt_open_browser(url: str, default_open: bool = True) -> bool:
 
     Returns True if the user presses ``o`` (or just Enter when the
     default is open), False if they decline. Safe against non-TTY
-    invocations (CI, piped input) — returns ``default_open`` and moves
+    invocations (CI, piped input) - returns ``default_open`` and moves
     on without blocking.
 
     The prompt is deliberately short so the user can hit Enter in under
@@ -1170,7 +1170,7 @@ def cmd_module_install(args: argparse.Namespace) -> None:
         for info in infos:
             reason = is_unsafe_zip_member(info)
             if reason is not None:
-                print(_red(f"Refusing to install — unsafe archive member ({reason})."))
+                print(_red(f"Refusing to install - unsafe archive member ({reason})."))
                 sys.exit(1)
 
         # 2. Require exactly one top-level package directory. Every member must
@@ -1245,7 +1245,7 @@ def cmd_module_install(args: argparse.Namespace) -> None:
             try:
                 safe_extract_all(zf, staging)
             except UnsafeArchiveError as exc:
-                print(_red(f"Refusing to install — {exc}."))
+                print(_red(f"Refusing to install - {exc}."))
                 sys.exit(1)
 
             staged_pkg = staging / top
@@ -1343,7 +1343,7 @@ def cmd_module_uninstall(args: argparse.Namespace) -> None:
     if (is_core or auto_install) and not args.force:
         kind = "core" if is_core else "auto-install"
         print(
-            _red(f"Refusing to uninstall '{manifest_name}' — it is a {kind} module.")
+            _red(f"Refusing to uninstall '{manifest_name}' - it is a {kind} module.")
             + _dim(" Use --force to remove it anyway.")
         )
         sys.exit(1)
@@ -1531,7 +1531,7 @@ def cmd_pack_new(args: argparse.Namespace) -> None:
     # pack the loader would silently skip.
     try:
         PartnerPackManifest.model_validate_json((target / "manifest.json").read_text(encoding="utf-8"))
-    except Exception as exc:  # noqa: BLE001 — defensive; placeholders are valid by construction
+    except Exception as exc:  # noqa: BLE001 - defensive; placeholders are valid by construction
         print(_red(f"Scaffolded manifest failed validation: {exc}"))
         sys.exit(1)
 
@@ -1610,7 +1610,7 @@ def main() -> None:
         action="store_true",
         help="Delete the existing openestimate.db (and -shm/-wal) before init",
     )
-    # Legacy alias — same args, same handler.
+    # Legacy alias - same args, same handler.
     init_p = subparsers.add_parser("init", help="Alias for init-db")
     init_p.add_argument(
         "--data-dir",
@@ -1630,7 +1630,7 @@ def main() -> None:
     # version
     subparsers.add_parser("version", help="Show version information")
 
-    # upgrade — pip-upgrade in *this* interpreter's env (Issue #96)
+    # upgrade - pip-upgrade in *this* interpreter's env (Issue #96)
     upgrade_p = subparsers.add_parser(
         "upgrade",
         help="Upgrade openconstructionerp in the same env this command runs in",
@@ -1660,7 +1660,7 @@ def main() -> None:
         help=f"Data directory (default: {DEFAULT_DATA_DIR})",
     )
 
-    # module — install / list / uninstall business modules
+    # module - install / list / uninstall business modules
     module_p = subparsers.add_parser(
         "module",
         help="Install, list, or uninstall modules",
@@ -1694,7 +1694,7 @@ def main() -> None:
         help="Remove even core / auto-install modules",
     )
 
-    # pack — scaffold a new declarative partner pack
+    # pack - scaffold a new declarative partner pack
     pack_p = subparsers.add_parser(
         "pack",
         help="Scaffold and manage partner packs",

@@ -2,31 +2,31 @@
 
 Endpoints:
     # Exchange Rates
-    GET    /exchange-rates               — List rates with filters (public)
-    POST   /exchange-rates               — Create manual rate (auth)
-    GET    /exchange-rates/convert       — Convert amount between currencies (public)
-    POST   /exchange-rates/fetch-ecb     — Fetch rates from ECB (admin)
-    GET    /exchange-rates/{rate_id}     — Get single rate (public)
-    PATCH  /exchange-rates/{rate_id}     — Update rate (auth)
-    DELETE /exchange-rates/{rate_id}     — Delete rate (auth)
+    GET    /exchange-rates               - List rates with filters (public)
+    POST   /exchange-rates               - Create manual rate (auth)
+    GET    /exchange-rates/convert       - Convert amount between currencies (public)
+    POST   /exchange-rates/fetch-ecb     - Fetch rates from ECB (admin)
+    GET    /exchange-rates/{rate_id}     - Get single rate (public)
+    PATCH  /exchange-rates/{rate_id}     - Update rate (auth)
+    DELETE /exchange-rates/{rate_id}     - Delete rate (auth)
 
     # Countries
-    GET    /countries                    — List all countries (public)
-    GET    /countries/{iso_code}         — Get country by ISO code (public)
+    GET    /countries                    - List all countries (public)
+    GET    /countries/{iso_code}         - Get country by ISO code (public)
 
     # Work Calendars
-    GET    /work-calendars               — List calendars (public)
-    GET    /work-calendars/working-days  — Calculate working days (public)
-    POST   /work-calendars               — Create calendar (auth)
-    GET    /work-calendars/{calendar_id} — Get single calendar (public)
-    PATCH  /work-calendars/{calendar_id} — Update calendar (auth)
+    GET    /work-calendars               - List calendars (public)
+    GET    /work-calendars/working-days  - Calculate working days (public)
+    POST   /work-calendars               - Create calendar (auth)
+    GET    /work-calendars/{calendar_id} - Get single calendar (public)
+    PATCH  /work-calendars/{calendar_id} - Update calendar (auth)
 
     # Tax Configs
-    GET    /tax-configs                  — List configs (public)
-    GET    /tax-configs/by-country/{code}— Active taxes for country (public)
-    POST   /tax-configs                  — Create config (auth)
-    GET    /tax-configs/{config_id}      — Get single config (public)
-    PATCH  /tax-configs/{config_id}      — Update config (auth)
+    GET    /tax-configs                  - List configs (public)
+    GET    /tax-configs/by-country/{code}- Active taxes for country (public)
+    POST   /tax-configs                  - Create config (auth)
+    GET    /tax-configs/{config_id}      - Get single config (public)
+    PATCH  /tax-configs/{config_id}      - Update config (auth)
 """
 
 import logging

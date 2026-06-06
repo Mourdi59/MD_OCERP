@@ -15,7 +15,7 @@ from typing import Any
 
 from app.modules.requirements.evaluator import OPERATORS
 
-# Column order is the contract — keep it stable across template,
+# Column order is the contract - keep it stable across template,
 # import, and export so downstream tooling doesn't break.
 COLUMNS: tuple[str, ...] = (
     "entity",
@@ -46,11 +46,11 @@ _TEMPLATE_SAMPLE: dict[str, str] = {
 }
 
 _TEMPLATE_HINT: dict[str, str] = {
-    "entity": "Element type — Revit category or IFC class (Walls, IfcWall*)",
-    "attribute": "Property name — flat or 'Group.Name' (Pset_WallCommon.FireRating)",
+    "entity": "Element type - Revit category or IFC class (Walls, IfcWall*)",
+    "attribute": "Property name - flat or 'Group.Name' (Pset_WallCommon.FireRating)",
     "constraint_type": " | ".join(OPERATORS),
     "constraint_value": "Match value, regex, threshold, or 'min..max'",
-    "unit": "Optional — m, m2, W/m2K, F90, …",
+    "unit": "Optional - m, m2, W/m2K, F90, …",
     "category": "structural | fire_safety | thermal | acoustic | ...",
     "priority": "must | should | may",
     "source_ref": "Standard, drawing, or spec reference",
@@ -59,7 +59,7 @@ _TEMPLATE_HINT: dict[str, str] = {
 
 
 def build_template_xlsx() -> bytes:
-    """‌⁠‍Generate a friendly Excel template — headers, a sample, and hints."""
+    """‌⁠‍Generate a friendly Excel template - headers, a sample, and hints."""
     import openpyxl
     from openpyxl.comments import Comment
     from openpyxl.styles import Alignment, Font, PatternFill
@@ -94,7 +94,7 @@ def build_template_xlsx() -> bytes:
     ws.row_dimensions[1].height = 24
     ws.freeze_panes = "A2"
 
-    # Legend sheet — operator cheat-sheet so users can pick without docs.
+    # Legend sheet - operator cheat-sheet so users can pick without docs.
     legend = wb.create_sheet("Operators")
     legend["A1"] = "Operator"
     legend["B1"] = "constraint_value example"

@@ -7,7 +7,7 @@ Creates an end-to-end sample for a single project:
     * 8 punch items spread across the lifecycle statuses
     * 1 completed audit with 3 findings
 
-The helper is idempotent at the row level — re-running ``seed_qms``
+The helper is idempotent at the row level - re-running ``seed_qms``
 re-inserts new rows. Wrap in a unique-project filter externally if you
 need true idempotency.
 """
@@ -50,7 +50,7 @@ async def seed_qms(
     # 1) ITP plan + items
     plan = ITPPlan(
         project_id=project_id,
-        name="Concrete pour — slab on grade",
+        name="Concrete pour - slab on grade",
         work_type="concrete",
         wbs_ref="WBS.03.30",
         status="active",
@@ -85,7 +85,7 @@ async def seed_qms(
     session.add_all(items)
     await session.flush()
 
-    # 2) Inspections — 1 passed / 1 failed / 1 conditional
+    # 2) Inspections - 1 passed / 1 failed / 1 conditional
     insp_passed = QMSInspection(
         itp_item_id=items[0].id,
         project_id=project_id,
@@ -122,7 +122,7 @@ async def seed_qms(
     session.add_all([insp_passed, insp_failed, insp_cond])
     await session.flush()
 
-    # 3) NCRs — 1 open, 1 escalated to variation
+    # 3) NCRs - 1 open, 1 escalated to variation
     ncr_open = QMSNCR(
         project_id=project_id,
         raised_at=_now_iso(),
@@ -139,7 +139,7 @@ async def seed_qms(
         project_id=project_id,
         raised_at=_now_iso(),
         title="Concrete strength below 28-day target",
-        description="Cube test 23MPa vs spec 30MPa — remediation required.",
+        description="Cube test 23MPa vs spec 30MPa - remediation required.",
         severity="critical",
         root_cause="Supplier batch error",
         status="action_pending",
@@ -150,7 +150,7 @@ async def seed_qms(
     session.add_all([ncr_open, ncr_var])
     await session.flush()
 
-    # 4) Punch items — eight across the lifecycle
+    # 4) Punch items - eight across the lifecycle
     punch_specs = [
         ("Wall paint scuff in lobby", "open", "minor", "finishes"),
         ("Door latch sticks 03-12", "assigned", "minor", "architectural"),

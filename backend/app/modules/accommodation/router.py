@@ -260,7 +260,7 @@ async def list_bookings_for_accommodation_endpoint(
     """List bookings across every room of one accommodation.
 
     Multi-value ``?status=`` is accepted (FastAPI parses repeated query
-    params into a list). Date filtering uses overlap semantics — see
+    params into a list). Date filtering uses overlap semantics - see
     :func:`service._apply_booking_filters`.
     """
     statuses = _parse_booking_status_filter(status_filter)
@@ -445,10 +445,10 @@ async def create_booking(
     session: SessionDep,
     user_id: CurrentUserId,
 ) -> BookingResponse:
-    """Create a booking — gates on room status + payload date validity."""
+    """Create a booking - gates on room status + payload date validity."""
     room, _accom = await get_room_or_404(session, room_id, user_id)
     assert_room_bookable(room)
-    # Block silent double-booking — half-open overlap with any live row.
+    # Block silent double-booking - half-open overlap with any live row.
     await assert_no_booking_overlap(
         session,
         room.id,
@@ -472,7 +472,7 @@ async def create_booking(
     # When the booking lands in an active state, flip the room to
     # occupied. ``reserved`` is held by the room (its slot is committed)
     # but we leave ``available`` flipping until check-in time to mirror
-    # real-world hotel/camp practice — front desks reserve rooms without
+    # real-world hotel/camp practice - front desks reserve rooms without
     # marking them occupied until the guest actually arrives.
     if payload.status == "checked_in":
         room.status = "occupied"
@@ -529,7 +529,7 @@ async def update_booking(
     metadata = data.pop("metadata", None)
 
     # State-machine gate. ``BookingUpdate.status`` is regex-validated so
-    # only legal target labels reach this point — we just check that the
+    # only legal target labels reach this point - we just check that the
     # transition itself is allowed.
     target_status = data.get("status")
     if target_status is not None and not is_valid_booking_transition(
@@ -563,7 +563,7 @@ async def update_booking(
     if metadata is not None:
         booking.metadata_ = metadata
 
-    # Reflect terminal transitions on the room status — but only when the
+    # Reflect terminal transitions on the room status - but only when the
     # room isn't actively in maintenance / blocked.
     if target_status == "checked_in" and room.status not in ("maintenance", "blocked"):
         room.status = "occupied"
@@ -599,7 +599,7 @@ async def create_charge(
 
     currency = payload.currency
     if not currency:
-        # Inherit room → project — never a hardcoded EUR.
+        # Inherit room → project - never a hardcoded EUR.
         currency = room.base_rate_currency or await inherit_currency_for_room(
             session,
             accom,
@@ -692,7 +692,7 @@ async def suggest_from_hr(
     )
     accom = await session.get(Accommodation, room.accommodation_id)
     if accom is None:
-        # Shouldn't happen — JOIN above guarantees it — but be defensive.
+        # Shouldn't happen - JOIN above guarantees it - but be defensive.
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No available room",

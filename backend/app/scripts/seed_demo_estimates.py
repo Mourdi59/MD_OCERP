@@ -1,8 +1,8 @@
 """‌⁠‍Seed 2 professional demo BOQ estimates with realistic construction data.
 
 Creates:
-  1. "Wohnanlage Berlin-Mitte" — 48-unit residential complex (DACH, DIN 276, EUR)
-  2. "One Canary Square" — 12-storey office tower (UK, NRM 1, GBP)
+  1. "Wohnanlage Berlin-Mitte" - 48-unit residential complex (DACH, DIN 276, EUR)
+  2. "One Canary Square" - 12-storey office tower (UK, NRM 1, GBP)
 
 Each project contains a full BOQ with hierarchical sections, line-item positions,
 and markup lines (BGK/AGK/W&G for DACH; Preliminaries/OH&P/Reserves for UK).
@@ -127,7 +127,7 @@ def _make_markup(
 
 
 # ---------------------------------------------------------------------------
-# Demo 1 — Wohnanlage Berlin-Mitte (DACH / DIN 276 / EUR)
+# Demo 1 - Wohnanlage Berlin-Mitte (DACH / DIN 276 / EUR)
 # ---------------------------------------------------------------------------
 
 
@@ -139,7 +139,7 @@ def _build_berlin_positions(boq_id: uuid.UUID) -> list[Position]:
     # ── Section definitions: (ordinal, title, classification, items) ──
     # Each item: (sub_ordinal, description, unit, qty, rate, classification)
     sections: list[tuple[str, str, dict, list[tuple[str, str, str, float, float, dict]]]] = [
-        # 1. KG 300 — Bauwerk — Baukonstruktionen
+        # 1. KG 300 - Bauwerk - Baukonstruktionen
         (
             "300",
             "KG 300 \u2014 Bauwerk \u2014 Baukonstruktionen",
@@ -151,7 +151,7 @@ def _build_berlin_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("300.4", "Drainage und Entw\u00e4sserung (Drainage)", "m", 320, 65.00, {"din276": "300"}),
             ],
         ),
-        # 2. KG 310 — Baugrube / Erdbau
+        # 2. KG 310 - Baugrube / Erdbau
         (
             "310",
             "KG 310 \u2014 Baugrube / Erdbau",
@@ -162,7 +162,7 @@ def _build_berlin_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("310.3", "Abtransport Erdreich (Soil removal)", "m3", 5800, 22.00, {"din276": "310"}),
             ],
         ),
-        # 3. KG 330 — Außenwände
+        # 3. KG 330 - Außenwände
         (
             "330",
             "KG 330 \u2014 Au\u00dfenw\u00e4nde",
@@ -175,7 +175,7 @@ def _build_berlin_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("330.5", "Sockeld\u00e4mmung XPS 120mm (Base insulation)", "m2", 480, 68.00, {"din276": "330"}),
             ],
         ),
-        # 4. KG 340 — Innenwände
+        # 4. KG 340 - Innenwände
         (
             "340",
             "KG 340 \u2014 Innenw\u00e4nde",
@@ -186,7 +186,7 @@ def _build_berlin_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("340.3", "Brandschutzw\u00e4nde F90 (Fire walls)", "m2", 800, 125.00, {"din276": "340"}),
             ],
         ),
-        # 5. KG 350 — Decken
+        # 5. KG 350 - Decken
         (
             "350",
             "KG 350 \u2014 Decken",
@@ -198,7 +198,7 @@ def _build_berlin_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("350.4", "Flie\u00dfestrich Anhydrit (Anhydrite screed)", "m2", 2600, 32.00, {"din276": "350"}),
             ],
         ),
-        # 6. KG 360 — Dächer
+        # 6. KG 360 - Dächer
         (
             "360",
             "KG 360 \u2014 D\u00e4cher",
@@ -218,7 +218,7 @@ def _build_berlin_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("360.5", "Dachentwässerung (Roof drainage)", "pcs", 24, 380.00, {"din276": "360"}),
             ],
         ),
-        # 7. KG 370 — Baukonstruktive Einbauten
+        # 7. KG 370 - Baukonstruktive Einbauten
         (
             "370",
             "KG 370 \u2014 Baukonstruktive Einbauten",
@@ -229,7 +229,7 @@ def _build_berlin_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("370.3", "Aufzugsschacht (Elevator shaft)", "pcs", 3, 18000.00, {"din276": "370"}),
             ],
         ),
-        # 8. KG 410 — Abwasser, Wasser (Plumbing)
+        # 8. KG 410 - Abwasser, Wasser (Plumbing)
         (
             "410",
             "KG 410 \u2014 Abwasser, Wasser",
@@ -240,7 +240,7 @@ def _build_berlin_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("410.3", "Sanit\u00e4robjekte komplett (Sanitary fixtures)", "pcs", 192, 1850.00, {"din276": "410"}),
             ],
         ),
-        # 9. KG 420 — Wärmeversorgung (Heating)
+        # 9. KG 420 - Wärmeversorgung (Heating)
         (
             "420",
             "KG 420 \u2014 W\u00e4rmeversorgung",
@@ -252,7 +252,7 @@ def _build_berlin_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("420.4", "Pufferspeicher 1000L (Buffer tank)", "pcs", 2, 3200.00, {"din276": "420"}),
             ],
         ),
-        # 10. KG 440 — Elektrotechnik (Electrical)
+        # 10. KG 440 - Elektrotechnik (Electrical)
         (
             "440",
             "KG 440 \u2014 Elektrotechnik",
@@ -264,7 +264,7 @@ def _build_berlin_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("440.4", "Sprechanlagen/Klingel (Intercom)", "pcs", 48, 380.00, {"din276": "440"}),
             ],
         ),
-        # 11. KG 540 — Technische Anlagen Außenanlagen
+        # 11. KG 540 - Technische Anlagen Außenanlagen
         (
             "540",
             "KG 540 \u2014 Technische Anlagen Au\u00dfenanlagen",
@@ -274,7 +274,7 @@ def _build_berlin_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("540.2", "Tiefgarage Beleuchtung (Garage lighting)", "m2", 1200, 28.00, {"din276": "540"}),
             ],
         ),
-        # 12. KG 500 — Außenanlagen
+        # 12. KG 500 - Außenanlagen
         (
             "500",
             "KG 500 \u2014 Au\u00dfenanlagen",
@@ -345,7 +345,7 @@ def _build_berlin_markups(boq_id: uuid.UUID) -> list[BOQMarkup]:
 
 
 # ---------------------------------------------------------------------------
-# Demo 2 — One Canary Square (UK / NRM 1 / GBP)
+# Demo 2 - One Canary Square (UK / NRM 1 / GBP)
 # ---------------------------------------------------------------------------
 
 
@@ -355,7 +355,7 @@ def _build_canary_positions(boq_id: uuid.UUID) -> list[Position]:
     sort = 0
 
     sections: list[tuple[str, str, dict, list[tuple[str, str, str, float, float, dict]]]] = [
-        # 1. Element 0 — Facilitating Works
+        # 1. Element 0 - Facilitating Works
         (
             "0",
             "0 \u2014 Facilitating Works",
@@ -366,7 +366,7 @@ def _build_canary_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("0.3", "Ground investigation", "lsum", 1, 85000.00, {"nrm": "0.3"}),
             ],
         ),
-        # 2. Element 1 — Substructure
+        # 2. Element 1 - Substructure
         (
             "1",
             "1 \u2014 Substructure",
@@ -379,7 +379,7 @@ def _build_canary_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("1.5", "Waterproofing Type A cavity drain", "m2", 5200, 85.00, {"nrm": "1.5"}),
             ],
         ),
-        # 3. Element 2 — Superstructure — Frame
+        # 3. Element 2 - Superstructure - Frame
         (
             "2",
             "2 \u2014 Superstructure \u2014 Frame",
@@ -392,7 +392,7 @@ def _build_canary_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("2.5", "Metal decking Comflor 60", "m2", 12800, 42.00, {"nrm": "2.5"}),
             ],
         ),
-        # 4. Element 3 — Superstructure — Upper Floors
+        # 4. Element 3 - Superstructure - Upper Floors
         (
             "3",
             "3 \u2014 Superstructure \u2014 Upper Floors",
@@ -403,7 +403,7 @@ def _build_canary_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("3.3", "Stair cores RC", "pcs", 4, 45000.00, {"nrm": "3.3"}),
             ],
         ),
-        # 5. Element 4 — Superstructure — Roof
+        # 5. Element 4 - Superstructure - Roof
         (
             "4",
             "4 \u2014 Superstructure \u2014 Roof",
@@ -415,7 +415,7 @@ def _build_canary_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("4.4", "Lightning protection", "lsum", 1, 35000.00, {"nrm": "4.4"}),
             ],
         ),
-        # 6. Element 5 — External Walls
+        # 6. Element 5 - External Walls
         (
             "5",
             "5 \u2014 External Walls",
@@ -427,7 +427,7 @@ def _build_canary_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("5.4", "External cladding ground floor", "m2", 600, 380.00, {"nrm": "5.4"}),
             ],
         ),
-        # 7. Element 6 — Windows and External Doors
+        # 7. Element 6 - Windows and External Doors
         (
             "6",
             "6 \u2014 Windows and External Doors",
@@ -439,7 +439,7 @@ def _build_canary_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("6.4", "Loading bay doors", "pcs", 4, 8500.00, {"nrm": "6.4"}),
             ],
         ),
-        # 8. Element 7 — Internal Walls and Partitions
+        # 8. Element 7 - Internal Walls and Partitions
         (
             "7",
             "7 \u2014 Internal Walls and Partitions",
@@ -450,7 +450,7 @@ def _build_canary_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("7.3", "Core fire rated walls", "m2", 2400, 125.00, {"nrm": "7.3"}),
             ],
         ),
-        # 9. Element 8 — Services (MEP)
+        # 9. Element 8 - Services (MEP)
         (
             "8",
             "8 \u2014 Services (MEP)",
@@ -464,7 +464,7 @@ def _build_canary_positions(boq_id: uuid.UUID) -> list[Position]:
                 ("8.6", "Sprinkler installation", "m2", 12800, 45.00, {"nrm": "8.6"}),
             ],
         ),
-        # 10. Element 9 — External Works
+        # 10. Element 9 - External Works
         (
             "9",
             "9 \u2014 External Works",
@@ -623,7 +623,7 @@ async def main() -> None:
         # 1. Find or create a demo user
         # ------------------------------------------------------------------
         print("=" * 78)
-        print("  OpenConstructionERP  —  Demo Estimate Seeder")
+        print("  OpenConstructionERP  -  Demo Estimate Seeder")
         print("=" * 78)
 
         user = (await session.execute(select(User).where(User.role == "admin").limit(1))).scalar_one_or_none()
@@ -632,7 +632,7 @@ async def main() -> None:
             user = (await session.execute(select(User).limit(1))).scalar_one_or_none()
 
         if user is None:
-            # Create a minimal demo user — intentionally *not* admin so the
+            # Create a minimal demo user - intentionally *not* admin so the
             # first real registrant on a freshly-seeded DB still gets the
             # admin bootstrap path. See UserService.register.
             user = User(

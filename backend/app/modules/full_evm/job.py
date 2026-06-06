@@ -75,9 +75,9 @@ async def run_forecast_batch_job(job_run: JobRun, payload: dict[str, Any]) -> di
     """‌⁠‍Job handler: recompute forecasts + fire alerts for a set of projects.
 
     Payload:
-        project_ids: list[str] | None — explicit project scope, or null/absent
+        project_ids: list[str] | None - explicit project scope, or null/absent
             to sweep every project that has an EVM snapshot.
-        forecast_method: "cpi" | "spi_cpi" — defaults to "cpi".
+        forecast_method: "cpi" | "spi_cpi" - defaults to "cpi".
     """
     from app.core.job_runner import update_progress
 
@@ -113,10 +113,10 @@ async def run_forecast_batch_job(job_run: JobRun, payload: dict[str, Any]) -> di
     await update_progress(
         job_run.id,
         percent=100,
-        message=f"Done — {alerted} project(s) with new alerts",
+        message=f"Done - {alerted} project(s) with new alerts",
     )
     logger.info(
-        "full_evm: forecast batch complete — %d project(s), %d alerted",
+        "full_evm: forecast batch complete - %d project(s), %d alerted",
         len(results),
         alerted,
     )

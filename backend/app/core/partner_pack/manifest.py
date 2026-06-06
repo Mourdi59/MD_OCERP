@@ -1,4 +1,4 @@
-"""PartnerPackManifest — the Pydantic schema each partner pack exports."""
+"""PartnerPackManifest - the Pydantic schema each partner pack exports."""
 
 from __future__ import annotations
 
@@ -142,7 +142,7 @@ class PartnerPackManifest(BaseModel):
         ),
     )
 
-    # Onboarding script — declarative YAML/JSON applied at first login
+    # Onboarding script - declarative YAML/JSON applied at first login
     onboarding_script_path: str | None = Field(
         default=None,
         description=(
@@ -189,7 +189,7 @@ class PartnerPackManifest(BaseModel):
             "branding": {
                 "primary_color": self.branding.primary_color,
                 "accent_color": self.branding.accent_color,
-                "has_logo": True,  # always streamed even if pack omits — fallback handled
+                "has_logo": True,  # always streamed even if pack omits - fallback handled
                 "has_favicon": self.branding.favicon_path is not None,
                 "powered_by_text": self.effective_powered_by,
             },

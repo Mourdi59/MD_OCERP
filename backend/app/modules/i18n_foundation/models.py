@@ -1,10 +1,10 @@
 """‌⁠‍Internationalization foundation ORM models.
 
 Tables:
-    oe_i18n_exchange_rate — currency exchange rates (manual, ECB, custom sources)
-    oe_i18n_country       — country registry with translations and regional settings
-    oe_i18n_work_calendar — work calendars with holidays per country/year
-    oe_i18n_tax_config    — tax configurations per country (VAT, GST, etc.)
+    oe_i18n_exchange_rate - currency exchange rates (manual, ECB, custom sources)
+    oe_i18n_country       - country registry with translations and regional settings
+    oe_i18n_work_calendar - work calendars with holidays per country/year
+    oe_i18n_tax_config    - tax configurations per country (VAT, GST, etc.)
 """
 
 from sqlalchemy import JSON, Boolean, Index, String, UniqueConstraint
@@ -128,7 +128,7 @@ class TaxConfiguration(Base):
         JSON, nullable=True
     )
     tax_code: Mapped[str | None] = mapped_column(String(50), nullable=True)  # VAT, GST, HST, etc.
-    rate_pct: Mapped[str] = mapped_column(String(20), nullable=False)  # e.g. "19.0" — string for SQLite compat
+    rate_pct: Mapped[str] = mapped_column(String(20), nullable=False)  # e.g. "19.0" - string for SQLite compat
     tax_type: Mapped[str] = mapped_column(String(50), nullable=False)  # vat / sales_tax / gst / service_tax / customs
     effective_from: Mapped[str | None] = mapped_column(String(20), nullable=True)  # ISO date string
     effective_to: Mapped[str | None] = mapped_column(String(20), nullable=True)  # NULL = currently active

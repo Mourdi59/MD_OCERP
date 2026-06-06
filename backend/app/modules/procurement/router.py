@@ -1,14 +1,14 @@
 """‌⁠‍Procurement API routes.
 
 Endpoints:
-    GET    /                           — List purchase orders
-    POST   /                           — Create PO (auth required)
-    GET    /goods-receipts             — List goods receipts
-    POST   /goods-receipts             — Create GR (auth required)
-    POST   /goods-receipts/{id}/confirm — Confirm GR (auth required)
-    GET    /{id}                       — Get single PO
-    PATCH  /{id}                       — Update PO (auth required)
-    POST   /{id}/issue                 — Issue PO (auth required)
+    GET    /                           - List purchase orders
+    POST   /                           - Create PO (auth required)
+    GET    /goods-receipts             - List goods receipts
+    POST   /goods-receipts             - Create GR (auth required)
+    POST   /goods-receipts/{id}/confirm - Confirm GR (auth required)
+    GET    /{id}                       - Get single PO
+    PATCH  /{id}                       - Update PO (auth required)
+    POST   /{id}/issue                 - Issue PO (auth required)
 
 NOTE: Fixed-path routes (/goods-receipts) are registered BEFORE the parametric
 /{po_id} route so that FastAPI does not try to parse "goods-receipts" as a UUID.
@@ -77,10 +77,10 @@ def _po_to_response(po: PurchaseOrder, vendor_names: dict[str, str]) -> PORespon
         resp.vendor_name = vendor_names.get(po.vendor_contact_id)
     # Computed retainage values cannot come through ``model_validate`` (they
     # are ORM methods, not attributes), so stamp them here. Strings, in the
-    # PO's own currency — never blended.
+    # PO's own currency - never blended.
     resp.retainage_amount = str(po.retainage_amount())
     resp.retainage_held = str(po.retainage_held())
-    # Non-blocking vendor-prequalification warnings (TOP-30 #20) — stamped by
+    # Non-blocking vendor-prequalification warnings (TOP-30 #20) - stamped by
     # the service gate on create/update as a transient attribute. Absent on a
     # plain list read, so default to empty.
     resp.vendor_warnings = list(getattr(po, "vendor_warnings", []) or [])
@@ -186,7 +186,7 @@ async def list_goods_receipts(
     service: ProcurementService = Depends(_get_service),
 ) -> GRListResponse:
     """List goods receipts, scoped by ``po_id`` OR ``project_id``."""
-    # Exactly one scope is required — preserve the old behaviour of failing
+    # Exactly one scope is required - preserve the old behaviour of failing
     # fast when no scope is given, but as a clear 400 instead of a 422.
     if po_id is None and project_id is None:
         raise HTTPException(
@@ -196,7 +196,7 @@ async def list_goods_receipts(
 
     # ── project_id path: list GRs across the whole project ──────────────
     if project_id is not None:
-        # IDOR gate — same project-scope check the PO list uses.
+        # IDOR gate - same project-scope check the PO list uses.
         await verify_project_access(project_id, str(user_id), session)
         rows, total = await service.list_goods_receipts_by_project(
             project_id=project_id,
@@ -219,7 +219,7 @@ async def list_goods_receipts(
     out: list[GRResponse] = []
     for gr in items:
         resp = GRResponse.model_validate(gr)
-        # All GRs here belong to the same PO — stamp its number for the FE.
+        # All GRs here belong to the same PO - stamp its number for the FE.
         resp.po_number = po.po_number
         out.append(resp)
     return GRListResponse(items=out, total=total)
@@ -263,7 +263,7 @@ async def confirm_goods_receipt(
     return GRResponse.model_validate(gr)
 
 
-# ── Supplier scorecard (fixed path — MUST be before /{po_id}) ───────────────
+# ── Supplier scorecard (fixed path - MUST be before /{po_id}) ───────────────
 
 
 @router.get(
@@ -295,7 +295,7 @@ async def get_supplier_scorecard(
         period_days=period_days,
     )
 
-    # Best-effort vendor display name — same lookup the PO list uses so
+    # Best-effort vendor display name - same lookup the PO list uses so
     # the scorecard modal can label the chart without a second round-trip.
     name_map = await _fetch_vendor_names(session, [contact_id])
     data["supplier_name"] = name_map.get(contact_id)
@@ -371,7 +371,7 @@ async def create_invoice_from_po(
         The Invoice header AND every InvoiceLineItem are inserted under a
         SAVEPOINT (``begin_nested``). Any failure inside the conversion
         body rolls back the partial finance writes WITHOUT discarding the
-        outer request session — so a half-created invoice (header without
+        outer request session - so a half-created invoice (header without
         line items) can never be left behind. The reference pattern is
         :func:`app.modules.variations.service.convert_vr_to_vo`.
 
@@ -469,7 +469,7 @@ async def create_invoice_from_po(
     # ── Cross-module atomicity: SAVEPOINT around finance writes ─────────
     #
     # If the line-item flush blows up (FK violation, DB outage between
-    # the two flushes), the header insert must be undone too — otherwise
+    # the two flushes), the header insert must be undone too - otherwise
     # the finance module ends up with a header-only invoice that has
     # ``amount_total`` set but no detail rows, silently double-counting
     # in dashboards. ``begin_nested`` issues a SAVEPOINT scoped to the
@@ -518,7 +518,7 @@ async def create_invoice_from_po(
 
             await session.flush()
 
-            # Audit row inside the same SAVEPOINT — so an audit-log
+            # Audit row inside the same SAVEPOINT - so an audit-log
             # failure rolls the invoice back too. Best-effort log_activity
             # exists elsewhere; here we want the audit to be load-bearing
             # because the PO → payable conversion is the load-bearing

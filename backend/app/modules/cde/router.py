@@ -118,7 +118,7 @@ async def list_suitability_codes() -> SuitabilityCodesResponse:
     """Return the ISO 19650 suitability-code table.
 
     Used by the frontend container-create/edit dropdown to drive a state-aware
-    picker. Labels here are English defaults — the frontend runs them through
+    picker. Labels here are English defaults - the frontend runs them through
     i18n using the code as the key (``cde.suitability_<code>``).
     """
     all_entries: list[SuitabilityCodeEntry] = []
@@ -168,7 +168,7 @@ async def cde_stats(
 # NOTE on the no-trailing-slash alias below:
 # The app runs with ``redirect_slashes=False`` (see app.main), so a request
 # to ``/api/v1/cde/containers`` (no trailing slash) does NOT auto-redirect
-# to ``/containers/`` — it 404s outright. The real frontend always calls
+# to ``/containers/`` - it 404s outright. The real frontend always calls
 # ``/v1/cde/containers/`` (with the slash), so the module is fully
 # functional in-app; the 404 only bites bare-path probes, crawlers, and
 # any reverse proxy that strips trailing slashes. We mirror the canonical

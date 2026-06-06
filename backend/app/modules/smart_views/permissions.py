@@ -15,7 +15,7 @@ def register_smart_views_permissions() -> None:
 
     Cross-user / cross-project visibility is enforced inside the
     service layer (see :class:`SmartViewService._scope_predicate`),
-    not by the RBAC gate — RBAC tells you *whether* you may use the
+    not by the RBAC gate - RBAC tells you *whether* you may use the
     feature; scoping tells you *which rows* you may touch.
     """
     permission_registry.register_module_permissions(

@@ -21,15 +21,15 @@ from __future__ import annotations
 from datetime import date, datetime
 
 # Accepted fallback formats, ordered most- to least-specific. Only formats
-# whose field order is unambiguous are included — e.g. ``DD/MM/YYYY`` and
+# whose field order is unambiguous are included - e.g. ``DD/MM/YYYY`` and
 # ``MM/DD/YYYY`` are mutually ambiguous, so neither slash form is guessed;
 # such values are reported as unparseable rather than silently mis-dated
 # (a mis-dated incident is as dangerous as a dropped one).
 _FALLBACK_FORMATS: tuple[str, ...] = (
     "%Y-%m-%d",  # canonical ISO (also handled by date.fromisoformat)
-    "%Y/%m/%d",  # ISO order, slash separator — unambiguous
-    "%d.%m.%Y",  # DACH / EU dotted — unambiguous (day-first, 4-digit year last)
-    "%Y.%m.%d",  # ISO order, dot separator — unambiguous
+    "%Y/%m/%d",  # ISO order, slash separator - unambiguous
+    "%d.%m.%Y",  # DACH / EU dotted - unambiguous (day-first, 4-digit year last)
+    "%Y.%m.%d",  # ISO order, dot separator - unambiguous
     "%Y%m%d",  # compact ISO basic
 )
 
@@ -39,7 +39,7 @@ def parse_incident_date(value: str | None) -> date | None:
 
     Returns a ``date`` on success, or ``None`` if the value is empty or
     cannot be parsed unambiguously. ``None`` is *cannot confirm*, never
-    *no incident* — callers must treat it as a reason to flag the metric,
+    *no incident* - callers must treat it as a reason to flag the metric,
     not silently drop the incident.
     """
     if not value:
@@ -71,7 +71,7 @@ def canonicalize_incident_date(value: str | None) -> str:
 
     Guarantees future rows are clean so the "days without incident / LTI"
     billboard never has to guess. If the value cannot be parsed it is
-    returned **unchanged** (trimmed) rather than dropped — the integrity
+    returned **unchanged** (trimmed) rather than dropped - the integrity
     failure must remain visible downstream, not be silently erased.
     """
     parsed = parse_incident_date(value)

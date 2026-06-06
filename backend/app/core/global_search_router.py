@@ -30,7 +30,7 @@ async def search(
     project_id: str | None = Query(default=None, description="Limit search to a specific project"),
     limit: int = Query(default=20, ge=1, le=100, description="Maximum results to return"),
 ) -> list[dict[str, Any]]:
-    """‌⁠‍Search across all modules — BOQ positions, contacts, documents, RFIs,
+    """‌⁠‍Search across all modules - BOQ positions, contacts, documents, RFIs,
     tasks, cost items, meetings, inspections, and NCRs.
 
     Results are ranked by relevance score. Each result includes:

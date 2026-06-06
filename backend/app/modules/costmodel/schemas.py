@@ -1,7 +1,7 @@
-"""‌⁠‍5D Cost Model Pydantic schemas — request/response models.
+"""‌⁠‍5D Cost Model Pydantic schemas - request/response models.
 
 Defines create, update, and response schemas for cost snapshots,
-budget lines, and cash flow entries. v3 §10 — monetary values are
+budget lines, and cash flow entries. v3 §10 - monetary values are
 Decimal-in / Decimal-as-string out in JSON; persisted as strings in the
 database for SQLite compatibility.
 """
@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 # ── v3 §10 money serialisation helper ─────────────────────────────────────
-# Mirrors backend/app/modules/boq/schemas.py — money fields are stored /
+# Mirrors backend/app/modules/boq/schemas.py - money fields are stored /
 # accepted as Decimal but emitted as plain decimal strings in JSON.
 def _serialise_money(v: Decimal | None) -> str | None:
     if v is None:
@@ -36,10 +36,10 @@ def _serialise_money(v: Decimal | None) -> str | None:
 class SnapshotCreate(BaseModel):
     """‌⁠‍Create a new EVM cost snapshot.
 
-    v3 §10 — ``planned_cost`` / ``earned_value`` / ``actual_cost`` are
+    v3 §10 - ``planned_cost`` / ``earned_value`` / ``actual_cost`` are
     money; Decimal-as-string in JSON. SPI/CPI/forecast_eac stay float
     (SPI/CPI are ratios; forecast_eac is a derived metric not yet
-    standardised on Decimal — leave for a future pass).
+    standardised on Decimal - leave for a future pass).
     """
 
     model_config = ConfigDict(str_strip_whitespace=True)
@@ -82,7 +82,7 @@ class SnapshotUpdate(BaseModel):
 class SnapshotResponse(BaseModel):
     """Cost snapshot returned from the API.
 
-    v3 §10 — money is Decimal-as-string in JSON.
+    v3 §10 - money is Decimal-as-string in JSON.
     """
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
@@ -112,7 +112,7 @@ class SnapshotResponse(BaseModel):
 class BudgetLineCreate(BaseModel):
     """Create a new budget line.
 
-    v3 §10 — money fields are Decimal-as-string in JSON.
+    v3 §10 - money fields are Decimal-as-string in JSON.
     """
 
     model_config = ConfigDict(str_strip_whitespace=True)
@@ -163,10 +163,10 @@ class BudgetLineUpdate(BaseModel):
     period_start: str | None = None
     period_end: str | None = None
     currency: str | None = Field(default=None, max_length=10)
-    # Gap D — the cost-overrun alert threshold (% above planned). Editable via
+    # Gap D - the cost-overrun alert threshold (% above planned). Editable via
     # the dedicated PATCH endpoint, but also accepted here for completeness.
     # ``'0'`` disables alerting on the line. ``overrun_alerted_at`` is
-    # deliberately NOT updatable through the API — only the subscriber stamps it.
+    # deliberately NOT updatable through the API - only the subscriber stamps it.
     overrun_alert_threshold_pct: str | None = Field(default=None, max_length=10)
     metadata: dict[str, Any] | None = None
 
@@ -184,7 +184,7 @@ class BudgetLineUpdate(BaseModel):
 class BudgetLineResponse(BaseModel):
     """Budget line returned from the API.
 
-    v3 §10 — money fields are Decimal-as-string in JSON.
+    v3 §10 - money fields are Decimal-as-string in JSON.
     """
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
@@ -202,7 +202,7 @@ class BudgetLineResponse(BaseModel):
     period_start: str | None
     period_end: str | None
     currency: str
-    # Gap D — cost-overrun alert configuration. ``overrun_alert_threshold_pct``
+    # Gap D - cost-overrun alert configuration. ``overrun_alert_threshold_pct``
     # is the % above planned that arms an alert ('0' = disabled);
     # ``overrun_alerted_at`` is the last alert timestamp (null = never).
     overrun_alert_threshold_pct: str = "0"
@@ -228,7 +228,7 @@ class BudgetLineResponse(BaseModel):
 class CashFlowCreate(BaseModel):
     """Create a new cash flow entry.
 
-    v3 §10 — money fields are Decimal-as-string in JSON.
+    v3 §10 - money fields are Decimal-as-string in JSON.
     """
 
     model_config = ConfigDict(str_strip_whitespace=True)
@@ -287,7 +287,7 @@ class CashFlowUpdate(BaseModel):
 class CashFlowResponse(BaseModel):
     """Cash flow entry returned from the API.
 
-    v3 §10 — money fields are Decimal-as-string in JSON.
+    v3 §10 - money fields are Decimal-as-string in JSON.
     """
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
@@ -325,9 +325,9 @@ class CashFlowResponse(BaseModel):
 class DashboardResponse(BaseModel):
     """Aggregated 5D cost dashboard KPIs.
 
-    v3 §10 — money fields are Decimal-as-string in JSON. Ratios (SPI/CPI/
+    v3 §10 - money fields are Decimal-as-string in JSON. Ratios (SPI/CPI/
     variance_pct) stay float. ``total_forecast`` and ``variance`` are
-    aggregate metrics not in the deferred list — kept float for now.
+    aggregate metrics not in the deferred list - kept float for now.
     """
 
     total_budget: Decimal = Decimal("0")
@@ -371,9 +371,9 @@ class SCurveData(BaseModel):
 class CashFlowPeriod(BaseModel):
     """Single period data point for cash flow chart.
 
-    v3 §10 — ``cumulative_planned`` / ``cumulative_actual`` are money;
+    v3 §10 - ``cumulative_planned`` / ``cumulative_actual`` are money;
     Decimal-as-string in JSON. ``inflow`` / ``outflow`` are deferred
-    (not in the audit list — kept float).
+    (not in the audit list - kept float).
     """
 
     period: str
@@ -420,21 +420,21 @@ class EVMResponse(BaseModel):
     All standard EVM metrics computed from budget lines and schedule progress.
     """
 
-    bac: float = Field(0.0, description="Budget At Completion — total planned budget")
-    pv: float = Field(0.0, description="Planned Value — budget x time_elapsed%")
-    ev: float = Field(0.0, description="Earned Value — budget x schedule_progress%")
-    ac: float = Field(0.0, description="Actual Cost — sum of actual costs")
-    sv: float = Field(0.0, description="Schedule Variance — EV - PV")
-    cv: float = Field(0.0, description="Cost Variance — EV - AC")
-    spi: float = Field(0.0, description="Schedule Performance Index — EV / PV")
-    cpi: float = Field(0.0, description="Cost Performance Index — EV / AC")
-    eac: float = Field(0.0, description="Estimate At Completion — BAC / CPI")
-    etc: float = Field(0.0, description="Estimate To Complete — EAC - AC")
-    vac: float = Field(0.0, description="Variance At Completion — BAC - EAC")
+    bac: float = Field(0.0, description="Budget At Completion - total planned budget")
+    pv: float = Field(0.0, description="Planned Value - budget x time_elapsed%")
+    ev: float = Field(0.0, description="Earned Value - budget x schedule_progress%")
+    ac: float = Field(0.0, description="Actual Cost - sum of actual costs")
+    sv: float = Field(0.0, description="Schedule Variance - EV - PV")
+    cv: float = Field(0.0, description="Cost Variance - EV - AC")
+    spi: float = Field(0.0, description="Schedule Performance Index - EV / PV")
+    cpi: float = Field(0.0, description="Cost Performance Index - EV / AC")
+    eac: float = Field(0.0, description="Estimate At Completion - BAC / CPI")
+    etc: float = Field(0.0, description="Estimate To Complete - EAC - AC")
+    vac: float = Field(0.0, description="Variance At Completion - BAC - EAC")
     tcpi: float | None = Field(
         None,
         description=(
-            "To-Complete Performance Index — (BAC - EV) / (BAC - AC). "
+            "To-Complete Performance Index - (BAC - EV) / (BAC - AC). "
             "Returns ``null`` when BAC <= AC: the denominator is zero or "
             "negative (project is already at-or-over budget), making TCPI "
             "mathematically undefined. Pre-audit this case was masked as "
@@ -497,7 +497,7 @@ class VarianceResponse(BaseModel):
     Current is the live BOQ total. Variance is expressed both in absolute
     currency and as a percentage of budget.
 
-    v3 §10 — ``budget`` / ``variance_abs`` are money; Decimal-as-string in
+    v3 §10 - ``budget`` / ``variance_abs`` are money; Decimal-as-string in
     JSON. ``current`` and ``red_line`` are not in the deferred audit list
     so they stay float (``current`` is a derived display value, ``red_line``
     is a configurable percentage threshold).
@@ -506,7 +506,7 @@ class VarianceResponse(BaseModel):
     budget: Decimal = Decimal("0")
     current: float = 0.0
     variance_abs: Decimal = Field(default=Decimal("0"), description="current - budget")
-    variance_pct: float = Field(0.0, description="(current - budget) / budget * 100 — 0.0 when budget is 0")
+    variance_pct: float = Field(0.0, description="(current - budget) / budget * 100 - 0.0 when budget is 0")
     red_line: float = Field(5.0, description="Absolute % threshold that flips the KPI to red")
     currency: str = ""
 

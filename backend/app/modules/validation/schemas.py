@@ -1,4 +1,4 @@
-"""‌⁠‍Validation Pydantic schemas — request/response models."""
+"""‌⁠‍Validation Pydantic schemas - request/response models."""
 
 from datetime import datetime
 from typing import Any
@@ -24,7 +24,7 @@ class ValidationResultItem(BaseModel):
 
 
 class ValidationReportCreate(BaseModel):
-    """‌⁠‍Schema for creating a validation report manually (rare — prefer /run)."""
+    """‌⁠‍Schema for creating a validation report manually (rare - prefer /run)."""
 
     project_id: UUID
     target_type: str = Field(description="boq, document, cad_import, tender")
@@ -51,7 +51,7 @@ class ValidationReportResponse(BaseModel):
     created_at: datetime | None = None
     # NB: SQLAlchemy declarative reserves `metadata` for the class-level
     # MetaData() registry, so reading `report.metadata` returns the
-    # SQLAlchemy registry object — not our column.  We use AliasChoices
+    # SQLAlchemy registry object - not our column.  We use AliasChoices
     # to make Pydantic try `metadata_` (the python attribute name) FIRST
     # when `from_attributes=True` is on, falling back to `metadata` for
     # the JSON-input case.
@@ -79,7 +79,7 @@ class RunValidationRequest(BaseModel):
 
 
 class RunValidationResponse(BaseModel):
-    """Response from POST /validation/run — report summary + full results."""
+    """Response from POST /validation/run - report summary + full results."""
 
     report_id: UUID
     status: str

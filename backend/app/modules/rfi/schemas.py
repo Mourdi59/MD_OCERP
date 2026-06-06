@@ -1,4 +1,4 @@
-"""‌⁠‍RFI Pydantic schemas — request/response models."""
+"""‌⁠‍RFI Pydantic schemas - request/response models."""
 
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -86,7 +86,7 @@ class RFICreate(BaseModel):
     priority: str | None = Field(
         default=None,
         pattern=r"^(low|normal|high|critical)$",
-        description="Priority — low | normal | high | critical.",
+        description="Priority - low | normal | high | critical.",
     )
     discipline: str | None = Field(default=None, max_length=50)
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -128,7 +128,7 @@ class RFIUpdate(BaseModel):
     priority: str | None = Field(
         default=None,
         pattern=r"^(low|normal|high|critical)$",
-        description="Priority — low | normal | high | critical.",
+        description="Priority - low | normal | high | critical.",
     )
     discipline: str | None = Field(default=None, max_length=50)
     metadata: dict[str, Any] | None = None

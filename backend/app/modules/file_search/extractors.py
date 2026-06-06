@@ -4,17 +4,17 @@
 
 Two engines:
 
-* :func:`_extract_pdf_text` — PyMuPDF (``fitz``). Pulls embedded vector
+* :func:`_extract_pdf_text` - PyMuPDF (``fitz``). Pulls embedded vector
   text out of every page; the cheap path. Returns the full text and the
   page count.
-* :func:`_extract_ocr_text` — pytesseract. Rasterises the input bytes
+* :func:`_extract_ocr_text` - pytesseract. Rasterises the input bytes
   (PIL.Image) and runs Tesseract OCR. Slow; only used when PyMuPDF
   reports zero embedded text, or for non-PDF mime types (jpg/png/tiff).
 
 The public entrypoint :func:`extract_text` picks the right engine for
 the supplied ``mime`` and returns an :class:`ExtractionResult`. Every
 path degrades gracefully: if a library is missing, the function returns
-an empty string and engine ``"none"`` — never raises.
+an empty string and engine ``"none"`` - never raises.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from dataclasses import dataclass
 logger = logging.getLogger(__name__)
 
 # Hard cap so a 1000-page PDF or a corrupt OCR pass cannot push a single
-# row past 1 MB. Truncation is plain Python slicing — UTF-8 boundaries
+# row past 1 MB. Truncation is plain Python slicing - UTF-8 boundaries
 # are preserved by the slice falling on a codepoint boundary (we cut
 # *after* decoding, so individual codepoints are atomic).
 MAX_CONTENT_BYTES: int = 1 * 1024 * 1024
@@ -46,7 +46,7 @@ class ExtractionResult:
                      ``MAX_CONTENT_CHARS``). Never ``None``.
         page_count:  Number of pages the extractor saw, or ``None`` for
                      mime types that have no page concept.
-        engine:      Which extractor produced the text — one of
+        engine:      Which extractor produced the text - one of
                      ``"pymupdf"``, ``"pytesseract"``, ``"none"``.
         language:    Detected language code (``"eng"``, ``"deu"``, ...),
                      or ``None`` if no language detection was performed.
@@ -68,13 +68,13 @@ def _extract_pdf_text(payload: bytes) -> tuple[str, int]:
     """Pull embedded vector text out of a PDF using PyMuPDF.
 
     Returns ``(text, page_count)``. Raises only on truly catastrophic
-    extractor failure — graceful "no text" returns an empty string with
+    extractor failure - graceful "no text" returns an empty string with
     the real page count.
     """
     try:
         import fitz  # type: ignore[import-not-found]
     except Exception:  # pragma: no cover - optional dep
-        logger.debug("PyMuPDF not installed — skipping embedded-text extraction")
+        logger.debug("PyMuPDF not installed - skipping embedded-text extraction")
         return "", 0
 
     try:
@@ -107,7 +107,7 @@ def _extract_ocr_text(payload: bytes, mime: str | None) -> tuple[str, int | None
         import pytesseract  # type: ignore[import-not-found]
         from PIL import Image  # type: ignore[import-not-found]
     except Exception:  # pragma: no cover - optional dep
-        logger.debug("pytesseract or Pillow not installed — skipping OCR")
+        logger.debug("pytesseract or Pillow not installed - skipping OCR")
         return "", None
 
     # PDF input → rasterise each page, OCR each one.
@@ -117,7 +117,7 @@ def _extract_ocr_text(payload: bytes, mime: str | None) -> tuple[str, int | None
 
             import fitz  # type: ignore[import-not-found]
         except Exception:  # pragma: no cover - optional dep
-            logger.debug("PyMuPDF not installed — cannot rasterise PDF for OCR")
+            logger.debug("PyMuPDF not installed - cannot rasterise PDF for OCR")
             return "", None
 
         try:
@@ -139,7 +139,7 @@ def _extract_ocr_text(payload: bytes, mime: str | None) -> tuple[str, int | None
             logger.exception("OCR rasterisation pipeline failed for PDF")
             return "", None
 
-    # Image input — single OCR pass.
+    # Image input - single OCR pass.
     try:
         from io import BytesIO
 
@@ -162,13 +162,13 @@ def extract_text(payload: bytes, mime: str | None) -> ExtractionResult:
 
     Args:
         payload: Raw file bytes. May be ``b""`` (the caller forgot to
-                 read the file) — we return an empty result, never
+                 read the file) - we return an empty result, never
                  crash.
         mime:    Best-known mime type. Used only to route between
                  extractors; ``None`` is treated as "unknown".
 
     Returns:
-        ExtractionResult — see class docstring.
+        ExtractionResult - see class docstring.
     """
     if not payload:
         return ExtractionResult(text="", page_count=None, engine="none")

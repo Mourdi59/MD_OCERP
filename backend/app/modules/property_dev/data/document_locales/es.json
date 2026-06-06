@@ -118,8 +118,8 @@
       "scope": "Alcance",
       "exclusions": "Exclusiones"
     },
-    "structural_text": "El Promotor garantiza la integridad estructural del inmueble — incluidos los elementos portantes, cimentación e impermeabilización — durante un periodo de {years} años desde la fecha de entrega.",
-    "finishing_text": "El Promotor garantiza los acabados — incluida pintura, sanitarios, electrodomésticos instalados por el Promotor y elementos cosméticos menores — durante un periodo de {years} año(s) desde la entrega.",
+    "structural_text": "El Promotor garantiza la integridad estructural del inmueble - incluidos los elementos portantes, cimentación e impermeabilización - durante un periodo de {years} años desde la fecha de entrega.",
+    "finishing_text": "El Promotor garantiza los acabados - incluida pintura, sanitarios, electrodomésticos instalados por el Promotor y elementos cosméticos menores - durante un periodo de {years} año(s) desde la entrega.",
     "exclusions_text": "Quedan excluidos los daños por uso indebido, las modificaciones realizadas por el Comprador o terceros, el desgaste natural, los supuestos de fuerza mayor y los elementos cubiertos por garantías de fabricante separadas.",
     "claim_procedure": "Para presentar una reclamación, el Comprador debe remitir al Promotor, dentro del periodo de garantía, una notificación escrita describiendo el defecto y aportando pruebas razonables."
   },

@@ -1,15 +1,15 @@
-"""‌⁠‍Risk item vector adapter — feeds the ``oe_risks`` collection.
+"""‌⁠‍Risk item vector adapter - feeds the ``oe_risks`` collection.
 
 Each :class:`~app.modules.risk.models.RiskItem` row is embedded as a rich
 concatenation of its title, description, mitigation strategy, contingency
 plan, category and severity signals.  The text is intentionally verbose
 because **risks are the killer cross-project use case for semantic
-search** — lessons-learned reuse means an estimator on a new project
+search** - lessons-learned reuse means an estimator on a new project
 should be able to pull up "similar risks we've already faced" across the
 entire tenant history, regardless of project.
 
 The adapter is stateless and knows nothing about the event bus or HTTP
-routing — wiring lives in :mod:`app.modules.risk.events` and
+routing - wiring lives in :mod:`app.modules.risk.events` and
 ``router.py`` respectively.
 """
 
@@ -31,7 +31,7 @@ class RiskVectorAdapter:
         """‌⁠‍Build the canonical text that gets embedded.
 
         Risks benefit from a *rich* text representation because most of
-        their value — the "how we handled it" knowledge — lives in the
+        their value - the "how we handled it" knowledge - lives in the
         mitigation strategy and contingency plan, not the title alone.
         We therefore concatenate every free-text field and every
         categorical signal so that semantic queries like *"asbestos in
@@ -50,7 +50,7 @@ class RiskVectorAdapter:
         category = getattr(row, "category", None)
         if category:
             parts.append(f"category={category}")
-        # Severity / probability signals — help semantic ranking group
+        # Severity / probability signals - help semantic ranking group
         # "catastrophic / critical" risks together across projects.
         impact_severity = getattr(row, "impact_severity", None)
         if impact_severity:
@@ -87,5 +87,5 @@ class RiskVectorAdapter:
         return str(project_id)
 
 
-# Singleton instance — adapters are stateless so one shared object is fine.
+# Singleton instance - adapters are stateless so one shared object is fine.
 risk_vector_adapter = RiskVectorAdapter()

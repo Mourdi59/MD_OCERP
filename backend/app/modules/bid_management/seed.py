@@ -7,7 +7,7 @@
     - 30 Q&A entries (spread)
     - 5 awards + 25 rejections (one full award per closed package)
 
-The seed is idempotent: re-running it does NOT create duplicates — it
+The seed is idempotent: re-running it does NOT create duplicates - it
 short-circuits when a package with the expected ``code`` already exists.
 """
 
@@ -61,12 +61,12 @@ _BIDDER_NAMES = [
 
 _QA_QUESTIONS = [
     ("What is the expected start date?", "We expect a kickoff within 2 weeks of award."),
-    ("Are alternates allowed for items 3.2 and 3.4?", "Yes — please submit clearly labelled."),
-    ("Is on-site storage available?", "Limited 200 m^2 — coordinate with site manager."),
+    ("Are alternates allowed for items 3.2 and 3.4?", "Yes - please submit clearly labelled."),
+    ("Is on-site storage available?", "Limited 200 m^2 - coordinate with site manager."),
     ("Is retention 5% or 10%?", "5% retention per contract template."),
     ("Are working hours restricted?", "Weekdays 07:00–18:00, no Sunday work."),
-    ("Can we submit a partial bid?", "No — full scope only."),
-    ("Are materials provided by GC?", "No — bidder supplies all materials unless flagged."),
+    ("Can we submit a partial bid?", "No - full scope only."),
+    ("Are materials provided by GC?", "No - bidder supplies all materials unless flagged."),
 ]
 
 
@@ -251,7 +251,7 @@ async def _seed_one_project(session: AsyncSession, project_id: uuid.UUID, projec
                 counts["rejections"] += 1
             await session.flush()
 
-        # Q&A — spread 3 entries on this package
+        # Q&A - spread 3 entries on this package
         for qi in range(3):
             q, a = _QA_QUESTIONS[(pkg_idx + qi) % len(_QA_QUESTIONS)]
             qa = BidQA(

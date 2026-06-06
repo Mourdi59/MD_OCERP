@@ -1,11 +1,11 @@
-"""‌⁠‍Document vector adapter — feeds the ``oe_documents`` collection.
+"""‌⁠‍Document vector adapter - feeds the ``oe_documents`` collection.
 
 Each :class:`~app.modules.documents.models.Document` row is embedded as
 its name, description, category, tags and any drawing metadata so that
 semantic queries like *"structural rebar schedule level 02"* match
 drawings, specs and photos regardless of the uploader's naming habits.
 
-The adapter is intentionally narrow — it knows nothing about the event
+The adapter is intentionally narrow - it knows nothing about the event
 bus or HTTP routing.  Wiring lives in :mod:`app.modules.documents.events`
 and ``router.py`` respectively.
 """
@@ -20,7 +20,7 @@ from app.modules.documents.models import Document
 
 
 def _file_name(row: Document) -> str:
-    """‌⁠‍Best-effort file name extraction — Document stores ``file_path`` only."""
+    """‌⁠‍Best-effort file name extraction - Document stores ``file_path`` only."""
     file_name = getattr(row, "file_name", None)
     if file_name:
         return str(file_name)
@@ -97,5 +97,5 @@ class DocumentVectorAdapter:
         return str(project_id)
 
 
-# Singleton instance — adapters are stateless so one shared object is fine.
+# Singleton instance - adapters are stateless so one shared object is fine.
 document_vector_adapter = DocumentVectorAdapter()

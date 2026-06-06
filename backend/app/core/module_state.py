@@ -81,7 +81,7 @@ def load_module_states(data_dir: Path | None = None) -> dict[str, ModuleState]:
                 states[name] = ModuleState(name=name, enabled=bool(data))
         return states
     except Exception:
-        logger.exception("Failed to read %s — starting with empty state", path)
+        logger.exception("Failed to read %s - starting with empty state", path)
         return {}
 
 

@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""File References Pydantic schemas — request/response models."""
+"""File References Pydantic schemas - request/response models."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ ALLOWED_FILE_KINDS: tuple[str, ...] = (
 )
 _FILE_KIND_PATTERN = r"^(document|photo|sheet|bim_model|dwg_drawing|takeoff|report|markup)$"
 
-# Target type union — open by design, validated by the schema but not
+# Target type union - open by design, validated by the schema but not
 # foreign-keyed. The string list is exported so the frontend can render
 # a typeahead picker without round-tripping to /api/.
 ALLOWED_TARGET_TYPES: tuple[str, ...] = (
@@ -51,7 +51,7 @@ _TARGET_TYPE_PATTERN = (
     r"boq_position|project|clash_run)$"
 )
 
-# Violation codes — the union is closed because the scanner has finite
+# Violation codes - the union is closed because the scanner has finite
 # checks. New codes require a backend change anyway (the scanner needs
 # to know how to detect them).
 ViolationCode = Literal[

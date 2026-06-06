@@ -1,20 +1,20 @@
-"""‌⁠‍Compliance-AI service — verdict pipeline + LLM cost controls.
+"""‌⁠‍Compliance-AI service - verdict pipeline + LLM cost controls.
 
 Wraps :func:`app.core.validation.dsl.nl_builder.parse_nl_to_dsl` with:
 
-* **Structured verdict logging** — every call emits a single INFO line
+* **Structured verdict logging** - every call emits a single INFO line
   with ``rule_id`` / ``used_method`` / ``confidence`` / ``lang`` /
   ``ai_used`` / ``elapsed_ms`` / ``text_len`` / ``user_id``. Lets ops
   spot prompt-injection probes and unhealthy AI fallback rates without
   shipping a separate metrics pipeline.
-* **Safe AI caller construction** — never raises. If the user has no
+* **Safe AI caller construction** - never raises. If the user has no
   API key, ``use_ai=True`` silently degrades to pattern-only matching.
   The wrapper uses a bounded ``max_tokens=1024`` so a malformed prompt
   can't drive runaway cost on a single call.
-* **Detached event publishing wrapped in** :func:`_log_failures` — the
+* **Detached event publishing wrapped in** :func:`_log_failures` - the
   ``compliance.nl_rule.generated`` event fires only on a successful
   parse, never blocks the request handler, and never leaves a silent
-  failure if the subscriber crashes (see ``feedback`` v4.2.2 — "no
+  failure if the subscriber crashes (see ``feedback`` v4.2.2 - "no
   silent task drops").
 
 The service stays stateless: no DB writes, no globals. The router
@@ -62,7 +62,7 @@ async def _build_ai_caller(
 
     Mirrors the helper in :mod:`app.modules.compliance.router` but is
     duplicated here so the compliance_ai module stays decoupled from
-    its sibling. Never raises — any failure returns ``None`` and the
+    its sibling. Never raises - any failure returns ``None`` and the
     NL builder falls back to deterministic pattern matching only.
     """
     if not user_id:
@@ -83,7 +83,7 @@ async def _build_ai_caller(
 
         settings_obj = await AISettingsRepository(session).get_by_user_id(uid)
         provider, api_key, model_override = resolve_provider_key_model(settings_obj)
-    except Exception:  # pragma: no cover — defensive
+    except Exception:  # pragma: no cover - defensive
         return None
 
     async def _caller(system: str, prompt: str) -> str:
@@ -101,7 +101,7 @@ async def _build_ai_caller(
 
 
 def _render_yaml(definition: dict[str, Any]) -> str | None:
-    """Best-effort YAML rendering — failures degrade to None, not 500."""
+    """Best-effort YAML rendering - failures degrade to None, not 500."""
     if not definition:
         return None
     try:
@@ -111,7 +111,7 @@ def _render_yaml(definition: dict[str, Any]) -> str | None:
             allow_unicode=True,
             default_flow_style=False,
         )
-    except yaml.YAMLError:  # pragma: no cover — defensive
+    except yaml.YAMLError:  # pragma: no cover - defensive
         logger.warning(
             "compliance_ai: YAML render failed for rule_id=%s",
             definition.get("rule_id"),
@@ -132,7 +132,7 @@ def _publish_generated(
     the WARNING log instead of vanishing as an unawaited task exception.
     """
     if not result.dsl_definition:
-        return  # nothing to announce — the call produced no rule
+        return  # nothing to announce - the call produced no rule
 
     event = Event(
         name=NL_RULE_GENERATED,
@@ -187,7 +187,7 @@ async def verify_nl_rule(
     elapsed_ms = int((time.perf_counter() - start) * 1000)
     rule_id = result.dsl_definition.get("rule_id") if result.dsl_definition else None
 
-    # Structured verdict log — single line, machine-parseable. See module
+    # Structured verdict log - single line, machine-parseable. See module
     # docstring for the rationale.
     logger.info(
         "compliance_ai.verdict rule_id=%s used_method=%s confidence=%.2f "

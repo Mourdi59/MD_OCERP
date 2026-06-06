@@ -50,7 +50,7 @@ def _validate_strong_password(value: str) -> str:
     """‌⁠‍Reject weak passwords. Used by `UserCreate`, `ChangePasswordRequest`,
     and `ResetPasswordRequest` so the policy is consistent everywhere.
 
-    Rules (intentionally lenient — strong enough to block trivial passwords
+    Rules (intentionally lenient - strong enough to block trivial passwords
     without frustrating power users):
       - 8+ chars
       - Must contain at least one letter and at least one digit
@@ -63,7 +63,7 @@ def _validate_strong_password(value: str) -> str:
     if not any(ch.isdigit() for ch in value):
         raise ValueError("Password must contain at least one digit")
     if value.lower() in _COMMON_PASSWORDS:
-        raise ValueError("Password is too common — please choose a stronger one")
+        raise ValueError("Password is too common - please choose a stronger one")
     return value
 
 
@@ -73,7 +73,7 @@ def _validate_strong_password(value: str) -> str:
 class LoginRequest(BaseModel):
     """User login request.
 
-    No min_length on password — validation of password format before credential
+    No min_length on password - validation of password format before credential
     check would reveal the password policy to unauthenticated users.
     """
 
@@ -165,7 +165,7 @@ class UserCreate(BaseModel):
 class AdminUserCreate(BaseModel):
     """Admin-only: create a user with an arbitrary role.
 
-    BUG-USERS-CREATE — kept distinct from ``UserCreate`` (which is wired to
+    BUG-USERS-CREATE - kept distinct from ``UserCreate`` (which is wired to
     the open ``/auth/register`` endpoint) so the public registration policy
     (default-to-viewer, bootstrap-first-admin, common-password blacklist)
     cannot be subverted by anyone hitting the admin endpoint, and so
@@ -173,8 +173,8 @@ class AdminUserCreate(BaseModel):
     boundary instead of bubbling up as 500s from the service.
 
     Constraints versus ``UserCreate``:
-      - ``role`` is a strict ``Literal`` whitelist — admin / manager /
-        editor / viewer — so unknown values produce 422 instead of being
+      - ``role`` is a strict ``Literal`` whitelist - admin / manager /
+        editor / viewer - so unknown values produce 422 instead of being
         silently persisted as the literal string.
       - ``password`` minimum length is bumped to 12 (admins can mint
         long-lived elevated accounts; weak passwords are unacceptable here
@@ -323,7 +323,7 @@ class ChangePasswordRequest(BaseModel):
 
 
 class ForgotPasswordRequest(BaseModel):
-    """Forgot password request — triggers reset token generation."""
+    """Forgot password request - triggers reset token generation."""
 
     model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
 
@@ -334,7 +334,7 @@ class ForgotPasswordResponse(BaseModel):
     """Forgot password response.
 
     Always returns a generic message to prevent email enumeration.
-    The reset token is NEVER included in the response — it must only
+    The reset token is NEVER included in the response - it must only
     be delivered via a secure side-channel (email).
     """
 
@@ -390,9 +390,9 @@ class APIKeyResponse(BaseModel):
 
 
 class APIKeyCreatedResponse(APIKeyResponse):
-    """Response when creating an API key — includes the full key (shown only once)."""
+    """Response when creating an API key - includes the full key (shown only once)."""
 
-    key: str  # Full API key — shown only at creation time
+    key: str  # Full API key - shown only at creation time
 
 
 # ── Onboarding ────────────────────────────────────────────────────────────────

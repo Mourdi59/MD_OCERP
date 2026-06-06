@@ -1,11 +1,11 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 """‌⁠‍Pure cost-rollup service for the clash cost-impact module.
 
-The service is deliberately read-only — no ORM writes, no transactional
-side-effects — because the cost-impact column is a derived view over
+The service is deliberately read-only - no ORM writes, no transactional
+side-effects - because the cost-impact column is a derived view over
 state that the upstream clash + BOQ modules already own. Keeping the
 arithmetic in ``Decimal`` until the final ``float`` narrowing matches
-the BOQ module's wire convention (``feedback_no_orjson_default.md`` —
+the BOQ module's wire convention (``feedback_no_orjson_default.md`` -
 floats only at the response boundary, never inside the rollup).
 
 Formula (per clash)
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 #: Default rework factor applied to the affected BOQ positions subtotal.
 #: 10 % is the conservative QS rule-of-thumb for rework on a discovered
-#: clash — defensible against most cost-estimating handbooks. Override
+#: clash - defensible against most cost-estimating handbooks. Override
 #: per-project via ``Project.metadata_.clash_cost_impact.rework_factor``.
 DEFAULT_REWORK_FACTOR = Decimal("0.10")
 
@@ -55,10 +55,10 @@ DEFAULT_BLENDED_RATE = Decimal("50.0")
 #: ``(min, max)`` alphabetic so the lookup is symmetric on the pair:
 #: ``(arch, struct)`` and ``(struct, arch)`` both normalise to the same
 #: tuple via :func:`_pair_key`. Values come from a coordination-engineer
-#: rule-of-thumb table; they are conservative averages — the QS still
+#: rule-of-thumb table; they are conservative averages - the QS still
 #: has the affected-positions list for the real story.
 TRADE_PAIR_HOURS: dict[tuple[str, str], int] = {
-    # The four classical coordination axes — Structural ↔ MEP is the
+    # The four classical coordination axes - Structural ↔ MEP is the
     # textbook example (a beam through a duct) and carries the highest
     # rework hours; architectural ↔ structural usually only needs paint /
     # finish rework, so it is lighter.
@@ -69,17 +69,17 @@ TRADE_PAIR_HOURS: dict[tuple[str, str], int] = {
     ("mechanical", "structural"): 8,
     ("electrical", "structural"): 6,
     ("plumbing", "structural"): 6,
-    # MEP ↔ MEP cross — every duct/pipe/cable-tray reroute is a few
+    # MEP ↔ MEP cross - every duct/pipe/cable-tray reroute is a few
     # hours of coordination + the field rework itself.
     ("electrical", "mechanical"): 4,
     ("mechanical", "plumbing"): 4,
     ("electrical", "plumbing"): 3,
-    # Civil / site coordination cross — captures landscape/utilities vs
+    # Civil / site coordination cross - captures landscape/utilities vs
     # the building envelope. Light because typically the answer is a
     # site-plan adjustment, not a rebuild.
     ("architectural", "civil"): 3,
     ("civil", "structural"): 4,
-    # Same-discipline fallback (e.g. two ducts on the same trade) — when
+    # Same-discipline fallback (e.g. two ducts on the same trade) - when
     # only one of the elements has a discipline label or both are equal.
     ("architectural", "architectural"): 2,
     ("structural", "structural"): 2,
@@ -90,7 +90,7 @@ TRADE_PAIR_HOURS: dict[tuple[str, str], int] = {
 
 #: Fallback labour hours when the pair has no explicit row above. Picked
 #: as the median of the table so a "miss" never artificially inflates
-#: the rollup — the surveyor still gets a number, but a modest one.
+#: the rollup - the surveyor still gets a number, but a modest one.
 DEFAULT_TRADE_PAIR_HOURS = 4
 
 
@@ -128,7 +128,7 @@ def _normalise_discipline(value: str | None) -> str:
 
 
 def _pair_key(a: str | None, b: str | None) -> tuple[str, str]:
-    """Sorted symmetric pair key — ``(arch, struct)`` == ``(struct, arch)``."""
+    """Sorted symmetric pair key - ``(arch, struct)`` == ``(struct, arch)``."""
     da, db = _normalise_discipline(a), _normalise_discipline(b)
     return (da, db) if da <= db else (db, da)
 
@@ -143,7 +143,7 @@ def _to_decimal(value: Any) -> Decimal:
     """Coerce a Position numeric string into ``Decimal`` (matches BOQ svc).
 
     BOQ stores money as ``String`` to dodge SQLite's REAL precision loss
-    (see ``backend/app/modules/boq/models.py`` — same convention here).
+    (see ``backend/app/modules/boq/models.py`` - same convention here).
     """
     if value is None:
         return Decimal("0")
@@ -157,7 +157,7 @@ def _money_quantise(value: Decimal) -> Decimal:
     """Quantise to 2 dp with conventional half-up money rounding.
 
     Decimal's default rounding is ROUND_HALF_EVEN ("banker's rounding"),
-    which is wrong for money totals — a QS expects 0.125 → 0.13, not 0.12.
+    which is wrong for money totals - a QS expects 0.125 → 0.13, not 0.12.
     Internal arithmetic stays exact; this is only applied at the boundary.
     """
     return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -176,7 +176,7 @@ def _project_cost_config(project: Project) -> tuple[Decimal, Decimal]:
 
         {
             "clash_cost_impact": {
-                "rework_factor": "0.12",   // or 12 — both accepted
+                "rework_factor": "0.12",   // or 12 - both accepted
                 "blended_rate":  "65.0"
             }
         }
@@ -200,7 +200,7 @@ def _project_cost_config(project: Project) -> tuple[Decimal, Decimal]:
                     factor = parsed
             except (InvalidOperation, ValueError, TypeError):
                 logger.debug(
-                    "Bad rework_factor %r on project %s — using default",
+                    "Bad rework_factor %r on project %s - using default",
                     raw_factor,
                     project.id,
                 )
@@ -212,7 +212,7 @@ def _project_cost_config(project: Project) -> tuple[Decimal, Decimal]:
                     rate = parsed_rate
             except (InvalidOperation, ValueError, TypeError):
                 logger.debug(
-                    "Bad blended_rate %r on project %s — using default",
+                    "Bad blended_rate %r on project %s - using default",
                     raw_rate,
                     project.id,
                 )
@@ -245,7 +245,7 @@ class ClashCostImpactService:
         """Resolve owning project id for a clash without computing impact.
 
         Used by the router to run the IDOR access check *before* doing
-        the (relatively expensive) impact computation — and before any
+        the (relatively expensive) impact computation - and before any
         404 branching, so 404 vs 403 cannot be distinguished by timing.
         """
         clash = await self._load_clash(clash_id)
@@ -263,7 +263,7 @@ class ClashCostImpactService:
         """All BOQ positions whose owning BOQ belongs to ``project_id``.
 
         We deliberately fetch every position once and filter in Python on
-        ``cad_element_ids`` — the JSON list is opaque to the SQLite
+        ``cad_element_ids`` - the JSON list is opaque to the SQLite
         backend (cross-dialect ``json_each`` is not portable across the
         test SQLite + prod Postgres pair we ship), and a single project's
         BOQ count is in the 10² range, well within memory.
@@ -283,7 +283,7 @@ class ClashCostImpactService:
         ``status_filter='open'`` resolves to the ``OPEN_STATUSES`` tuple
         from the clash schemas (``new``/``active``/``reviewed``); any
         other value is passed through verbatim for the rare "rollup all"
-        case. Closed/ignored clashes are excluded by default — they no
+        case. Closed/ignored clashes are excluded by default - they no
         longer carry a rework risk.
         """
         stmt = (
@@ -308,7 +308,7 @@ class ClashCostImpactService:
         """Subset of ``positions`` whose ``cad_element_ids`` overlap the clash.
 
         The match is done on the stable element ids
-        (``a_stable_id`` / ``b_stable_id``) — these are snapshotted on
+        (``a_stable_id`` / ``b_stable_id``) - these are snapshotted on
         every ``ClashResult`` so the link survives a model re-import
         (the model element's row id may change, the stable id will not).
         """
@@ -340,7 +340,7 @@ class ClashCostImpactService:
         project: Project,
         affected: list[Position],
     ) -> tuple[dict[str, Any], Decimal]:
-        """Pure arithmetic kernel — no I/O, easy to unit-test.
+        """Pure arithmetic kernel - no I/O, easy to unit-test.
 
         Returns ``(payload, total_decimal)`` where ``payload`` is the
         Pydantic-ready response dict (floats at the boundary, matching
@@ -367,9 +367,9 @@ class ClashCostImpactService:
         total = rework_subtotal + labour_subtotal
 
         # Confidence ladder (spec):
-        #   high   — ≥1 affected BOQ position (real rework money)
-        #   medium — labour estimate only (no BOQ overlap)
-        #   low    — no element GUIDs at all OR both subtotals zero
+        #   high   - ≥1 affected BOQ position (real rework money)
+        #   medium - labour estimate only (no BOQ overlap)
+        #   low    - no element GUIDs at all OR both subtotals zero
         if affected:
             confidence = "high"
         elif has_guids and labour_subtotal > Decimal("0"):
@@ -381,7 +381,7 @@ class ClashCostImpactService:
             # ``project.currency`` is the authoritative source of truth;
             # falling back to a hard-coded "EUR" would silently mislabel
             # a project that was created without a currency set (per
-            # ``v3_db_eur_defaults_killed.md`` — no DB-level EUR defaults).
+            # ``v3_db_eur_defaults_killed.md`` - no DB-level EUR defaults).
             "currency": project.currency or "",
             "components": {
                 "rework_positions_total": _money_round(rework_total),
@@ -408,7 +408,7 @@ class ClashCostImpactService:
     async def impact_for_clash(self, clash_id: uuid.UUID) -> tuple[dict[str, Any] | None, uuid.UUID | None]:
         """Resolve a single clash → cost-impact payload + owning project id.
 
-        Returns ``(None, None)`` when the clash row is missing — the
+        Returns ``(None, None)`` when the clash row is missing - the
         router maps that to a 404. The second tuple slot is the project
         id (so the router can run the IDOR guard against the actual
         owning project rather than trusting the URL).
@@ -440,7 +440,7 @@ class ClashCostImpactService:
         """Sum of every (filtered) clash's cost impact for ``project_id``.
 
         Returns ``None`` when the project itself is missing (→ 404 on
-        the router). Closed projects are still rolled up — coordination
+        the router). Closed projects are still rolled up - coordination
         debt does not magically clear when the project status flips.
         """
         project = await self._load_project(project_id)
@@ -470,14 +470,14 @@ class ClashCostImpactService:
             # Use the EXACT Decimal total (not the rounded float) so
             # per-clash 2-dp rounding does not accumulate into the
             # project rollup. Otherwise a 10⁴-clash mega-project drifts
-            # by up to ``0.005 × N`` currency units — real money.
+            # by up to ``0.005 × N`` currency units - real money.
             _, clash_total = self._compute_impact(clash, project, affected)
             total += clash_total
             key = _pair_key(clash.a_discipline, clash.b_discipline)
             by_pair_total[key] += clash_total
             by_pair_count[key] += 1
 
-        # Emit in a stable order — total desc, then alphabetical pair —
+        # Emit in a stable order - total desc, then alphabetical pair -
         # so the UI table is deterministic across page renders / tests.
         by_trade_pair = [
             {

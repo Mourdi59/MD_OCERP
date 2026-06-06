@@ -1,17 +1,17 @@
-"""‌⁠‍Document share-link service — business logic for password-protected
+"""‌⁠‍Document share-link service - business logic for password-protected
 public share URLs.
 
 Stateless service layer mirroring the pattern in
 :mod:`app.modules.documents.service`.
 
 Public surface:
-    * :func:`create_share_link` — mint a token for a document
-    * :func:`get_share_link_public` — what an unauthenticated
-      recipient sees (filename + flags only — no owner / count leak)
-    * :func:`access_share_link` — verify password, bump count,
+    * :func:`create_share_link` - mint a token for a document
+    * :func:`get_share_link_public` - what an unauthenticated
+      recipient sees (filename + flags only - no owner / count leak)
+    * :func:`access_share_link` - verify password, bump count,
       return the authenticated download URL
-    * :func:`list_share_links_for_document` — owner-only inventory
-    * :func:`revoke_share_link` — owner-only soft delete
+    * :func:`list_share_links_for_document` - owner-only inventory
+    * :func:`revoke_share_link` - owner-only soft delete
 
 All read paths treat ``revoked=True`` and ``now > expires_at`` the
 same as "unknown token": 404. This keeps enumeration symmetric
@@ -43,12 +43,12 @@ logger = logging.getLogger(__name__)
 # the search space is computationally infeasible.
 _TOKEN_BYTES = 24
 
-# bcrypt cost — matches the existing user-password rounds in
+# bcrypt cost - matches the existing user-password rounds in
 # ``app.modules.users.service.hash_password``.
 _BCRYPT_ROUNDS = 12
 
 # R7 audit: server-side fallback when the caller omits ``expires_in_days``.
-# Previously a missing value meant "never expires" — a leaked URL would
+# Previously a missing value meant "never expires" - a leaked URL would
 # live forever absent a manual revoke call. Defaulting to 30 days caps
 # the blast radius of an unrevoked leak to a single month while still
 # leaving plenty of breathing room for the common "share with the GC for
@@ -74,7 +74,7 @@ def _verify_password(plain: str, hashed: str) -> bool:
 
 
 def _now() -> datetime:
-    """Timezone-aware "now" — used for expiry comparisons."""
+    """Timezone-aware "now" - used for expiry comparisons."""
     return datetime.now(tz=UTC)
 
 
@@ -144,7 +144,7 @@ async def create_share_link(
     the document's project (use
     :func:`app.dependencies.verify_project_access` in the router).
 
-    The session is flushed but NOT committed — the surrounding
+    The session is flushed but NOT committed - the surrounding
     request transaction owns the commit, matching the existing
     documents-module pattern.
     """
@@ -192,7 +192,7 @@ async def get_share_link_public(
     """Return the link + its document, or raise 404.
 
     Used by the public ``GET /share-links/{token}/`` probe. Revoked
-    links 404 — expired links return normally (the caller surfaces
+    links 404 - expired links return normally (the caller surfaces
     ``expired=True``) so the recipient sees a useful message rather
     than a bare not-found page.
     """
@@ -256,7 +256,7 @@ async def list_share_links_for_document(
 ) -> list[DocumentShareLink]:
     """Return all non-revoked links for a document, newest-first.
 
-    Owner-only — the router enforces project access before calling.
+    Owner-only - the router enforces project access before calling.
     """
     stmt = (
         select(DocumentShareLink)
@@ -279,7 +279,7 @@ async def revoke_share_link(
 
     ``document_id`` is supplied by the router (taken from the URL
     path) so we can refuse to revoke a link that does not belong to
-    the document the caller already proved access to — prevents
+    the document the caller already proved access to - prevents
     cross-document IDOR via a stale link id.
     """
     stmt = select(DocumentShareLink).where(DocumentShareLink.id == link_id)

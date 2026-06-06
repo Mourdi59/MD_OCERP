@@ -1,4 +1,4 @@
-# OpenConstructionERP — DataDrivenConstruction (DDC)
+# OpenConstructionERP - DataDrivenConstruction (DDC)
 # CAD2DATA Pipeline · CWICR Cost Database Engine
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 # AGPL-3.0 License · DDC-CWICR-OE-2026
@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 # Linux:   apt-installed ELF binary at `/usr/bin/{Format}Exporter` (no
 #          extension, CapitalCamelCase) from the signed apt repo at
 #          `pkg.datadrivenconstruction.io`. The .deb packages
-#          (`ddc-rvtconverter` etc.) drop exactly one file each — the
-#          binary itself — and apt resolves the shared-lib runtime
+#          (`ddc-rvtconverter` etc.) drop exactly one file each - the
+#          binary itself - and apt resolves the shared-lib runtime
 #          (`ddc-deps-kernel`, `ddc-deps-revit`, `ddc-thirdparty`).
 _WINDOWS_CONVERTERS: dict[str, str] = {
     "rvt": "RvtExporter.exe",
@@ -78,7 +78,7 @@ def _converter_subprocess_env(converter_path: Path) -> dict[str, str] | None:
     Returns ``None`` on Windows/macOS (inherit the parent environment unchanged;
     Windows resolves its bundled Qt6 DLLs from the converter's own directory via
     the subprocess ``cwd``). Returning ``None`` is the signal for callers to
-    pass ``env=None`` to ``subprocess.run`` — i.e. inherit, no override.
+    pass ``env=None`` to ``subprocess.run`` - i.e. inherit, no override.
     """
     if not sys.platform.startswith("linux"):
         return None
@@ -97,7 +97,7 @@ def _converter_subprocess_env(converter_path: Path) -> dict[str, str] | None:
     return env
 
 
-# Active mapping for the running platform — kept under the legacy name
+# Active mapping for the running platform - kept under the legacy name
 # `CONVERTERS` so external callers (and the takeoff router) don't need
 # to know about platform branching.
 #
@@ -138,7 +138,7 @@ def _find_ddc_toolkit_bin() -> Path | None:
          ``ddc_toolkit`` checkout living next to the project root. Adding
          ``Path.cwd().parent`` as an additional anchor closes that gap
          without requiring the operator to set ``DDC_TOOLKIT_DIR``.
-      5. ``~/.openestimator/converters/`` directly — the BIM auto-installer
+      5. ``~/.openestimator/converters/`` directly - the BIM auto-installer
          drops shared binaries (no per-format subfolder) here for users who
          do a one-click install via the Quantities page.
     """
@@ -243,7 +243,7 @@ def find_converter(extension: str) -> Path | None:
 
     # Linux apt install puts the binaries on PATH. The .deb packages
     # at `pkg.datadrivenconstruction.io` (apt v18.0.0.0, amd64+arm64)
-    # ship exactly one file each — `/usr/bin/{Format}Exporter`
+    # ship exactly one file each - `/usr/bin/{Format}Exporter`
     # (CapitalCamelCase, no extension). We probe these locations
     # BEFORE walking the rest of `search_paths` so a system-installed
     # converter is found instantly with no environment fiddling.
@@ -268,7 +268,7 @@ def find_converter(extension: str) -> Path | None:
         per_arch_linux_bin,
         Path("/usr/bin") / linux_exe,
         Path("/usr/local/bin") / linux_exe,
-        # Legacy probe paths from earlier instructions — kept for users
+        # Legacy probe paths from earlier instructions - kept for users
         # who hand-symlinked the binary under the apt-package name.
         Path("/usr/bin") / f"ddc-{extension}converter",
         Path("/usr/local/bin") / f"ddc-{extension}converter",
@@ -293,7 +293,7 @@ def find_converter(extension: str) -> Path | None:
 # ``takeoff.router.install_converter``) before any .rvt/.ifc/.dwg/.dgn
 # upload could be converted. ``ensure_converter`` closes that gap: when a
 # conversion is requested and the converter is missing, it downloads and
-# extracts it automatically, then returns the resolved exe path — no user
+# extracts it automatically, then returns the resolved exe path - no user
 # action required.
 #
 # The actual download is delegated to the SAME hardened routine the
@@ -336,7 +336,7 @@ _INSTALL_LOCK_POLL_SEC = 0.5
 
 # Absolute age past which a Windows lockfile is presumed orphaned by a
 # crashed holder and may be reclaimed. This MUST be independent of (and
-# larger than) any individual waiter's ``timeout`` — otherwise a caller
+# larger than) any individual waiter's ``timeout`` - otherwise a caller
 # willing to wait only a few seconds could wrongly conclude a legitimately
 # held, freshly created lock is "stale" and steal it mid-download. Set
 # generously above the worst-case cold-download wall time.
@@ -362,7 +362,7 @@ class _ConverterInstallLock:
     """Cross-platform, inter-process advisory lock for one converter format.
 
     Two concurrent uploads of the same format must not both start a
-    download into ``~/.openestimator/converters/{fmt}_windows`` — the
+    download into ``~/.openestimator/converters/{fmt}_windows`` - the
     second would race the first's file writes and could corrupt a binary
     or trip the PE-verification rollback. A lockfile in the install root
     serialises them: the loser blocks until the winner finishes, then
@@ -459,7 +459,7 @@ def ensure_converter(fmt: str) -> Path:
     invoking a converter binary. Behaviour:
 
     1. If the converter for ``fmt`` is already present (``find_converter``
-       resolves it), return its path immediately — no network IO.
+       resolves it), return its path immediately - no network IO.
     2. On Windows, acquire a per-format install lock, re-check (so two
        concurrent uploads do not both download), and otherwise delegate to
        the hardened downloader that mirrors the upstream repo directory
@@ -472,7 +472,7 @@ def ensure_converter(fmt: str) -> Path:
        install instructions instead of crashing.
 
     Args:
-        fmt: Lowercase format key without dot — one of ``rvt`` / ``ifc`` /
+        fmt: Lowercase format key without dot - one of ``rvt`` / ``ifc`` /
             ``dwg`` / ``dgn``. Aliases (``rfa`` → ``rvt``, ``dxf`` → ``dwg``)
             are normalised by the caller; this function expects a key that
             exists in :data:`CONVERTERS`.
@@ -498,17 +498,17 @@ def ensure_converter(fmt: str) -> Path:
             f"No DDC converter is defined for .{fmt} files. Supported formats: {', '.join(sorted(CONVERTERS))}."
         )
 
-    # Fast path — already installed.
+    # Fast path - already installed.
     existing = find_converter(fmt)
     if existing is not None:
         return existing
 
     # macOS has no native DDC build. Never fall through to a Windows `.exe`
-    # (the platform selector already excludes that) — give clear guidance.
+    # (the platform selector already excludes that) - give clear guidance.
     if sys.platform == "darwin":
         raise ConverterUnavailableError(
             f"There is no native macOS build of the .{fmt.upper()} converter. "
-            f"Run OpenConstructionERP in Docker (Linux container — the converter "
+            f"Run OpenConstructionERP in Docker (Linux container - the converter "
             f"is downloaded automatically there) or on a Linux host, or convert "
             f"the file to IFC first (IFC also has a built-in text fallback parser "
             f"that works on macOS)."
@@ -516,7 +516,7 @@ def ensure_converter(fmt: str) -> Path:
     if sys.platform != "win32" and not sys.platform.startswith("linux"):
         raise ConverterUnavailableError(
             f"The .{fmt.upper()} converter is not available on this platform "
-            f"({sys.platform}). Convert the file to IFC first — IFC has a "
+            f"({sys.platform}). Convert the file to IFC first - IFC has a "
             f"built-in text fallback parser that works on every platform."
         )
 
@@ -532,7 +532,7 @@ def ensure_converter(fmt: str) -> Path:
                 logger.info("Converter for .%s became available while waiting for the install lock", fmt)
                 return existing
 
-            logger.info("Converter for .%s not found — downloading automatically", fmt)
+            logger.info("Converter for .%s not found - downloading automatically", fmt)
             # Lazy import: the downloader lives in the takeoff router, which
             # pulls in FastAPI. Importing it at module load would create a
             # circular import (the router imports THIS module) and bloat the
@@ -547,12 +547,12 @@ def ensure_converter(fmt: str) -> Path:
                     from app.modules.takeoff.router import (
                         _download_converter_files_linux as _download_converter,
                     )
-            except Exception as exc:  # noqa: BLE001 — import failure must be actionable
+            except Exception as exc:  # noqa: BLE001 - import failure must be actionable
                 raise ConverterUnavailableError(f"Could not load the converter installer for .{fmt}: {exc}") from exc
 
             try:
                 exe_path = _download_converter(fmt)
-            except Exception as exc:  # noqa: BLE001 — surface a clean message
+            except Exception as exc:  # noqa: BLE001 - surface a clean message
                 hint = ""
                 if sys.platform.startswith("linux"):
                     hint = (
@@ -584,7 +584,7 @@ def ensure_converter(fmt: str) -> Path:
     except TimeoutError as exc:
         raise ConverterUnavailableError(
             f"Timed out waiting to install the .{fmt.upper()} converter: {exc}. "
-            f"Another conversion may be downloading it — retry shortly."
+            f"Another conversion may be downloading it - retry shortly."
         ) from exc
 
 
@@ -645,9 +645,9 @@ class ConverterHealth(TypedDict):
     """Result of a converter smoke test.
 
     ``status``:
-        - ``"ok"`` — binary loads and exits cleanly.
-        - ``"failed"`` — binary doesn't load (DLL missing, etc).
-        - ``"unknown"`` — smoke test couldn't run (timeout, OS error
+        - ``"ok"`` - binary loads and exits cleanly.
+        - ``"failed"`` - binary doesn't load (DLL missing, etc).
+        - ``"unknown"`` - smoke test couldn't run (timeout, OS error
           unrelated to the binary itself).
     ``message``:
         Human-readable explanation. Empty string on the happy path.
@@ -656,7 +656,7 @@ class ConverterHealth(TypedDict):
         / instructions (Reinstall / Open install dir / Run as admin /
         Install VCRedist / etc).
     ``checked_at``:
-        Unix timestamp of the check — used by the cache layer.
+        Unix timestamp of the check - used by the cache layer.
     """
 
     status: ConverterHealthStatus
@@ -688,7 +688,7 @@ _WINDOWS_DLL_LOAD_FAILURES: frozenset[int] = frozenset(
 # or one of the `ddc-deps-*` packages) is missing, glibc's `ld.so` writes
 # a line like `RvtExporter: error while loading shared libraries: <name>`
 # to stderr and exits with status 127. We match the substring (locale-
-# independent — glibc keeps the English text even on translated systems).
+# independent - glibc keeps the English text even on translated systems).
 _LINUX_LDSO_FAILURE_MARKER = b"error while loading shared libraries"
 _LINUX_LDSO_EXIT_CODE = 127
 
@@ -697,7 +697,7 @@ def smoke_test_converter(extension: str, force: bool = False) -> ConverterHealth
     """Quick health check: spawn the converter binary and verify it loads.
 
     Sends an empty stdin and waits up to ``8`` seconds for an exit. The
-    purpose is NOT to detect feature bugs — only to verify that the OS
+    purpose is NOT to detect feature bugs - only to verify that the OS
     can launch the binary without a missing-DLL / wrong-arch / perms
     error. A binary that loads and then exits with an error code (because
     the empty input didn't parse) is fine for our purposes.
@@ -731,7 +731,7 @@ def smoke_test_converter(extension: str, force: bool = False) -> ConverterHealth
     try:
         import subprocess
 
-        # ``input=`` already implies ``stdin=PIPE`` — passing both raises
+        # ``input=`` already implies ``stdin=PIPE`` - passing both raises
         # ``ValueError: stdin and input arguments may not both be used``,
         # which used to crash the per-upload pre-flight check on every
         # native CAD format and leave the model stuck at
@@ -752,7 +752,7 @@ def smoke_test_converter(extension: str, force: bool = False) -> ConverterHealth
             result = {
                 "status": "failed",
                 "message": (
-                    f"{exe_path.name} exists on disk but cannot load — a "
+                    f"{exe_path.name} exists on disk but cannot load - a "
                     f"required Qt6 / Visual C++ DLL is missing "
                     f"(Windows error 0x{rc & 0xFFFFFFFF:08x}). The Qt6 "
                     f"plugins probably did not download cleanly during "
@@ -771,7 +771,7 @@ def smoke_test_converter(extension: str, force: bool = False) -> ConverterHealth
             and _LINUX_LDSO_FAILURE_MARKER in (proc.stderr or b"")
         ):
             # Linux ld.so wrote "error while loading shared libraries: ..."
-            # — surface the exact missing-library line so the user sees
+            # - surface the exact missing-library line so the user sees
             # which `ddc-deps-*` package is missing (or wasn't installed
             # by `apt install` because the source wasn't added).
             stderr_text = (proc.stderr or b"").decode("utf-8", errors="replace")
@@ -782,7 +782,7 @@ def smoke_test_converter(extension: str, force: bool = False) -> ConverterHealth
             result = {
                 "status": "failed",
                 "message": (
-                    f"{exe_path.name} cannot load — a shared library "
+                    f"{exe_path.name} cannot load - a shared library "
                     f"dependency is missing. {missing_line}\n\n"
                     f"Reinstall the converter so apt resolves "
                     f"`ddc-deps-kernel`, `ddc-deps-revit`, "
@@ -806,7 +806,7 @@ def smoke_test_converter(extension: str, force: bool = False) -> ConverterHealth
             }
     except subprocess.TimeoutExpired:
         # Binary is alive but waiting for stdin / showing a window. That
-        # means the loader succeeded — treat as healthy.
+        # means the loader succeeded - treat as healthy.
         result = {
             "status": "ok",
             "message": "",
@@ -828,7 +828,7 @@ def smoke_test_converter(extension: str, force: bool = False) -> ConverterHealth
             "status": "failed",
             "message": (
                 f"Permission denied when launching {exe_path.name}: {exc}. "
-                f"On Windows this is usually 'Mark of the Web' — right-click "
+                f"On Windows this is usually 'Mark of the Web' - right-click "
                 f"the file → Properties → Unblock, or reinstall."
             ),
             "suggested_actions": ["unblock_files", "reinstall_converter"],
@@ -845,7 +845,7 @@ def smoke_test_converter(extension: str, force: bool = False) -> ConverterHealth
             "suggested_actions": ["reinstall_converter", "check_permissions"],
             "checked_at": now,
         }
-    except Exception as exc:  # noqa: BLE001 — health check must never raise
+    except Exception as exc:  # noqa: BLE001 - health check must never raise
         logger.warning("Smoke test for .%s converter errored: %s", extension, exc)
         result = {
             "status": "unknown",
@@ -858,11 +858,11 @@ def smoke_test_converter(extension: str, force: bool = False) -> ConverterHealth
     return result
 
 
-# ── Version detection — RVT file + installed converter ────────────────────
+# ── Version detection - RVT file + installed converter ────────────────────
 #
 # Why this exists: the smoke test verifies the binary LOADS, not that it can
 # parse the user's file. A user can have a perfectly installed converter that
-# is simply OLDER than the Revit version that saved their .rvt file — and the
+# is simply OLDER than the Revit version that saved their .rvt file - and the
 # DDC converter then silently writes an empty Excel. Detecting both versions
 # upfront lets us surface the actual reason ("Your RVT is from Revit 2025
 # but the installed converter only supports up to 2023") instead of the
@@ -875,13 +875,13 @@ def read_rvt_revit_version(path: Path, *, max_scan_bytes: int = 262144) -> dict[
     RVT files are OLE Compound Documents. The ``BasicFileInfo`` stream
     near the start contains UTF-16-LE text like ``Format: 2024`` and
     ``Revit Build: 24.0.11.21``. We don't parse the full OLE structure
-    (would add a dependency) — we just scan the first 256 KB for the
+    (would add a dependency) - we just scan the first 256 KB for the
     well-known marker strings, which are reliably present in the leading
     sectors for files saved by Revit 2018+.
 
     Returns a dict with optional ``format``, ``build``, ``app_name``
     fields. All values are strings or ``None`` if the marker wasn't found.
-    Never raises — IO errors return all-None.
+    Never raises - IO errors return all-None.
     """
     info: dict[str, str | None] = {"format": None, "build": None, "app_name": None}
     try:
@@ -984,7 +984,7 @@ def detect_converter_version(extension: str) -> dict[str, str | None]:
 # flag we use to skip the geometry pass.
 #
 # The platform's invocation has historically appended those extra tokens
-# unconditionally — which produces a ``The following arguments were not
+# unconditionally - which produces a ``The following arguments were not
 # expected`` failure on old binaries even though they could otherwise
 # convert the file just fine.  This matrix records what each installed
 # binary actually understands so ``ifc_processor._run_ddc`` can build a
@@ -1001,7 +1001,7 @@ _CONVERTER_CAPABILITIES: dict[str, dict[str, Any]] = {}
 #
 # DDC has shipped three distinct CLI shapes that we have to deal with:
 #
-#   * ``v18_flag``       — v18.x.x: flag-driven, e.g.
+#   * ``v18_flag``       - v18.x.x: flag-driven, e.g.
 #                          ``RvtExporter input -x out.xlsx -d out.dae
 #                          -m standard --force-path --no-dae --no-xlsx``.
 #                          New keys: -x/--xlsx, -d/--dae, --no-dae,
@@ -1009,16 +1009,16 @@ _CONVERTER_CAPABILITIES: dict[str, dict[str, Any]] = {}
 #                          REJECTS the legacy positional ``standard`` and
 #                          flag ``-no-collada`` with ``exit 15``.
 #
-#   * ``v17_positional`` — v17.x.x: positional + a couple of optional flags.
+#   * ``v17_positional`` - v17.x.x: positional + a couple of optional flags.
 #                          ``RvtExporter input output [standard|complete]
 #                          [-no-collada]``. Modern enough to advertise
 #                          ``-no-collada`` in --help; pre-v18 so doesn't
 #                          know ``--no-dae`` or ``--force-path``.
 #
-#   * ``legacy``         — pre-v17 / unknown old binary. Only accepts the
+#   * ``legacy``         - pre-v17 / unknown old binary. Only accepts the
 #                          bare ``[exe, input, output]`` shape.
 #
-#   * ``unknown``        — no binary installed (sentinel for "don't cache").
+#   * ``unknown``        - no binary installed (sentinel for "don't cache").
 #
 # ``cli_profile`` is the canonical key; the legacy booleans
 # (``accepts_depth_mode`` / ``accepts_no_collada_flag``) are kept for
@@ -1032,7 +1032,7 @@ CLI_PROFILE_UNKNOWN = "unknown"
 def _default_capabilities() -> dict[str, Any]:
     """‌⁠‍Conservative defaults for an unknown/old binary.
 
-    Old DDC CLIs only accept ``[converter, input, output]`` — they reject
+    Old DDC CLIs only accept ``[converter, input, output]`` - they reject
     the depth-mode positional and the ``-no-collada`` flag.  When the probe
     fails we fall back to this profile so the retry path matches what
     ``_run_ddc`` would have emitted as its second-attempt fallback.
@@ -1040,7 +1040,7 @@ def _default_capabilities() -> dict[str, Any]:
     return {
         "accepts_depth_mode": False,
         "accepts_no_collada_flag": False,
-        # v18-specific flag capabilities — all False on the legacy profile.
+        # v18-specific flag capabilities - all False on the legacy profile.
         "accepts_flag_xlsx": False,
         "accepts_flag_dae": False,
         "accepts_flag_no_dae": False,
@@ -1058,7 +1058,7 @@ def _modern_capabilities(version_text: str | None = None) -> dict[str, Any]:
     """‌⁠‍Capability profile for a confirmed v17-era DDC binary.
 
     "Modern" historically meant v17.x (positional CLI that DID accept
-    ``standard`` and ``-no-collada``). v18+ uses a different shape — see
+    ``standard`` and ``-no-collada``). v18+ uses a different shape - see
     ``_v18_capabilities`` and ``CLI_PROFILE_V18_FLAG``. This constructor
     is retained for back-compat with tests and any external caller that
     has the v17 banner in hand.
@@ -1094,7 +1094,7 @@ def _v18_capabilities(
 
     The legacy boolean flags (``accepts_depth_mode`` /
     ``accepts_no_collada_flag``) are set to False here because the
-    pre-v18 invocation builder must NOT try to emit those tokens —
+    pre-v18 invocation builder must NOT try to emit those tokens -
     v18 rejects them with ``exit 15: arguments were not expected``.
 
     Per-flag granularity (``help_tokens``):
@@ -1102,7 +1102,7 @@ def _v18_capabilities(
         ``RvtExporter`` / ``IfcExporter`` advertise a "Geometry outputs"
         group (``-d`` / ``--dae``) and an "Export mode" group (``-m`` /
         ``--mode``), but the ``DwgExporter`` is a "DWG to XLSX/JSON/CSV
-        converter [+PDF]" — it shares the v18 CLI shape (``--force-path``
+        converter [+PDF]" - it shares the v18 CLI shape (``--force-path``
         / ``--no-xlsx`` / ``-x``) yet has NO geometry group and NO mode
         group at all. Emitting ``-d`` / ``-m`` against it aborts the run
         with ``exit 15: arguments were not expected: -d <path> -m complete``.
@@ -1153,14 +1153,14 @@ def _v18_capabilities(
 #
 # The v18 help text contains the word ``complete`` (in the mode-preset
 # enum ``{basic,standard,complete,custom}``), which historically caused a
-# false-positive against the substring-based ``_MODERN_HELP_MARKERS`` —
+# false-positive against the substring-based ``_MODERN_HELP_MARKERS`` -
 # the conversion path would then emit ``standard`` + ``-no-collada`` and
 # eat ``exit 15`` from the v18 binary.
 #
 # Token-based detection avoids that trap: we split the help text into
 # whitespace-delimited tokens and check for the LITERAL flag spellings
 # that v18 (and only v18) advertises. ``--force-path``, ``--no-dae`` and
-# ``--no-xlsx`` are all v18-exclusive — none of them appear in any v17 or
+# ``--no-xlsx`` are all v18-exclusive - none of them appear in any v17 or
 # older help text. ``-no-collada`` is v17-exclusive: v18 dropped it.
 
 _V18_EXCLUSIVE_TOKENS = (
@@ -1169,7 +1169,7 @@ _V18_EXCLUSIVE_TOKENS = (
     "--no-xlsx",
 )
 # Tokens that prove v17-era CLI (positional + ``-no-collada``). The leading
-# single dash is intentional — v17 used the GNU long-style ``-no-collada``
+# single dash is intentional - v17 used the GNU long-style ``-no-collada``
 # (not ``--no-collada``).
 _V17_EXCLUSIVE_TOKENS = ("-no-collada",)
 
@@ -1203,7 +1203,7 @@ def _classify_help_text(text: str) -> str:
       2. Any v17-exclusive token present → ``v17_positional``.
       3. Otherwise → ``legacy``.
 
-    Lower-cased input is expected — the probe already normalises.
+    Lower-cased input is expected - the probe already normalises.
     """
     tokens = _tokenize_help(text)
     if any(tok in tokens for tok in _V18_EXCLUSIVE_TOKENS):
@@ -1252,7 +1252,7 @@ def build_ddc_args(
     already does in parallel.
 
     For ``v18_flag`` we DO emit both ``-x`` and ``-d`` in the same call
-    when both are requested — saves loading the RVT a second time. Callers
+    when both are requested - saves loading the RVT a second time. Callers
     that want sequential passes (matching the v17 codepath) can still do
     so by calling this twice with only one of ``xlsx_out`` / ``dae_out``
     populated each time.
@@ -1279,7 +1279,7 @@ def build_ddc_args(
             args.append("--force-path")
         return args
 
-    # Legacy / v17 positional path — single output target per call.
+    # Legacy / v17 positional path - single output target per call.
     out_path = xlsx_out if xlsx_out is not None else dae_out
     if out_path is None:
         raise ValueError("build_ddc_args (legacy profile) requires at least one of xlsx_out or dae_out")
@@ -1303,14 +1303,14 @@ def detect_converter_capabilities(extension: str) -> dict[str, Any]:
     subsequent conversions don't pay the probe cost.
 
     Returns a dict with the keys:
-      * ``accepts_depth_mode`` (bool) — append ``standard`` / ``complete``?
-      * ``accepts_no_collada_flag`` (bool) — append ``-no-collada``?
-      * ``version_text`` (str | None) — raw probe output (debug only)
-      * ``probed`` (bool) — True once the binary was actually executed
+      * ``accepts_depth_mode`` (bool) - append ``standard`` / ``complete``?
+      * ``accepts_no_collada_flag`` (bool) - append ``-no-collada``?
+      * ``version_text`` (str | None) - raw probe output (debug only)
+      * ``probed`` (bool) - True once the binary was actually executed
 
     If the probe itself fails (non-zero exit, no recognizable output,
     process never started), the conservative "old CLI" profile is
-    returned and cached — so the conversion path skips the extra args
+    returned and cached - so the conversion path skips the extra args
     and avoids the exit-15 trap.
     """
     # Resolve format aliases (e.g. .dxf is read by the DWG/DwgExporter
@@ -1323,7 +1323,7 @@ def detect_converter_capabilities(extension: str) -> dict[str, Any]:
     extension = _CONVERTER_FORMAT_ALIASES.get(norm_ext, norm_ext)
     exe = find_converter(extension)
     if exe is None:
-        # No binary installed at all — nothing to probe; mark as not-probed
+        # No binary installed at all - nothing to probe; mark as not-probed
         # so a later install can trigger a fresh detect.
         return {
             "accepts_depth_mode": False,
@@ -1377,7 +1377,7 @@ def detect_converter_capabilities(extension: str) -> dict[str, Any]:
         if text.strip():
             probe_text = text
             # Any non-empty banner counts as "we successfully spoke to the
-            # binary" — even an exit-1 from ``-h`` on a CLI that wants
+            # binary" - even an exit-1 from ``-h`` on a CLI that wants
             # ``--help``.  The marker scan below decides the actual profile.
             probe_ok = True
             break
@@ -1389,14 +1389,14 @@ def detect_converter_capabilities(extension: str) -> dict[str, Any]:
         caps = _default_capabilities()
         _CONVERTER_CAPABILITIES[cache_key] = caps
         logger.info(
-            "DDC capability probe for %s produced no usable output — "
+            "DDC capability probe for %s produced no usable output - "
             "assuming legacy CLI (no depth-mode, no -no-collada)",
             exe.name,
         )
         return caps
 
     # Classify the probed help text against the v18 / v17 / legacy
-    # decision tree.  Token-based — see ``_classify_help_text`` for why
+    # decision tree.  Token-based - see ``_classify_help_text`` for why
     # substring matching was retired (v18 mentions ``complete`` in its
     # mode-preset enum, which used to false-positive the legacy
     # ``_MODERN_HELP_MARKERS`` substring check and emit ``-no-collada``
@@ -1435,7 +1435,7 @@ def detect_converter_capabilities(extension: str) -> dict[str, Any]:
     caps = _default_capabilities()
     _CONVERTER_CAPABILITIES[cache_key] = caps
     logger.info(
-        "DDC capability probe for %s did not advertise modern flags — "
+        "DDC capability probe for %s did not advertise modern flags - "
         "assuming legacy CLI (no depth-mode, no -no-collada)",
         exe.name,
     )
@@ -1468,7 +1468,7 @@ def invalidate_converter_health(extension: str | None = None) -> None:
         _HEALTH_CACHE.clear()
     else:
         _HEALTH_CACHE.pop(extension, None)
-    # Capabilities are tied 1:1 to the installed binary — drop them in
+    # Capabilities are tied 1:1 to the installed binary - drop them in
     # lock-step so a reinstall picks up the new CLI shape immediately.
     invalidate_converter_capabilities(extension)
 
@@ -1509,7 +1509,7 @@ async def convert_cad_to_excel(
     # get ``-x <xlsx> --no-dae -m standard`` (and v17 binaries keep the
     # legacy ``<xlsx> standard -no-collada`` positional shape). Calling
     # the v17 positional form against a v18 binary causes ``exit 15`` with
-    # "arguments were not expected: ... standard -no-collada" — the bug
+    # "arguments were not expected: ... standard -no-collada" - the bug
     # the CAD/BIM Data Explorer surfaced as "CAD conversion failed for
     # .rvt file" on every fresh-install with a current DDC binary.
     output_xlsx = output_dir / (input_path.stem + ".xlsx")
@@ -1677,7 +1677,7 @@ def _to_float(val: object) -> float:
     return f
 
 
-# BUG-D-TKC-004b / D-TKC-NEW-05 — canonical quantity synonym map.
+# BUG-D-TKC-004b / D-TKC-NEW-05 - canonical quantity synonym map.
 #
 # DDC / Revit / IFC exporters emit the same physical quantity under a
 # wide range of spellings.  The old ``_norm_col`` only stripped a single
@@ -1697,7 +1697,7 @@ def _to_float(val: object) -> float:
 #      ``_COL_SYNONYM``.
 #
 # Bare ambiguous single letters (``m``/``t``/``kg``) are still NOT
-# stripped — that would mis-merge unrelated columns like ``team``.
+# stripped - that would mis-merge unrelated columns like ``team``.
 
 # Trailing unit-suffix tokens that carry no semantic meaning of their
 # own (they only annotate the unit of the preceding quantity word).
@@ -1791,7 +1791,7 @@ def _norm_col(name: str) -> str:
     # Drop a trailing unit qualifier in brackets/parens: "volume (m3)",
     # "area [m2]", "weight {kg}".
     s = re.sub(r"[\s,]*[([{].*?[)\]}]\s*$", "", s)
-    # IFC ``Qto_<set>.<Quantity>`` dotted form — keep only the final
+    # IFC ``Qto_<set>.<Quantity>`` dotted form - keep only the final
     # quantity segment ("qto_wallbasequantities.netvolume" → "netvolume").
     if "." in s:
         s = s.rsplit(".", 1)[-1]
@@ -1840,7 +1840,7 @@ def _norm_col(name: str) -> str:
     if s in _BARE_UNIT_CANON:
         return _BARE_UNIT_CANON[s]
 
-    # Final canonical synonym mapping (exact token match only — we never
+    # Final canonical synonym mapping (exact token match only - we never
     # map a substring so "team"/"kgrid" stay untouched).
     return _COL_SYNONYM.get(s, s)
 
@@ -1890,11 +1890,11 @@ def group_cad_elements(elements: list[dict]) -> dict:
         raw_cat = str(el.get("category", el.get("element type", "Other"))).strip()
         category = raw_cat if raw_cat and raw_cat != "None" else "Other"
         type_name = str(el.get("type name", el.get("family", el.get("type", "Unknown")))).strip() or "Unknown"
-        # BUG-D-TKC-017 — each row from ``parse_cad_excel`` is ONE physical
+        # BUG-D-TKC-017 - each row from ``parse_cad_excel`` is ONE physical
         # element.  The optional ``count`` column is a per-element multiplier
         # (e.g. an array/group of 4 identical fixtures on one row).  A
         # missing column, an empty cell, or an explicit ``0`` must still
-        # contribute the single physical instance the row represents — the
+        # contribute the single physical instance the row represents - the
         # old ``_to_float(el.get("count", 1))`` made a ``count=0`` row vanish
         # so two real elements (one with count=0) displayed as count 1.
         # A genuine aggregate multiplier (count > 1) is preserved as-is.
@@ -1927,10 +1927,10 @@ def group_cad_elements(elements: list[dict]) -> dict:
 
     # Build structured output.
     #
-    # BUG-D-TKC-024 — displayed rows MUST reconcile.  Previously the item
+    # BUG-D-TKC-024 - displayed rows MUST reconcile.  Previously the item
     # rows were rounded for display while the category and grand totals
     # were summed from the UNROUNDED running sums, so e.g. 250 rebar rows
-    # each displaying 0.000 sat under a non-zero category total — an
+    # each displaying 0.000 sat under a non-zero category total - an
     # incoherent table.  Fix: round each item row FIRST, then sum the
     # already-rounded item values into the category total, and sum the
     # rounded category totals into the grand total.  The displayed
@@ -1999,7 +1999,7 @@ def get_available_columns(elements: list[dict], file_format: str = "rvt") -> dic
     based on its content:
     - **quantity**: >50% numeric values AND name suggests a measurement
       (or is purely numeric across all non-None values).
-    - **grouping**: string columns with <500 unique values — suitable for
+    - **grouping**: string columns with <500 unique values - suitable for
       GROUP BY operations (e.g. category, type name, level, material).
     - **text**: everything else (ids, long descriptions with too many uniques).
 
@@ -2117,7 +2117,7 @@ def get_available_columns(elements: list[dict], file_format: str = "rvt") -> dic
     # Format-specific QTO presets
     presets: dict[str, dict] = {}
 
-    # "count" is always available — it's computed as number of elements per group
+    # "count" is always available - it's computed as number of elements per group
     # (not a column from the file, but calculated during grouping)
     available_qty = set(quantity_cols) | {"count"}
 
@@ -2125,25 +2125,25 @@ def get_available_columns(elements: list[dict], file_format: str = "rvt") -> dic
         presets = {
             "standard": {
                 "label": "Standard Revit QTO",
-                "description": "Category + Type Name — standard Revit breakdown",
+                "description": "Category + Type Name - standard Revit breakdown",
                 "group_by": [c for c in ["category", "type name"] if c in grouping_cols],
                 "sum_columns": [c for c in ["volume", "area", "count"] if c in available_qty],
             },
             "detailed": {
                 "label": "Detailed (with Level)",
-                "description": "Category + Type Name + Level — per-floor breakdown",
+                "description": "Category + Type Name + Level - per-floor breakdown",
                 "group_by": [c for c in ["category", "type name", "level"] if c in grouping_cols],
                 "sum_columns": [c for c in ["volume", "area", "length", "count"] if c in available_qty],
             },
             "by_family": {
                 "label": "By Family",
-                "description": "Family + Type — for procurement and ordering",
+                "description": "Family + Type - for procurement and ordering",
                 "group_by": [c for c in ["family", "type name"] if c in grouping_cols],
                 "sum_columns": [c for c in ["count", "volume", "area"] if c in available_qty],
             },
             "summary": {
                 "label": "Quick Summary",
-                "description": "Category only — high-level overview",
+                "description": "Category only - high-level overview",
                 "group_by": [c for c in ["category"] if c in grouping_cols],
                 "sum_columns": [c for c in ["count", "volume", "area"] if c in available_qty],
             },
@@ -2152,31 +2152,31 @@ def get_available_columns(elements: list[dict], file_format: str = "rvt") -> dic
         presets = {
             "standard": {
                 "label": "Standard IFC QTO",
-                "description": "Group by Category + Type — standard IFC entity breakdown",
+                "description": "Group by Category + Type - standard IFC entity breakdown",
                 "group_by": [c for c in ["category", "type name", "type"] if c in grouping_cols][:2],
                 "sum_columns": [c for c in ["volume", "area", "count"] if c in available_qty],
             },
             "detailed": {
                 "label": "Detailed (with Level)",
-                "description": "Category + Type + Level — per-floor breakdown",
+                "description": "Category + Type + Level - per-floor breakdown",
                 "group_by": [c for c in ["category", "type name", "type", "level"] if c in grouping_cols][:3],
                 "sum_columns": [c for c in ["volume", "area", "length", "count"] if c in available_qty],
             },
             "by_storey": {
                 "label": "By Building Storey",
-                "description": "Building Storey + Category + Type — storey-first breakdown",
+                "description": "Building Storey + Category + Type - storey-first breakdown",
                 "group_by": [c for c in ["level", "category", "type name", "type"] if c in grouping_cols][:3],
                 "sum_columns": [c for c in ["volume", "area", "length", "count"] if c in available_qty],
             },
             "by_material": {
                 "label": "By Material",
-                "description": "Material + Category — material-first grouping for procurement",
+                "description": "Material + Category - material-first grouping for procurement",
                 "group_by": [c for c in ["material", "category"] if c in grouping_cols][:2],
                 "sum_columns": [c for c in ["volume", "area", "count"] if c in available_qty],
             },
             "summary": {
                 "label": "Quick Summary",
-                "description": "Category only — high-level element count",
+                "description": "Category only - high-level element count",
                 "group_by": [c for c in ["category"] if c in grouping_cols],
                 "sum_columns": [c for c in ["count", "volume", "area"] if c in available_qty],
             },
@@ -2185,7 +2185,7 @@ def get_available_columns(elements: list[dict], file_format: str = "rvt") -> dic
         presets = {
             "standard": {
                 "label": "Standard DWG QTO",
-                "description": "Group by Layer — standard AutoCAD organization",
+                "description": "Group by Layer - standard AutoCAD organization",
                 "group_by": [c for c in ["layer", "category"] if c in grouping_cols][:1],
                 "sum_columns": [c for c in ["count", "length", "area"] if c in available_qty],
             },
@@ -2245,7 +2245,7 @@ def group_cad_elements_dynamic(
 ) -> dict:
     """Group elements by user-selected columns, sum user-selected quantities.
 
-    This is the interactive counterpart to ``group_cad_elements`` — instead
+    This is the interactive counterpart to ``group_cad_elements`` - instead
     of hardcoded category/type grouping, the caller selects which columns
     to group by and which numeric columns to sum.
 
@@ -2285,7 +2285,7 @@ def group_cad_elements_dynamic(
         entry = groups[key]
         entry["count"] += 1
 
-        # BUG-D-TKC-004: tolerant column lookup — a DDC export that wrote
+        # BUG-D-TKC-004: tolerant column lookup - a DDC export that wrote
         # 'Volume (m3)' must still feed sum_columns=['volume'] instead of
         # silently contributing 0.0.
         for col in sum_columns:

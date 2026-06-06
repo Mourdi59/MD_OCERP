@@ -3,7 +3,7 @@
 """‌⁠‍Smart Value Autocomplete (T03).
 
 Given a snapshot and a column name, return distinct values matching a
-substring query — fast enough for snapshots with 100k+ rows.
+substring query - fast enough for snapshots with 100k+ rows.
 
 Resolution strategy
 -------------------
@@ -76,7 +76,7 @@ _TOP_LEVEL_COLUMNS = frozenset(
     {"entity_guid", "category", "source_file_id"},
 )
 """Known top-level columns in ``entities.parquet``. Anything else is
-assumed to be a flattened attribute key — addressed via
+assumed to be a flattened attribute key - addressed via
 ``attributes['the.key']`` in DuckDB."""
 
 _VALID_COLUMN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.\-]*$")
@@ -111,12 +111,12 @@ async def fetch_distinct_values(
 
     is_top_level = column in _TOP_LEVEL_COLUMNS
 
-    # 1 — verify column exists in the schema. For top-level we hit
+    # 1 - verify column exists in the schema. For top-level we hit
     # information_schema; for flattened attributes we run a SELECT
     # against the first row's keys.
     await _ensure_column_exists(pool, snapshot_id, project_id, column, is_top_level)
 
-    # 2 — fetch candidates via DuckDB. Empty query → top-N by frequency.
+    # 2 - fetch candidates via DuckDB. Empty query → top-N by frequency.
     if query.strip():
         rows = await _fetch_with_filter(
             pool,
@@ -142,7 +142,7 @@ async def fetch_distinct_values(
 
     candidates = [ValueMatch(value=str(v), count=int(c)) for v, c in rows if v is not None]
 
-    # 3 — fuzzy-rank if we over-fetched (LIKE returned more than limit).
+    # 3 - fuzzy-rank if we over-fetched (LIKE returned more than limit).
     if query.strip() and len(candidates) > limit:
         candidates = _rerank_with_rapidfuzz(candidates, query)
 
@@ -170,7 +170,7 @@ async def _ensure_column_exists(
             raise ColumnNotFoundError(f"Column '{column}' is not in this snapshot's schema.")
         return
 
-    # Flattened attribute — pyarrow writes the per-row dicts as a STRUCT
+    # Flattened attribute - pyarrow writes the per-row dicts as a STRUCT
     # column when the keys are stable across rows, or as a MAP when they
     # vary. We try both accessors; either a binder error or a zero-row
     # result means "not present".
@@ -190,10 +190,10 @@ async def _attributes_key_present(
     :class:`DuckDBPool` re-raises bind failures in two shapes: as a
     :class:`DuckDBPoolError` for the connect/register path, and as the
     raw underlying ``BinderException`` for query bodies. Both should be
-    treated as "key not present" for autocomplete purposes — the column
+    treated as "key not present" for autocomplete purposes - the column
     really doesn't exist on the data.
     """
-    # 1 — try MAP-style accessor (works when pyarrow wrote a MAP column).
+    # 1 - try MAP-style accessor (works when pyarrow wrote a MAP column).
     try:
         rows = await pool.execute(
             snapshot_id,
@@ -206,7 +206,7 @@ async def _attributes_key_present(
     except Exception:
         pass
 
-    # 2 — try STRUCT-style accessor.
+    # 2 - try STRUCT-style accessor.
     key = _safe_key(column)
     try:
         rows = await pool.execute(
@@ -316,7 +316,7 @@ def fetch_distinct_values_from_dataframe(
     query: str = "",
     limit: int = _DEFAULT_LIMIT,
 ) -> list[ValueMatch]:
-    """Pure-Python fallback — used when DuckDB cannot be loaded.
+    """Pure-Python fallback - used when DuckDB cannot be loaded.
 
     Operates on the DataFrame produced by the cad2data bridge: top-level
     columns are direct, attribute keys live inside the ``attributes``
@@ -365,14 +365,14 @@ def _rerank_with_rapidfuzz(
 ) -> list[ValueMatch]:
     """Re-order ``candidates`` so close lexicographic matches lead.
 
-    Uses :func:`rapidfuzz.fuzz.WRatio` — a weighted blend of partial-,
+    Uses :func:`rapidfuzz.fuzz.WRatio` - a weighted blend of partial-,
     token-set- and full-string ratios that handles "concrete c30/37"
     being a strong match for query "concr" while still penalising
     longer, looser matches.
     """
     try:
         from rapidfuzz import fuzz
-    except ImportError:  # pragma: no cover — rapidfuzz is in base deps
+    except ImportError:  # pragma: no cover - rapidfuzz is in base deps
         return candidates
 
     q = query.strip().lower()

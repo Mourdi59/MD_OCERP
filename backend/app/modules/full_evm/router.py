@@ -1,9 +1,9 @@
 """‌⁠‍Full EVM API routes.
 
 Endpoints:
-    GET    /forecasts              — List EVM forecasts
-    POST   /forecasts/calculate    — Calculate EVM forecast from snapshots (auth required)
-    GET    /s-curve-data           — Get S-curve data for charting
+    GET    /forecasts              - List EVM forecasts
+    POST   /forecasts/calculate    - Calculate EVM forecast from snapshots (auth required)
+    GET    /s-curve-data           - Get S-curve data for charting
 """
 
 import logging
@@ -39,7 +39,7 @@ async def _verify_project_access(
 ) -> None:
     """‌⁠‍Verify the user owns (or is admin on) the referenced project.
 
-    Every project-scoped EVM endpoint must call this — the service layer
+    Every project-scoped EVM endpoint must call this - the service layer
     trusts the project_id and will gladly return cross-tenant data
     otherwise. Mirrors ``finance.router._require_project_access``.
     ``None`` project_id is a no-op (for the list endpoint which may
@@ -71,7 +71,7 @@ async def _verify_project_access(
             user = await user_repo.get_by_id(user_id)
             if user is not None and getattr(user, "role", "") == "admin":
                 return
-        except Exception:  # noqa: BLE001 — best-effort admin check
+        except Exception:  # noqa: BLE001 - best-effort admin check
             pass
 
         if str(getattr(project, "owner_id", "")) != str(user_id):
@@ -107,7 +107,7 @@ async def list_forecasts(
 
     When ``project_id`` is provided we verify ownership before returning
     data. When omitted the list is intentionally empty for non-admin
-    callers until an explicit project scope is supplied — preventing
+    callers until an explicit project scope is supplied - preventing
     cross-tenant enumeration.
     """
     if project_id is None:

@@ -2,7 +2,7 @@
 
 Exposes read-only / cancel endpoints for the JobRun rows produced by the
 generic Celery runner in :mod:`app.core.jobs`. The module is intentionally
-thin — all heavy lifting lives in ``app/core/job*``; this package is just
+thin - all heavy lifting lives in ``app/core/job*``; this package is just
 the HTTP surface.
 """
 

@@ -2,7 +2,7 @@
 """‌⁠‍Deterministic seed data for the Customer & Partner Portal.
 
 Generates:
-    20 portal users — 4 clients, 3 investors, 3 consultants,
+    20 portal users - 4 clients, 3 investors, 3 consultants,
                       4 subcontractors, 4 suppliers, 2 building users
     3-5 access rules per user across the supplied project IDs
     30 notifications (mix read/unread, across all kinds)

@@ -1,4 +1,4 @@
-"""‌⁠‍Email service facade — the public seam the rest of the app talks to.
+"""‌⁠‍Email service facade - the public seam the rest of the app talks to.
 
 Responsibilities:
 
@@ -15,7 +15,7 @@ backend instance, letting tests inject a ``MemoryEmailBackend`` without
 monkey-patching settings.
 
 Why a facade instead of passing the backend directly?  Call sites
-outnumber backends roughly 20:1 — keeping a single ``get_email_service``
+outnumber backends roughly 20:1 - keeping a single ``get_email_service``
 entry point means adding a new provider (SES, SendGrid) is a two-file
 change (``base.py`` + the new backend) rather than a sweep across
 modules/users, modules/integrations, and any future consumer.
@@ -45,14 +45,14 @@ def _resolve_backend(settings: Settings) -> EmailBackend:
     developer who ticked ``EMAIL_BACKEND=smtp`` in .env but forgot to
     fill in credentials still sees reset emails in the log instead of a
     silent drop.  Production deployments should set ``EMAIL_BACKEND=smtp``
-    AND provide host/credentials — the SMTP backend logs a warning when
+    AND provide host/credentials - the SMTP backend logs a warning when
     host is missing so operators notice immediately.
     """
     name: BackendName = settings.email_backend
     if name == "smtp":
         if not settings.smtp_host:
             logger.warning(
-                "EMAIL_BACKEND=smtp but SMTP_HOST is empty — falling back to console backend. "
+                "EMAIL_BACKEND=smtp but SMTP_HOST is empty - falling back to console backend. "
                 "Set SMTP_HOST to enable real delivery.",
             )
             return ConsoleEmailBackend()
@@ -63,7 +63,7 @@ def _resolve_backend(settings: Settings) -> EmailBackend:
         return NoopEmailBackend()
     if name == "memory":
         return MemoryEmailBackend()
-    # Defensive — Pydantic's Literal type narrows ``name`` to the four
+    # Defensive - Pydantic's Literal type narrows ``name`` to the four
     # values above, so this branch is only reachable if an upstream
     # version adds a new backend without updating the resolver.
     raise ValueError(f"Unknown email backend: {name!r}")
@@ -80,7 +80,7 @@ class EmailService:
         return self._backend.name
 
     async def send(self, message: EmailMessage) -> DeliveryResult:
-        """Low-level send — use the typed helpers below when possible."""
+        """Low-level send - use the typed helpers below when possible."""
         result = await self._backend.send(message)
         if not result.ok:
             logger.warning(
@@ -102,7 +102,7 @@ class EmailService:
         """Send a password-reset email. Returns the delivery result.
 
         ``reset_url`` must already embed the signed token as a query
-        parameter.  Never log the URL at INFO — the token is sensitive.
+        parameter.  Never log the URL at INFO - the token is sensitive.
         """
         subject, html = template_password_reset(
             recipient_name=recipient_name,
@@ -175,7 +175,7 @@ def _cached_service(settings_id: int) -> EmailService:
     in practice we get exactly one service per process.
     """
     settings = get_settings()  # Trust the global singleton.
-    # ``settings_id`` is the cache key; we ignore it in the body — its only
+    # ``settings_id`` is the cache key; we ignore it in the body - its only
     # job is to give lru_cache a distinct entry per Settings instance.
     _ = settings_id
     return EmailService(_resolve_backend(settings))
@@ -195,5 +195,5 @@ def get_email_service(backend: EmailBackend | None = None) -> EmailService:
 
 
 def reset_email_service_cache() -> None:
-    """Drop the cached service — used by tests that mutate settings."""
+    """Drop the cached service - used by tests that mutate settings."""
     _cached_service.cache_clear()

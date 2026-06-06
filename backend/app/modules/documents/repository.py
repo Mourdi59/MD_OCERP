@@ -1,7 +1,7 @@
 """‌⁠‍Document Management data access layer.
 
 All database queries for documents live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid
@@ -48,12 +48,12 @@ class DocumentRepository:
 
         Search matches against (case-insensitive ILIKE):
             * ``Document.name`` / ``Document.description``
-            * ``Document.metadata_["ocr_text"]`` — text extracted from PDFs by
+            * ``Document.metadata_["ocr_text"]`` - text extracted from PDFs by
               the takeoff / sheet-split pipelines and stored in the JSON
               ``metadata`` column under the ``ocr_text`` key.
             * ``Sheet.sheet_title`` / ``Sheet.sheet_number`` for any sheet
               that references this document (outer join on the
-              ``Sheet.document_id`` string column — Sheet stores the parent
+              ``Sheet.document_id`` string column - Sheet stores the parent
               document id as a string, not a FK, so we cast Document.id to
               string for the join predicate).
 
@@ -69,7 +69,7 @@ class DocumentRepository:
             # both SQLite (development) and PostgreSQL (production) return
             # the raw text via the dialect-portable ``[key].as_string()``
             # accessor. Wrap in ``coalesce`` so a missing key surfaces as
-            # ``''`` rather than NULL — ILIKE-against-NULL is always false.
+            # ``''`` rather than NULL - ILIKE-against-NULL is always false.
             ocr_expr = func.coalesce(
                 cast(Document.metadata_["ocr_text"].as_string(), String),
                 "",
@@ -94,7 +94,7 @@ class DocumentRepository:
         count_stmt = select(func.count()).select_from(base.subquery())
         total = (await self.session.execute(count_stmt)).scalar_one()
 
-        # Sorting — only a documented whitelist of columns is honoured.
+        # Sorting - only a documented whitelist of columns is honoured.
         # An unknown / dunder / sensitive ``sort_by`` falls back to
         # ``created_at desc`` instead of 500-ing (A-DOC-07) or leaking
         # the internal ``file_path`` column ordering (A-DOC-08).

@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Magnet-candidate suppressor — post-retrieval, pre-rerank.
+"""‌⁠‍Magnet-candidate suppressor - post-retrieval, pre-rerank.
 
 Background
 ==========
@@ -42,33 +42,33 @@ The suppression decision is confidence-weighted:
       score by -0.20 (let the cross-encoder still rescue it if the
       bi-encoder hit was very strong).
     * **confidence < 0.50**                  → no-op (don't risk
-      over-suppression on ambiguous queries — the recall ceiling on
+      over-suppression on ambiguous queries - the recall ceiling on
       edge cases matters more than precision on the obvious ones).
 
 The query classifier is *only* the envelope's own structured fields
 (``ifc_class``, ``unit_hint`` / ``quantities``, ``classifier_hint``,
 ``material_class``). It deliberately does NOT call back into the
-embedding model — that would re-introduce the very non-determinism
+embedding model - that would re-introduce the very non-determinism
 this filter aims to neutralise.
 
 Compatibility is checked along three axes:
 
-    1. **MasterFormat division** — query's expected MF division head
+    1. **MasterFormat division** - query's expected MF division head
        (``"03"`` from a concrete wall, ``"22"`` from a copper pipe) vs
        candidate's ``masterformat_division`` payload head. Aligned
        families pass; cross-family fails.
-    2. **Unit type** — query's coarse unit family (Area / Volume /
+    2. **Unit type** - query's coarse unit family (Area / Volume /
        Linear / Mass / Count / Time) vs candidate's ``unit_type``
        payload. A wall (Area) candidate must NOT win the top slot of
        a pipe (Linear) query.
-    3. **IFC class** — query's ``ifc_class`` vs candidate's
+    3. **IFC class** - query's ``ifc_class`` vs candidate's
        ``ifc_class`` payload, with a per-MF compatibility map (some
        cross-class hits are legitimate: an IfcCovering can be a
        roof finish for an IfcRoof query).
 
 A candidate must FAIL *all three* axes (or fail two when the third is
 unknown on either side) before it gets flagged. The threshold is
-deliberately conservative — over-suppression is worse than letting
+deliberately conservative - over-suppression is worse than letting
 one magnet slip through.
 
 Logging
@@ -101,7 +101,7 @@ logger = logging.getLogger(__name__)
 def is_enabled() -> bool:
     """‌⁠‍Return ``True`` when ``OE_MATCH_MAGNET_FILTER`` is truthy.
 
-    Cheap probe — read once per call. Off by default so production
+    Cheap probe - read once per call. Off by default so production
     traffic keeps the legacy behaviour until the bench validates the
     intervention. Truthy values follow the same convention as
     ``determinism.is_enabled``: ``1``, ``true``, ``yes``, ``on``.
@@ -215,7 +215,7 @@ def _unit_family_from_hint(unit_hint: str | None) -> str | None:
 def _unit_family_from_quantities(quantities: dict[str, float] | None) -> str | None:
     if not quantities:
         return None
-    # Precedence — volume > area > linear > mass > count. A wall
+    # Precedence - volume > area > linear > mass > count. A wall
     # carrying both ``area_m2`` AND ``length_m`` should be classified
     # as Area (it's priced per m²), not Linear.
     for key in ("volume_m3", "area_m2", "length_m", "perimeter_m", "mass_kg", "weight_kg", "count", "quantity"):
@@ -238,13 +238,13 @@ def _unit_family_from_payload(unit_type: str | None) -> str | None:
 # ── MasterFormat division compatibility ──────────────────────────────────
 #
 # Cross-division compatibility ONLY for cases where two MF divisions
-# legitimately overlap. Two-digit head only — we deliberately don't
+# legitimately overlap. Two-digit head only - we deliberately don't
 # specialise below the head (an IfcWall in 03 should not be suppressed
 # when the query has expected_mf="04"; the cross-encoder can sort the
 # masonry-vs-concrete order out, that's not a magnet, that's adjacency).
 #
 # Adjacency convention: A and B are in this set when a query targeting
-# A might legitimately want a B candidate. NOT symmetric in general —
+# A might legitimately want a B candidate. NOT symmetric in general -
 # e.g. concrete (03) might want some sitework (31) but sitework
 # generally doesn't want concrete.
 
@@ -281,7 +281,7 @@ def _mf_head(mf: str | None) -> str:
 def _mf_compatible(query_mf_heads: list[str], cand_mf_head: str) -> bool:
     """Return ``True`` when candidate's MF head is in the query's universe.
 
-    A query without an MF head is treated as compatible with everything —
+    A query without an MF head is treated as compatible with everything -
     we can't reject what we don't know. A candidate without an MF head
     falls into the "unknown" bucket and is NOT rejected on the MF axis
     alone (the rule below still requires multi-axis incompatibility).
@@ -355,7 +355,7 @@ class QueryClassification:
         mf_heads: Likely MasterFormat division heads (``["03"]`` for
             concrete, ``["22"]`` for plumbing). Empty list when no
             classifier hint and no IFC-class-implied MF mapping fires.
-        unit_family: Coarse unit family — area / volume / linear / mass
+        unit_family: Coarse unit family - area / volume / linear / mass
             / count / time. ``None`` when the envelope carries neither
             ``unit_hint`` nor recognisable ``quantities``.
         ifc_class: Verbatim IFC class from the envelope. ``None`` when
@@ -407,7 +407,7 @@ _IFC_TO_MF_HEADS: dict[str, tuple[str, ...]] = {
 def classify_query(envelope: ElementEnvelope) -> QueryClassification:
     """Heuristic structured classification of the query.
 
-    Pure function — no model calls, no DB access — so a per-request
+    Pure function - no model calls, no DB access - so a per-request
     invocation costs microseconds. The output is consumed by
     :func:`should_suppress` to decide whether each retrieval candidate
     survives the filter.
@@ -430,7 +430,7 @@ def classify_query(envelope: ElementEnvelope) -> QueryClassification:
     if not unit_family:
         unit_family = _unit_family_from_quantities(envelope.quantities)
 
-    # Confidence — see docstring for the breakdown
+    # Confidence - see docstring for the breakdown
     conf = 0.0
     if ifc:
         conf += 0.30
@@ -475,11 +475,11 @@ class SuppressionDecision:
 def _candidate_payload(candidate: MatchCandidate) -> dict[str, Any]:
     """Extract the payload-style fields from a MatchCandidate.
 
-    The candidate is the post-_hit_to_candidate object — it carries
+    The candidate is the post-_hit_to_candidate object - it carries
     ``classification.masterformat`` derived from either the parquet or
     the Qdrant payload. We also accept that ``unit_type`` and
     ``ifc_class`` may not be present on every candidate (the candidate
-    schema doesn't surface them as first-class fields) — when missing
+    schema doesn't surface them as first-class fields) - when missing
     we treat that axis as unknown rather than incompatible.
 
     The function returns a dict mirroring the Qdrant payload keys so
@@ -489,7 +489,7 @@ def _candidate_payload(candidate: MatchCandidate) -> dict[str, Any]:
     cls = candidate.classification or {}
     return {
         "masterformat_division": cls.get("masterformat", ""),
-        # ``unit_type`` is NOT a MatchCandidate field — fall back to
+        # ``unit_type`` is NOT a MatchCandidate field - fall back to
         # the canonical short unit ("m3" / "m2") which we can map.
         "unit_type": _unit_family_from_hint(candidate.unit) or "",
         "ifc_class": "",  # not on candidate; supplied by raw_payload path
@@ -505,11 +505,11 @@ def _decide_compat(
     A candidate is INCOMPATIBLE when at least 2 of the 3 axes
     (mf / ifc / unit) actively disagree AND both sides of each
     failed axis carried a value. Mere absence on one side is NOT a
-    failure — we don't suppress candidates whose schema is sparse.
+    failure - we don't suppress candidates whose schema is sparse.
 
     Returns:
-        ``(True,  ())``                — keep this candidate.
-        ``(False, ("mf", "ifc", ...))`` — reasons for suppression.
+        ``(True,  ())``                - keep this candidate.
+        ``(False, ("mf", "ifc", ...))`` - reasons for suppression.
     """
     reasons: list[str] = []
     # MasterFormat
@@ -536,7 +536,7 @@ def _decide_compat(
     # Decision rule: 2+ axes incompatible OR a single MF mismatch when
     # both IFC and unit info are unknown on the candidate. The latter
     # catches the cross-encoder magnets where the candidate has only
-    # an MF head and no IFC/unit info — the v3 payload is sparse on
+    # an MF head and no IFC/unit info - the v3 payload is sparse on
     # purpose and the magnets exploit exactly that gap.
     if len(reasons) >= 2:
         return False, tuple(reasons)
@@ -589,7 +589,7 @@ def apply_to_hits(
     dropped entries removed.
 
     The full Qdrant payload is available on each hit (``hit.payload``)
-    so we read directly from it — no need to attach the parquet row
+    so we read directly from it - no need to attach the parquet row
     first. ``full_rows`` is accepted for symmetry with the soft-boost
     plumbing but is not load-bearing here.
 
@@ -612,7 +612,7 @@ def apply_to_hits(
     _, soft_floor, _ = _thresholds()
     if classification.confidence < soft_floor:
         logger.debug(
-            "magnet_filter: query=%s conf=%.2f below floor %.2f — no-op",
+            "magnet_filter: query=%s conf=%.2f below floor %.2f - no-op",
             query_id or "?",
             classification.confidence,
             soft_floor,

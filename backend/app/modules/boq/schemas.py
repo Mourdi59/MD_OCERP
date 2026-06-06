@@ -1,4 +1,4 @@
-"""‌⁠‍BOQ Pydantic schemas — request/response models.
+"""‌⁠‍BOQ Pydantic schemas - request/response models.
 
 Defines create, update, and response schemas for BOQs, positions, markups,
 structured (sectioned) BOQ responses, templates, and activity log entries.
@@ -40,7 +40,7 @@ def _check_position_total_cap(
 
     Raises ``ValueError`` (which Pydantic surfaces as a 422) when the
     product exceeds the cap. Either side being ``None`` means "no
-    change" on update — skip the check; the existing stored value
+    change" on update - skip the check; the existing stored value
     governs the effective total.
     """
     if quantity is None or unit_rate is None:
@@ -62,7 +62,7 @@ def _check_position_total_cap(
 # decimal *strings* in JSON. Float forces every consumer to parse a
 # locale-coloured number and silently drops precision past ~15 sig figs.
 # This is the canonical helper mirrored by sibling modules
-# (match_elements, bim_hub) — keep them in sync.
+# (match_elements, bim_hub) - keep them in sync.
 def _serialise_money(v: Decimal | None) -> str | None:
     if v is None:
         return None
@@ -207,7 +207,7 @@ class BOQListItem(BOQResponse):
     breaks out the same number minus markups, so the two figures are always
     consistent across list / detail / structured endpoints (BUG-008).
 
-    v3 §10 — money emitted as Decimal-as-string. Floats here silently
+    v3 §10 - money emitted as Decimal-as-string. Floats here silently
     truncated very-large totals on listing endpoints and forced every
     consumer to parse a locale-coloured number.
     """
@@ -265,7 +265,7 @@ class PositionCreate(BaseModel):
     # 0.0, so an Excel import with a blank quantity cell silently zero-filled
     # the line and rolled up as €0 instead of being flagged as missing data.
     quantity: float = Field(..., ge=0.0, description="Measured quantity", examples=[125.5])
-    # v3 §10 — money is Decimal-in / Decimal-as-string out. Pydantic v2
+    # v3 §10 - money is Decimal-in / Decimal-as-string out. Pydantic v2
     # coerces int/float/str inputs to Decimal so legacy clients still work.
     unit_rate: Decimal = Field(
         default=Decimal("0"),
@@ -343,7 +343,7 @@ class PositionCreate(BaseModel):
             "Optional UUID of an existing position the new row should be "
             "placed *immediately after* (same BOQ). When set, the new "
             "position's sort_order slots right after that sibling and every "
-            "later position shifts down by one — so 'Add position' inserts "
+            "later position shifts down by one - so 'Add position' inserts "
             "below the selected row instead of at the end of the section. "
             "Ignored for the reuse/linked-instance path."
         ),
@@ -365,13 +365,13 @@ class PositionCreate(BaseModel):
         normalised = normalise_unit(v)
         if normalised is None:
             raise ValueError(
-                f"unit '{v}' has an unsafe shape — must be 1-30 characters, "
+                f"unit '{v}' has an unsafe shape - must be 1-30 characters, "
                 f"start with a letter or digit, and contain only letters, "
                 f"digits, spaces, or any of '. _ - / ² ³ %'"
             )
         return normalised
 
-    # Probe-A scenario 11 — overflow guard. Cross-field check so a
+    # Probe-A scenario 11 - overflow guard. Cross-field check so a
     # 1e10 × 1e10 = 1e20 input fails before it hits the DB rather than
     # silently corrupting BOQ rollups.
     @model_validator(mode="after")
@@ -417,7 +417,7 @@ class PositionUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=5000)
     unit: str | None = Field(default=None, min_length=1, max_length=20)
     quantity: float | None = Field(default=None, ge=0.0)
-    # v3 §10 — money is Decimal-in / Decimal-as-string out.
+    # v3 §10 - money is Decimal-in / Decimal-as-string out.
     unit_rate: Decimal | None = Field(default=None, ge=0)
     classification: dict[str, Any] | None = None
     source: str | None = Field(
@@ -485,13 +485,13 @@ class PositionUpdate(BaseModel):
         normalised = normalise_unit(v)
         if normalised is None:
             raise ValueError(
-                f"unit '{v}' has an unsafe shape — must be 1-30 characters, "
+                f"unit '{v}' has an unsafe shape - must be 1-30 characters, "
                 f"start with a letter or digit, and contain only letters, "
                 f"digits, spaces, or any of '. _ - / ² ³ %'"
             )
         return normalised
 
-    # Probe-A scenario 11 — overflow guard for partial updates. Only
+    # Probe-A scenario 11 - overflow guard for partial updates. Only
     # fires when BOTH ``quantity`` and ``unit_rate`` are supplied in
     # the same PATCH; if only one side is updated we cannot recompute
     # without DB access. The service layer recomputes ``total`` and
@@ -506,7 +506,7 @@ class PositionUpdate(BaseModel):
         return _serialise_money(v)
 
 
-# ── v3.12.0 Stream A — bulk-update + per-field restore ───────────────────────
+# ── v3.12.0 Stream A - bulk-update + per-field restore ───────────────────────
 
 
 class BulkPositionUpdate(BaseModel):
@@ -514,14 +514,14 @@ class BulkPositionUpdate(BaseModel):
 
     Accepts one of three mutation styles, applied to every ``ids`` entry:
 
-    * ``updates`` — direct field assignment (e.g. ``{"unit": "m3"}`` or
+    * ``updates`` - direct field assignment (e.g. ``{"unit": "m3"}`` or
       ``{"classification": {"din276": "330"}}``). The same payload is
       written to every selected position.
-    * ``rate_factor`` — multiply each row's existing ``unit_rate`` by a
+    * ``rate_factor`` - multiply each row's existing ``unit_rate`` by a
       scalar (e.g. 1.05 = +5 %). Reads the row's current value, writes
       back the product. ``quantity`` and ``total`` are recomputed by
       the service.
-    * ``quantity_factor`` — same as ``rate_factor`` but for ``quantity``.
+    * ``quantity_factor`` - same as ``rate_factor`` but for ``quantity``.
 
     Exactly one of ``updates`` / ``rate_factor`` / ``quantity_factor``
     must be supplied. Mixing styles is rejected with 422 so the audit
@@ -569,7 +569,7 @@ class BulkPositionUpdate(BaseModel):
                 "Exactly one of 'updates', 'rate_factor', 'quantity_factor' must be supplied.",
             )
         if isinstance(self.updates, dict):
-            # Tight allowlist — bulk operations must not silently rewrite
+            # Tight allowlist - bulk operations must not silently rewrite
             # quantity / unit_rate / metadata blobs (those have dedicated
             # factor paths and per-row endpoints).
             allowed = {"unit", "classification", "validation_status", "source"}
@@ -584,7 +584,7 @@ class BulkPositionUpdate(BaseModel):
 
 
 class BulkUpdateResult(BaseModel):
-    """Outcome of a bulk update — counts plus failed-id detail."""
+    """Outcome of a bulk update - counts plus failed-id detail."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -618,7 +618,7 @@ class RestoreFieldRequest(BaseModel):
     )
     value: Any = Field(
         default=None,
-        description="Value to assign — typically the 'old' side of the log diff.",
+        description="Value to assign - typically the 'old' side of the log diff.",
     )
     log_id: UUID = Field(
         ...,
@@ -697,7 +697,7 @@ class PositionResponse(BaseModel):
     # on a Decimal can yield scientific notation (e.g. 1E+3); the explicit
     # non-exponential format keeps the value exact, human- and
     # machine-readable, and locale-neutral (per the architecture guide). Non-finite
-    # values (defensive — the write path quantises and rejects NaN/Inf)
+    # values (defensive - the write path quantises and rejects NaN/Inf)
     # collapse to "0".
     @field_serializer("quantity", "unit_rate", "total", when_used="json")
     @classmethod
@@ -716,7 +716,7 @@ class PositionResponse(BaseModel):
 
 
 class _MarkupBase(BaseModel):
-    """Shared serializer for ``fixed_amount`` (v3 §10 — Decimal-as-string)."""
+    """Shared serializer for ``fixed_amount`` (v3 §10 - Decimal-as-string)."""
 
     @field_serializer("fixed_amount", when_used="json", check_fields=False)
     def _ser_fixed_amount(self, v: Decimal | None) -> str | None:
@@ -728,14 +728,14 @@ class MarkupCreate(_MarkupBase):
 
     ``apply_to`` controls the markup base:
 
-    * ``direct_cost`` — applies to the BOQ direct-cost subtotal only
+    * ``direct_cost`` - applies to the BOQ direct-cost subtotal only
       (excludes every other markup line).
-    * ``subtotal`` — applies to the direct-cost subtotal **plus the sum
+    * ``subtotal`` - applies to the direct-cost subtotal **plus the sum
       of all preceding markup lines** (e.g. VAT/output tax on the
       contractor price including overhead & profit). Behaves identically
       to ``cumulative``; the alias is retained for GAEB/legacy clients
       that label the tax base "subtotal".
-    * ``cumulative`` — applies to the running total *including all
+    * ``cumulative`` - applies to the running total *including all
       prior markups*. When multiple markups have ``apply_to='cumulative'``
       they are evaluated in ``sort_order`` ASC, and each cumulative
       markup's base is the direct-cost subtotal **plus** every PRIOR
@@ -802,7 +802,7 @@ class MarkupResponse(_MarkupBase):
 class MarkupCalculated(MarkupResponse):
     """Markup response enriched with the computed amount.
 
-    v3 §10 — ``amount`` is money; emitted as a Decimal-as-string so
+    v3 §10 - ``amount`` is money; emitted as a Decimal-as-string so
     rollups stay locale-neutral and exact.
     """
 
@@ -820,11 +820,11 @@ class BOQWithPositions(BOQResponse):
     """BOQ with all its positions and computed grand total.
 
     ``grand_total`` includes active markups (matches list / structured
-    semantics — BUG-008).  ``direct_cost_total`` and ``markups_total``
+    semantics - BUG-008).  ``direct_cost_total`` and ``markups_total``
     are exposed alongside for clients that need the breakdown without
     re-summing markups themselves.
 
-    v3 §10 — money emitted as Decimal-as-string.
+    v3 §10 - money emitted as Decimal-as-string.
     """
 
     positions: list[PositionResponse] = Field(default_factory=list)
@@ -841,7 +841,7 @@ class BOQWithPositions(BOQResponse):
 class SectionResponse(BaseModel):
     """A BOQ section (header) with its child positions and subtotal.
 
-    v3 §10 — ``subtotal`` is money; Decimal-as-string in JSON.
+    v3 §10 - ``subtotal`` is money; Decimal-as-string in JSON.
     """
 
     id: UUID
@@ -866,16 +866,16 @@ class SectionResponse(BaseModel):
 class BOQWithSections(BOQResponse):
     """BOQ with hierarchical sections, positions, subtotals, and markups.
 
-    ``sections`` — grouped positions under section headers.
-    ``positions`` — ungrouped positions that have no parent (and are not sections).
-    ``direct_cost`` — sum of all position totals (items only, not sections).
-    ``markups`` — ordered list of markup lines with computed amounts.
-    ``net_total`` — direct_cost + sum of markup amounts.
-    ``tax_rate`` — VAT / sales-tax fraction applied to net_total (None = no tax).
-    ``tax_amount`` — net_total * tax_rate, ROUND_HALF_UP to 2 dp (0 when no tax).
-    ``grand_total`` — net_total + tax_amount.
+    ``sections`` - grouped positions under section headers.
+    ``positions`` - ungrouped positions that have no parent (and are not sections).
+    ``direct_cost`` - sum of all position totals (items only, not sections).
+    ``markups`` - ordered list of markup lines with computed amounts.
+    ``net_total`` - direct_cost + sum of markup amounts.
+    ``tax_rate`` - VAT / sales-tax fraction applied to net_total (None = no tax).
+    ``tax_amount`` - net_total * tax_rate, ROUND_HALF_UP to 2 dp (0 when no tax).
+    ``grand_total`` - net_total + tax_amount.
 
-    v3 §10 — money emitted as Decimal-as-string.
+    v3 §10 - money emitted as Decimal-as-string.
     """
 
     sections: list[SectionResponse] = Field(default_factory=list)
@@ -969,7 +969,7 @@ class LinkedPositionInfo(BaseModel):
 
 
 class PositionLinksResponse(BaseModel):
-    """Result of ``GET /positions/{id}/links/`` — the code's reuse group.
+    """Result of ``GET /positions/{id}/links/`` - the code's reuse group.
 
     Lists every position that shares the queried position's
     ``reference_code`` across the whole project, identifies the master,
@@ -1021,7 +1021,7 @@ class AIChatRequest(BaseModel):
 class AIChatItem(BaseModel):
     """A single BOQ position suggested by AI chat.
 
-    v3 §10 — ``unit_rate`` and ``total`` are money and emitted as
+    v3 §10 - ``unit_rate`` and ``total`` are money and emitted as
     Decimal-as-string. ``quantity`` is a measurement and stays float.
     """
 
@@ -1040,7 +1040,7 @@ class AIChatItem(BaseModel):
 class AIChatResponse(BaseModel):
     """Response from AI chat.
 
-    ``reply`` is the assistant's natural-language answer — always populated
+    ``reply`` is the assistant's natural-language answer - always populated
     when the model produced any output, so a knowledge question gets a real
     answer instead of an empty chat (issue #138). ``items`` are suggested
     BOQ positions, present only when the user asked to generate scope.
@@ -1127,7 +1127,7 @@ class SnapshotDetail(SnapshotResponse):
 class CostBreakdownCategory(BaseModel):
     """A single cost category in the breakdown (e.g. material, labor).
 
-    v3 §10 — ``amount`` is money; ``percentage`` stays float (ratio).
+    v3 §10 - ``amount`` is money; ``percentage`` stays float (ratio).
     """
 
     type: str
@@ -1143,7 +1143,7 @@ class CostBreakdownCategory(BaseModel):
 class CostBreakdownMarkup(BaseModel):
     """A markup line in the cost breakdown.
 
-    v3 §10 — ``amount`` is money; ``percentage`` stays float (ratio).
+    v3 §10 - ``amount`` is money; ``percentage`` stays float (ratio).
     """
 
     name: str
@@ -1158,7 +1158,7 @@ class CostBreakdownMarkup(BaseModel):
 class CostBreakdownResource(BaseModel):
     """A top resource by cost in the breakdown.
 
-    v3 §10 — ``total_cost`` is money.
+    v3 §10 - ``total_cost`` is money.
     """
 
     name: str
@@ -1174,7 +1174,7 @@ class CostBreakdownResource(BaseModel):
 class CostBreakdownResponse(BaseModel):
     """Full cost breakdown response for a BOQ.
 
-    v3 §10 — money emitted as Decimal-as-string.
+    v3 §10 - money emitted as Decimal-as-string.
     """
 
     boq_id: str
@@ -1217,19 +1217,19 @@ class ResourceSummaryItem(BaseModel):
     type: str
     unit: str
     total_quantity: float  # measurement, not money
-    # v3 §10 — avg_unit_rate / total_cost are money: Decimal-as-string.
+    # v3 §10 - avg_unit_rate / total_cost are money: Decimal-as-string.
     avg_unit_rate: Decimal = Decimal("0")
     total_cost: Decimal = Decimal("0")
     positions_used: int
 
-    # Variant surface — null when the resource has no abstract-resource
+    # Variant surface - null when the resource has no abstract-resource
     # catalog cached on any contributing position.
     available_variants: list[dict[str, Any]] | None = None
     variant_stats: dict[str, Any] | None = None
     current_variant_label: str | None = None
     variant_default: str | None = None
     currency: str | None = None
-    # CWICR resource_code — first non-empty value seen across contributing
+    # CWICR resource_code - first non-empty value seen across contributing
     # rows. Used by the frontend to dedupe variant pickers when two summary
     # rows share an abstract-resource catalog (CWICR ships some rates with
     # multiple human-readable component names that resolve to the same
@@ -1237,11 +1237,11 @@ class ResourceSummaryItem(BaseModel):
     resource_code: str | None = None
     position_refs: list[ResourcePositionRef] = Field(default_factory=list)
 
-    # Issue #106 — Pareto / ABC analysis. ``abc_percentage`` is the share
+    # Issue #106 - Pareto / ABC analysis. ``abc_percentage`` is the share
     # this resource takes of the total summed cost across the response
     # (``sum(item.total_cost for item in resources)``), expressed as 0–100.
     # ``abc_class`` is the conventional A/B/C bucket using the standard
-    # 80/15/5 cumulative thresholds — A = top items that together make up
+    # 80/15/5 cumulative thresholds - A = top items that together make up
     # ~80 % of cost, B = next ~15 %, C = bottom ~5 %. Both fields are
     # populated server-side after rows are sorted by descending cost so
     # the frontend just renders without re-summing.
@@ -1256,7 +1256,7 @@ class ResourceSummaryItem(BaseModel):
 class ResourceTypeSummary(BaseModel):
     """Summary statistics for a single resource type.
 
-    v3 §10 — ``total_cost`` is money; Decimal-as-string in JSON.
+    v3 §10 - ``total_cost`` is money; Decimal-as-string in JSON.
     """
 
     count: int
@@ -1268,15 +1268,15 @@ class ResourceTypeSummary(BaseModel):
 
 
 class ResourceSummaryResponse(BaseModel):
-    """Full resource summary for a BOQ — aggregated across all positions.
+    """Full resource summary for a BOQ - aggregated across all positions.
 
-    v3 §10 — ``grand_total`` is money; Decimal-as-string in JSON.
+    v3 §10 - ``grand_total`` is money; Decimal-as-string in JSON.
     """
 
     total_resources: int
     by_type: dict[str, ResourceTypeSummary] = Field(default_factory=dict)
     resources: list[ResourceSummaryItem] = Field(default_factory=list)
-    # Issue #106 — sum of every ``resource.total_cost`` in this response.
+    # Issue #106 - sum of every ``resource.total_cost`` in this response.
     # The frontend uses it to render the ABC dashboard's "Total" column
     # without recomputing, and to validate that the per-row percentages
     # sum to 100 (rounding tolerance ≤ 0.01).
@@ -1293,10 +1293,10 @@ class ResourceCodeMatch(BaseModel):
     Issue #133. The reusable *definition* (name / type / unit / unit_rate /
     currency) plus where it was first found, so the BOQ editor can offer
     "insert the existing resource" vs "create a new one with another code".
-    Quantity is intentionally NOT part of the definition — it is always
+    Quantity is intentionally NOT part of the definition - it is always
     per-instance (mirrors the #127 position-reuse contract).
 
-    v3 §10 — ``unit_rate`` is money; Decimal-as-string in JSON.
+    v3 §10 - ``unit_rate`` is money; Decimal-as-string in JSON.
     """
 
     code: str
@@ -1305,7 +1305,7 @@ class ResourceCodeMatch(BaseModel):
     unit: str = ""
     unit_rate: Decimal = Decimal("0")
     currency: str = ""
-    # Provenance — surfaced verbatim to the user in the collision prompt.
+    # Provenance - surfaced verbatim to the user in the collision prompt.
     position_id: str = ""
     position_ordinal: str = ""
     position_description: str = ""
@@ -1436,7 +1436,7 @@ class SensitivityResponse(BaseModel):
     Shows which positions have the biggest impact on the total cost when
     their cost varies by ``variation_pct`` percent.
 
-    v3 §10 — ``base_total`` is money; Decimal-as-string in JSON.
+    v3 §10 - ``base_total`` is money; Decimal-as-string in JSON.
     """
 
     base_total: Decimal = Decimal("0")
@@ -1485,7 +1485,7 @@ class CostRiskResponse(BaseModel):
     collects total costs, and returns percentiles, histogram, contingency,
     and risk drivers (positions contributing most to variance).
 
-    v3 §10 — ``base_total`` and ``recommended_budget`` are money;
+    v3 §10 - ``base_total`` and ``recommended_budget`` are money;
     Decimal-as-string in JSON.
     """
 
@@ -1513,7 +1513,7 @@ class ClassifyRequest(BaseModel):
 
     description: str = Field(..., min_length=1, max_length=1000)
     unit: str = ""
-    # Epic — Brazil (BRL invoice support feedback 2026-05-27): added ``nbr``
+    # Epic - Brazil (BRL invoice support feedback 2026-05-27): added ``nbr``
     # and ``sinapi`` so estimators on a Brazilian project can ask the
     # classifier for ABNT NBR 12721 cost groups or SINAPI composition codes
     # instead of being silently DIN-276'd by the default.
@@ -1559,7 +1559,7 @@ class ClassifyElementsRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     elements: list[CADElementInput] = Field(..., min_length=1, max_length=10000)
-    # Epic — Brazil (2026-05-27): widened to accept ``nbr`` (ABNT NBR 12721)
+    # Epic - Brazil (2026-05-27): widened to accept ``nbr`` (ABNT NBR 12721)
     # and ``sinapi`` so a CAD/BIM upload on a BR project can map to the
     # Brazilian classification systems instead of defaulting to DIN 276.
     standard: str = Field(
@@ -1604,7 +1604,7 @@ class SuggestRateRequest(BaseModel):
 class RateMatch(BaseModel):
     """A single rate match from vector search results.
 
-    v3 §10 — ``rate`` is money; ``score`` stays float (similarity 0.0-1.0).
+    v3 §10 - ``rate`` is money; ``score`` stays float (similarity 0.0-1.0).
     """
 
     code: str
@@ -1621,7 +1621,7 @@ class RateMatch(BaseModel):
 class SuggestRateResponse(BaseModel):
     """Response containing a suggested market rate with supporting matches.
 
-    v3 §10 — ``suggested_rate`` is money; ``confidence`` stays float (ratio).
+    v3 §10 - ``suggested_rate`` is money; ``confidence`` stays float (ratio).
     """
 
     suggested_rate: Decimal = Decimal("0")
@@ -1737,7 +1737,7 @@ class SuggestPrerequisitesRequest(BaseModel):
 class PrerequisiteItem(BaseModel):
     """A single suggested prerequisite/companion position.
 
-    v3 §10 — ``typical_rate_eur`` is money; Decimal-as-string in JSON.
+    v3 §10 - ``typical_rate_eur`` is money; Decimal-as-string in JSON.
     """
 
     description: str
@@ -1777,7 +1777,7 @@ class CheckScopeRequest(BaseModel):
 class ScopeMissingItem(BaseModel):
     """A single missing scope item.
 
-    v3 §10 — ``estimated_rate`` is money; Decimal-as-string in JSON.
+    v3 §10 - ``estimated_rate`` is money; Decimal-as-string in JSON.
     """
 
     description: str
@@ -1806,7 +1806,7 @@ class CheckScopeResponse(BaseModel):
 class BOQStatisticsResponse(BaseModel):
     """Aggregated statistics for a BOQ.
 
-    v3 §10 — ``direct_cost`` / ``grand_total`` / ``avg_unit_rate`` are
+    v3 §10 - ``direct_cost`` / ``grand_total`` / ``avg_unit_rate`` are
     money; emitted as Decimal-as-string. Percentage fields stay float.
     """
 
@@ -1846,7 +1846,7 @@ class EscalateRateRequest(BaseModel):
     """Request to escalate a rate to current prices.
 
     Currency / region default to empty so the AI prompt pipes blank
-    strings into the LLM template — interpreted as "no constraint
+    strings into the LLM template - interpreted as "no constraint
     specified". Hardcoding EUR + DACH steered every escalation toward
     BKI (the German construction cost index), even on US/UK projects
     where ENR / BCIS would be the right index.
@@ -1865,7 +1865,7 @@ class EscalateRateRequest(BaseModel):
 class EscalationFactors(BaseModel):
     """Breakdown of escalation factors.
 
-    v3 §10 — ``labor_cost_change`` is money (annual labour cost delta);
+    v3 §10 - ``labor_cost_change`` is money (annual labour cost delta);
     Decimal-as-string in JSON. ``material_inflation`` and
     ``regional_adjustment`` stay float (they are pure ratios/percentages).
     """
@@ -1882,7 +1882,7 @@ class EscalationFactors(BaseModel):
 class EscalateRateResponse(BaseModel):
     """Rate escalation result.
 
-    v3 §10 — ``original_rate`` and ``escalated_rate`` are money;
+    v3 §10 - ``original_rate`` and ``escalated_rate`` are money;
     Decimal-as-string in JSON.
     """
 
@@ -1906,7 +1906,7 @@ class EscalateRateResponse(BaseModel):
 class LineItemResponse(BaseModel):
     """A single line item in the cost-drivers Pareto widget.
 
-    v3 §10 — ``unit_rate`` and ``total_cost`` are money; Decimal-as-string
+    v3 §10 - ``unit_rate`` and ``total_cost`` are money; Decimal-as-string
     in JSON.
     """
 
@@ -1921,7 +1921,7 @@ class LineItemResponse(BaseModel):
     def _ser_money(self, v: Decimal) -> str | None:
         return _serialise_money(v)
 
-    share_of_total: float = Field(0.0, description="Share of the aggregate project total — 0.0 to 1.0")
+    share_of_total: float = Field(0.0, description="Share of the aggregate project total - 0.0 to 1.0")
 
 
 class CostRollupItem(BaseModel):
@@ -1939,7 +1939,7 @@ class AnomalyResponse(BaseModel):
     Anomaly detection for v1.9.1 is pure statistics (z-score on unit_rate
     within the same classification group, neighbour-median jump detection,
     and simple missing-field checks). ML-based detection is deferred to
-    v1.9.2 — see RFC 25.
+    v1.9.2 - see RFC 25.
     """
 
     position_id: str
@@ -1963,7 +1963,7 @@ class QuantityLinkCreate(BaseModel):
     """Bind a BOQ position numeric field to one or more BIM elements.
 
     The link is an *extraction rule*, never a cached value. Creating it
-    does NOT mutate the position quantity — call the refresh + confirm
+    does NOT mutate the position quantity - call the refresh + confirm
     endpoints to pull and (human-)apply values.
     """
 
@@ -2050,7 +2050,7 @@ class QuantityLinkRefreshResponse(BaseModel):
 
 
 class QuantityLinkApplyRequest(BaseModel):
-    """Confirm payload — explicit list of link ids to apply (human gate)."""
+    """Confirm payload - explicit list of link ids to apply (human gate)."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 

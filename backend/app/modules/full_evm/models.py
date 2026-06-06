@@ -1,7 +1,7 @@
 """‌⁠‍Full EVM ORM models.
 
 Tables:
-    oe_evm_forecast — advanced EVM forecast records with ETC, EAC, VAC, TCPI
+    oe_evm_forecast - advanced EVM forecast records with ETC, EAC, VAC, TCPI
 """
 
 import uuid

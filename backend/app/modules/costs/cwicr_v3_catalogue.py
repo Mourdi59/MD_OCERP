@@ -1,24 +1,24 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Registry of DDC v3 BGE-M3 catalogues — the 30-region master list.
+"""‌⁠‍Registry of DDC v3 BGE-M3 catalogues - the 30-region master list.
 
 This is the single source of truth that the ``GET /catalogues-v3/``
 endpoint serves to the frontend. Each entry describes one CWICR region
 DDC publishes (or plans to publish) a BGE-M3 v3 snapshot for, together
 with the metadata the UI needs to render a card:
 
-* ``region``        — canonical CWICR region id (``RU_STPETERSBURG``)
-* ``country_iso``   — ISO-3166 alpha-2 / alpha-3 head, used for the
+* ``region``        - canonical CWICR region id (``RU_STPETERSBURG``)
+* ``country_iso``   - ISO-3166 alpha-2 / alpha-3 head, used for the
                       flag component on the frontend
-* ``city``          — city / locale qualifier for the display name
-* ``language``      — ISO-639-1 code (drives the
+* ``city``          - city / locale qualifier for the display name
+* ``language``      - ISO-639-1 code (drives the
                       ``cwicr_{lang}_v3`` collection name)
-* ``currency``      — ISO 4217 of the rates inside the catalogue
-* ``ddc_path``      — relative path inside the DDC GitHub repo
+* ``currency``      - ISO 4217 of the rates inside the catalogue
+* ``ddc_path``      - relative path inside the DDC GitHub repo
                       (``<LANG>___DDC_CWICR/<region>_workitems_…_BGEM3_V3_DDC_CWICR.snapshot``)
-* ``size_mb``       — best-effort estimated size; used so the UI can
+* ``size_mb``       - best-effort estimated size; used so the UI can
                       warn about download cost before starting
-* ``available``     — ``True`` if DDC has actually published the v3
+* ``available``     - ``True`` if DDC has actually published the v3
                       snapshot today. Regions still on the v3 backlog
                       ship as ``available=False`` so the frontend can
                       grey them out with a "Coming soon" badge instead
@@ -34,7 +34,7 @@ How this list grows:
   ship.
 
 The registry is intentionally *not* derived from
-:mod:`region_language` — that table grows for any catalogue someone
+:mod:`region_language` - that table grows for any catalogue someone
 loads (BYO third-party rates, alias rows, deprecated cities) and we
 don't want every alias to surface as a downloadable card on /setup.
 """
@@ -69,13 +69,13 @@ class CwicrV3Catalogue:
 
     @property
     def collection(self) -> str:
-        """‌⁠‍Target Qdrant collection — the search-time name."""
+        """‌⁠‍Target Qdrant collection - the search-time name."""
         return f"cwicr_{self.language}_v3"
 
 
 # ── Master list ──────────────────────────────────────────────────────────
 #
-# Order: alphabetical by ``region`` — the UI sorts by ``country_iso`` /
+# Order: alphabetical by ``region`` - the UI sorts by ``country_iso`` /
 # language anyway, but a stable backend order keeps diffs readable.
 #
 # ``size_mb`` for ``available=True`` rows is the actual file size
@@ -624,7 +624,7 @@ CWICR_V3_CATALOGUES: tuple[CwicrV3Catalogue, ...] = (
 # 2-letter language/locale codes; some filenames use legacy region IDs that
 # differ from our internal ``region`` keys (e.g. our CA_TORONTO maps to
 # the legacy ENG_TORONTO file). Where DDC publishes only one snapshot per
-# language, every region in that language family reuses it — same pattern
+# language, every region in that language family reuses it - same pattern
 # as PT_LISBON sharing PT_SAOPAULO. Cross-locale BGE-M3 embeddings make
 # the lexical drift (e.g. "vidrio templado" vs "cristal") tolerable; pricing
 # differences are folded in by the FX layer at match time.
@@ -675,7 +675,7 @@ _HF_PUBLISHED: dict[str, tuple[str, str]] = {
     "USA_USD": ("US", "USA_USD"),
     "ZA_JOHANNESBURG": ("ZA", "ZA_JOHANNESBURG"),
     "CN_SHANGHAI": ("ZH", "ZH_SHANGHAI"),
-    # Newly published 2026-05-14 — folder/stem match the HF tree directly.
+    # Newly published 2026-05-14 - folder/stem match the HF tree directly.
     "MN_ULAANBAATAR": ("MN", "MN_ULAANBAATAR"),
     "BG_SOFIA": ("BG", "BG_SOFIA"),
     "HR_ZAGREB": ("HR", "HR_ZAGREB"),
@@ -724,7 +724,7 @@ CWICR_V3_CATALOGUES = _apply_hf_overrides(CWICR_V3_CATALOGUES)
 def get_catalogue(region: str) -> CwicrV3Catalogue | None:
     """Return the registry entry for ``region`` or ``None`` if unknown.
 
-    Lookup is case-insensitive on the input but exact on the keys —
+    Lookup is case-insensitive on the input but exact on the keys -
     aliases are NOT followed. A caller hitting the install endpoint
     with a legacy id (``UK_GBP``, ``ENG_TORONTO``) gets a clear 404
     instead of a silently-wrong restore. Convert via

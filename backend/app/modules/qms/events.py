@@ -51,7 +51,7 @@ async def _on_hse_capa_completed(event: Event) -> None:
     # The HSE event payload is intentionally lean; if the source_type was
     # not 'incident' we do nothing. The mirror event below carries the
     # contextual fields explicitly.
-    return  # explicit no-op — see _on_hse_incident_root_cause for the real path
+    return  # explicit no-op - see _on_hse_incident_root_cause for the real path
 
 
 async def _on_hse_incident_root_cause(event: Event) -> None:
@@ -59,7 +59,7 @@ async def _on_hse_incident_root_cause(event: Event) -> None:
 
     We look up the HSE CAPA on-demand to determine whether it was tied to
     an incident and what the cost / severity context is. The subscriber
-    is fail-soft — any error is logged at debug.
+    is fail-soft - any error is logged at debug.
     """
     data = event.data or {}
     capa_id = data.get("capa_id")
@@ -80,7 +80,7 @@ async def _on_hse_incident_root_cause(event: Event) -> None:
                 return
             if capa.source_type != "incident":
                 return
-            # Idempotency — check if an NCR with this CAPA reference already exists.
+            # Idempotency - check if an NCR with this CAPA reference already exists.
             from sqlalchemy import select  # noqa: PLC0415
 
             existing = await session.execute(
@@ -157,11 +157,11 @@ async def _on_ncr_raised_fanout(event: Event) -> None:
 
     Two follow-on events:
 
-    * ``procurement.supplier_rating_update`` — when an NCR is linked to
+    * ``procurement.supplier_rating_update`` - when an NCR is linked to
       an inspection that references a subcontractor / supplier, the rating
       projection should re-compute. We publish unconditionally and let the
-      procurement-side handler resolve the supplier — keeps coupling loose.
-    * ``bi_dashboards.kpi_recompute`` — the COPQ / first-pass-yield gauges
+      procurement-side handler resolve the supplier - keeps coupling loose.
+    * ``bi_dashboards.kpi_recompute`` - the COPQ / first-pass-yield gauges
       depend on NCR counts and severities.
     """
     data = event.data or {}
@@ -210,7 +210,7 @@ async def _on_hold_point_failed(event: Event) -> None:
     ``bi_dashboards.kpi_recompute`` so the first-pass-yield gauge refreshes.
     A failed hold point is the strongest quality signal on a project, so the
     hook is wired now even though the punchlist auto-raise lands in Phase 2.
-    The subscriber is fail-soft — any error is logged at debug.
+    The subscriber is fail-soft - any error is logged at debug.
     """
     data = event.data or {}
     inspection_id = data.get("inspection_id")
@@ -259,7 +259,7 @@ async def _on_inspection_approval_requested(event: Event) -> None:
     ``qms_hold_point`` approval route configured, start an approval instance
     against the inspection so the gate cannot release without sign-off. When
     no route is configured the event is a no-op (the project simply has not
-    opted into routed hold-point dispositions) — a release still requires the
+    opted into routed hold-point dispositions) - a release still requires the
     MANAGER+ ``qms.inspection.release_hold`` permission, so the gate is never
     silently weakened. Fail-soft: any error is logged at debug.
     """

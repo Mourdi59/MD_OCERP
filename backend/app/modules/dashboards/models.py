@@ -3,12 +3,12 @@
 """‌⁠‍Dashboards ORM models (T01 and later tasks).
 
 Tables:
-    oe_dashboards_snapshot        — point-in-time Parquet dumps of entity data
-    oe_dashboards_source_file     — per-file manifest rows inside a snapshot (T01, T10)
+    oe_dashboards_snapshot        - point-in-time Parquet dumps of entity data
+    oe_dashboards_source_file     - per-file manifest rows inside a snapshot (T01, T10)
 
 The Parquet blobs themselves live under the configured StorageBackend
 (see :mod:`app.modules.dashboards.snapshot_storage`). Only metadata
-lives in SQL — entity rows are never persisted to the relational DB.
+lives in SQL - entity rows are never persisted to the relational DB.
 """
 
 from __future__ import annotations
@@ -34,13 +34,13 @@ from app.database import GUID, Base
 class Snapshot(Base):
     """‌⁠‍One named Parquet dump of a project's entity data.
 
-    A snapshot is immutable once created — re-running cad2data produces
+    A snapshot is immutable once created - re-running cad2data produces
     a fresh snapshot with a new id. Users compare snapshots via the
     historical navigator (T11); they never edit an existing one.
 
     The ``parquet_dir`` column stores the *storage key prefix* (as
     composed by :func:`snapshot_storage.snapshot_prefix`), not a
-    filesystem path — that way moving from local to S3 does not rewrite
+    filesystem path - that way moving from local to S3 does not rewrite
     any row in the DB.
     """
 
@@ -61,7 +61,7 @@ class Snapshot(Base):
     parquet_dir: Mapped[str] = mapped_column(String(500), nullable=False)
     total_entities: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     total_categories: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    # Shape: ``{"walls": 324, "doors": 48, ...}`` — one entry per
+    # Shape: ``{"walls": 324, "doors": 48, ...}`` - one entry per
     # category, value is row count. Rendered directly by T07 as the
     # "category bar" chart without re-querying DuckDB.
     summary_stats: Mapped[dict] = mapped_column(  # type: ignore[assignment]
@@ -86,7 +86,7 @@ class Snapshot(Base):
     )
 
     __table_args__ = (
-        # A label is unique within a project — two users on the same
+        # A label is unique within a project - two users on the same
         # project cannot both call a snapshot "Baseline".
         UniqueConstraint(
             "project_id",
@@ -95,7 +95,7 @@ class Snapshot(Base):
         ),
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — debug only
+    def __repr__(self) -> str:  # pragma: no cover - debug only
         return (
             f"Snapshot(id={self.id}, project_id={self.project_id}, "
             f"label={self.label!r}, total_entities={self.total_entities})"
@@ -108,7 +108,7 @@ class SnapshotSourceFile(Base):
     Populated by the cad2data bridge during snapshot creation. One row
     per uploaded file. The discipline free-text is user-provided at
     upload time (``"architecture"`` / ``"structure"`` / ``"mep"`` /
-    ``"civil"`` — no enum because regional naming varies).
+    ``"civil"`` - no enum because regional naming varies).
     """
 
     __tablename__ = "oe_dashboards_source_file"
@@ -125,7 +125,7 @@ class SnapshotSourceFile(Base):
     discipline: Mapped[str | None] = mapped_column(String(100), nullable=True)
     entity_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     bytes_size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    # Free-form notes returned by the converter — parse errors, skipped
+    # Free-form notes returned by the converter - parse errors, skipped
     # categories, version warnings. Stored as JSON to avoid a string
     # schema lock-in.
     converter_notes: Mapped[dict] = mapped_column(  # type: ignore[assignment]
@@ -140,16 +140,16 @@ class DashboardPreset(Base):
 
     Two kinds of rows live in this table:
 
-    * ``kind="preset"`` — private to ``owner_id``; never visible to
+    * ``kind="preset"`` - private to ``owner_id``; never visible to
       other users even on the same project.
-    * ``kind="collection"`` — when ``shared_with_project=True`` AND
+    * ``kind="collection"`` - when ``shared_with_project=True`` AND
       ``project_id`` is set, every user with project access can list
       and load it. The owner remains the only user who can edit it.
 
     ``project_id`` is nullable to support "global" presets that follow
     the user across projects (e.g. a personal "always show element
     counts" template). ``config_json`` is opaque from the DB's
-    perspective — typical content is
+    perspective - typical content is
     ``{"snapshot_id": "...", "filters": {...}, "charts": [{...}]}``.
     """
 
@@ -189,9 +189,9 @@ class DashboardPreset(Base):
         default=False,
     )
     # ── Sync protocol (T09) ────────────────────────────────────────────
-    # ``synced``       — preset references match the snapshot's current shape.
-    # ``stale``        — snapshot was refreshed but no sync-check has run yet.
-    # ``needs_review`` — sync-check found issues that auto-heal cannot fix.
+    # ``synced``       - preset references match the snapshot's current shape.
+    # ``stale``        - snapshot was refreshed but no sync-check has run yet.
+    # ``needs_review`` - sync-check found issues that auto-heal cannot fix.
     sync_status: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
@@ -213,5 +213,5 @@ class DashboardPreset(Base):
         ),
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — debug only
+    def __repr__(self) -> str:  # pragma: no cover - debug only
         return f"DashboardPreset(id={self.id}, owner_id={self.owner_id}, name={self.name!r}, kind={self.kind})"

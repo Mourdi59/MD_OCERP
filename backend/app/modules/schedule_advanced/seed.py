@@ -129,14 +129,14 @@ async def seed_schedule_advanced_demo(
             planned_start=today - timedelta(days=180),
             planned_finish=today + timedelta(days=365),
             status="active",
-            notes="Seed data — LPS demo",
+            notes="Seed data - LPS demo",
         )
         session.add(m)
         masters.append(m)
         counts["master_schedules"] += 1
     await session.flush()
 
-    # ── Phase plans (12 total — 4 per master) ───────────────────────────
+    # ── Phase plans (12 total - 4 per master) ───────────────────────────
     phase_names = (
         "Site Preparation",
         "Foundations",
@@ -163,7 +163,7 @@ async def seed_schedule_advanced_demo(
             counts["phase_plans"] += 1
     await session.flush()
 
-    # ── Look-aheads (2 per master — 6 total) ───────────────────────────
+    # ── Look-aheads (2 per master - 6 total) ───────────────────────────
     look_aheads: list[LookAheadPlan] = []
     for m in masters:
         for j in range(2):
@@ -282,7 +282,7 @@ async def seed_schedule_advanced_demo(
             counts["rncs"] += 1
     await session.flush()
 
-    # ── Baselines (~6 — 2 per master) + deltas ────────────────────────
+    # ── Baselines (~6 - 2 per master) + deltas ────────────────────────
     delta_target = 60
     deltas_per_baseline = max(1, delta_target // max(1, len(masters) * 2))
     for m in masters:

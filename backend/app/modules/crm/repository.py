@@ -232,7 +232,7 @@ class OpportunityRepository:
     async def pipeline_value_by_owner(self) -> dict[uuid.UUID | None, Decimal]:
         """‌⁠‍Aggregate sum(estimated_value) for open opportunities grouped by owner.
 
-        Returns Decimal — Round-5 audit closed the legacy float coercion
+        Returns Decimal - Round-5 audit closed the legacy float coercion
         that silently drifted cents per million-dollar pipeline. Money
         flows here feed the dashboard cards and forecast comparisons, so
         cent-exactness is load-bearing.

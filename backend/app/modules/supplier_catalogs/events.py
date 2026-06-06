@@ -21,7 +21,7 @@ VENDOR_SUSPENDED = "supplier_catalogs.vendor.suspended"
 VENDOR_BLACKLISTED = "supplier_catalogs.vendor.blacklisted"
 VENDOR_RATED = "supplier_catalogs.vendor.rated"
 
-# Catalog SKU lifecycle (Wave M4 deep-pass) — Match Elements
+# Catalog SKU lifecycle (Wave M4 deep-pass) - Match Elements
 # subscribes to MATERIAL_ADDED to schedule a vector re-index of the
 # affected SKU into the embedding store. BI Dashboards uses the same
 # topic to bump the supplier-coverage KPI projection.
@@ -52,7 +52,7 @@ STOCK_ISSUED = "supplier_catalogs.stock.issued"
 STOCK_LOW_THRESHOLD = "supplier_catalogs.stock.low_threshold"
 STOCK_ADJUSTED = "supplier_catalogs.stock.adjusted"
 
-# Stock low / reorder alert — emitted whenever a balance dips below reorder_point
+# Stock low / reorder alert - emitted whenever a balance dips below reorder_point
 STOCK_LOW = "supplier_catalogs.stock.low"
 
 # KYC / compliance lifecycle
@@ -84,7 +84,7 @@ async def _on_material_added(event: Event) -> None:
     catalog_item_id = data.get("catalog_item_id")
     if not catalog_item_id:
         return
-    # Match Elements vector store reindex — Qdrant collection
+    # Match Elements vector store reindex - Qdrant collection
     # ``supplier_catalog_items`` keyed on catalog_item_id.
     try:
         event_bus.publish_detached(

@@ -6,7 +6,7 @@ password-reset).  Each template returns ``(subject, html_body)`` so the
 caller can decide whether to wrap it in an ``EmailMessage`` and push it
 through the service, or inspect it directly in unit tests.
 
-Kept template-only — no I/O, no settings, no side effects — so it can
+Kept template-only - no I/O, no settings, no side effects - so it can
 be imported from tests without touching the rest of the stack.
 """
 
@@ -126,7 +126,7 @@ def template_password_reset(
 ) -> tuple[str, str]:
     """‌⁠‍Password-reset template.
 
-    ``reset_url`` already carries the token as a query parameter — the
+    ``reset_url`` already carries the token as a query parameter - the
     template does not embed the raw token separately so we never leak it
     to copy-paste or forwarded-email attack paths.
     """
@@ -138,6 +138,6 @@ def template_password_reset(
         f"<strong>{_APP_NAME}</strong> account. Click the button below to choose a new one. "
         f"The link is valid for {token_lifetime_minutes} minutes.</p>"
         f"<p style='font-size:13px; color:#6e6e73;'>If you did not request a password reset, "
-        f"you can safely ignore this email — your password will not change.</p>"
+        f"you can safely ignore this email - your password will not change.</p>"
     )
     return subject, wrap("Reset your password", body, reset_url, "Reset password")

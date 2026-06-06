@@ -3,7 +3,7 @@
 """File Comments business logic.
 
 Stateless service. The router composes these functions inside the
-request-scoped session — they don't open transactions themselves so a
+request-scoped session - they don't open transactions themselves so a
 caller can string multiple operations together (e.g. create-comment +
 extract-mentions) in a single commit.
 
@@ -18,7 +18,7 @@ Mention resolution
        (e.g. ``@alicesmith`` matches ``Alice Smith``).
 
 The match is case-insensitive on both sides. Unresolvable handles are
-silently dropped — the mention rows only exist for resolved users.
+silently dropped - the mention rows only exist for resolved users.
 
 Soft delete
 -----------
@@ -160,7 +160,7 @@ async def get_comment(
 
     Used by the router to resolve a comment's ``project_id`` so it can run
     the project-access (IDOR) gate BEFORE any mutation. Returns the raw
-    ORM row — the caller is responsible for the access decision.
+    ORM row - the caller is responsible for the access decision.
     """
     stmt = select(FileComment).where(FileComment.id == comment_id)
     return (await session.execute(stmt)).scalar_one_or_none()
@@ -220,7 +220,7 @@ async def create_comment(
 ) -> tuple[FileComment, list[FileCommentMention]]:
     """Insert a comment + resolve @mentions.
 
-    Returns ``(comment, mentions)`` — the router lifts them into a
+    Returns ``(comment, mentions)`` - the router lifts them into a
     response. Both PDF-pin coordinates are required together: a comment
     with one of ``anchor_x``/``anchor_y`` but not the other is rejected
     here (we can't render half a pin).
@@ -230,7 +230,7 @@ async def create_comment(
 
     # If a parent is referenced, it must (a) exist, (b) belong to the
     # same (project, kind, file) tuple. Cross-thread parenting is
-    # rejected — otherwise a stranger could nest replies under a
+    # rejected - otherwise a stranger could nest replies under a
     # comment they do not normally see.
     if payload.parent_id is not None:
         parent_stmt = select(FileComment).where(FileComment.id == payload.parent_id)
@@ -244,7 +244,7 @@ async def create_comment(
         ):
             raise ValueError("Parent comment belongs to a different file")
 
-    # Epic C — default ``file_version_id`` to the chain head when the
+    # Epic C - default ``file_version_id`` to the chain head when the
     # caller hasn't pinned one explicitly. Best-effort: a missing chain
     # head leaves the FK NULL (legacy behaviour, treated as "current"
     # in the viewer).
@@ -260,7 +260,7 @@ async def create_comment(
             repo = FileVersionRepository(session)
             seeds = await repo.list_for_file_id(payload.file_id, payload.file_kind)
             if seeds:
-                # ``list_chain`` is the authoritative lookup — it
+                # ``list_chain`` is the authoritative lookup - it
                 # follows the canonical_name even if the seed id
                 # itself is not the current row.
                 chain = await repo.list_chain(
@@ -301,7 +301,7 @@ async def create_comment(
         comment=comment,
     )
 
-    # Epic H — universal audit trail.
+    # Epic H - universal audit trail.
     from app.core.audit_log import log_activity as _log_activity
 
     await _log_activity(
@@ -406,7 +406,7 @@ async def _extract_and_persist_mentions(
                     },
                     source_module="oe_file_comments",
                 )
-        except Exception:  # noqa: BLE001 — event publish must never break the comment insert
+        except Exception:  # noqa: BLE001 - event publish must never break the comment insert
             logger.debug("file_comments: mention event publish failed", exc_info=True)
     return rows
 
@@ -424,7 +424,7 @@ async def update_comment(
 
     Only the author may edit the body; resolution is open to anyone
     with the ``file_comments.resolve`` permission (the router already
-    gates this). Returns ``None`` when the comment is missing — the
+    gates this). Returns ``None`` when the comment is missing - the
     router translates to 404.
     """
     stmt = select(FileComment).where(FileComment.id == comment_id)
@@ -452,7 +452,7 @@ async def update_comment(
     if body_changed:
         # Re-extract mentions on body edit so newly-added @handles
         # surface, and removed ones stop pinging. Old rows are
-        # cleared and replaced — the unique constraint prevents
+        # cleared and replaced - the unique constraint prevents
         # accidental duplicates.
         del_stmt = delete(FileCommentMention).where(FileCommentMention.comment_id == comment_id)
         await session.execute(del_stmt)
@@ -490,7 +490,7 @@ async def soft_delete_comment(
     if comment is None:
         return False
     if comment.author_id != actor_id:
-        # Author-only delete — match the edit gate. Admins go through
+        # Author-only delete - match the edit gate. Admins go through
         # a separate moderator endpoint (not in this wave).
         raise PermissionError("Only the author may delete a comment")
     comment.body = "[deleted]"
@@ -500,7 +500,7 @@ async def soft_delete_comment(
     await session.execute(delete(FileCommentMention).where(FileCommentMention.comment_id == comment_id))
     await session.flush()
 
-    # Epic H — universal audit trail.
+    # Epic H - universal audit trail.
     from app.core.audit_log import log_activity as _log_activity
 
     await _log_activity(
@@ -570,7 +570,7 @@ async def acknowledge_mention(
     """Stamp ``notified_at`` so the mention disappears from the inbox.
 
     Returns ``False`` if the mention is missing or doesn't belong to
-    ``user_id`` — the router maps both to 404 so cross-user IDOR is
+    ``user_id`` - the router maps both to 404 so cross-user IDOR is
     indistinguishable from "row not found".
     """
     stmt = select(FileCommentMention).where(

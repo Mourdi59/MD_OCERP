@@ -1,20 +1,20 @@
-"""BOQ Drafter — sample agent that drafts a BOQ from a brief.
+"""BOQ Drafter - sample agent that drafts a BOQ from a brief.
 
-Tools (declarative — wired into the global registry on import):
+Tools (declarative - wired into the global registry on import):
 
-* ``search_costs(q, region)``     — proxy over ``costs.matcher.match_cwicr_items``
-* ``suggest_assembly(description)`` — looks up the platform-wide
+* ``search_costs(q, region)``     - proxy over ``costs.matcher.match_cwicr_items``
+* ``suggest_assembly(description)`` - looks up the platform-wide
                                     ``AssemblyTemplate`` library
                                     (``assemblies.repository``).
 * ``create_position(boq_id, description, unit, qty, unit_rate, currency)``
-  — does NOT hit the BOQ tables. Per the architecture guide
+  - does NOT hit the BOQ tables. Per the architecture guide
   "AI-augmented, human-confirmed", the runner only RETURNS a proposal; the
   user reviews it in the UI before any real position is created. The tool
   just structures the proposal payload.
 
 Data integrity (no-stubs rule): the cost/assembly tools NEVER fabricate
 priced rows. If the database is unreachable in the current process (no
-async context — e.g. a unit test instantiating a tool directly) the tool
+async context - e.g. a unit test instantiating a tool directly) the tool
 returns an explicit ``{"error": ...}`` observation so the LLM cannot
 ground a "real" BOQ proposal on invented money or recipes.
 """
@@ -39,7 +39,7 @@ SYSTEM_PROMPT = (
     "Use the available tools to look up real cost rates and assembly recipes, "
     "then propose BOQ positions via create_position. Once the proposal is "
     "complete, reply with a concise markdown summary of the positions for the "
-    "user to review. Never invent fictitious unit rates — call search_costs, "
+    "user to review. Never invent fictitious unit rates - call search_costs, "
     "and pass the ISO currency code from the match into create_position. If "
     "search_costs returns an error or no matches, say pricing could not be "
     "looked up rather than guessing a rate. Never combine rates of different "
@@ -56,7 +56,7 @@ async def _tool_search_costs(q: str, region: str | None = None) -> dict[str, Any
     Returns up to 5 real catalogue matches, each with its ISO ``currency``
     code. If no DB session can be opened (e.g. a unit test instantiating
     the tool directly), the tool returns an explicit ``{"error": ...}``
-    observation rather than a fabricated priced row — the LLM must never
+    observation rather than a fabricated priced row - the LLM must never
     ground an estimate on invented money (no-stubs / data-integrity rule).
     """
     q_clean = (q or "").strip()
@@ -95,7 +95,7 @@ async def _tool_search_costs(q: str, region: str | None = None) -> dict[str, Any
             "error": "unavailable",
             "detail": (
                 "Cost database is not reachable in this context. No rates "
-                "available — do not invent unit rates; report that pricing "
+                "available - do not invent unit rates; report that pricing "
                 "could not be looked up."
             ),
         }
@@ -109,7 +109,7 @@ async def _tool_suggest_assembly(description: str) -> dict[str, Any]:
     best-matching template (name, category, unit, components,
     classification). If the library is unreachable or has no match the
     tool returns an explicit ``{"suggestion": None}`` / ``{"error": ...}``
-    observation — it NEVER fabricates a recipe (no-stubs rule).
+    observation - it NEVER fabricates a recipe (no-stubs rule).
     """
     desc = (description or "").strip()
     if not desc:
@@ -132,7 +132,7 @@ async def _tool_suggest_assembly(description: str) -> dict[str, Any]:
             "error": "unavailable",
             "detail": (
                 "Assembly template library is not reachable in this context. "
-                "No recipe available — do not invent assembly components."
+                "No recipe available - do not invent assembly components."
             ),
         }
 
@@ -164,12 +164,12 @@ async def _tool_create_position(
     unit_rate: float = 0.0,
     currency: str = "",
 ) -> dict[str, Any]:
-    """Build a structured BOQ-position PROPOSAL — NEVER writes the DB.
+    """Build a structured BOQ-position PROPOSAL - NEVER writes the DB.
 
     Per the architecture guide the runner only returns proposals; the user confirms
     them in the review panel before anything lands in the project.
 
-    ``currency`` carries the ISO 4217 code of ``unit_rate`` — it MUST be
+    ``currency`` carries the ISO 4217 code of ``unit_rate`` - it MUST be
     the same currency the rate came from in ``search_costs`` (money rule:
     a priced proposal without its currency is meaningless, and rates from
     different currencies must never be combined into one total).
@@ -195,13 +195,13 @@ async def _tool_create_position(
         "unit_rate": round(rate_f, 4),
         "total": total,
         "currency": currency_code,
-        # The frontend wires "Apply" to a confirmed POST — not done here.
+        # The frontend wires "Apply" to a confirmed POST - not done here.
         "confirmed": False,
     }
     if not currency_code:
         # Surface the gap so the LLM re-calls search_costs for the ISO code
         # instead of silently proposing an un-priced line.
-        proposal["warning"] = "missing currency — re-run search_costs and supply the ISO currency code of the unit_rate"
+        proposal["warning"] = "missing currency - re-run search_costs and supply the ISO currency code of the unit_rate"
     return proposal
 
 
@@ -258,10 +258,10 @@ def register_boq_drafter() -> None:
             name="create_position",
             description=(
                 "Append a BOQ position PROPOSAL to the run output. This does NOT "
-                "modify the project — the user must approve every proposal in the "
+                "modify the project - the user must approve every proposal in the "
                 "review panel. Call this once per line item. The 'currency' field "
                 "is the ISO 4217 code of the unit_rate (take it from the "
-                "search_costs match you used) — never mix rates of different "
+                "search_costs match you used) - never mix rates of different "
                 "currencies in one estimate."
             ),
             input_schema={

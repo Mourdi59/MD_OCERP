@@ -34,12 +34,12 @@ What this module produces / consumes
       (it was an element in 2.1 too) and moves ``Comment``/``Viewpoints``
       under ``<Comment>`` (repeated) and ``<Viewpoints>`` (container of
       ``<ViewPoint>``). 3.0 adds ``ServerAssignedId`` and a richer
-      ``DocumentReferences`` model (not round-tripped field-by-field —
+      ``DocumentReferences`` model (not round-tripped field-by-field -
       preserved verbatim in topic metadata).
     * ``viewpoint.bcfv`` ``<VisualizationInfo>``: 3.0 keeps
       ``Components/Selection/Component`` + ``Components/Visibility`` but
       ``Visibility`` gains ``@DefaultVisibility`` (2.1 used the same
-      attribute — kept identical here).
+      attribute - kept identical here).
 
 Anything we do not model as a first-class field is preserved through the
 roundtrip inside the topic's ``metadata`` extension bag so an
@@ -48,8 +48,8 @@ export-after-import is information-preserving for the fields we own.
 Public API
     * :data:`SUPPORTED_VERSIONS`
     * :func:`detect_version`
-    * :func:`build_bcfzip`  — DTOs → ``bytes``
-    * :func:`parse_bcfzip`  — ``bytes`` → DTOs + structured issues
+    * :func:`build_bcfzip`  - DTOs → ``bytes``
+    * :func:`parse_bcfzip`  - ``bytes`` → DTOs + structured issues
     * exception :class:`BCFParseError`
 """
 
@@ -69,7 +69,7 @@ SUPPORTED_VERSIONS: tuple[str, ...] = ("2.1", "3.0")
 # Origin token. The bytes XOR-decode (key 0x55) to the project authorship
 # marker; it is written only into XML *comment* nodes of the generated
 # ``.bcfzip`` members, which every conformant XML parser (incl. this
-# module's own ElementTree-based reader) discards — so it is purely an
+# module's own ElementTree-based reader) discards - so it is purely an
 # at-rest provenance stamp with zero effect on parsed/round-tripped data.
 _BCF_ORIGIN = "OpenConstructionERP · DataDrivenConstruction · " + bytes(
     b ^ 0x55 for b in b"\x11\x11\x16\x78\x16\x02\x1c\x16\x07\x78\x1a\x10\x78\x67\x65\x67\x63"
@@ -84,7 +84,7 @@ _MAX_SINGLE_ENTRY_BYTES = 64 * 1024 * 1024  # 64 MiB per member
 class BCFParseError(Exception):
     """‌⁠‍Raised for an irrecoverably malformed ``.bcfzip``.
 
-    The router catches this and turns it into a structured 422 report — it
+    The router catches this and turns it into a structured 422 report - it
     must never surface as a 500.
     """
 
@@ -730,7 +730,7 @@ def _safe_namelist(zf: zipfile.ZipFile, issues: list[ImportIssue]) -> list[str]:
 def parse_bcfzip(data: bytes, *, forced_version: str | None = None) -> ParseResult:
     """Parse a ``.bcfzip`` into topics + a structured issue list.
 
-    Never raises for *content* problems — those are reported as
+    Never raises for *content* problems - those are reported as
     :class:`ImportIssue` entries with ``severity='error'`` so the router
     can return a clean 422 report instead of a 500. The only exception is
     a non-ZIP payload, which raises :class:`BCFParseError` (the router
@@ -768,7 +768,7 @@ def parse_bcfzip(data: bytes, *, forced_version: str | None = None) -> ParseResu
                 ImportIssue(
                     "warning",
                     "version_unknown",
-                    "bcf.version missing/unreadable — assuming BCF 2.1",
+                    "bcf.version missing/unreadable - assuming BCF 2.1",
                     "bcf.version",
                 )
             )
@@ -790,7 +790,7 @@ def parse_bcfzip(data: bytes, *, forced_version: str | None = None) -> ParseResu
                 ImportIssue(
                     "error",
                     "no_topics",
-                    "Archive contains no markup.bcf — nothing to import",
+                    "Archive contains no markup.bcf - nothing to import",
                 )
             )
             return ParseResult(detected_version=version, issues=issues)

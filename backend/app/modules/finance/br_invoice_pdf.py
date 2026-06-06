@@ -1,4 +1,4 @@
-"""Brazilian-styled invoice PDF (Tier-1 — pre-NF-e bridge).
+"""Brazilian-styled invoice PDF (Tier-1 - pre-NF-e bridge).
 
 Brazil's official electronic invoice is the NF-e (goods, federal SEFAZ XML
 schema 4.00) or NFS-e (services, municipal). Full integration involves:
@@ -9,8 +9,8 @@ schema 4.00) or NFS-e (services, municipal). Full integration involves:
 * CRC parity-protected access keys (chave de acesso, 44 digits).
 
 That work is Tier-2 (see ``__brazil_tier2_followups.md``). Until it lands,
-the practical complaint from Brazilian users — "there is no invoice
-support for BRL" (feedback 2026-05-27) — is that the existing Excel
+the practical complaint from Brazilian users - "there is no invoice
+support for BRL" (feedback 2026-05-27) - is that the existing Excel
 export doesn't carry the fields a Brazilian estimator's accountant
 expects: CNPJ, IE, Razão Social, endereço, código de serviço, retenções
 (IRRF / INSS / ISS / PIS / COFINS / CSLL).
@@ -30,7 +30,7 @@ that effect. What it DOES give the user:
 
 The CNPJ / IE / endereço / código de serviço values are read from
 ``Invoice.metadata['br_fields']``. When absent we render the row with an
-em-dash placeholder so the PDF still prints cleanly — accountants can
+em-dash placeholder so the PDF still prints cleanly - accountants can
 hand-write the missing values onto the paper copy.
 """
 
@@ -67,7 +67,7 @@ MARGIN_RIGHT = 18 * mm
 MARGIN_TOP = 18 * mm
 MARGIN_BOTTOM = 18 * mm
 
-EM_DASH = "—"
+EM_DASH = "-"
 
 
 # ── BRL formatting (1.234.567,89) ──────────────────────────────────────
@@ -123,7 +123,7 @@ def _safe_para(text: Any, style: ParagraphStyle) -> Paragraph:
 
     Mirrors :func:`backend.app.modules.boq.pdf_export._safe_para`. Stops
     ``<font color="white">hidden</font>`` style attacks from the BR
-    fields dict (which arrives via ``Invoice.metadata`` — a JSON column
+    fields dict (which arrives via ``Invoice.metadata`` - a JSON column
     populated by the API caller, not pre-validated).
     """
     if text is None:
@@ -323,7 +323,7 @@ def render_br_invoice_pdf(
     story.append(header_tbl)
     story.append(Spacer(1, 4 * mm))
 
-    # Prestador (issuer) — pulled from br_fields.prestador_*
+    # Prestador (issuer) - pulled from br_fields.prestador_*
     prestador = br_fields.get("prestador") or {}
     story.append(
         _id_block(
@@ -342,7 +342,7 @@ def render_br_invoice_pdf(
     )
     story.append(Spacer(1, 3 * mm))
 
-    # Tomador (recipient) — pulled from br_fields.tomador_*
+    # Tomador (recipient) - pulled from br_fields.tomador_*
     tomador = br_fields.get("tomador") or {}
     story.append(
         _id_block(
@@ -487,7 +487,7 @@ def render_br_invoice_pdf(
         story.append(_safe_para("OBSERVAÇÕES", styles["section"]))
         story.append(_safe_para(str(notes), styles["cell"]))
 
-    # Disclaimer — this is NOT a fiscal document
+    # Disclaimer - this is NOT a fiscal document
     story.append(
         _safe_para(
             "Este documento é um Recibo Provisório de Serviços (RPS) gerado pelo "

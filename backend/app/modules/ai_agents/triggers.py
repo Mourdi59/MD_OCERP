@@ -3,20 +3,20 @@
 This module is the single source of truth for two things a user-authored
 ("custom") agent's automation envelope needs:
 
-1. **Tool permission map** — every runner tool has an associated platform
+1. **Tool permission map** - every runner tool has an associated platform
    permission an operator must already hold before that tool can be added to
    a custom agent. We NEVER widen a user's reach through an agent: a viewer who
    cannot write the BOQ cannot build an agent that calls ``create_position``.
    The map is consulted both at setup (``service.set_tools``) and is the
    contract the frontend tool picker renders ("you lack ``boq.write``").
 
-2. **Event-trigger catalogue** — the set of platform events a custom agent may
+2. **Event-trigger catalogue** - the set of platform events a custom agent may
    subscribe to (e.g. fire when an RFI is created). Storing the subscription is
    implemented now; the actual event-bus wiring that fires the run is a later
    wave (see module docstring of :mod:`app.modules.ai_agents.scheduler`), so the
    catalogue is the stable surface the builder UI lists and validates against.
 
-Both are pure data + small pure helpers — no DB, no I/O — so they import
+Both are pure data + small pure helpers - no DB, no I/O - so they import
 cheaply from the service, the router and the tests.
 """
 
@@ -31,7 +31,7 @@ from __future__ import annotations
 # permission of the module it touches.
 #
 # Note on ``create_position``: the BOQ-drafter tool only structures a PROPOSAL
-# (it never writes the DB — the user confirms in the review panel). We still
+# (it never writes the DB - the user confirms in the review panel). We still
 # gate it on ``boq.create`` so that the *capability to draft BOQ lines* is only
 # offered to operators who could create those lines themselves; this keeps the
 # permission story honest end to end.

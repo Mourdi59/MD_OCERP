@@ -4,7 +4,7 @@ Mounted at ``/api/v1/schedule-advanced/`` by the module loader.
 
 All write endpoints are gated by :class:`RequirePermission`. Every
 project-scoped read/write/delete endpoint additionally enforces
-:func:`verify_project_access` (added in v3.0.x IDOR sweep — closes the
+:func:`verify_project_access` (added in v3.0.x IDOR sweep - closes the
 cross-tenant exfil hole where any authenticated user could read or
 mutate Last-Planner-System records belonging to another tenant's
 project just by guessing UUIDs).
@@ -148,7 +148,7 @@ async def _project_id_for_constraint(
     if c is None:
         raise _not_found("Constraint not found")
     if c.look_ahead_id is None:
-        # Detached constraint — no project to verify against. Raise 404
+        # Detached constraint - no project to verify against. Raise 404
         # rather than silently grant access (defence-in-depth).
         raise _not_found("Constraint not found")
     return await _project_id_for_look_ahead(c.look_ahead_id, service)
@@ -534,7 +534,7 @@ async def create_constraint(
     _perm: None = Depends(RequirePermission("schedule_advanced.create")),
     service: ScheduleAdvancedService = Depends(_get_service),
 ) -> ConstraintResponse:
-    # ConstraintCreate may have nullable look_ahead_id — gate only if present.
+    # ConstraintCreate may have nullable look_ahead_id - gate only if present.
     if getattr(data, "look_ahead_id", None) is not None:
         project_id = await _project_id_for_look_ahead(data.look_ahead_id, service)
         await verify_project_access(project_id, user_id, session)
@@ -844,7 +844,7 @@ async def miss_commitment_endpoint(
 ) -> CommitmentResponse:
     project_id = await _project_id_for_commitment(cid, service)
     await verify_project_access(project_id, user_id, session)
-    # Caller passes a full RNCCreate body — overwrite the commitment_id
+    # Caller passes a full RNCCreate body - overwrite the commitment_id
     # with the URL value to ensure consistency.
     rnc_payload = rnc.model_copy(update={"commitment_id": cid})
     c, _r = await service.mark_commitment_missed(cid, rnc_payload, user_id=user_id)
@@ -1152,7 +1152,7 @@ async def project_ppc_trend(
     ]
 
 
-# ── CPM / EVM / TIA — stateless analysis endpoints ────────────────────────
+# ── CPM / EVM / TIA - stateless analysis endpoints ────────────────────────
 
 
 @router.post("/cpm", response_model=CPMResponse)
@@ -1162,7 +1162,7 @@ async def run_cpm(
 ) -> CPMResponse:
     """‌⁠‍Run a CPM forward+backward pass on a supplied activity list.
 
-    Stateless — no DB I/O. Useful for what-if scheduling experiments,
+    Stateless - no DB I/O. Useful for what-if scheduling experiments,
     importing schedules from P6/MS Project, and powering the EoT/TIA
     analytic in :mod:`app.modules.variations`.
     """
@@ -1184,9 +1184,9 @@ async def run_tia(
     data: TIARequest,
     _perm: None = Depends(RequirePermission("schedule_advanced.read")),
 ) -> TIAResponse:
-    """‌⁠‍Time-Impact-Analysis — recompute completion date after a delay.
+    """‌⁠‍Time-Impact-Analysis - recompute completion date after a delay.
 
-    Stateless — no DB I/O. Inputs are the full schedule + a single delay
+    Stateless - no DB I/O. Inputs are the full schedule + a single delay
     event (impacted activity id + delay in working days). Used by the
     Variations EoT-claim workflow to drive granted-days decisions.
     """
@@ -1206,9 +1206,9 @@ async def run_evm(
     data: EVMRequest,
     _perm: None = Depends(RequirePermission("schedule_advanced.read")),
 ) -> EVMResponse:
-    """Earned Value Management — compute PV/EV/AC + SPI/CPI/EAC.
+    """Earned Value Management - compute PV/EV/AC + SPI/CPI/EAC.
 
-    Stateless — no DB I/O. Each activity contributes its BAC × PV-ramp
+    Stateless - no DB I/O. Each activity contributes its BAC × PV-ramp
     to the project Planned Value at ``today_workday``. EV = BAC × %
     complete; AC is reported directly.
     """
@@ -1259,7 +1259,7 @@ async def project_rnc_pareto_sorted(
     return RNCParetoSortedResponse(**payload)
 
 
-# ── CPM Slice 1 — persisted compute + leveling + weekly commitments ───────
+# ── CPM Slice 1 - persisted compute + leveling + weekly commitments ───────
 
 
 async def _project_id_for_schedule(
@@ -1269,7 +1269,7 @@ async def _project_id_for_schedule(
     """Resolve project_id for a ``oe_schedule_schedule`` row.
 
     Kept out of :class:`ScheduleAdvancedService` because that service only
-    owns LPS tables — Schedule lives in the sister ``schedule`` module.
+    owns LPS tables - Schedule lives in the sister ``schedule`` module.
     """
     from app.modules.schedule.models import Schedule as _Schedule
 
@@ -1397,7 +1397,7 @@ async def level_resources_for_schedule(
     user_id: CurrentUserId,
     _perm: None = Depends(RequirePermission("schedule_advanced.update")),
 ) -> LevelResourcesResponse:
-    """Run serial-greedy resource leveling — returns shifted ES for changed activities only."""
+    """Run serial-greedy resource leveling - returns shifted ES for changed activities only."""
     from sqlalchemy import select
 
     from app.modules.schedule.models import Activity as _Activity

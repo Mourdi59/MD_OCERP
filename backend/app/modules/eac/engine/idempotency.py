@@ -7,7 +7,7 @@ A re-posted run with the same idempotency key returns the existing
 two flows:
 
 1. **Webhook retries.** A flaky upstream may re-fire the run trigger
-   (e.g. on file upload) — without idempotency, every retry burns CPU
+   (e.g. on file upload) - without idempotency, every retry burns CPU
    and produces duplicate result rows the user sees as noise.
 2. **Client retries on transient errors.** Clients that retry on
    network blips need an at-least-once contract; idempotency makes it
@@ -16,9 +16,9 @@ two flows:
 The key is either:
 
 * **Client-supplied** via the ``Idempotency-Key`` HTTP header
-  (RFC 9110 ``Idempotency-Key`` semantics) — prefixed with ``client:``
+  (RFC 9110 ``Idempotency-Key`` semantics) - prefixed with ``client:``
   so it can never collide with an auto-derived key.
-* **Auto-derived** from a stable hash of the inputs — prefixed with
+* **Auto-derived** from a stable hash of the inputs - prefixed with
   ``auto:``. Useful for the webhook case where the trigger doesn't know
   whether the same input has been submitted before.
 
@@ -31,7 +31,7 @@ Auto-derivation hashes (in order, NUL-separated):
 4. JSON-canonical-form of the element list, sorted by stable_id
    (catches changes to property values within the same set)
 
-The result is a 64-hex-char SHA-256 digest plus the ``auto:`` prefix —
+The result is a 64-hex-char SHA-256 digest plus the ``auto:`` prefix -
 71 chars total, comfortably within the 128-char ``idempotency_key``
 column width.
 """
@@ -62,7 +62,7 @@ def compute_idempotency_key(
     See module docstring for the contract.
     """
     if client_supplied:
-        # Header values are user-controlled — strip whitespace and clamp
+        # Header values are user-controlled - strip whitespace and clamp
         # length so a malicious caller can't blow the column. Rejecting
         # outright would force them to handle yet another error code; we
         # prefer "best-effort idempotency" over "strict validation".
@@ -98,7 +98,7 @@ def _canonical_sorted(
     """‌⁠‍Return ``elements`` sorted by ``stable_id`` for deterministic hashing.
 
     Elements without a ``stable_id`` are still hashed but sorted to the
-    end — they shouldn't normally exist (the runner emits a stable id
+    end - they shouldn't normally exist (the runner emits a stable id
     for every BIM element), but defensive code keeps the hash defined
     in pathological inputs.
     """

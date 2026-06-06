@@ -1,4 +1,4 @@
-"""‌⁠‍Contracts service — business logic for the Contract Types Engine.
+"""‌⁠‍Contracts service - business logic for the Contract Types Engine.
 
 The service centralises:
     * Type-specific term validation (validate_contract_terms)
@@ -216,7 +216,7 @@ def compute_contract_total(lines: list[ContractLine | Any]) -> Decimal:
     total = DEC_ZERO
     for ln in lines:
         if getattr(ln, "id", None) in parent_ids:
-            # This line has children — skip to avoid double-counting.
+            # This line has children - skip to avoid double-counting.
             continue
         total += compute_line_total(ln)
     return total
@@ -422,7 +422,7 @@ def generate_lump_sum_claim(
         Decimal(str(getattr(contract, "retention_percent", 0) or 0)),
         prior_paid,
     )
-    # The synthesised objects above lose attribute access — recompute gross
+    # The synthesised objects above lose attribute access - recompute gross
     # directly off the dicts to be safe.
     gross = sum(
         (c["period_completed_value"] for c in claim_lines),
@@ -690,7 +690,7 @@ class ContractsService:
     #: Commercial terms that must not change once a contract is no longer a
     #: draft. Mutating contract value / retention / currency / type on a
     #: signed contract silently rewrites the agreed deal and breaks the
-    #: audit trail — value changes must go through change orders, status
+    #: audit trail - value changes must go through change orders, status
     #: through the transition endpoints.
     _LOCKED_FINANCIAL_FIELDS = (
         "total_value",
@@ -699,7 +699,7 @@ class ContractsService:
         "contract_type",
         "retention_release_event",
         # Type-specific terms (gmp_cap, target_cost, tm_nte_cap, ld_per_day…)
-        # are commercial terms too — freezing total_value but letting the
+        # are commercial terms too - freezing total_value but letting the
         # GMP cap be rewritten on a live contract would defeat the lock.
         "terms",
     )
@@ -779,7 +779,7 @@ class ContractsService:
               method is called.
             * Write access on the **destination** project is verified by
               the router via :func:`verify_project_access` before this
-              method is called — so a manager on project A cannot
+              method is called - so a manager on project A cannot
               ``clone --target_project_id=<project_B_id>`` and copy
               project A's commercial terms into project B.
             * Manager-or-higher RBAC is enforced at the route level
@@ -788,11 +788,11 @@ class ContractsService:
         Lifecycle invariants:
             * Clone is always materialised in ``draft`` status with
               ``signed_at=None`` regardless of the source's lifecycle
-              stage — a cloned contract is a brand-new instrument that
+              stage - a cloned contract is a brand-new instrument that
               must be re-signed.
             * Payment history (progress claims, claim lines, final
               accounts, lien-waiver attachments, retention-release
-              audit entries) is **never** copied — that ledger belongs
+              audit entries) is **never** copied - that ledger belongs
               to the original contract.
         """
         source = await self.get_contract(source_contract_id)
@@ -866,7 +866,7 @@ class ContractsService:
                 )
                 new_line = await self.line_repo.create(new_line)
                 id_map[ln.id] = new_line.id
-            # Pass 2 — wire up parent_line_id translations.
+            # Pass 2 - wire up parent_line_id translations.
             for ln in src_lines:
                 if ln.parent_line_id is None:
                     continue
@@ -964,7 +964,7 @@ class ContractsService:
 
         Reads ``Project.compliance_rule_packs`` (a JSON list). Falls back to
         the single default pack when the project row, the column, or the
-        value is missing — so the gate always has at least one pack to run
+        value is missing - so the gate always has at least one pack to run
         and never silently no-ops. Best-effort: a lookup failure degrades to
         the default pack rather than blocking the transition on infra error.
         """
@@ -991,7 +991,7 @@ class ContractsService:
         quantity, unit_rate, total, classification, parent_id, type}]}``.
         Schedule-of-values lines carry exactly that data, so the contract's
         commercial breakdown is validated with the same battle-tested rules
-        the BOQ uses — no parallel rule implementation. Parent (roll-up)
+        the BOQ uses - no parallel rule implementation. Parent (roll-up)
         rows are tagged ``type="section"`` via the parent graph so the
         leaf-only rules don't false-positive on header rows.
         """
@@ -1204,7 +1204,7 @@ class ContractsService:
                     detail=self._compliance_http_detail(report, pack_ids),
                 )
 
-            # Gate passed — stamp the audit trail onto the contract metadata.
+            # Gate passed - stamp the audit trail onto the contract metadata.
             meta = dict(contract.metadata_ or {})
             meta["compliance_validation"] = audit_entry
             fields["metadata_"] = meta
@@ -1475,7 +1475,7 @@ class ContractsService:
                 ) from exc
             result["claim_lines"] = []
         else:
-            # GMP / design_build / combination — default to lump-sum semantics
+            # GMP / design_build / combination - default to lump-sum semantics
             result = generate_lump_sum_claim(
                 contract,
                 lines,
@@ -1561,13 +1561,13 @@ class ContractsService:
         first. For every SoV line that links to a BOQ position
         (``ContractLine.metadata_["boq_position_id"]``) the latest
         ``ProgressEntry`` for that position is read and its percent-complete is
-        applied to the line value (same currency as the claim — currencies are
+        applied to the line value (same currency as the claim - currencies are
         never blended; a SoV line in a different currency than the claim is
         skipped and counted).
 
         Args:
             claim_id: target progress claim.
-            boq_position_ids: optional filter — only preview lines whose linked
+            boq_position_ids: optional filter - only preview lines whose linked
                 BOQ position is in this set.
 
         Raises:
@@ -1588,7 +1588,7 @@ class ContractsService:
         progress_repo = ProgressRepository(self.session)
 
         lines = await self.line_repo.list_for_contract(contract.id)
-        # Roll-up / parent rows are summed from children — never bill them
+        # Roll-up / parent rows are summed from children - never bill them
         # directly, exactly as the auto-generate path does.
         parent_ids = {ln.parent_line_id for ln in lines if getattr(ln, "parent_line_id", None) is not None}
 
@@ -1819,7 +1819,7 @@ class ContractsService:
         Change orders are only valid on commercially-live contracts (``active``
         or ``suspended``). Applying a change order to a ``terminated`` or
         ``completed`` contract would silently rewrite the final agreed value,
-        corrupt the audit trail, and — for ``terminated`` contracts — partially
+        corrupt the audit trail, and - for ``terminated`` contracts - partially
         resurrect a dead instrument. Value adjustments after close-out must
         go through a final-account amendment instead.
         """
@@ -1863,7 +1863,7 @@ class ContractsService:
         payload: Any,
         actor_id: str | None = None,
     ) -> FinalAccount:
-        """Close a contract — create / update the FinalAccount + flip status."""
+        """Close a contract - create / update the FinalAccount + flip status."""
         contract = await self.get_contract(contract_id)
         existing = await self.final_account_repo.get_for_contract(contract_id)
         fields: dict[str, Any] = {
@@ -1965,7 +1965,7 @@ class ContractsService:
         # released twice. Pre-fix the audit log was append-only but never
         # consulted to dedupe, so each call would compute net_held = held -
         # already_released and re-release the configured percentage of
-        # whatever was left — asymptotically draining retention to zero
+        # whatever was left - asymptotically draining retention to zero
         # regardless of the schedule's stated intent.
         if any(r.get("event") == event for r in prior_releases):
             raise HTTPException(
@@ -2436,10 +2436,10 @@ def plan_retention_release(
 
     Custom schedule:
         ``{"substantial_completion": 50, "punch_list_complete": 30,
-        "defects_liability_end": 20}`` — values are percentages of
+        "defects_liability_end": 20}`` - values are percentages of
         the *original* retention to release at each event.
 
-    Returns ``{event, percent_released, amount_released, remaining}`` —
+    Returns ``{event, percent_released, amount_released, remaining}`` -
     callers persist this onto the contract / final account.
     """
     held = Decimal(str(total_retention_held or 0))
@@ -2513,7 +2513,7 @@ def validate_lien_waiver_payload(payload: dict[str, Any]) -> tuple[bool, list[st
 
 CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
     "fidic_red_1999": {
-        "name": "FIDIC Red Book (1999) — Conditions of Contract for Construction",
+        "name": "FIDIC Red Book (1999) - Conditions of Contract for Construction",
         "family": "fidic",
         "key_clauses": {
             "14": "Contract Price and Payment",
@@ -2529,7 +2529,7 @@ CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
         "retention_release_event": "performance_certificate",
     },
     "fidic_yellow_1999": {
-        "name": "FIDIC Yellow Book (1999) — Plant and Design-Build",
+        "name": "FIDIC Yellow Book (1999) - Plant and Design-Build",
         "family": "fidic",
         "key_clauses": {
             "14": "Contract Price and Payment",
@@ -2542,7 +2542,7 @@ CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
         "retention_release_event": "performance_certificate",
     },
     "fidic_silver_1999": {
-        "name": "FIDIC Silver Book (1999) — EPC / Turnkey",
+        "name": "FIDIC Silver Book (1999) - EPC / Turnkey",
         "family": "fidic",
         "key_clauses": {
             "14": "Contract Price and Payment",
@@ -2590,7 +2590,7 @@ CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
         "retention_release_event": "practical_completion",
     },
     "nec4_ecc_option_a": {
-        "name": "NEC4 Engineering and Construction Contract — Option A (Priced)",
+        "name": "NEC4 Engineering and Construction Contract - Option A (Priced)",
         "family": "nec",
         "key_clauses": {
             "5": "Payment",
@@ -2601,7 +2601,7 @@ CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
         "retention_release_event": "completion",
     },
     "nec4_ecc_option_c": {
-        "name": "NEC4 ECC — Option C (Target Contract)",
+        "name": "NEC4 ECC - Option C (Target Contract)",
         "family": "nec",
         "key_clauses": {
             "5": "Payment",
@@ -2611,7 +2611,7 @@ CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
         "retention_release_event": "completion",
     },
     "aia_a201_2017": {
-        "name": "AIA A201-2017 — General Conditions",
+        "name": "AIA A201-2017 - General Conditions",
         "family": "aia",
         "key_clauses": {
             "9.3": "Applications for Payment",
@@ -2625,7 +2625,7 @@ CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
         "retention_release_event": "substantial_completion",
     },
     "aia_a102_2017": {
-        "name": "AIA A102-2017 — Owner & Contractor (Cost-Plus, GMP)",
+        "name": "AIA A102-2017 - Owner & Contractor (Cost-Plus, GMP)",
         "family": "aia",
         "key_clauses": {
             "5": "Compensation",
@@ -2636,7 +2636,7 @@ CONTRACT_CLAUSE_TEMPLATES: dict[str, dict[str, Any]] = {
         "retention_release_event": "substantial_completion",
     },
     "consensusdocs_200": {
-        "name": "ConsensusDocs 200 — Standard Owner / Constructor (Lump Sum)",
+        "name": "ConsensusDocs 200 - Standard Owner / Constructor (Lump Sum)",
         "family": "consensusdocs",
         "key_clauses": {
             "9": "Payment",

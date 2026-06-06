@@ -1,4 +1,4 @@
-"""‌⁠‍Document Management service — business logic for document management.
+"""‌⁠‍Document Management service - business logic for document management.
 
 Stateless service layer. Handles:
 - Document CRUD
@@ -105,7 +105,7 @@ async def _register_version_safely(
 ) -> None:
     """Best-effort register-new-version call.
 
-    Epic C — every upload path must register a chain row so the version
+    Epic C - every upload path must register a chain row so the version
     history is continuous. Wrapped in a try/except so a chain-write
     failure (e.g. ``oe_file_version`` table missing on a misconfigured
     install) cannot mask a successful upload. The kind-side row is the
@@ -145,7 +145,7 @@ UPLOAD_BASE = Path.home() / ".openestimator" / "uploads"
 
 # Base directory for photo uploads
 PHOTO_BASE = Path.home() / ".openestimator" / "photos"
-# Base directory for photo thumbnails — stored next to originals under a sibling
+# Base directory for photo thumbnails - stored next to originals under a sibling
 # ``thumbs/`` subfolder so the gallery grid can ask for a small, cheap image
 # instead of re-streaming the 50 MB original on every render.
 PHOTO_THUMB_BASE = Path.home() / ".openestimator" / "photos" / "thumbs"
@@ -212,7 +212,7 @@ def _blocked_extension_segment(name: str) -> str | None:
     storage cover the residual content risk.
 
     It deliberately only flags segments that are in ``BLOCKED_EXTENSIONS``
-    — ordinary multi-dot filenames (``drawing.v2.dwg``,
+    - ordinary multi-dot filenames (``drawing.v2.dwg``,
     ``report.2024.final.pdf``) are NOT rejected, so this is hardening,
     not over-restriction.
     """
@@ -232,14 +232,14 @@ def _generate_photo_thumbnail(
 
     Returns ``True`` on success, ``False`` if anything went wrong (missing
     Pillow, corrupt image, unsupported mode). Thumbnail generation is a
-    best-effort optimisation — a failure must never block the upload.
+    best-effort optimisation - a failure must never block the upload.
     """
     try:
         from io import BytesIO
 
         from PIL import Image, ImageOps
     except Exception:
-        logger.warning("Pillow not available — skipping photo thumbnail")
+        logger.warning("Pillow not available - skipping photo thumbnail")
         return False
 
     try:
@@ -290,7 +290,7 @@ class DocumentService:
 
         Security measures:
         - Filename sanitization (path traversal prevention)
-        - File size validation (max ``MAX_FILE_SIZE`` = 100MB — defence
+        - File size validation (max ``MAX_FILE_SIZE`` = 100MB - defence
           in depth; the API gateway / nginx is expected to enforce the
           same cap, but the service rejects oversize uploads itself so
           a misconfigured gateway can't surface a memory-DoS vector)
@@ -304,7 +304,7 @@ class DocumentService:
         raw_name = file.filename or "untitled"
         safe_name = _sanitize_filename(raw_name)
 
-        # Block dangerous file extensions — scan EVERY dotted segment so
+        # Block dangerous file extensions - scan EVERY dotted segment so
         # a double-extension payload (shell.php.png) is rejected, not just
         # the final suffix (A-DOC-10).
         bad_ext = _blocked_extension_segment(safe_name)
@@ -318,7 +318,7 @@ class DocumentService:
         if category not in VALID_CATEGORIES:
             category = "other"
 
-        # Enforce size cap (defence in depth — max also expected at the
+        # Enforce size cap (defence in depth - max also expected at the
         # API gateway level). Done after reading because UploadFile is a
         # streaming object: we cap on read by checking length before
         # acceptance. 100 MB is enough for typical AEC drawings and
@@ -334,12 +334,12 @@ class DocumentService:
                 ),
             )
 
-        # Magic-byte validation — BLOCKED_EXTENSIONS only rejects known-bad
+        # Magic-byte validation - BLOCKED_EXTENSIONS only rejects known-bad
         # names; this catches an attacker who renames evil.exe → evil.pdf.
         # ``xml`` / ``ole`` types included because DDC converters and many
         # legitimate design files use those containers. Unknown binary
         # blobs (detected == None) are tolerated so plain-text uploads
-        # (CSV, JSON, TXT) still work — the extension gate above still
+        # (CSV, JSON, TXT) still work - the extension gate above still
         # filters executables by name.
         from app.core.file_signature import (
             ALLOWED_CAD_TYPES,
@@ -374,7 +374,7 @@ class DocumentService:
             )
 
         # Derive the stored MIME from the detected signature (P0-1).
-        # ``file.content_type`` is fully attacker-controlled — an .exe
+        # ``file.content_type`` is fully attacker-controlled - an .exe
         # uploaded with header ``image/png`` previously round-tripped
         # into the DB and downstream consumers (vector indexer, viewers)
         # would happily trust it.
@@ -387,7 +387,7 @@ class DocumentService:
         upload_dir.mkdir(parents=True, exist_ok=True)
         file_path = upload_dir / storage_name
 
-        # Create DB record FIRST — if this fails we haven't written a file
+        # Create DB record FIRST - if this fails we haven't written a file
         document = Document(
             project_id=project_id,
             name=safe_name,
@@ -455,7 +455,7 @@ class DocumentService:
             project_id,
         )
 
-        # Audit log — the timeline UI in /files relies on this row to
+        # Audit log - the timeline UI in /files relies on this row to
         # explain "where did this document come from?" without joining
         # event-bus archives. Failures are swallowed inside the helper
         # so the audit log never blocks the upload itself.
@@ -472,7 +472,7 @@ class DocumentService:
             },
         )
 
-        # Epic C — register the chain row. A re-upload with the same
+        # Epic C - register the chain row. A re-upload with the same
         # ``name`` rolls the chain forward (old row superseded, new row
         # current). Wrapped so a chain-write failure cannot block the
         # upload itself; the file is on disk and the Document row is in
@@ -501,7 +501,7 @@ class DocumentService:
         """Upload a NEW revision for an existing document.
 
         Reuses ``upload_document`` security gates (magic-byte, blocked
-        extensions, size cap) by inlining the same checks here — but
+        extensions, size cap) by inlining the same checks here - but
         keys the chain off the EXISTING document's ``name`` so the
         re-upload lands in the same chain regardless of what the user
         names their incoming file.
@@ -574,7 +574,7 @@ class DocumentService:
             )
 
         # Bump the Document row's audit fields. We deliberately do NOT
-        # mutate ``Document.name`` — the chain key follows the original
+        # mutate ``Document.name`` - the chain key follows the original
         # name so the version dropdown stays continuous.
         from app.modules.documents.repository import DocumentRepository
 
@@ -669,7 +669,7 @@ class DocumentService:
     # Valid CDE state transitions (ISO 19650 workflow).
     #
     # ISO 19650 is a FORWARD-ONLY lifecycle: WIP -> SHARED -> PUBLISHED ->
-    # ARCHIVED. Backtracking (e.g. SHARED -> WIP) is NOT permitted — a
+    # ARCHIVED. Backtracking (e.g. SHARED -> WIP) is NOT permitted - a
     # superseded document is archived and a fresh revision starts a new
     # chain, it never demotes its suitability state. The previous map
     # allowed every state to drop back to ``wip``, which let a published
@@ -707,7 +707,7 @@ class DocumentService:
         ``user_role`` is the canonical app role from the JWT (admin /
         manager / editor / viewer). When it is ``None`` the role gates are
         skipped and only the structural forward-only transition rules
-        apply — this keeps internal / unauthenticated service callers
+        apply - this keeps internal / unauthenticated service callers
         working while every HTTP caller (which always carries a role) is
         gated.
         """
@@ -717,7 +717,7 @@ class DocumentService:
         if "metadata" in fields:
             fields["metadata_"] = fields.pop("metadata")
 
-        # The approver signature is a Gate-B precondition, never a column —
+        # The approver signature is a Gate-B precondition, never a column -
         # pop it out of the persisted field set so it isn't passed to
         # ``update_fields`` (the Document model has no such attribute). It is
         # captured into the document metadata's compliance block below.
@@ -734,7 +734,7 @@ class DocumentService:
         # Validate CDE state transition.
         #
         # A document that has never had a state set (``cde_state IS NULL``
-        # — true for seed rows and every freshly-uploaded document) is
+        # - true for seed rows and every freshly-uploaded document) is
         # treated as being in the ISO 19650 initial state ``wip``. This
         # closes A-DOC-09: previously the whole guard was skipped while
         # ``current_state is None``, so ``wip -> published`` (or any
@@ -755,7 +755,7 @@ class DocumentService:
                         ),
                     )
 
-                # Role-gate enforcement — only when the caller's role is
+                # Role-gate enforcement - only when the caller's role is
                 # known. ``validate_transition`` re-checks the structural
                 # transition (belt-and-braces) AND the role gate keyed by
                 # ISO 19650 role names, so an editor cannot publish and a
@@ -804,7 +804,7 @@ class DocumentService:
         # Validate the suitability code against the resulting CDE state.
         #
         # This covers BOTH the combined PATCH (cde_state + suitability_code
-        # in one body — also pre-checked by the schema validator) AND the
+        # in one body - also pre-checked by the schema validator) AND the
         # suitability-only PATCH against an already-stateful document (which
         # the schema validator cannot see). A blank / None code is always
         # accepted because suitability is optional. ISO 19650 codes are
@@ -820,7 +820,7 @@ class DocumentService:
                     detail=reason,
                 )
 
-        # P1 — revision-conflict guard. Two concurrent updates that both
+        # P1 - revision-conflict guard. Two concurrent updates that both
         # set ``is_current_revision=True`` under the same parent
         # ``parent_document_id`` would silently leave the chain with two
         # "current" rows; downstream consumers (viewer, vector index)
@@ -851,7 +851,7 @@ class DocumentService:
 
         logger.info("Document updated: %s (fields=%s)", document_id, list(fields.keys()))
 
-        # Activity log — split into distinct actions so the timeline UI
+        # Activity log - split into distinct actions so the timeline UI
         # can colour them differently. Rename and CDE state change are
         # by far the most useful audit events.
         if "name" in fields and fields["name"] is not None and fields["name"] != old_name:
@@ -900,7 +900,7 @@ class DocumentService:
         """Delete a document and its file.
 
         DB record is deleted first so a failure there prevents orphan file removal.
-        File removal failure is logged but not fatal — leaves an orphan file rather
+        File removal failure is logged but not fatal - leaves an orphan file rather
         than an orphan DB record pointing to a missing file.
         """
         document = await self.get_document(document_id)
@@ -908,7 +908,7 @@ class DocumentService:
         project_id = document.project_id
         doc_name = document.name
 
-        # Audit log BEFORE delete — the row is wiped by the FK cascade
+        # Audit log BEFORE delete - the row is wiped by the FK cascade
         # together with the document itself, but the event-bus publish
         # downstream carries the same payload for any external audit
         # collector that wants to retain "deleted" hits.
@@ -920,7 +920,7 @@ class DocumentService:
             {"name": doc_name},
         )
 
-        # Delete DB record FIRST — this is the authoritative state
+        # Delete DB record FIRST - this is the authoritative state
         await self.repo.delete(document_id)
         logger.info("Document deleted: %s", document_id)
 
@@ -963,8 +963,8 @@ class DocumentService:
         # unknown categories to ``other``, but seed rows and other raw
         # INSERT paths (e.g. the photo cross-link) bypass that, so the
         # stored column can hold ``certificate``/``engineering``/``permit``
-        # etc. Fold every non-whitelisted category into ``other`` —
-        # aggregating counts so the totals still reconcile — instead of
+        # etc. Fold every non-whitelisted category into ``other`` -
+        # aggregating counts so the totals still reconcile - instead of
         # surfacing categories the rest of the API contract rejects.
         by_category: dict[str, int] = {}
         for cat, count in cat_rows:
@@ -1014,18 +1014,18 @@ class PhotoService:
         """Upload a photo and create a record.
 
         Security measures:
-        - MIME type validation (images only) — header used only as a
+        - MIME type validation (images only) - header used only as a
           quick pre-check; the authoritative gate is the magic-byte
           sniff below, and the stored ``mime_type`` is derived from it
         - Filename sanitization
-        - File size validation (max ``MAX_PHOTO_SIZE`` = 50MB — defence
+        - File size validation (max ``MAX_PHOTO_SIZE`` = 50MB - defence
           in depth; the API gateway is expected to enforce the same
           cap, but we reject oversize uploads here so a misconfigured
           gateway can't surface a memory-DoS vector)
         - Category validation
         - UUID-prefixed storage path
         """
-        # Validate MIME type (header — fully attacker-controlled, so this
+        # Validate MIME type (header - fully attacker-controlled, so this
         # is only a fast pre-check; the magic-byte sniff below is the
         # authoritative gate and the stored value below comes from it).
         content_type = file.content_type or ""
@@ -1039,7 +1039,7 @@ class PhotoService:
         raw_name = file.filename or "untitled.jpg"
         safe_name = _sanitize_filename(raw_name)
 
-        # Block dangerous extensions on the photo path too — a renamed
+        # Block dangerous extensions on the photo path too - a renamed
         # ``evil.exe`` with a fake ``image/jpeg`` content_type still gets
         # caught here even before the magic-byte check. Scans every
         # dotted segment so ``shell.php.png`` is rejected (A-DOC-10).
@@ -1069,7 +1069,7 @@ class PhotoService:
                 ),
             )
 
-        # Magic-byte cross-check — content_type is fully attacker-controlled
+        # Magic-byte cross-check - content_type is fully attacker-controlled
         # (it's a request header), so we re-derive the real format from the
         # bytes. Reject anything that isn't a recognised raster image.
         from app.core.file_signature import (
@@ -1104,7 +1104,7 @@ class PhotoService:
 
         # ── AI photo intelligence (Lane 7) ──────────────────────────────
         # 1) Auto-extract EXIF GPS so geotagged photos place themselves on
-        #    the map. The CALLER's explicit lat/lon stays authoritative — we
+        #    the map. The CALLER's explicit lat/lon stays authoritative - we
         #    only fill in coordinates that were left blank.
         ai_meta: dict[str, Any] = {}
         if gps_lat is None or gps_lon is None:
@@ -1121,7 +1121,7 @@ class PhotoService:
 
         # 1b) Auto-extract the EXIF capture timestamp so photos sort and group
         #     chronologically by when the shutter fired, not by upload time.
-        #     The CALLER's explicit ``taken_at`` stays authoritative — we only
+        #     The CALLER's explicit ``taken_at`` stays authoritative - we only
         #     fill it when left blank.
         if taken_at is None:
             from app.core.match_service.extractors.photo import extract_exif_datetime
@@ -1132,7 +1132,7 @@ class PhotoService:
                 ai_meta["taken_at_source"] = "exif"
 
         # 2) Compute a defect-category SUGGESTION. This is NEVER auto-applied
-        #    — it is stored in metadata for the user to confirm in the UI. The
+        #    - it is stored in metadata for the user to confirm in the UI. The
         #    persisted ``category`` remains exactly what the caller chose.
         suggestion = await self._suggest_category_safe(
             user_id=user_id,
@@ -1159,7 +1159,7 @@ class PhotoService:
 
         # Create DB record FIRST. ``ai_meta`` carries the EXIF-GPS source flag
         # and the (never-auto-applied) category suggestion in the existing
-        # JSON ``metadata`` column — no schema change needed (LIGHTWEIGHT).
+        # JSON ``metadata`` column - no schema change needed (LIGHTWEIGHT).
         photo = ProjectPhoto(
             project_id=project_id,
             filename=safe_name,
@@ -1186,7 +1186,7 @@ class PhotoService:
                 detail="Failed to save photo to disk.",
             )
 
-        # Generate thumbnail from the in-memory bytes — failure is non-fatal;
+        # Generate thumbnail from the in-memory bytes - failure is non-fatal;
         # the serve endpoint falls back to the original on miss.
         thumb_generated = _generate_photo_thumbnail(content, thumb_path)
         if thumb_generated:
@@ -1201,7 +1201,7 @@ class PhotoService:
             project_id,
         )
 
-        # Epic C — register the chain row. ``file_id`` is the photo row
+        # Epic C - register the chain row. ``file_id`` is the photo row
         # id; ``canonical_name`` derives from ``filename``.
         await _register_version_safely(
             self.session,
@@ -1270,7 +1270,7 @@ class PhotoService:
         which uses the configured AI provider when a key exists, otherwise a
         deterministic heuristic. Wrapped so any AI/import failure degrades to
         "no suggestion" rather than failing the upload. The suggestion is
-        advisory only — the caller's chosen category stays authoritative.
+        advisory only - the caller's chosen category stays authoritative.
         """
         try:
             from app.modules.ai.service import AIService
@@ -1397,7 +1397,7 @@ class PhotoService:
         # Remove the cross-linked Documents-hub row(s) created by
         # ``upload_photo``. The link is the shared ``file_path`` (the raw
         # INSERT stores the photo's on-disk path verbatim) scoped to this
-        # project's photo-category documents — robust even though the
+        # project's photo-category documents - robust even though the
         # cross-link is not a real FK.
         if file_path_str:
             cross_linked = (
@@ -1436,7 +1436,7 @@ class PhotoService:
         except Exception:
             logger.warning("Failed to remove photo file: %s", file_path_str)
 
-        # Remove thumbnail too — orphan .jpg files in the thumbs directory
+        # Remove thumbnail too - orphan .jpg files in the thumbs directory
         # accumulate quickly and they share the same storage budget as the
         # originals.
         if thumb_path_str:
@@ -1480,7 +1480,7 @@ def detect_sheet_info(page_text: str) -> dict[str, str | None]:
     """Extract sheet number, title, scale, and revision from page text.
 
     Uses simple regex patterns on extracted text to find common title block fields.
-    Does NOT rely on external OCR services — works on already-extracted text.
+    Does NOT rely on external OCR services - works on already-extracted text.
 
     Returns:
         Dict with keys: sheet_number, sheet_title, scale, revision
@@ -1607,7 +1607,7 @@ class SheetService:
     async def delete_sheet(self, sheet_id: uuid.UUID) -> None:
         """Hard-delete a sheet and its rendered thumbnail (best-effort).
 
-        Mirrors :meth:`PhotoService.delete_photo` — the DB row goes first
+        Mirrors :meth:`PhotoService.delete_photo` - the DB row goes first
         so a partial filesystem failure cannot leave an orphan record.
         Caller is expected to enforce project access via
         ``verify_project_access`` before invoking this.
@@ -1772,7 +1772,7 @@ class SheetService:
         if sheets:
             sheets = await self.repo.create_many(sheets)
 
-        # Epic C — register a chain row per sheet AND one for the
+        # Epic C - register a chain row per sheet AND one for the
         # parent PDF so the document hub also sees the chain.
         await _register_version_safely(
             self.session,

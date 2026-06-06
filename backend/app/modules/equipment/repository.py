@@ -200,7 +200,7 @@ class WorkOrderRepository(_BaseRepository):
     async def count_open_fleet(self) -> int:
         """Total open (scheduled / in_progress) work orders across the fleet.
 
-        Single aggregate query — replaces a per-equipment N+1 loop in the
+        Single aggregate query - replaces a per-equipment N+1 loop in the
         fleet dashboard.
         """
         stmt = (

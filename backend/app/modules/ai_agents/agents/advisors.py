@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""Built-in advisory agents — focused, prompt-only construction helpers.
+"""Built-in advisory agents - focused, prompt-only construction helpers.
 
 These agents do NOT call tools. Each is a tightly-scoped expert assistant a
 construction estimator or project manager actually reaches for day to day:

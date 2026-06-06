@@ -158,13 +158,13 @@ class ComplianceDSLService:
             ) from exc
 
         # Register with the engine so subsequent validation runs pick
-        # the rule up. Failures are logged but don't abort the save —
+        # the rule up. Failures are logged but don't abort the save -
         # the row is still on disk and the next startup will re-attempt
         # registration via :func:`register_active_rules`.
         if row.is_active:
             try:
                 _register_compiled(definition)
-            except Exception:  # pragma: no cover — defensive
+            except Exception:  # pragma: no cover - defensive
                 logger.exception(
                     "Failed to register compiled rule %s",
                     definition.rule_id,
@@ -259,7 +259,7 @@ async def register_active_rules(repo: ComplianceDSLRepository) -> int:
     """Load every active rule from the DB and register it with the engine.
 
     Called at app startup. Failures on individual rules are logged and
-    skipped — one bad rule must not prevent the others from loading.
+    skipped - one bad rule must not prevent the others from loading.
     """
     rows = await repo.list_all_active()
     registered = 0
@@ -275,7 +275,7 @@ async def register_active_rules(repo: ComplianceDSLRepository) -> int:
                 row.id,
                 exc,
             )
-        except Exception:  # pragma: no cover — defensive
+        except Exception:  # pragma: no cover - defensive
             logger.exception(
                 "Failed to compile compliance DSL rule %s",
                 row.rule_id,

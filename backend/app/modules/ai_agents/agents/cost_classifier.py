@@ -1,8 +1,8 @@
-"""Cost Classifier — maps free-text scope items to standard cost codes.
+"""Cost Classifier - maps free-text scope items to standard cost codes.
 
-Tools (declarative — wired into the global registry on import):
+Tools (declarative - wired into the global registry on import):
 
-* ``classify_item(description, region)`` — the primary tool. Runs the same
+* ``classify_item(description, region)`` - the primary tool. Runs the same
   ``costs.matcher.match_cwicr_items`` lookup the BOQ drafter uses, then for
   each top catalogue match loads the underlying :class:`CostItem` and reads
   its real ``classification`` JSON (the column that holds ``din276`` /
@@ -10,7 +10,7 @@ Tools (declarative — wired into the global registry on import):
   catalogue row carries them). It returns the matched catalogue code,
   description, unit, currency, score and whatever classification codes the
   data *actually* exposes.
-* ``search_costs(q, region)`` — re-uses the globally-registered tool the
+* ``search_costs(q, region)`` - re-uses the globally-registered tool the
   BOQ drafter installs (raw cost-catalogue lookup without classification
   enrichment). It is declared in ``allowed_tools`` so the LLM can fall back
   to it, but ``classify_item`` is the primary tool.
@@ -20,7 +20,7 @@ grounded in a real catalogue match the agent cites. If the matched
 catalogue row does NOT expose a DIN 276 / MasterFormat / NRM classification
 field, the tool returns the matched code + description and explicitly flags
 ``classification_available=False`` with a note that a standard code has to
-be *inferred from the catalogue code* — it never fabricates a DIN /
+be *inferred from the catalogue code* - it never fabricates a DIN /
 MasterFormat number. If the cost database is unreachable the tool returns
 an explicit ``{"error": "unavailable"}`` observation rather than guessing.
 """
@@ -109,7 +109,7 @@ async def _tool_classify_item(description: str, region: str | None = None) -> di
 
     ``classification_available`` is ``True`` only when the matched row carries
     a recognised standard code. When it is ``False`` the caller MUST NOT
-    invent a DIN / MasterFormat number — the matched catalogue code is the
+    invent a DIN / MasterFormat number - the matched catalogue code is the
     only ground truth and any standard code has to be inferred from it.
 
     Returns ``{"error": "unavailable"}`` if the cost database cannot be
@@ -137,7 +137,7 @@ async def _tool_classify_item(description: str, region: str | None = None) -> di
             for r in results:
                 standards: dict[str, str] = {}
                 context: dict[str, str] = {}
-                # MatchResult carries no classification — load the underlying
+                # MatchResult carries no classification - load the underlying
                 # CostItem by its UUID to read the real classification JSON.
                 try:
                     item = await session.get(CostItem, uuid.UUID(str(r.cost_item_id)))
@@ -182,7 +182,7 @@ async def _tool_classify_item(description: str, region: str | None = None) -> di
             "error": "unavailable",
             "detail": (
                 "Cost database is not reachable in this context. No catalogue "
-                "matches available — do not invent classification codes; report "
+                "matches available - do not invent classification codes; report "
                 "that the item could not be classified against the catalogue."
             ),
         }
@@ -208,7 +208,7 @@ def register_cost_classifier() -> None:
                 "matched code, description, unit, currency, score and any real "
                 "DIN 276 / MasterFormat / NRM classification the catalogue row "
                 "exposes. When classification_available is false the match has "
-                "no standard code — infer one from the catalogue code, never "
+                "no standard code - infer one from the catalogue code, never "
                 "fabricate a number. Returns error=unavailable if the cost DB "
                 "is unreachable."
             ),

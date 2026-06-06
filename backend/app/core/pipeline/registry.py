@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Node Capability Registry — the safe binding surface for pipeline nodes.
+"""‌⁠‍Node Capability Registry - the safe binding surface for pipeline nodes.
 
 Each module opts a node *type* in by calling :func:`register_node` from its
 autodiscovered ``pipeline_nodes.py`` (the module loader discovers that file
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 # A node runner receives the executor-built node context and returns a small
-# JSON envelope (IDs + previews, never the big payload — §3.2 hard rule 1).
+# JSON envelope (IDs + previews, never the big payload - §3.2 hard rule 1).
 type NodeRunner = Callable[["NodeContext"], Awaitable[dict[str, Any]]]
 
 
@@ -43,7 +43,7 @@ class NodeContext:
     ``match_elements.pipeline.run_stage``.
     """
 
-    db: Any  # sqlalchemy.ext.asyncio.AsyncSession — typed Any to avoid an
+    db: Any  # sqlalchemy.ext.asyncio.AsyncSession - typed Any to avoid an
     # import cycle (registry is imported very early at module load).
     node_id: str
     node_type: str
@@ -111,7 +111,7 @@ class NodeRegistry:
     def register(self, spec: NodeSpec) -> None:
         """Register (or override) a node spec.
 
-        Re-registering the same type silently overrides — matches the
+        Re-registering the same type silently overrides - matches the
         "last write wins" convention of ``job_runner.register_handler`` and
         keeps test re-imports idempotent.
         """
@@ -136,13 +136,13 @@ class NodeRegistry:
         self._specs.clear()
 
 
-# Global singleton — mirrors ``rule_registry`` / ``module_loader``.
+# Global singleton - mirrors ``rule_registry`` / ``module_loader``.
 node_registry = NodeRegistry()
 
 
 def register_node(
     *,
-    type: str,  # noqa: A002 — "type" is the public contract field name.
+    type: str,  # noqa: A002 - "type" is the public contract field name.
     module: str,
     category: str,
     label: str,
@@ -169,7 +169,7 @@ def register_node(
         outputs: Named output port types.
         params_schema: JSON-schema-ish dict the UI inspector renders and
             the executor uses to validate node params before a run.
-        side_effecting: True if the node mutates persistent state — drives
+        side_effecting: True if the node mutates persistent state - drives
             the structural "writes need a gate" validation rule.
 
     Returns:

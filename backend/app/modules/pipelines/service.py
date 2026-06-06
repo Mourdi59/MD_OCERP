@@ -4,7 +4,7 @@
 
 Owns: graph validation (registry + structural ``pipeline`` rule), JobRun
 submission, run snapshotting and the read-model assembly that the router
-serialises. Stateless — a fresh instance per request, like the other
+serialises. Stateless - a fresh instance per request, like the other
 modules' services.
 """
 
@@ -64,7 +64,7 @@ class PipelineService:
         bound project, or is an admin.
 
         Without this every authenticated user could read / mutate / run
-        and read run outputs (project BOQ rows) of *any* pipeline — a
+        and read run outputs (project BOQ rows) of *any* pipeline - a
         cross-tenant IDOR. Authentication alone is not authorization.
         """
         actor = _as_uuid(user_id)
@@ -157,7 +157,7 @@ class PipelineService:
 
         Publishing is gated: a graph that fails the structural ``pipeline``
         validation rule (a side-effecting node without a gate on every path)
-        cannot be published — :class:`GraphValidationError` is raised so the
+        cannot be published - :class:`GraphValidationError` is raised so the
         router returns 400 and the pipeline stays unpublished.
         """
         if name is not None:
@@ -193,10 +193,10 @@ class PipelineService:
         validation engine so the result format is identical to every other
         gate in the platform.
         """
-        # Layer 1 — acyclic + all node types registered.
+        # Layer 1 - acyclic + all node types registered.
         validate_graph(graph)
 
-        # Layer 2 — the "AI proposes, human confirms" structural gate.
+        # Layer 2 - the "AI proposes, human confirms" structural gate.
         report = await validation_engine.validate(
             data={"graph": graph},
             rule_sets=["pipeline"],

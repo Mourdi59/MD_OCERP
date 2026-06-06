@@ -3,7 +3,7 @@
 """File Saved Views ORM models.
 
 Tables:
-    oe_file_saved_view — a named filter snapshot for the /files screen.
+    oe_file_saved_view - a named filter snapshot for the /files screen.
 
 The view stores the FilterSnapshot inline as JSON so the schema does
 not need to grow whenever the file manager learns a new filter knob.
@@ -14,7 +14,7 @@ Scope rules
 -----------
 * ``user_id`` is always the owner.
 * ``project_id`` is **nullable**. NULL means "global view across every
-  project the user can access" — applied automatically on the
+  project the user can access" - applied automatically on the
   file-manager landing page before a project is chosen.
 * ``is_shared`` is opt-in: when true, project members may *read* the
   view in their saved-views rail (but can never edit it; they can
@@ -62,13 +62,13 @@ class FileSavedView(Base):
         Index("ix_file_saved_view_pinned", "is_pinned"),
     )
 
-    # FK to user (always present — view always belongs to someone).
+    # FK to user (always present - view always belongs to someone).
     user_id: Mapped[uuid.UUID] = mapped_column(
         GUID(),
         ForeignKey("oe_users_user.id", ondelete="CASCADE"),
         nullable=False,
     )
-    # FK to project (nullable — NULL means "global across all
+    # FK to project (nullable - NULL means "global across all
     # accessible projects" / cross-project saved view).
     project_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(),
@@ -79,7 +79,7 @@ class FileSavedView(Base):
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     # Optional lucide-react icon name (e.g. ``clipboard-list``, ``image``).
     icon: Mapped[str | None] = mapped_column(String(32), nullable=True, default=None)
-    # Serialised FilterSnapshot. Free-form on purpose — when the file
+    # Serialised FilterSnapshot. Free-form on purpose - when the file
     # manager learns a new filter we don't need a schema migration to
     # persist it.
     filter_json: Mapped[dict] = mapped_column(  # type: ignore[assignment]
@@ -106,7 +106,7 @@ class FileSavedView(Base):
         default=False,
         server_default="0",
     )
-    # Usage telemetry — bumped via POST /{id}/use/. The frontend rail
+    # Usage telemetry - bumped via POST /{id}/use/. The frontend rail
     # surfaces ``use_count`` as a soft badge so the user can spot which
     # views they actually rely on.
     last_used_at: Mapped[datetime | None] = mapped_column(
@@ -121,5 +121,5 @@ class FileSavedView(Base):
         server_default="0",
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — debug helper
+    def __repr__(self) -> str:  # pragma: no cover - debug helper
         return f"<FileSavedView {self.name!r} user={self.user_id} project={self.project_id} pinned={self.is_pinned}>"

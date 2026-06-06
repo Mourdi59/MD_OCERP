@@ -1,16 +1,16 @@
 """‌⁠‍Storage backend abstraction for binary blobs.
 
 Used by BIM geometry files, CAD uploads, takeoff PDFs, and generated
-reports — anything that today lives under ``data/`` on the local
+reports - anything that today lives under ``data/`` on the local
 filesystem should eventually flow through this abstraction so operators
 can point OpenConstructionERP at an S3-compatible bucket instead.
 
 Two implementations ship in-tree:
 
-- :class:`LocalStorageBackend` — writes to the local filesystem under a
+- :class:`LocalStorageBackend` - writes to the local filesystem under a
   base directory.  This is the default and preserves the existing
   v1.3.x on-disk layout byte-for-byte.
-- :class:`S3StorageBackend` — writes to an S3-compatible bucket via
+- :class:`S3StorageBackend` - writes to an S3-compatible bucket via
   ``aioboto3``.  ``aioboto3`` is declared as an optional dependency
   (``pip install openconstructionerp[s3]``); importing the class
   without it raises a clear :class:`ImportError` only when the user
@@ -20,7 +20,7 @@ Keys
 ----
 Storage keys are forward-slash POSIX-style paths such as
 ``bim/{project_id}/{model_id}/geometry.dae``.  They never start with a
-leading ``/`` and never contain backslashes — the :class:`LocalStorageBackend`
+leading ``/`` and never contain backslashes - the :class:`LocalStorageBackend`
 translates them into native paths when touching the filesystem.
 
 Factory
@@ -85,7 +85,7 @@ class PartInfo:
     """‌⁠‍Result of uploading a single part of a multipart upload.
 
     ``part_number`` is 1-based to match the S3 multipart API.  ``etag``
-    is whatever the backend returns for the part — for S3 it's the MD5
+    is whatever the backend returns for the part - for S3 it's the MD5
     hex (quoted), for the local backend it's the SHA-256 hex of the
     chunk.
     """
@@ -112,7 +112,7 @@ class PresignedUrl:
     """Short-lived URL that lets a caller PUT (or GET) an object directly.
 
     For the local backend the URL is a same-origin route (handled by a
-    FastAPI endpoint that the coordinator must wire up — see the TODO in
+    FastAPI endpoint that the coordinator must wire up - see the TODO in
     :meth:`LocalStorageBackend.presigned_put_url`).  For S3 it is a true
     presigned URL signed with SigV4.
     """
@@ -132,7 +132,7 @@ def _local_upload_token_secret() -> bytes:
     Pulled from ``Settings.jwt_secret`` so it rotates with the rest of
     the auth surface; falls back to a process-local secret if settings
     are unavailable (e.g. during tooling).  The fallback is *not* stable
-    across restarts, which is fine — local presigned URLs are intended
+    across restarts, which is fine - local presigned URLs are intended
     to live for at most an hour.
     """
     try:
@@ -159,7 +159,7 @@ def _local_upload_token_secret() -> bytes:
 def _sign_local_upload_token(payload: dict[str, object]) -> str:
     """Encode ``payload`` as a compact HMAC-signed token.
 
-    Format: ``<base64-json>.<hex-hmac-sha256>`` — small, opaque, no
+    Format: ``<base64-json>.<hex-hmac-sha256>`` - small, opaque, no
     external dep on PyJWT.  The router endpoint that consumes the token
     must call :func:`_verify_local_upload_token` to unpack it.
     """
@@ -231,7 +231,7 @@ class StorageBackend(ABC):
     """Abstract storage backend for binary blobs.
 
     All methods are async.  Implementations SHOULD not leak the
-    underlying backend type into caller code — use :func:`url_for` to
+    underlying backend type into caller code - use :func:`url_for` to
     decide whether to redirect or stream, not ``isinstance`` checks.
     """
 
@@ -245,12 +245,12 @@ class StorageBackend(ABC):
 
         The default implementation reads ``src_path`` fully and delegates
         to :meth:`put`.  Subclasses should override with a true streaming
-        implementation when one is available — see
+        implementation when one is available - see
         :class:`LocalStorageBackend.put_stream` (uses ``shutil.move`` /
         ``copyfileobj``) and :class:`S3StorageBackend.put_stream`
         (uses ``upload_fileobj`` for multipart).
 
-        The source file is NOT removed by this method — the caller owns
+        The source file is NOT removed by this method - the caller owns
         the temp-file lifecycle.
         """
 
@@ -275,7 +275,7 @@ class StorageBackend(ABC):
     async def delete(self, key: str) -> None:
         """Delete the blob at ``key``.
 
-        A missing key is *not* an error — implementations should no-op
+        A missing key is *not* an error - implementations should no-op
         in that case (matches ``rm -f`` semantics).
         """
 
@@ -299,14 +299,14 @@ class StorageBackend(ABC):
         This is a **bulk** probe: one round-trip to the storage backend
         regardless of how many objects sit under ``prefix``.  It's the
         right primitive when a caller would otherwise issue N parallel
-        ``exists()`` / ``size()`` calls — e.g. list endpoints that need
+        ``exists()`` / ``size()`` calls - e.g. list endpoints that need
         to summarise per-row storage usage across a paginated set.
 
         The default implementation raises :class:`NotImplementedError`.
         :class:`LocalStorageBackend` walks the directory tree once;
         :class:`S3StorageBackend` paginates ``list_objects_v2`` until
         truncation completes.  Returned keys are full storage keys
-        (POSIX path) — callers slice them by the model_id segment when
+        (POSIX path) - callers slice them by the model_id segment when
         grouping results.
         """
         _ = prefix
@@ -322,7 +322,7 @@ class StorageBackend(ABC):
         that prefer a ``read_bytes``-shaped API (e.g. simple wrappers
         around ``pathlib.Path.read_bytes``) may override this instead
         of :meth:`get`, in which case the default :meth:`open_stream`
-        fallback below will still work — it calls :meth:`read_bytes`.
+        fallback below will still work - it calls :meth:`read_bytes`.
 
         Raises :class:`FileNotFoundError` if ``key`` does not exist.
         """
@@ -332,14 +332,14 @@ class StorageBackend(ABC):
         """Return an async iterator yielding the blob in chunks.
 
         Concrete subclasses typically override this as an async
-        generator (``async def`` + ``yield``) — see
+        generator (``async def`` + ``yield``) - see
         :class:`LocalStorageBackend` and :class:`S3StorageBackend`.
 
         When a subclass implements only :meth:`get` or :meth:`read_bytes`
         but not :meth:`open_stream`, this default reads the whole blob
         into memory and yields it as a single chunk.  That keeps the
         streaming endpoint functional for simple community backends at
-        the cost of loading the blob in full — not ideal for large
+        the cost of loading the blob in full - not ideal for large
         files.  A DEBUG line is emitted per call so authors can see
         when the fallback engaged and know to provide a real streaming
         implementation.
@@ -360,7 +360,7 @@ class StorageBackend(ABC):
             ) from exc
         logger.debug(
             "storage.open_stream default fallback engaged for backend=%s key=%r "
-            "(%d bytes) — override open_stream() for true streaming",
+            "(%d bytes) - override open_stream() for true streaming",
             type(self).__name__,
             key,
             len(payload),
@@ -370,7 +370,7 @@ class StorageBackend(ABC):
     def url_for(self, key: str, *, expires_in: int = 3600) -> str | None:
         """Return a presigned download URL for ``key``.
 
-        The local backend returns ``None`` — callers then fall back to
+        The local backend returns ``None`` - callers then fall back to
         serving the blob through their own route via :meth:`open_stream`.
         The S3 backend returns a short-lived presigned ``GET`` URL which
         callers can ``RedirectResponse`` to.
@@ -412,7 +412,7 @@ class StorageBackend(ABC):
         """Upload one chunk of a multipart upload.
 
         ``part_number`` is 1-based.  S3 requires every part except the
-        last to be at least 5 MiB; this is the caller's responsibility —
+        last to be at least 5 MiB; this is the caller's responsibility -
         the backend does not enforce it because tests and small uploads
         legitimately use shorter parts.
         """
@@ -430,7 +430,7 @@ class StorageBackend(ABC):
         order, atomically renames the result into the canonical ``key``
         location, and cleans up the staging area.  If
         ``session.metadata`` contains a ``sha256`` hex string, the
-        completed object's SHA-256 MUST match — otherwise the staging
+        completed object's SHA-256 MUST match - otherwise the staging
         area is left in place and :class:`ValueError` is raised so the
         caller can retry.
         """
@@ -450,7 +450,7 @@ class StorageBackend(ABC):
     ) -> PresignedUrl:
         """Return a short-lived URL the caller can ``PUT`` directly to.
 
-        The default implementation refuses — backends that support
+        The default implementation refuses - backends that support
         direct browser uploads MUST override.  See
         :class:`LocalStorageBackend` and :class:`S3StorageBackend` for
         the two shipped implementations.
@@ -510,7 +510,7 @@ class LocalStorageBackend(StorageBackend):
         Uses ``shutil.move`` when source and destination share a device
         (atomic rename, near-free for multi-GB files), falling back to
         ``shutil.copyfile`` (chunked under the hood) on cross-device
-        moves.  The source file is consumed — callers must not assume it
+        moves.  The source file is consumed - callers must not assume it
         still exists after this returns.
         """
         path = self._path_for(key)
@@ -520,7 +520,7 @@ class LocalStorageBackend(StorageBackend):
             try:
                 shutil.move(str(src_path), str(path))
             except OSError:
-                # Cross-device or permission edge case — fall back to a
+                # Cross-device or permission edge case - fall back to a
                 # plain copy and best-effort cleanup of the source.
                 shutil.copyfile(str(src_path), str(path))
                 try:
@@ -590,7 +590,7 @@ class LocalStorageBackend(StorageBackend):
         ``(key, size_bytes)`` pair.
 
         Replaces N parallel ``exists()`` + ``size()`` probes with one
-        ``rglob`` sweep — important for the BIM list endpoint where a
+        ``rglob`` sweep - important for the BIM list endpoint where a
         50-row page would otherwise issue 150+ individual file stats.
         """
         normalised = _normalise_key(prefix) if prefix else ""
@@ -637,7 +637,7 @@ class LocalStorageBackend(StorageBackend):
             await asyncio.to_thread(handle.close)  # type: ignore[attr-defined]
 
     def url_for(self, key: str, *, expires_in: int = 3600) -> str | None:
-        # Local backend cannot presign — caller must stream through the route.
+        # Local backend cannot presign - caller must stream through the route.
         return None
 
     # -- Multipart upload ------------------------------------------------
@@ -735,7 +735,7 @@ class LocalStorageBackend(StorageBackend):
         # Sort by part_number so callers can pass parts out-of-order
         # (e.g. concurrently uploaded parts collected via gather).
         ordered = sorted(parts, key=lambda p: p.part_number)
-        # Verify the sequence is contiguous starting at 1 — S3 enforces
+        # Verify the sequence is contiguous starting at 1 - S3 enforces
         # the same constraint; the local backend matches it for parity.
         expected_numbers = list(range(1, len(ordered) + 1))
         if [p.part_number for p in ordered] != expected_numbers:
@@ -751,7 +751,7 @@ class LocalStorageBackend(StorageBackend):
             if not staging.is_dir():
                 raise FileNotFoundError(
                     f"Multipart staging area for upload_id={session.upload_id!r} "
-                    f"is missing — did abort_multipart already run?"
+                    f"is missing - did abort_multipart already run?"
                 )
             # Streaming concat into a temp file under the target's parent
             # so the final rename is atomic and on the same filesystem.
@@ -817,7 +817,7 @@ class LocalStorageBackend(StorageBackend):
 
         The matching PUT endpoint lives at
         ``app.modules.uploads.router`` (mounted at
-        ``/api/v1/uploads/local/{token}``) — it verifies the token via
+        ``/api/v1/uploads/local/{token}``) - it verifies the token via
         ``_verify_local_upload_token``, confirms the path's ``key``
         matches the token payload, and streams the request body into
         ``LocalStorageBackend.put`` (or ``upload_part`` when a multipart
@@ -854,7 +854,7 @@ class S3StorageBackend(StorageBackend):
 
     Works with AWS S3, MinIO, Backblaze B2, DigitalOcean Spaces, and any
     other S3-protocol service.  Requires the ``aioboto3`` optional
-    dependency — install it via ``pip install openconstructionerp[s3]``.
+    dependency - install it via ``pip install openconstructionerp[s3]``.
     """
 
     _STREAM_CHUNK_SIZE: int = 1024 * 1024  # 1 MiB
@@ -881,7 +881,7 @@ class S3StorageBackend(StorageBackend):
         self._secret_key: str = secret_key
         self._bucket: str = bucket
         self._region: str = region
-        # Lazy — a session is cheap but we still cache one instance.
+        # Lazy - a session is cheap but we still cache one instance.
         self._session: object | None = None
 
     # -- helpers --------------------------------------------------------
@@ -919,7 +919,7 @@ class S3StorageBackend(StorageBackend):
         """
         normalised = _normalise_key(key)
 
-        # Open the source synchronously — aioboto3's upload_fileobj wants
+        # Open the source synchronously - aioboto3's upload_fileobj wants
         # a file-like, and the work happens off-loop inside the client.
         def _open() -> object:
             return src_path.open("rb")
@@ -1050,7 +1050,7 @@ class S3StorageBackend(StorageBackend):
                     yield chunk
 
     def url_for(self, key: str, *, expires_in: int = 3600) -> str | None:
-        """Return a presigned download URL (synchronous — uses botocore).
+        """Return a presigned download URL (synchronous - uses botocore).
 
         ``aioboto3`` presigning is sync-safe because it just signs
         strings; no network calls happen here.
@@ -1241,7 +1241,7 @@ def _is_not_found(exc: BaseException) -> bool:
 def _default_local_base_dir() -> Path:
     """Where local blobs live by default.
 
-    Resolves to ``<repo>/data/`` — same layout as v1.3.x so upgrading
+    Resolves to ``<repo>/data/`` - same layout as v1.3.x so upgrading
     installs don't need to touch disk.  ``app/core/storage.py`` →
     ``parents[3]`` == repo root.
     """

@@ -7,14 +7,14 @@ names are declared so publishers and subscribers agree on one spelling.
 
 Published events (emitted by ``service.py`` / ``router.py``):
 
-* :data:`EVENT_ASSIGNED` — a rental was created linking equipment to a project.
+* :data:`EVENT_ASSIGNED` - a rental was created linking equipment to a project.
   No cost is posted on assignment (billing is computed on return).
-* :data:`EVENT_FUEL_LOGGED` — a fuel fill was recorded. Payload carries
+* :data:`EVENT_FUEL_LOGGED` - a fuel fill was recorded. Payload carries
   ``project_id`` (the active rental's project, nullable), ``cost`` and
   ``currency`` so the cost rollup can fold it into the equipment budget line.
-* :data:`EVENT_PARTS_LOGGED` — a part was consumed. Payload carries
+* :data:`EVENT_PARTS_LOGGED` - a part was consumed. Payload carries
   ``project_id``, ``quantity``, ``unit_cost``, ``line_total`` and ``currency``.
-* :data:`EVENT_RENTAL_RETURNED` — a rental was returned (Gap C). The router
+* :data:`EVENT_RENTAL_RETURNED` - a rental was returned (Gap C). The router
   computes the rental billing (days x day-rate, or hours x hour-rate) and emits
   this with ``billing_amount`` and ``currency`` so the rollup posts the total
   rental charge to the equipment budget line.

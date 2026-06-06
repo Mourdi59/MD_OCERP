@@ -1,7 +1,7 @@
 """‌⁠‍BIM Hub data access layer.
 
 All database queries for BIM models, elements, BOQ links, quantity maps,
-and model diffs live here. No business logic — pure data access.
+and model diffs live here. No business logic - pure data access.
 """
 
 import uuid
@@ -42,7 +42,7 @@ class BIMModelRepository:
     ) -> tuple[list[BIMModel], int]:
         """List BIM models for a project with pagination.
 
-        Elements are NOT loaded in list queries — use get() for a single model
+        Elements are NOT loaded in list queries - use get() for a single model
         with elements when needed.
         """
         base = select(BIMModel).where(BIMModel.project_id == project_id)
@@ -219,7 +219,7 @@ class BIMElementRepository:
         if element_type is not None:
             base = base.where(BIMElement.element_type == element_type)
         if operational_status is not None:
-            # Portable JSON extraction — works on SQLite + Postgres.
+            # Portable JSON extraction - works on SQLite + Postgres.
             base = base.where(json_path_text(BIMElement.asset_info, "$.operational_status") == operational_status)
         if search is not None and search.strip():
             q = f"%{search.strip().lower()}%"
@@ -285,7 +285,7 @@ class BIMElementRepository:
 
         merged = dict(element.asset_info or {})
         for key, value in (asset_info or {}).items():
-            # Treat empty-string / None as "clear this field" — keeps
+            # Treat empty-string / None as "clear this field" - keeps
             # the JSON clean so AssetSummary columns don't show "" for
             # cleared keys.
             if value is None or (isinstance(value, str) and value == ""):

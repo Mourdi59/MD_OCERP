@@ -1,7 +1,7 @@
 """‌⁠‍Tasks ORM models.
 
 Tables:
-    oe_tasks_task — project tasks with checklists, assignments, and status tracking
+    oe_tasks_task - project tasks with checklists, assignments, and status tracking
 """
 
 import uuid
@@ -49,7 +49,7 @@ class Task(Base):
         server_default="[]",
     )
 
-    # Linked BIM elements — denormalised list of bim_element UUID strings on
+    # Linked BIM elements - denormalised list of bim_element UUID strings on
     # the task row (mirrors the Position.cad_element_ids pattern). Kept as a
     # plain JSON array so we don't need a separate link table for the small
     # number of elements typically attached to a task (defect / inspection).
@@ -69,7 +69,7 @@ class Task(Base):
     is_private: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
     # Task dependency: this task can only be completed after `depends_on` is completed.
-    # ON DELETE SET NULL — deleting the predecessor doesn't delete dependents.
+    # ON DELETE SET NULL - deleting the predecessor doesn't delete dependents.
     depends_on: Mapped[uuid.UUID | None] = mapped_column(
         GUID(),
         ForeignKey("oe_tasks_task.id", ondelete="SET NULL"),

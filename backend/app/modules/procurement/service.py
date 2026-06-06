@@ -1,13 +1,13 @@
-"""‌⁠‍Procurement service — business logic for purchase orders and goods receipts.
+"""‌⁠‍Procurement service - business logic for purchase orders and goods receipts.
 
 Stateless service layer.
 
 Event publishing (slice E):
-    procurement.po.created      — new PO row inserted
-    procurement.po.updated      — PO fields changed (incl. status transition)
-    procurement.po.issued       — PO transitioned to 'issued'
-    procurement.gr.created      — new goods receipt inserted
-    procurement.gr.confirmed    — goods receipt confirmed (may flip PO status)
+    procurement.po.created      - new PO row inserted
+    procurement.po.updated      - PO fields changed (incl. status transition)
+    procurement.po.issued       - PO transitioned to 'issued'
+    procurement.gr.created      - new goods receipt inserted
+    procurement.gr.confirmed    - goods receipt confirmed (may flip PO status)
 """
 
 import logging
@@ -73,7 +73,7 @@ def _mr_assert_transition(current: str, target: str) -> None:
     Self-transitions (same status) are always allowed as no-ops.
     """
     if current == target:
-        return  # idempotent write — always legal
+        return  # idempotent write - always legal
     allowed = _MR_STATUS_TRANSITIONS.get(current, set())
     if target not in allowed:
         raise HTTPException(
@@ -89,7 +89,7 @@ def _compute_delivery_date(required_date: str | None, lead_time_days: int) -> st
     """Compute estimated delivery date = required_date - lead_time_days.
 
     Returns an ISO-8601 date string, or None if inputs are invalid.
-    Zero lead_time means "deliver on the required date" — returns None to
+    Zero lead_time means "deliver on the required date" - returns None to
     signal that no meaningful pre-order window exists.
     Note: uses calendar days, not working-day calendar.
     """
@@ -112,7 +112,7 @@ def _mr_reconcile(
 
     Returns:
         requested, ordered, received, consumed, undelivered, unconsumed
-        — all clamped at zero to avoid negative counters from data errors.
+        - all clamped at zero to avoid negative counters from data errors.
     """
     # Normalize: single item → one-element list
     if not isinstance(items, list):
@@ -143,7 +143,7 @@ _logger_ev = logging.getLogger(__name__ + ".events")
 
 
 async def _safe_publish(name: str, data: dict, source_module: str = "oe_procurement") -> None:
-    """‌⁠‍Best-effort event publish — never blocks the caller on failure."""
+    """‌⁠‍Best-effort event publish - never blocks the caller on failure."""
     try:
         event_bus.publish_detached(name, data, source_module=source_module)
     except Exception:
@@ -410,7 +410,7 @@ class ProcurementService:
         ``sum(quantity * unit_rate)`` so the PO totals always agree with the
         line items the caller actually persisted (BUG-015).
         """
-        # Validate initial status — a PO always enters the FSM at "draft".
+        # Validate initial status - a PO always enters the FSM at "draft".
         # Allowing a caller to create one already "approved"/"issued"/"completed"
         # would bypass the approval gate that commits budget (TOP-30 #10). The
         # only legal entry state is "draft"; advance it via approve_po/issue_po.
@@ -449,7 +449,7 @@ class ProcurementService:
         computed_total = _compute_po_total(data.amount_subtotal, data.tax_amount)
 
         # Inherit the parent project's currency when the caller did not
-        # supply one — never hardcode EUR (task #217).
+        # supply one - never hardcode EUR (task #217).
         currency_code = data.currency_code
         if not currency_code:
             from sqlalchemy import select
@@ -457,14 +457,14 @@ class ProcurementService:
             from app.modules.projects.models import Project
 
             # Best-effort, mirrors boq ``_resolve_project_currency``: a
-            # failed/unavailable lookup must never 500 a PO create — fall
-            # back to "" (honest unknown, never a wrong hardcoded EUR —
+            # failed/unavailable lookup must never 500 a PO create - fall
+            # back to "" (honest unknown, never a wrong hardcoded EUR -
             # task #217).
             try:
                 proj_currency = (
                     await self.session.execute(select(Project.currency).where(Project.id == data.project_id))
                 ).scalar_one_or_none()
-            except Exception:  # noqa: BLE001 — lookup is non-critical
+            except Exception:  # noqa: BLE001 - lookup is non-critical
                 proj_currency = None
             currency_code = proj_currency or ""
 
@@ -472,7 +472,7 @@ class ProcurementService:
         # Mirrors changeorders BUG-354: MAX(po_number)+1 is not atomic, so two
         # concurrent creates can compute the same suffix and one would 500 on
         # the uq_procurement_po_project_number constraint. Retry by re-reading
-        # MAX for auto-numbered POs. Explicit numbers do not retry — a
+        # MAX for auto-numbered POs. Explicit numbers do not retry - a
         # collision there is a 409 client error.
         po = await self._create_po_with_retry(
             data=data,
@@ -540,7 +540,7 @@ class ProcurementService:
         """Insert a PurchaseOrder row, retrying on auto-number collisions.
 
         Single break-on-success control flow:
-          * explicit po_number collision → 409 immediately (no retry — caller
+          * explicit po_number collision → 409 immediately (no retry - caller
             asked for a specific number and a unique row already owns it).
           * auto-number collision → re-read MAX(po_number) and retry up to
             ``_MAX_RETRIES`` times.
@@ -579,7 +579,7 @@ class ProcurementService:
                         status_code=status.HTTP_409_CONFLICT,
                         detail=(f"Purchase order number '{explicit_po_number}' already exists for this project."),
                     ) from exc
-                # else: auto-number collision — try again with a fresh MAX read.
+                # else: auto-number collision - try again with a fresh MAX read.
 
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -815,7 +815,7 @@ class ProcurementService:
         vendor_warnings = await self._enforce_vendor_gate(po.vendor_contact_id)
         await self.po_repo.update(po_id, status="issued")
 
-        # FSM audit row — PO lifecycle is closely tied to the RFQ FSM (see
+        # FSM audit row - PO lifecycle is closely tied to the RFQ FSM (see
         # rfq.po_issued event). PO is not one of the six core FSMs but it
         # benefits from the same audit-log substrate for compliance.
         try:
@@ -928,7 +928,7 @@ class ProcurementService:
         )
         release = await self.retainage_repo.create(release)
 
-        # FSM-style audit row — mirrors the PO approve/issue audit hooks so
+        # FSM-style audit row - mirrors the PO approve/issue audit hooks so
         # the release leaves the same evidence trail compliance expects.
         try:
             from app.core.audit_log import log_activity
@@ -1068,7 +1068,7 @@ class ProcurementService:
         )
 
         logger.info("GR created for PO %s (date=%s)", data.po_id, data.receipt_date)
-        # The freshly-flushed ``gr`` has no ``items`` collection loaded —
+        # The freshly-flushed ``gr`` has no ``items`` collection loaded -
         # ``selectin`` only fires on a query, not on a pending instance. The
         # router serialises ``GRResponse`` (which includes ``items``), so a
         # lazy load would be attempted outside the async greenlet
@@ -1223,11 +1223,11 @@ class ProcurementService:
 
         po = await self.get_po(po_id)  # 404 if missing
 
-        # ── Received quantities (confirmed GRs only) — one query ─────────
+        # ── Received quantities (confirmed GRs only) - one query ─────────
         gr_stmt = (
             _select(
                 GoodsReceiptItem.po_item_id,
-                # quantity_received is String(50) — sum it numerically (PG-safe
+                # quantity_received is String(50) - sum it numerically (PG-safe
                 # via numeric_value) and coalesce the empty-group SUM to 0.
                 _func.coalesce(_func.sum(numeric_value(GoodsReceiptItem.quantity_received)), 0),
             )
@@ -1241,7 +1241,7 @@ class ProcurementService:
         # numeric_value already returns a float; convert to Decimal defensively.
         received_by_item: dict[uuid.UUID, Decimal] = {row[0]: _to_decimal(row[1]) for row in gr_rows}
 
-        # ── Invoiced quantities — best-effort, optional finance module ──
+        # ── Invoiced quantities - best-effort, optional finance module ──
         invoiced_by_sort: dict[int, Decimal] = {}
         try:
             from app.modules.finance.models import Invoice, InvoiceLineItem
@@ -1277,7 +1277,7 @@ class ProcurementService:
                     if inv_id not in linked_invoice_ids:
                         continue
                     invoiced_by_sort[sort_order] = invoiced_by_sort.get(sort_order, Decimal("0")) + _to_decimal(qty)
-        except Exception:  # noqa: BLE001 — finance is optional
+        except Exception:  # noqa: BLE001 - finance is optional
             logger.debug("Finance lookup skipped for PO %s match-status", po_id)
 
         # ── Compose per-line statuses ───────────────────────────────────
@@ -1379,7 +1379,7 @@ class ProcurementService:
             if not currency and cur:
                 currency = cur
 
-        # PO ids in scope — drives the GR + line-variance queries.
+        # PO ids in scope - drives the GR + line-variance queries.
         po_ids_stmt = _select(PurchaseOrder.id).where(_and(*po_filters))
         po_ids = [row[0] for row in (await self.session.execute(po_ids_stmt)).all()]
 
@@ -1387,7 +1387,7 @@ class ProcurementService:
         # ``on_time_count`` covers GRs whose parent PO had a delivery_date AND
         # the receipt was on/before it. GRs against POs with NO delivery_date
         # (unscheduled) cannot be evaluated, so they are tracked in a separate
-        # ``unscheduled_count`` and excluded from the on-time denominator —
+        # ``unscheduled_count`` and excluded from the on-time denominator -
         # otherwise scoring inflates with every unscheduled PO (P0-2).
         total_gr_count = 0
         on_time_count = 0
@@ -1434,7 +1434,7 @@ class ProcurementService:
             recv_stmt = (
                 _select(
                     GoodsReceiptItem.po_item_id,
-                    # quantity_received is String(50) — sum it numerically
+                    # quantity_received is String(50) - sum it numerically
                     # (PG-safe via numeric_value); coalesce empty group to 0.
                     _func.coalesce(_func.sum(numeric_value(GoodsReceiptItem.quantity_received)), 0),
                 )
@@ -1457,7 +1457,7 @@ class ProcurementService:
                 qty_variance_pct = float(sum(line_variances) / Decimal(len(line_variances)))
 
         # On-time denominator excludes unscheduled GRs (P0-2). Rejection
-        # rate keeps the full GR count as the denominator — a rejected
+        # rate keeps the full GR count as the denominator - a rejected
         # delivery is still a delivery, scheduled or not.
         scheduled_gr_count = total_gr_count - unscheduled_count
         on_time_pct = (on_time_count / scheduled_gr_count) if scheduled_gr_count else 0.0
@@ -1540,7 +1540,7 @@ class MaterialRequisitionService:
         Args:
             project_id: the project this requisition belongs to.
             items: optional list of dicts with keys description, quantity_requested,
-                   unit_cost — extended_cost is computed as qty * unit_cost.
+                   unit_cost - extended_cost is computed as qty * unit_cost.
         """
         from sqlalchemy import func as sa_func
         from sqlalchemy import select
@@ -1567,7 +1567,7 @@ class MaterialRequisitionService:
             notes=notes,
         )
         # Attach req_number as a plain attribute (no DB column) for test compatibility.
-        # A real migration would add a proper column — this is a schema-less stub.
+        # A real migration would add a proper column - this is a schema-less stub.
         req.req_number = req_number  # type: ignore[attr-defined]
         self.session.add(req)
         await self.session.flush()
@@ -1592,7 +1592,7 @@ class MaterialRequisitionService:
         return req
 
     async def get_requisition(self, requisition_id: uuid.UUID) -> MaterialRequisition:
-        """Get requisition by ID — 404 if not found."""
+        """Get requisition by ID - 404 if not found."""
         req = await self.session.get(MaterialRequisition, requisition_id)
         if req is None:
             raise HTTPException(

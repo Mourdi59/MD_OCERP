@@ -1,7 +1,7 @@
 """‌⁠‍File-manager aggregation service (Issue #109).
 
-The file manager surfaces every binary that belongs to a project — across
-multiple modules — under a single API. Each module owns its own table /
+The file manager surfaces every binary that belongs to a project - across
+multiple modules - under a single API. Each module owns its own table /
 storage root; the service queries them independently and degrades
 gracefully when an optional module is disabled (e.g. ``oe_dwg_takeoff``,
 ``oe_bim_hub``).
@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 _PER_COLLECTOR_LIMIT = 5_000
 
 
-# Stable category labels — UI re-translates them via i18n keys
+# Stable category labels - UI re-translates them via i18n keys
 # ``files.category.<id>`` and falls back to these defaults.
 _CATEGORY_LABELS: dict[FileKind, str] = {
     "document": "Documents",
@@ -63,7 +63,7 @@ _CATEGORY_LABELS: dict[FileKind, str] = {
     "markup": "Markups",
 }
 
-# MIME-type guesses keyed on extension. Kept tight on purpose — the front-end
+# MIME-type guesses keyed on extension. Kept tight on purpose - the front-end
 # only needs enough to pick the right icon and decide whether to inline-preview.
 _MIME_BY_EXT: dict[str, str] = {
     "pdf": "application/pdf",
@@ -115,7 +115,7 @@ def _file_size(path: str | None) -> int:
     """‌⁠‍Size in bytes; 0 if path is missing or unreadable.
 
     Stat-failures are silently absorbed so a single deleted file never
-    breaks the whole listing — the row still appears with ``size=0`` and
+    breaks the whole listing - the row still appears with ``size=0`` and
     the UI can decide how to render it.
     """
     if not path:
@@ -152,7 +152,7 @@ def _as_aware_utc(value: datetime | None) -> datetime:
     if value is None:
         return _EPOCH_UTC
     if value.tzinfo is None:
-        # Stored as naive UTC everywhere in this codebase — assume UTC.
+        # Stored as naive UTC everywhere in this codebase - assume UTC.
         return value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
 
@@ -290,7 +290,7 @@ async def _collect_sheets(
     # A sheet's only physical artifact is its thumbnail PNG, which is
     # frequently absent (snapshot-seeded data, lazy thumbnailing). Rather
     # than report a misleading 0, fall back to an even per-page share of
-    # the parent PDF's size — so the column is plausible and the per-doc
+    # the parent PDF's size - so the column is plausible and the per-doc
     # rows still sum to ≈ the source document size.
     doc_ids = {r.document_id for r in rows if r.document_id}
     doc_size: dict[str, int] = {}
@@ -375,7 +375,7 @@ async def _collect_bim_models(
         # breakdown bar. Prefer it when present.
         size = _file_size(path)
         # ``True`` means ``size_bytes`` reflects the converted geometry
-        # artifact (GLB/DAE) rather than the original source upload — the
+        # artifact (GLB/DAE) rather than the original source upload - the
         # canonical source file is frequently absent (snapshot-seeded models,
         # S3-only deployments) yet the model still renders from its converted
         # geometry in BIM storage. We surface that real on-disk size instead
@@ -488,7 +488,7 @@ async def list_project_files(
 ) -> FileListResponse:
     """Aggregate every file that belongs to ``project_id`` across modules.
 
-    Each module is queried independently — failure or absence of one module
+    Each module is queried independently - failure or absence of one module
     only loses its slice; the other slices still surface.
     """
     collectors = (
@@ -504,9 +504,9 @@ async def list_project_files(
             continue
         try:
             rows.extend(await fn(session, project_id))
-        except Exception:  # noqa: BLE001 — see docstring
+        except Exception:  # noqa: BLE001 - see docstring
             logger.exception(
-                "file-manager: %s collector failed for project %s — skipped",
+                "file-manager: %s collector failed for project %s - skipped",
                 kind,
                 project_id,
             )
@@ -526,7 +526,7 @@ async def list_project_files(
         rows.sort(key=lambda r: r.size_bytes, reverse=True)
     elif sort == "kind":
         rows.sort(key=lambda r: (r.kind, r.name.lower()))
-    else:  # modified — most recent first; rows with no mtime sink to the bottom
+    else:  # modified - most recent first; rows with no mtime sink to the bottom
         # ``_as_aware_utc`` normalises naive (SQLite ORM) and aware (photo
         # cross-link) timestamps to a single comparable type so a project
         # with BOTH never raises TypeError → 500.
@@ -557,7 +557,7 @@ async def file_tree(
 
     When ``query`` or ``extension`` is provided the counts reflect the
     same filters the file list uses, so the sidebar can't promise a
-    category has 9 files when a free-text search would return 0 — the
+    category has 9 files when a free-text search would return 0 - the
     historical UX bug where users clicked "Documents 9" with ``?q=foo``
     active and saw an empty list with no explanation.
     """
@@ -587,13 +587,13 @@ async def file_tree(
         kind_rows = by_kind.get(kind, [])  # type: ignore[arg-type]
         if not kind_rows:
             continue
-        # Pick the deepest common parent — anchors the path-bar header.
+        # Pick the deepest common parent - anchors the path-bar header.
         first_path = kind_rows[0].physical_path
         physical_parent = str(Path(first_path).parent) if first_path else None
         tree.append(
             FileTreeNode(
                 # id IS the FileKind so the UI can reuse it as a filter
-                # category — the typed `kind` field carries the node-class
+                # category - the typed `kind` field carries the node-class
                 # ("category"|"folder"|...) separately. An earlier draft
                 # prefixed this with "category:" but that broke
                 # FolderCardGrid icon lookup and selection-equality.
@@ -617,10 +617,10 @@ def resolve_storage_locations(
     """Where does this project's data actually live on disk?
 
     Mirrors the per-module conventions verified during the audit. ``settings``
-    is the FastAPI Settings object — used to detect the configured DB path
+    is the FastAPI Settings object - used to detect the configured DB path
     and storage backend; passing None falls back to module-default paths.
     """
-    # Documents / photos / sheets — use the path constants that the documents
+    # Documents / photos / sheets - use the path constants that the documents
     # service hard-codes today. We import inside the function so the module
     # being optionally disabled doesn't crash this call.
     uploads_root: str | None = None
@@ -640,7 +640,7 @@ def resolve_storage_locations(
 
         # Detect the .openestimator-vs-.openestimate typo and warn so users
         # who land in the file manager understand why their attachments are
-        # split between two folders. We do not "fix" it here — that lives in
+        # split between two folders. We do not "fix" it here - that lives in
         # a dedicated migration ticket.
         canonical = Path.home() / ".openestimate"
         if "openestimator" in str(UPLOAD_BASE) and canonical.exists():
@@ -653,7 +653,7 @@ def resolve_storage_locations(
     except ImportError:
         pass
 
-    # BIM — repo-relative data/bim/{project_id}.
+    # BIM - repo-relative data/bim/{project_id}.
     bim_root: str | None = None
     try:
         from app.core.storage import _default_local_base_dir
@@ -662,12 +662,12 @@ def resolve_storage_locations(
     except ImportError:
         pass
 
-    # DWG — DATA_DIR + dwg_uploads (flat layout, not per-project — flagged).
+    # DWG - DATA_DIR + dwg_uploads (flat layout, not per-project - flagged).
     data_dir = os.environ.get("DATA_DIR") or os.path.join(os.getcwd(), "data")
     dwg_root = os.path.join(data_dir, "dwg_uploads")
     notes.append(
         "DWG / DXF drawings are currently stored flat under "
-        f"{dwg_root} — each drawing's filename embeds its UUID rather than "
+        f"{dwg_root} - each drawing's filename embeds its UUID rather than "
         "living in a per-project folder.",
     )
 

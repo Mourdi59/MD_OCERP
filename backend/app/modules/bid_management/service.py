@@ -1,8 +1,8 @@
-"""‌⁠‍Bid Management service — business logic, state machines, pure helpers.
+"""‌⁠‍Bid Management service - business logic, state machines, pure helpers.
 
 The pure helpers (``compute_*`` / ``validate_*`` / ``rank_*`` /
 ``recommend_*``) operate on plain dataclass-like objects (anything with
-the right attribute names) and have no I/O — they are easy to unit test
+the right attribute names) and have no I/O - they are easy to unit test
 without a database. The :class:`BidManagementService` wraps them with
 persistence and event emission.
 """
@@ -124,7 +124,7 @@ def compute_submission_total(lines: list[Any]) -> Decimal:
     """Sum of ``unit_price * quantity_priced`` across all lines.
 
     Lines may be ORM objects, Pydantic models, or anything else with the
-    right attribute names — only attribute access is used.
+    right attribute names - only attribute access is used.
     """
     total = Decimal("0")
     for line in lines:
@@ -289,7 +289,7 @@ def recommend_bidder(
     """Pick the bidder of rank 1 from the supplied levelings.
 
     Tie-break: when two rows share the same score, the one with the
-    earliest submission wins. ``recommend_bidder`` does not query the DB —
+    earliest submission wins. ``recommend_bidder`` does not query the DB -
     callers pass the relevant rows in.
     """
     if not levelings:
@@ -297,7 +297,7 @@ def recommend_bidder(
 
     rank_one = [row for row in levelings if getattr(row, "rank", 0) == 1]
     if not rank_one:
-        # Levelings haven't been ranked yet — pick the top by score.
+        # Levelings haven't been ranked yet - pick the top by score.
         top_score = max(_to_decimal(getattr(r, "total_score", 0)) for r in levelings)
         rank_one = [r for r in levelings if _to_decimal(getattr(r, "total_score", 0)) == top_score]
 
@@ -498,7 +498,7 @@ class BidManagementService:
             raise HTTPException(
                 status_code=409,
                 detail=(
-                    "Package status cannot be changed via PATCH — use "
+                    "Package status cannot be changed via PATCH - use "
                     "the lifecycle endpoints "
                     "(publish/open-bids/close/cancel/award)."
                 ),
@@ -631,7 +631,7 @@ class BidManagementService:
             )
 
         # The awarded bidder must belong to this package and still be
-        # active — you cannot award a disqualified/withdrawn bidder, nor a
+        # active - you cannot award a disqualified/withdrawn bidder, nor a
         # bidder record from a different package.
         winner = await self.bidder_repo.get_by_id(data.awarded_bidder_id)
         if winner is None or winner.package_id != package_id:
@@ -647,7 +647,7 @@ class BidManagementService:
 
         # The winner must have at least one VALID submission. Late /
         # currency-mismatched / incomplete bids are flagged is_valid=False
-        # by open_bids and must never be awardable — otherwise a manager
+        # by open_bids and must never be awardable - otherwise a manager
         # could award a disqualified-on-technicality offer that the leveling
         # matrix deliberately excludes from the competitive comparison.
         package_submissions = await self.submission_repo.submissions_for_package(package_id)
@@ -694,7 +694,7 @@ class BidManagementService:
                 package_id=package_id,
                 bidder_id=bidder.id,
                 rejection_code="other",
-                rejection_reason="Not selected — package awarded to another bidder",
+                rejection_reason="Not selected - package awarded to another bidder",
             )
             await self.rejection_repo.create(rejection)
 
@@ -914,7 +914,7 @@ class BidManagementService:
         fast early-out for the common single-request path.  However, two
         concurrent POSTs for the same ``invitation_id`` can both pass the
         check before either commits, resulting in two submission rows for
-        the same invitation — corrupting the leveling matrix and
+        the same invitation - corrupting the leveling matrix and
         potentially exposing competing prices to both bidders.
 
         Defence-in-depth: the ``oe_bid_management_submission.invitation_id``
@@ -968,7 +968,7 @@ class BidManagementService:
 
             await self.session.flush()
         except IntegrityError:
-            # Concurrent duplicate — the UNIQUE constraint on invitation_id
+            # Concurrent duplicate - the UNIQUE constraint on invitation_id
             # fired. Roll back the partial work and surface a clean 409.
             await self.session.rollback()
             raise HTTPException(
@@ -1009,7 +1009,7 @@ class BidManagementService:
         if package is not None and package.status in ("awarded", "cancelled"):
             raise HTTPException(
                 status_code=409,
-                detail=(f"Submission is locked — package is '{package.status}'"),
+                detail=(f"Submission is locked - package is '{package.status}'"),
             )
 
     async def update_submission(self, submission_id: uuid.UUID, data: BidSubmissionUpdate) -> BidSubmission:
@@ -1095,7 +1095,7 @@ class BidManagementService:
                     alternative_description=item.alternative_description,
                     comment=item.comment,
                     # Carry the bid-leveling taxonomy + prevailing-wage flag
-                    # through bulk import — without these the leveling
+                    # through bulk import - without these the leveling
                     # matrix (which keys off inclusion_status) is corrupt.
                     inclusion_status=item.inclusion_status,
                     prevailing_wage_applicable=item.prevailing_wage_applicable,
@@ -1132,7 +1132,7 @@ class BidManagementService:
     async def create_qa(self, data: BidQACreate) -> BidQA:
         await self.get_package(data.package_id)
         # Bidder consistency: when the Q&A is attributed to a bidder, that
-        # bidder row MUST belong to the same package — otherwise the Q&A
+        # bidder row MUST belong to the same package - otherwise the Q&A
         # board would attribute questions from project-B's bidder to
         # project-A's package, breaking the audit trail.
         if data.bidder_id is not None:
@@ -1275,7 +1275,7 @@ class BidManagementService:
         # divisor is simply 100.
         weight_sum = Decimal(comparison.commercial_weight_pct) + Decimal(comparison.technical_weight_pct)
         if weight_sum <= Decimal("0"):
-            # Degenerate config (0/0) — fall back to pure-commercial scoring
+            # Degenerate config (0/0) - fall back to pure-commercial scoring
             # rather than dividing by zero or zeroing every score.
             commercial_w = Decimal("1")
             technical_w = Decimal("0")
@@ -1374,7 +1374,7 @@ class BidManagementService:
         state would leave the package permanently stuck in 'awarded'
         (which has no outgoing transitions), making re-award impossible
         and breaking the audit trail. We therefore atomically step the
-        package back to 'closed' — the last valid pre-award state — so the
+        package back to 'closed' - the last valid pre-award state - so the
         full award → compare → re-award cycle can be restarted.
         """
         award = await self.award_repo.get_by_id(award_id)
@@ -1656,7 +1656,7 @@ class BidManagementService:
         visible: list[dict[str, Any]] = []
         for qa in all_qa:
             if bidder_id is None:
-                # Owner perspective — all entries
+                # Owner perspective - all entries
                 allow = True
             else:
                 allow = False
@@ -1705,7 +1705,7 @@ class BidManagementService:
     ) -> tuple[str, str]:
         """Merge an invitation-email template with the bidder context.
 
-        Pure function — no I/O. Substitutes ``{placeholder}`` tokens.
+        Pure function - no I/O. Substitutes ``{placeholder}`` tokens.
         Unknown tokens are left literal so missing context is auditable.
         """
         context = {
@@ -1838,7 +1838,7 @@ class BidManagementService:
         """
         package = await self.get_package(package_id)
         # Bidder-impersonation guard: the bidder being scored must belong
-        # to this package — otherwise a manager on project A could plant
+        # to this package - otherwise a manager on project A could plant
         # a score against project-B's subcontractor in project-A's
         # metadata trail.
         bidder_row = await self.bidder_repo.get_by_id(bidder_id)

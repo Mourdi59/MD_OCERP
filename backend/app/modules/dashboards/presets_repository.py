@@ -53,11 +53,11 @@ class DashboardPresetRepository:
         Visibility rules:
 
         * Always include rows where ``owner_id`` matches (the user's own
-          presets — both private and their published collections).
+          presets - both private and their published collections).
         * Additionally include rows where
           ``kind='collection' AND shared_with_project=True`` AND the
           row's ``project_id`` matches the requested project (if a
-          project filter was supplied) — those are the public
+          project filter was supplied) - those are the public
           collections from other users on this project.
 
         Tenant scoping always applies on top.
@@ -126,13 +126,13 @@ class DashboardPresetRepository:
         sync-check runs. We flip them to ``sync_status='stale'``.
 
         Returns the count of presets that actually moved (presets
-        already at ``stale`` or ``needs_review`` are *not* re-bumped —
+        already at ``stale`` or ``needs_review`` are *not* re-bumped -
         a refresh that didn't change anything shouldn't undo a pending
         manual review).
         """
         sid = str(snapshot_id)
         # SQLite + JSON: portable approach is to fetch matching rows in
-        # Python then update them — the volume is bounded (presets per
+        # Python then update them - the volume is bounded (presets per
         # snapshot is normally <100) so we don't bother with the
         # JSON-extract dialect dance.
         stmt = select(DashboardPreset).where(

@@ -1,11 +1,11 @@
 """‌⁠‍ERP Chat API routes.
 
 Endpoints:
-    POST   /erp_chat/stream/                       — SSE streaming chat with tool-calling
-    GET    /erp_chat/sessions/                      — List user's chat sessions
-    POST   /erp_chat/sessions/                      — Create a new chat session
-    GET    /erp_chat/sessions/{session_id}/messages/ — Get messages for a session
-    DELETE /erp_chat/sessions/{session_id}/          — Delete a chat session
+    POST   /erp_chat/stream/                       - SSE streaming chat with tool-calling
+    GET    /erp_chat/sessions/                      - List user's chat sessions
+    POST   /erp_chat/sessions/                      - Create a new chat session
+    GET    /erp_chat/sessions/{session_id}/messages/ - Get messages for a session
+    DELETE /erp_chat/sessions/{session_id}/          - Delete a chat session
 """
 
 import logging
@@ -186,7 +186,7 @@ async def delete_session(
 # factory (see ``include_router`` at the bottom of this file).  Chat
 # messages are scoped via a join through ``ChatSession.project_id``, so
 # we pass a custom loader.  These endpoints have no module-permission
-# check — any authenticated user can inspect / rebuild chat embeddings,
+# check - any authenticated user can inspect / rebuild chat embeddings,
 # preserving the original behaviour.
 
 
@@ -203,7 +203,7 @@ async def chat_message_similar(
     Verifies the requesting user owns the parent ``ChatSession``. If the
     message exists but belongs to another user, the endpoint returns 404
     (not 403) to avoid leaking the existence of message UUIDs the caller
-    is not allowed to see — same convention as ``verify_project_access``.
+    is not allowed to see - same convention as ``verify_project_access``.
     """
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
@@ -216,7 +216,7 @@ async def chat_message_similar(
     if row is None:
         raise HTTPException(status_code=404, detail="Chat message not found")
     # IDOR guard: the message's session must belong to the current user.
-    # Treat ownership mismatch as 404 — never leak the existence of a
+    # Treat ownership mismatch as 404 - never leak the existence of a
     # message owned by a different account.
     if row.session is None or str(row.session.user_id) != str(user_id):
         raise HTTPException(status_code=404, detail="Chat message not found")
@@ -254,7 +254,7 @@ async def submit_message_feedback(
 ) -> FeedbackResponse:
     """‌⁠‍Record a thumbs up/down on a single assistant message.
 
-    Idempotent per ``(message_id, user_id)`` — re-submitting flips the
+    Idempotent per ``(message_id, user_id)`` - re-submitting flips the
     rating in place. The IDOR guard inside the service treats messages
     owned by another user as 404 to avoid leaking existence.
     """

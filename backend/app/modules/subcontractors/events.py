@@ -1,4 +1,4 @@
-"""‌⁠‍Subcontractors event subscribers — feed cross-module facts into the rating.
+"""‌⁠‍Subcontractors event subscribers - feed cross-module facts into the rating.
 
 When the NCR / HSE / Quality modules publish an event whose payload names a
 ``subcontractor_id``, this module bumps the corresponding sub's rating
@@ -36,7 +36,7 @@ def _resolve_sub_id(data: dict[str, object]) -> uuid.UUID | None:
 
     Looks at the top-level ``subcontractor_id`` / ``sub_id`` keys first, then
     falls back to a nested ``metadata`` dict. The previous one-liner had an
-    operator-precedence bug — the ``if isinstance(...) else None`` ternary
+    operator-precedence bug - the ``if isinstance(...) else None`` ternary
     bound the *entire* ``or`` chain, so every payload without a dict
     ``metadata`` key resolved to ``None`` and the rating bump was silently
     dropped.
@@ -152,14 +152,14 @@ async def compute_all_monthly_ratings(period: str | None = None) -> int:
 def register_subcontractor_rating_subscribers() -> None:
     """Wire NCR/HSE/Schedule events into the rating engine.
 
-    Idempotent — re-registering does not stack duplicate handlers. The
+    Idempotent - re-registering does not stack duplicate handlers. The
     :class:`EventBus` itself appends blindly (``subscribe`` has no dedup), so
     a second call (module reload, or the eager import below combined with a
     loader-driven call) would otherwise double-bind every handler and make
     each event fire the rating bump twice. We guard by handler identity here.
     """
     for event_name, handler in _SUBSCRIPTIONS:
-        existing = event_bus._handlers.get(event_name, [])  # noqa: SLF001 — identity check
+        existing = event_bus._handlers.get(event_name, [])  # noqa: SLF001 - identity check
         if handler not in existing:
             event_bus.subscribe(event_name, handler)  # type: ignore[arg-type]
     logger.info(
@@ -168,6 +168,6 @@ def register_subcontractor_rating_subscribers() -> None:
     )
 
 
-# Eagerly register on import — module_loader picks this up when the
+# Eagerly register on import - module_loader picks this up when the
 # subcontractors module is loaded (same pattern as procurement.events).
 register_subcontractor_rating_subscribers()

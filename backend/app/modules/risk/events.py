@@ -1,8 +1,8 @@
-"""‌⁠‍Risk event handlers — vector indexing for lessons-learned reuse.
+"""‌⁠‍Risk event handlers - vector indexing for lessons-learned reuse.
 
 Subscribes to ``risk.risk.*`` events and keeps the ``oe_risks`` vector
 collection in sync with the underlying :class:`RiskItem` rows.  Risks
-have the **highest cross-project semantic-search value** of any module —
+have the **highest cross-project semantic-search value** of any module -
 an estimator on a new project wants to instantly pull up "similar risks
 we already faced" across the entire tenant history so they can reuse the
 mitigation strategy, contingency plan and budget reserve.
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 # ── Events emitted by this module (for cross-module subscribers) ──────────
 #
-# ``risk.escalated`` — published by ``escalation.RiskEscalationService`` when
+# ``risk.escalated`` - published by ``escalation.RiskEscalationService`` when
 # a risk auto-escalates (severity product crosses the threshold, or its
 # next-review date lapses). Payload:
 #
@@ -49,7 +49,7 @@ RISK_ESCALATED_EVENT = "risk.escalated"
 # ── Vector indexing subscribers ──────────────────────────────────────────
 #
 # Each handler opens its own short-lived session, loads the risk row and
-# forwards it to the adapter.  Failures are logged and swallowed —
+# forwards it to the adapter.  Failures are logged and swallowed -
 # vector indexing is best-effort and must never break a normal CRUD
 # path.  This mirrors the BOQ implementation exactly.
 
@@ -150,11 +150,11 @@ async def _on_contracts_risk_register_update(event: Event) -> None:
     Published by ``hse_advanced/events.py::_on_safety_incident_created``
     when a safety incident is recorded. The risk register is the
     canonical home for the resulting "this incident is now a tracked
-    risk" projection — without this subscriber the publish was orphaned
+    risk" projection - without this subscriber the publish was orphaned
     and the incident never appeared in the risk dashboard.
 
     Idempotency: keyed on ``incident_id`` stored in ``risk.metadata_``
-    under ``source_incident_id``. Re-firing the event is safe — the
+    under ``source_incident_id``. Re-firing the event is safe - the
     second invocation will see the existing row and skip.
 
     Fail-soft: any error is logged at debug; the upstream incident
@@ -178,7 +178,7 @@ async def _on_contracts_risk_register_update(event: Event) -> None:
 
     try:
         async with async_session_factory() as session:
-            # Idempotency check — look for any existing RiskItem with
+            # Idempotency check - look for any existing RiskItem with
             # matching source_incident_id in metadata.
             stmt = select(RiskItem).where(RiskItem.project_id == project_id)
             existing_rows = (await session.execute(stmt)).scalars().all()

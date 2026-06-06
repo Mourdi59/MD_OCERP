@@ -1,4 +1,4 @@
-"""‌⁠‍User service — business logic for authentication and user management.
+"""‌⁠‍User service - business logic for authentication and user management.
 
 Stateless service layer. Handles:
 - User registration & login (JWT)
@@ -197,7 +197,7 @@ class UserService:
         mode = getattr(_s, "registration_mode", "open") or "open"
 
         # "First real user becomes admin" bootstrap. Check for any existing
-        # admin rather than any user — a prior `make seed` run may have
+        # admin rather than any user - a prior `make seed` run may have
         # inserted demo/viewer rows that would otherwise block the first
         # real registrant from receiving admin rights.
         admin_exists = await self.user_repo.has_admin()
@@ -219,7 +219,7 @@ class UserService:
             )
 
         # First user becomes admin (bootstrap path); subsequent self-registered
-        # users default to `viewer` — a near-zero-privilege role. Historically
+        # users default to `viewer` - a near-zero-privilege role. Historically
         # this defaulted to `editor`, which granted 119 permissions including
         # `costs.create`, `boq.delete`, `schedule.delete` to anyone who could
         # hit the public registration endpoint (BUG-327/386). Admins must
@@ -230,12 +230,12 @@ class UserService:
         # override this via the ``OE_DEFAULT_REGISTRATION_ROLE`` env var.
         default_role = getattr(_s, "default_registration_role", "viewer") or "viewer"
         if default_role not in {"viewer", "editor", "manager"}:
-            # Admin is intentionally excluded — nobody should self-register
+            # Admin is intentionally excluded - nobody should self-register
             # as admin no matter what config says.
             default_role = "viewer"
 
         if not admin_exists:
-            # Bootstrap path — always active so the operator can actually
+            # Bootstrap path - always active so the operator can actually
             # log in to a fresh install in admin-approve mode.
             role = "admin"
             is_active = True
@@ -357,7 +357,7 @@ class UserService:
         Demo-account UX shortcut: if the email matches one of the seeded
         demo accounts and ``SEED_DEMO`` is enabled (default on community /
         self-host installs, disabled in production), we route through
-        ``demo_login`` — which issues tokens without verifying the
+        ``demo_login`` - which issues tokens without verifying the
         password. Why: BUG-D01 randomised demo passwords per install for
         security, but users who typed the documented ``DemoPass1234!``
         into the manual form got 401 "Invalid email or password" because
@@ -408,13 +408,13 @@ class UserService:
         user_full_name = user.full_name
         prior_last_login = user.last_login_at
 
-        # Throttle last_login_at writes — if the previous login was <60s ago
+        # Throttle last_login_at writes - if the previous login was <60s ago
         # we skip the UPDATE. Avoids a race against the UserActivity INSERT
         # that the session-middleware fires on the same request (BUG-161),
         # and prevents burst-login from hammering the users table.
         #
         # SQLite strips the tzinfo on DateTime(timezone=True) columns so we
-        # coerce both sides to naive UTC before subtracting — otherwise
+        # coerce both sides to naive UTC before subtracting - otherwise
         # Python raises ``can't subtract offset-naive and offset-aware``.
         now = datetime.now(UTC)
         skip_write = False
@@ -438,7 +438,7 @@ class UserService:
         access_token = create_access_token(user, self.settings)
         refresh_token = create_refresh_token(user, self.settings)
 
-        # Audit trail — security-critical event: successful login.
+        # Audit trail - security-critical event: successful login.
         try:
             from app.core.audit_log import log_activity as _log_activity
 
@@ -479,7 +479,7 @@ class UserService:
         if user is None or not user.is_active:
             # The seeder must have failed (rare) or the row was manually
             # deleted. Surface a 404 so the operator knows to check the
-            # startup log — distinct from a 401 so it's clear this isn't
+            # startup log - distinct from a 401 so it's clear this isn't
             # a credential problem.
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -575,7 +575,7 @@ class UserService:
         """Generate a password-reset token if the email exists.
 
         Always returns a generic success message to prevent email enumeration.
-        The token is NEVER included in the HTTP response — it must be
+        The token is NEVER included in the HTTP response - it must be
         delivered only via a secure side-channel (email).
         """
         user = await self.user_repo.get_by_email(data.email)
@@ -606,7 +606,7 @@ class UserService:
             recipient_name=recipient_name,
             token_lifetime_minutes=self.settings.jwt_expire_minutes,
         )
-        # Never raise — the response must stay enumeration-proof even
+        # Never raise - the response must stay enumeration-proof even
         # when SMTP is down. The service already logs failure reasons.
         if not result.ok and self.settings.app_debug:
             # Dev-only fallback so developers without SMTP can still
@@ -623,7 +623,7 @@ class UserService:
         Single-use enforcement: after the first successful reset the
         ``password_changed_at`` column is bumped to ``now()``.  On any
         subsequent attempt with the same token, ``iat`` (issued-at) will
-        be ≤ ``password_changed_at`` — we reject it as already-used,
+        be ≤ ``password_changed_at`` - we reject it as already-used,
         preventing token reuse within the 15-minute expiry window.  No DB
         blocklist is needed; the existing ``password_changed_at`` column
         already serves as the invalidation timestamp.
@@ -686,7 +686,7 @@ class UserService:
             password_changed_at=datetime.now(UTC),
         )
 
-        # Audit trail — security-critical event: password change via reset token.
+        # Audit trail - security-critical event: password change via reset token.
         try:
             from app.core.audit_log import log_activity as _log_activity
 

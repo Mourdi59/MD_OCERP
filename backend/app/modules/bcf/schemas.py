@@ -135,7 +135,7 @@ class TopicCreate(BaseModel):
 
 
 class TopicUpdate(BaseModel):
-    """Patch a BCF topic. Every field optional — only set fields apply."""
+    """Patch a BCF topic. Every field optional - only set fields apply."""
 
     title: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
@@ -191,7 +191,7 @@ class BCFImportIssue(BaseModel):
 class BCFImportReport(BaseModel):
     """Structured result of a ``.bcfzip`` import.
 
-    A malformed archive never raises a 500 — it returns this report with
+    A malformed archive never raises a 500 - it returns this report with
     ``status='errors'`` and an empty ``imported_*`` set.
     """
 

@@ -1,4 +1,4 @@
-"""‌⁠‍Requirements & Quality Gates Pydantic schemas — request/response models.
+"""‌⁠‍Requirements & Quality Gates Pydantic schemas - request/response models.
 
 Defines create, update, and response schemas for requirement sets,
 individual requirements (EAC triplets), and quality gate results.
@@ -111,7 +111,7 @@ class RequirementSetCreate(BaseModel):
 class RequirementSetUpdate(BaseModel):
     """Partial update for a requirement set.
 
-    All fields are optional — pass only what should change.  Project
+    All fields are optional - pass only what should change.  Project
     re-assignment is intentionally NOT supported here (sets are
     project-scoped at creation; moving them would silently break
     every BIM/BOQ link they own).
@@ -138,7 +138,7 @@ class RequirementBulkDeleteRequest(BaseModel):
 
     A single transaction deletes every requirement whose id is in the
     list.  Ids that do not belong to the path's ``set_id`` are silently
-    skipped — the endpoint reports the actual delete count so callers
+    skipped - the endpoint reports the actual delete count so callers
     can detect that case.
     """
 
@@ -287,7 +287,7 @@ class DeliverableResponse(BaseModel):
 
     The ``status`` field is derived server-side from the timestamps
     (``accepted`` if ``accepted_at`` is set, else ``submitted`` if
-    ``submitted_at`` is set, else ``missing``) — the matrix view's
+    ``submitted_at`` is set, else ``missing``) - the matrix view's
     cell colouring reads it directly.
     """
 
@@ -341,7 +341,7 @@ class MatrixCell(BaseModel):
 
 
 class MatrixRow(BaseModel):
-    """A single row of the EIR matrix — one requirement + its cells."""
+    """A single row of the EIR matrix - one requirement + its cells."""
 
     requirement_id: UUID
     requirement_set_id: UUID

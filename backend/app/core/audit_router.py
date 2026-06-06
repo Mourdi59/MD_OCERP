@@ -1,25 +1,25 @@
 """‌⁠‍Audit log API routes (admin-only).
 
 Endpoints:
-    GET    /api/v1/audit                            — list audit entries with filters
-    GET    /api/v1/audit/count                      — count rows matching the same filter set
-    GET    /api/v1/audit/{entity_type}/{entity_id}  — audit trail for a specific entity
-    GET    /api/v1/audit/timeline/                  — unified Epic H timeline (oe_activity_log)
-    POST   /api/v1/audit/redact-actor/              — GDPR right-to-erasure (2-step confirm)
+    GET    /api/v1/audit                            - list audit entries with filters
+    GET    /api/v1/audit/count                      - count rows matching the same filter set
+    GET    /api/v1/audit/{entity_type}/{entity_id}  - audit trail for a specific entity
+    GET    /api/v1/audit/timeline/                  - unified Epic H timeline (oe_activity_log)
+    POST   /api/v1/audit/redact-actor/              - GDPR right-to-erasure (2-step confirm)
 
 Filter params accepted by ``GET /v1/audit`` and ``/v1/audit/count``:
 
-* ``entity_type`` — logical entity name (boq / project / …)
-* ``entity_id`` — single UUID
-* ``user_id_filter`` — UUID of the acting user (aliased to avoid colliding
+* ``entity_type`` - logical entity name (boq / project / …)
+* ``entity_id`` - single UUID
+* ``user_id_filter`` - UUID of the acting user (aliased to avoid colliding
   with the path-param of the entity trail route)
-* ``action`` — verb (create / update / …)
-* ``date_from`` / ``date_to`` — ISO-8601 inclusive bounds on ``created_at``
-* ``sort`` — ``desc`` (default) or ``asc`` — list only
-* ``limit`` / ``offset`` — pagination, list only
+* ``action`` - verb (create / update / …)
+* ``date_from`` / ``date_to`` - ISO-8601 inclusive bounds on ``created_at``
+* ``sort`` - ``desc`` (default) or ``asc`` - list only
+* ``limit`` / ``offset`` - pagination, list only
 
 The frontend's filter bar in ``AuditLogPage.tsx`` is the canonical
-consumer — keep this signature in sync with that page's ``AuditFilters``
+consumer - keep this signature in sync with that page's ``AuditFilters``
 type when adding new params.
 """
 
@@ -133,7 +133,7 @@ async def entity_audit_trail(
     return [_entry_to_dict(e) for e in entries]
 
 
-# ── Epic H — unified timeline ──────────────────────────────────────────
+# ── Epic H - unified timeline ──────────────────────────────────────────
 
 
 def _activity_to_dict(row: Any) -> dict[str, Any]:
@@ -182,8 +182,8 @@ async def get_timeline(
 
     The legacy ``/v1/audit`` endpoints still serve ``oe_core_audit_log``
     one row at a time. This endpoint pivots on the universal-audit
-    table — newest-first, optionally filtered by entity / actor / module
-    — so the frontend AuditLogPage can render a cross-module timeline
+    table - newest-first, optionally filtered by entity / actor / module
+    - so the frontend AuditLogPage can render a cross-module timeline
     without union-querying two tables.
     """
     from sqlalchemy import select
@@ -209,15 +209,15 @@ async def get_timeline(
     return [_activity_to_dict(r) for r in rows]
 
 
-# ── Epic H §H9 — GDPR right-to-erasure (redact actor) ────────────────
+# ── Epic H §H9 - GDPR right-to-erasure (redact actor) ────────────────
 
 
 class RedactActorRequest(BaseModel):
     """2-step confirm payload for actor redaction.
 
     The first request returns 200 with ``preview=<int>`` and does NOT
-    mutate. The second request — with ``confirm`` set to the exact value
-    returned by the preview ("yes-<uuid>") and ``commit=True`` — runs the
+    mutate. The second request - with ``confirm`` set to the exact value
+    returned by the preview ("yes-<uuid>") and ``commit=True`` - runs the
     redaction. This is enough to stop an accidental Postman click from
     nuking compliance data without forcing a separate "dry-run" endpoint.
     """
@@ -240,9 +240,9 @@ async def redact_actor(
     body: RedactActorRequest = Body(...),
     _perm: None = Depends(RequirePermission("audit.redact")),
 ) -> dict[str, Any]:
-    """GDPR Article 17 — overwrite ``actor_id`` (and IP / UA) on every row
-    written by the data subject. The row stays — the operational
-    audit-trail is preserved — but the personally identifying capture
+    """GDPR Article 17 - overwrite ``actor_id`` (and IP / UA) on every row
+    written by the data subject. The row stays - the operational
+    audit-trail is preserved - but the personally identifying capture
     columns are NULL'd out so the data subject can no longer be re-linked
     to their actions.
 
@@ -257,11 +257,11 @@ async def redact_actor(
     except (ValueError, AttributeError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid actor_id — must be a UUID",
+            detail="Invalid actor_id - must be a UUID",
         ) from exc
 
     # Always count first so the response shape is identical between
-    # preview and commit — the frontend hides ``preview`` vs ``redacted``
+    # preview and commit - the frontend hides ``preview`` vs ``redacted``
     # under the same key.
     from sqlalchemy import func
     from sqlalchemy import select as _select

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 async def on_startup() -> None:
-    """‌⁠‍Module startup hook — register permissions, subscribers, and seed
+    """‌⁠‍Module startup hook - register permissions, subscribers, and seed
     the platform-wide Assembly Library templates (idempotent)."""
     from app.modules.assemblies.events import register_assemblies_subscribers
     from app.modules.assemblies.permissions import register_assemblies_permissions
@@ -28,5 +28,5 @@ async def on_startup() -> None:
 
         async with async_session_factory() as session:
             await seed_assembly_templates(session)
-    except Exception:  # noqa: BLE001 — startup hook must not raise.
+    except Exception:  # noqa: BLE001 - startup hook must not raise.
         logger.warning("Assembly templates seed failed at startup", exc_info=True)

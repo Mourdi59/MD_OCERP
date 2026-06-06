@@ -3,7 +3,7 @@
 All routes are mounted at ``/api/v1/bid-management/`` and gated by
 :class:`RequirePermission` ("bid_management.*"). Internal cross-module
 references (project_id, tender_id, contract_template_ref) are plain
-UUID / string types — no FK constraints across modules.
+UUID / string types - no FK constraints across modules.
 
 Every endpoint enforces :func:`verify_project_access` so users cannot
 read/mutate bid data belonging to projects they don't own. The chain is:
@@ -903,7 +903,7 @@ async def get_or_create_comparison(
     user_id: CurrentUserId,
     _perm: None = Depends(RequirePermission("bid_management.create")),
 ) -> BidComparisonResponse:
-    """Idempotent comparison creation — returns the existing one if present.
+    """Idempotent comparison creation - returns the existing one if present.
 
     Lets the leveling UI re-run "Compute Leveling" without hitting the 409
     that plain ``create_comparison`` raises once a comparison exists.

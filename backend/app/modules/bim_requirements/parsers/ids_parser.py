@@ -10,7 +10,7 @@ Spec reference: https://github.com/buildingSMART/IDS
 """
 
 import logging
-import xml.etree.ElementTree as ET  # noqa: S405 — types + traversal only; parse calls use defusedxml
+import xml.etree.ElementTree as ET  # noqa: S405 - types + traversal only; parse calls use defusedxml
 from pathlib import Path
 from typing import Any
 

@@ -1,5 +1,5 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""‌⁠‍Smart Views API routes — mounted by the loader at ``/api/v1/smart-views``.
+"""‌⁠‍Smart Views API routes - mounted by the loader at ``/api/v1/smart-views``.
 
 Endpoints
     POST   /                              → create
@@ -42,7 +42,7 @@ def _get_service(session: SessionDep) -> SmartViewService:
 
 
 def _user_uuid(user_id: str) -> uuid.UUID:
-    """Coerce the JWT subject claim to a UUID — 401 on garbage tokens.
+    """Coerce the JWT subject claim to a UUID - 401 on garbage tokens.
 
     Mirrors the conversion every other module does at the router edge
     so that downstream service code can assume ``uuid.UUID`` typing.
@@ -236,7 +236,7 @@ async def resolve_smart_view_share(
     token: str,
     service: SmartViewService = Depends(_get_service),
 ) -> SmartViewResponse:
-    """UNAUTHENTICATED — resolve a share token to a SmartView.
+    """UNAUTHENTICATED - resolve a share token to a SmartView.
 
     No ``RequirePermission`` gate: the signed token IS the auth. We
     deliberately do NOT include the token in the response (caller

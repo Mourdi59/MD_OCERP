@@ -1,14 +1,14 @@
-"""‌⁠‍Equipment service — business logic for fleet, maintenance, rentals, and damage.
+"""‌⁠‍Equipment service - business logic for fleet, maintenance, rentals, and damage.
 
 Key features:
-    * record_telemetry — append reading + bump Equipment counters if newer.
-    * compute_next_due — pure scheduler helper for hours/km/date triggers.
-    * generate_due_work_orders — auto-create WO stubs for schedules near threshold.
-    * check_inspection_compliance / is_blocked_from_assignment — assignment gate.
-    * assign_to_project — creates a rental; raises if blocked. Emits event.
-    * compute_rental_billing — pure rate × period helper (hours preferred over days).
-    * depreciation_value_at — linear/straight-line depreciation; extension point.
-    * record_damage — DamageReport + auto MaintenanceWorkOrder.
+    * record_telemetry - append reading + bump Equipment counters if newer.
+    * compute_next_due - pure scheduler helper for hours/km/date triggers.
+    * generate_due_work_orders - auto-create WO stubs for schedules near threshold.
+    * check_inspection_compliance / is_blocked_from_assignment - assignment gate.
+    * assign_to_project - creates a rental; raises if blocked. Emits event.
+    * compute_rental_billing - pure rate × period helper (hours preferred over days).
+    * depreciation_value_at - linear/straight-line depreciation; extension point.
+    * record_damage - DamageReport + auto MaintenanceWorkOrder.
 """
 
 from __future__ import annotations
@@ -166,11 +166,11 @@ def depreciation_value_at(
       (rate = 2 / useful_life). The rate can be overridden by passing
       ``declining_balance_rate`` (e.g. Decimal("0.15") for 15%/yr). Switches
       to straight-line for the final year so the unit hits ``residual_value``
-      exactly at the end of its life — this is the GAAP / IFRS practice for
+      exactly at the end of its life - this is the GAAP / IFRS practice for
       DB methods.
 
     Returns ``Decimal("0")`` if any of ``purchase_value``,
-    ``useful_life_years``, ``purchase_date`` is missing — caller should
+    ``useful_life_years``, ``purchase_date`` is missing - caller should
     treat this as "unknown", not "zero NBV".
     """
     method = (equipment.depreciation_method or "linear").lower()
@@ -294,7 +294,7 @@ class EquipmentService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Equipment type not found",
             )
-        # Block delete when any Equipment still points at this type's code —
+        # Block delete when any Equipment still points at this type's code -
         # otherwise we'd orphan the FK reference (it's a string code, not a
         # DB-level FK).
         ref_count = await self.session.scalar(
@@ -362,7 +362,7 @@ class EquipmentService:
             3. If the new hour-meter or odometer crosses any active maintenance
                schedule's ``next_due_meter`` threshold (within the standard
                50-hour lookahead), a maintenance work order is auto-created
-               via :meth:`generate_due_work_orders` — so the operator
+               via :meth:`generate_due_work_orders` - so the operator
                recording field hours never has to chase the maintenance team.
         """
         equipment = await self.get_equipment(equipment_id)
@@ -758,7 +758,7 @@ class EquipmentService:
                 detail="Rental has already been returned",
             )
         end_iso = end_date or date.today().isoformat()
-        # The rental cannot end before it started — guard against a caller
+        # The rental cannot end before it started - guard against a caller
         # passing an end_date earlier than start_date, which would make
         # compute_rental_billing silently return 0 for the whole period.
         if rental.start_date and end_iso < rental.start_date:
@@ -942,7 +942,7 @@ class EquipmentService:
         )
         await self.workorder_repo.create(wo)
 
-        # Capture PKs BEFORE update_fields() — its trailing expire_all()
+        # Capture PKs BEFORE update_fields() - its trailing expire_all()
         # detaches every attribute on ``damage`` and ``wo``. ``wo`` is never
         # refreshed afterwards, so a later ``wo.id`` access would trigger an
         # illegal *synchronous* lazy-load on the async session and 500 the
@@ -1230,7 +1230,7 @@ class EquipmentActualsService:
                 return line
 
         # New auto-line. Inherit the project base currency (empty string when
-        # the project has none — the dashboard renders a currency-less number
+        # the project has none - the dashboard renders a currency-less number
         # rather than mislabelling, see CostModelService._get_project_currency).
         from app.modules.costmodel.service import CostModelService
 
@@ -1401,7 +1401,7 @@ async def _post_equipment_cost(
             await session.commit()
     except Exception:
         logger.exception(
-            "Equipment actuals rollup failed for %s — source submission unaffected",
+            "Equipment actuals rollup failed for %s - source submission unaffected",
             log_label,
         )
 

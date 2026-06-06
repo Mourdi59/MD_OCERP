@@ -101,7 +101,7 @@ def _safe_para(text: Any, style: ParagraphStyle) -> "Paragraph":
     section titles, the ``prepared_by`` field, project names, etc.).
 
     Internal labels that need ReportLab inline markup such as ``<b>...</b>``
-    or ``&nbsp;`` indentation construct ``Paragraph`` directly — that text
+    or ``&nbsp;`` indentation construct ``Paragraph`` directly - that text
     is checked into source and trusted.
     """
     if text is None:
@@ -389,7 +389,7 @@ def _build_cover_page(
         info_table_data.append(
             [
                 # Labels are first-party constants, values come from the
-                # project / BOQ records and may contain HTML — escape only
+                # project / BOQ records and may contain HTML - escape only
                 # the dynamic side.
                 Paragraph(label, styles["info_label"]),
                 _safe_para(value, styles["info_value"]),
@@ -457,7 +457,7 @@ def _build_cover_page(
         vat_amount = net_total_d * Decimal(str(vat_rate)) / Decimal("100")
         gross_total = net_total_d + vat_amount
     else:
-        # No tax markup found — show net=gross with 0% VAT
+        # No tax markup found - show net=gross with 0% VAT
         vat_rate = 0.0
         vat_amount = Decimal("0")
         gross_total = net_total
@@ -632,7 +632,7 @@ def _build_boq_table(
             row_styles.append((row_idx, "item"))
             row_idx += 1
             # ``pos.total`` is a SQLAlchemy Numeric (Decimal); the
-            # accumulator is a float — mixing the two raises TypeError and
+            # accumulator is a float - mixing the two raises TypeError and
             # crashed PDF export for any BOQ with ungrouped positions.
             ungrouped_total += float(pos.total or 0)
 
@@ -1145,9 +1145,9 @@ def generate_boq_pdf_simple(
     cost_table.setStyle(TableStyle(cost_style))
     flowables.append(cost_table)
 
-    # Single-pass build (no two-pass for page count — acceptable trade-off
+    # Single-pass build (no two-pass for page count - acceptable trade-off
     # for large BOQs; footer shows "Page X" without " of Y")
-    doc.page_count = 0  # Will not display " of 0" — see footer_func logic
+    doc.page_count = 0  # Will not display " of 0" - see footer_func logic
     doc.build(flowables)
 
     pdf_bytes = buffer.getvalue()

@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Graph DAG executor — generalises ``match_elements.pipeline.run_stage``.
+"""‌⁠‍Graph DAG executor - generalises ``match_elements.pipeline.run_stage``.
 
 The match-elements pipeline runs a *fixed* seven-stage tuple. This module
 runs a *user-authored DAG*: the node order is a Kahn topological sort (the
@@ -88,7 +88,7 @@ def _adjacency(
     """‌⁠‍Return ``(nodes_by_id, out_edges, in_edges)`` from a graph dict.
 
     ``out_edges[src] = [dst, …]`` and ``in_edges[dst] = [src, …]``.
-    Edges whose endpoints are not declared nodes are dropped (defensive —
+    Edges whose endpoints are not declared nodes are dropped (defensive -
     a stale edge must not crash the topo sort).
     """
     raw_nodes = graph.get("nodes") or []
@@ -114,7 +114,7 @@ def topological_order(graph: dict[str, Any]) -> list[str]:
     """Kahn topological sort of node ids; raises on a cycle.
 
     Kahn (not the loader's DFS) so a genuine cycle surfaces as a precise
-    :class:`GraphValidationError` listing the stuck nodes — that error is
+    :class:`GraphValidationError` listing the stuck nodes - that error is
     shown to the user before any node runs.
     """
     nodes_by_id, out_edges, in_edges = _adjacency(graph)
@@ -158,7 +158,7 @@ def validate_graph(graph: dict[str, Any]) -> list[str]:
 
     Checks: (1) acyclic (Kahn), (2) every node type is registered in the
     Node Capability Registry. An unregistered type is rejected here,
-    BEFORE the run starts — never mid-run (§3.5).
+    BEFORE the run starts - never mid-run (§3.5).
     """
     order = topological_order(graph)
     nodes_by_id, _, _ = _adjacency(graph)
@@ -225,7 +225,7 @@ async def run_node(
     tenant_id: uuid.UUID | None = None,
     actor_id: str | None = None,
 ) -> dict[str, Any]:
-    """Execute one node and persist its state — generalised ``run_stage``.
+    """Execute one node and persist its state - generalised ``run_stage``.
 
     The state machine is a 1:1 port of ``match_elements.pipeline.run_stage``:
     flip ``running`` + commit, run the registered runner in a fresh txn
@@ -241,7 +241,7 @@ async def run_node(
         project_id / tenant_id / actor_id: Run scope passed to the runner.
 
     Returns:
-        ``{node_id, node_type, status, output, error, took_ms}`` — a small
+        ``{node_id, node_type, status, output, error, took_ms}`` - a small
         envelope the executor threads into downstream nodes.
     """
     node_id = str(node.get("id") or "")
@@ -250,7 +250,7 @@ async def run_node(
 
     spec = node_registry.get(node_type)
     if spec is None:
-        # Defensive — validate_graph already rejects this before the run.
+        # Defensive - validate_graph already rejects this before the run.
         raise GraphValidationError(f"Unknown node type: {node_type!r}")
 
     state = await _get_or_create_node_state(db, run_id, node_id, node_type)
@@ -261,7 +261,7 @@ async def run_node(
     state.took_ms = None
     state.inputs = {"params": params, "upstream_node_ids": sorted(upstream)}
     # Commit the running state so a concurrent poll sees it and so the
-    # runner starts from a clean transaction boundary — exactly the
+    # runner starts from a clean transaction boundary - exactly the
     # match-elements rationale.
     await db.commit()
 
@@ -299,7 +299,7 @@ async def run_node(
         await db.rollback()
         # Suppress unused-variable warning while keeping the bind for grep.
         del exc
-    except Exception as exc:  # noqa: BLE001 — surface error to the run row.
+    except Exception as exc:  # noqa: BLE001 - surface error to the run row.
         logger.exception(
             "pipeline.executor: node %s (%s) failed for run %s",
             node_id,
@@ -308,14 +308,14 @@ async def run_node(
         )
         final_status = "error"
         final_error = str(exc)
-        # The session may be in a failed-transaction state — roll back
+        # The session may be in a failed-transaction state - roll back
         # before we touch the DB again to write the error row.
         await db.rollback()
 
     took_ms = int((time.perf_counter() - t0) * 1000)
 
     # Re-fetch: a rollback (error path) or a runner that committed mid-flight
-    # can detach the earlier instance — reload to write the terminal state
+    # can detach the earlier instance - reload to write the terminal state
     # against a live row (same as run_stage).
     state = await _get_or_create_node_state(db, run_id, node_id, node_type)
     state.status = final_status
@@ -358,7 +358,7 @@ async def execute_run(
     then runs each node sequentially in topo order, threading each node's
     output envelope to its downstream consumers. A node ``error`` skips
     every node that depends on it (they are marked ``skipped``) but does
-    NOT abort sibling branches — partial progress is preserved, matching
+    NOT abort sibling branches - partial progress is preserved, matching
     the durable-execution philosophy.
 
     Returns a small run summary dict (counts + per-node statuses) that the
@@ -401,7 +401,7 @@ async def execute_run(
             from app.core.job_runner import update_progress
 
             await update_progress(job_run_id, percent=pct)
-        except Exception:  # noqa: BLE001 — progress is advisory only.
+        except Exception:  # noqa: BLE001 - progress is advisory only.
             logger.warning(
                 "pipeline.executor: progress update failed for run %s",
                 run_id,
@@ -517,6 +517,6 @@ def register_pipeline_job_handler() -> None:
 
 
 # Register at import so any importer (the module router, a test) gets the
-# handler bound without an explicit bootstrap call — mirrors how
+# handler bound without an explicit bootstrap call - mirrors how
 # ``boq.events`` self-registers at module import.
 register_pipeline_job_handler()

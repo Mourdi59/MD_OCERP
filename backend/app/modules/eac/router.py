@@ -4,17 +4,17 @@
 
 Endpoints for EAC-1.1 + EAC-1.2:
 
-* ``POST   /rules``               — create rule
-* ``GET    /rules/{id}``          — fetch rule
-* ``GET    /rules``               — list rules (filters)
-* ``PUT    /rules/{id}``          — update rule (auto-bumps version)
-* ``DELETE /rules/{id}``          — soft-delete (sets is_active=False)
-* ``POST   /rules:validate``      — stub validator (real impl in EAC-1.3)
-* ``POST   /rulesets``            — create ruleset
-* ``GET    /rulesets/{id}``       — fetch ruleset
-* ``GET    /rulesets``            — list rulesets
-* ``PUT    /rulesets/{id}``       — update ruleset
-* ``DELETE /rulesets/{id}``       — hard-delete (rules cascade by FK SET NULL)
+* ``POST   /rules``               - create rule
+* ``GET    /rules/{id}``          - fetch rule
+* ``GET    /rules``               - list rules (filters)
+* ``PUT    /rules/{id}``          - update rule (auto-bumps version)
+* ``DELETE /rules/{id}``          - soft-delete (sets is_active=False)
+* ``POST   /rules:validate``      - stub validator (real impl in EAC-1.3)
+* ``POST   /rulesets``            - create ruleset
+* ``GET    /rulesets/{id}``       - fetch ruleset
+* ``GET    /rulesets``            - list rulesets
+* ``PUT    /rulesets/{id}``       - update ruleset
+* ``DELETE /rulesets/{id}``       - hard-delete (rules cascade by FK SET NULL)
 
 The module loader auto-mounts this router at ``/api/v1/eac/``. The canonical
 ``/api/v2/eac/`` surface (RFC 35 L15) is wired up by the parent task in
@@ -385,9 +385,9 @@ async def validate_rule(
 
     Pipeline:
 
-    1. Pydantic shape check — catches malformed payloads before any
+    1. Pydantic shape check - catches malformed payloads before any
        DB work.
-    2. Semantic validator — alias / global-var existence, formula
+    2. Semantic validator - alias / global-var existence, formula
        syntax, ReDoS reject, ``between`` ordering, local-var cycle
        detection (FR-1.10).
     """
@@ -420,7 +420,7 @@ async def validate_rule(
         tenant_id = await _resolve_tenant_id(session, user_id)
     except HTTPException:
         raise
-    except Exception:  # noqa: BLE001 — soft fallback when tenant can't resolve
+    except Exception:  # noqa: BLE001 - soft fallback when tenant can't resolve
         tenant_id = None
 
     try:
@@ -704,7 +704,7 @@ async def run_ruleset_endpoint(
     """Execute every active rule in a ruleset and persist an EacRun.
 
     The caller may either supply ``elements`` inline (small models,
-    tests) or a ``model_id`` — in the latter case the runner loads
+    tests) or a ``model_id`` - in the latter case the runner loads
     BIMElement rows and converts them to canonical dicts via
     :func:`bim_element_to_canonical`.
 
@@ -712,7 +712,7 @@ async def run_ruleset_endpoint(
     is set or when ``elements`` are supplied inline we compute a stable
     key from ``ruleset_id + ruleset.updated_at + sorted element hash``.
     A prior run with the same key for this ``(tenant, ruleset)`` is
-    returned verbatim — protecting against webhook retries, double-
+    returned verbatim - protecting against webhook retries, double-
     click submits, and client retries on transient errors.
 
     **Audit log**: each accepted trigger writes one ``ActivityLog`` row
@@ -740,7 +740,7 @@ async def run_ruleset_endpoint(
         from app.modules.bim_hub.models import BIMElement, BIMModel
 
         # IDOR guard: a ruleset run can read every element of the model, so the
-        # caller must have access to the model's project — otherwise model_id
+        # caller must have access to the model's project - otherwise model_id
         # is a cross-tenant read of another project's BIM data.
         model = await session.get(BIMModel, payload.model_id)
         if model is None:
@@ -760,7 +760,7 @@ async def run_ruleset_endpoint(
         )
 
     # Derive an idempotency key. ``updated_at`` may be None on freshly
-    # created rulesets — fall back to ``created_at`` then to the epoch
+    # created rulesets - fall back to ``created_at`` then to the epoch
     # so the hash input is always defined.
     ruleset_ts = getattr(ruleset, "updated_at", None) or getattr(ruleset, "created_at", None)
     if ruleset_ts is None:
@@ -805,7 +805,7 @@ async def run_ruleset_endpoint(
             detail=str(exc),
         ) from exc
 
-    # Audit log — best effort. A failed audit-write must not roll back
+    # Audit log - best effort. A failed audit-write must not roll back
     # the run row: the work succeeded either way.
     try:
         await log_activity(
@@ -892,7 +892,7 @@ async def list_run_results(
 ) -> list[EacRunResultItemRead]:
     """Paginate the per-element result rows for a run.
 
-    ``only_failures`` filters to rows where ``pass_=False`` — used by
+    ``only_failures`` filters to rows where ``pass_=False`` - used by
     the run-detail view's "show what failed" tab.
     """
     tenant_id = await _resolve_tenant_id(session, user_id)
@@ -1027,10 +1027,10 @@ async def cancel_run_endpoint(
     """Request graceful cancellation of ``run_id``.
 
     Returns 200 with ``cancelled=true`` when the request was accepted
-    (run is pending/running, or already cancelled — idempotent).
+    (run is pending/running, or already cancelled - idempotent).
     Returns 404 when the run does not exist for the current tenant.
     Returns 409 when the run is in a terminal non-cancelled state
-    (success/failed/partial) — cancel is meaningless there.
+    (success/failed/partial) - cancel is meaningless there.
     """
     from app.modules.eac.service import cancel_run
 
@@ -1102,7 +1102,7 @@ async def rerun_run_endpoint(
             user_id=user_id,
         )
     except ExecutionError as exc:
-        # Source run not found / tenant mismatch — surface as 404 so the
+        # Source run not found / tenant mismatch - surface as 404 so the
         # caller doesn't conflate it with a malformed payload (422).
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -87,7 +87,7 @@ class SubcontractorCreate(SubcontractorBase):
 class SubcontractorUpdate(BaseModel):
     """Partial update for Subcontractor.
 
-    R5: ``rating_score`` is *deliberately* not editable here — it is the
+    R5: ``rating_score`` is *deliberately* not editable here - it is the
     rolled-up output of :class:`SubcontractorRating` rows and must only
     be written through :meth:`SubcontractorService.update_rating` /
     ``bump_rating_from_event`` (both gated by ``subcontractors.rate``).
@@ -148,7 +148,7 @@ class PrequalRequest(BaseModel):
     """Submit a prequalification questionnaire for a subcontractor.
 
     ``questionnaire`` carries the raw Yes/No / multi-choice answers as a
-    plain ``dict[str, Any]`` — the questionnaire shape is intentionally
+    plain ``dict[str, Any]`` - the questionnaire shape is intentionally
     loose so individual GCs can author their own forms without a schema
     migration. If ``score`` is None the service computes it from the
     answers (sum of truthy values / total non-null answers, x 100).
@@ -825,14 +825,14 @@ class SubcontractorDashboard(BaseModel):
 
 
 class SOVRow(BaseModel):
-    """One row in a Schedule-of-Values rollup — per work-package totals."""
+    """One row in a Schedule-of-Values rollup - per work-package totals."""
 
     work_package_id: UUID
     name: str
     planned_value: Decimal = Decimal("0")
     completion_percent: Decimal = Decimal("0")
     # All claim/cert/approved totals are rolled up across every payment app
-    # tied to this work package — current period + all prior periods.
+    # tied to this work package - current period + all prior periods.
     claimed_to_date: Decimal = Decimal("0")
     certified_to_date: Decimal = Decimal("0")
     approved_to_date: Decimal = Decimal("0")
@@ -878,7 +878,7 @@ class TaxIdValidationResponse(BaseModel):
     standard: str | None = Field(
         default=None,
         description=(
-            "Name of the standard the value was checked against — e.g. "
+            "Name of the standard the value was checked against - e.g. "
             "'EU VAT', 'US EIN', 'GB VRN'. None if no rule is known for the country."
         ),
     )
@@ -891,7 +891,7 @@ class TaxIdValidationResponse(BaseModel):
 # ── Lien waivers / tax forms ─────────────────────────────────────────────
 
 
-# Valid waiver types — restrict at schema level so the magic-byte
+# Valid waiver types - restrict at schema level so the magic-byte
 # endpoint cannot store arbitrary strings (avoids enum-poisoning that
 # could break downstream reporting).
 _VALID_WAIVER_TYPES: frozenset[str] = frozenset(
@@ -900,8 +900,8 @@ _VALID_WAIVER_TYPES: frozenset[str] = frozenset(
         "conditional_final",
         "unconditional_partial",
         "unconditional_final",
-        "w9",  # US — vendor tax form, annual
-        "w8",  # International — vendor tax form, valid 3 years
+        "w9",  # US - vendor tax form, annual
+        "w8",  # International - vendor tax form, valid 3 years
     },
 )
 

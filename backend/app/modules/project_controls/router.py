@@ -7,7 +7,7 @@ Security model:
 
 * Both endpoints are gated by ``project_controls.read`` (VIEWER).
 * When a ``project_id`` is supplied the caller must own / be a member of that
-  project (``verify_project_access`` — which 404s on miss/denied to avoid
+  project (``verify_project_access`` - which 404s on miss/denied to avoid
   leaking the existence of projects the caller cannot see). Project-less
   calls are tenant-wide portfolio aggregations.
 """

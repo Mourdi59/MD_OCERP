@@ -3,7 +3,7 @@
 """File Versioning ORM models.
 
 Tables:
-    oe_file_version — polymorphic version chain (no FK to the file
+    oe_file_version - polymorphic version chain (no FK to the file
                       table because there are 8 kinds; ``file_id`` is
                       stored as ``String`` and grouped by
                       ``canonical_name`` within ``project_id`` +

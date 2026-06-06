@@ -115,7 +115,7 @@ async def seed_house_type_catalogue_presets(session: AsyncSession) -> int:
     """Seed the global presets if no preset rows exist yet.
 
     Returns the number of rows inserted (0 when the table already has
-    presets — idempotent re-run safe).
+    presets - idempotent re-run safe).
     """
     existing = (
         await session.execute(

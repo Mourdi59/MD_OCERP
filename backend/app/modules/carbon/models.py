@@ -1,15 +1,15 @@
 """‌⁠‍Carbon & Sustainability ORM models.
 
 Tables:
-    oe_carbon_epd_record               — Environmental Product Declaration record
-    oe_carbon_material_factor          — internal material carbon factor (with EPD link)
-    oe_carbon_inventory                — project-level carbon inventory
-    oe_carbon_embodied_entry           — embodied-carbon line in an inventory
-    oe_carbon_scope1_entry             — direct-emission (fuel) line
-    oe_carbon_scope2_entry             — purchased-energy line
-    oe_carbon_scope3_entry             — upstream/downstream other line
-    oe_carbon_target                   — project carbon-reduction target
-    oe_carbon_report                   — generated sustainability report
+    oe_carbon_epd_record               - Environmental Product Declaration record
+    oe_carbon_material_factor          - internal material carbon factor (with EPD link)
+    oe_carbon_inventory                - project-level carbon inventory
+    oe_carbon_embodied_entry           - embodied-carbon line in an inventory
+    oe_carbon_scope1_entry             - direct-emission (fuel) line
+    oe_carbon_scope2_entry             - purchased-energy line
+    oe_carbon_scope3_entry             - upstream/downstream other line
+    oe_carbon_target                   - project carbon-reduction target
+    oe_carbon_report                   - generated sustainability report
 
 Notes:
     * cost_item_id and source_ref are plain UUID columns (no SQLAlchemy
@@ -67,7 +67,7 @@ class EPDRecord(Base):
 class MaterialCarbonFactor(Base):
     """‌⁠‍Internal-facing material carbon factor.
 
-    Links a cost item (plain UUID — no FK across modules) to an EPD record
+    Links a cost item (plain UUID - no FK across modules) to an EPD record
     or a manual override. Used when computing embodied carbon for BOQ
     positions that reference a cost item.
     """
@@ -181,7 +181,7 @@ class EmbodiedCarbonEntry(Base):
 
 
 class Scope1Entry(Base):
-    """Direct (scope 1) emissions — on-site fuel combustion."""
+    """Direct (scope 1) emissions - on-site fuel combustion."""
 
     __tablename__ = "oe_carbon_scope1_entry"
 
@@ -223,7 +223,7 @@ class Scope1Entry(Base):
 
 
 class Scope2Entry(Base):
-    """Indirect (scope 2) emissions — purchased energy."""
+    """Indirect (scope 2) emissions - purchased energy."""
 
     __tablename__ = "oe_carbon_scope2_entry"
 
@@ -269,7 +269,7 @@ class Scope2Entry(Base):
 
 
 class Scope3Entry(Base):
-    """Other (scope 3) emissions — upstream/downstream transport, waste, travel."""
+    """Other (scope 3) emissions - upstream/downstream transport, waste, travel."""
 
     __tablename__ = "oe_carbon_scope3_entry"
 

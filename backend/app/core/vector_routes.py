@@ -3,10 +3,10 @@
 Every module that plugs into the cross-module semantic memory layer
 (``app.core.vector_index``) needs the same two HTTP endpoints:
 
-* ``GET  /vector/status/``   — collection health / row count
-* ``POST /vector/reindex/``  — (re)embed rows from the database
+* ``GET  /vector/status/``   - collection health / row count
+* ``POST /vector/reindex/``  - (re)embed rows from the database
 
-The business logic never varies — only the adapter, the SQLAlchemy model,
+The business logic never varies - only the adapter, the SQLAlchemy model,
 the permission strings and (occasionally) a custom loader for modules
 whose rows are scoped via a join through a parent table.  This factory
 captures that boilerplate so module routers reduce to a single
@@ -99,7 +99,7 @@ def create_vector_routes(
     that attribute when the caller passes ``?project_id=``.  When rows need
     a join through a parent table, pass a ``loader`` coroutine instead.
 
-    The returned router has no prefix — the caller is expected to
+    The returned router has no prefix - the caller is expected to
     ``router.include_router(create_vector_routes(...))`` it into the
     module's main router so the endpoints land at
     ``/api/v1/{module}/vector/status/`` and ``/vector/reindex/``.
@@ -132,7 +132,7 @@ def create_vector_routes(
 
         Pass ``?project_id=`` to scope the reindex to a single project.
         Set ``?purge_first=true`` to drop the matching subset from the
-        vector store before re-encoding — useful after an embedding
+        vector store before re-encoding - useful after an embedding
         model change.
         """
         if loader is not None:

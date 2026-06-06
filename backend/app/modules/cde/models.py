@@ -1,9 +1,9 @@
 """‌⁠‍CDE (Common Data Environment) ORM models.
 
 Tables:
-    oe_cde_container         — ISO 19650 document containers
-    oe_cde_revision          — document revisions within containers
-    oe_cde_state_transition  — audit log of every CDE state transition
+    oe_cde_container         - ISO 19650 document containers
+    oe_cde_revision          - document revisions within containers
+    oe_cde_state_transition  - audit log of every CDE state transition
 """
 
 import uuid
@@ -96,7 +96,7 @@ class StateTransition(Base):
     """Persistent audit log of every CDE state transition.
 
     One row is written inline inside ``CDEService.transition_state`` for every
-    valid gate crossing — so a rolled-back transaction never leaves an orphan
+    valid gate crossing - so a rolled-back transaction never leaves an orphan
     audit row (event-bus consumers can't guarantee that).
     """
 

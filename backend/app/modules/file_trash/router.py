@@ -4,11 +4,11 @@
 
 Endpoints:
 
-    GET    /?project_id=...           — list trash rows for a project
-    POST   /                          — soft-delete a file
-    GET    /stats/?project_id=...     — count + bytes in trash
-    POST   /{id}/restore/             — restore a trashed file
-    DELETE /{id}                      — hard-purge a trashed file
+    GET    /?project_id=...           - list trash rows for a project
+    POST   /                          - soft-delete a file
+    GET    /stats/?project_id=...     - count + bytes in trash
+    POST   /{id}/restore/             - restore a trashed file
+    DELETE /{id}                      - hard-purge a trashed file
 """
 
 from __future__ import annotations
@@ -165,13 +165,13 @@ async def purge_trash(
 )
 async def purge_now(
     session: SessionDep,
-    user_id: CurrentUserId,  # noqa: ARG001 — gate by permission, not by user
+    user_id: CurrentUserId,  # noqa: ARG001 - gate by permission, not by user
 ) -> dict[str, int]:
     """Admin trigger for the retention purge job.
 
     Walks ``oe_file_trash`` and hard-deletes every row whose
     ``trashed_at + retention_days`` window has lapsed. Designed for
-    manual smoke testing — the same function runs on a 24-hour
+    manual smoke testing - the same function runs on a 24-hour
     scheduler from :func:`app.modules.file_trash.jobs.register_jobs`.
     """
     purged = await purge_expired_trash(session)

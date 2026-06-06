@@ -22,7 +22,7 @@ manifest = ModuleManifest(
 #
 # The module loader (re-)imports ``router.py`` to attach it to the app,
 # so we install a one-shot import hook that injects the OpenCDE routes
-# into the main router AT THE END of ``router.py``'s execution — that
+# into the main router AT THE END of ``router.py``'s execution - that
 # way they survive the loader's reload and end up in the FastAPI app
 # alongside the file-based BCF endpoints.
 from app.modules.bcf import _opencde_mount as _opencde_mount  # noqa: E402, F401

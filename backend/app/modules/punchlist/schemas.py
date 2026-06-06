@@ -1,4 +1,4 @@
-"""‌⁠‍Punch List Pydantic schemas — request/response models.
+"""‌⁠‍Punch List Pydantic schemas - request/response models.
 
 Defines create, update, response, status transition, and summary schemas
 for punch list items.
@@ -38,10 +38,10 @@ class PunchItemCreate(BaseModel):
     )
     trade: str | None = Field(default=None, max_length=100)
     # WGS84 world-space pin (companion to the sheet-pinned location_x/y).
-    # Optional — punch items without a map pin still work end-to-end.
+    # Optional - punch items without a map pin still work end-to-end.
     geo_lat: float | None = Field(default=None, ge=-90, le=90)
     geo_lon: float | None = Field(default=None, ge=-180, le=180)
-    # Rework cost as Decimal string (never float — avoids binary rounding on money).
+    # Rework cost as Decimal string (never float - avoids binary rounding on money).
     rework_cost: str | None = Field(default=None, max_length=40)
     rework_cost_currency: str = Field(default="USD", max_length=3)
     metadata: dict[str, Any] = Field(default_factory=dict)

@@ -6,12 +6,12 @@ Public surface
 --------------
 :class:`ClashTriageService` exposes three methods:
 
-* :meth:`triage_clash` — produce a verdict for a single clash. Cached on
+* :meth:`triage_clash` - produce a verdict for a single clash. Cached on
   ``(subject_id, prompt_version, model_name)`` so a repeat call returns
   the persisted row without paying for another LLM call.
-* :meth:`triage_batch` — fan out :meth:`triage_clash` across many clash
+* :meth:`triage_batch` - fan out :meth:`triage_clash` across many clash
   ids with bounded concurrency.
-* :meth:`replay_with_new_prompt` — re-triage an existing result against a
+* :meth:`replay_with_new_prompt` - re-triage an existing result against a
   newer prompt version, always producing a NEW row (the original audit
   trail is preserved).
 
@@ -77,7 +77,7 @@ from app.modules.clash_ai_triage.schemas import (
 logger = logging.getLogger(__name__)
 
 
-# ── Per-model cost table — now sourced from app.core.ai.pricing ─────────────
+# ── Per-model cost table - now sourced from app.core.ai.pricing ─────────────
 # Kept as local re-exports for backward compatibility with any caller that
 # imported MODEL_COSTS / DEFAULT_COST_PER_1K from this module. Both modules
 # (clash_ai_triage and ai) now share the same rate table so per-tenant
@@ -110,7 +110,7 @@ class ClashSubjectNotFound(ClashTriageError):
 
 
 # ── Per-subject lock registry (dedup concurrent calls on same clash) ────────
-# In-process only — concurrent calls on the *same* subject within one
+# In-process only - concurrent calls on the *same* subject within one
 # process wait for the first to finish so they hit the cache instead of
 # both paying for the LLM. Cross-process dedup would need Redis and is
 # not in scope for v1.
@@ -137,7 +137,7 @@ def _estimate_cost_usd(model_name: str, tokens: int) -> Decimal:
     """Estimate USD cost for ``tokens`` against the per-1k rate table.
 
     Thin compatibility wrapper around
-    :func:`app.core.ai.pricing.estimate_cost_usd` — kept so existing
+    :func:`app.core.ai.pricing.estimate_cost_usd` - kept so existing
     callers (and the public ``__all__`` re-export) keep working without
     a churn-y rename. New code should import from ``app.core.ai`` direct.
     """
@@ -182,7 +182,7 @@ def _coerce_verdict(parsed: Any) -> TriageVerdict | None:
     try:
         # Pydantic will coerce confidence + run range validation.
         return TriageVerdict.model_validate(data)
-    except Exception as exc:  # noqa: BLE001 — Pydantic ValidationError
+    except Exception as exc:  # noqa: BLE001 - Pydantic ValidationError
         logger.debug("Verdict coercion failed: %s", exc)
         return None
 
@@ -194,7 +194,7 @@ def _build_evidence_from_clash(clash: ClashResult) -> dict[str, Any]:
         "element_b_id": str(clash.b_stable_id or clash.b_element_id),
         "ifc_class_a": clash.a_element_type or clash.a_discipline or "Element",
         "ifc_class_b": clash.b_element_type or clash.b_discipline or "Element",
-        "material_a": "",  # Not snapshotted on ClashResult — left blank.
+        "material_a": "",  # Not snapshotted on ClashResult - left blank.
         "material_b": "",
         "properties_a": clash.a_name or "",
         "properties_b": clash.b_name or "",
@@ -225,7 +225,7 @@ async def _resolve_provider_settings(
         return resolve_provider_key_model(settings)
     except ValueError as exc:
         msg = (
-            "No AI provider configured for the current user — add an API "
+            "No AI provider configured for the current user - add an API "
             "key in Settings > AI to enable LLM-assisted clash triage."
         )
         raise ClashTriageUnavailable(msg) from exc
@@ -283,7 +283,7 @@ class ClashTriageService:
         issue_id = getattr(clash, "issue_id", None)
         if issue_id is None:
             return "clash", clash.id
-        # Probe the issue table — if the migration is missing we degrade
+        # Probe the issue table - if the migration is missing we degrade
         # silently rather than 500.
         try:
             from app.modules.clash.models import ClashIssue  # local import
@@ -294,7 +294,7 @@ class ClashTriageService:
                 return "clash", clash.id
             return "clash_issue", issue_pk
         except (OperationalError, ProgrammingError, ImportError):
-            logger.debug("ClashIssue table unreachable — degrading to subject_type=clash")
+            logger.debug("ClashIssue table unreachable - degrading to subject_type=clash")
             return "clash", clash.id
 
     # ── Prior triage lookup (for re-run context) ────────────────────────
@@ -328,7 +328,7 @@ class ClashTriageService:
 
         Args:
             clash_id: The ``ClashResult.id`` to triage.
-            user_id: The authenticated user — needed to resolve their AI
+            user_id: The authenticated user - needed to resolve their AI
                 provider settings and stamped on the persisted row.
             force_refresh: When True, bypass the cache and force a fresh
                 LLM call.
@@ -376,7 +376,7 @@ class ClashTriageService:
             verdict = _coerce_verdict(extract_json(text) or _try_fence_extract(text))
 
             if verdict is None:
-                # Twice-failed JSON parse — persist with ``unclear`` so
+                # Twice-failed JSON parse - persist with ``unclear`` so
                 # the audit trail still captures the raw response.
                 verdict = TriageVerdict(
                     category="unclear",
@@ -390,7 +390,7 @@ class ClashTriageService:
                 )
 
             cost_estimate = _estimate_cost_usd(model_name, int(tokens or 0))
-            # Structured cost log — one line per real LLM call so ops can
+            # Structured cost log - one line per real LLM call so ops can
             # aggregate spend by user / project / model without instrumenting
             # the provider client. Uses ``extra=`` so log aggregators (Loki,
             # Datadog, etc.) ingest the fields as structured columns rather
@@ -449,13 +449,13 @@ class ClashTriageService:
 
         The semaphore caps in-flight LLM calls at ``max_concurrent`` so a
         large batch cannot stampede the provider. Per-clash failures are
-        logged and skipped — the method always returns whatever rows
+        logged and skipped - the method always returns whatever rows
         completed successfully.
 
         Implementation note: SQLAlchemy ``AsyncSession`` instances are
         NOT concurrency-safe (only one flush at a time per session). So
         each batch worker is given its OWN short-lived session from
-        ``async_session_factory`` — the LLM calls genuinely fan out in
+        ``async_session_factory`` - the LLM calls genuinely fan out in
         parallel and only the request-scoped ``self.session`` stays
         single-writer.
         """
@@ -487,7 +487,7 @@ class ClashTriageService:
                     # clash in the batch can succeed, so surface it. The router
                     # translates this to 503.
                     raise
-                except Exception as exc:  # noqa: BLE001 — per-clash failure
+                except Exception as exc:  # noqa: BLE001 - per-clash failure
                     # Per-clash failures (including a missing/not-found clash)
                     # are logged and skipped, per the method contract.
                     logger.warning("Batch triage skipped clash %s: %s", cid, exc)
@@ -514,7 +514,7 @@ class ClashTriageService:
     ) -> ClashTriageResult:
         """‌⁠‍Re-triage the clash behind an existing result row.
 
-        Always writes a NEW row — the original audit trail is preserved.
+        Always writes a NEW row - the original audit trail is preserved.
         ``new_prompt_version`` defaults to the current ``PROMPT_VERSION``
         in the repo.
         """
@@ -523,12 +523,12 @@ class ClashTriageService:
         if existing is None:
             msg = f"Triage result {triage_result_id} not found"
             raise ClashSubjectNotFound(msg)
-        # We always force a fresh call on replay — the WHOLE POINT is to
+        # We always force a fresh call on replay - the WHOLE POINT is to
         # bypass the cache.
         target_version = (new_prompt_version or PROMPT_VERSION).strip() or PROMPT_VERSION
         # The replay records the new prompt_version it was run under, even
         # if the underlying templates string in this Python file isn't the
-        # version the caller asked for — coordinators tune the file then
+        # version the caller asked for - coordinators tune the file then
         # bump the version, so this column tracks intent, not git SHA.
         clash_id = existing.clash_id or existing.subject_id
         # Force the prompt_version stamp on the new row to ``target_version``
@@ -672,7 +672,7 @@ def _try_fence_extract(text: str) -> Any:
     ``extract_json`` already handles markdown fences but only succeeds
     when the fenced content is valid top-level JSON. This helper handles
     the slightly-broken case where the LLM wrapped JSON in a fence AND
-    added trailing commentary — common with some models on the first
+    added trailing commentary - common with some models on the first
     call.
     """
     if not text:
@@ -707,7 +707,7 @@ async def _call_llm_with_retry(
     parsed = extract_json(text) or _try_fence_extract(text)
     if isinstance(parsed, dict):
         return text, int(tokens or 0)
-    # Retry — combine the original prompt + the retry directive so the
+    # Retry - combine the original prompt + the retry directive so the
     # model has the clash context AND the new constraint in the same call.
     retry_prompt = f"{user_prompt}\n\n---\n{RETRY_PROMPT_V1}\n\nYour previous answer was:\n{text[:1000]}"
     text2, tokens2 = await call_ai(

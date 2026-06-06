@@ -4,7 +4,7 @@
 
 Input shape: a layer-name + textual description from the DWG takeoff
 parser. Quantities are best-effort because the DWG visual viewer is
-still being built (see CLAUDE memory ``session_todo.md`` — DWG visual
+still being built (see CLAUDE memory ``session_todo.md`` - DWG visual
 viewer is in flight). The extractor still produces a fully-valid
 envelope so the matcher's interface is exercised end-to-end.
 
@@ -49,7 +49,7 @@ def _auto_classifier_hint_from_category(category: str) -> dict[str, str] | None:
 def _category_from_layer(layer: str) -> str:
     """‌⁠‍Best-effort category guess from AIA/CAD layer naming convention.
 
-    AIA layer codes are ``DISCIPLINE-MAJOR-MINOR`` — e.g. ``A-WALL-PRTN``
+    AIA layer codes are ``DISCIPLINE-MAJOR-MINOR`` - e.g. ``A-WALL-PRTN``
     is "Architecture / Wall / Partition". We return the major group as
     the category since that's what DIN 276 and CWICR group on.
     """

@@ -4,7 +4,7 @@
 
 DDC cad2data extracts Revit (RVT) elements with their native Revit
 *OmniClass / Object Style Type* (OST) category name, e.g. ``"Walls"``,
-``"Floors"``, ``"Structural Columns"`` — not an IFC entity. The
+``"Floors"``, ``"Structural Columns"`` - not an IFC entity. The
 match-elements pipeline keys all of its label / standards / trade
 metadata (:mod:`app.modules.match_elements.ifc_labels`) and its Qdrant
 ``ifc_class`` hard filter off the canonical IFC class name
@@ -85,18 +85,18 @@ OST_TO_IFC: dict[str, str] = {
     "structural foundation": "IfcFooting",
     "foundations": "IfcFooting",
     "foundation": "IfcFooting",
-    # ── MEP — plumbing / piping ──────────────────────────────────────
+    # ── MEP - plumbing / piping ──────────────────────────────────────
     "pipes": "IfcPipeSegment",
     "pipe": "IfcPipeSegment",
     "pipe segments": "IfcPipeSegment",
     "plumbing fixtures": "IfcSanitaryTerminal",
     "plumbing fixture": "IfcSanitaryTerminal",
-    # ── MEP — HVAC / ducting ─────────────────────────────────────────
+    # ── MEP - HVAC / ducting ─────────────────────────────────────────
     "ducts": "IfcDuctSegment",
     "duct": "IfcDuctSegment",
     "duct segments": "IfcDuctSegment",
     "mechanical equipment": "IfcUnitaryEquipment",
-    # ── MEP — electrical ─────────────────────────────────────────────
+    # ── MEP - electrical ─────────────────────────────────────────────
     "cable trays": "IfcCableCarrierSegment",
     "cable tray": "IfcCableCarrierSegment",
     "conduits": "IfcCableCarrierSegment",
@@ -210,7 +210,7 @@ def normalize_to_ifc_class(raw: str | None) -> str | None:
     raw_stripped = raw.strip()
     if not raw_stripped:
         return None
-    # Genuine IFC class — pass through unchanged (idempotent).
+    # Genuine IFC class - pass through unchanged (idempotent).
     if raw_stripped[:3].lower() == "ifc":
         return raw_stripped
     key = _normalize_key(raw_stripped)

@@ -15,7 +15,7 @@ def register_erp_chat_permissions() -> None:
     permission_registry.register_module_permissions(
         "erp_chat",
         {
-            # Admin observability dashboard — token spend, thumbs feedback,
+            # Admin observability dashboard - token spend, thumbs feedback,
             # cache hit rate. Manager+ only because raw user prompts are
             # tenant-sensitive.
             "erp_chat.admin": Role.MANAGER,

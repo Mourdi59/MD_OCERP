@@ -1,4 +1,4 @@
-"""‌⁠‍Enterprise Workflows service — business logic for approval workflows.
+"""‌⁠‍Enterprise Workflows service - business logic for approval workflows.
 
 Stateless service layer.
 
@@ -10,7 +10,7 @@ Hardening notes (2026-05-21 sweep):
   in a tight ``current_step + 1`` cycle. Enforced at create + update.
 * ``ALLOWED_ACTION_TYPES`` whitelists the per-step ``action_type`` keys
   the engine knows how to dispatch. Unknown values are rejected at
-  create / update so we never silently dispatch — and never grow into
+  create / update so we never silently dispatch - and never grow into
   a sandbox-escape vector where a step JSON node executes templated
   SQL / Python / JS.
 * ``role`` on each step must resolve to a canonical Role via
@@ -18,7 +18,7 @@ Hardening notes (2026-05-21 sweep):
   at the schema boundary rather than silently locking / unlocking
   approvals downstream.
 * Every approve / reject / cancel transition appends an ``audit_log``
-  entry to ``request.metadata_`` — who, when, what step, outcome,
+  entry to ``request.metadata_`` - who, when, what step, outcome,
   notes. This is the forensic trail; the single ``decided_by`` field
   only records the final decider, which is insufficient for
   multi-step workflows.
@@ -57,9 +57,9 @@ MAX_STEPS: int = 32
 ALLOWED_ACTION_TYPES: frozenset[str] = frozenset(
     {
         "approve",  # Standard approve / reject decision step (default)
-        "review",  # Soft review — captured but doesn't gate progression
+        "review",  # Soft review - captured but doesn't gate progression
         "sign_off",  # Final binding sign-off (e.g. director / client)
-        "notify",  # Send-and-forward — no decision required
+        "notify",  # Send-and-forward - no decision required
     }
 )
 
@@ -88,7 +88,7 @@ def _validate_steps(steps: list[dict] | None) -> None:
             detail=f"Workflow exceeds maximum of {MAX_STEPS} steps (got {len(steps)})",
         )
 
-    # Defer permissions import — keeps the module light at import time.
+    # Defer permissions import - keeps the module light at import time.
     from app.core.permissions import _resolve_role
 
     for idx, step in enumerate(steps):
@@ -348,7 +348,7 @@ class WorkflowService:
     ) -> dict:
         """Append an audit-log entry to a request's metadata.
 
-        Returns the updated metadata dict — caller is responsible for
+        Returns the updated metadata dict - caller is responsible for
         persisting it via ``self.requests.update(metadata_=...)``.
         Each entry records who did what at which step, when, and the
         optional decision notes. Loses no information across step
@@ -380,7 +380,7 @@ class WorkflowService:
         (or ``assignee_id`` if explicitly assigned). Raises 403 otherwise.
 
         Steps without a role restriction stay open to anyone (legacy
-        behaviour). This guards against BUG-156 — any authenticated user
+        behaviour). This guards against BUG-156 - any authenticated user
         could previously approve a step intended for a specific role.
         """
         if not workflow_steps:
@@ -473,7 +473,7 @@ class WorkflowService:
         )
 
         if current_step < total_steps:
-            # Advance to next step — not fully approved yet
+            # Advance to next step - not fully approved yet
             await self.requests.update(
                 request_id,
                 current_step=current_step + 1,
@@ -481,7 +481,7 @@ class WorkflowService:
                 metadata_=new_metadata,
             )
         else:
-            # Final step — fully approved
+            # Final step - fully approved
             await self.requests.update(
                 request_id,
                 status="approved",
@@ -551,7 +551,7 @@ class WorkflowService:
     ) -> ApprovalRequest:
         """Withdraw a still-pending request.
 
-        Only the original requester (or an admin) may cancel — closes the
+        Only the original requester (or an admin) may cancel - closes the
         "once submitted, stuck forever" gap in the workflow engine.
         """
         from app.core.permissions import Role, _resolve_role

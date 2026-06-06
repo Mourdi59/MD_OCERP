@@ -223,7 +223,7 @@ def _validate_leaf(node: dict[str, Any]) -> None:
         _coerce_number(value, f"{field} {op}")
         return
 
-    # Generic string/scalar value — must be string or number, length-bounded.
+    # Generic string/scalar value - must be string or number, length-bounded.
     if isinstance(value, str) and len(value) > MAX_STRING_LEN * 4:
         raise SmartViewRuleError(f"{field} {op}: value string too long")
 
@@ -240,7 +240,7 @@ def _validate_tree(node: Any, depth: int, leaf_count: list[int]) -> None:
             raise SmartViewRuleError(f"group at depth {depth}: 'rules' must be array")
         if not rules:
             # Empty groups are allowed (match-all for AND, match-none for OR
-            # — see _eval_node).  Don't raise.
+            # - see _eval_node).  Don't raise.
             return
         for child in rules:
             _validate_tree(child, depth + 1, leaf_count)
@@ -294,7 +294,7 @@ def _resolve_field(element: Any, field: str) -> Any:
 
     # Top-level columns.
     if field == "category":
-        # Canonical alias — resolves to properties.category for IFC/RVT and
+        # Canonical alias - resolves to properties.category for IFC/RVT and
         # to element_type for DGN / DWG (where "category" really is the layer).
         props = _get(element, "properties") or {}
         cat = props.get("category") if isinstance(props, dict) else None
@@ -348,7 +348,7 @@ def _resolve_field(element: Any, field: str) -> Any:
     if field.startswith("geometry."):
         key = field[len("geometry.") :]
         # Geometry values live in quantities for backend-converted models
-        # (canonical format) — check the alias map then fall through to
+        # (canonical format) - check the alias map then fall through to
         # the raw quantities map.
         qty = _get(element, "quantities") or {}
         if not isinstance(qty, dict):
@@ -386,7 +386,7 @@ def _eval_leaf(element: Any, leaf: dict[str, Any]) -> bool:
     val = leaf.get("value")
     actual = _resolve_field(element, field)
 
-    # Empty checks first — they don't care about value type.
+    # Empty checks first - they don't care about value type.
     if op == OP_EMPTY:
         return actual is None or actual == "" or actual == [] or actual == {}
     if op == OP_NOT_EMPTY:
@@ -421,7 +421,7 @@ def _eval_leaf(element: Any, leaf: dict[str, Any]) -> bool:
         s_actual = _to_str(actual)
         return not (any(_to_str(v) == s_actual for v in val) or actual in val)
 
-    # Equality / inequality — try numeric first when both sides look
+    # Equality / inequality - try numeric first when both sides look
     # numeric, fall back to string compare.  ``=`` is case-insensitive
     # for strings so users typing "concrete" match "Concrete".
     if op in (OP_EQ, OP_NE):
@@ -547,7 +547,7 @@ def build_property_catalog(
         if _to_float(value) is not None:
             bucket["numeric_count"] += 1
 
-    # Identity — every element always has these.
+    # Identity - every element always has these.
     for el in elements:
         _record("name", "identity", getattr(el, "name", None) or (el.get("name") if isinstance(el, dict) else None))
         _record(
@@ -578,12 +578,12 @@ def build_property_catalog(
             if k == "classification":
                 continue
             if isinstance(v, (dict, list)):
-                # Don't enumerate nested structures — flag as present only.
+                # Don't enumerate nested structures - flag as present only.
                 _record(f"properties.{k}", "properties", "<complex>")
                 continue
             _record(f"properties.{k}", "properties", v)
 
-        # Geometry — surface canonical geometry keys derived from quantities.
+        # Geometry - surface canonical geometry keys derived from quantities.
         qty = getattr(el, "quantities", None)
         if qty is None and isinstance(el, dict):
             qty = el.get("quantities")
@@ -594,7 +594,7 @@ def build_property_catalog(
                 if alias in qty and qty[alias] is not None:
                     _record(f"geometry.{canon}", "geometry", qty[alias])
                     break
-        # Raw quantities — anything not picked up by the geometry aliases.
+        # Raw quantities - anything not picked up by the geometry aliases.
         for k, v in qty.items():
             if isinstance(v, (dict, list)):
                 continue
@@ -654,7 +654,7 @@ def catalog_to_dict(entry: PropertyEntry) -> dict[str, Any]:
     }
 
 
-# ── Legacy adapter — convert old filter_criteria into a rule tree ──────────
+# ── Legacy adapter - convert old filter_criteria into a rule tree ──────────
 
 
 def legacy_criteria_to_tree(criteria: dict[str, Any] | None) -> dict[str, Any]:

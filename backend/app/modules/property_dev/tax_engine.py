@@ -1,6 +1,6 @@
 """Property-dev jurisdiction-aware tax / VAT / stamp-duty engine.
 
-Pure-function library — every helper takes :class:`~decimal.Decimal`
+Pure-function library - every helper takes :class:`~decimal.Decimal`
 in / returns Decimal out, never touches the DB, never raises HTTP
 exceptions, and never reads the wall clock. The thin async wrapper in
 ``service.py`` resolves a contract to inputs and hands them to these
@@ -10,19 +10,19 @@ finance module, or batch revenue-recognition jobs.
 
 Design intent
 -------------
-* **Data-driven** — every rate lives in ``data/tax_rates.yaml`` (not in
+* **Data-driven** - every rate lives in ``data/tax_rates.yaml`` (not in
   Python source). Adding a new jurisdiction = a YAML edit, not a code
   change.
-* **Decimal everywhere** — no float arithmetic. Money is rounded
+* **Decimal everywhere** - no float arithmetic. Money is rounded
   ``ROUND_HALF_UP`` to 2 dp on output; intermediate maths uses 6 dp
   of precision so successive percentage applications don't drift.
-* **Effective-date aware** — VAT bands carry ``effective_from`` so a
+* **Effective-date aware** - VAT bands carry ``effective_from`` so a
   contract signed pre-band-change uses the rate that was in force
   on its signing date.
-* **No currency conversion** — the caller supplies the price in the
+* **No currency conversion** - the caller supplies the price in the
   contract's currency. Mixing currencies is a finance-module job, not
   a tax-engine job.
-* **Unknown jurisdiction → explicit error** — never falls back to a
+* **Unknown jurisdiction → explicit error** - never falls back to a
   silent default that would generate billing-incorrect invoices.
 
 The full tax model for a property purchase is the sum of:
@@ -56,7 +56,7 @@ _TABLE_CACHE: dict[str, Any] | None = None
 _TABLE_LOCK = Lock()
 _TABLE_PATH = Path(__file__).parent / "data" / "tax_rates.yaml"
 
-# Decimal quantum constants — six-dp intermediate, two-dp final.
+# Decimal quantum constants - six-dp intermediate, two-dp final.
 _Q_MONEY = Decimal("0.01")
 _Q_INTERMEDIATE = Decimal("0.000001")
 _ZERO = Decimal("0")
@@ -141,8 +141,8 @@ def _table_for(jurisdiction: str) -> dict[str, Any]:
 # ── Decimal helpers ─────────────────────────────────────────────────────
 
 
-def _D(value: Any) -> Decimal:  # noqa: N802 — short capital is intentional shorthand for Decimal coerce.
-    """Coerce anything sane to :class:`Decimal` — strings, ints, floats, None."""
+def _D(value: Any) -> Decimal:  # noqa: N802 - short capital is intentional shorthand for Decimal coerce.
+    """Coerce anything sane to :class:`Decimal` - strings, ints, floats, None."""
     if value is None or value == "":
         return _ZERO
     if isinstance(value, Decimal):
@@ -241,7 +241,7 @@ def compute_vat(
     if effective_on is not None and "effective_from" in block:
         eff = _parse_iso(block["effective_from"])
         if eff is not None and effective_on < eff:
-            # Rate not yet in force — return 0 (caller can opt to
+            # Rate not yet in force - return 0 (caller can opt to
             # provide a historical rate via metadata override later).
             return _money(_ZERO)
     rate = _D(block.get("rate", 0))
@@ -307,7 +307,7 @@ def _progressive_band_amount(price: Decimal, bands: Iterable[Mapping[str, Any]])
         rate = _D(band.get("rate", 0))
         ceiling_raw = band.get("up_to")
         if ceiling_raw is None:
-            # Top open band — apply to remainder.
+            # Top open band - apply to remainder.
             if price > previous_ceiling:
                 taxable = price - previous_ceiling
                 total += taxable * rate
@@ -358,7 +358,7 @@ def compute_stamp_duty(
     sd = jur.get("stamp_duty") or {}
     by_state = sd.get("by_state") if isinstance(sd, Mapping) else None
 
-    # Path A — GB-style progressive bands at the top level.
+    # Path A - GB-style progressive bands at the top level.
     bands = sd.get("bands") if isinstance(sd, Mapping) else None
     if bands and not by_state:
         if is_first_home and sd.get("first_home_relief"):
@@ -376,7 +376,7 @@ def compute_stamp_duty(
             duty = _money(duty + (price_d * surcharge_pct))
         return duty
 
-    # Path B — by-state flat / banded (DE, IN, AU, US, CH).
+    # Path B - by-state flat / banded (DE, IN, AU, US, CH).
     if by_state:
         if not region_subcode:
             raise MissingRegionSubcodeError(jurisdiction, by_state.keys())
@@ -394,7 +394,7 @@ def compute_stamp_duty(
             duty = _money(duty + (price_d * surcharge_pct))
         return duty
 
-    # Path C — alternate top-level keys (DE Grunderwerbsteuer is its own block).
+    # Path C - alternate top-level keys (DE Grunderwerbsteuer is its own block).
     grunder = jur.get("grunderwerbsteuer")
     if isinstance(grunder, Mapping):
         states = grunder.get("by_state")
@@ -409,25 +409,25 @@ def compute_stamp_duty(
         if "flat" in grunder:
             return _money(price_d * _D(grunder["flat"]))
 
-    # Path D — SG bands under ``bsd``.
+    # Path D - SG bands under ``bsd``.
     bsd = jur.get("bsd")
     if isinstance(bsd, Mapping) and bsd.get("bands"):
         return _progressive_band_amount(price_d, bsd["bands"])
 
-    # Path E — IN ``stamp_duty.by_state`` already handled above; ITBI (BR).
+    # Path E - IN ``stamp_duty.by_state`` already handled above; ITBI (BR).
     itbi = jur.get("itbi")
     if isinstance(itbi, Mapping) and itbi.get("bands"):
         return _progressive_band_amount(price_d, itbi["bands"])
 
-    # Path F — RU has no stamp duty (uses state_duty flat fee instead).
+    # Path F - RU has no stamp duty (uses state_duty flat fee instead).
     if "state_duty" in jur:
         return _money(_D(jur["state_duty"]))
 
-    # Path G — SA RETT.
+    # Path G - SA RETT.
     if "rett" in jur:
         return _money(price_d * _D(jur["rett"]))
 
-    # Path H — CH transfer_tax by Kanton.
+    # Path H - CH transfer_tax by Kanton.
     transfer = jur.get("transfer_tax")
     if isinstance(transfer, Mapping) and transfer.get("by_state"):
         states = transfer["by_state"]
@@ -438,7 +438,7 @@ def compute_stamp_duty(
             raise MissingRegionSubcodeError(jurisdiction, states.keys())
         return _money(price_d * _D(states[sub]))
 
-    # Path I — US ``state_transfer_tax`` already handled above.
+    # Path I - US ``state_transfer_tax`` already handled above.
     stt = jur.get("state_transfer_tax")
     if isinstance(stt, Mapping) and stt.get("by_state"):
         states = stt["by_state"]
@@ -449,7 +449,7 @@ def compute_stamp_duty(
             raise MissingRegionSubcodeError(jurisdiction, states.keys())
         return _money(price_d * _D(states[sub]))
 
-    # No applicable rule — return zero (a few jurisdictions have no
+    # No applicable rule - return zero (a few jurisdictions have no
     # stamp duty by design; this is not an error).
     return _money(_ZERO)
 
@@ -518,7 +518,7 @@ def compute_transfer_fee(
     if not isinstance(block, Mapping):
         return _money(_ZERO)
     if emirate is None:
-        # Caller didn't specify — default to the most-used emirate.
+        # Caller didn't specify - default to the most-used emirate.
         # Convention: first key alphabetically gives deterministic output.
         keys = sorted(block.keys())
         if not keys:
@@ -564,10 +564,10 @@ def compute_late_interest(
           None to use ``date.today()``).
 
     Compounding modes (per jurisdiction):
-        * ``simple``  — ``principal * annual_rate * days / 365``.
-        * ``daily``   — full daily compounding (rare).
+        * ``simple``  - ``principal * annual_rate * days / 365``.
+        * ``daily``   - full daily compounding (rare).
 
-    Negative ``days_overdue`` → Decimal("0.00") (paid early — no charge).
+    Negative ``days_overdue`` → Decimal("0.00") (paid early - no charge).
     """
     if days_overdue is None:
         if due_date is None:
@@ -611,15 +611,15 @@ def compute_total_taxes_for_contract(
     emirate: str | None = None,
     overdue_instalments: Iterable[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """High-level helper — sum every applicable tax for a contract.
+    """High-level helper - sum every applicable tax for a contract.
 
     ``contract`` is a plain mapping (so this helper works with
     Pydantic models, ORM dicts and raw JSON) and must carry:
-        * ``net`` — the net price (pre-VAT) in the contract currency, or
-        * ``total_value`` — the gross price (some flows already
+        * ``net`` - the net price (pre-VAT) in the contract currency, or
+        * ``total_value`` - the gross price (some flows already
           have VAT baked in); when only ``total_value`` is present we
           derive ``net`` via :func:`net_from_gross`.
-        * ``currency`` — ISO-4217 code (informational only here).
+        * ``currency`` - ISO-4217 code (informational only here).
 
     Returns a dict with these keys::
 
@@ -672,13 +672,13 @@ def compute_total_taxes_for_contract(
             effective_on=effective_on,
         )
     except UnknownRateClassError:
-        # Allow VAT-less jurisdictions silently — e.g. US (no federal).
+        # Allow VAT-less jurisdictions silently - e.g. US (no federal).
         vat = _money(_ZERO)
 
     # ── 3. Stamp duty / transfer tax ────────────────────────────
     # Conventionally applied to the consideration (net headline
     # price), not to net+VAT. UK SDLT, DE Grunderwerbsteuer, AU
-    # stamp duty, SG BSD — all assess on the purchase price.
+    # stamp duty, SG BSD - all assess on the purchase price.
     stamp_duty = compute_stamp_duty(
         net,
         jurisdiction,

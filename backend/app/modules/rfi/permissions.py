@@ -10,14 +10,14 @@ def register_rfi_permissions() -> None:
     three orthogonal verbs so the FSM gates can be enforced at the router
     layer without the service having to re-derive role from the JWT:
 
-    * ``rfi.assign``  — MANAGER+: only managers / admins may pick or
+    * ``rfi.assign``  - MANAGER+: only managers / admins may pick or
       change the assignee. Editors can still author RFIs and update body
       fields but cannot redirect ball-in-court to other users.
-    * ``rfi.respond`` — EDITOR: anyone with write access may *attempt*
+    * ``rfi.respond`` - EDITOR: anyone with write access may *attempt*
       to respond, but the service still verifies the caller is the
       assignee (or an admin/manager escalation). The permission is the
       coarse gate; the identity check is the fine-grained one.
-    * ``rfi.close``   — MANAGER+: closing is a terminal state, restricted
+    * ``rfi.close``   - MANAGER+: closing is a terminal state, restricted
       to managers/admins so a junior estimator can't accidentally close
       an RFI that's still being negotiated.
     """

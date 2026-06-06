@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Contact — OpenConstructionERP</title>
+<title>Contact - OpenConstructionERP</title>
 <meta name="description" content="Talk to the OpenConstructionERP team about custom modules, partnerships, commercial licensing, consulting, or anything else. We read and reply to every message.">
 <meta name="robots" content="index, follow">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://openconstructionerp.com/contact">
-<meta property="og:title" content="Contact — OpenConstructionERP">
+<meta property="og:title" content="Contact - OpenConstructionERP">
 <meta property="og:description" content="Send us a message about custom modules, partnerships, licensing, or consulting. We read every email.">
 <meta property="og:image" content="https://openconstructionerp.com/og-image.png">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -173,7 +173,7 @@ h1.display em{font-family:'Instrument Serif',serif;font-style:italic;font-weight
         within a few business days. No bots, no triage queue.
       </p>
       <div class="topic-pill" id="topic-pill">
-        <span id="topic-pill-text">—</span>
+        <span id="topic-pill-text">-</span>
       </div>
     </section>
 
@@ -287,7 +287,7 @@ h1.display em{font-family:'Instrument Serif',serif;font-style:italic;font-weight
   - Reads ?topic= from the URL and surfaces it as a pill + hidden field so
     the receiving inbox knows where the lead came from (e.g.
     module_proposal_public from the in-app sidebar CTA).
-  - Captures UTM params, landing URL — same shape as license-request.html.
+  - Captures UTM params, landing URL - same shape as license-request.html.
   - POSTs JSON to /api/inquiry (our in-house SMTP service).
 */
 (function(){
@@ -340,7 +340,7 @@ h1.display em{font-family:'Instrument Serif',serif;font-style:italic;font-weight
   var btnLabel = document.getElementById('submit-label');
   var statusEl = document.getElementById('form-status');
 
-  // Cmd/Ctrl+Enter submits — same shortcut every modern app uses.
+  // Cmd/Ctrl+Enter submits - same shortcut every modern app uses.
   form.addEventListener('keydown', function(e){
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
@@ -401,7 +401,7 @@ h1.display em{font-family:'Instrument Serif',serif;font-style:italic;font-weight
                 '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>' +
                 '<strong style="font-size:17px;color:#064e3b;">Message received</strong>' +
               '</div>' +
-              '<p style="margin:0 0 12px;color:#065f46;font-size:14.5px;line-height:1.6;">Thanks — we read every message personally and will reply within a few business days. A confirmation email is on its way to you.</p>' +
+              '<p style="margin:0 0 12px;color:#065f46;font-size:14.5px;line-height:1.6;">Thanks - we read every message personally and will reply within a few business days. A confirmation email is on its way to you.</p>' +
               (ref ? '<p style="margin:0;color:#047857;font-size:13px;">Reference: <code style="background:#fff;padding:2px 8px;border-radius:4px;color:#065f46;font-weight:600;">' + ref + '</code></p>' : '') +
             '</div>';
           return;

@@ -53,7 +53,7 @@ class SmartViewRepository:
     ) -> list[SmartView]:
         """Return every view the caller is allowed to see.
 
-        Visibility rules — kept here so the service layer does not
+        Visibility rules - kept here so the service layer does not
         need to re-derive them per request:
 
         * Every ``user``-scoped view authored by ``user_id``.
@@ -83,7 +83,7 @@ class SmartViewRepository:
             )
             # Federation visibility: join through BIMFederation.project_id.
             # Without this, federation-scoped views never list (issue #103
-            # mirror — they existed in DB but were invisible to owners).
+            # mirror - they existed in DB but were invisible to owners).
             from app.modules.bim_hub.models import BIMFederation
 
             fed_subq = (
@@ -108,7 +108,7 @@ class SmartViewRepository:
     # ── BIM element feed (for the evaluator) ────────────────────────
 
     async def elements_for_model(self, model_id: uuid.UUID) -> list[BIMElement]:
-        """Return every element of a BIM model — no geometry filter.
+        """Return every element of a BIM model - no geometry filter.
 
         Smart Views drive *visibility*, not geometry, so we must keep
         annotation / schedule rows in the result set (otherwise a view
@@ -120,5 +120,5 @@ class SmartViewRepository:
         return list((await self.session.execute(stmt)).scalars().all())
 
     async def get_model(self, model_id: uuid.UUID) -> BIMModel | None:
-        """Look up a BIM model by id — used by the evaluator endpoint."""
+        """Look up a BIM model by id - used by the evaluator endpoint."""
         return await self.session.get(BIMModel, model_id)

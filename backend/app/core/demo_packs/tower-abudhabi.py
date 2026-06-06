@@ -132,7 +132,7 @@ TEMPLATE = DemoTemplate(
                 ),
             ],
         ),
-        # ── 03 Concrete — Substructure, Core & PT Slabs ────────────────
+        # ── 03 Concrete - Substructure, Core & PT Slabs ────────────────
         (
             "03",
             "Concrete - Substructure, Core & Post-Tensioned Slabs",
@@ -176,7 +176,7 @@ TEMPLATE = DemoTemplate(
                 ("03.15", "Power-float and curing to slabs", "m2", 132000, 16.50, {"masterformat": "03 35 00"}),
             ],
         ),
-        # ── 05 Metals — Steel Transfer, Outrigger & Misc ───────────────
+        # ── 05 Metals - Steel Transfer, Outrigger & Misc ───────────────
         (
             "05",
             "Metals - Steel Transfer, Outrigger & Miscellaneous",
@@ -388,7 +388,7 @@ TEMPLATE = DemoTemplate(
                 ("10.7", "Window cleaning rail and anchor system", "lsum", 1, 1650000.00, {"masterformat": "11 24 00"}),
             ],
         ),
-        # ── 14 Conveying — Lifts, Escalators & BMU ─────────────────────
+        # ── 14 Conveying - Lifts, Escalators & BMU ─────────────────────
         (
             "14",
             "Conveying - Lifts, Escalators & BMU",

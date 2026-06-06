@@ -1,8 +1,8 @@
 """‌⁠‍Seed 2 demo BOQs with realistic positions that have labor_hours in metadata.
 
 Creates:
-  1. "Residential House - 3 Bedroom" — 180 m² house (9 positions, 3 sections)
-  2. "Office Renovation - 500 m²" — interior renovation (10 positions, 4 sections)
+  1. "Residential House - 3 Bedroom" - 180 m² house (9 positions, 3 sections)
+  2. "Office Renovation - 500 m²" - interior renovation (10 positions, 4 sections)
 
 Each position includes:
   - labor_hours / workers_per_unit for schedule duration calculation
@@ -45,7 +45,7 @@ def _total(qty: float, rate: float) -> str:
 
 
 # ---------------------------------------------------------------------------
-# BOQ 1 — Residential House 3-Bedroom (180 m²)
+# BOQ 1 - Residential House 3-Bedroom (180 m²)
 # ---------------------------------------------------------------------------
 
 _HOUSE_SECTIONS: list[tuple[str, str, list[dict]]] = [
@@ -506,7 +506,7 @@ _HOUSE_SECTIONS: list[tuple[str, str, list[dict]]] = [
 
 
 # ---------------------------------------------------------------------------
-# BOQ 2 — Office Renovation 500 m²
+# BOQ 2 - Office Renovation 500 m²
 # ---------------------------------------------------------------------------
 
 _OFFICE_SECTIONS: list[tuple[str, str, list[dict]]] = [
@@ -973,7 +973,7 @@ async def seed() -> None:
             for pos in _build_boq_positions(boq1_id, _HOUSE_SECTIONS):
                 session.add(pos)
 
-            # Create a matching schedule (empty — to be generated via API)
+            # Create a matching schedule (empty - to be generated via API)
             sched1 = Schedule(
                 id=uuid.uuid4(),
                 project_id=project_id,
@@ -1011,7 +1011,7 @@ async def seed() -> None:
             for pos in _build_boq_positions(boq2_id, _OFFICE_SECTIONS):
                 session.add(pos)
 
-            # Create a matching schedule (empty — to be generated via API)
+            # Create a matching schedule (empty - to be generated via API)
             sched2 = Schedule(
                 id=uuid.uuid4(),
                 project_id=project_id,

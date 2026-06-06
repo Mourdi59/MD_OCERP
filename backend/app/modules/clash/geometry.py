@@ -4,7 +4,7 @@
 This module is the geometry layer the clash engine builds on. It loads
 the *actual* triangle meshes that ship on disk as
 ``data/bim/<project>/<model>/geometry.glb`` (produced by the DDC
-cad2data pipeline / IFC processor — never IfcOpenShell, never native
+cad2data pipeline / IFC processor - never IfcOpenShell, never native
 IFC) and turns every real **placed instance node** into an
 :class:`ElementGeom`: world-space vertices/faces in metres, an exact
 axis-aligned bounding box, a tight oriented bounding box and an honest
@@ -21,23 +21,23 @@ IFC, structural RVT}):
 
 * Each ``geometry.glb`` is a *flat* COLLADA-derived scene: a single
   ``world`` root whose direct children are the mesh nodes (graph depth
-  1 — there is **no** element-node → fragment-node hierarchy, so there
+  1 - there is **no** element-node → fragment-node hierarchy, so there
   is nothing to "group by parent": each placed node already *is* one
   real element).
 * Mesh nodes fall into two classes:
-  - **numeric** names (e.g. ``"1030049"``) — real DDC *placed
+  - **numeric** names (e.g. ``"1030049"``) - real DDC *placed
     instance* nodes. Each has its own dedicated geometry (no
     instancing: every node references a distinct geometry key, max
     reuse == 1), a real world transform and real triangles. These are
     the elements.
-  - ``shapeN-lib`` names — COLLADA ``library_geometries`` *template*
+  - ``shapeN-lib`` names - COLLADA ``library_geometries`` *template*
     nodes. Every one of them sits at the identity transform / origin
     and is never instanced by a numeric node. They are unplaced
     templates and are **excluded** (counting them would double-count
     and place phantom geometry at the origin).
 * The 380 legacy ``oe_bim_element`` rows (``source: ifc_parse``,
   ``stable_id`` == IFC ``GlobalId``) have **no** honest link to the
-  GLB numeric node ids — there is no shared id, no material, no DDC
+  GLB numeric node ids - there is no shared id, no material, no DDC
   sidecar, and DDC cad2data is unavailable offline to re-derive one.
   They are therefore abandoned: an element here is one real GLB placed
   instance node, keyed by its own stable node id.
@@ -51,7 +51,7 @@ Discipline
 ----------
 Per-element discipline is not honestly recoverable offline, so
 ``ElementGeom.discipline`` is the owning ``oe_bim_model.discipline``
-("architecture" / "structural" / …) — which truthfully *is* the
+("architecture" / "structural" / …) - which truthfully *is* the
 discipline of every element in that model. The honest coordination
 matrix is therefore Level × Level, driven by :attr:`ElementGeom.storey`
 (a deterministic Z-band clustering of element centroids).
@@ -93,7 +93,7 @@ _PLAUSIBLE_MODEL_MAX_M = 2_000.0
 
 # Storey detection. A real multi-storey building does NOT separate its
 # floors by empty Z-gaps (columns/walls/shafts span storeys and there
-# are elements at every height) — floors show up as *density modes*:
+# are elements at every height) - floors show up as *density modes*:
 # slabs/beams/furniture cluster at each floor elevation with sparser
 # bands between. So levels are split at significant *valleys* in a
 # smoothed centroid-Z histogram. Deterministic, no RNG, no sklearn.
@@ -102,7 +102,7 @@ _STOREY_SMOOTH = 1  # ± bins moving-average smoothing radius
 # A histogram valley is a real floor boundary only when the bands on
 # both sides are this many× denser than the valley floor AND the two
 # peaks are at least this far apart in metres (a plausible storey
-# height) — guards against splitting noise within one floor.
+# height) - guards against splitting noise within one floor.
 _STOREY_VALLEY_RATIO = 1.5
 _STOREY_MIN_FLOOR_TO_FLOOR_M = 2.0
 _STOREY_MAX_LEVELS = 60
@@ -127,7 +127,7 @@ class ElementGeom:
             contract; never ``None`` here).
         name: The element's stable node id (no honest human name is
             available offline for these placed instances).
-        discipline: The owning ``oe_bim_model.discipline`` — honest, it
+        discipline: The owning ``oe_bim_model.discipline`` - honest, it
             is that model's discipline for every element in it.
         aabb: ``(min_x, min_y, min_z, max_x, max_y, max_z)`` metres.
         vertices: ``(N, 3)`` float64 world coordinates, metres.
@@ -154,7 +154,7 @@ class ElementGeom:
 
 
 def _repo_data_root() -> pathlib.Path:
-    """Return ``<repo>/data`` — the local storage root for BIM blobs.
+    """Return ``<repo>/data`` - the local storage root for BIM blobs.
 
     Mirrors :func:`app.core.storage._default_local_base_dir` so this
     module never invents a second path scheme. This file lives at
@@ -168,7 +168,7 @@ def _is_template_node(node_name: str) -> bool:
     """Return ``True`` for COLLADA ``library_geometries`` template nodes.
 
     Verified on every showcase GLB: these are named ``shapeN-lib``,
-    always sit at the identity transform and are never instanced — they
+    always sit at the identity transform and are never instanced - they
     are unplaced templates, not real placed elements.
     """
     s = str(node_name).lower()
@@ -198,7 +198,7 @@ def _obb_from_vertices(
     extents are the exact min/max of the real vertices projected into
     that frame, so the box is a *true* enclosing box of the geometry,
     not an approximation. This is O(N) per element with no convex hull
-    — fast enough to run over every element of a 5 k+ element model and
+    - fast enough to run over every element of a 5 k+ element model and
     fully deterministic (no RNG, stable eigen ordering). For a degree
     of robustness on huge meshes the covariance is estimated from a
     deterministic stride-sampled subset, but min/max extents always use
@@ -208,7 +208,7 @@ def _obb_from_vertices(
         vertices: ``(N, 3)`` world coordinates.
 
     Returns:
-        ``(center(3,), axes(3,3), half(3,))`` — all float64, ``axes``
+        ``(center(3,), axes(3,3), half(3,))`` - all float64, ``axes``
         rows are orthonormal vectors of the box frame.
     """
     pts = np.asarray(vertices, dtype=np.float64)
@@ -274,7 +274,7 @@ def _resolve_unit_scale(scene: object, raw_extent: np.ndarray) -> float:
             conv = trimesh.units.unit_conversion(str(units), "meters")
             if conv and math.isfinite(conv) and conv > 0.0:
                 declared = float(conv)
-    except Exception as exc:  # noqa: BLE001 — default to 1.0 (metres)
+    except Exception as exc:  # noqa: BLE001 - default to 1.0 (metres)
         logger.debug("Unit resolution fell back to metres: %s", exc)
 
     biggest_raw = float(np.max(raw_extent)) if raw_extent.size else 0.0
@@ -286,7 +286,7 @@ def _resolve_unit_scale(scene: object, raw_extent: np.ndarray) -> float:
         return declared
     if _PLAUSIBLE_MODEL_MIN_M <= biggest_raw <= _PLAUSIBLE_MODEL_MAX_M:
         logger.info(
-            "Declared unit scale %.6g would yield a %.1f m model — treating raw coordinates as metres instead",
+            "Declared unit scale %.6g would yield a %.1f m model - treating raw coordinates as metres instead",
             declared,
             scaled,
         )
@@ -302,7 +302,7 @@ def _assign_storeys(centroid_z: np.ndarray) -> np.ndarray:
     a fixed-width histogram, smooth it, find significant valleys (a bin
     whose count is a clear local minimum flanked by denser peaks at
     least a plausible floor-to-floor apart) and split at the elevation
-    of each such valley. Fully deterministic — no RNG, no sklearn. If
+    of each such valley. Fully deterministic - no RNG, no sklearn. If
     there is no honest multi-modal structure a single level is
     returned (we never fabricate floors).
 
@@ -403,7 +403,7 @@ def _node_world_vertices_faces(
         import trimesh
 
         transform, geom_name = scene.graph[node_name]  # type: ignore[attr-defined]
-    except Exception:  # noqa: BLE001 — node without geometry
+    except Exception:  # noqa: BLE001 - node without geometry
         return None
     geom = scene.geometry.get(geom_name)  # type: ignore[attr-defined]
     if geom is None:
@@ -517,7 +517,7 @@ class ClashGeometryProvider:
             import trimesh
 
             scene = trimesh.load(glb_path, process=False, force="scene")
-        except Exception as exc:  # noqa: BLE001 — corrupt/unsupported blob
+        except Exception as exc:  # noqa: BLE001 - corrupt/unsupported blob
             logger.warning("clash.geometry: trimesh failed on %s: %s", glb_path, exc)
             return {}
 
@@ -563,7 +563,7 @@ class ClashGeometryProvider:
             hi = v.max(axis=0)
             if not (np.all(np.isfinite(lo)) and np.all(np.isfinite(hi))):
                 continue
-            if not np.any(hi > lo):  # degenerate — no extent on any axis
+            if not np.any(hi > lo):  # degenerate - no extent on any axis
                 continue
             node_ids.append(nid)
             aabbs.append(
@@ -612,7 +612,7 @@ class ClashGeometryProvider:
         )
         return out
 
-    # ── persistence (inspectable sidecar — never fabricates DB rows) ───
+    # ── persistence (inspectable sidecar - never fabricates DB rows) ───
 
     def _cache_path(self, glb_path: pathlib.Path) -> pathlib.Path:
         return glb_path.with_name(_CACHE_FILENAME)
@@ -628,7 +628,7 @@ class ClashGeometryProvider:
         placed instances, so writing to them would be meaningless.
         Instead this writes the real, GLB-derived geometry into a
         clash-owned JSON cache next to the GLB
-        (``geometry.clash.json``) — ``{node_id: {aabb, storey}}`` — so
+        (``geometry.clash.json``) - ``{node_id: {aabb, storey}}`` - so
         re-runs are fast and the data is inspectable. No DB rows are
         fabricated.
 
@@ -699,11 +699,11 @@ async def backfill_all_models(session: AsyncSession) -> dict[str, int]:
     models = list((await session.execute(select(BIMModel))).scalars().all())
     result: dict[str, int] = {}
     for model in models:
-        if provider._resolve_glb_path(model) is None:  # noqa: SLF001 — same module
+        if provider._resolve_glb_path(model) is None:  # noqa: SLF001 - same module
             continue
         try:
             result[str(model.id)] = await provider.backfill_aabbs(session, model.id)
-        except Exception as exc:  # noqa: BLE001 — one bad model must not abort the sweep
+        except Exception as exc:  # noqa: BLE001 - one bad model must not abort the sweep
             logger.exception(
                 "clash.geometry: backfill failed for %s: %s",
                 model.id,

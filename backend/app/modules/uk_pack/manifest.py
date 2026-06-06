@@ -5,10 +5,10 @@ from app.core.module_loader import ModuleManifest
 manifest = ModuleManifest(
     name="oe_uk_pack",
     version="1.0.0",
-    display_name="Regional Pack — United Kingdom",
+    display_name="Regional Pack - United Kingdom",
     display_name_i18n={
-        "de": "Regionalpaket — Vereinigtes Königreich",
-        "ru": "Региональный пакет — Великобритания",
+        "de": "Regionalpaket - Vereinigtes Königreich",
+        "ru": "Региональный пакет - Великобритания",
     },
     description=(
         "UK construction standards: JCT/NEC4 contract forms, NRM2 measurement rules, "

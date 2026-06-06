@@ -6,12 +6,12 @@ Parses a multi-language BoQ spreadsheet into the row-dict shape that
 :class:`BoqAdapter` already understands. Mirrors the column-alias logic
 in ``boq/router.py`` but extends the alias map across the global locale
 spread (CJK / Slavic / Romance / Turkic / Arabic) because /match-elements
-accepts arbitrary regional BoQ files — a German GAEB export, a Russian
+accepts arbitrary regional BoQ files - a German GAEB export, a Russian
 смета, a Turkish keşif, all in a single workspace.
 
 Public surface:
 
-* :func:`parse_boq_xlsx` — bytes → list[dict] ready for SessionCreate.
+* :func:`parse_boq_xlsx` - bytes → list[dict] ready for SessionCreate.
 
 The module imports :mod:`openpyxl` lazily so ``backend/app/__init__``
 stays import-safe when the optional Excel toolchain is missing on a
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 # Multi-language column aliases. Compared lowercased + whitespace-stripped
-# against the first row of the worksheet. Order is irrelevant — first
+# against the first row of the worksheet. Order is irrelevant - first
 # alias-list-hit wins. Extending: add a header spelling to the relevant
 # canonical list; never remove existing entries (callers may have shipped
 # spreadsheets relying on them).
@@ -226,7 +226,7 @@ def _match_column(header: Any) -> str | None:
 def _to_float_qty(value: Any) -> float | None:
     """‌⁠‍Coerce a qty cell to float, tolerating ``"1.234,56"`` Euro form.
 
-    Returns ``None`` for blanks, NaN, and non-numeric strings — the
+    Returns ``None`` for blanks, NaN, and non-numeric strings - the
     caller drops those rows so downstream matchers don't divide by zero.
     """
     if value is None:
@@ -265,12 +265,12 @@ def parse_boq_xlsx(content: bytes) -> list[dict[str, Any]]:
     Rules:
 
     * Rows without a ``description`` cell are skipped (the matcher needs
-      at least the freeform text — without it neither dense, sparse,
+      at least the freeform text - without it neither dense, sparse,
       nor exact-code paths can land on a CWICR rate).
     * ``qty`` is parsed numerically; non-numeric values are dropped from
       the row (the BoqAdapter then defaults to ``count=1.0``).
     * Other recognised columns pass through as strings (trimmed).
-    * Unknown columns are ignored — they don't pollute the dict so
+    * Unknown columns are ignored - they don't pollute the dict so
       downstream group-by chips stay clean.
 
     Args:
@@ -309,7 +309,7 @@ def parse_boq_xlsx(content: bytes) -> list[dict[str, Any]]:
         if "description" not in column_map.values():
             raise ValueError(
                 "No 'Description' column detected. Add a header named "
-                "'Description' (or its localised equivalent — 'Beschreibung', "
+                "'Description' (or its localised equivalent - 'Beschreibung', "
                 "'Описание', 'Descripción', '描述', etc.)."
             )
 

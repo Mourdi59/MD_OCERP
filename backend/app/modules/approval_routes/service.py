@@ -4,11 +4,11 @@
 
 Stateless service layer that owns the workflow rules:
 
-* :meth:`ApprovalRouteService.create_route` — insert a route template + steps.
-* :meth:`ApprovalRouteService.start_instance` — begin a workflow for a target.
-* :meth:`ApprovalRouteService.submit_decision` — record a decision on the
+* :meth:`ApprovalRouteService.create_route` - insert a route template + steps.
+* :meth:`ApprovalRouteService.start_instance` - begin a workflow for a target.
+* :meth:`ApprovalRouteService.submit_decision` - record a decision on the
   current step; auto-advance / auto-complete the instance.
-* :meth:`ApprovalRouteService.cancel_instance` — terminate a pending workflow.
+* :meth:`ApprovalRouteService.cancel_instance` - terminate a pending workflow.
 
 Every transition writes an :func:`app.core.audit_log.log_activity` row
 under ``entity_type='approval_instance'``. Race protection is layered:
@@ -78,7 +78,7 @@ def _safe_publish(name: str, data: dict[str, object]) -> None:
     Detached so a subscriber that opens its own session (variations,
     changeorders, contracts reacting to a terminal decision) can't
     deadlock the request transaction under SQLite's single-writer lock.
-    Any failure to schedule is swallowed at debug — emitting an event
+    Any failure to schedule is swallowed at debug - emitting an event
     must never break the workflow transition that produced it.
     """
     try:
@@ -127,7 +127,7 @@ class ApprovalRouteService:
         self,
         route_ids: list[uuid.UUID],
     ) -> dict[uuid.UUID, list[Step]]:
-        """Batched accessor — kills the per-route N+1 in :get:`/routes`."""
+        """Batched accessor - kills the per-route N+1 in :get:`/routes`."""
         return await self.repo.list_steps_for_routes(route_ids)
 
     async def create_route(
@@ -204,7 +204,7 @@ class ApprovalRouteService:
 
         # Replace the step list when supplied. Deleting steps cascades to
         # any StepState rows, so we refuse to touch the steps of a route
-        # that already has instances — the decision history would be lost.
+        # that already has instances - the decision history would be lost.
         if payload.steps is not None:
             for step in payload.steps:
                 _validate_step_mode(step.mode)
@@ -257,7 +257,7 @@ class ApprovalRouteService:
         actor_id: uuid.UUID | None,
     ) -> None:
         route = await self.get_route(route_id)
-        # Reject delete when any instance still references this route —
+        # Reject delete when any instance still references this route -
         # the FK uses RESTRICT, so we surface a friendly 409 instead of
         # letting the DB raise a raw IntegrityError.
         existing = await self.repo.list_instances(route_id=route_id, limit=1)
@@ -294,7 +294,7 @@ class ApprovalRouteService:
         self,
         instance_ids: list[uuid.UUID],
     ) -> dict[uuid.UUID, list[StepState]]:
-        """Batched accessor — kills the per-instance N+1 in :get:`/instances`."""
+        """Batched accessor - kills the per-instance N+1 in :get:`/instances`."""
         return await self.repo.list_step_states_for_instances(instance_ids)
 
     async def list_instances(
@@ -433,15 +433,15 @@ class ApprovalRouteService:
                ``rejected`` immediately.
             5. If decision is ``approved`` → consult the step's mode:
 
-                ``all``       — needs every distinct approver_user_id on
+                ``all``       - needs every distinct approver_user_id on
                                  the step to approve.
-                ``any``       — first approval advances.
-                ``majority``  — strict majority of approvers (>50%).
+                ``any``       - first approval advances.
+                ``majority``  - strict majority of approvers (>50%).
 
                The step's "expected approver count" is derived from
                distinct ``approver_user_id`` rows submitted so far when
                the step is role-based (we cannot expand a role to its
-               members from the engine — that is a consumer concern;
+               members from the engine - that is a consumer concern;
                the safe fallback is ``any``-style advance for roles).
                When the step is user-pinned, the count is 1.
 
@@ -450,7 +450,7 @@ class ApprovalRouteService:
                ``current_step_ordinal`` and stay pending.
         """
         # Lock the instance row so two approvers can't race the
-        # advance/complete computation. ``nowait=False`` is the default —
+        # advance/complete computation. ``nowait=False`` is the default -
         # we wait for the lock, which is the right semantic for a UI
         # click (the second clicker just sees the post-advance state).
         # SQLite ignores SELECT...FOR UPDATE silently; for production
@@ -530,10 +530,10 @@ class ApprovalRouteService:
         else:
             advanced = await self._maybe_advance(instance, step)
             if advanced is None:
-                # Step still pending — need more approvals. No lifecycle event.
+                # Step still pending - need more approvals. No lifecycle event.
                 pass
             elif advanced is True:
-                # All steps cleared — the clearing step both advanced the
+                # All steps cleared - the clearing step both advanced the
                 # cursor and finished the chain, so both events fire.
                 instance.status = "approved"
                 instance.completed_at = now
@@ -640,9 +640,9 @@ class ApprovalRouteService:
         """Decide whether the current step is cleared.
 
         Returns:
-            ``True``  — every step has been cleared; complete the instance.
-            ``False`` — current step cleared; bump to the next step.
-            ``None``  — current step not yet cleared; stay put.
+            ``True``  - every step has been cleared; complete the instance.
+            ``False`` - current step cleared; bump to the next step.
+            ``None``  - current step not yet cleared; stay put.
         """
         states = await self.repo.list_step_states_for_step(
             instance_id=instance.id,
@@ -660,23 +660,23 @@ class ApprovalRouteService:
             # (that's the consumer module's job), so we use sensible
             # defaults driven by ``mode``:
             #
-            #   any       — first approval advances
-            #   all       — every distinct approver who acted has to
+            #   any       - first approval advances
+            #   all       - every distinct approver who acted has to
             #               approve; we can only check that there are at
             #               least 1 approval AND no rejection rows
             #               (rejections short-circuit upstream)
-            #   majority  — > 50% of approvers who acted on this step
+            #   majority  - > 50% of approvers who acted on this step
             #               approved (rejections short-circuit)
             #
             # The consumer can override this by passing an explicit
-            # ``approver_user_id`` list when defining the route — at that
+            # ``approver_user_id`` list when defining the route - at that
             # point the step becomes user-pinned per row.
             if step.mode == "any":
                 cleared = len(approvals) >= 1
             elif step.mode == "majority":
                 total_acted = len([s for s in states if s.decision != "pending"])
                 cleared = total_acted >= 1 and len(approvals) * 2 > total_acted
-            else:  # "all" — fall back to ≥1 approver acted with no rejections.
+            else:  # "all" - fall back to ≥1 approver acted with no rejections.
                 rejections = [s for s in states if s.decision == "rejected"]
                 cleared = len(approvals) >= 1 and len(rejections) == 0
 
@@ -693,7 +693,7 @@ class ApprovalRouteService:
 def _group_step_states_by_step(
     states: list[StepState],
 ) -> dict[uuid.UUID, list[StepState]]:
-    """Helper for tests / debugging — group state rows by their step."""
+    """Helper for tests / debugging - group state rows by their step."""
     grouped: dict[uuid.UUID, list[StepState]] = defaultdict(list)
     for s in states:
         grouped[s.step_id].append(s)

@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 # ── v3 §10 money serialisation helper ─────────────────────────────────────
-# Mirrors backend/app/modules/boq/schemas.py — money fields are stored /
+# Mirrors backend/app/modules/boq/schemas.py - money fields are stored /
 # accepted as Decimal but emitted as plain decimal strings in JSON.
 def _serialise_money(v: Decimal | None) -> str | None:
     if v is None:
@@ -112,7 +112,7 @@ class TriageResultResponse(BaseModel):
     suggested_action: TriageSuggestedAction | None = None
     model_evidence_used: list[str] = Field(default_factory=list)
     tokens_used: int = 0
-    # v3 §10 — money is Decimal-as-string on the wire. The DB column is
+    # v3 §10 - money is Decimal-as-string on the wire. The DB column is
     # Float (small USD values, no precision risk) but the contract stays
     # uniform with every other money field.
     cost_usd_estimate: Decimal = Decimal("0")
@@ -157,7 +157,7 @@ class PromptTemplatesResponse(BaseModel):
 
     Returned by ``GET /clash-ai-triage/prompts/current`` so the UI can
     show the coordinator what prompt would be used for a triage call.
-    No write endpoint — tuning the prompt is a deliberate code change +
+    No write endpoint - tuning the prompt is a deliberate code change +
     ``PROMPT_VERSION`` bump.
     """
 

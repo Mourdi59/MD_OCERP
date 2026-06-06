@@ -25,7 +25,7 @@ from app.modules.subcontractors.models import (
 
 
 class _BaseRepo:
-    """‌⁠‍Shared CRUD primitives — keeps the per-entity repos compact."""
+    """‌⁠‍Shared CRUD primitives - keeps the per-entity repos compact."""
 
     model: type[Any]
 
@@ -74,7 +74,7 @@ class SubcontractorRepository(_BaseRepo):
         if prequalification_status is not None:
             base = base.where(Subcontractor.prequalification_status == prequalification_status)
         if trade_category is not None:
-            # JSON contains check — keep simple/portable: load and filter in Python
+            # JSON contains check - keep simple/portable: load and filter in Python
             # for cross-dialect parity. For the typical N≤1000 catalogue this is
             # cheap and correct on both SQLite and Postgres.
             pass
@@ -97,7 +97,7 @@ class SubcontractorRepository(_BaseRepo):
         """Look up an active subcontractor by ``(country, tax_id)``.
 
         Used by ``SubcontractorService.create_subcontractor`` for the
-        happy-path 409 — backed by the partial unique index added in
+        happy-path 409 - backed by the partial unique index added in
         ``v3099_subcontractors_unique_tax_id``.
         """
         if not tax_id:
@@ -141,7 +141,7 @@ class SubcontractorRepository(_BaseRepo):
     ) -> list[Subcontractor]:
         """Return subs whose ``insurance_expiry_date`` is on/before ``upper_bound``.
 
-        This includes already-past expiries — the sweep surfaces both
+        This includes already-past expiries - the sweep surfaces both
         "expiring soon" and "already expired" so the GC can chase
         renewals on a single list.  Subs whose expiry is NULL are NOT
         included (they need a separate "missing insurance" report).

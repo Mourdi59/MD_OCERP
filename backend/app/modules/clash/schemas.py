@@ -25,7 +25,7 @@ class ClashSelectionSet(BaseModel):
     whose ``element_type`` is in :attr:`element_types`, whose
     ``discipline`` is in :attr:`disciplines`, whose grouping *category*
     is in :attr:`categories` **or** whose IFC entity is in
-    :attr:`ifc_entities` belongs to the set (union — each chip the user
+    :attr:`ifc_entities` belongs to the set (union - each chip the user
     adds widens it). Used only with ``mode="selection_sets"``: a pair is
     reported iff one element is in Set A and the other is in Set B
     (strictly cross, e.g. walls × pipes, no wall × wall noise).
@@ -34,11 +34,11 @@ class ClashSelectionSet(BaseModel):
     ``categories`` is the source-native category (Revit category /
     ``ifc_class``, falling back to the element type); ``ifc_entities`` is
     the raw IFC entity (``IfcWall``, …) from the element ``properties``
-    — only meaningful for IFC-sourced models. ``properties`` is the
+    - only meaningful for IFC-sourced models. ``properties`` is the
     open-ended ``{property_key: [allowed_values]}`` map: an element is
     also in the set when, for *any* key, its source-native
     ``properties[key]`` (string-coerced + trimmed) is one of the listed
-    values — so the picker can facet by *any* element property, not just
+    values - so the picker can facet by *any* element property, not just
     the four built-ins. The extra lists/maps keep older payloads (which
     only carried ``disciplines``/``element_types``) forward-compatible.
     """
@@ -62,18 +62,18 @@ class ClashSelectionSet(BaseModel):
 
 # The kind of interference an engine pass looks for. Mirrors the
 # Navisworks Clash Detective "Type" rule selector:
-#   * ``hard``      — only report true geometric interpenetration
+#   * ``hard``      - only report true geometric interpenetration
 #                     (triangles actually intersect beyond ``tolerance_m``).
-#   * ``clearance`` — only report proximity: pairs that do NOT intersect
+#   * ``clearance`` - only report proximity: pairs that do NOT intersect
 #                     but sit within ``clearance_m`` (e.g. maintenance
 #                     access around an AHU). Hard hits are suppressed.
-#   * ``both``      — report hard interpenetration AND, for non-hard
+#   * ``both``      - report hard interpenetration AND, for non-hard
 #                     pairs, clearance violations (the legacy behaviour).
 CLASH_TYPES = ("hard", "clearance", "both")
 
 
 class ClashRule(BaseModel):
-    """Wave A4 — one per-discipline-pair tolerance override row.
+    """Wave A4 - one per-discipline-pair tolerance override row.
 
     A *rule* is the Navisworks-style "rules tab" entry: a coordination
     discipline pair (e.g. ``Structural`` × ``Mechanical``) plus a
@@ -85,7 +85,7 @@ class ClashRule(BaseModel):
     ``severity_override`` lets a coordinator stamp every result for the
     pair with a fixed severity (e.g. "Pipe × Beam is always *high*"),
     bypassing the geometry-derived ladder. Empty / ``None`` → keep the
-    engine value. ``enabled=False`` keeps the row visible but inert —
+    engine value. ``enabled=False`` keeps the row visible but inert -
     the engine ignores it (handy for parking a tuning iteration without
     losing the row). ``id`` is a stable client-generated identifier so
     React lists can ``key`` cleanly; the backend never indexes it.
@@ -102,7 +102,7 @@ class ClashRule(BaseModel):
 class ClashRuleList(BaseModel):
     """Replace the full rule set of a run (PATCH /runs/{id}/rules/ body).
 
-    A flat list keeps the PATCH idempotent — clients always send the
+    A flat list keeps the PATCH idempotent - clients always send the
     full desired state. Order matters: the first matching enabled rule
     wins (``_apply_rules`` short-circuits on the first match).
     """
@@ -111,17 +111,17 @@ class ClashRuleList(BaseModel):
 
 
 class ClashClusterRead(BaseModel):
-    """Wave A4 — one spatial cluster of clashes within a run.
+    """Wave A4 - one spatial cluster of clashes within a run.
 
     Returned by ``GET /runs/{id}/clusters/`` so the frontend chip group
     can render ``"Cluster N · <label> (n)"`` without a per-result join.
-    ``label`` is the heuristic ``"<disc_a> × <disc_b> — Level <s>"``
+    ``label`` is the heuristic ``"<disc_a> × <disc_b> - Level <s>"``
     string the service derives from the cluster's member rows.
 
     ``dominant_disciplines`` is the unique discipline pair the label was
     built from (used by the chip palette to colour clusters by trade);
     ``storey`` is the dominant storey index when the cluster's member
-    rows resolved one, else ``None``. Both are advisory — the UI never
+    rows resolved one, else ``None``. Both are advisory - the UI never
     falls over on absence.
     """
 
@@ -135,7 +135,7 @@ class ClashClusterRead(BaseModel):
 
 
 class ClashFalsePositiveRequest(BaseModel):
-    """Mark a clash as a false positive — Wave A4 FP feedback loop.
+    """Mark a clash as a false positive - Wave A4 FP feedback loop.
 
     ``reason`` is a short, free-text triage note the coordinator picks
     from a small picker (or types). Persisted to the result's history
@@ -153,7 +153,7 @@ class ClashRuleSuggestion(BaseModel):
     positives share a discipline pair. ``rule`` is the proposed
     :class:`ClashRule` row (with a fresh ``id``); ``reason`` explains
     *why* the system suggests it ("3 false positives on Mechanical ×
-    Structural — bump tolerance to 0.05 m"). Empty when there is no
+    Structural - bump tolerance to 0.05 m"). Empty when there is no
     confident proposal.
     """
 
@@ -178,7 +178,7 @@ class ClashRunCreate(BaseModel):
     )
     clash_type: str = Field(
         default="both",
-        description="hard | clearance | both — which interference an "
+        description="hard | clearance | both - which interference an "
         "engine pass reports (Navisworks-style Type selector). "
         "'hard' = interpenetration only; 'clearance' = proximity only; "
         "'both' = hard, then clearance for the non-hard pairs.",
@@ -188,7 +188,7 @@ class ClashRunCreate(BaseModel):
         description="Federated coordination noise filter: when true a "
         "pair is only reported if its two elements come from "
         "*different* BIM models (Navisworks 'ignore clashes within the "
-        "same file'). Skipped — has no effect — on a single-model run.",
+        "same file'). Skipped - has no effect - on a single-model run.",
     )
     tolerance_m: float = Field(
         default=0.01,
@@ -212,11 +212,11 @@ class ClashRunCreate(BaseModel):
     )
     set_a: ClashSelectionSet | None = Field(
         default=None,
-        description="Selection Set A (mode=selection_sets) — e.g. all walls.",
+        description="Selection Set A (mode=selection_sets) - e.g. all walls.",
     )
     set_b: ClashSelectionSet | None = Field(
         default=None,
-        description="Selection Set B (mode=selection_sets) — e.g. all pipes.",
+        description="Selection Set B (mode=selection_sets) - e.g. all pipes.",
     )
     carry_forward: bool = Field(
         default=True,
@@ -228,7 +228,7 @@ class ClashRunCreate(BaseModel):
     rules: list[ClashRule] = Field(
         default_factory=list,
         max_length=500,
-        description="Wave A4 — per-discipline-pair tolerance overrides "
+        description="Wave A4 - per-discipline-pair tolerance overrides "
         "the engine consults during the broad phase. The first matching "
         "enabled rule (symmetric on the pair) swaps in its tolerance "
         "and stamps the result severity. Empty → run-wide tolerance "
@@ -242,7 +242,7 @@ class ClashRunCreate(BaseModel):
 # (Revit category / IFC entity in element ``properties``). In addition to
 # these four built-ins, ``group_by`` also accepts the open-ended form
 # ``property:<key>`` (the literal ``property:`` prefix + a raw element
-# property key, e.g. ``property:FireRating``) — the facet is then the
+# property key, e.g. ``property:FireRating``) - the facet is then the
 # distinct values of that property across the selected models. The keys
 # the UI can offer are advertised in
 # :attr:`ClashCategoriesResponse.available_properties`.
@@ -264,7 +264,7 @@ class ClashPropertyFacet(BaseModel):
     ``key`` is a raw scalar property key present on the selected models'
     elements; ``count`` is how many bounding-box-carrying elements carry
     that key. The UI uses this list to build the "group by any property"
-    selector — request ``group_by=property:<key>`` to facet by it.
+    selector - request ``group_by=property:<key>`` to facet by it.
     """
 
     key: str
@@ -275,7 +275,7 @@ class ClashCategoriesResponse(BaseModel):
     """Facets for building the Set A / Set B pickers (one project).
 
     ``groups`` is the facet list for the *requested* grouping parameter
-    (``group_by`` — one of the four built-ins or ``property:<key>``).
+    (``group_by`` - one of the four built-ins or ``property:<key>``).
     ``element_types`` / ``disciplines`` are kept for backward
     compatibility (older frontends read them directly).
     ``available_group_by`` lists only the *built-in* parameters that
@@ -298,7 +298,7 @@ class ClashComment(BaseModel):
     """One threaded triage note on a clash result.
 
     ``reply_to`` carries the ``ts`` of a parent comment when this one is
-    a reply (Wave A3 threading). It is purely additive — legacy flat
+    a reply (Wave A3 threading). It is purely additive - legacy flat
     comments simply omit it (``None``) and render at the top level.
     """
 
@@ -317,7 +317,7 @@ class ClashHistoryEntry(BaseModel):
     Appended every time a triage field changes (status / severity /
     assigned_to / due_date) or a new comment is added. ``actor`` is the
     user id of the caller; ``ts`` is ISO-8601 UTC. ``before`` / ``after``
-    are best-effort string snapshots — ``None`` when there was no prior
+    are best-effort string snapshots - ``None`` when there was no prior
     value or the event has no natural pair (e.g. ``comment_add``).
     """
 
@@ -367,26 +367,26 @@ class ClashResultResponse(BaseModel):
     assigned_to: str | None
     due_date: str | None = None
     comments: list[ClashComment] = Field(default_factory=list)
-    # Wave A3 — collaboration state. ``watchers`` is the user-id list
+    # Wave A3 - collaboration state. ``watchers`` is the user-id list
     # subscribed to this clash (fan-out target on triage/comment events).
     # ``history`` is the audit trail rendered in the DetailPanel Activity
     # tab. Both default to empty so legacy payloads / older backends
     # still validate cleanly.
     watchers: list[str] = Field(default_factory=list)
     history: list[ClashHistoryEntry] = Field(default_factory=list)
-    # Wave A2 — open-ended advisory annotations (engine-derived,
+    # Wave A2 - open-ended advisory annotations (engine-derived,
     # non-authoritative). Currently ``{"severity_suggestion": "<sev>"}``
-    # on deep hard clashes — the UI shows a "Suggested" chip. Defaults to
+    # on deep hard clashes - the UI shows a "Suggested" chip. Defaults to
     # ``{}`` so older payloads always type-check.
     meta: dict = Field(default_factory=dict)
-    # Wave A4 — run-scoped spatial cluster id (DBSCAN over centroids).
+    # Wave A4 - run-scoped spatial cluster id (DBSCAN over centroids).
     # ``None`` marks DBSCAN noise / legacy rows.
     cluster_id: int | None = None
     bcf_topic_guid: str | None
 
 
 class ClashAddComment(BaseModel):
-    """Append a triage note. ``author``/``author_id`` are optional —
+    """Append a triage note. ``author``/``author_id`` are optional -
     when omitted they resolve from the request's auth context.
 
     ``reply_to`` is the ``ts`` of an existing comment when this one
@@ -400,7 +400,7 @@ class ClashAddComment(BaseModel):
 
 
 class ClashResultUpdate(BaseModel):
-    """Triage a clash — status, severity, assignee, due date and/or a new comment."""
+    """Triage a clash - status, severity, assignee, due date and/or a new comment."""
 
     status: str | None = Field(default=None)
     # Reclassify the coordination urgency. The engine seeds a value from
@@ -432,7 +432,7 @@ class ClashBulkResultUpdate(BaseModel):
 
 
 class ClashBulkUpdateResponse(BaseModel):
-    """Outcome of a bulk triage write — how many rows actually changed."""
+    """Outcome of a bulk triage write - how many rows actually changed."""
 
     updated: int = 0
     requested: int = 0
@@ -451,7 +451,7 @@ class ClashLevelMatrixCell(BaseModel):
     """One storey×storey cell of the level matrix.
 
     Same shape/convention as :class:`ClashMatrixCell` so the frontend can
-    render it with the identical grid component — only the axis keys are
+    render it with the identical grid component - only the axis keys are
     integer storey indices instead of discipline strings.
     """
 
@@ -462,11 +462,11 @@ class ClashLevelMatrixCell(BaseModel):
 
 
 # Multi-dimensional grouping dimensions the summary endpoint can produce.
-#   * ``discipline_pair`` — discipline×discipline matrix (the default, the
+#   * ``discipline_pair`` - discipline×discipline matrix (the default, the
 #     historical ``matrix``).
-#   * ``level`` — count of clashes per storey index (1-D breakdown).
-#   * ``level_discipline`` — discipline×discipline matrix *per* storey.
-#   * ``discipline_system`` — discipline·system × discipline·system matrix
+#   * ``level`` - count of clashes per storey index (1-D breakdown).
+#   * ``level_discipline`` - discipline×discipline matrix *per* storey.
+#   * ``discipline_system`` - discipline·system × discipline·system matrix
 #     (only meaningful when elements carry building-system metadata).
 CLASH_GROUPING_DIMENSIONS = (
     "discipline_pair",
@@ -501,17 +501,17 @@ class ClashGroupedSummary(BaseModel):
     """
 
     dimension: str = "discipline_pair"
-    # ``discipline_pair`` (default) — the flat discipline×discipline grid.
+    # ``discipline_pair`` (default) - the flat discipline×discipline grid.
     disciplines: list[str] = Field(default_factory=list)
     matrix: list[ClashMatrixCell] = Field(default_factory=list)
-    # ``level`` — one bucket per storey index (key is the int as a string).
+    # ``level`` - one bucket per storey index (key is the int as a string).
     levels: list[ClashGroupCount] = Field(default_factory=list)
-    # ``level_discipline`` — a discipline matrix per storey.
+    # ``level_discipline`` - a discipline matrix per storey.
     level_disciplines: list[ClashLevelDisciplineGroup] = Field(default_factory=list)
-    # ``discipline_system`` — discipline·system × discipline·system grid.
+    # ``discipline_system`` - discipline·system × discipline·system grid.
     systems: list[str] = Field(default_factory=list)
     system_matrix: list[ClashMatrixCell] = Field(default_factory=list)
-    # Whether any clash in the run resolved a building system — lets the UI
+    # Whether any clash in the run resolved a building system - lets the UI
     # hide the ``discipline_system`` option when there is no data for it.
     has_system_data: bool = False
 
@@ -557,7 +557,7 @@ class ClashRunResponse(BaseModel):
     element_count: int
     total_clashes: int
     summary: ClashRunSummary
-    # Wave A4 — per-discipline-pair tolerance overrides on this run.
+    # Wave A4 - per-discipline-pair tolerance overrides on this run.
     # Always present on the response (empty list when no rules were
     # configured), so the rule editor never has to special-case absence.
     rules: list[ClashRule] = Field(default_factory=list)
@@ -675,7 +675,7 @@ class ClashCompareResponse(BaseModel):
 
 
 class ClashApplyRuleRequest(BaseModel):
-    """Wave A4 — POST body for ``/runs/{id}/apply-rule-suggestion``.
+    """Wave A4 - POST body for ``/runs/{id}/apply-rule-suggestion``.
 
     Identifies the discipline pair the coordinator wants to widen plus
     the proposed tolerance. The endpoint appends a fresh
@@ -704,7 +704,7 @@ class ClashApplyRuleResponse(BaseModel):
 
 
 class ClashDisciplinePairStat(BaseModel):
-    """One discipline×discipline coordination grid cell — KPI projection.
+    """One discipline×discipline coordination grid cell - KPI projection.
 
     Mirrors :class:`ClashMatrixCell` but adds ``open_share`` (``open_count
     / count``, 0..1) so the dashboard can render the "top clashing pairs"
@@ -732,7 +732,7 @@ class ClashIssueRead(BaseModel):
     """A single smart-issue row (signature-scoped, project-scoped).
 
     The smart issue is the *persistent* identity of a clash across re-runs
-    — see :class:`app.modules.clash.models.ClashIssue` for the lifecycle.
+    - see :class:`app.modules.clash.models.ClashIssue` for the lifecycle.
     ``member_count`` is the number of :class:`ClashResult` rows currently
     linked to this issue (across every run of the project); the list
     endpoint computes it with one extra COUNT query so the UI can render
@@ -774,7 +774,7 @@ class ClashSuppressRequest(BaseModel):
 
     ``reason`` is a short, free-text triage note (1..500 chars). Persisted
     on :class:`ClashSuppression.reason`. Empty reasons are rejected at the
-    schema level — suppressions must always carry an audit trail.
+    schema level - suppressions must always carry an audit trail.
     """
 
     reason: str = Field(..., min_length=1, max_length=500)
@@ -804,7 +804,7 @@ class ClashKpiResponse(BaseModel):
     All counts respect every clash in the run (no pagination). ``mttr_hours``
     is the average wall-clock delta from a row's first ``status='new'``
     history entry (or ``created_at`` fallback) to its first transition
-    *out* of ``new`` into ``resolved`` — ``None`` when no row has a
+    *out* of ``new`` into ``resolved`` - ``None`` when no row has a
     qualifying transition yet. ``top_clashing_pairs`` is the top five
     discipline pairs by total ``count`` (ties broken by ``open_count``
     desc, then pair alphabetic for determinism).
@@ -851,11 +851,11 @@ class ClashProfileCreate(ClashProfileBase):
 
 
 class ClashProfileUpdate(BaseModel):
-    """Patch a clash profile — every field optional (partial update).
+    """Patch a clash profile - every field optional (partial update).
 
     Only the fields actually supplied are written; ``None`` means "leave
     untouched" (so ``description=None`` cannot blank an existing note via
-    this path — clearing is out of scope for the MVP).
+    this path - clearing is out of scope for the MVP).
     """
 
     name: str | None = Field(default=None, min_length=1, max_length=255)

@@ -3,14 +3,14 @@
 This module fetches actual weather observations from the public, free,
 no-API-key-required `Open-Meteo <https://open-meteo.com>`_ API.
 
-It is also responsible for the **productivity factor** calculator —
+It is also responsible for the **productivity factor** calculator -
 mapping observed weather into trade-specific work-loss coefficients per
 the UK SCL Delay & Disruption Protocol Annex C and standard concrete /
 finishes practice (ACI 305R, ACI 306R, EN 13670, BS 8110).
 
 All HTTP calls are wrapped in ``asyncio.wait_for`` with a hard 8-second
 timeout so a flaky upstream cannot stall the diary pipeline. Failures
-return :data:`None` — callers fall back to the most recent local
+return :data:`None` - callers fall back to the most recent local
 :class:`WeatherRecord`.
 """
 
@@ -102,7 +102,7 @@ def _build_historical_url(lat: float, lng: float, target: date) -> str:
 
 
 def _do_get(url: str) -> dict[str, Any] | None:
-    """Blocking GET — wrapped in :func:`asyncio.to_thread` by the async caller."""
+    """Blocking GET - wrapped in :func:`asyncio.to_thread` by the async caller."""
     try:
         req = urllib.request.Request(
             url,
@@ -175,7 +175,7 @@ def _summarise_open_meteo(
         except (TypeError, ValueError):
             continue
 
-    # Reasonable bounds — return None if everything is missing
+    # Reasonable bounds - return None if everything is missing
     if avg_temp is None and avg_hum is None and total_prec is None and dominant_code is None:
         return None
 
@@ -352,7 +352,7 @@ def compute_productivity_factor(
     reason_parts: list[str] = []
     stopped = False
 
-    # Hard stops first — any one stop condition pegs productivity to 0.
+    # Hard stops first - any one stop condition pegs productivity to 0.
     if temperature_c is not None:
         t = float(temperature_c)
         if t < float(rules["temp_min_c"]):
@@ -439,7 +439,7 @@ def extract_exif_gps(image_bytes: bytes) -> dict[str, Any] | None:
 
         from PIL import ExifTags, Image
     except ImportError:
-        logger.info("Pillow not installed — EXIF GPS extraction skipped")
+        logger.info("Pillow not installed - EXIF GPS extraction skipped")
         return None
 
     try:

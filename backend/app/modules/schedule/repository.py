@@ -1,7 +1,7 @@
 """‌⁠‍Schedule data access layer.
 
 All database queries for schedules, activities, and work orders live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid
@@ -40,7 +40,7 @@ class ScheduleRepository:
         count_stmt = select(func.count()).select_from(base.subquery())
         total = (await self.session.execute(count_stmt)).scalar_one()
 
-        # Fetch — skip eager loading of activities for list queries
+        # Fetch - skip eager loading of activities for list queries
         stmt = (
             base.options(noload(Schedule.activities)).order_by(Schedule.created_at.desc()).offset(offset).limit(limit)
         )
@@ -96,7 +96,7 @@ class ActivityRepository:
         count_stmt = select(func.count()).select_from(base.subquery())
         total = (await self.session.execute(count_stmt)).scalar_one()
 
-        # Fetch ordered by sort_order, then wbs_code — skip heavy relationships
+        # Fetch ordered by sort_order, then wbs_code - skip heavy relationships
         stmt = (
             base.options(
                 noload(Activity.children),
@@ -256,7 +256,7 @@ class WorkOrderRepository:
 
 
 class RelationshipRepository:
-    """Data access for :class:`ScheduleRelationship` — the canonical edge store.
+    """Data access for :class:`ScheduleRelationship` - the canonical edge store.
 
     :class:`ScheduleRelationship` is the single source of truth for schedule
     dependency edges. Activity-embedded ``dependencies`` JSON is a derived
@@ -269,7 +269,7 @@ class RelationshipRepository:
         self.session = session
 
     async def list_for_schedule(self, schedule_id: uuid.UUID) -> list[ScheduleRelationship]:
-        """Return every relationship row of a schedule (unbounded — CPM needs all)."""
+        """Return every relationship row of a schedule (unbounded - CPM needs all)."""
         stmt = select(ScheduleRelationship).where(ScheduleRelationship.schedule_id == schedule_id)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
@@ -277,7 +277,7 @@ class RelationshipRepository:
     async def list_predecessors(self, successor_id: uuid.UUID) -> list[ScheduleRelationship]:
         """Return all relationship rows whose successor is ``successor_id``.
 
-        These are the inbound predecessor edges of a single activity — used by
+        These are the inbound predecessor edges of a single activity - used by
         the completion guard and the derived-JSON mirror rebuild.
         """
         stmt = select(ScheduleRelationship).where(ScheduleRelationship.successor_id == successor_id)

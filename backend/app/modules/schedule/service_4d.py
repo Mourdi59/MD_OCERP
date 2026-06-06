@@ -3,7 +3,7 @@
 This module hosts the four service classes the spec carves out for the 4D
 slice: EAC link management, snapshot resolution, progress recording and
 dashboard aggregation. Each class is a thin orchestration shell on top of
-the existing schedule repository and the EAC engine's public API — the
+the existing schedule repository and the EAC engine's public API - the
 heavy lifting (predicate evaluation) lives in :mod:`app.modules.eac.engine`
 and is reached through :class:`EacPredicateResolver` so tests can stub it.
 
@@ -88,7 +88,7 @@ class DefaultEacResolver:
 
     Element loading is delegated to a callback so the resolver remains
     decoupled from any specific BIM data source. If the callback returns an
-    empty list (or raises) we fall back to a no-match outcome — the link is
+    empty list (or raises) we fall back to a no-match outcome - the link is
     flagged as orphaned at the service layer (EC-6.1).
     """
 
@@ -120,13 +120,13 @@ class DefaultEacResolver:
         if not elements:
             return []
 
-        # Resolve to a rule definition body — either the saved rule's
+        # Resolve to a rule definition body - either the saved rule's
         # definition_json or the inline predicate_json.
         definition: dict
         if predicate_json is not None:
             definition = predicate_json
         elif rule_id is not None:
-            from app.modules.eac.models import EacRule  # lazy import — avoid cycles
+            from app.modules.eac.models import EacRule  # lazy import - avoid cycles
 
             rule = await self._session.get(EacRule, rule_id)
             if rule is None:
@@ -166,7 +166,7 @@ class ElementLoader(Protocol):
 
 
 async def _default_element_loader(session: AsyncSession, *, model_version_id: uuid.UUID | None) -> list[dict]:
-    """Production element loader — pulls BIMElements for ``model_version_id``.
+    """Production element loader - pulls BIMElements for ``model_version_id``.
 
     The current bim_hub schema treats ``BIMModel.id`` as the model-version
     handle (one row per import). This loader queries every BIMElement that
@@ -330,7 +330,7 @@ def _derive_task_status(
         return STATUS_COMPLETED
 
     if start is None or end is None:
-        # Defensive — without dates, base purely on progress.
+        # Defensive - without dates, base purely on progress.
         if progress > 0:
             return STATUS_IN_PROGRESS
         return STATUS_NOT_STARTED
@@ -395,7 +395,7 @@ class ScheduleSnapshotService:
         result: dict[str, str] = {}
         for link in links:
             if link.mode == "excluded":
-                # Manual override — skip.
+                # Manual override - skip.
                 continue
             activity = activity_map.get(link.task_id)
             if activity is None:
@@ -448,7 +448,7 @@ class ScheduleProgressService:
     ) -> ScheduleProgressEntry:
         """Append a progress entry and update the parent activity's progress.
 
-        Rolls forward (last-write-wins) — if a later entry has a *lower*
+        Rolls forward (last-write-wins) - if a later entry has a *lower*
         progress percent the activity is still updated, so the user sees the
         most recent reading. The append-only entry log preserves the full
         history for audit / dashboard charts.
@@ -781,7 +781,7 @@ async def import_schedule_csv(
     materialise the dependency list as JSON on the activity.
 
     Returns a :class:`CsvImportResult` with counts + warnings instead of
-    raising on partial failure — a single bad row should not abort the whole
+    raising on partial failure - a single bad row should not abort the whole
     import (FR-6.1 / EC-6.3).
     """
     result = CsvImportResult()
@@ -810,7 +810,7 @@ async def import_schedule_csv(
         end = row.get("end", "")
         if not wbs or not name or not start or not end:
             result.activities_failed += 1
-            result.warnings.append(f"row {row_idx}: missing required field — skipped")
+            result.warnings.append(f"row {row_idx}: missing required field - skipped")
             continue
         try:
             start_d = _parse_iso(start)
@@ -819,7 +819,7 @@ async def import_schedule_csv(
             start_d = end_d = None
         if start_d is None or end_d is None:
             result.activities_failed += 1
-            result.warnings.append(f"row {row_idx}: invalid ISO date — skipped")
+            result.warnings.append(f"row {row_idx}: invalid ISO date - skipped")
             continue
         duration_raw = row.get("duration") or row.get("duration_days") or ""
         try:
@@ -831,7 +831,7 @@ async def import_schedule_csv(
             progress = float(progress_raw)
         except ValueError:
             progress = 0.0
-            result.warnings.append(f"row {row_idx}: invalid progress {progress_raw!r} — defaulted to 0")
+            result.warnings.append(f"row {row_idx}: invalid progress {progress_raw!r} - defaulted to 0")
 
         activity = Activity(
             schedule_id=schedule_id,

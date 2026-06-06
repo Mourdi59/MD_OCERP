@@ -40,7 +40,7 @@ class HSEIncidentInvestigation(Base):
 
     __tablename__ = "oe_hse_advanced_incident_investigation"
 
-    # Plain UUID — references oe_safety_incident.id, no FK to avoid cross-module coupling
+    # Plain UUID - references oe_safety_incident.id, no FK to avoid cross-module coupling
     incident_ref: Mapped[uuid.UUID] = mapped_column(GUID(), nullable=False, index=True)
 
     investigation_lead: Mapped[uuid.UUID] = mapped_column(
@@ -65,7 +65,7 @@ class HSEIncidentInvestigation(Base):
 
 
 class JobSafetyAnalysis(Base):
-    """‌⁠‍JSA — Job Safety Analysis (a.k.a. Job Hazard Analysis)."""
+    """‌⁠‍JSA - Job Safety Analysis (a.k.a. Job Hazard Analysis)."""
 
     __tablename__ = "oe_hse_advanced_jsa"
 
@@ -111,7 +111,7 @@ class JobSafetyAnalysis(Base):
 
 
 class PermitToWork(Base):
-    """PTW — Permit-to-Work (hot work, confined space, work at height, etc.)."""
+    """PTW - Permit-to-Work (hot work, confined space, work at height, etc.)."""
 
     __tablename__ = "oe_hse_advanced_ptw"
 
@@ -152,7 +152,7 @@ class PermitToWork(Base):
     conditions: Mapped[str] = mapped_column(Text, nullable=False, default="")
     closure_checklist_passed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     closure_notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    # Prerequisites — checked before transition to 'active'
+    # Prerequisites - checked before transition to 'active'
     prereq_jsa_approved: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     prereq_supervisor_present: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     prereq_fire_watch_assigned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -220,7 +220,7 @@ class ToolboxTalk(Base):
     language: Mapped[str] = mapped_column(String(10), nullable=False, default="en")
     attendance_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    # plain UUID — references oe_hse_advanced_toolbox_topic.id
+    # plain UUID - references oe_hse_advanced_toolbox_topic.id
     library_topic_ref: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
@@ -320,7 +320,7 @@ class SafetyAudit(Base):
     max_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="scheduled", index=True)
     summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    # plain UUID — references external audit template registry
+    # plain UUID - references external audit template registry
     checklist_template_ref: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
@@ -355,7 +355,7 @@ class SafetyAuditFinding(Base):
 
 
 class CorrectiveAction(Base):
-    """CAPA — corrective + preventive action tied to incident/JSA/audit/etc."""
+    """CAPA - corrective + preventive action tied to incident/JSA/audit/etc."""
 
     __tablename__ = "oe_hse_advanced_capa"
 
@@ -366,7 +366,7 @@ class CorrectiveAction(Base):
         index=True,
     )
     source_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
-    # plain UUID — depends on source_type (incident/jsa/audit/observation/permit)
+    # plain UUID - depends on source_type (incident/jsa/audit/observation/permit)
     source_ref: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -380,13 +380,13 @@ class CorrectiveAction(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     verification_notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
     root_cause_category: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    # Structured 5-Whys chain (list of {"why": str, "answer": str}) — nullable
+    # Structured 5-Whys chain (list of {"why": str, "answer": str}) - nullable
     # so existing rows continue to validate.
     five_whys: Mapped[list | None] = mapped_column(  # type: ignore[assignment]
         JSON,
         nullable=True,
     )
-    # Effectiveness verification (ISO 9001 §10.2.1) — a CAPA may close but
+    # Effectiveness verification (ISO 9001 §10.2.1) - a CAPA may close but
     # the corrective action's effectiveness is reviewed later.
     effectiveness_verified_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),

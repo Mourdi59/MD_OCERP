@@ -1,4 +1,4 @@
-"""‌⁠‍Compatibility shim — delegates to ``app.core.email``.
+"""‌⁠‍Compatibility shim - delegates to ``app.core.email``.
 
 The real implementation was moved to ``app.core.email`` in v2.3.1 so the
 rest of the app can plug in new transports (SES, SendGrid, …) without

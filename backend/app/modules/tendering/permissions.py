@@ -13,7 +13,7 @@ def register_tendering_permissions() -> None:
             "tendering.update": Role.EDITOR,
             "tendering.delete": Role.MANAGER,
             # Awarding writes the winning bid's rates back into the BOQ and
-            # closes the tender — a contractual decision, so it sits at the
+            # closes the tender - a contractual decision, so it sits at the
             # MANAGER tier (above ordinary edit) like contracts.sign.
             "tendering.award": Role.MANAGER,
             "tendering.bid.create": Role.EDITOR,

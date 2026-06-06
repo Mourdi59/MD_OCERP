@@ -1,4 +1,4 @@
-# OpenConstructionERP — DataDrivenConstruction (DDC)
+# OpenConstructionERP - DataDrivenConstruction (DDC)
 # DDC-CWICR-OE-2026
 """Progress tracking data access layer."""
 
@@ -151,7 +151,7 @@ class ProgressRepository:
     async def get_latest_project_entry(self, project_id: uuid.UUID) -> ProgressEntry | None:
         """Return the most recent *project-level* progress entry.
 
-        A project-level entry is one with ``boq_position_id IS NULL`` — a
+        A project-level entry is one with ``boq_position_id IS NULL`` - a
         manual overall-completion reading recorded against the whole
         project rather than a single BOQ position. The reporting module
         uses this as the headline "overall % complete" figure on the
@@ -200,7 +200,7 @@ class ProgressRepository:
     ) -> list[tuple[str, float]]:
         """Return (period_label, max_pct) pairs ordered by period_label.
 
-        For each period we take the MAXIMUM percent_complete recorded — this
+        For each period we take the MAXIMUM percent_complete recorded - this
         handles multiple same-period entries by using the most optimistic value.
         """
         stmt = select(

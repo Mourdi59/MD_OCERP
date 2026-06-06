@@ -1,12 +1,12 @@
 """‌⁠‍Compliance rule packs for contract gates.
 
 A *rule pack* is a jurisdiction-scoped bundle of validation rule-SET ids
-(the same set names the core :class:`ValidationEngine` already knows —
+(the same set names the core :class:`ValidationEngine` already knows -
 ``boq_quality``, ``din276``, ``gaeb``, ``nrm``, ``masterformat`` …). Each
 pack also declares which workflow gates enforce it (currently only
 ``contract_signature``).
 
-These packs are deterministic seed data, not user-authored DSL — they map a
+These packs are deterministic seed data, not user-authored DSL - they map a
 project's region to a concrete, runnable set of validation rules so the
 compliance gate that runs on a contract ``draft → active`` transition has
 something real to execute. A project picks which packs it enforces via the
@@ -17,10 +17,10 @@ Design choices:
     * ``rule_sets`` reference rule sets that genuinely exist in the engine's
       registry. Unknown set names are simply skipped by the engine
       (``get_rules_for_sets`` ignores them), so a pack can declare an
-      aspirational set without crashing — but the shipped packs only list
+      aspirational set without crashing - but the shipped packs only list
       sets we actually register, so the gate always evaluates real rules.
     * The ``universal`` pack is the safe default for any project with no
-      region match — it enforces the cross-market ``boq_quality`` rule set.
+      region match - it enforces the cross-market ``boq_quality`` rule set.
     * Region → pack auto-mapping is a *suggestion*; projects can override.
 """
 
@@ -83,7 +83,7 @@ DEFAULT_PACK_ID = "universal"
 #: Coarse region tag → pack suggestion. Regions in this product are coarse
 #: (``DACH`` / ``UK`` / ``US`` / ``EU`` …) so we match case-insensitively on
 #: a prefix substring rather than an exact code. Used only to seed a new
-#: project's default selection — never to override an explicit choice.
+#: project's default selection - never to override an explicit choice.
 _REGION_PACK_HINTS: tuple[tuple[str, str], ...] = (
     ("dach", "de_compliance"),
     ("germany", "de_compliance"),
@@ -130,7 +130,7 @@ def suggest_pack_for_region(region: str | None) -> str:
     """Suggest a single default pack id for a coarse ``region`` tag.
 
     Falls back to :data:`DEFAULT_PACK_ID` when nothing matches. Pure and
-    deterministic — case-insensitive prefix/substring match against
+    deterministic - case-insensitive prefix/substring match against
     :data:`_REGION_PACK_HINTS`.
     """
     if not region:

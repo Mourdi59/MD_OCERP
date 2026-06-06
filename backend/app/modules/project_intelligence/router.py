@@ -1,14 +1,14 @@
 """‌⁠‍Project Intelligence API routes.
 
 Endpoints:
-    GET  /score/?project_id=X          — Project score with gaps and achievements
-    GET  /state/?project_id=X          — Full project state snapshot
-    GET  /summary/?project_id=X        — Combined state + score
-    POST /recommendations/             — AI recommendations (or rule-based fallback)
-    POST /chat/                        — Ask a question about the project
-    POST /explain-gap/                 — Explain a specific gap
-    POST /actions/{action_id}/         — Execute an action
-    GET  /actions/?project_id=X        — List available actions
+    GET  /score/?project_id=X          - Project score with gaps and achievements
+    GET  /state/?project_id=X          - Full project state snapshot
+    GET  /summary/?project_id=X        - Combined state + score
+    POST /recommendations/             - AI recommendations (or rule-based fallback)
+    POST /chat/                        - Ask a question about the project
+    POST /explain-gap/                 - Explain a specific gap
+    POST /actions/{action_id}/         - Execute an action
+    GET  /actions/?project_id=X        - List available actions
 """
 
 import logging
@@ -74,7 +74,7 @@ async def _verify_project_access(
     """‌⁠‍Verify the current user owns (or is admin on) the referenced project.
 
     Every project_intelligence endpoint must call this before touching
-    collector / scorer / advisor — those helpers trust the project_id
+    collector / scorer / advisor - those helpers trust the project_id
     and will happily return cross-tenant data otherwise.
     Mirrors ``erp_chat.tools._require_project_access``.
     """
@@ -110,7 +110,7 @@ async def _verify_project_access(
             user = await user_repo.get_by_id(user_id)
             if user is not None and getattr(user, "role", "") == "admin":
                 return
-        except Exception:  # noqa: BLE001 — best-effort admin check
+        except Exception:  # noqa: BLE001 - best-effort admin check
             pass
 
         if str(getattr(project, "owner_id", "")) != str(user_id):
@@ -129,9 +129,9 @@ async def _verify_project_access(
 
 
 # ── Bounded in-memory cache (keyed by user + project to avoid leakage) ────
-# RFC 25 — reduced from 300 s to 60 s so the Estimation Dashboard reflects
+# RFC 25 - reduced from 300 s to 60 s so the Estimation Dashboard reflects
 # sibling-module edits within one minute of a save.
-# v4.2.2 — wrapped in an LRU bound so a long-lived process cannot leak
+# v4.2.2 - wrapped in an LRU bound so a long-lived process cannot leak
 # memory by accumulating per-(user, project) keys for ever.
 
 from collections import OrderedDict  # noqa: E402
@@ -142,7 +142,7 @@ _state_cache: "OrderedDict[tuple[str, str], tuple[float, Any]]" = OrderedDict()
 
 
 def _cache_key(user_id: str | None, project_id: str) -> tuple[str, str]:
-    """‌⁠‍Per-user cache key — prevents cross-user state leaks."""
+    """‌⁠‍Per-user cache key - prevents cross-user state leaks."""
     return (str(user_id or "anon"), project_id)
 
 
@@ -154,7 +154,7 @@ def _get_cached_state(user_id: str | None, project_id: str) -> Any | None:
         _state_cache.move_to_end(key)
         return entry[1]
     if entry:
-        # Expired — drop it so the LRU is honest about freshness.
+        # Expired - drop it so the LRU is honest about freshness.
         _state_cache.pop(key, None)
     return None
 
@@ -552,7 +552,7 @@ async def get_forecasts(
     try:
         state = await _get_state(session, user_id, str(project_id))
         currency = getattr(state, "currency", "") or ""
-    except Exception:  # noqa: BLE001 — currency is cosmetic
+    except Exception:  # noqa: BLE001 - currency is cosmetic
         currency = ""
 
     return ForecastsResponse(
@@ -597,7 +597,7 @@ async def acknowledge_forecast_alert(
     session: SessionDep = None,  # type: ignore[assignment]
     user_id: CurrentUserId = None,  # type: ignore[assignment]
 ) -> ForecastAlertRow:
-    """Acknowledge a forecast alert — removes it from the active list."""
+    """Acknowledge a forecast alert - removes it from the active list."""
     forecast = await _load_forecast_for_write(session, forecast_id, user_id)
 
     from app.modules.full_evm.service import EVMService

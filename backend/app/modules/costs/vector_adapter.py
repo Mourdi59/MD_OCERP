@@ -1,9 +1,9 @@
-"""‌⁠‍Cost-catalog vector adapter — feeds the ``oe_cost_items`` collection.
+"""‌⁠‍Cost-catalog vector adapter - feeds the ``oe_cost_items`` collection.
 
 Each :class:`~app.modules.costs.models.CostItem` row is embedded with the
 multilingual-e5-small model so element→catalog matching can recall the
 right cost item across the nine languages CWICR ships with (en, de, ru,
-lt, fr, es, it, pl, pt — plus any other locale a tenant adds via the
+lt, fr, es, it, pl, pt - plus any other locale a tenant adds via the
 ``descriptions`` JSON column).
 
 Why this adapter is not just another :class:`EmbeddingAdapter`
@@ -12,10 +12,10 @@ Why this adapter is not just another :class:`EmbeddingAdapter`
 The shared multi-collection helpers in :mod:`app.core.vector_index`
 encode every text with the *same* string, regardless of whether it's
 being indexed (a "passage") or queried (a short "query"). E5 is
-asymmetric — recall drops by ~50 % if you skip the
+asymmetric - recall drops by ~50 % if you skip the
 ``passage:`` / ``query:`` prefix convention. So this adapter:
 
-* implements ``to_text`` / ``to_payload`` like every other adapter — it
+* implements ``to_text`` / ``to_payload`` like every other adapter - it
   still satisfies the :class:`EmbeddingAdapter` protocol, so the
   ``index_one`` / ``search_collection`` framework can be used by callers
   that don't care about the optimal recall (e.g. unified search);
@@ -24,7 +24,7 @@ asymmetric — recall drops by ~50 % if you skip the
   inject the right prefix at encode time.
 
 All heavy imports (``lancedb``, ``fastembed``, ``sentence_transformers``)
-are deferred to the function body — this module is safe to import even
+are deferred to the function body - this module is safe to import even
 when the optional ``[vector]`` / ``[semantic]`` extras are missing, and
 the app keeps booting normally; only the cost-vector feature degrades.
 
@@ -37,7 +37,7 @@ payload``).  All cost-specific columns the brief calls out
 (``description``, ``unit``, ``unit_cost``, ``currency``, ``region_code``,
 ``source``, ``language``, ``classification_din276`` /
 ``_nrm`` / ``_masterformat``) are JSON-encoded into the ``payload``
-field — the same pattern every other module uses.  Adding a column to
+field - the same pattern every other module uses.  Adding a column to
 the LanceDB schema would require a destructive migration; JSON keeps
 the schema stable while the surface API is unchanged for callers.
 """
@@ -65,7 +65,7 @@ logger = logging.getLogger(__name__)
 # infer (we just lose a small amount of cross-lingual signal).
 #
 # The lookup table lives in :mod:`app.core.match_service.region_language`
-# so the costs adapter and the match-service ranker stay in sync — the
+# so the costs adapter and the match-service ranker stay in sync - the
 # two used to drift (``UK_GBP`` vs ``GB_LONDON``, ``CS_PRAGUE`` vs
 # ``CZ_PRAGUE``, etc.), which silently broke the translation cascade
 # for any catalogue id that lived in only one of the two tables.
@@ -95,7 +95,7 @@ def _language_for(item: CostItem) -> str:
 # in the index must be encoded with ``passage: <text>`` and queries with
 # ``query: <text>``. Skipping this halves recall on multi-language sets.
 # The shared embedder in :mod:`app.core.vector` does not know about the
-# convention — it just encodes whatever string we hand it — so we apply
+# convention - it just encodes whatever string we hand it - so we apply
 # the prefix at the boundary here.
 
 _PASSAGE_PREFIX = "passage: "
@@ -109,7 +109,7 @@ _QUERY_PREFIX = "query: "
 # collection may be empty (fresh install) or contain stale test fixtures
 # (legacy seed). To avoid serving fixtures or empty results to end
 # users, ``search()`` falls back to a SQL ``ILIKE`` lookup over the
-# real :class:`CostItem` rows — slower than vector search and lower
+# real :class:`CostItem` rows - slower than vector search and lower
 # recall, but guaranteed to return real CWICR codes + descriptions.
 #
 # The fallback fires when:
@@ -128,7 +128,7 @@ def _looks_like_fixture(payload: dict[str, Any]) -> bool:
 
     Earlier versions used a generic ``^[A-Z]\\d{3}$`` regex that silently
     dropped legitimate short CWICR codes (``M001``, ``B100``, ``S420``)
-    from BYO catalogues — they look like test fixtures but aren't. The
+    from BYO catalogues - they look like test fixtures but aren't. The
     filter now only catches markers a real catalogue would NEVER use:
     the explicit ``TEST-<hex>`` prefix and the legacy ``"desc "`` /
     ``"Test concrete C30/37"`` description fixtures from older test
@@ -163,7 +163,7 @@ async def _sql_lexical_search(
     lexical fallback when both are available.
 
     The ``language`` filter is permissive: if the strict filter yields
-    zero results, it is dropped on the second pass — the fallback's
+    zero results, it is dropped on the second pass - the fallback's
     purpose is to surface *some* real CWICR rows even when the project's
     target language doesn't match what the catalogue ships (the real
     catalogue is RU + BG today; English projects would otherwise get
@@ -177,12 +177,12 @@ async def _sql_lexical_search(
 
         from app.database import async_session_factory  # noqa: PLC0415
         from app.modules.costs.models import CostItem  # noqa: PLC0415
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug("cost-vector lexical: SQL imports failed: %s", exc)
         return []
 
     # Strip punctuation so a query like "Roof Metal Panels, sheet" doesn't
-    # produce the literal token "panels," — ILIKE %panels,% would only
+    # produce the literal token "panels," - ILIKE %panels,% would only
     # match descriptions containing the trailing comma. Caller is
     # responsible for handing us a query in the *catalogue's* language;
     # this is a narrow lexical search, not a translator.
@@ -218,7 +218,7 @@ async def _sql_lexical_search(
         hits_count: int,
         total_tokens: int,
     ) -> dict[str, Any]:
-        # Score band 0.3 - 0.6 — always below typical vector hits (≥0.7),
+        # Score band 0.3 - 0.6 - always below typical vector hits (≥0.7),
         # so the lexical fallback never fights a real vector candidate.
         denom = max(1, total_tokens)
         score = 0.3 + 0.3 * (hits_count / denom)
@@ -270,7 +270,7 @@ class CostItemVectorAdapter:
     generic helpers can use this adapter for cross-collection unified
     search.  Add ``upsert`` / ``delete`` / ``search`` / ``reindex_all``
     on top to apply the E5 ``passage:`` / ``query:`` prefix at the right
-    boundary — that's the only reason we don't just plug into
+    boundary - that's the only reason we don't just plug into
     ``vector_index.index_one`` directly.
     """
 
@@ -289,7 +289,7 @@ class CostItemVectorAdapter:
         values (DIN 276 / NRM / MasterFormat / OmniClass / …).  Empty
         fields are dropped so we never embed dangling pipe separators.
 
-        Note: the ``passage:`` prefix is **not** applied here — callers
+        Note: the ``passage:`` prefix is **not** applied here - callers
         going through the shared ``index_one`` helper would otherwise
         leak the prefix into ``text`` payloads where it shouldn't appear.
         The prefix is added by :func:`upsert` / :func:`reindex_all` at
@@ -334,7 +334,7 @@ class CostItemVectorAdapter:
         }
 
     def project_id_of(self, row: CostItem) -> str | None:
-        """Cost items are tenant-global, never per-project — return None."""
+        """Cost items are tenant-global, never per-project - return None."""
         _ = row  # interface symmetry
         return None
 
@@ -363,7 +363,7 @@ class CostItemVectorAdapter:
 
         DIN 276 / NRM / MasterFormat / OmniClass are typically short
         strings ("330", "2.6.1", "03 30 00"). We sort by key for stable
-        embedding output — the same row always produces the same vector,
+        embedding output - the same row always produces the same vector,
         even if the JSON column was written by a different code path
         with unstable key order.
         """
@@ -374,7 +374,7 @@ class CostItemVectorAdapter:
         return ", ".join(f"{k}:{v}" for k, v in ordered)
 
 
-# Singleton instance — adapters are stateless so one shared object is fine.
+# Singleton instance - adapters are stateless so one shared object is fine.
 cost_item_vector_adapter = CostItemVectorAdapter()
 
 
@@ -384,11 +384,11 @@ cost_item_vector_adapter = CostItemVectorAdapter()
 def _vector_available() -> bool:
     """Return True iff the configured vector backend is importable.
 
-    Probes the python package matching ``settings.vector_backend`` — so
+    Probes the python package matching ``settings.vector_backend`` - so
     ``qdrant`` installs (``[semantic]`` extra) need ``qdrant_client``,
     ``lancedb`` installs (``[vector]`` extra) need ``lancedb``. Older
     versions hardcoded the lancedb probe, which made every cost upsert
-    silently no-op on the default qdrant backend — see issue #162.
+    silently no-op on the default qdrant backend - see issue #162.
     """
     try:
         import importlib.util  # noqa: PLC0415
@@ -407,7 +407,7 @@ def _vector_available() -> bool:
 def _warn_missing_backend(operation: str) -> None:
     """Single rate-limited log line when a vector op is skipped."""
     logger.info(
-        "cost-vector adapter: skipping %s — install the [vector] extra "
+        "cost-vector adapter: skipping %s - install the [vector] extra "
         "(`pip install openconstructionerp[vector]`) to enable cost "
         "semantic indexing.",
         operation,
@@ -422,7 +422,7 @@ async def upsert(rows: list[CostItem]) -> int:
 
     Each text is prefixed with ``passage: `` before encoding so the E5
     asymmetric encoder produces document-side embeddings.  Returns the
-    number of rows successfully indexed.  Never raises — every failure
+    number of rows successfully indexed.  Never raises - every failure
     funnels through the logger so the caller (typically a CRUD path or
     an event handler) can stay one-line.
     """
@@ -470,7 +470,7 @@ async def upsert(rows: list[CostItem]) -> int:
                 "id": str(row.id),
                 "vector": vec,
                 # Strip the prefix back off for the stored ``text`` column
-                # — the prefix is only meaningful at encode time, leaving
+                # - the prefix is only meaningful at encode time, leaving
                 # it on disk would pollute snippet rendering.
                 "text": raw_text.removeprefix(_PASSAGE_PREFIX),
                 "tenant_id": "",
@@ -526,7 +526,7 @@ async def search(
     The query string is prefixed with ``query: `` before encoding (the
     E5 asymmetric counterpart to the ``passage:`` prefix used during
     indexing).  Optional ``region`` / ``language`` / ``source`` filters
-    are post-applied to hits — the underlying generic LanceDB schema
+    are post-applied to hits - the underlying generic LanceDB schema
     only filters on tenant_id / project_id natively, so we filter the
     payload in Python after retrieval.
 
@@ -535,8 +535,8 @@ async def search(
     ``"33"`` for walls) keeps siblings within the same DIN 276 main
     cost group while excluding unrelated trades (e.g. MEP "44" hits
     competing for top-K slots against a structural envelope). The filter
-    auto-disables when the catalogue is unclassified — i.e. fewer than
-    ~20% of hits carry any DIN 276 value — so BYO catalogues without
+    auto-disables when the catalogue is unclassified - i.e. fewer than
+    ~20% of hits carry any DIN 276 value - so BYO catalogues without
     DIN 276 metadata still surface results.
 
     Returns hits sorted by similarity (highest first), shaped as
@@ -546,7 +546,7 @@ async def search(
     text = (query or "").strip()
     if not text:
         return []
-    # Fast SQL fallback when the optional [vector] extra is missing — the
+    # Fast SQL fallback when the optional [vector] extra is missing - the
     # cost-vector feature degrades but real CWICR rows still surface.
     if not _vector_available():
         _warn_missing_backend("search")
@@ -566,7 +566,7 @@ async def search(
         vectors = await encode_texts_async([_QUERY_PREFIX + text])
     except Exception as exc:
         # Encoder unavailable (model load failed, fastembed/sentence-transformers
-        # missing wheels, GPU OOM, etc.) — fall straight through to lexical
+        # missing wheels, GPU OOM, etc.) - fall straight through to lexical
         # so the user still sees real CWICR codes/descriptions instead of an
         # empty pane while ops fixes the encoder backend.
         logger.info("cost-vector search: encode failed (%s); using SQL fallback", exc)
@@ -585,7 +585,7 @@ async def search(
         )
 
     # Pull a wider window when payload-side filters are active so we
-    # still have ``limit`` results after filtering — capped at 5x the
+    # still have ``limit`` results after filtering - capped at 5x the
     # request to keep the round-trip cheap.
     any_filter = bool(region or language or source or din276_kg_prefix)
     fetch = limit if not any_filter else min(limit * 5, 250)
@@ -620,7 +620,7 @@ async def search(
         decoded.append((raw, payload))
 
     # Auto-disable the DIN 276 pre-filter when the catalogue isn't
-    # classified — a BYO catalogue without DIN 276 codes would otherwise
+    # classified - a BYO catalogue without DIN 276 codes would otherwise
     # silently filter to zero results. Threshold is intentionally
     # permissive (20%) so partial classification still benefits from the
     # filter.
@@ -669,7 +669,7 @@ async def search(
             break
 
     # Trip the SQL lexical fallback when LanceDB returned nothing or
-    # only fixtures — this is what real CWICR users see today, before
+    # only fixtures - this is what real CWICR users see today, before
     # the admin reindex completes.
     if not out:
         if fixture_count:
@@ -757,7 +757,7 @@ _CATALOG_LANG_TTL = 300.0  # 5 minutes
 async def catalog_dominant_language() -> str | None:
     """Return the ISO-639 code most catalogue rows are written in.
 
-    ``None`` when the catalogue is empty or the lookup fails — callers
+    ``None`` when the catalogue is empty or the lookup fails - callers
     should treat ``None`` as "skip the catalogue-language override and
     keep the project's configured target_language".
 
@@ -775,7 +775,7 @@ async def catalog_dominant_language() -> str | None:
 
         from app.database import async_session_factory  # noqa: PLC0415
         from app.modules.costs.models import CostItem  # noqa: PLC0415
-    except Exception:  # pragma: no cover — defensive
+    except Exception:  # pragma: no cover - defensive
         return None
 
     try:

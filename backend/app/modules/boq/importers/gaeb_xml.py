@@ -2,15 +2,15 @@
 
 Native parser for the German/Austrian/Swiss tender exchange format:
 
-* **X81 / DP 81** — Leistungsverzeichnis (BOQ skeleton)
-* **X83 / DP 83** — Angebotsabgabe (bid submission)
-* **X84 / DP 84** — Nebenangebote (alternative bids)
-* **X86 / DP 86** — Auftragserteilung (order award) — Epic I11.
+* **X81 / DP 81** - Leistungsverzeichnis (BOQ skeleton)
+* **X83 / DP 83** - Angebotsabgabe (bid submission)
+* **X84 / DP 84** - Nebenangebote (alternative bids)
+* **X86 / DP 86** - Auftragserteilung (order award) - Epic I11.
 
 Namespace-agnostic: matches by tag local-name so files from iTWO,
 California.pro, Nevaris, RIB X4 etc. import without pre-normalisation.
 
-Security: parses via ``defusedxml`` — XXE, billion-laughs and DTD-based
+Security: parses via ``defusedxml`` - XXE, billion-laughs and DTD-based
 attacks are rejected up-front.
 
 Epic I12 adds preservation of GAEB ``<DescrTxc>`` (or ``DescriptTxc``,
@@ -83,14 +83,14 @@ def _normalize_unit(unit: str) -> str:
 def _extract_descr_txc(item: ET.Element) -> dict[str, Any] | None:
     """Capture the GAEB rich-text ``<DescrTxc>`` / ``<DescriptTxc>`` block.
 
-    Epic I12: GAEB lets exporters attach a structured rich-text block —
+    Epic I12: GAEB lets exporters attach a structured rich-text block -
     typically nested ``<p>`` / ``<span>`` elements with formatting hints.
     We preserve it as a serialised XML snippet so the editor can
     re-render the original layout on export. Returns ``None`` if no
     rich-text block is present.
 
     Format: ``{"raw_xml": "<DescrTxc>…</DescrTxc>", "plain_text": "…"}``
-    — both views are useful (raw XML for round-trip, plain text for the
+    - both views are useful (raw XML for round-trip, plain text for the
     editor's preview pane).
     """
     for name in ("DescrTxc", "DescriptTxc", "OutlineTxc"):
@@ -103,7 +103,7 @@ def _extract_descr_txc(item: ET.Element) -> dict[str, Any] | None:
         if node is not None:
             try:
                 raw_xml = ET.tostring(node, encoding="unicode")
-            except Exception:  # noqa: BLE001 — best-effort capture
+            except Exception:  # noqa: BLE001 - best-effort capture
                 raw_xml = ""
             # Concatenate all text content from the rich-text block.
             plain_text = "".join(node.itertext()).strip()
@@ -115,7 +115,7 @@ def _extract_description(item: ET.Element) -> str:
     """Pull a human-readable single-line description.
 
     Falls back through GAEB's nested ``Description / CompleteText /
-    DetailTxt / Text`` shapes. Always returns a plain string — the
+    DetailTxt / Text`` shapes. Always returns a plain string - the
     rich-text view lives in ``metadata["descr_txc"]``.
     """
     # Prefer the first non-empty <Text> anywhere in the item subtree.
@@ -136,7 +136,7 @@ def _detect_da_kind(root: ET.Element) -> str:
     """Return ``"x81" | "x83" | "x84" | "x86" | "x"`` (unknown DA).
 
     GAEB DA files carry a top-level ``<GAEB><GAEBInfo><DPType>83</DPType></GAEBInfo>``
-    style header. We probe a few common shapes — RIB/iTWO put the DP
+    style header. We probe a few common shapes - RIB/iTWO put the DP
     number on the ``<Award>`` element instead.
     """
     for el in root.iter():
@@ -192,7 +192,7 @@ class GAEBXMLImporter:
             return False
         try:
             head_text = head_bytes[:2048].decode("utf-8", errors="ignore").lower()
-        except Exception:  # noqa: BLE001 — best-effort sniff
+        except Exception:  # noqa: BLE001 - best-effort sniff
             return False
         return "<gaeb" in head_text or "gaeb_award" in head_text
 
@@ -215,7 +215,7 @@ class GAEBXMLImporter:
 
         da_kind = _detect_da_kind(root)
 
-        # Locate the top-level <BoQBody> — directly inside <BoQ>. A GAEB
+        # Locate the top-level <BoQBody> - directly inside <BoQ>. A GAEB
         # tree nests BoQBody recursively under each BoQCtgy, so iterating
         # all descendants would double-visit every Item.
         top_body: ET.Element | None = None
@@ -291,7 +291,7 @@ class GAEBXMLImporter:
             quantity = safe_float(_text_of(item, "Qty"), default=0.0)
             unit_rate = safe_float(_text_of(item, "UP"), default=0.0)
 
-            # Sanity caps — same bounds as the legacy inline parser.
+            # Sanity caps - same bounds as the legacy inline parser.
             if not (0 <= quantity <= 1e9):
                 result.errors.append({"ordinal": pos_ordinal, "error": f"Quantity out of range: {quantity}"})
                 continue

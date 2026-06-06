@@ -1,31 +1,31 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Local BGE cross-encoder rerank tier — free, fast, gracefully degrades.
+"""‌⁠‍Local BGE cross-encoder rerank tier - free, fast, gracefully degrades.
 
 The bi-encoder + RRF fusion path in :mod:`qdrant_adapter` is fast but
 noisy at the boundary between rank 1 and rank 5: the top candidates
 have very similar fused scores so small lexical differences (concrete
 grade ``C30/37`` vs ``C25/30``) get smoothed out. A cross-encoder
 re-scores ``(query, candidate)`` pairs *together* through one transformer
-forward pass — substantially better at fine discrimination.
+forward pass - substantially better at fine discrimination.
 
 Where this differs from :mod:`reranker_ai`:
 
-* No API cost — runs locally on CPU (or GPU when present).
-* No latency budget tradeoff — INT8 ONNX BGE-reranker-v2-m3 reranks
+* No API cost - runs locally on CPU (or GPU when present).
+* No latency budget tradeoff - INT8 ONNX BGE-reranker-v2-m3 reranks
   10 pairs in ~200 ms on a typical VPS, well under the user-facing
   budget.
-* No external dependency at import time — :func:`rerank` lazy-imports
+* No external dependency at import time - :func:`rerank` lazy-imports
   ``FlagEmbedding.FlagReranker`` and falls through cleanly when the
   ``[semantic]`` extra is missing.
 
-The bge variant is **not** opt-in like the LLM reranker — it runs on
+The bge variant is **not** opt-in like the LLM reranker - it runs on
 every match request once enabled in settings. The opt-out is via
 ``settings.match_use_bge_reranker = False`` for installs where the
 extra disk footprint (~568 MB FP32, ~140 MB INT8) is too much.
 
 Model selection follows :data:`RERANK_BGE_MODEL_NAME` from
-:mod:`config`. Default is ``BAAI/bge-reranker-v2-m3`` — multilingual
+:mod:`config`. Default is ``BAAI/bge-reranker-v2-m3`` - multilingual
 across 100+ languages, MIT-licensed, same author as ``bge-m3`` so
 cross-encoder ↔ bi-encoder are trained on the same corpus.
 """
@@ -92,7 +92,7 @@ def _dynamic_band_for_bge(
 logger = logging.getLogger(__name__)
 
 
-# Cached reranker instance — the model is large enough that re-loading
+# Cached reranker instance - the model is large enough that re-loading
 # it per-request would dominate latency. None until first successful
 # load; ``False`` after a load failure to short-circuit subsequent
 # attempts (no point retrying on every match).
@@ -116,7 +116,7 @@ def _get_reranker() -> Any:
     try:
         from FlagEmbedding import FlagReranker  # type: ignore[import-not-found]
     except ImportError:
-        logger.info("reranker_bge: FlagEmbedding not installed — rerank disabled")
+        logger.info("reranker_bge: FlagEmbedding not installed - rerank disabled")
         _RERANKER = False
         return None
 
@@ -128,8 +128,8 @@ def _get_reranker() -> Any:
 
     try:
         _RERANKER = FlagReranker(model_name, use_fp16=use_fp16)
-    except Exception as exc:  # pragma: no cover — defensive
-        logger.warning("reranker_bge: model load failed (%s) — rerank disabled", exc)
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("reranker_bge: model load failed (%s) - rerank disabled", exc)
         _RERANKER = False
         return None
     return _RERANKER
@@ -140,7 +140,7 @@ def _build_query_text(envelope: ElementEnvelope) -> str:
 
     Mirrors the ``core_query`` from :func:`query_builder.build_search_plan`
     so the reranker sees the same semantic signal the bi-encoder did.
-    Kept narrow on purpose — the cross-encoder benefits from a short
+    Kept narrow on purpose - the cross-encoder benefits from a short
     focused query, not a noisy concatenation.
     """
     parts: list[str] = []
@@ -161,7 +161,7 @@ def _build_candidate_text(candidate: MatchCandidate) -> str:
     """Render the candidate into the cross-encoder's "passage" half.
 
     Cross-encoders score (query, passage) jointly so the passage must
-    carry the discriminating signal — code, description, unit. Skip
+    carry the discriminating signal - code, description, unit. Skip
     fields the bi-encoder already scored (vector_score) since the
     cross-encoder isn't operating on the embedding.
 
@@ -171,7 +171,7 @@ def _build_candidate_text(candidate: MatchCandidate) -> str:
     passage so the cross-encoder has at least the categorical anchor
     instead of just an opaque rate_code. Without this the BGE score
     collapses to ≈ 0 for every candidate and the ranker effectively
-    flattens — same UX as a metadata-only fallback even when the
+    flattens - same UX as a metadata-only fallback even when the
     bi-encoder hit was genuinely good.
     """
     parts: list[str] = []
@@ -206,7 +206,7 @@ def _normalize_bge_scores(raw_scores: list[float]) -> list[float]:
 def is_available() -> bool:
     """Return ``True`` when the BGE reranker can be invoked.
 
-    Cheap probe — calls :func:`_get_reranker` and observes the cache
+    Cheap probe - calls :func:`_get_reranker` and observes the cache
     state. Intended for callers that want to gate UI ("rerank with BGE"
     toggle) on actual availability rather than a settings flag alone.
     """
@@ -227,8 +227,8 @@ def rerank(
     re-orders the tail beyond the top-``k`` slice (the bi-encoder is
     trustworthy enough past rank 10 that re-ordering would just churn).
 
-    On any failure path — model not loaded, single empty candidate,
-    encoding error — returns the input list unchanged. The caller is
+    On any failure path - model not loaded, single empty candidate,
+    encoding error - returns the input list unchanged. The caller is
     expected to treat the return value as a possibly-no-op transform.
 
     ``hard_filters_matched`` and ``classification_confidence_by_code``
@@ -254,7 +254,7 @@ def rerank(
 
     try:
         raw_scores = reranker.compute_score(pairs)
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug("reranker_bge: compute_score failed (%s)", exc)
         return candidates
 
@@ -264,12 +264,12 @@ def rerank(
     raw_scores = [float(s) for s in raw_scores]
     normalized = _normalize_bge_scores(raw_scores)
 
-    # Blend factor — how much weight to give the BGE rerank vs the
+    # Blend factor - how much weight to give the BGE rerank vs the
     # prior (fused vector + boosts) score. On payload-only snapshots
     # the catalogue descriptions are templated (e.g.
-    # "Electrical equipment — IfcLightFixture — Commissioning —
+    # "Electrical equipment - IfcLightFixture - Commissioning -
     # MasterFormat 26 20 00") and BGE finds little signal beyond the
-    # generic category prefix — its sigmoid logits collapse to the
+    # generic category prefix - its sigmoid logits collapse to the
     # 0.003-0.05 band even for objectively-correct matches. A naive
     # score replacement then drags every correct hit down to that
     # band, killing the confidence story for downstream UI/auto-link.
@@ -279,7 +279,7 @@ def rerank(
     # confidence while still letting BGE break ties between top-k
     # candidates. Reranker still drives the final sort order (so
     # candidate at position 1 after rerank is the one BGE thinks is
-    # best) — only the displayed/stored score is preserved.
+    # best) - only the displayed/stored score is preserved.
     _BGE_BLEND_WEIGHT: float = 0.4
 
     by_code = classification_confidence_by_code or {}
@@ -292,7 +292,7 @@ def rerank(
         # Blend: prior_score * (1 - w) + bge_score * w. When
         # ``bge_score`` is much lower than prior (the templated-passage
         # cliff), we keep most of the prior. When BGE is much higher
-        # (rare — usually means the prior was over-cautious), we move
+        # (rare - usually means the prior was over-cautious), we move
         # closer to BGE's reading.
         blended = prior * (1.0 - _BGE_BLEND_WEIGHT) + clamped * _BGE_BLEND_WEIGHT
         blended = max(0.0, min(1.0, blended))
@@ -337,7 +337,7 @@ def rerank(
     # ``indexed.sort`` above (BGE preserves the cross-encoder's
     # ordering authority; blended + code tie-break for determinism).
     # Avoid the trailing ``reranked.sort(key=score)`` that the
-    # pre-blend implementation did — once we blend with the prior, the
+    # pre-blend implementation did - once we blend with the prior, the
     # blended score is no longer monotone in BGE rank, so re-sorting
     # by it would undo the BGE reordering and collapse back to
     # vector-only ranking. We keep the BGE order from indexed.sort

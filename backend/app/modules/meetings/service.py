@@ -1,4 +1,4 @@
-"""‌⁠‍Meetings service — business logic for meeting management.
+"""‌⁠‍Meetings service - business logic for meeting management.
 
 Stateless service layer. Handles:
 - Meeting CRUD
@@ -44,7 +44,7 @@ async def _safe_audit(
     user_id: str | None = None,
     details: dict | None = None,
 ) -> None:
-    """‌⁠‍Best-effort audit log — never blocks the caller on failure."""
+    """‌⁠‍Best-effort audit log - never blocks the caller on failure."""
     try:
         from app.core.audit import audit_log
 
@@ -100,10 +100,10 @@ class MeetingService:
            leaving zombie pointers no team can clean up without
            superuser DB access.
 
-        The check is symmetric — it applies whether the caller is a
+        The check is symmetric - it applies whether the caller is a
         tenant boundary breach OR a same-tenant mistake (an admin
         copy-pasting the wrong UUID from another project).  Missing
-        documents return the same 422 — we do NOT distinguish
+        documents return the same 422 - we do NOT distinguish
         ``not-found`` from ``wrong-project`` here, to avoid turning
         the meeting create into a UUID-existence oracle.
         """
@@ -117,7 +117,7 @@ class MeetingService:
         from app.modules.documents.models import Document
 
         # Coerce input to UUID, ignoring malformed entries so a single
-        # bad string doesn't blow up the whole insertion — the
+        # bad string doesn't blow up the whole insertion - the
         # ``oe_documents_document.id`` column is GUID-typed, so any
         # non-UUID can't possibly match anyway.
         ids: list[uuid.UUID] = []
@@ -154,7 +154,7 @@ class MeetingService:
         user_id: str | None = None,
     ) -> Meeting:
         """Create a new meeting with auto-generated meeting number."""
-        # Reject any document_ids that don't live inside this project —
+        # Reject any document_ids that don't live inside this project -
         # a meeting referencing a foreign-project document is a
         # data-integrity violation that creates dangling cross-project
         # FKs and leaks the *existence* of foreign documents into the
@@ -318,7 +318,7 @@ class MeetingService:
         """Delete a meeting.
 
         Also scrubs ``meeting_id`` references from any tasks that were
-        auto-created via ``complete_meeting`` — preventing dangling FK
+        auto-created via ``complete_meeting`` - preventing dangling FK
         pointers without destroying the user's task history.
         """
         await self.get_meeting(meeting_id)  # Raises 404 if not found
@@ -378,7 +378,7 @@ class MeetingService:
         if meeting.status == "draft":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot complete a draft meeting — schedule it first",
+                detail="Cannot complete a draft meeting - schedule it first",
             )
 
         await self.repo.update_fields(meeting_id, status="completed")
@@ -390,7 +390,7 @@ class MeetingService:
         # event payload only carries the action items that ACTUALLY
         # produced a Task row.  The previous version wrapped the
         # whole loop in a try/except and then published a "tasks
-        # created" event regardless — even if zero tasks were
+        # created" event regardless - even if zero tasks were
         # created, downstream subscribers were told the work was
         # done.  Now the event payload + the meeting completion
         # response surface the real success/failure breakdown so the
@@ -422,7 +422,7 @@ class MeetingService:
                     self.session.add(task)
                     await self.session.flush()
                     created_action_items.append({**ai, "task_id": str(task.id)})
-                except Exception as exc:  # noqa: BLE001 — per-item isolation
+                except Exception as exc:  # noqa: BLE001 - per-item isolation
                     logger.warning(
                         "Failed to create task from meeting %s action item: %s",
                         meeting.meeting_number,
@@ -441,7 +441,7 @@ class MeetingService:
             # Only publish the event if at least one task actually
             # made it into the DB.  An empty creation set means
             # downstream subscribers (notifications, vector index)
-            # have nothing to consume — publishing would be a lie.
+            # have nothing to consume - publishing would be a lie.
             #
             # Idempotency note: ``complete_meeting`` is guarded above
             # against re-completion ("Meeting is already completed"),
@@ -449,7 +449,7 @@ class MeetingService:
             # happy path.  We still hand subscribers a stable
             # ``event_key`` (``meeting:complete:<id>``) so they can
             # dedupe defensively if the bus ever gains
-            # at-least-once delivery semantics — the publish itself
+            # at-least-once delivery semantics - the publish itself
             # is a fire-and-forget detached task and a transient
             # bus retry would otherwise create duplicate
             # notifications on the task owner's inbox.
@@ -471,7 +471,7 @@ class MeetingService:
 
         # Stash the per-item breakdown on the returned meeting so the
         # router can surface it in the response payload.  Setting it
-        # via setattr keeps the ORM model unchanged — this is a
+        # via setattr keeps the ORM model unchanged - this is a
         # transient annotation, not a column.
         meeting._action_item_summary = {  # type: ignore[attr-defined]
             "created": created_action_items,
@@ -733,7 +733,7 @@ class MeetingService:
     ) -> MeetingAttendance:
         """Record a walk-in / non-system attendee by name only.
 
-        Multiple rows with the same ``external_name`` are allowed — the
+        Multiple rows with the same ``external_name`` are allowed - the
         unique constraint only fires on ``(meeting_id, user_id)`` with
         non-NULL user_id.
         """
@@ -814,7 +814,7 @@ def _expand_rrule(
         return out
     except ImportError:
         pass  # fall through to hand-rolled parser
-    except Exception as exc:  # noqa: BLE001 — surface as RRuleError for the router
+    except Exception as exc:  # noqa: BLE001 - surface as RRuleError for the router
         raise _RRuleError(str(exc)) from exc
 
     # ── Fallback parser ─────────────────────────────────────────────────

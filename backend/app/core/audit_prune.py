@@ -1,11 +1,11 @@
 """‌⁠‍Audit-log PII pruning task (Epic H §H8).
 
-GDPR Article 5(1)(e) — storage limitation. The capture-context columns
+GDPR Article 5(1)(e) - storage limitation. The capture-context columns
 added in Epic H (``ip_address`` / ``user_agent``) are personal data even
 when the actor cannot be re-identified by name (e.g. a leaked IP can be
 tied to a household). To stay compliant we MUST scrub those two columns
 on rows older than the configured retention window without dropping the
-audit row itself — the rest of the row (entity_type, action, from/to
+audit row itself - the rest of the row (entity_type, action, from/to
 status, …) is operational data the customer needs for FIDIC / SCL
 dispute timelines and stays untouched.
 
@@ -42,7 +42,7 @@ async def prune_audit_pii(
     """Null-out IP / UA on activity-log rows older than ``retention_days``.
 
     Returns the row count that was scrubbed (NULL was written).  Rows
-    that already had both columns NULL are not counted — the UPDATE
+    that already had both columns NULL are not counted - the UPDATE
     skips them via the ``OR``-ed NOT NULL predicate.
     """
     threshold = (now or datetime.now(UTC)) - timedelta(days=retention_days)
@@ -85,14 +85,14 @@ def register_prune_task() -> None:
     """
     try:
         from app.core.jobs import celery_app  # type: ignore[attr-defined]
-    except Exception:  # pragma: no cover — jobs module not wired
+    except Exception:  # pragma: no cover - jobs module not wired
         logger.debug("audit_prune: celery app not available, skipping task registration")
         return
 
     @celery_app.task(name="oe.audit_prune_pii")  # type: ignore[misc]
     def _prune_audit_pii_celery(
         retention_days: int = DEFAULT_PII_RETENTION_DAYS,
-    ) -> int:  # pragma: no cover — exercised at worker level
+    ) -> int:  # pragma: no cover - exercised at worker level
         import asyncio
 
         from app.database import async_session_factory

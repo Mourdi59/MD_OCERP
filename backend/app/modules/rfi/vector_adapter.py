@@ -1,4 +1,4 @@
-"""‌⁠‍RFI vector adapter — feeds the ``oe_rfi_rfis`` collection.
+"""‌⁠‍RFI vector adapter - feeds the ``oe_rfi_rfis`` collection.
 
 Each :class:`~app.modules.rfi.models.RFI` row is embedded as the RFI
 number, subject, question and official response so the AI advisor and
@@ -6,7 +6,7 @@ the global Cmd+K modal can recall RFIs by meaning ("structural rebar
 clash on level 2", "delivery delay for curtain wall") rather than exact
 text match.
 
-The adapter is deliberately narrow — it knows nothing about the event
+The adapter is deliberately narrow - it knows nothing about the event
 bus or HTTP routing.  Wiring lives in :mod:`app.modules.rfi.events`.
 Implements the :class:`~app.core.vector_index.EmbeddingAdapter` protocol.
 """
@@ -68,5 +68,5 @@ class RFIVectorAdapter:
         return str(project_id)
 
 
-# Singleton instance — adapters are stateless so one shared object is fine.
+# Singleton instance - adapters are stateless so one shared object is fine.
 rfi_vector_adapter = RFIVectorAdapter()

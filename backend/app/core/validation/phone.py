@@ -1,4 +1,4 @@
-"""Phone number validation engine — Wave 29 of the worldwide-parameterisation audit.
+"""Phone number validation engine - Wave 29 of the worldwide-parameterisation audit.
 
 Per-country dial-code and national number patterns allow the engine to:
 
@@ -27,13 +27,13 @@ from typing import Any
 
 # ── Per-country phone rules ───────────────────────────────────────────────────
 #
-# ``dial_code``          — ITU-T country calling code (without ``+``).
-# ``national_regex``     — Regex matching the *stripped* national number
+# ``dial_code``          - ITU-T country calling code (without ``+``).
+# ``national_regex``     - Regex matching the *stripped* national number
 #                          (no spaces, dashes, parentheses).
-# ``international_regex``— Regex matching the fully-prefixed string before
-#                          any stripping (optional — used as alternate path).
-# ``format_template``    — Human-readable template shown in the UI.
-# ``strip_leading_zero`` — True when national numbers start with a trunk-prefix
+# ``international_regex``- Regex matching the fully-prefixed string before
+#                          any stripping (optional - used as alternate path).
+# ``format_template``    - Human-readable template shown in the UI.
+# ``strip_leading_zero`` - True when national numbers start with a trunk-prefix
 #                          zero that must be removed in E.164.
 
 _COUNTRY_PHONE_RULES: dict[str, dict[str, Any]] = {
@@ -176,7 +176,7 @@ class PhoneValidationResult:
 
     Attributes:
         passed:        True when the phone is syntactically valid.
-        e164:          E.164 normalised form (``+<cc><subscriber>``) — set
+        e164:          E.164 normalised form (``+<cc><subscriber>``) - set
                        only when ``passed`` is True.
         country_code:  ISO 3166-1 alpha-2 country code passed in.
         error_code:    Machine-readable error code when ``passed`` is False.
@@ -225,7 +225,7 @@ def validate_phone(
                       used when the number is in national form.
 
     Returns:
-        :class:`PhoneValidationResult` — ``.passed`` and ``.e164``.
+        :class:`PhoneValidationResult` - ``.passed`` and ``.e164``.
 
     Examples::
 
@@ -319,7 +319,7 @@ def get_phone_rules(country_code: str) -> dict[str, Any]:
     """Return the phone rule dict for a given country (for config endpoints)."""
     cc = (country_code or "").upper().strip()
     rules = dict(_COUNTRY_PHONE_RULES.get(cc, _DEFAULT_PHONE_RULES))
-    # Expose public subset only — omit compiled internals if any
+    # Expose public subset only - omit compiled internals if any
     return {
         "country_code": cc,
         "dial_code": rules.get("dial_code"),

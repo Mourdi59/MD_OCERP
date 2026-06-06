@@ -22,7 +22,7 @@ def register_subcontractors_permissions() -> None:
             "subcontractors.approve_payment_foreman": Role.EDITOR,
             "subcontractors.approve_payment_finance": Role.MANAGER,
             "subcontractors.release_retention": Role.MANAGER,
-            # ── R5 — dedicated gates for tamper-sensitive actions ──
+            # ── R5 - dedicated gates for tamper-sensitive actions ──
             "subcontractors.rate": Role.MANAGER,
             "subcontractors.block": Role.MANAGER,
         },

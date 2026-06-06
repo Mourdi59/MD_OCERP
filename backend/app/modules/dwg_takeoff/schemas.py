@@ -1,4 +1,4 @@
-"""‌⁠‍DWG Takeoff Pydantic schemas — request/response models.
+"""‌⁠‍DWG Takeoff Pydantic schemas - request/response models.
 
 Defines create, update, and response schemas for DWG drawings,
 drawing versions, annotations, and measurement results.
@@ -67,7 +67,7 @@ class DwgDrawingResponse(BaseModel):
 
 
 class DwgDrawingScaleUpdate(BaseModel):
-    """Persist the scale for a drawing — replaces localStorage-only storage."""
+    """Persist the scale for a drawing - replaces localStorage-only storage."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -302,7 +302,7 @@ class DwgOfflineReadinessResponse(BaseModel):
     version: str | None = None
     message: str
     # True only when the request reached the backend over the loopback
-    # interface AND the server is not a hosted/production deployment — i.e.
+    # interface AND the server is not a hosted/production deployment - i.e.
     # the browser and the server genuinely run on the same machine, so the
     # "your files never leave your computer" claim is literally true. On a
     # hosted demo this is False and the UI must show the honest "processed

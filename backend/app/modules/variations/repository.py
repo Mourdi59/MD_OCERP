@@ -72,7 +72,7 @@ def _project_fx_map(project: object | None) -> dict[str, Decimal]:
 
 
 class _BaseRepo:
-    """‌⁠‍Shared CRUD helpers — concrete repos bind ``model`` and ``project_field``."""
+    """‌⁠‍Shared CRUD helpers - concrete repos bind ``model`` and ``project_field``."""
 
     model: Any
     # Column NAME (str), not the mapped attribute. Storing the
@@ -127,7 +127,7 @@ class _BaseRepo:
         return list(result.scalars().all()), total
 
     async def status_counts(self, project_id: uuid.UUID) -> dict[str, int]:
-        """‌⁠‍``{status: count}`` for the project — one ``GROUP BY`` query.
+        """‌⁠‍``{status: count}`` for the project - one ``GROUP BY`` query.
 
         Used by the dashboard so it does not pull every row into Python
         just to bucket by status (N+1 / O(rows) memory).
@@ -196,7 +196,7 @@ class VariationOrderRepository(_BaseRepo):
     ) -> list[VariationOrder]:
         """VOs that count toward the contract sum (everything but voided).
 
-        A voided VO carries no commercial value — including it in the
+        A voided VO carries no commercial value - including it in the
         final-account / dashboard roll-up overstates the revised contract
         sum.
         """
@@ -372,7 +372,7 @@ class DisruptionClaimRepository(_BaseRepo):
         return list(result.scalars().all())
 
     async def pending_count(self, project_id: uuid.UUID) -> int:
-        """R5 audit: ``COUNT(*)`` over pending claims — dashboard-friendly.
+        """R5 audit: ``COUNT(*)`` over pending claims - dashboard-friendly.
 
         Replaces ``len(await pending_claims(...))`` which materialises the
         full result set just to discard the rows.

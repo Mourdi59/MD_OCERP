@@ -1,6 +1,6 @@
 {
   "format_version": "1.0",
-  "description": "RFC 35 §6 EAC-2.2 — built-in parameter alias catalog. 40 canonical aliases, multi-language synonyms (en, es, fr, de, it, pt, ru, zh, ja).",
+  "description": "RFC 35 §6 EAC-2.2 - built-in parameter alias catalog. 40 canonical aliases, multi-language synonyms (en, es, fr, de, it, pt, ru, zh, ja).",
   "aliases": [
     {
       "name": "_Length",

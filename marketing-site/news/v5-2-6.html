@@ -4,21 +4,21 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
-  <title>v5.2.6 — Demo login JustWorks. WCAG-AA contrast. Reporting renderer. Dashboard rollup. 1197 JA keys — OpenConstructionERP</title>
-  <meta name="description" content="OpenConstructionERP v5.2.6 — demo login fix (BUG-D02), WCAG-AA contrast tokens (~700 violations cleared), a Reporting renderer built from scratch, project dashboard fan-out collapsed into one rollup endpoint, and 1197 new Japanese locale keys." />
+  <title>v5.2.6 - Demo login JustWorks. WCAG-AA contrast. Reporting renderer. Dashboard rollup. 1197 JA keys - OpenConstructionERP</title>
+  <meta name="description" content="OpenConstructionERP v5.2.6 - demo login fix (BUG-D02), WCAG-AA contrast tokens (~700 violations cleared), a Reporting renderer built from scratch, project dashboard fan-out collapsed into one rollup endpoint, and 1197 new Japanese locale keys." />
   <meta name="robots" content="index,follow" />
   <link rel="canonical" href="https://openconstructionerp.com/news/v5-2-6.html" />
 
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="OpenConstructionERP" />
   <meta property="og:url" content="https://openconstructionerp.com/news/v5-2-6.html" />
-  <meta property="og:title" content="v5.2.6 — Demo login fix · WCAG-AA · Reporting · Rollup · JA" />
+  <meta property="og:title" content="v5.2.6 - Demo login fix · WCAG-AA · Reporting · Rollup · JA" />
   <meta property="og:description" content="Five quality-of-life wins on top of v5.2.5. The documented demo password works, contrast clears AA, /reports renders, the dashboard stops fanning out, and Japanese covers 1197 more keys." />
   <meta property="article:published_time" content="2026-05-27T18:00:00Z" />
   <meta property="article:author" content="Artem Boiko" />
   <meta property="article:tag" content="Release" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="v5.2.6 — Demo login fix + WCAG-AA + Reporting + Rollup + JA" />
+  <meta name="twitter:title" content="v5.2.6 - Demo login fix + WCAG-AA + Reporting + Rollup + JA" />
   <meta name="twitter:description" content="Five quality-of-life wins on top of v5.2.5." />
 
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -37,7 +37,7 @@
   {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
-    "headline": "v5.2.6 — Demo login JustWorks. WCAG-AA contrast. Reporting renderer. Dashboard rollup. 1197 JA keys.",
+    "headline": "v5.2.6 - Demo login JustWorks. WCAG-AA contrast. Reporting renderer. Dashboard rollup. 1197 JA keys.",
     "datePublished": "2026-05-27",
     "author": { "@type": "Person", "name": "Artem Boiko" },
     "publisher": { "@type": "Organization", "name": "DataDrivenConstruction", "logo": { "@type": "ImageObject", "url": "https://openconstructionerp.com/favicon.svg" } },
@@ -98,7 +98,7 @@
     .article h3 { font-family: 'Inter Tight', sans-serif; font-weight: 600; font-size: 19px; letter-spacing: -0.01em; margin: 28px 0 10px; color: var(--ink-0); }
     .article a { color: var(--accent); text-decoration: none; border-bottom: 1px solid color-mix(in oklab, var(--accent) 32%, transparent); transition: border-color 0.15s ease; }
     .article a:hover { border-bottom-color: var(--accent); }
-    /* CTA buttons inside .article — outrank .article a {color:var(--accent)} */
+    /* CTA buttons inside .article - outrank .article a {color:var(--accent)} */
     .article .btn, .article .btn:hover { border-bottom: none; }
     .article .btn-primary, .article .btn-primary:hover { color: #fff; }
     .article .btn-ghost { color: var(--ink-0); }
@@ -172,14 +172,14 @@
     <div class="crumbs">
       <a href="/">Home</a><span class="sep">/</span>
       <a href="/news.html">News</a><span class="sep">/</span>
-      <span>v5.2.6 — Quality-of-life wave</span>
+      <span>v5.2.6 - Quality-of-life wave</span>
     </div>
     <div class="pill-row">
       <span class="chip release">Release</span>
       <span class="pill-meta">2026-05-27</span>
       <span class="pill-meta">~4 min read</span>
     </div>
-    <h1>v5.2.6 — <span class="accent">Demo login JustWorks.</span><br />WCAG-AA · Reporting renderer · Dashboard rollup · JA.</h1>
+    <h1>v5.2.6 - <span class="accent">Demo login JustWorks.</span><br />WCAG-AA · Reporting renderer · Dashboard rollup · JA.</h1>
     <p class="lede">
       A quality-of-life wave on top of v5.2.5&rsquo;s install-crash fix. Five wins, all
       visible the moment you open the platform: the demo login takes the documented
@@ -198,7 +198,7 @@
     <p>
       v5.2.5 was the floor: a fresh install no longer crashed. v5.2.6 turns the lights
       on. The five fixes below are independent, but landed together because all of
-      them are first-touch experience — the things a new user notices in the first
+      them are first-touch experience - the things a new user notices in the first
       five minutes of opening the platform.
     </p>
 
@@ -210,13 +210,13 @@
         <div class="hi-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </div>
-        <h4>BUG-D02 — Demo login JustWorks</h4>
+        <h4>BUG-D02 - Demo login JustWorks</h4>
         <p>
           The manual login form accepts the documented <code>DemoPass1234!</code> for
           the three seeded demo emails. <strong>BUG-D01</strong> had randomised the
           password per install for security; the documented one stopped working.
           v5.2.6 short-circuits whitelisted demo accounts through the password-free
-          <code>demo_login</code> service when <code>SEED_DEMO=true</code> — default
+          <code>demo_login</code> service when <code>SEED_DEMO=true</code> - default
           on community, off in production. No regression: production installs still
           go through the normal verify path.
         </p>
@@ -226,9 +226,9 @@
         <div class="hi-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
         </div>
-        <h4>#216 — WCAG-AA contrast tokens</h4>
+        <h4>#216 - WCAG-AA contrast tokens</h4>
         <p>
-          Five semantic tokens — success, warning, error, info, blue-subtle — raised
+          Five semantic tokens - success, warning, error, info, blue-subtle - raised
           from sub-3:1 to 5.2&ndash;6.6:1 against their token backgrounds. Roughly
           <strong>700 of 863</strong> axe-flagged contrast violations cleared at the
           design-system layer, with no per-component patching. The Apple Liquid
@@ -241,14 +241,14 @@
         <div class="hi-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg>
         </div>
-        <h4>#252 — Reporting renderer</h4>
+        <h4>#252 - Reporting renderer</h4>
         <p>
           <code>POST /reports/generate</code> previously stored a row and rendered
-          nothing — the engine never existed. <code>ReportRenderer</code>
+          nothing - the engine never existed. <code>ReportRenderer</code>
           (stdlib-only, no Jinja, no WeasyPrint) now dispatches section types,
           escapes HTML, formats list-of-dicts as tables. New
           <code>GET /reports/{id}/content</code> returns rendered HTML. 7 new pytest
-          cases plus 38 existing reporting tests pass — 45 of 45.
+          cases plus 38 existing reporting tests pass - 45 of 45.
         </p>
       </div>
 
@@ -256,13 +256,13 @@
         <div class="hi-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         </div>
-        <h4>#253 — Dashboard rollup</h4>
+        <h4>#253 - Dashboard rollup</h4>
         <p>
           The project-detail page used to fan out 8 parallel widget requests on every
           paint. v5.2.6 routes 13 of those through one
           <code>/dashboard/rollup/?widgets=&hellip;</code> call, fed to all consumers
           via a React context. Rollup endpoint widened from 10 to 18 known widget
-          keys, additive — every existing widget endpoint keeps working unchanged.
+          keys, additive - every existing widget endpoint keeps working unchanged.
           Five widgets remain standalone (their backend endpoints don&rsquo;t exist
           yet); they degrade gracefully to null today.
         </p>
@@ -272,14 +272,14 @@
         <div class="hi-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>
         </div>
-        <h4>#245 — Japanese: 1197 new keys</h4>
+        <h4>#245 - Japanese: 1197 new keys</h4>
         <p>
           High-traffic surfaces covered: navigation, sidebar admin grid, common
           buttons (Save / Cancel / Delete / &hellip;), validation messages, BOQ
           jargon (内訳明細書 · Position · Section · Resource · Assembly), project
           widgets, finance, procurement, match-elements. Acronyms (BOQ / IFC / BIM /
-          GAEB / DIN) stay in Latin per house style. About 529 long-tail keys —
-          multi-sentence tooltips and onboarding paragraphs — are queued for a
+          GAEB / DIN) stay in Latin per house style. About 529 long-tail keys -
+          multi-sentence tooltips and onboarding paragraphs - are queued for a
           focused next pass.
         </p>
       </div>
@@ -306,7 +306,7 @@
       evaluating OpenConstructionERP hits in their first five minutes: log in with
       the password the documentation gave you, see a dashboard with one fast
       request instead of eight, read button text that passes contrast, run a report
-      and actually get one, and — if your default language is Japanese — work on
+      and actually get one, and - if your default language is Japanese - work on
       the surfaces that matter without falling back to English.
     </p>
 

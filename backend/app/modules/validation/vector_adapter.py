@@ -1,4 +1,4 @@
-"""‌⁠‍Validation report vector adapter — feeds the ``oe_validation`` collection.
+"""‌⁠‍Validation report vector adapter - feeds the ``oe_validation`` collection.
 
 Each :class:`~app.modules.validation.models.ValidationReport` row is
 embedded as the rule_set name plus the textual messages from each
@@ -7,7 +7,7 @@ like *"which projects had warnings about zero unit prices?"* or *"show
 me validation reports about missing classification codes"*.
 
 Implements the :class:`~app.core.vector_index.EmbeddingAdapter`
-protocol — see :mod:`app.core.vector_index` for the read/write helpers
+protocol - see :mod:`app.core.vector_index` for the read/write helpers
 that consume it.
 """
 

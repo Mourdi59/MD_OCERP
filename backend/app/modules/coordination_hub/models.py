@@ -1,5 +1,5 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""‌⁠‍Coordination Hub — persisted ORM models.
+"""‌⁠‍Coordination Hub - persisted ORM models.
 
 The hub remains a *thin* aggregator across the sibling BIM modules; the
 only state it owns is the per-project alert threshold configuration that
@@ -30,7 +30,7 @@ class CoordinationThreshold(Base):
     A single project may carry one row per ``metric`` value (the
     ``(project_id, metric)`` pair is unique). Rows are seeded the first
     time the project's thresholds endpoint is hit so the API never
-    returns an empty payload — the operator gets sensible defaults they
+    returns an empty payload - the operator gets sensible defaults they
     can then edit.
 
     The values are :class:`~decimal.Decimal` (persisted as ``NUMERIC``)
@@ -57,14 +57,14 @@ class CoordinationThreshold(Base):
         ForeignKey("oe_projects_project.id", ondelete="CASCADE"),
         nullable=False,
     )
-    #: The canonical metric key — one of the values returned by
+    #: The canonical metric key - one of the values returned by
     #: :func:`default_thresholds` (extended over time by add-on modules).
     metric: Mapped[str] = mapped_column(String(64), nullable=False)
     warn_value: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False, default=Decimal("0"))
     error_value: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False, default=Decimal("0"))
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
 
-    def __repr__(self) -> str:  # pragma: no cover — debug only
+    def __repr__(self) -> str:  # pragma: no cover - debug only
         return (
             f"<CoordinationThreshold project={self.project_id} "
             f"metric={self.metric} warn={self.warn_value} "

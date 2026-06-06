@@ -11,7 +11,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-# Allowed kinds — same enumeration as the file-manager.
+# Allowed kinds - same enumeration as the file-manager.
 FileKindLiteral = Literal[
     "document",
     "photo",
@@ -26,7 +26,7 @@ FileKindLiteral = Literal[
 # AECO standard category buckets. Free-form ``custom`` is allowed too.
 TagCategory = Literal["discipline", "phase", "package", "custom"]
 
-# Hex color (#abc or #aabbcc) — validated server-side so the picker
+# Hex color (#abc or #aabbcc) - validated server-side so the picker
 # cannot inject CSS variables.
 _HEX_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 

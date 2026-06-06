@@ -17,7 +17,7 @@ HONESTY NOTE:
     (YOLO / PaddleOCR, roadmap Phase 3). This service only ranks
     *already-structured* descriptors. Confidence is an honest, fully
     explainable blend of category agreement, dimension-ratio fit and
-    property keyword hits — it never fabricates certainty.
+    property keyword hits - it never fabricates certainty.
 
 The service is intentionally stateless and dependency-free so it can be
 unit-tested as pure logic; the optional descriptor-from-stored-group
@@ -58,7 +58,7 @@ class SymbolSuggestion:
 
     Attributes:
         symbol: The matched archetype id (``"door"``, ``"pipe"``, ...).
-        confidence: Honest score in ``[0, 1]`` — a weighted blend of
+        confidence: Honest score in ``[0, 1]`` - a weighted blend of
             category agreement, ratio fit and keyword hits.
         confidence_band: ``"high"`` / ``"medium"`` / ``"low"``.
         factors: Human-readable contributing factors, each ``{name,
@@ -109,7 +109,7 @@ def _category_score(signature: ShapeSignature, archetype: SymbolArchetype) -> fl
 
     Exact slug membership is full marks. As a fallback, a substring
     overlap (either direction) earns partial credit so ``"ifcwallstd"``
-    still leans toward ``wall`` — but only when the descriptor actually
+    still leans toward ``wall`` - but only when the descriptor actually
     carried a category. A category-less descriptor scores 0 here and must
     rely on geometry + keywords.
     """
@@ -133,7 +133,7 @@ def _ratio_score(
     Returns the weighted-mean fit over the ranges that the descriptor can
     actually evaluate (i.e. has the ratio for), plus a per-ratio factor
     list. Ranges the descriptor cannot evaluate are skipped rather than
-    penalised — a door descriptor with no volume should not be docked for
+    penalised - a door descriptor with no volume should not be docked for
     a planarity range it cannot test.
     """
     factors: list[dict[str, Any]] = []
@@ -170,7 +170,7 @@ def _keyword_score(
     Each hint that appears (as a substring) in any fingerprint token earns
     a hit. Score = hits / total_hints, so the archetype's full keyword set
     must be present for a perfect keyword score. Archetypes with no hints
-    score 0 here (neutral — keywords only ever help).
+    score 0 here (neutral - keywords only ever help).
     """
     factors: list[dict[str, Any]] = []
     if not archetype.keyword_hints:
@@ -198,7 +198,7 @@ class SignatureMatchService:
     Stateless and deterministic: the same descriptor + library always
     yields the same ordering and the same confidence scores. AI/heuristic
     SUGGESTS; the human confirms downstream via the existing apply/confirm
-    path — this service never writes anything.
+    path - this service never writes anything.
     """
 
     def __init__(
@@ -251,7 +251,7 @@ class SignatureMatchService:
             keyword, keyword_factors = _keyword_score(signature, archetype)
 
             confidence = _W_CATEGORY * cat + _W_RATIOS * ratio + _W_KEYWORDS * keyword
-            # Clamp defensively — the blend is already bounded, but a future
+            # Clamp defensively - the blend is already bounded, but a future
             # weight edit must never leak a value outside [0, 1].
             confidence = max(0.0, min(1.0, confidence))
 

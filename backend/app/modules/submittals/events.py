@@ -1,4 +1,4 @@
-"""‌⁠‍Submittals event handlers — vector indexing subscribers.
+"""‌⁠‍Submittals event handlers - vector indexing subscribers.
 
 Subscribes to ``submittal.created`` / ``submittal.updated`` /
 ``submittal.deleted`` lifecycle events and keeps the
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # Keep the ``oe_submittals_submittals`` collection in sync with the live
 # Submittal rows.  Each handler opens its own short-lived session, loads
 # the row and forwards it to the adapter.  Failures are logged and
-# swallowed — vector indexing is best-effort and must never break a normal
+# swallowed - vector indexing is best-effort and must never break a normal
 # CRUD path.
 
 

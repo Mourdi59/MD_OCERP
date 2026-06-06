@@ -3,7 +3,7 @@
 Why a pool at all?
 ------------------
 DuckDB connections are cheap to open, but each fresh connection has
-cold statistics — repeated queries against the same Parquet file benefit
+cold statistics - repeated queries against the same Parquet file benefit
 from the zone maps and row-group statistics that DuckDB caches in-process.
 Keeping a warm, pinned connection per snapshot also amortises the cost of
 registering the Parquet files as views so analytical SQL reads
@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_MAX_POOL_SIZE = 16
 """‌⁠‍How many warm snapshot connections to keep. Each connection holds an
-in-memory DuckDB catalog — ~10-50 MB for a registered-views-only session.
+in-memory DuckDB catalog - ~10-50 MB for a registered-views-only session.
 Beyond 16 snapshots we evict the least-recently-used one; the next
 request pays the one-off view-registration cost to warm it back up."""
 
@@ -70,7 +70,7 @@ class DuckDBPoolError(RuntimeError):
 
 
 class DuckDBNotInstalledError(DuckDBPoolError):
-    """Raised when the ``duckdb`` package is not importable — which after
+    """Raised when the ``duckdb`` package is not importable - which after
     v2.5.0 only happens if an operator manually pinned a minimal extra
     set. Surfaces at first use rather than at import time so the module
     still loads cleanly for static checks."""
@@ -78,7 +78,7 @@ class DuckDBNotInstalledError(DuckDBPoolError):
 
 class SnapshotHasNoEntitiesError(DuckDBPoolError):
     """Raised when asked to open a pool entry for a snapshot whose
-    ``entities.parquet`` is missing. Callers should 404 this — the
+    ``entities.parquet`` is missing. Callers should 404 this - the
     snapshot row exists but the data under it doesn't."""
 
 
@@ -124,7 +124,7 @@ class DuckDBPool:
                 _, entry = self._entries.popitem(last=False)
                 try:
                     await asyncio.to_thread(entry.conn.close)
-                except Exception as exc:  # pragma: no cover — last-ditch
+                except Exception as exc:  # pragma: no cover - last-ditch
                     logger.warning(
                         "duckdb_pool.close failed: %s",
                         type(exc).__name__,
@@ -173,7 +173,7 @@ class DuckDBPool:
             Query text. View names follow the :class:`ParquetKind`
             literal values (``entities``, ``materials`` …).
         parameters:
-            Positional parameters — passed through to DuckDB
+            Positional parameters - passed through to DuckDB
             unchanged. Never interpolate user input into ``sql``.
         kinds:
             Which Parquet files to ensure are registered before
@@ -249,7 +249,7 @@ class DuckDBPool:
         except ImportError as exc:  # pragma: no cover
             raise DuckDBNotInstalledError(
                 "DuckDB is required for the dashboards module. After v2.5.0 "
-                "it is part of base dependencies — reinstall the wheel."
+                "it is part of base dependencies - reinstall the wheel."
             ) from exc
 
         try:
@@ -260,12 +260,12 @@ class DuckDBPool:
 
         # OOM guard: cap each ad-hoc connection at 512 MB and queries at
         # 30s. A pathological cascade query against a multi-million-row
-        # snapshot can otherwise exhaust the worker — DuckDB defaults to
+        # snapshot can otherwise exhaust the worker - DuckDB defaults to
         # 80% of system RAM, which is unsafe for an in-process pool.
         try:
             await asyncio.to_thread(conn.execute, "SET memory_limit='512MB'")
             await asyncio.to_thread(conn.execute, "SET threads TO 2")
-        except Exception:  # pragma: no cover — old DuckDB may reject one of these
+        except Exception:  # pragma: no cover - old DuckDB may reject one of these
             logger.debug("duckdb_pool.set_limits failed (older DuckDB?)", exc_info=True)
 
         entry = _Entry(conn=conn, project_id=pid, registered_kinds=set())
@@ -289,7 +289,7 @@ class DuckDBPool:
                     raise SnapshotHasNoEntitiesError(
                         f"Snapshot {sid} has no entities.parquet at key {parquet_key(pid, sid, 'entities')}"
                     ) from exc
-                # Non-entities files are optional — skip them silently.
+                # Non-entities files are optional - skip them silently.
                 logger.debug(
                     "duckdb_pool.register_view skip missing kind=%s snapshot_id=%s",
                     kind,
@@ -299,7 +299,7 @@ class DuckDBPool:
             except ParquetNotLocalError:
                 raise
 
-            # DuckDB refuses prepared parameters inside DDL — the
+            # DuckDB refuses prepared parameters inside DDL - the
             # binder raises "Unexpected prepared parameter" on
             # ``CREATE VIEW … read_parquet(?)``. The path comes from
             # our own :func:`resolve_local_parquet_path` (it's the

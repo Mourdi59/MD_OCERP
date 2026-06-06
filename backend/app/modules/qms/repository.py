@@ -358,7 +358,7 @@ class QMSRepository:
         """‌⁠‍Sum cost_impact_amount for non-cancelled NCRs in a project.
 
         .. deprecated::
-            Sums across mixed currencies — callers that build a COPQ total
+            Sums across mixed currencies - callers that build a COPQ total
             must use :meth:`sum_ncr_cost_impact_by_currency` and FX-convert
             instead. Retained only for legacy single-currency call sites.
         """

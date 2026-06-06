@@ -3,21 +3,21 @@
 """‌⁠‍Public engine API for EAC v2 (RFC 35 §1.7 / RFC 36 W1.1, task #221).
 
 A thin facade over the engine internals (planner, validator, executor,
-runner) that gives any caller — router, scripts, Celery worker, tests,
-UI — a single, stable surface to drive a full EAC run end-to-end.
+runner) that gives any caller - router, scripts, Celery worker, tests,
+UI - a single, stable surface to drive a full EAC run end-to-end.
 
 Capabilities (one function per row):
 
-* :func:`compile_plan`   — validate + plan a rule definition.
-* :func:`describe_plan`  — render an :class:`ExecutionPlan` as a human
+* :func:`compile_plan`   - validate + plan a rule definition.
+* :func:`describe_plan`  - render an :class:`ExecutionPlan` as a human
   readable dict (alias resolutions, formula, post-step, projection).
-* :func:`run`            — execute a ruleset (delegates to
+* :func:`run`            - execute a ruleset (delegates to
   :func:`runner.run_ruleset`); supports ``dry_run`` to skip persistence.
-* :func:`status`         — current run state with derived progress %.
-* :func:`list_runs`      — paginated tenant-scoped listing.
-* :func:`cancel`         — gracefully stop a running execution.
-* :func:`rerun`          — replay a finished run on the same inputs.
-* :func:`diff`           — compare two runs of the same ruleset.
+* :func:`status`         - current run state with derived progress %.
+* :func:`list_runs`      - paginated tenant-scoped listing.
+* :func:`cancel`         - gracefully stop a running execution.
+* :func:`rerun`          - replay a finished run on the same inputs.
+* :func:`diff`           - compare two runs of the same ruleset.
 
 Cancellation is cooperative: :func:`cancel` flips a flag in the in-process
 ``_CANCEL_TOKENS`` registry which the runner checks between rules. For
@@ -95,7 +95,7 @@ class RunStatus:
 
 @dataclass(frozen=True)
 class RunDiff:
-    """Output of :func:`diff` — what changed between two runs.
+    """Output of :func:`diff` - what changed between two runs.
 
     Comparisons are made on ``(rule_id, element_id)`` pairs so the same
     element inspected by the same rule is the unit of change.
@@ -151,14 +151,14 @@ async def compile_plan(
 
     Two passes:
 
-    1. **Pydantic shape check** — ``EacRuleDefinition.model_validate``
+    1. **Pydantic shape check** - ``EacRuleDefinition.model_validate``
        (already raises a typed ``ValidationError``).
-    2. **Semantic validator** — alias / formula / regex / between
+    2. **Semantic validator** - alias / formula / regex / between
        ordering. Skipped when ``session`` is ``None`` (pure unit-test
        callers) so the planner can still be exercised offline.
 
     The plan is always produced when (1) succeeds, even if (2) returns
-    issues — callers may want to inspect the SQL even with semantic
+    issues - callers may want to inspect the SQL even with semantic
     warnings outstanding. The verdict lives on :attr:`CompiledPlan.valid`.
     """
     parsed = EacRuleDefinition.model_validate(rule_definition)
@@ -217,7 +217,7 @@ async def run(
     """Execute ``ruleset_id`` against ``elements``.
 
     ``dry_run=True`` skips persistence and returns a dict that mirrors
-    the executor's :class:`ExecutionResult` for each rule — handy for
+    the executor's :class:`ExecutionResult` for each rule - handy for
     test scripts and the rule-editor preview. ``dry_run=False`` returns
     the persisted :class:`EacRun` row.
     """
@@ -333,7 +333,7 @@ async def cancel(
     if tenant_id is not None and run_row.tenant_id != tenant_id:
         return False
     if run_row.status in {"success", "failed", "partial", "cancelled"}:
-        # Terminal states — accept the request idempotently when the run
+        # Terminal states - accept the request idempotently when the run
         # is already cancelled, refuse otherwise. ``partial`` is terminal too
         # (the run finished, just with mixed pass/fail or spilled results), so
         # it must never be overwritten with ``cancelled``.
@@ -393,7 +393,7 @@ async def rerun(
     Convenience wrapper: looks up the original run's ``ruleset_id`` and
     ``model_version_id`` and dispatches a fresh :func:`run`. The caller
     supplies ``elements`` because the originals may not be cheap to
-    rebuild — the persistence layer doesn't keep them.
+    rebuild - the persistence layer doesn't keep them.
 
     Raises :class:`ExecutionError` when the source run is missing or
     belongs to another tenant.
@@ -425,7 +425,7 @@ async def diff(
 
     The diff is computed by joining ``EacRunResultItem`` rows on
     ``(rule_id, element_id)``. Only rows from runs of the **same**
-    ruleset are eligible — comparing across rulesets is not meaningful.
+    ruleset are eligible - comparing across rulesets is not meaningful.
 
     Raises :class:`ExecutionError` on tenant mismatch or unrelated
     rulesets so the caller can surface a 422 cleanly.
@@ -437,7 +437,7 @@ async def diff(
     if run_a.tenant_id != tenant_id or run_b.tenant_id != tenant_id:
         raise ExecutionError("run/tenant mismatch")
     if run_a.ruleset_id != run_b.ruleset_id:
-        raise ExecutionError("runs belong to different rulesets — diff is not meaningful")
+        raise ExecutionError("runs belong to different rulesets - diff is not meaningful")
 
     rows_a = list((await session.scalars(select(EacRunResultItem).where(EacRunResultItem.run_id == run_id_a))).all())
     rows_b = list((await session.scalars(select(EacRunResultItem).where(EacRunResultItem.run_id == run_id_b))).all())
@@ -505,7 +505,7 @@ def _derive_progress(run_row: EacRun) -> float:
     Finished runs (``success`` / ``failed`` / ``partial`` / ``cancelled``)
     are reported as 1.0 if they evaluated anything, 0.0 if they never
     started. Running rows estimate from
-    ``persisted_result_items / max(1, elements_evaluated)`` — best-effort
+    ``persisted_result_items / max(1, elements_evaluated)`` - best-effort
     because the runner doesn't checkpoint a counter today.
     """
     if run_row.status in {"success", "failed", "partial", "cancelled"}:

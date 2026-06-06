@@ -1,14 +1,14 @@
-"""Wave 23 — worldwide currency parameterisation helper.
+"""Wave 23 - worldwide currency parameterisation helper.
 
-Provides :func:`resolve_template_currency` — the authoritative
+Provides :func:`resolve_template_currency` - the authoritative
 resolution chain for any document / report render that needs to know
 which ISO 4217 currency to use.
 
 Resolution order
 ----------------
-1. ``override_currency`` — caller / template-level override.
-2. ``project_id`` → ``Project.currency`` — per-project default.
-3. ``tenant_currency`` — reserved for future per-tenant setting; always
+1. ``override_currency`` - caller / template-level override.
+2. ``project_id`` → ``Project.currency`` - per-project default.
+3. ``tenant_currency`` - reserved for future per-tenant setting; always
    ``None`` today (the tenant model has no ``default_currency`` yet).
 4. Hard fallback: ``"EUR"``.
 
@@ -49,7 +49,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-#: ISO 4217 fallback currency — used when neither override nor project
+#: ISO 4217 fallback currency - used when neither override nor project
 #: currency is available and ``require_resolved`` is ``False``.
 CURRENCY_FALLBACK = "EUR"
 
@@ -65,10 +65,10 @@ async def resolve_template_currency(
     """Resolve the effective ISO 4217 currency for a document / report render.
 
     Resolution order:
-        1. ``override_currency`` — e.g. from ``PropertyDevCustomTemplate.override_currency``
+        1. ``override_currency`` - e.g. from ``PropertyDevCustomTemplate.override_currency``
            or ``GenerateReportRequest.override_currency``.
         2. Project's ``currency`` field (looked up via ``project_id``).
-        3. ``tenant_currency`` — reserved placeholder; always ``None`` today.
+        3. ``tenant_currency`` - reserved placeholder; always ``None`` today.
         4. Hard fallback ``"EUR"`` (unless ``require_resolved=True``).
 
     Args:
@@ -111,7 +111,7 @@ async def resolve_template_currency(
                 project_id,
             )
 
-    # 3. Tenant currency (reserved — always None today).
+    # 3. Tenant currency (reserved - always None today).
     if tenant_currency:
         code = tenant_currency.strip().upper()
         if code:

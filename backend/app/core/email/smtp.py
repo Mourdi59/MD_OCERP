@@ -6,19 +6,19 @@ responsive during the typical 100–500 ms round-trip.
 
 Configuration comes from ``app.config.Settings``:
 
-    ``smtp_host``     — required; empty disables the backend (returns a
+    ``smtp_host``     - required; empty disables the backend (returns a
                         structured "not configured" ``DeliveryResult``).
-    ``smtp_port``     — 587 for STARTTLS, 465 for implicit TLS (we use
+    ``smtp_port``     - 587 for STARTTLS, 465 for implicit TLS (we use
                         STARTTLS via ``smtp_tls=True``).
-    ``smtp_user``     — optional; when set we LOGIN before sending.
-    ``smtp_password`` — optional; pairs with ``smtp_user``.
-    ``smtp_from``     — default ``From:`` address.
-    ``smtp_tls``      — enable STARTTLS upgrade.
+    ``smtp_user``     - optional; when set we LOGIN before sending.
+    ``smtp_password`` - optional; pairs with ``smtp_user``.
+    ``smtp_from``     - default ``From:`` address.
+    ``smtp_tls``      - enable STARTTLS upgrade.
 
 The backend builds a multipart/alternative message with both a plain-text
 and HTML part so inbox-provider scoring stays reasonable (pure-HTML
 emails are often flagged as spam).  The plain-text fallback is a very
-rough strip of HTML tags — good enough for receipts and resets.
+rough strip of HTML tags - good enough for receipts and resets.
 """
 
 from __future__ import annotations
@@ -61,18 +61,18 @@ class SmtpEmailBackend(EmailBackend):
 
     async def send(self, message: EmailMessage) -> DeliveryResult:
         if not self._configured():
-            # Surface the gap loudly — silent failure made this endpoint
+            # Surface the gap loudly - silent failure made this endpoint
             # look healthy while users never received reset emails
             # (observed during the v2.3.1 audit).
             logger.warning(
-                "[email:smtp] dropping message to %s — SMTP not configured (set SMTP_HOST to enable the smtp backend)",
+                "[email:smtp] dropping message to %s - SMTP not configured (set SMTP_HOST to enable the smtp backend)",
                 message.to,
             )
             return DeliveryResult.failure(self.name, reason="smtp not configured")
 
         try:
             return await asyncio.to_thread(self._send_sync, message)
-        except Exception:  # noqa: BLE001 — we must convert any exception to a structured result
+        except Exception:  # noqa: BLE001 - we must convert any exception to a structured result
             logger.exception("[email:smtp] unexpected failure delivering to %s", message.to)
             return DeliveryResult.failure(self.name, reason="unexpected error")
 
@@ -124,7 +124,7 @@ class SmtpEmailBackend(EmailBackend):
                 try:
                     server.quit()
                 except smtplib.SMTPException:
-                    # Connection may already be closed by the server — fine.
+                    # Connection may already be closed by the server - fine.
                     pass
             logger.info(
                 "[email:smtp] sent to=%s subject=%r tags=%s",

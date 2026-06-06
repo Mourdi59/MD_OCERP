@@ -10,7 +10,7 @@ on the full CV pipeline (PaddleOCR + YOLO, a separate multi-week build).
 the photo-upload flow to auto-fill a photo's latitude/longitude when the
 camera embedded geotags. It parses the JPEG APP1 / raw-TIFF EXIF block by
 hand (no Pillow requirement) so it works in a minimal install, and only
-returns coordinates it could actually decode — never a fabricated value.
+returns coordinates it could actually decode - never a fabricated value.
 
 # v2.8 follow-up: depends on CV pipeline build (B=full CV pipeline from scratch)
 # Tracked in: the architecture guide Phase 3 "AI Takeoff" → ``services/cv-pipeline/``.
@@ -87,7 +87,7 @@ def _find_tiff_block(data: bytes) -> bytes | None:
     n = len(data)
     while offset + 4 <= n:
         if data[offset] != 0xFF:
-            # Not at a marker — corrupt/unknown structure, bail out.
+            # Not at a marker - corrupt/unknown structure, bail out.
             return None
         marker = data[offset + 1]
         # Standalone markers (RSTn, SOI, EOI) carry no length.
@@ -170,7 +170,7 @@ def extract_exif_gps(image_bytes: bytes) -> tuple[float, float] | None:
 
     Returns ``None`` when the image carries no usable geotag (no EXIF block,
     no GPS IFD, missing/zero coordinates, or coordinates out of range). Never
-    raises — any parse error degrades to ``None`` so a malformed upload can't
+    raises - any parse error degrades to ``None`` so a malformed upload can't
     break the upload flow.
 
     Coordinates are returned in signed decimal degrees (south/west negative),
@@ -220,7 +220,7 @@ def extract_exif_gps(image_bytes: bytes) -> tuple[float, float] | None:
                 lon = -lon
 
         # Reject obviously-bogus coordinates and the 0,0 "null island" that a
-        # camera writes when it has no fix — both would silently mis-place
+        # camera writes when it has no fix - both would silently mis-place
         # the photo on the map.
         if not (-90.0 <= lat <= 90.0) or not (-180.0 <= lon <= 180.0):
             return None
@@ -248,7 +248,7 @@ def _decode_exif_datetime(raw: bytes) -> datetime | None:
     if not text or text.startswith("0000"):
         return None
     try:
-        return datetime.strptime(text, "%Y:%m:%d %H:%M:%S")  # noqa: DTZ007 — EXIF has no tz
+        return datetime.strptime(text, "%Y:%m:%d %H:%M:%S")  # noqa: DTZ007 - EXIF has no tz
     except ValueError:
         return None
 
@@ -259,7 +259,7 @@ def extract_exif_datetime(image_bytes: bytes) -> datetime | None:
     Prefers ``DateTimeOriginal`` (when the shutter fired, in the Exif
     sub-IFD); falls back to the IFD0 ``DateTime`` tag. Returns a naive
     ``datetime`` (EXIF carries no timezone) or ``None`` when no usable
-    timestamp is present. Never raises — any parse error degrades to
+    timestamp is present. Never raises - any parse error degrades to
     ``None`` so a malformed upload can't break the upload flow.
     """
     try:

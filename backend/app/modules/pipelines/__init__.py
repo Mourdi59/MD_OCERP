@@ -17,7 +17,7 @@ design (the module deliberately reuses, never reinvents, infrastructure).
 async def on_startup() -> None:
     """‌⁠‍Module startup hook.
 
-    Binds the ``pipeline.run`` JobRun handler (idempotent — also bound at
+    Binds the ``pipeline.run`` JobRun handler (idempotent - also bound at
     executor import) so a fresh process always has it before the first
     run is enqueued.
     """

@@ -1,11 +1,11 @@
-"""‌⁠‍LLM tier — translates a single term via the configured AI provider.
+"""‌⁠‍LLM tier - translates a single term via the configured AI provider.
 
 Reuses :func:`app.modules.ai.ai_client.call_ai` so we automatically get
 support for every provider the rest of the platform supports (Anthropic,
 OpenAI, Gemini, OpenRouter, Mistral, Groq, DeepSeek, …) and pick up new
 providers as they're added there.
 
-Cost estimation is approximate — providers expose token counts on
+Cost estimation is approximate - providers expose token counts on
 response, but the per-token rate varies by model and cannot be discovered
 from the API. We use a conservative blended rate (input + output) per
 provider and clamp by a per-call cap so a runaway cascade can't mint a
@@ -20,7 +20,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Per-1k-token blended rate (input ~30% + output ~70%) in USD. Numbers
-# are intentionally conservative — better to slightly overestimate cost
+# are intentionally conservative - better to slightly overestimate cost
 # than to under-report it on the audit trail.
 _BLENDED_RATES_USD_PER_1K: dict[str, float] = {
     "anthropic": 0.012,  # claude-sonnet-4 ~$3/$15 per M, blended
@@ -101,14 +101,14 @@ async def llm_translate(
     the response is unusable. Callers must treat ``None`` as a tier miss
     and fall through.
     """
-    # Local imports — keeps the cascade module cheap to import in
+    # Local imports - keeps the cascade module cheap to import in
     # environments where AI deps aren't wired in.
     try:
         from app.modules.ai.ai_client import (
             call_ai,
             resolve_provider_and_key,
         )
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug("AI client import failed: %s", exc)
         return None
 
@@ -131,13 +131,13 @@ async def llm_translate(
             api_key=api_key,
             system=_SYSTEM,
             prompt=prompt,
-            # Construction terms are short — cap response length so a
+            # Construction terms are short - cap response length so a
             # confused LLM can't generate paragraphs and inflate cost.
             max_tokens=128,
         )
     except Exception as exc:
         # Includes httpx errors, ValueError-wrapped 401/429 from the
-        # client, etc. Fail closed — the cascade falls through to fallback.
+        # client, etc. Fail closed - the cascade falls through to fallback.
         logger.debug("LLM call failed: %s", exc)
         return None
 

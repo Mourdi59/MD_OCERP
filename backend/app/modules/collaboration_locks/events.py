@@ -2,7 +2,7 @@
 
 The service layer publishes these onto the global event bus; the
 presence hub subscribes to them to broadcast over the WebSocket.  Other
-modules can also subscribe — e.g. an audit-log module could record who
+modules can also subscribe - e.g. an audit-log module could record who
 held a lock on what and for how long.
 """
 

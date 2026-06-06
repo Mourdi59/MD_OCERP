@@ -1,6 +1,6 @@
 """‌⁠‍Locale-scoped message bundle for validation rules.
 
-OpenEstimate principle #2: i18n EVERYWHERE — zero hardcoded strings.
+OpenEstimate principle #2: i18n EVERYWHERE - zero hardcoded strings.
 
 This package ships a self-contained translation bundle for the 42+ built-in
 validation rules. Each rule's user-facing ``message`` and ``suggestion`` text
@@ -10,7 +10,7 @@ is stored in per-locale JSON files (``en.json``, ``de.json``, ``ru.json``,
 Design notes
 ------------
 * **Self-contained.** The bundle lives alongside the rules it translates.
-  This keeps the module "plugin-like" — a third-party rules package can
+  This keeps the module "plugin-like" - a third-party rules package can
   carry its own ``messages/`` directory and register itself without
   touching the global :mod:`app.core.i18n` locales.
 * **Same resolution semantics as ``app.core.i18n.t()``** so frontend and
@@ -25,10 +25,10 @@ Design notes
 Public API
 ----------
 * :func:`translate(key, locale="en", **params) -> str`
-* :func:`is_key_present(key, locale)` — diagnostic used by tests to assert
+* :func:`is_key_present(key, locale)` - diagnostic used by tests to assert
   locale coverage.
 * :func:`available_locales() -> list[str]`
-* :func:`reload_bundle()` — force re-read from disk (test helper).
+* :func:`reload_bundle()` - force re-read from disk (test helper).
 """
 
 from __future__ import annotations
@@ -79,7 +79,7 @@ class MessageBundle:
         self._warned_missing.clear()
         if not self.messages_dir.exists():
             logger.warning(
-                "Validation messages directory missing: %s — all keys will fall back to raw key names",
+                "Validation messages directory missing: %s - all keys will fall back to raw key names",
                 self.messages_dir,
             )
             self._loaded_from = self.messages_dir
@@ -131,7 +131,7 @@ class MessageBundle:
             **params: ``str.format``-style interpolation values.
 
         Returns:
-            The resolved, formatted string — never ``None``.
+            The resolved, formatted string - never ``None``.
         """
         with _LOAD_LOCK:
             self.load()
@@ -148,14 +148,14 @@ class MessageBundle:
                     self._warned_fallbacks.add(warn_key)
                     if locale in self._loaded:
                         logger.warning(
-                            "Validation message key '%s' missing for locale '%s' — falling back to '%s'",
+                            "Validation message key '%s' missing for locale '%s' - falling back to '%s'",
                             key,
                             locale,
                             DEFAULT_LOCALE,
                         )
                     else:
                         logger.warning(
-                            "Validation locale '%s' not loaded — falling back to '%s' for key '%s'",
+                            "Validation locale '%s' not loaded - falling back to '%s' for key '%s'",
                             locale,
                             DEFAULT_LOCALE,
                             key,
@@ -165,7 +165,7 @@ class MessageBundle:
                 self._warned_missing.add(key)
                 logger.warning(
                     "Validation message key '%s' not found in any locale "
-                    "(requested '%s') — rendering humanised fallback",
+                    "(requested '%s') - rendering humanised fallback",
                     key,
                     locale,
                 )
@@ -258,7 +258,7 @@ def _render_missing(key: str, params: dict[str, Any]) -> str:
     """Graceful missing-key fallback (NEW-I18N-001).
 
     Returns a human-readable phrase derived from the key's last meaningful
-    path segment instead of the raw dotted key — an end user must never see
+    path segment instead of the raw dotted key - an end user must never see
     ``"nonexistent.key.xyz"``. The exact key is still logged at WARNING for
     developers, and any interpolation ``params`` are appended in brackets so
     debugging context survives.
@@ -295,7 +295,7 @@ def available_locales() -> list[str]:
 
 
 def reload_bundle() -> None:
-    """Force a cache refresh — primarily used by tests."""
+    """Force a cache refresh - primarily used by tests."""
     _default_bundle.reload()
 
 

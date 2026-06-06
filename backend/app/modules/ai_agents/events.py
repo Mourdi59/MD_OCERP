@@ -4,7 +4,7 @@ This wires the platform event bus to the agent automation envelope: when a
 platform event fires (an RFI is created, a document is uploaded), every custom
 agent that subscribed to the matching trigger is run automatically with the
 event's context. This is the piece the scheduler module's docstring deferred to
-"a later wave" — it is now live, so the trigger catalogue in
+"a later wave" - it is now live, so the trigger catalogue in
 :mod:`app.modules.ai_agents.triggers` marks those events ``available=True``.
 
 Design choices (consistent with the rest of the module):
@@ -14,11 +14,11 @@ Design choices (consistent with the rest of the module):
   ``trigger_source="event:<trigger>"`` so the monitoring panel and audit trail
   can tell event-fired runs apart from manual/scheduled ones.
 * **Human-confirmed, never auto-applied.** An event-fired run produces the same
-  reviewable proposal as any other run — it writes nothing to the BOQ/project.
+  reviewable proposal as any other run - it writes nothing to the BOQ/project.
   The architecture guide's "AI-augmented, human-confirmed" rule is absolute.
 * **Fail-soft.** A handler opens its own session (the publisher's session is
   long gone for a detached publish), awaits each subscribed agent's run
-  sequentially to bound LLM concurrency, and never raises out — one bad agent
+  sequentially to bound LLM concurrency, and never raises out - one bad agent
   must not poison the event bus for every other subscriber.
 * **Runs on behalf of the agent's creator.** ``start_run`` resolves a
   ``custom:<id>`` slug only for its owner, so firing under ``agent.user_id``
@@ -47,7 +47,7 @@ _EVENT_TO_TRIGGER: dict[str, str] = {
 }
 
 # How the new context is summarised into the prompt fired at a subscribed agent.
-# Kept short and factual — the agent's own system prompt drives what it does
+# Kept short and factual - the agent's own system prompt drives what it does
 # with it. The IDs let a tool-using agent fetch the full record if granted.
 _TRIGGER_PROMPTS: dict[str, str] = {
     "rfi_created": (

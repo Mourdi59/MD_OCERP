@@ -10,11 +10,11 @@ contemporary records) can be reproduced byte-for-byte.
 Table: ``oe_activity_log``
 
 The existing ``oe_core_audit_log`` table is kept for backwards
-compatibility — module services that already use it continue to work,
+compatibility - module services that already use it continue to work,
 but new FSM-driven transitions write here as well so the lifecycle of
 each entity can be inspected in one place.
 
-Epic H — Universal Audit Trail (2026-05-26)
+Epic H - Universal Audit Trail (2026-05-26)
 -------------------------------------------
 
 The row layout is extended with 8 capture-context columns
@@ -22,7 +22,7 @@ The row layout is extended with 8 capture-context columns
 ``parent_entity_*`` / ``before_state`` / ``after_state``). The capture is
 driven by a single :class:`AuditContext` ContextVar that
 :class:`app.middleware.actor_context.ActorContextMiddleware` sets at the
-top of each HTTP request — service-layer callers do not need to thread
+top of each HTTP request - service-layer callers do not need to thread
 the IP / UA / request-id manually. When ``log_activity`` is called
 outside an HTTP request (Celery worker, CLI seed) the ContextVar reads
 ``None`` and the columns stay NULL, which is the documented contract.
@@ -76,7 +76,7 @@ logger = logging.getLogger(__name__)
 class AuditContext:
     """Per-request capture of identity + transport metadata.
 
-    Fields are deliberately optional — ``log_activity`` writes ``NULL``
+    Fields are deliberately optional - ``log_activity`` writes ``NULL``
     for anything the middleware could not determine (e.g. a Celery worker
     has no peer IP). Fields are also typed as plain ``str`` so they can
     be persisted to the existing ``oe_activity_log`` columns without
@@ -117,32 +117,32 @@ class ActivityLog(Base):
     """‌⁠‍Append-only audit row recording one entity state change.
 
     Columns:
-        id                — UUID PK (inherited from :class:`Base`).
-        tenant_id         — Optional tenant scope. NULL for system events.
-        actor_id          — UUID of the user who performed the action
+        id                - UUID PK (inherited from :class:`Base`).
+        tenant_id         - Optional tenant scope. NULL for system events.
+        actor_id          - UUID of the user who performed the action
                             (NULL for background jobs).
-        entity_type       — Logical entity name: boq / project / invoice /
+        entity_type       - Logical entity name: boq / project / invoice /
                             ncr / rfq / submittal / po / gr / …
-        entity_id         — UUID of the affected row (string). Stored as
+        entity_id         - UUID of the affected row (string). Stored as
                             text so we can also log events against
                             composite keys later.
-        action            — Verb: status_changed / created / updated /
+        action            - Verb: status_changed / created / updated /
                             deleted / bulk_import / …
-        from_status       — Previous status (NULL for create-events).
-        to_status         — New status (NULL for delete-events).
-        reason            — Free-form note supplied by the user.
-        metadata_         — JSONB with extra context.
-        ip_address        — Request peer IP (epic H, nullable).
-        user_agent        — Request UA truncated to 500 chars (epic H).
-        request_id        — Correlation ID for trace stitching (epic H).
-        module            — Logical module ("rfi", "submittals", …);
+        from_status       - Previous status (NULL for create-events).
+        to_status         - New status (NULL for delete-events).
+        reason            - Free-form note supplied by the user.
+        metadata_         - JSONB with extra context.
+        ip_address        - Request peer IP (epic H, nullable).
+        user_agent        - Request UA truncated to 500 chars (epic H).
+        request_id        - Correlation ID for trace stitching (epic H).
+        module            - Logical module ("rfi", "submittals", …);
                             cross-module timeline filtering (epic H).
-        parent_entity_*   — Optional umbrella entity for timeline rollups
+        parent_entity_*   - Optional umbrella entity for timeline rollups
                             (e.g. an RFI's project) (epic H).
-        before_state      — JSON snapshot of the affected record's prior
+        before_state      - JSON snapshot of the affected record's prior
                             column subset (small, writer-curated) (epic H).
-        after_state       — JSON snapshot of the new column subset (epic H).
-        created_at        — UTC timestamp (inherited from :class:`Base`).
+        after_state       - JSON snapshot of the new column subset (epic H).
+        created_at        - UTC timestamp (inherited from :class:`Base`).
     """
 
     __tablename__ = "oe_activity_log"
@@ -151,7 +151,7 @@ class ActivityLog(Base):
         Index("ix_activity_log_tenant_created", "tenant_id", "created_at"),
         Index("ix_activity_log_actor", "actor_id"),
         # Epic H: composite index for per-entity timeline queries. SQLite
-        # does not honour per-column DESC specifiers on indexes — declare
+        # does not honour per-column DESC specifiers on indexes - declare
         # ascending and let the planner walk it newest-first via DESC scan.
         Index(
             "ix_activity_log_entity_created",
@@ -207,7 +207,7 @@ class ActivityLog(Base):
         nullable=True,
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — debug only
+    def __repr__(self) -> str:  # pragma: no cover - debug only
         return (
             f"<ActivityLog {self.entity_type}:{self.entity_id} {self.from_status}->{self.to_status} by {self.actor_id}>"
         )
@@ -240,7 +240,7 @@ def _bounded_state(value: dict[str, Any] | None) -> dict[str, Any] | None:
     """Cap the captured state dict to a known-good size."""
     if value is None:
         return None
-    if not isinstance(value, dict):  # defensive — never trust callers
+    if not isinstance(value, dict):  # defensive - never trust callers
         return None
     if len(value) <= _MAX_STATE_KEYS:
         return dict(value)
@@ -265,7 +265,7 @@ async def log_activity(
     reason: str | None = None,
     metadata: dict[str, Any] | None = None,
     tenant_id: str | uuid.UUID | None = None,
-    # Epic H — explicit overrides (auto-filled from ContextVar otherwise)
+    # Epic H - explicit overrides (auto-filled from ContextVar otherwise)
     module: str | None = None,
     parent_entity_type: str | None = None,
     parent_entity_id: str | uuid.UUID | None = None,
@@ -277,7 +277,7 @@ async def log_activity(
 ) -> ActivityLog:
     """‌⁠‍Write a single :class:`ActivityLog` row.
 
-    The session is flushed but NOT committed — the caller's transaction
+    The session is flushed but NOT committed - the caller's transaction
     boundary owns the commit so audit + business write either both land
     or both roll back. Errors are NOT swallowed here: when the caller
     wants best-effort audit (e.g. from inside a guard), wrap this in
@@ -286,7 +286,7 @@ async def log_activity(
     Capture-context fields (``ip_address`` / ``user_agent`` /
     ``request_id`` / ``actor_id`` / ``tenant_id``) default to whatever
     the ActorContextMiddleware put on the per-request ContextVar. Caller
-    overrides win — pass ``ip_address=...`` explicitly to record a value
+    overrides win - pass ``ip_address=...`` explicitly to record a value
     other than the one in the request context (e.g. a forwarded address
     for a webhook handler).
 
@@ -308,13 +308,13 @@ async def log_activity(
         metadata: Arbitrary JSON payload merged into the row.
         tenant_id: Optional tenant scope (used in multi-tenant deploys).
         module: Logical module ("rfi" / "submittals" / …). Optional but
-            strongly recommended — drives cross-module timeline
+            strongly recommended - drives cross-module timeline
             filtering.
         parent_entity_type / parent_entity_id: Optional umbrella entity
             for rollup timelines (e.g. an RFI rolled into its project).
         before_state / after_state: Optional JSON snapshots of the
             affected record's prior / new column subset. Curated by the
-            writer — do NOT dump full rows.
+            writer - do NOT dump full rows.
         ip_address / user_agent / request_id: Explicit overrides for the
             ContextVar-supplied capture fields.
 
@@ -348,7 +348,7 @@ async def log_activity(
         before_state=_bounded_state(before_state),
         after_state=_bounded_state(after_state),
     )
-    # Epic H §H3 — central error handling. The audit write MUST NOT break
+    # Epic H §H3 - central error handling. The audit write MUST NOT break
     # the business write. ``session.add`` can raise if the caller passed
     # a non-Session stub (common in unit tests that patch the repo
     # layer); ``session.flush`` can raise on a real DB integrity error.
@@ -360,7 +360,7 @@ async def log_activity(
         session.add(entry)
         await session.flush()
     except (AttributeError, TypeError):
-        # Stub sessions in tests — ``_StubSession`` has no ``add``.
+        # Stub sessions in tests - ``_StubSession`` has no ``add``.
         logger.debug(
             "activity_log: skipped (session does not support add) %s:%s %s",
             entity_type,

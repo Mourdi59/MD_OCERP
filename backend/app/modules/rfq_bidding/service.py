@@ -1,4 +1,4 @@
-"""‌⁠‍RFQ Bidding service — business logic for RFQ and bid management.
+"""‌⁠‍RFQ Bidding service - business logic for RFQ and bid management.
 
 Stateless service layer.
 """
@@ -22,7 +22,7 @@ from app.modules.rfq_bidding.schemas import (
 logger = logging.getLogger(__name__)
 
 # RFQ statuses where a vendor may still submit a bid. Submissions against
-# draft / awarded / completed / cancelled RFQs are rejected — those would
+# draft / awarded / completed / cancelled RFQs are rejected - those would
 # otherwise allow a vendor to slip a bid in after the award has been made
 # or before the RFQ has been published.
 _BID_SUBMISSION_OPEN_STATUSES: frozenset[str] = frozenset({"published", "issued", "bids_received"})
@@ -30,7 +30,7 @@ _BID_SUBMISSION_OPEN_STATUSES: frozenset[str] = frozenset({"published", "issued"
 # Roles permitted to award an RFQ (mirrors FSM registry
 # ``bids_received → awarded`` ``required_roles=("admin", "manager")``).
 # The router-level ``rfq.update`` permission lets EDITOR call award_bid,
-# which would side-step the FSM contract — service must re-check.
+# which would side-step the FSM contract - service must re-check.
 _AWARD_ALLOWED_ROLES: frozenset[str] = frozenset({"admin", "manager", "owner"})
 
 
@@ -136,7 +136,7 @@ class RFQService:
     ) -> RFQ:
         """Transition RFQ from draft to published (legacy alias: ``issued``).
 
-        v3033 unified the lifecycle nomenclature — the new canonical status
+        v3033 unified the lifecycle nomenclature - the new canonical status
         is ``published``, and the v3033 data migration remaps existing
         ``issued`` rows. We still write ``published`` here to be consistent
         with :mod:`app.core.fsm.registry`.
@@ -148,7 +148,7 @@ class RFQService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Cannot issue RFQ in status '{prior}'",
             )
-        # Snapshot fields BEFORE rfqs.update() — that call invokes
+        # Snapshot fields BEFORE rfqs.update() - that call invokes
         # expire_all() and any subsequent ORM-managed attribute access
         # would otherwise trigger a sync DB fetch (MissingGreenlet).
         rfq_number_local = rfq.rfq_number
@@ -189,13 +189,13 @@ class RFQService:
 
         Rejects:
             * RFQ not found (404)
-            * RFQ in a non-bidding status — draft / awarded / cancelled /
+            * RFQ in a non-bidding status - draft / awarded / cancelled /
               completed (409 Conflict).
             * Submission past ``rfq.submission_deadline`` if set (409).
         """
         rfq = await self.get_rfq(data.rfq_id)  # 404 check
 
-        # Lifecycle gate — bidding is only legal while the RFQ is open.
+        # Lifecycle gate - bidding is only legal while the RFQ is open.
         if rfq.status not in _BID_SUBMISSION_OPEN_STATUSES:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -204,7 +204,7 @@ class RFQService:
                 ),
             )
 
-        # Deadline gate — best-effort ISO parse. If deadline is malformed
+        # Deadline gate - best-effort ISO parse. If deadline is malformed
         # we DO NOT silently allow late submissions; we 422 because a
         # malformed deadline on the RFQ is a data-quality bug a buyer
         # must resolve before bids land.
@@ -220,7 +220,7 @@ class RFQService:
                     )
             except (ValueError, TypeError):
                 logger.warning(
-                    "RFQ %s has malformed submission_deadline %r — bid rejected",
+                    "RFQ %s has malformed submission_deadline %r - bid rejected",
                     data.rfq_id,
                     rfq.submission_deadline,
                 )

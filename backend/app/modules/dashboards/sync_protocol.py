@@ -33,7 +33,7 @@ Pipeline
 The probe is intentionally tolerant: a preset that already lacks the
 keys it would reference (an empty ``config_json``) is treated as
 "in sync, nothing to check" rather than producing spurious noise. The
-heuristics never *delete* a chart or filter card — at worst they drop
+heuristics never *delete* a chart or filter card - at worst they drop
 specific filter values whose column is still present but whose value
 disappeared. Anything more destructive falls back to ``manual``.
 
@@ -76,10 +76,10 @@ unexpectedly."""
 SuggestedFix = Literal["auto_rename", "drop_filter", "manual"]
 """How :func:`auto_heal` should respond to the issue:
 
-* ``auto_rename`` — pure column rename detected; safe to update in place.
-* ``drop_filter`` — a filter value disappeared from the snapshot's value
+* ``auto_rename`` - pure column rename detected; safe to update in place.
+* ``drop_filter`` - a filter value disappeared from the snapshot's value
   set; drop just that value from the preset's filter list.
-* ``manual`` — a column went away entirely or its dtype shifted in a
+* ``manual`` - a column went away entirely or its dtype shifted in a
   way that breaks chart axes; needs human review.
 """
 
@@ -100,7 +100,7 @@ class SyncIssue:
     suggested_fix: SuggestedFix
     column: str
     """The column the issue references (the *original* name when the
-    issue is a rename — :attr:`new_column` carries the proposed
+    issue is a rename - :attr:`new_column` carries the proposed
     successor)."""
 
     new_column: str | None = None
@@ -188,12 +188,12 @@ class SnapshotMeta:
 
     The probe only ever cares about three things:
 
-    * ``columns`` — the set of column names callers can reference.
-    * ``dtypes`` — per-column dtype string (``numeric`` / ``string`` /
+    * ``columns`` - the set of column names callers can reference.
+    * ``dtypes`` - per-column dtype string (``numeric`` / ``string`` /
       ``datetime`` / ``boolean``). The granularity matches
       :mod:`integrity` so the two systems agree on dtype semantics.
-    * ``value_sets`` — for the columns the preset filters on, the set
-      of distinct values currently present. Optional — when missing,
+    * ``value_sets`` - for the columns the preset filters on, the set
+      of distinct values currently present. Optional - when missing,
       the probe skips the dropped-filter-value check for that column.
     """
 
@@ -219,12 +219,12 @@ def diff_snapshot_meta(
 
     Returns a dict with three keys:
 
-    * ``added`` — columns present in ``new`` but not ``old``.
-    * ``removed`` — columns present in ``old`` but not ``new``.
-    * ``dtype_changes`` — list of ``(column, old_dtype, new_dtype)``
+    * ``added`` - columns present in ``new`` but not ``old``.
+    * ``removed`` - columns present in ``old`` but not ``new``.
+    * ``dtype_changes`` - list of ``(column, old_dtype, new_dtype)``
       tuples for columns present in both whose dtype shifted.
 
-    No rename inference happens here — that's the probe's job and uses
+    No rename inference happens here - that's the probe's job and uses
     the *preset's* references rather than just the meta diff.
     """
     old_cols = set(old_meta.columns)
@@ -250,7 +250,7 @@ def diff_snapshot_meta(
 
 
 # Common rename patterns we trust enough to auto-suggest. Each tuple is
-# ``(pattern in old, pattern in new)`` — a bidirectional equivalence
+# ``(pattern in old, pattern in new)`` - a bidirectional equivalence
 # class. We only fire a rename suggestion when an old column is gone,
 # *exactly one* candidate exists in the snapshot's added columns, and
 # the candidate's dtype matches.
@@ -271,11 +271,11 @@ _RENAME_HEURISTICS: Final[tuple[tuple[str, str], ...]] = (
 class PresetSyncProbe:
     """Compare a preset against a current :class:`SnapshotMeta`.
 
-    The probe is stateless — instantiate once, call :meth:`run` per
+    The probe is stateless - instantiate once, call :meth:`run` per
     preset. It accepts both the meta the preset *was built against*
     (read out of ``config_json['snapshot_meta']`` if present) and the
     snapshot's *current* meta. When the historical meta is absent we
-    fall back to "every referenced column must exist today" — coarser,
+    fall back to "every referenced column must exist today" - coarser,
     but never wrong.
     """
 
@@ -297,13 +297,13 @@ class PresetSyncProbe:
         ``preset_config`` is the raw dict stored in
         :attr:`DashboardPreset.config_json`. Recognised keys:
 
-        * ``snapshot_id`` — the snapshot the preset references.
-        * ``snapshot_meta`` — optional :class:`SnapshotMeta`-shaped dict
+        * ``snapshot_id`` - the snapshot the preset references.
+        * ``snapshot_meta`` - optional :class:`SnapshotMeta`-shaped dict
           captured at preset-save time. Used to anchor rename and dtype
           diffs.
-        * ``columns`` — list of column names referenced by the preset's
+        * ``columns`` - list of column names referenced by the preset's
           charts.
-        * ``filters`` — column → list-of-values mapping (same shape as
+        * ``filters`` - column → list-of-values mapping (same shape as
           the cascade engine).
         """
         snapshot_id = self._extract_snapshot_id(preset_config)
@@ -433,7 +433,7 @@ class PresetSyncProbe:
         for c in config.get("columns") or []:
             if isinstance(c, str) and c.strip():
                 cols.add(c.strip())
-        # Charts can pin x_field / y_field individually — collect those
+        # Charts can pin x_field / y_field individually - collect those
         # so a chart-only preset still surfaces dropped columns.
         for chart in config.get("charts") or []:
             if not isinstance(chart, dict):
@@ -523,10 +523,10 @@ class PresetSyncProbe:
     ) -> tuple[Severity, SuggestedFix]:
         """Decide how serious a dtype shift is.
 
-        Numeric ↔ numeric (e.g. ``int`` → ``float``) — warning, manual
+        Numeric ↔ numeric (e.g. ``int`` → ``float``) - warning, manual
         (chart axes work either way but tooltips may surprise the user).
 
-        Anything that crosses the numeric/string/datetime boundary —
+        Anything that crosses the numeric/string/datetime boundary -
         error, manual (charts that bucketise on the column will break).
         """
         equiv: dict[str, set[str]] = {
@@ -556,7 +556,7 @@ def auto_heal(
 ) -> dict[str, Any]:
     """Apply every safe fix from ``sync_report`` to ``preset_config``.
 
-    Returns a *new* dict — the caller is expected to assign it back to
+    Returns a *new* dict - the caller is expected to assign it back to
     :attr:`DashboardPreset.config_json`. Issues with
     ``suggested_fix='manual'`` are left untouched; their entries remain
     in the report so the UI can drive the human review.
@@ -568,7 +568,7 @@ def auto_heal(
       ``y_field`` / ``column`` fields.
     * ``dropped_filter_value`` → removes the missing values from the
       filter list. If the resulting list is empty the *key* stays in
-      ``filters`` — that's the cascade engine's "no filter on this
+      ``filters`` - that's the cascade engine's "no filter on this
       column" shape, never an empty IN-list.
     """
     patched: dict[str, Any] = _deep_copy_dict(preset_config)
@@ -639,7 +639,7 @@ async def load_current_meta(
     by hand. Uses the same DuckDB pool the cascade engine / smart
     values do; falls back to an empty meta when the snapshot's parquet
     file is unreachable (so a sync-check on a freshly-deleted snapshot
-    is still well-defined — every referenced column will surface as
+    is still well-defined - every referenced column will surface as
     "dropped" rather than the endpoint 500-ing).
     """
     columns: list[str] = []
@@ -650,7 +650,7 @@ async def load_current_meta(
             project_id,
             "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'entities'",
         )
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.warning(
             "sync.load_current_meta failed snapshot_id=%s: %s",
             snapshot_id,

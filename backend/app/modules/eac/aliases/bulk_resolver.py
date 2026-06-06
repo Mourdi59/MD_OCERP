@@ -5,7 +5,7 @@
 Given many aliases and a single element, walk the element's property
 bag once and resolve every alias against it. The flattening step is
 the bottleneck for the per-alias resolver, so amortising it across N
-aliases gives roughly an N× speed-up — important when an aggregate
+aliases gives roughly an N× speed-up - important when an aggregate
 rule references ``_Length``, ``_Width``, ``_Volume``, ``_Material``
 all at once.
 """

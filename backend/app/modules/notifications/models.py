@@ -1,10 +1,10 @@
 """‌⁠‍Notification ORM models.
 
 Tables:
-    oe_notifications_notification — per-user in-app notifications
-    oe_notification_preference     — per-user, per-event-type channel routing
-    oe_notification_digest_queue   — queued payloads for hourly/daily digest
-    oe_notification_webhook_target — admin-managed webhook endpoints (Epic B)
+    oe_notifications_notification - per-user in-app notifications
+    oe_notification_preference     - per-user, per-event-type channel routing
+    oe_notification_digest_queue   - queued payloads for hourly/daily digest
+    oe_notification_webhook_target - admin-managed webhook endpoints (Epic B)
 """
 
 import uuid
@@ -126,7 +126,7 @@ class NotificationPreference(Base):
 class NotificationDigestQueue(Base):
     """‌⁠‍Queued notification payload waiting for the next digest flush.
 
-    ``scheduled_for`` is set when the row is created — ``now() + interval``
+    ``scheduled_for`` is set when the row is created - ``now() + interval``
     where the interval depends on the user's chosen digest cadence
     (``hourly`` → +1h, ``daily`` → next 09:00 local UTC).  The flusher
     picks up every row with ``scheduled_for <= now AND sent_at IS NULL``,
@@ -186,7 +186,7 @@ class WebhookTarget(Base):
     ``last_status`` track the most recent delivery so the Admin UI can
     surface broken endpoints without trawling logs.
 
-    NOT scoped to ``user_id`` — webhooks are tenant-global plumbing,
+    NOT scoped to ``user_id`` - webhooks are tenant-global plumbing,
     not per-user channels.  RBAC at the router edge restricts CRUD to
     admins.
     """

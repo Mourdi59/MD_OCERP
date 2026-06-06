@@ -117,7 +117,7 @@ class ObservationRepository:
         return list(result.scalars().all()), total
 
     async def next_observation_number(self, project_id: uuid.UUID) -> str:
-        # MAX(numeric suffix)+1 — see next_incident_number for the rationale
+        # MAX(numeric suffix)+1 - see next_incident_number for the rationale
         # (COUNT(*)+1 reuses numbers after a delete).
         stmt = select(SafetyObservation.observation_number).where(SafetyObservation.project_id == project_id)
         numbers = (await self.session.execute(stmt)).scalars().all()

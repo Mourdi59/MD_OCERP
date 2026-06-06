@@ -147,7 +147,7 @@ def assert_transition(current: str, target: str, *, machine: str) -> None:
         allowed = allowed_work_order_transitions(current)
     elif machine == "contract":
         allowed = allowed_contract_transitions(current)
-    else:  # pragma: no cover — caller bug
+    else:  # pragma: no cover - caller bug
         raise ValueError(f"Unknown state machine: {machine}")
 
     if target == current:
@@ -211,7 +211,7 @@ def priority_sla_minutes(priority: str | None) -> int:
     """Return the SLA window (minutes) for ``priority``.
 
     Unknown priorities fall back to the ``normal`` bucket (24h) rather than
-    raising — a stray UI value should never make a ticket SLA-immortal.
+    raising - a stray UI value should never make a ticket SLA-immortal.
     """
     if priority is None:
         return _PRIORITY_SLA_HOURS["normal"] * 60
@@ -546,7 +546,7 @@ class ServiceService:
         )
 
         # Race-safe ticket number allocation, scoped per contract. See
-        # ``create_contract`` for the rationale — concurrent /tickets/ POSTs
+        # ``create_contract`` for the rationale - concurrent /tickets/ POSTs
         # against the same contract previously raced past COUNT(*) and
         # produced duplicate T-NNNNN labels.
         ticket: ServiceTicket | None = None
@@ -647,7 +647,7 @@ class ServiceService:
         check against the JWT payload. When False, mutating
         :data:`TICKET_DISPATCH_PROTECTED_FIELDS` (``assigned_to``,
         ``sla_due_at``, ``sla_breach_notified_at``, ``sla_breached_at``)
-        raises 403 — closing the privilege-escalation hole where an EDITOR
+        raises 403 - closing the privilege-escalation hole where an EDITOR
         with ``service.update`` could self-assign internal techs or silence
         SLA-breach alerts by pushing ``sla_due_at`` into the future.
         """
@@ -683,7 +683,7 @@ class ServiceService:
             new_status = fields["status"]
             assert_transition(ticket.status, new_status, machine="ticket")
             # Keep lifecycle timestamps consistent with the dedicated
-            # resolve/close endpoints when an admin corrects status via PATCH —
+            # resolve/close endpoints when an admin corrects status via PATCH -
             # otherwise a 'closed' ticket can end up with closed_at = NULL.
             if new_status == "resolved" and ticket.status != "resolved" and ticket.resolved_at is None:
                 fields["resolved_at"] = _utcnow_iso()
@@ -758,7 +758,7 @@ class ServiceService:
         )
         await self.session.refresh(ticket)
 
-        # Epic H — universal audit trail.
+        # Epic H - universal audit trail.
         from app.core.audit_log import log_activity as _log_activity
 
         await _log_activity(
@@ -798,7 +798,7 @@ class ServiceService:
         )
         await self.session.refresh(ticket)
 
-        # Epic H — universal audit trail.
+        # Epic H - universal audit trail.
         from app.core.audit_log import log_activity as _log_activity
 
         await _log_activity(
@@ -834,7 +834,7 @@ class ServiceService:
 
         Tickets closed within the last :data:`TICKET_REOPEN_WINDOW_DAYS` days
         may be moved back to ``in_progress``. Past that window a new ticket
-        must be filed — this keeps the audit trail clean and avoids inflating
+        must be filed - this keeps the audit trail clean and avoids inflating
         old SLA measurements.
         """
         ticket = await self.get_ticket(ticket_id)
@@ -858,7 +858,7 @@ class ServiceService:
             except HTTPException:
                 raise
             except (ValueError, TypeError):
-                pass  # Unparseable closed_at — allow reopen rather than blocking
+                pass  # Unparseable closed_at - allow reopen rather than blocking
 
         assert_transition(ticket.status, "in_progress", machine="ticket")
         meta = dict(ticket.metadata_ or {})
@@ -901,7 +901,7 @@ class ServiceService:
         ticket_id: uuid.UUID,
         body: TicketAwaitCustomerRequest,
     ) -> ServiceTicket:
-        """Move a ticket to ``awaiting_customer`` — SLA clock paused."""
+        """Move a ticket to ``awaiting_customer`` - SLA clock paused."""
         ticket = await self.get_ticket(ticket_id)
         assert_transition(ticket.status, "awaiting_customer", machine="ticket")
         now_iso = _utcnow_iso()
@@ -952,7 +952,7 @@ class ServiceService:
     ) -> SLAOverdueSummaryResponse:
         """Return tickets overdue on response_due_at or resolution_due_at.
 
-        Tickets in ``awaiting_customer`` are excluded — the clock is
+        Tickets in ``awaiting_customer`` are excluded - the clock is
         considered paused while waiting on the customer.
         """
         from sqlalchemy import select
@@ -1019,7 +1019,7 @@ class ServiceService:
         # state that bypasses the finance hand-off. ``billed`` skips the
         # ``bill_work_order`` finance event + roll-up, and ``cancelled`` is a
         # terminal no-op. A direct ``completed`` is legitimate (retroactive
-        # entry of work already done) — we just back-fill the billed_amount
+        # entry of work already done) - we just back-fill the billed_amount
         # roll-up below so that path never loses its total.
         allowed_initial = {"scheduled", "dispatched", "in_progress", "completed"}
         if data.status not in allowed_initial:
@@ -1235,7 +1235,7 @@ class ServiceService:
     async def verify_work_order(self, wo_id: uuid.UUID) -> ServiceWorkOrder:
         """Supervisor sign-off: move a ``completed`` WO to ``verified``.
 
-        R7: requires at least one item on the WO — a verification with zero
+        R7: requires at least one item on the WO - a verification with zero
         items is rejected (400) to prevent empty sign-offs on untouched WOs.
         """
         wo = await self.get_work_order(wo_id)
@@ -1442,7 +1442,7 @@ class ServiceService:
         in_progress_tickets = await self.ticket_repo.count_in_progress_for_contract(contract_id)
 
         # SLA breaches: tickets past sla_due_at, not yet resolved/closed/cancelled.
-        # Count at the DB level — materialising rows here would also trigger the
+        # Count at the DB level - materialising rows here would also trigger the
         # ServiceTicket.work_orders selectin load for every breached ticket.
         now_iso = _utcnow_iso()
         sla_breach_stmt = (
@@ -1546,7 +1546,7 @@ class ServiceService:
         Args:
             contract_id: restrict the scan to one contract. Default scans all.
             notify: if False, list breaches but don't emit events / stamp the
-                ticket — used for read-only dashboard polling.
+                ticket - used for read-only dashboard polling.
 
         Returns:
             ``SLABreachScanResponse`` containing every currently-overdue ticket
@@ -1638,7 +1638,7 @@ class ServiceService:
         """File an NCR linked to a work order, on the parent project.
 
         Walks WO → ticket → contract → project_id. Requires the contract to
-        carry a ``project_id`` — NCR is a project-scoped construct. Raises
+        carry a ``project_id`` - NCR is a project-scoped construct. Raises
         409 otherwise.
         """
         wo = await self.get_work_order(wo_id)
@@ -1779,7 +1779,7 @@ class ServiceService:
         currently-breached open tickets.
 
         Distinct from :meth:`scan_sla_breaches` (which only handles the
-        *notification* idempotency stamp ``sla_breach_notified_at``) — this
+        *notification* idempotency stamp ``sla_breach_notified_at``) - this
         method is the T10 ground-truth marker used by the dashboard countdown.
         """
         from sqlalchemy import select
@@ -1952,7 +1952,7 @@ class ServiceService:
         if not fields:
             return sched
         # If the RRULE changed and no explicit next_run_at was supplied, leave
-        # next_run_at alone — the materialiser will recompute it on its next
+        # next_run_at alone - the materialiser will recompute it on its next
         # tick. This avoids surprising the user mid-cycle.
         await self.recurring_repo.update_fields(schedule_id, **fields)
         await self.session.refresh(sched)
@@ -2004,8 +2004,8 @@ class ServiceService:
                 )
 
         # Build a ServiceTicketCreate from the template. ``contract_id`` is
-        # required, taken from the template payload or — when the schedule
-        # itself carries one — from the schedule row.
+        # required, taken from the template payload or - when the schedule
+        # itself carries one - from the schedule row.
         template = dict(sched.template_ticket_data or {})
         contract_id_raw = template.get("contract_id") or (str(sched.contract_id) if sched.contract_id else None)
         if not contract_id_raw:
@@ -2031,7 +2031,7 @@ class ServiceService:
                 detail=f"Invalid template_ticket_data: {exc}",
             ) from exc
 
-        # Snapshot schedule fields BEFORE any update_fields() call — the
+        # Snapshot schedule fields BEFORE any update_fields() call - the
         # repository's ``expire_all()`` would otherwise force a re-load of
         # ``sched.rrule`` / ``sched.next_run_at`` outside the async greenlet.
         sched_id = sched.id

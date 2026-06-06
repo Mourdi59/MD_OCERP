@@ -1,4 +1,4 @@
-"""‌⁠‍Validation engine — configurable rule-based data validation.
+"""‌⁠‍Validation engine - configurable rule-based data validation.
 
 This is a FIRST-CLASS component of OpenEstimate. Every data import and
 modification passes through validation. Rules are organized into rule sets
@@ -30,9 +30,9 @@ logger = logging.getLogger(__name__)
 class Severity(StrEnum):
     """‌⁠‍Validation result severity."""
 
-    ERROR = "error"  # Blocks workflow — must be resolved
-    WARNING = "warning"  # Flags issue — can proceed with acknowledgment
-    INFO = "info"  # Suggestion — informational only
+    ERROR = "error"  # Blocks workflow - must be resolved
+    WARNING = "warning"  # Flags issue - can proceed with acknowledgment
+    INFO = "info"  # Suggestion - informational only
 
 
 class ValidationStatus(StrEnum):
@@ -53,7 +53,7 @@ class RuleCategory(StrEnum):
     COMPLIANCE = "compliance"  # Standard compliance (DIN, NRM, etc.)
     QUALITY = "quality"  # Data quality (anomalies, outliers)
     CUSTOM = "custom"  # User-defined rules
-    DIAGNOSTIC = "diagnostic"  # Engine/infra failure — NOT a compliance finding
+    DIAGNOSTIC = "diagnostic"  # Engine/infra failure - NOT a compliance finding
 
 
 # ── Shared scoring ──────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ class ValidationReport:
 
     @property
     def status(self) -> ValidationStatus:
-        # Engine-error-only reports are not a real validation pass — there is
+        # Engine-error-only reports are not a real validation pass - there is
         # no compliance signal, so SKIPPED is the honest status (E-VAL-018).
         compliance_results = [r for r in self.results if not r.is_engine_error]
         if not compliance_results:
@@ -176,14 +176,14 @@ class ValidationReport:
 
         Three corrections vs. the naive per-result weighted ratio:
 
-        * Engine-error rows are excluded entirely — an infrastructure failure
+        * Engine-error rows are excluded entirely - an infrastructure failure
           must not move the quality number (E-VAL-018).
         * The presence of *any* blocking compliance ERROR caps the score so a
           single fatal error on an otherwise-clean 20-position BOQ can never
           read as "99% quality". The cap shrinks with the error count but
           stays strictly above 0 so the score still discriminates between
           "one error" and "everything broken".
-        * A report with **no compliance results** (SKIPPED — nothing was
+        * A report with **no compliance results** (SKIPPED - nothing was
           actually checked) has *no* quality signal, so the score is ``None``
           rather than a misleading ``1.0`` / "100% quality" (NEW-VAL-004).
         """

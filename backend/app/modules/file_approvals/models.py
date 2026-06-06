@@ -4,12 +4,12 @@
 
 Tables
 ------
-* ``oe_file_approval_workflow`` — one submission. ``status`` is the
+* ``oe_file_approval_workflow`` - one submission. ``status`` is the
   workflow-level decision; it flips to ``approved`` only when every
   step in ``sort_order`` order has ``decision='approved'``. A single
   ``rejected`` decision short-circuits the workflow to ``rejected``.
-* ``oe_file_approval_step``    — per-approver row, ``sort_order``-keyed.
-* ``oe_file_stamp_template``   — reusable stamp definitions (SVG +
+* ``oe_file_approval_step``    - per-approver row, ``sort_order``-keyed.
+* ``oe_file_stamp_template``   - reusable stamp definitions (SVG +
   default colour + text). ``project_id=NULL`` means "global / system"
   and is seeded by the migration.
 """
@@ -58,7 +58,7 @@ class FileStampTemplate(Base):
     ``Rejected``). Project-scoped rows override globals by name.
 
     Name is ``File``-prefixed to avoid colliding with the existing
-    ``StampTemplate`` class in :mod:`app.modules.markups.models` —
+    ``StampTemplate`` class in :mod:`app.modules.markups.models` -
     SQLAlchemy's declarative registry deduplicates by short class name
     when string-based ``relationship`` lookups are used elsewhere.
     """
@@ -94,7 +94,7 @@ class FileApprovalWorkflow(Base):
 
     Renamed from ``ApprovalWorkflow`` to avoid colliding with the
     workflow-engine class of the same name in the
-    :mod:`app.modules.enterprise_workflows` module — SQLAlchemy's
+    :mod:`app.modules.enterprise_workflows` module - SQLAlchemy's
     declarative registry dedupes by short class name when string-based
     relationship lookups are used across modules.
     """

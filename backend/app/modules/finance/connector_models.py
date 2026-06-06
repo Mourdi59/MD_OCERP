@@ -3,9 +3,9 @@
 """‌⁠‍ORM models for finance ERP / accounting connectors.
 
 Tables:
-    oe_finance_connector_config — a configured connection to an external
+    oe_finance_connector_config - a configured connection to an external
                                   accounting / ERP system.
-    oe_finance_sync_log         — one row per sync run (push or pull),
+    oe_finance_sync_log         - one row per sync run (push or pull),
                                   including dry runs, for the history view.
 
 Kept in a separate module from ``finance/models.py`` so the connector

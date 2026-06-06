@@ -1,24 +1,24 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""‌⁠‍Smart Views event subscribers — cross-module visibility refresh.
+"""‌⁠‍Smart Views event subscribers - cross-module visibility refresh.
 
 This module is auto-imported by ``module_loader`` when ``oe_smart_views``
 loads (see ``core/module_loader.py:_load_module`` → ``events.py``).
 
-Background — issue #103 (federation visibility staleness on owner change)
+Background - issue #103 (federation visibility staleness on owner change)
 ==========================================================================
 
 A SmartView's *visibility* is derived, not stored:
 
-* ``user`` scope    — owner is implicit (``created_by`` = ``scope_id``).
-* ``project`` scope — readable to whoever can read the project, which
+* ``user`` scope    - owner is implicit (``created_by`` = ``scope_id``).
+* ``project`` scope - readable to whoever can read the project, which
   in the current model is the project's owner. Change the project owner
   and the readable-by set flips overnight.
-* ``federation`` scope — same, transitively (federation → project →
+* ``federation`` scope - same, transitively (federation → project →
   owner).
 
 The CRUD path now emits ``smart_views.visibility_changed`` on every
 create / update / delete / share / revoke (see ``service.py``), but
-owner changes happen *outside* this module — they land as a
+owner changes happen *outside* this module - they land as a
 ``projects.project.updated`` event. Without the subscriber below the
 BIM viewer's SmartViews dropdown would keep listing the previous owner's
 views until the user hard-refreshed.
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 async def _refresh_on_project_update(event: Event) -> None:
     """Re-emit ``smart_views.visibility_changed`` on project owner change.
 
-    Only fires when the ``owner_id`` field was actually mutated — the
+    Only fires when the ``owner_id`` field was actually mutated - the
     common case (``name`` / ``description`` / ``status`` edits) does
     not affect SmartView visibility and we skip the DB roundtrip.
 
@@ -58,7 +58,7 @@ async def _refresh_on_project_update(event: Event) -> None:
     if not project_id_raw:
         return
     if "owner_id" not in updated_fields:
-        # The 99% case — nothing to do.
+        # The 99% case - nothing to do.
         return
 
     try:
@@ -71,7 +71,7 @@ async def _refresh_on_project_update(event: Event) -> None:
             project_views = list((await session.execute(proj_stmt)).scalars().all())
 
             # Resolve federation-scoped views whose federation lives
-            # under this project. Local import — keeps a soft dep on
+            # under this project. Local import - keeps a soft dep on
             # bim_hub to module-load time, not to module-import time.
             from app.modules.bim_hub.models import BIMFederation
 
@@ -82,7 +82,7 @@ async def _refresh_on_project_update(event: Event) -> None:
             )
             federation_views = list((await session.execute(fed_stmt)).scalars().all())
 
-        # Publish outside the session — subscribers may open their own.
+        # Publish outside the session - subscribers may open their own.
         for view in [*project_views, *federation_views]:
             try:
                 await event_bus.publish(

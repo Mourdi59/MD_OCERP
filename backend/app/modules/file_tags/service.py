@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""File tags service — CRUD + bulk assign/unassign + AECO defaults.
+"""File tags service - CRUD + bulk assign/unassign + AECO defaults.
 
 Stateless. Methods take an :class:`AsyncSession` explicitly so the
 router can compose them inside a transaction (or a test can drive them
@@ -67,7 +67,7 @@ def _build_response(tag: FileTag, count: int) -> TagResponse:
 
 
 async def _to_responses(session: AsyncSession, tags: list[FileTag]) -> list[TagResponse]:
-    """Batched variant of :func:`_to_response` — one GROUP BY query for the
+    """Batched variant of :func:`_to_response` - one GROUP BY query for the
     counts instead of one COUNT(*) per tag (kills the N+1 in
     :func:`list_tags`)."""
     if not tags:
@@ -177,7 +177,7 @@ async def update_tag(
         tag.category = payload.category
     await session.flush()
     # Refresh so the server-side ``onupdate=func.now()`` value lands in
-    # the ORM object — without this, accessing ``tag.updated_at`` lazy-
+    # the ORM object - without this, accessing ``tag.updated_at`` lazy-
     # loads a SELECT outside the active greenlet and raises
     # MissingGreenlet under asyncio.
     await session.refresh(tag)
@@ -252,7 +252,7 @@ async def assign_tag(
     try:
         await session.flush()
     except IntegrityError:
-        # Race window with a parallel writer — recount what's there and
+        # Race window with a parallel writer - recount what's there and
         # treat duplicates as "already done" rather than 500ing.
         await session.rollback()
         existing_ids = {row for row in (await session.execute(existing_stmt)).scalars().all()}
@@ -367,7 +367,7 @@ async def seed_default_tags(
 ) -> TagSeedResponse:
     """Idempotently seed the AECO standard tags into a project.
 
-    Calling twice yields the same set — every tag is checked by slug
+    Calling twice yields the same set - every tag is checked by slug
     before insertion, so duplicates land in ``existing``.
     """
     created = 0
@@ -400,7 +400,7 @@ async def seed_default_tags(
     try:
         await session.flush()
     except IntegrityError:
-        # Race window with another parallel seeder — silently re-load.
+        # Race window with another parallel seeder - silently re-load.
         logger.exception("Race window during seed_default_tags; recovering")
         await session.rollback()
         # On rollback, the in-memory ``seeded`` objects are detached;

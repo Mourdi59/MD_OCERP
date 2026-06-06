@@ -1,13 +1,13 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Excel BoQ source adapter — pre-parsed BoQ rows to /match-elements.
+"""‌⁠‍Excel BoQ source adapter - pre-parsed BoQ rows to /match-elements.
 
-Implements MAPPING_PROCESS.md §4.1.5 — the "Excel BoQ" source. The
+Implements MAPPING_PROCESS.md §4.1.5 - the "Excel BoQ" source. The
 estimator uploads an xlsx (description + qty + unit, optionally a
 pre-existing rate code), we parse it once at session-creation time
 and persist the rows into ``MatchSession.metadata_["boq_rows"]``.
 
-This adapter is then a thin reader over those rows — no xlsx parsing
+This adapter is then a thin reader over those rows - no xlsx parsing
 on the hot path. Each row becomes a :class:`SourceElement` with the
 description landing in the dense/sparse query and the unit mapped to
 a canonical quantity dimension so the v3 SearchPlan's ``unit_dim``
@@ -17,10 +17,10 @@ Fast-path for explicit codes
 ----------------------------
 When a BoQ row carries an exact CWICR ``code`` column, the adapter
 forwards it as ``attributes["exact_code"]``. The downstream ranker
-short-circuits the Qdrant fan-out for those rows — direct parquet
+short-circuits the Qdrant fan-out for those rows - direct parquet
 lookup by ``rate_code`` is O(50 ms) regardless of catalogue size.
-This matches MAPPING_PROCESS §4.4 ("если запрос — это явно один
-токен (код или класс) — переключайся на sparse-only").
+This matches MAPPING_PROCESS §4.4 ("если запрос - это явно один
+токен (код или класс) - переключайся на sparse-only").
 
 Storage shape
 -------------
@@ -90,7 +90,7 @@ _UNIT_TO_QTY_KEY: dict[str, str] = {
     "kg": "mass_kg",
     "кг": "mass_kg",
     "lb": "mass_kg",
-    # Mass (tonnes — convert to kg for downstream consistency)
+    # Mass (tonnes - convert to kg for downstream consistency)
     "t": "mass_t",
     "ton": "mass_t",
     "tonne": "mass_t",
@@ -111,7 +111,7 @@ _UNIT_TO_QTY_KEY: dict[str, str] = {
 def _to_float(val: Any) -> float | None:
     """‌⁠‍Coerce a BoQ qty cell to float, tolerating "12,3" and "12.3 m³".
 
-    Returns ``None`` for blanks, non-numeric text, or coercion failures —
+    Returns ``None`` for blanks, non-numeric text, or coercion failures -
     callers treat that as "no quantity for this row".
     """
     if val is None:
@@ -192,7 +192,7 @@ class BoqAdapter:
 
     async def list_attribute_keys(
         self,
-        project_id: uuid.UUID,  # noqa: ARG002 — boq adapter is session-scoped
+        project_id: uuid.UUID,  # noqa: ARG002 - boq adapter is session-scoped
         bim_model_id: uuid.UUID | None = None,  # noqa: ARG002
     ) -> list[str]:
         """Return the union of dict keys across all BoQ rows.
@@ -214,7 +214,7 @@ class BoqAdapter:
         project_id: uuid.UUID,  # noqa: ARG002
         bim_model_id: uuid.UUID | None = None,  # noqa: ARG002
     ) -> list[tuple[str, int]]:
-        """Group rows by ``category`` (or ``section``) — fallback "BoQ"."""
+        """Group rows by ``category`` (or ``section``) - fallback "BoQ"."""
         counter: Counter[str] = Counter()
         for row in self._rows():
             cat = str(row.get("category") or row.get("section") or "BoQ") or "BoQ"
@@ -228,7 +228,7 @@ class BoqAdapter:
         bim_model_id: uuid.UUID | None = None,  # noqa: ARG002
         filters: dict[str, list[Any]] | None = None,
         excluded_categories: list[str] | None = None,
-        use_net_quantities: bool = True,  # noqa: ARG002 — BoQ has no openings
+        use_net_quantities: bool = True,  # noqa: ARG002 - BoQ has no openings
     ) -> list[SourceElement]:
         """Convert each parsed BoQ row to a :class:`SourceElement`."""
         excluded = {str(c) for c in (excluded_categories or []) if c}
@@ -256,7 +256,7 @@ class BoqAdapter:
             # IFC class name (``IfcWall`` / ``IfcSlab`` / …). The
             # synthetic source label (default ``"BoQ"``, or whatever the
             # estimator wrote in the ``category`` / ``section`` column)
-            # is NOT an IFC class — promoting it would poison the
+            # is NOT an IFC class - promoting it would poison the
             # downstream Qdrant ``ifc_class`` hard filter and eliminate
             # 100% of CWICR candidate rows (see
             # :doc:`memory/match_elements_three_filter_bugs`).
@@ -264,7 +264,7 @@ class BoqAdapter:
             if not (isinstance(row_ifc, str) and row_ifc.startswith("Ifc")):
                 attrs.pop("ifc_class", None)
 
-            # Exact-code shortcut (§4.4 — sparse-only would be enough,
+            # Exact-code shortcut (§4.4 - sparse-only would be enough,
             # but the ranker layer reads ``exact_code`` and skips Qdrant
             # fan-out entirely when present).
             code = row.get("code") or row.get("rate_code")

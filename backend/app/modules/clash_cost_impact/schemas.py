@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 # ── v3 §10 money serialisation helper ─────────────────────────────────────
-# Mirrors backend/app/modules/boq/schemas.py — money fields are stored /
+# Mirrors backend/app/modules/boq/schemas.py - money fields are stored /
 # accepted as Decimal but emitted as plain decimal strings in JSON.
 def _serialise_money(v: Decimal | None) -> str | None:
     if v is None:
@@ -35,7 +35,7 @@ class AffectedPosition(BaseModel):
     """A BOQ position that participates in a clash's rework subtotal.
 
     The list lets a quantity surveyor click through to the exact lines
-    that the rework factor was applied to — defensible numbers, not a
+    that the rework factor was applied to - defensible numbers, not a
     black-box guess.
     """
 
@@ -89,12 +89,12 @@ class ClashCostImpactResponse(BaseModel):
     ``confidence`` is the surveyor-honest label for how reliable the
     figure is:
 
-    * ``high``   — at least one BOQ position links to one of the clash's
+    * ``high``   - at least one BOQ position links to one of the clash's
       element GUIDs. ``rework_subtotal`` carries real money.
-    * ``medium`` — no BOQ overlap; the figure is the trade-pair labour
+    * ``medium`` - no BOQ overlap; the figure is the trade-pair labour
       estimate only. The UI should treat it as an order-of-magnitude
       hint, not an invoice.
-    * ``low``    — neither side has data (no element GUIDs OR no labour
+    * ``low``    - neither side has data (no element GUIDs OR no labour
       lookup hit). The total is zero / token; do not present it as a
       number the QS can defend.
     """
@@ -121,7 +121,7 @@ class ProjectCostImpactRollupResponse(BaseModel):
     ``total_open_impact`` is the sum of every selected clash's
     ``total_estimate`` (already in the project currency, no FX
     conversion). ``by_trade_pair`` is the discipline×discipline
-    breakdown — pairs are normalised to ``[min, max]`` alphabetic so
+    breakdown - pairs are normalised to ``[min, max]`` alphabetic so
     ``(arch, struct)`` and ``(struct, arch)`` collapse into one row.
     """
 

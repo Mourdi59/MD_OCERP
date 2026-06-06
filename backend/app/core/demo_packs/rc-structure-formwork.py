@@ -3,7 +3,7 @@ from __future__ import annotations
 from app.core.demo_projects import DemoTemplate
 
 # ---------------------------------------------------------------------------
-# Demo pack: doker-formwork (Doker — Schalung / formwork specialist, DACH)
+# Demo pack: doker-formwork (Doker - Schalung / formwork specialist, DACH)
 #
 # Flagship project where the cast-in-place reinforced-concrete structure and
 # the FORMWORK SYSTEMS are the hero of the BOQ: a 7-storey reinforced-concrete
@@ -21,7 +21,7 @@ from app.core.demo_projects import DemoTemplate
 #   DIN EN 206 + DIN 1045-2       concrete specification, exposure classes
 #   DIN EN 13670 / DIN 1045-3     execution of concrete structures
 #   DIN 18218:2010-01            fresh-concrete pressure on vertical formwork
-#   DIN EN 12812 (DIN 4421)      falsework — performance + design
+#   DIN EN 12812 (DIN 4421)      falsework - performance + design
 #   DIN EN 12813                 load-bearing towers of prefab components
 #   VOB/C DIN 18331              concrete works (contract terms)
 #   VOB/C DIN 18451              scaffolding works
@@ -110,7 +110,7 @@ TEMPLATE = DemoTemplate(
                 ("322.10", "Perimeterdaemmung XPS 120mm (Perimeter insulation)", "m2", 1450, 46.00, {"din276": "322"}),
             ],
         ),
-        # ── KG 331 Tragende Aussenwaende — Schalung & Beton ──────────
+        # ── KG 331 Tragende Aussenwaende - Schalung & Beton ──────────
         (
             "331",
             "KG 331 - Tragende Aussenwaende (Schalung/Beton)",
@@ -128,7 +128,7 @@ TEMPLATE = DemoTemplate(
                 ("331.10", "Anschlussbewehrung / Schraubmuffen (Coupler starter bars)", "pcs", 2400, 12.50, {"din276": "331"}),
             ],
         ),
-        # ── KG 333 Aussenstuetzen — Schalung & Beton ─────────────────
+        # ── KG 333 Aussenstuetzen - Schalung & Beton ─────────────────
         (
             "333",
             "KG 333 - Aussenstuetzen (Schalung/Beton)",
@@ -143,7 +143,7 @@ TEMPLATE = DemoTemplate(
                 ("333.7", "Stuetzenkopf-Verstaerkung / Pilzkopf Schalung (Column head drop formwork)", "pcs", 84, 145.00, {"din276": "333"}),
             ],
         ),
-        # ── KG 341 Tragende Innenwaende / Kerne — Kletterschalung ────
+        # ── KG 341 Tragende Innenwaende / Kerne - Kletterschalung ────
         (
             "341",
             "KG 341 - Tragende Innenwaende / Kerne (Kletterschalung)",
@@ -160,7 +160,7 @@ TEMPLATE = DemoTemplate(
                 ("341.9", "Betonpumpe Hochdruck Kern, Vorhaltung (High-rise concrete pump standing time)", "day", 42, 1250.00, {"din276": "341"}),
             ],
         ),
-        # ── KG 351 Decken — Deckenschalung & Beton ───────────────────
+        # ── KG 351 Decken - Deckenschalung & Beton ───────────────────
         (
             "351",
             "KG 351 - Decken (Deckenschalung/Beton)",
@@ -239,7 +239,7 @@ TEMPLATE = DemoTemplate(
                 ("371.6", "Antirutschbeschichtung Rampen (Anti-slip ramp coating)", "m2", 1600, 32.00, {"din276": "371"}),
             ],
         ),
-        # ── KG 359 Fertigteil-Ergaenzungen — use KG 379 ──────────────
+        # ── KG 359 Fertigteil-Ergaenzungen - use KG 379 ──────────────
         (
             "379",
             "KG 379 - Fertigteil-Ergaenzungen",

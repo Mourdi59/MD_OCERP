@@ -4,9 +4,9 @@
 
 Two surfaces:
 
-* ISO 19650 naming validation — per-file violation rows with an
+* ISO 19650 naming validation - per-file violation rows with an
   acknowledge workflow.
-* Generic cross-entity references — link a file to an RFI / Issue /
+* Generic cross-entity references - link a file to an RFI / Issue /
   Task / Submittal / Punch-list item.
 """
 

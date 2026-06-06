@@ -1,18 +1,18 @@
 """‌⁠‍Resources ORM models.
 
 Tables:
-    oe_resources_resource             — people / crews / equipment / subcontractors
-    oe_resources_skill                — skill catalogue (trade / cert / language / other)
-    oe_resources_resource_skill       — resource ↔ skill assignment with level
-    oe_resources_certification        — certifications/licenses with expiry tracking
-    oe_resources_availability_window  — availability / unavailability windows (RRULE-capable)
-    oe_resources_assignment           — assignment to project/task/work order with allocation
-    oe_resources_resource_request     — open request for a resource with required skills
-    oe_resources_resource_link        — link between resources (operator <-> equipment, etc.)
+    oe_resources_resource             - people / crews / equipment / subcontractors
+    oe_resources_skill                - skill catalogue (trade / cert / language / other)
+    oe_resources_resource_skill       - resource ↔ skill assignment with level
+    oe_resources_certification        - certifications/licenses with expiry tracking
+    oe_resources_availability_window  - availability / unavailability windows (RRULE-capable)
+    oe_resources_assignment           - assignment to project/task/work order with allocation
+    oe_resources_resource_request     - open request for a resource with required skills
+    oe_resources_resource_link        - link between resources (operator <-> equipment, etc.)
 
 NB: Per Wave 1 lessons, this module uses column-level ``index=True`` for single-
 column indexes and ``__table_args__`` Index only for composite indexes. No
-SQLAlchemy ``ForeignKey`` to ``oe_contacts_contact`` — declared only in the
+SQLAlchemy ``ForeignKey`` to ``oe_contacts_contact`` - declared only in the
 Alembic migration (ORM keeps a plain UUID column).
 """
 
@@ -39,10 +39,10 @@ class Resource(Base):
     """‌⁠‍A resource that can be assigned to projects / tasks / work orders.
 
     resource_type controls behaviour:
-        person          — individual worker
-        crew            — predefined group (foreman + members)
-        equipment       — machine/tool tracked in equipment module
-        subcontractor   — external company
+        person          - individual worker
+        crew            - predefined group (foreman + members)
+        equipment       - machine/tool tracked in equipment module
+        subcontractor   - external company
     """
 
     __tablename__ = "oe_resources_resource"
@@ -64,7 +64,7 @@ class Resource(Base):
         nullable=True,
         index=True,
     )
-    # NB: ``contact_id`` is a plain UUID — declared with a real FK only in the
+    # NB: ``contact_id`` is a plain UUID - declared with a real FK only in the
     # Alembic migration so test fixtures (which don't load contacts) still work.
     contact_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     default_cost_rate: Mapped[Decimal] = mapped_column(
@@ -74,7 +74,7 @@ class Resource(Base):
     # Maximum concurrent allocation this resource can absorb in a time bucket,
     # expressed in the same percent unit as Assignment.allocation_percent. A
     # single full-time person is 100; a 3-strong crew that can split across
-    # three sites is 300. NULL means the planner has not declared a capacity —
+    # three sites is 300. NULL means the planner has not declared a capacity -
     # portfolio leveling then reports the bucket as "capacity unknown" and
     # NEVER as over-allocated, so we never fabricate a ceiling.
     capacity_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -258,7 +258,7 @@ class Assignment(Base):
         index=True,
     )
     # String-typed reference to either oe_service_work_order or
-    # oe_equipment_work_order — no FK because the target table is not
+    # oe_equipment_work_order - no FK because the target table is not
     # known at model-definition time and may be created by a different
     # parallel agent.
     work_order_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)

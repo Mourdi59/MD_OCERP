@@ -5,17 +5,17 @@
 Bridges plain-English (and DE/RU) authoring with the strict YAML DSL
 shipped in T08. The flow is:
 
-1. The user types a plain sentence — *"all walls must have a fire-rating
+1. The user types a plain sentence - *"all walls must have a fire-rating
    property"*.
 2. :func:`parse_nl_to_dsl` runs a deterministic pattern matcher first.
-   This is intentionally fast, predictable, and offline — every match
+   This is intentionally fast, predictable, and offline - every match
    carries a confidence score.
 3. If pattern matching is uncertain *and* an AI client is available,
    the function falls back to LLM generation. The generated YAML is
    then re-parsed via :mod:`app.core.validation.dsl.parser`; on parse
    failure the AI result is rejected.
 
-The pattern matcher knows nothing about the user's project schema — it
+The pattern matcher knows nothing about the user's project schema - it
 only emits valid DSL skeletons. Users always confirm the generated
 YAML before saving (the router never auto-persists). This keeps the
 "AI-augmented, human-confirmed" principle intact.
@@ -52,7 +52,7 @@ class NlBuildResult:
         errors: Human-readable issues. Non-empty when the result is
             unusable.
         matched_pattern: ID of the pattern that fired (None for AI/fallback).
-        suggestions: Hints the UI can show — e.g. "rephrase as 'all <X>
+        suggestions: Hints the UI can show - e.g. "rephrase as 'all <X>
             must have <Y>'".
     """
 
@@ -77,7 +77,7 @@ class _Pattern:
     """
 
     pattern_id: str
-    name_key: str  # i18n key — e.g. "compliance.nl.pattern.must_have"
+    name_key: str  # i18n key - e.g. "compliance.nl.pattern.must_have"
     confidence: float
     regex: re.Pattern[str]
     builder: Any  # Callable[[re.Match[str]], dict[str, Any]]
@@ -285,7 +285,7 @@ def _b_count_zero(m: re.Match[str]) -> dict[str, Any]:
     }
 
 
-# ── Pattern table — order matters (longest / most specific first) ──────────
+# ── Pattern table - order matters (longest / most specific first) ──────────
 
 
 _PATTERNS: tuple[_Pattern, ...] = (
@@ -392,7 +392,7 @@ _PATTERNS: tuple[_Pattern, ...] = (
         ),
         builder=_b_count_zero,
     ),
-    # "all walls must have a fire-rating property" — generic must-have.
+    # "all walls must have a fire-rating property" - generic must-have.
     # Keep this pattern *last* among universal-quantifier rules because
     # value-based forms above are more specific.
     _Pattern(
@@ -411,7 +411,7 @@ _PATTERNS: tuple[_Pattern, ...] = (
 )
 
 
-# ── Localised aliases — trivial pre-pass to English ────────────────────────
+# ── Localised aliases - trivial pre-pass to English ────────────────────────
 
 _DE_REPLACEMENTS: tuple[tuple[str, str], ...] = (
     (r"\balle\b", "all"),
@@ -455,7 +455,7 @@ _RU_REPLACEMENTS: tuple[tuple[str, str], ...] = (
 
 # Bound the inner field length so the regex cannot exhibit polynomial
 # backtracking (CodeQL `py/polynomial-redos`). The inner class includes `\s`
-# AND the outer suffix is `\s+have` — without an explicit upper bound an
+# AND the outer suffix is `\s+have` - without an explicit upper bound an
 # adversarial input like "must " + "a"*N + " havz" would force quadratic
 # scanning. 100 chars is well above any real DSL phrase length.
 _DE_V2_REORDER = re.compile(
@@ -504,7 +504,7 @@ def _try_patterns(
             continue
         try:
             return pat, pat.builder(match)
-        except Exception:  # pragma: no cover — defensive
+        except Exception:  # pragma: no cover - defensive
             logger.exception("NL pattern '%s' builder crashed", pat.pattern_id)
             continue
     return None
@@ -531,7 +531,7 @@ OR a single-assert form:
   expression:
     assert: <expression>
 
-Only respond with the YAML in a code fence — no prose. Identifiers
+Only respond with the YAML in a code fence - no prose. Identifiers
 must be lowercase ASCII with underscores. Allowed comparison operators:
 ==, !=, <, <=, >, >=, in. Allowed logical operators: and, or, not.
 Aggregations: count, sum, avg, min, max.
@@ -557,10 +557,10 @@ async def _ai_fallback(
     lang: str,
     ai_caller: Any | None,
 ) -> tuple[dict[str, Any], list[str]] | None:
-    """Optional LLM call — returns a parsed dict or ``None`` on failure.
+    """Optional LLM call - returns a parsed dict or ``None`` on failure.
 
     ``ai_caller`` is a coroutine ``(system, prompt) -> str``. The
-    function never raises — failures degrade to ``None`` so the caller
+    function never raises - failures degrade to ``None`` so the caller
     can keep the deterministic pattern result if any.
     """
     if ai_caller is None:
@@ -569,7 +569,7 @@ async def _ai_fallback(
     user_prompt = f"User language: {lang}\nUser rule: {text}\n\nReturn the YAML rule definition only."
     try:
         raw = await ai_caller(_AI_SYSTEM_PROMPT, user_prompt)
-    except Exception as exc:  # broad — providers raise diverse errors
+    except Exception as exc:  # broad - providers raise diverse errors
         logger.warning("NL builder AI call failed: %s", exc)
         return None
 
@@ -581,13 +581,13 @@ async def _ai_fallback(
         # Validate via the strict T08 parser. parse_definition returns
         # a typed AST but we re-serialise to dict via the loader path
         # to keep the public DTO simple (router can lint independently).
-        import yaml  # lazy — keeps import cheap when AI is disabled.
+        import yaml  # lazy - keeps import cheap when AI is disabled.
 
         data = yaml.safe_load(yaml_text)
         if not isinstance(data, dict):
             return None
         # Round-trip through the parser to confirm validity. We discard
-        # the typed AST — the dict itself is what the UI shows.
+        # the typed AST - the dict itself is what the UI shows.
         parse_definition(data)
         return data, []
     except DSLError as exc:
@@ -627,7 +627,7 @@ async def parse_nl_to_dsl(
 
     Args:
         text: User sentence (English / German / Russian).
-        lang: ISO-639-1 code — used to pick the alias table. Falls back
+        lang: ISO-639-1 code - used to pick the alias table. Falls back
             to English-only matching for unknown values.
         use_ai: When ``True`` *and* ``ai_caller`` is provided, low-
             confidence pattern misses trigger an AI call. Without an
@@ -637,7 +637,7 @@ async def parse_nl_to_dsl(
             from the router so the DSL module stays free of HTTP deps.
 
     Returns:
-        :class:`NlBuildResult`. Always non-None — even on error the
+        :class:`NlBuildResult`. Always non-None - even on error the
         caller can render ``errors`` and ``suggestions``.
     """
     if not isinstance(text, str):
@@ -677,7 +677,7 @@ async def parse_nl_to_dsl(
                 matched_pattern=pat.pattern_id,
             )
 
-    # 2. AI fallback — only if requested and a caller was injected.
+    # 2. AI fallback - only if requested and a caller was injected.
     if use_ai and ai_caller is not None:
         ai_result = await _ai_fallback(
             stripped,
@@ -693,7 +693,7 @@ async def parse_nl_to_dsl(
                     used_method="ai",
                     errors=ai_errors,
                 )
-            # data is empty but errors populated — invalid AI output.
+            # data is empty but errors populated - invalid AI output.
             return NlBuildResult(
                 used_method="ai",
                 confidence=0.0,
@@ -704,7 +704,7 @@ async def parse_nl_to_dsl(
                 suggestions=_default_suggestions(),
             )
 
-    # 3. Nothing matched — return a low-confidence empty result with
+    # 3. Nothing matched - return a low-confidence empty result with
     #    actionable hints.
     return NlBuildResult(
         used_method="fallback",
@@ -715,7 +715,7 @@ async def parse_nl_to_dsl(
 
 
 def _default_suggestions() -> list[str]:
-    """Hints rendered when nothing matched — kept intent-free of locale."""
+    """Hints rendered when nothing matched - kept intent-free of locale."""
     return [
         "Try: 'all <entity> must have <field>'",
         "Try: 'every <entity> must have <field> >= <number>'",

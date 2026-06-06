@@ -1,4 +1,4 @@
-"""‌⁠‍Safety service — business logic for incident and observation management."""
+"""‌⁠‍Safety service - business logic for incident and observation management."""
 
 from __future__ import annotations
 
@@ -64,10 +64,10 @@ def _is_recordable(inc: object) -> bool:
 def _rate_status(current: float | None, baseline: float) -> str:
     """Green/yellow/red band for a frequency rate against its safe-baseline.
 
-    * ``unknown`` — current rate could not be computed (no man-hours).
-    * ``green``   — at or below the baseline (safe).
-    * ``yellow``  — above baseline but within 150 percent of it (watch).
-    * ``red``     — more than 150 percent of the baseline (act).
+    * ``unknown`` - current rate could not be computed (no man-hours).
+    * ``green``   - at or below the baseline (safe).
+    * ``yellow``  - above baseline but within 150 percent of it (watch).
+    * ``red``     - more than 150 percent of the baseline (act).
 
     A zero baseline is degenerate (any positive rate is "above" it): treat
     any positive current as ``red`` and an exactly-zero current as ``green``.
@@ -91,10 +91,10 @@ def _compute_trend_direction(entries: list[SafetyTrendEntryExtended]) -> str:
     no-man-hours gaps) and a simple ordinary-least-squares slope. A *falling*
     LTIFR is good, so a negative slope is 'improving'.
 
-    * ``improving`` — slope < -0.2 (rate dropping)
-    * ``declining`` — slope >  0.2 (rate rising)
-    * ``stable``    — slope within +/-0.2
-    * ``unknown``   — fewer than 3 periods carry a usable LTIFR
+    * ``improving`` - slope < -0.2 (rate dropping)
+    * ``declining`` - slope >  0.2 (rate rising)
+    * ``stable``    - slope within +/-0.2
+    * ``unknown``   - fewer than 3 periods carry a usable LTIFR
     """
     rates = [e.ltifr for e in entries if e.ltifr is not None]
     if len(rates) < 3:
@@ -504,7 +504,7 @@ class SafetyService:
             total_hours_worked += _incident_man_hours(inc)
 
             # Track latest incident date robustly. An unparseable date is
-            # NOT silently dropped — it is counted so the metric can fail
+            # NOT silently dropped - it is counted so the metric can fail
             # safe toward "cannot confirm" instead of a reassuring blank.
             if inc.incident_date:
                 parsed = parse_incident_date(inc.incident_date)
@@ -539,7 +539,7 @@ class SafetyService:
             days_without_incident = max(0, (now_date - latest_incident_dt).days)
             days_without_incident_status = "ok"
         else:
-            # Incidents exist but none had a usable date — do NOT report a
+            # Incidents exist but none had a usable date - do NOT report a
             # reassuring number.
             days_without_incident_status = "unconfirmed"
 

@@ -80,7 +80,7 @@ def _lead_to_response(
     R7 audit: ``LeadResponse.model_validate(lead)`` used to echo raw
     contact_email / contact_phone to every VIEWER. Only the assigned rep,
     managers and admins should see full PII; everyone else gets
-    ``j***@example.com`` / ``+49…567``. The lead row itself is unchanged —
+    ``j***@example.com`` / ``+49…567``. The lead row itself is unchanged -
     redaction happens at the response boundary only.
     """
     email, phone = redact_lead_pii(
@@ -89,7 +89,7 @@ def _lead_to_response(
         viewer_role=viewer_role,
     )
     payload = LeadResponse.model_validate(lead)
-    # Pydantic v2 frozen=False default — we mutate the validated copy in
+    # Pydantic v2 frozen=False default - we mutate the validated copy in
     # place so the redaction can't be lost via a downstream .model_dump().
     payload.contact_email = email
     payload.contact_phone = phone
@@ -131,7 +131,7 @@ async def create_account(
 
 
 # NOTE: static sub-paths (``/accounts/tree``) MUST be declared before the
-# parameterised ``/accounts/{account_id}`` route — Starlette matches routes
+# parameterised ``/accounts/{account_id}`` route - Starlette matches routes
 # in registration order, so a later ``/accounts/tree`` would otherwise be
 # captured by ``{account_id}`` and 422 on UUID coercion of the literal
 # "tree".
@@ -819,7 +819,7 @@ async def score_opportunity(
         authority: int (0..100)
         need: int (0..100)
         timeline: int (0..100)
-        weights: optional dict[str,int] — override the 30/25/25/20 default.
+        weights: optional dict[str,int] - override the 30/25/25/20 default.
     """
     try:
         budget = int(payload.get("budget", 0))

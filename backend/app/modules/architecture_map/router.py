@@ -16,8 +16,8 @@ which is registered at ``Role.ADMIN`` in
 :mod:`app.modules.architecture_map.permissions`. ``RequirePermission``
 returns 403 to anyone below the bar.
 
-The ``?refresh=true`` query parameter — which forces re-reading a 1+ MB
-JSON file from disk — is additionally gated to admins via the same
+The ``?refresh=true`` query parameter - which forces re-reading a 1+ MB
+JSON file from disk - is additionally gated to admins via the same
 permission check (a non-admin path is impossible because the router-wide
 dependency blocks them first). This prevents a non-admin DoS vector
 where any logged-in user could hammer the endpoint and starve the event
@@ -140,7 +140,7 @@ def _audit(
     )
 
 
-# ── GET / — Full manifest ────────────────────────────────────────────────
+# ── GET / - Full manifest ────────────────────────────────────────────────
 
 
 @router.get("/")
@@ -157,7 +157,7 @@ async def get_manifest(
     return _load_manifest(force=refresh)
 
 
-# ── GET /modules — List modules ──────────────────────────────────────────
+# ── GET /modules - List modules ──────────────────────────────────────────
 
 
 @router.get("/modules/")
@@ -195,7 +195,7 @@ async def list_modules(
     return result
 
 
-# ── GET /modules/{module_id} — Single module ─────────────────────────────
+# ── GET /modules/{module_id} - Single module ─────────────────────────────
 
 
 @router.get("/modules/{module_id}")
@@ -227,7 +227,7 @@ async def get_module(
     }
 
 
-# ── GET /connections — List connections ──────────────────────────────────
+# ── GET /connections - List connections ──────────────────────────────────
 
 
 @router.get("/connections/")
@@ -256,7 +256,7 @@ async def list_connections(
     return connections
 
 
-# ── GET /search — Fuzzy search ───────────────────────────────────────────
+# ── GET /search - Fuzzy search ───────────────────────────────────────────
 
 
 @router.get("/search/")
@@ -337,7 +337,7 @@ async def search_entities(
     }
 
 
-# ── GET /stats — Aggregate statistics ────────────────────────────────────
+# ── GET /stats - Aggregate statistics ────────────────────────────────────
 
 
 @router.get("/stats/")

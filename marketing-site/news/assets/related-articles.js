@@ -1,5 +1,5 @@
 /* ============================================================
- * OpenConstructionERP — "More from the blog" related-articles widget.
+ * OpenConstructionERP - "More from the blog" related-articles widget.
  * Drop one <script src="/news/assets/related-articles.js" defer></script>
  * into any /news/*.html page; the widget renders itself, excludes
  * the current article, and works against the inline article catalog
@@ -43,7 +43,7 @@
     {
       slug: 'v5-3-0',
       href: '/news/v5-3-0.html',
-      title: 'v5.3.0 — Geo Hub round 2 + Brazil Tier-1 + login dark-mode + WCAG-AA.',
+      title: 'v5.3.0 - Geo Hub round 2 + Brazil Tier-1 + login dark-mode + WCAG-AA.',
       date: '2026-05-27',
       tag: 'Release',
       tagClass: 'release',
@@ -52,7 +52,7 @@
     {
       slug: 'v5-2-8',
       href: '/news/v5-2-8.html',
-      title: 'v5.2.8 — /geo tabs reliability + /markups deep-link + /resources inline edit.',
+      title: 'v5.2.8 - /geo tabs reliability + /markups deep-link + /resources inline edit.',
       date: '2026-05-27',
       tag: 'Release',
       tagClass: 'release',
@@ -61,7 +61,7 @@
     {
       slug: 'v5-2-7',
       href: '/news/v5-2-7.html',
-      title: 'v5.2.7 — Project-detail widget grid + one-click in-app upgrade.',
+      title: 'v5.2.7 - Project-detail widget grid + one-click in-app upgrade.',
       date: '2026-05-27',
       tag: 'Release',
       tagClass: 'release',
@@ -70,7 +70,7 @@
     {
       slug: 'v5-2-6',
       href: '/news/v5-2-6.html',
-      title: 'v5.2.6 — Demo login JustWorks. WCAG-AA contrast. Reporting renderer.',
+      title: 'v5.2.6 - Demo login JustWorks. WCAG-AA contrast. Reporting renderer.',
       date: '2026-05-27',
       tag: 'Release',
       tagClass: 'release',
@@ -79,7 +79,7 @@
     {
       slug: 'v5-2-5',
       href: '/news/v5-2-5.html',
-      title: 'v5.2.5 — Install-crash fix. Fresh pip install works again.',
+      title: 'v5.2.5 - Install-crash fix. Fresh pip install works again.',
       date: '2026-05-27',
       tag: 'Hotfix',
       tagClass: 'hotfix',
@@ -88,7 +88,7 @@
     {
       slug: 'v5-2-3',
       href: '/news/v5-2-3.html',
-      title: 'v5.2.3 — Vector-backend gate. Semantic search on by default.',
+      title: 'v5.2.3 - Vector-backend gate. Semantic search on by default.',
       date: '2026-05-27',
       tag: 'Hotfix',
       tagClass: 'hotfix',
@@ -97,7 +97,7 @@
     {
       slug: 'v5-2-2',
       href: '/news/v5-2-2.html',
-      title: 'v5.2.2 — /dashboard route + W10/W13/SAF-A3 + a11y bundle.',
+      title: 'v5.2.2 - /dashboard route + W10/W13/SAF-A3 + a11y bundle.',
       date: '2026-05-27',
       tag: 'Release',
       tagClass: 'release',
@@ -106,7 +106,7 @@
     {
       slug: 'v5-2-0',
       href: '/news/v5-2-0.html',
-      title: 'v5.2.0 — International BOQ. GAEB · BC3 · NRM · MasterFormat under one roof.',
+      title: 'v5.2.0 - International BOQ. GAEB · BC3 · NRM · MasterFormat under one roof.',
       date: '2026-05-26',
       tag: 'Release',
       tagClass: 'release',
@@ -115,7 +115,7 @@
     {
       slug: 'v5-1-0',
       href: '/news/v5-1-0.html',
-      title: 'v5.1.0 — Wave 1 polish. TypeScript strict everywhere, dispatcher hardening.',
+      title: 'v5.1.0 - Wave 1 polish. TypeScript strict everywhere, dispatcher hardening.',
       date: '2026-05-26',
       tag: 'Release',
       tagClass: 'release',
@@ -124,7 +124,7 @@
     {
       slug: 'v5-0-0',
       href: '/news/v5-0-0.html',
-      title: 'v5.0.0 — Deep-Coordination foundation. Notifications · file versioning · audit.',
+      title: 'v5.0.0 - Deep-Coordination foundation. Notifications · file versioning · audit.',
       date: '2026-05-26',
       tag: 'Release',
       tagClass: 'release',
@@ -133,7 +133,7 @@
     {
       slug: 'v4-0-0',
       href: '/news/v4-0-0.html',
-      title: 'v4.0.0 — Stable Major. 103 modules, public API, multi-tenant security pass.',
+      title: 'v4.0.0 - Stable Major. 103 modules, public API, multi-tenant security pass.',
       date: '2026-05-20',
       tag: 'Release',
       tagClass: 'release',
@@ -142,7 +142,7 @@
     {
       slug: 'v3-11-0',
       href: '/news/v3-11-0.html',
-      title: 'v3.11.0 — Validation@Import. GAEB X84 writer. RVT diagnostics.',
+      title: 'v3.11.0 - Validation@Import. GAEB X84 writer. RVT diagnostics.',
       date: '2026-05-20',
       tag: 'v3',
       tagClass: 'v3',
@@ -151,7 +151,7 @@
     {
       slug: 'v3-6-0',
       href: '/news/v3-6-0.html',
-      title: 'v3.6.0 / v3.6.1 — Multi-level BOQ hierarchy. Recursive parent_id walk.',
+      title: 'v3.6.0 / v3.6.1 - Multi-level BOQ hierarchy. Recursive parent_id walk.',
       date: '2026-05-18',
       tag: 'v3',
       tagClass: 'v3',
@@ -160,7 +160,7 @@
     {
       slug: 'v3-0-0',
       href: '/news/v3-0-0.html',
-      title: 'v3.0.0 — First stable v3 major. 18 modules, FSM engine, ISO 16739-1 IFC.',
+      title: 'v3.0.0 - First stable v3 major. 18 modules, FSM engine, ISO 16739-1 IFC.',
       date: '2026-05-13',
       tag: 'v3',
       tagClass: 'v3',
@@ -205,7 +205,7 @@
     return filtered.slice(0, limit);
   }
 
-  // ---- Inline CSS — uses the page's own theme tokens ------------
+  // ---- Inline CSS - uses the page's own theme tokens ------------
   var CSS = [
     '.oce-more-rail{',
     '  margin:clamp(48px,7vw,80px) auto 0;',
@@ -346,7 +346,7 @@
     '  .oce-more-rail--rail .oce-mini-card__media{aspect-ratio:16/9;}',
     '  .oce-more-rail--rail .oce-mini-card__title{font-size:13.5px;-webkit-line-clamp:3;}',
     '  /* The below-article inline band remains as a closing wrap-up  */',
-    '  /* even on rail screens — feels like a magazine end-strip.     */',
+    '  /* even on rail screens - feels like a magazine end-strip.     */',
     '}',
     '@media (max-width:1499px){',
     '  .oce-more-rail--rail{display:none;}',
@@ -366,7 +366,7 @@
               '<img src="' + escapeHtml(a.thumb) + '" alt="" loading="lazy" decoding="async" />' +
               '</div>';
     } else {
-      // On-brand SVG placeholder — same shield/check used on news.html
+      // On-brand SVG placeholder - same shield/check used on news.html
       media = '<div class="oce-mini-card__media oce-mini-card__media--ph" aria-hidden="true">' +
               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
               '<path d="M12 2L3 7v6c0 5 4 9 9 11 5-2 9-6 9-11V7l-9-5z"/><path d="M9 12l2 2 4-4"/>' +
@@ -425,7 +425,7 @@
 
     injectStyles();
 
-    // Below-article inline band — visible on all screens up to 1399px,
+    // Below-article inline band - visible on all screens up to 1399px,
     // hidden on >=1400px where the right rail takes over.
     var inlineHTML = buildWidget('inline', relatedInline);
     var railHTML = buildWidget('rail', relatedRail);
@@ -452,7 +452,7 @@
     document.body.appendChild(railNode);
 
     // Compute (a) where the rail starts (just after the hero/cover) and
-    // (b) where it ends — so the sticky inner can stay in view for the
+    // (b) where it ends - so the sticky inner can stay in view for the
     // whole reading scroll, not just the first viewport-height.
     function recomputeRail() {
       try {

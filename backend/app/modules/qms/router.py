@@ -43,7 +43,7 @@ from app.dependencies import (
 
 # Allow-list of magic-byte tokens we accept for QMS attachments. Mirrors
 # the correspondence module's tightened list: PDFs, common images, and
-# Office ZIP / OLE containers. XML/HTML deliberately excluded — these
+# Office ZIP / OLE containers. XML/HTML deliberately excluded - these
 # files are rendered back as clickable links and HTML has repeatedly
 # been an XSS sink in audited modules.
 _QMS_ALLOWED_ATTACHMENT_TYPES = frozenset({"pdf", "png", "jpeg", "gif", "webp", "zip", "ole"})
@@ -457,7 +457,7 @@ async def upload_inspection_attachment(
 ) -> dict[str, object]:
     """‌⁠‍Upload an attachment to an inspection (magic-byte gated).
 
-    The ``Content-Type`` header is fully attacker-controlled — magic-byte
+    The ``Content-Type`` header is fully attacker-controlled - magic-byte
     sniffing is the only thing that decides whether we keep the file. The
     IDOR check runs BEFORE we read the body so an unauthorised caller
     never causes us to learn whether the inspection exists.
@@ -511,7 +511,7 @@ async def upload_inspection_attachment(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to save attachment — storage error",
+            detail="Unable to save attachment - storage error",
         ) from exc
 
     return {
@@ -1085,7 +1085,7 @@ async def upload_ncr_attachment(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to save attachment — storage error",
+            detail="Unable to save attachment - storage error",
         ) from exc
 
     return {
@@ -1385,7 +1385,7 @@ async def copq_detailed_report(
     _perm: None = Depends(RequirePermission("qms.report.read")),
     service: QMSService = Depends(_get_service),
 ) -> COPQDetailed:
-    """Detailed COPQ — NCRs + rework + warranty + delay penalty."""
+    """Detailed COPQ - NCRs + rework + warranty + delay penalty."""
     await verify_project_access(project_id, user_id, session)
     data = await service.compute_copq_detailed(
         project_id,
@@ -1536,7 +1536,7 @@ async def list_calibrations(
     """List calibrations.
 
     A ``project_id`` is required to prevent cross-tenant disclosure.
-    Without it we cannot gate the response by project ownership — the
+    Without it we cannot gate the response by project ownership - the
     Round-4 IDOR convention for list endpoints.
     """
     if project_id is None:
@@ -1567,9 +1567,9 @@ async def create_calibration(
 
     Two flavours:
 
-    * **project-scoped** (``data.project_id`` set) — gated by per-project
+    * **project-scoped** (``data.project_id`` set) - gated by per-project
       ownership (Round-5 IDOR).
-    * **tenant-wide** (``data.project_id`` is None) — visible to every
+    * **tenant-wide** (``data.project_id`` is None) - visible to every
       reader in the tenant and used for shared instruments (e.g. a
       single torque wrench rotating across projects). A plain EDITOR
       must NOT be able to mint these because they bypass the per-project

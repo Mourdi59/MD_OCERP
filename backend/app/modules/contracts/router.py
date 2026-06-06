@@ -3,16 +3,16 @@
 Mounted at ``/api/v1/contracts/`` by the module loader.
 
 Endpoint groups:
-    /contracts                  — CRUD + status transitions
-    /contracts/{id}/lines       — SoV line CRUD + bulk insert
-    /type-configurations        — read-only type catalog
-    /retention-schedules        — CRUD
-    /fee-structures             — CRUD
-    /gainshare-configurations   — CRUD
-    /ld-clauses                 — CRUD
-    /progress-claims            — CRUD + state transitions + auto-generate
-    /progress-claim-lines       — CRUD
-    /final-accounts             — CRUD + /contracts/{id}/close shortcut
+    /contracts                  - CRUD + status transitions
+    /contracts/{id}/lines       - SoV line CRUD + bulk insert
+    /type-configurations        - read-only type catalog
+    /retention-schedules        - CRUD
+    /fee-structures             - CRUD
+    /gainshare-configurations   - CRUD
+    /ld-clauses                 - CRUD
+    /progress-claims            - CRUD + state transitions + auto-generate
+    /progress-claim-lines       - CRUD
+    /final-accounts             - CRUD + /contracts/{id}/close shortcut
 
 Every project-scoped endpoint enforces :func:`verify_project_access` so users
 cannot read/mutate contracts of projects they don't own. The catalog endpoint
@@ -420,9 +420,9 @@ async def clone_contract(
 
     Cross-tenant safety (R7):
         1. The caller must have project-level access on the **source**
-           contract — enforced via ``_verify_contract_access``.
+           contract - enforced via ``_verify_contract_access``.
         2. If ``payload.target_project_id`` is given, the caller must
-           ALSO have project-level access on the **destination** —
+           ALSO have project-level access on the **destination** -
            enforced via a second ``verify_project_access`` call.
            Without this gate, IDOR turns into cross-tenant data
            exfiltration: a manager on project A could clone project A's
@@ -564,7 +564,7 @@ async def list_type_configurations(
     _user: CurrentUserId = None,  # type: ignore[assignment]
     _perm: None = Depends(RequirePermission("contracts.read")),
 ) -> list[ContractTypeConfigurationResponse]:
-    """‌⁠‍Read-only catalog — tenant-wide metadata, no per-project access check."""
+    """‌⁠‍Read-only catalog - tenant-wide metadata, no per-project access check."""
     repo = ContractTypeConfigurationRepository(session)
     items = await repo.list_all()
     return [ContractTypeConfigurationResponse.model_validate(it) for it in items]
@@ -1457,9 +1457,9 @@ async def release_retention(
     """Release retention for a contract for the given event.
 
     Body:
-        event: str — e.g. "substantial_completion" / "punch_list_complete" /
+        event: str - e.g. "substantial_completion" / "punch_list_complete" /
             "defects_liability_end" or a key from custom_schedule.
-        custom_schedule: dict[event_name → percent] — optional override.
+        custom_schedule: dict[event_name → percent] - optional override.
     """
     await _verify_contract_access(session, contract_id, user_id)
     service = ContractsService(session)
@@ -1496,7 +1496,7 @@ async def attach_lien_waiver(
 ) -> dict:
     """Attach a lien waiver record (conditional/unconditional × partial/final)."""
     # Object-level scoping: a lien waiver carries dollar value and legal
-    # weight — only someone with access to the owning project may attach it.
+    # weight - only someone with access to the owning project may attach it.
     await _verify_claim_access(session, claim_id, user_id)
     service = ContractsService(session)
     return await service.attach_lien_waiver(claim_id, payload, actor_id=user_id)

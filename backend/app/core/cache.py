@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 class _RateLimitedLogger:
     """‌⁠‍Collapse repeated warnings so an outage does not spam the log.
 
-    Keyed by ``(operation, error_type)`` — if the same pair is emitted
+    Keyed by ``(operation, error_type)`` - if the same pair is emitted
     within ``window_seconds`` we skip the log line and bump an in-memory
     counter that gets flushed the next time the pair is logged.  That
     way a Redis that's been down for 30 minutes produces one line per
@@ -138,12 +138,12 @@ class RedisCache:
             await self._redis.ping()
             logger.info("Redis cache connected: %s", settings.redis_url)
             return self._redis
-        except Exception as exc:  # noqa: BLE001 — we want the reason visible once
+        except Exception as exc:  # noqa: BLE001 - we want the reason visible once
             # Connect-time failure is logged once at INFO (it's normal in dev
             # where Redis is not running); further per-op failures go through
             # the rate-limited warner so the log stays readable.
             logger.info(
-                "Redis not available (%s: %s) — using in-memory cache",
+                "Redis not available (%s: %s) - using in-memory cache",
                 type(exc).__name__,
                 exc,
             )
@@ -156,7 +156,7 @@ class RedisCache:
             try:
                 val = await r.get(f"oe:{key}")
                 return json.loads(val) if val else None
-            except Exception as exc:  # noqa: BLE001 — funnel all errors through the rate limiter
+            except Exception as exc:  # noqa: BLE001 - funnel all errors through the rate limiter
                 _rate_limited_warn.warn("get", key, exc)
         return await self._fallback.get(key)
 

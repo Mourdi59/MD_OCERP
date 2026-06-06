@@ -88,7 +88,7 @@ TEMPLATE = DemoTemplate(
         "facility_type": "Acute general hospital, 300 beds",
     },
     sections=[
-        # ── 02/31 — Earthworks, Piling & Foundations (الحفر والأساسات) ───
+        # ── 02/31 - Earthworks, Piling & Foundations (الحفر والأساسات) ───
         (
             "02",
             "02 - أعمال الموقع والحفر والأساسات الخازوقية (Earthworks & Piled Foundations)",
@@ -106,7 +106,7 @@ TEMPLATE = DemoTemplate(
                 ("02.10", "معالجة التربة ضد النمل الأبيض (Anti-termite soil treatment)", "m2", 18000, 9.50, {"masterformat": "31 31 16", "sbc": "SBC 201"}),
             ],
         ),
-        # ── 03 — Concrete Structure (الأعمال الخرسانية) ──────────────────
+        # ── 03 - Concrete Structure (الأعمال الخرسانية) ──────────────────
         (
             "03",
             "03 - الهيكل الخرساني المسلح (Reinforced Concrete Structure - SBC 304)",
@@ -126,7 +126,7 @@ TEMPLATE = DemoTemplate(
                 ("03.12", "معالجة وحماية الخرسانة من الحرارة (Hot-weather curing & protection)", "m2", 105000, 12.50, {"masterformat": "03 39 00", "sbc": "SBC 304"}),
             ],
         ),
-        # ── 04 — Masonry / Blockwork (أعمال البلوك) ──────────────────────
+        # ── 04 - Masonry / Blockwork (أعمال البلوك) ──────────────────────
         (
             "04",
             "04 - أعمال البلوك والمباني (Masonry & Blockwork)",
@@ -140,7 +140,7 @@ TEMPLATE = DemoTemplate(
                 ("04.06", "أربطة ومثبتات البلوك المعدنية (Masonry ties & wall starters)", "m2", 75000, 6.50, {"masterformat": "04 05 23", "sbc": "SBC 201"}),
             ],
         ),
-        # ── 07 — Façade, Waterproofing & Insulation (الواجهات والعزل) ────
+        # ── 07 - Façade, Waterproofing & Insulation (الواجهات والعزل) ────
         (
             "07",
             "07 - الواجهات والعزل المائي والحراري (Façade, Waterproofing & Thermal - SBC 601)",
@@ -158,7 +158,7 @@ TEMPLATE = DemoTemplate(
                 ("07.10", "معالجة مقاومة الحريق للفتحات (Firestopping to penetrations)", "lsum", 1, 620000.00, {"masterformat": "07 84 00", "sbc": "SBC 801"}),
             ],
         ),
-        # ── 08 — Openings: Doors & Glazing (الأبواب والزجاج) ─────────────
+        # ── 08 - Openings: Doors & Glazing (الأبواب والزجاج) ─────────────
         (
             "08",
             "08 - الأبواب والزجاج الداخلي (Openings - Doors & Interior Glazing)",
@@ -174,7 +174,7 @@ TEMPLATE = DemoTemplate(
                 ("08.08", "إكسسوارات وقطع تصادم للأسرّة بالأبواب (Door protection & impact plates)", "pcs", 1850, 280.00, {"masterformat": "08 71 00", "sbc": "SBC 201"}),
             ],
         ),
-        # ── 09 — Internal Finishes incl. Antimicrobial (التشطيبات) ───────
+        # ── 09 - Internal Finishes incl. Antimicrobial (التشطيبات) ───────
         (
             "09",
             "09 - التشطيبات الداخلية بالمواصفات الصحية (Internal Finishes - Healthcare-Grade)",
@@ -194,7 +194,7 @@ TEMPLATE = DemoTemplate(
                 ("09.12", "دهان أرضيات الجراج والمحطات إيبوكسي (Epoxy floor coating, car park/plant)", "m2", 28000, 58.00, {"masterformat": "09 67 00", "sbc": "SBC 201"}),
             ],
         ),
-        # ── 13 — Specialty: Operating Theatres & Clean Rooms (الغرف النظيفة) ─
+        # ── 13 - Specialty: Operating Theatres & Clean Rooms (الغرف النظيفة) ─
         (
             "13",
             "13 - الإنشاءات الخاصة: غرف العمليات والغرف النظيفة (Operating Theatres & Clean Rooms)",
@@ -210,7 +210,7 @@ TEMPLATE = DemoTemplate(
                 ("13.08", "حماية إشعاعية لغرف العلاج بالأشعة الخرسانية (Bunker shielding, linear accelerator)", "lsum", 1, 4200000.00, {"masterformat": "13 49 13", "sbc": "SBC 801"}),
             ],
         ),
-        # ── 23 — Medical-Grade HVAC (التكييف الطبي) — large critical load ─
+        # ── 23 - Medical-Grade HVAC (التكييف الطبي) - large critical load ─
         (
             "23",
             "23 - التكييف والتهوية بالمواصفات الطبية (Medical-Grade HVAC - SBC 501 / MOH)",
@@ -231,7 +231,7 @@ TEMPLATE = DemoTemplate(
                 ("23.13", "اختبار وموازنة وتشغيل تجريبي للأنظمة (Testing, balancing & commissioning)", "lsum", 1, 3200000.00, {"masterformat": "23 05 93", "sbc": "SBC 501"}),
             ],
         ),
-        # ── 22 — Plumbing & Medical Gases (السباكة والغازات الطبية) ──────
+        # ── 22 - Plumbing & Medical Gases (السباكة والغازات الطبية) ──────
         (
             "22",
             "22 - السباكة والصرف والغازات الطبية (Plumbing, Drainage & Medical Gases)",
@@ -252,7 +252,7 @@ TEMPLATE = DemoTemplate(
                 ("22.13", "نظام تصريف مياه الأمطار للأسطح (Roof rainwater drainage)", "m", 2600, 95.00, {"masterformat": "22 14 00", "sbc": "SBC 701"}),
             ],
         ),
-        # ── 26 — Electrical, ELV & Nurse-Call (الكهرباء وأنظمة الجهد المنخفض) ─
+        # ── 26 - Electrical, ELV & Nurse-Call (الكهرباء وأنظمة الجهد المنخفض) ─
         (
             "26",
             "26 - الأعمال الكهربائية والجهد المنخفض ونداء الممرضات (Electrical, ELV & Nurse-Call)",
@@ -276,7 +276,7 @@ TEMPLATE = DemoTemplate(
                 ("26.16", "نظام طاقة شمسية على السطح 500kWp (Rooftop solar PV 500kWp)", "lsum", 1, 3650000.00, {"masterformat": "48 14 00", "sbc": "SBC 601"}),
             ],
         ),
-        # ── 14 — Vertical Transport & Logistics (المصاعد والنقل الداخلي) ─
+        # ── 14 - Vertical Transport & Logistics (المصاعد والنقل الداخلي) ─
         (
             "14",
             "14 - المصاعد والنقل الداخلي اللوجستي (Vertical Transport & Logistics)",
@@ -289,7 +289,7 @@ TEMPLATE = DemoTemplate(
                 ("14.05", "نظام نقل آلي بالعربات للوجستيات AGV (Automated guided vehicle logistics)", "lsum", 1, 4200000.00, {"masterformat": "14 90 00", "sbc": "SBC 201"}),
             ],
         ),
-        # ── 11 — Medical & Laboratory Equipment (التجهيزات الطبية) ──────
+        # ── 11 - Medical & Laboratory Equipment (التجهيزات الطبية) ──────
         (
             "11",
             "11 - التجهيزات الطبية والمخبرية والإشعاعية (Medical, Laboratory & Imaging Equipment)",
@@ -309,7 +309,7 @@ TEMPLATE = DemoTemplate(
                 ("11.12", "تجهيزات الصيدلية الآلية وأرفف التخزين (Automated pharmacy & storage)", "lsum", 1, 2650000.00, {"masterformat": "11 79 00", "sbc": "SBC 501"}),
             ],
         ),
-        # ── 32 — External Works & Helipad (الأعمال الخارجية والمهبط) ─────
+        # ── 32 - External Works & Helipad (الأعمال الخارجية والمهبط) ─────
         (
             "32",
             "32 - الأعمال الخارجية وتنسيق الموقع ومهبط الطوارئ (External Works & Helipad)",

@@ -1,4 +1,4 @@
-"""‌⁠‍Inspections Pydantic schemas — request/response models."""
+"""‌⁠‍Inspections Pydantic schemas - request/response models."""
 
 from datetime import datetime
 from typing import Any

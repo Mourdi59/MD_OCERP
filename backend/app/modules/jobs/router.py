@@ -1,16 +1,16 @@
-"""‌⁠‍Background Jobs API routes — RFC 34 §4 W0.1.
+"""‌⁠‍Background Jobs API routes - RFC 34 §4 W0.1.
 
 Endpoints (all prefixed at ``/api/v1/jobs`` by the module loader):
 
-    GET    /{id}            — Read a single JobRun row.
-    GET    /                — Paginated list, filterable by kind & status.
-    POST   /{id}/cancel     — Best-effort cancel (status to 'cancelled' if
+    GET    /{id}            - Read a single JobRun row.
+    GET    /                - Paginated list, filterable by kind & status.
+    POST   /{id}/cancel     - Best-effort cancel (status to 'cancelled' if
                               still pending or started; revoke the Celery
                               task; no-op for already-finished jobs).
 
 The router is intentionally read-mostly. Job *creation* happens via
 :func:`app.core.job_runner.submit_job` from the modules that own the
-work — exposing a generic POST /jobs would let callers request any
+work - exposing a generic POST /jobs would let callers request any
 ``kind`` they like, which is a footgun.
 """
 
@@ -65,7 +65,7 @@ async def get_job(job_id: uuid.UUID, _user_id: CurrentUserId) -> JobRunRead:
     Authentication is required: the JobRun result/error blobs may carry
     business data (cost-estimation outputs, AI-classification results,
     exported files) that must not leak to anonymous callers. The table
-    is per-tenant (``tenant_id`` column) but RLS isn't enabled yet — at
+    is per-tenant (``tenant_id`` column) but RLS isn't enabled yet - at
     minimum, anonymous reads are blocked here.
     """
     factory = _get_session_factory()
@@ -147,7 +147,7 @@ async def cancel_job(job_id: uuid.UUID, _user_id: CurrentUserId) -> JobRunRead:
 
     Authentication is required: the JobRun model carries no project_id
     or created_by linkage (RFC 34 §4 W0.1 keeps the table generic), so
-    we cannot ownership-gate per-row — but we MUST keep anonymous callers
+    we cannot ownership-gate per-row - but we MUST keep anonymous callers
     out of the mutation surface to prevent third parties from cancelling
     any active job they can guess a UUID for.
     """
@@ -166,7 +166,7 @@ async def cancel_job(job_id: uuid.UUID, _user_id: CurrentUserId) -> JobRunRead:
             await session.commit()
             await session.refresh(row)
 
-            # Best-effort Celery revoke — never fatal. We have already
+            # Best-effort Celery revoke - never fatal. We have already
             # marked the row cancelled, which is the source of truth
             # the UI cares about; a Celery worker that has already
             # picked up the task may still finish, but the result will

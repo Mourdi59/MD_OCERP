@@ -9,13 +9,13 @@ schedule / tasks modules:
 * Baseline + BaselineDelta (planned vs current variance tracking)
 * Calendar (working calendars for commitment validation)
 
-This is a NEW sister module to ``oe_schedule`` and ``oe_tasks`` — it does not
+This is a NEW sister module to ``oe_schedule`` and ``oe_tasks`` - it does not
 modify their source.
 """
 
 
 async def on_startup() -> None:
-    """‌⁠‍Module startup hook — register permissions."""
+    """‌⁠‍Module startup hook - register permissions."""
     from app.modules.schedule_advanced.permissions import register_schedule_advanced_permissions
 
     register_schedule_advanced_permissions()

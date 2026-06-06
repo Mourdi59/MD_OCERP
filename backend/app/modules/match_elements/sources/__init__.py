@@ -1,4 +1,4 @@
-"""‌⁠‍Source adapters — BIM (Phase A), DWG/PDF/Photo (Phase B/C/D).
+"""‌⁠‍Source adapters - BIM (Phase A), DWG/PDF/Photo (Phase B/C/D).
 
 Every adapter implements :class:`SourceAdapter` so the match-elements
 service can stay source-agnostic. Adding a new source = adding one file

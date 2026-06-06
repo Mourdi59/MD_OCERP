@@ -1,4 +1,4 @@
-"""‌⁠‍Documents event handlers — vector indexing.
+"""‌⁠‍Documents event handlers - vector indexing.
 
 Subscribes to the ``documents.document.*`` event family and keeps the
 ``oe_documents`` vector collection in sync with the underlying Document
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 # Keep the ``oe_documents`` collection in sync with the live Document
 # rows.  Each handler opens its own short-lived session, fetches the row
 # by id and forwards it to the adapter.  Failures are logged and
-# swallowed — vector indexing is best-effort and must never break a
+# swallowed - vector indexing is best-effort and must never break a
 # normal CRUD path.
 
 

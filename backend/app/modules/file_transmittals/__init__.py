@@ -25,7 +25,7 @@ and flips ``acknowledged_at``.
 
 
 async def on_startup() -> None:
-    """Module startup hook — register RBAC permissions."""
+    """Module startup hook - register RBAC permissions."""
     from app.modules.file_transmittals.permissions import (
         register_file_transmittal_permissions,
     )

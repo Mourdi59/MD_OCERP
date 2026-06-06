@@ -1,7 +1,7 @@
 """‌⁠‍Correspondence ORM models.
 
 Tables:
-    oe_correspondence_correspondence — project correspondence with direction and contact tracking
+    oe_correspondence_correspondence - project correspondence with direction and contact tracking
 """
 
 import uuid
@@ -54,7 +54,7 @@ class Correspondence(Base):
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
     # Stored attachment paths (validated magic-byte uploads). Server-derived
-    # filenames only — the client never controls the path on disk, so we
+    # filenames only - the client never controls the path on disk, so we
     # never serve attacker-named extensions back. See router upload handler.
     attachments: Mapped[list] = mapped_column(  # type: ignore[assignment]
         JSON,

@@ -3,12 +3,12 @@
 Generic spreadsheet ingester with three classification heuristics on top
 of the column-alias mapper:
 
-* **NRM** — UK New Rules of Measurement. Detects element codes like
-  ``2.6.1`` and section headers like ``Element 2 — Substructure``.
-* **MasterFormat** — US CSI MasterFormat. Detects 6-digit codes like
+* **NRM** - UK New Rules of Measurement. Detects element codes like
+  ``2.6.1`` and section headers like ``Element 2 - Substructure``.
+* **MasterFormat** - US CSI MasterFormat. Detects 6-digit codes like
   ``03 30 00`` and division headers like
-  ``Division 03 — Cast-in-Place Concrete``.
-* **Generic** — anything else goes into ``classification["code"]``.
+  ``Division 03 - Cast-in-Place Concrete``.
+* **Generic** - anything else goes into ``classification["code"]``.
 
 Epic I3 (refactor) keeps the parser pure (no DB I/O, no FastAPI types);
 all the per-row error reporting, dry-run handling and inline validation
@@ -165,7 +165,7 @@ def _detect_file_format(content_head: bytes) -> Literal["xlsx", "csv", "parquet"
     """Identify an upload by its magic bytes (BUG-UPLOAD01 from the legacy code).
 
     A ``.exe`` renamed to ``.xlsx`` would otherwise be handed to
-    ``openpyxl`` — best case a parse exception, worst case the bytes
+    ``openpyxl`` - best case a parse exception, worst case the bytes
     land in our buffers + logs before we error.
     """
     if not content_head:
@@ -195,15 +195,15 @@ def _detect_file_format(content_head: bytes) -> Literal["xlsx", "csv", "parquet"
 # documents.
 _NRM_CODE_RE = re.compile(r"^(\d{1,2}\.){1,3}\d{1,2}$")
 
-# NRM element header text e.g. ``"Element 2 — Substructure"``,
-# ``"Group element 2.6 — External walls"``.
+# NRM element header text e.g. ``"Element 2 - Substructure"``,
+# ``"Group element 2.6 - External walls"``.
 _NRM_HEADER_RE = re.compile(r"^(group\s+)?element\s+(\d{1,2}(?:\.\d{1,2})*)\b", re.IGNORECASE)
 
 # MasterFormat: ``XX XX XX`` or ``XX.XX.XX`` or ``XX-XX-XX`` (2-2-2 digits).
 # Sub-codes ``XX XX XX.XX`` are allowed.
 _MASTERFORMAT_CODE_RE = re.compile(r"^(\d{2})[\s.\-](\d{2})[\s.\-](\d{2})(?:\.(\d{2}))?$")
 
-# MasterFormat division header text e.g. ``"Division 03 — Concrete"``,
+# MasterFormat division header text e.g. ``"Division 03 - Concrete"``,
 # ``"03 30 00 Cast-in-Place Concrete"``.
 _MASTERFORMAT_HEADER_RE = re.compile(r"^division\s+(\d{2})\b", re.IGNORECASE)
 
@@ -221,7 +221,7 @@ def _infer_classification(
     desc = (description or "").strip()
     classification: dict[str, Any] = {}
 
-    # NRM element header in the description ("Element 2 — Substructure").
+    # NRM element header in the description ("Element 2 - Substructure").
     m = _NRM_HEADER_RE.match(desc)
     if m:
         classification["nrm"] = m.group(2)
@@ -239,7 +239,7 @@ def _infer_classification(
             mf = f"{mf}.{m.group(4)}"
         classification["masterformat"] = mf
 
-    # MasterFormat division header in the description ("Division 03 —").
+    # MasterFormat division header in the description ("Division 03 -").
     m = _MASTERFORMAT_HEADER_RE.match(desc)
     if m:
         # Pad to canonical 6-digit form for downstream rules.
@@ -453,7 +453,7 @@ def _rows_to_positions(
 
             unit = unit_raw or "pcs"
 
-            # Range guards — reject obvious tamper / typo errors.
+            # Range guards - reject obvious tamper / typo errors.
             if not (0 <= quantity <= _IMPORT_MAX_QUANTITY):
                 result.errors.append(
                     {
@@ -482,7 +482,7 @@ def _rows_to_positions(
                         "severity": "warning",
                         "message": (
                             f"Unit rate {unit_rate:.2f} is >10× the file median "
-                            f"({median_rate:.2f}) — possible typo or tampered export."
+                            f"({median_rate:.2f}) - possible typo or tampered export."
                         ),
                     }
                 )
@@ -492,7 +492,7 @@ def _rows_to_positions(
                         "row": row_idx,
                         "ordinal": ordinal,
                         "severity": "info",
-                        "message": "Quantity is zero — position imported but contributes no cost.",
+                        "message": "Quantity is zero - position imported but contributes no cost.",
                     }
                 )
             if unit_rate == 0:
@@ -501,7 +501,7 @@ def _rows_to_positions(
                         "row": row_idx,
                         "ordinal": ordinal,
                         "severity": "info",
-                        "message": "Unit rate is zero — position imported without a rate.",
+                        "message": "Unit rate is zero - position imported without a rate.",
                     }
                 )
 
@@ -522,7 +522,7 @@ def _rows_to_positions(
                 )
             )
 
-        except Exception as exc:  # noqa: BLE001 — caller surfaces row #
+        except Exception as exc:  # noqa: BLE001 - caller surfaces row #
             result.errors.append({"row": row_idx, "ordinal": "", "error": str(exc)})
             logger.warning("Excel/CSV row %d error: %s", row_idx, exc)
 

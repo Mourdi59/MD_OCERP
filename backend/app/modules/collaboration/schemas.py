@@ -1,4 +1,4 @@
-"""‌⁠‍Collaboration Pydantic schemas — request/response models."""
+"""‌⁠‍Collaboration Pydantic schemas - request/response models."""
 
 from datetime import datetime
 from typing import Any

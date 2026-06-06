@@ -4,15 +4,15 @@ Design decisions (confirmed with the product owner 2026-05-29):
   * Scope is a single global active pack (single-tenant).
   * Enabling the pack's ``default_modules`` is automatic (additive, safe).
   * Disabling the pack's ``hidden_modules`` happens ONLY with explicit
-    ``confirm_disables`` — never silently turn off work-in-progress.
+    ``confirm_disables`` - never silently turn off work-in-progress.
   * ``validation_rule_packs`` that match a built-in rule set are reported as
     active; the rest are flagged documentation-only (the pack JSON files are
-    not executed by the engine — see the partner-pack ADR).
+    not executed by the engine - see the partner-pack ADR).
   * Currency / locale / tax / CWICR are recorded as the new defaults and NEVER
     re-denominate or mutate existing projects' data.
 
 The headline effect of an apply is that ``get_active_pack`` starts returning the
-chosen pack (co-branding, logo, colours, shipped locales) immediately — the
+chosen pack (co-branding, logo, colours, shipped locales) immediately - the
 apply service busts the discovery cache so no restart is needed.
 """
 
@@ -46,13 +46,13 @@ def _known_rule_sets() -> set[str]:
         from app.core.validation.engine import rule_registry
 
         return set(rule_registry.list_rule_sets().keys())
-    except Exception:  # noqa: BLE001 — validation engine optional at this layer
+    except Exception:  # noqa: BLE001 - validation engine optional at this layer
         return set()
 
 
 def _module_exists(name: str) -> bool:
     try:
-        return name in module_loader._manifests  # noqa: SLF001 — same package boundary
+        return name in module_loader._manifests  # noqa: SLF001 - same package boundary
     except Exception:  # noqa: BLE001
         return False
 
@@ -189,13 +189,13 @@ async def apply_pack(
     plan = _plan(m)
     effects: dict[str, Any] = {"modules_enabled": [], "modules_disabled": [], "modules_failed": []}
 
-    # Enable the pack's default modules (additive — always safe).
+    # Enable the pack's default modules (additive - always safe).
     for name in plan["modules_to_enable"]:
         try:
             if app is not None:
                 await module_loader.enable_module(name, app)
             effects["modules_enabled"].append(name)
-        except Exception as exc:  # noqa: BLE001 — keep applying the rest
+        except Exception as exc:  # noqa: BLE001 - keep applying the rest
             effects["modules_failed"].append({"name": name, "action": "enable", "error": str(exc)})
 
     # Disable hidden modules only when explicitly confirmed.
@@ -206,7 +206,7 @@ async def apply_pack(
                 if app is not None:
                     await module_loader.disable_module(name, app)
                 effects["modules_disabled"].append(name)
-            except Exception as exc:  # noqa: BLE001 — e.g. core module / dependents
+            except Exception as exc:  # noqa: BLE001 - e.g. core module / dependents
                 effects["modules_failed"].append({"name": name, "action": "disable", "error": str(exc)})
     else:
         skipped_disables = list(plan["modules_to_disable"])
@@ -235,7 +235,7 @@ async def apply_pack(
                     "already present" if demo_res.get("already_installed") else "installed",
                     m.slug,
                 )
-        except Exception as exc:  # noqa: BLE001 — a demo failure must not abort the apply
+        except Exception as exc:  # noqa: BLE001 - a demo failure must not abort the apply
             effects["demo_project_failed"] = {"error": str(exc)}
             logger.warning("Partner-pack apply: demo project install failed: %s", exc)
 
@@ -308,7 +308,7 @@ async def unapply(*, app: FastAPI | None = None) -> dict[str, Any]:
 
     restored: list[str] = []
     # Re-enable anything the apply disabled. We do NOT disable modules the apply
-    # enabled — enabling is additive and the user may now depend on them.
+    # enabled - enabling is additive and the user may now depend on them.
     for name in state.effects.get("modules_disabled", []):
         try:
             if app is not None:

@@ -1,5 +1,5 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""‌⁠‍Project Controls service — the cross-module aggregation tissue.
+"""‌⁠‍Project Controls service - the cross-module aggregation tissue.
 
 The snapshot does NOT re-query each module directly. It calls the already
 built :func:`app.modules.bi_dashboards.kpis.compute` for each code in the
@@ -27,7 +27,7 @@ from app.modules.project_controls import thresholds as threshold_rules
 logger = logging.getLogger(__name__)
 
 # EVM ratio KPIs (CPI / SPI) are EV / AC and EV / PV respectively. When a
-# project carries no earned-value basis yet (EV == 0 — no task progress /
+# project carries no earned-value basis yet (EV == 0 - no task progress /
 # percent-complete recorded), these ratios collapse to exactly 0. A literal
 # 0 is not a real "performance has cratered" reading: it just means there is
 # no earned value to divide. We treat that case as "no data" so the tile shows

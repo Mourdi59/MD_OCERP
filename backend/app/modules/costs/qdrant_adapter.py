@@ -1,21 +1,21 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍CWICR Qdrant adapter — 30-collection multilingual cost-rate search.
+"""‌⁠‍CWICR Qdrant adapter - 30-collection multilingual cost-rate search.
 
 Replaces the legacy ``vector_adapter`` (LanceDB + e5-small + 384-dim) for
 the ``/match-elements`` path. The new pipeline holds rate vectors in
 30 per-language Qdrant collections (``cwicr_<lang>``), each point
 carrying three named vectors:
 
-* ``dense``     — 1024-dim BAAI/bge-m3 of the full rate description.
-* ``sparse``    — BM25-like inverted vector for verbatim term hits
+* ``dense``     - 1024-dim BAAI/bge-m3 of the full rate description.
+* ``sparse``    - BM25-like inverted vector for verbatim term hits
                   (concrete grades, pipe nominals, bolt sizes, etc).
-* ``resources`` — 1024-dim bge-m3 of the rate's top-12 unique resources.
+* ``resources`` - 1024-dim bge-m3 of the rate's top-12 unique resources.
 
-The Qdrant payload is intentionally minimal — only keys plus filter
+The Qdrant payload is intentionally minimal - only keys plus filter
 columns (``rate_code``, ``country``, ``department_code``, ``is_abstract``,
 ``rate_unit``, ``mass_*``). Heavy fields (prices, labor lines, full
-resource list, budget sums — 84 columns total) are read on demand from
+resource list, budget sums - 84 columns total) are read on demand from
 ``<region>_workitems_costs_resources_DDC_CWICR.parquet`` via
 :mod:`app.modules.costs.parquet_lookup`. Keeping the vector store narrow
 keeps embedded-Qdrant disk usage manageable and lets the parquet column
@@ -26,15 +26,15 @@ Contract
 
 This module exposes two async helpers:
 
-* :func:`search` — one-shot hybrid search that fans out
+* :func:`search` - one-shot hybrid search that fans out
   ``dense`` + ``sparse`` (+ optional ``resources``) prefetches and fuses
   them with Reciprocal Rank Fusion natively in the Qdrant Query API.
-* :func:`lookup_full_rows` — proxy onto :mod:`parquet_lookup` so the
+* :func:`lookup_full_rows` - proxy onto :mod:`parquet_lookup` so the
   ranker can stay on a single ``qdrant_adapter`` import.
 
 Heavy imports (``qdrant_client``, ``FlagEmbedding``) are deferred to the
 function body. The module is safe to import even when the optional
-``[semantic]`` extra is missing — only the CWICR Qdrant path degrades,
+``[semantic]`` extra is missing - only the CWICR Qdrant path degrades,
 the rest of the app keeps booting.
 
 Deployment
@@ -43,14 +43,14 @@ Deployment
 Two modes are supported:
 
 * **Server** (recommended for production and for DDC's pre-built
-  catalogues) — ``settings.cwicr_qdrant_url`` points at a real Qdrant
+  catalogues) - ``settings.cwicr_qdrant_url`` points at a real Qdrant
   server (Docker compose ships ``qdrant/qdrant:v1.12.5`` on ports
   6333/6334). This is the **only** mode that can ingest the v3
   snapshots DDC publishes (``*_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot``)
   via :meth:`QdrantClient.recover_snapshot`. Verified 2026-05-09: the
   embedded path errors with ``NotImplementedError: Snapshots are not
   supported in the local Qdrant``, see v3 plan §5 risk note.
-* **Embedded** (development / smoke) — ``settings.cwicr_qdrant_path``
+* **Embedded** (development / smoke) - ``settings.cwicr_qdrant_path``
   spawns an in-process simulation via ``QdrantClient(path=...)``.
   Suitable when the caller vectorises rates locally with BGE-M3 and
   upserts them point-by-point. **Cannot** ingest DDC snapshots.
@@ -81,7 +81,7 @@ class QdrantHit:
     """‌⁠‍One result from :func:`search`.
 
     ``score`` is the RRF-fused score from Qdrant Query API, not a raw
-    cosine similarity. Use for relative ranking only — absolute values
+    cosine similarity. Use for relative ranking only - absolute values
     are not comparable across queries.
     """
 
@@ -96,14 +96,14 @@ class QdrantHit:
 # Per MAPPING_PROCESS.md v3 (§2.1, §6.1) the 30 production CWICR
 # collections are named ``cwicr_{LANG}_v3`` where ``LANG`` is the
 # ISO-639-1 language code of the rates inside. One collection per
-# language — Mexico, Spain and Argentina catalogues all live in
+# language - Mexico, Spain and Argentina catalogues all live in
 # ``cwicr_es_v3`` because BGE-M3 multilingual benefits from same-language
 # clustering, and per-country narrowing is done via the ``country``
 # payload predicate (see :func:`country_filter_for`).
 #
 # Pre-v3 (LanceDB era) we used ``cwicr_<country>`` with a hand-rolled
 # remap table for USA→us / GB→uk. The v3 layout makes the remap
-# unnecessary — :func:`region_language.language_for` already returns
+# unnecessary - :func:`region_language.language_for` already returns
 # ``"en"`` for both USA_USD and GB_LONDON, so they correctly land in
 # ``cwicr_en_v3`` together.
 #
@@ -149,7 +149,7 @@ def _available_cwicr_collections() -> frozenset[str]:
     # Pure-routing escape hatch. When the probe is disabled the function
     # behaves as if Qdrant were unreachable (empty set) so
     # :func:`country_to_collection` returns the naive language-derived
-    # name verbatim — no network I/O, fully deterministic. Required for
+    # name verbatim - no network I/O, fully deterministic. Required for
     # deterministic bench runs and the routing-contract unit tests, which
     # otherwise silently fail whenever the dev/CI host happens to have a
     # sparsely-populated live Qdrant (only ``cwicr_en_v3`` present →
@@ -169,7 +169,7 @@ def _available_cwicr_collections() -> frozenset[str]:
             name = getattr(c, "name", "") or ""
             if name.startswith("cwicr_"):
                 names.add(name)
-    except Exception as exc:  # noqa: BLE001 — degrade, never fail
+    except Exception as exc:  # noqa: BLE001 - degrade, never fail
         logger.debug("qdrant_adapter: list cwicr collections failed: %s", exc)
         names = set()
 
@@ -182,14 +182,14 @@ def _pick_fallback_cwicr(want: str, available: frozenset[str]) -> str | None:
     """Choose the best present CWICR collection when ``want`` is absent.
 
     BGE-M3 is multilingual, so an English (or any populated) CWICR
-    collection still yields real cross-language candidates — far better
+    collection still yields real cross-language candidates - far better
     than the hard ``catalog_not_vectorized`` empty result a missing
     per-language collection used to produce. Preference order:
 
     1. Same language family ignoring the ``_enriched`` / ``_v?`` tail
        (e.g. ``cwicr_pt_v3`` → ``cwicr_pt`` if only the unversioned
        name was ingested).
-    2. English (``cwicr_en*``) — the densest, broadest catalogue and
+    2. English (``cwicr_en*``) - the densest, broadest catalogue and
        the one CWICR always ships.
     3. Any remaining populated CWICR collection (deterministic by
        sorted name so the choice is stable across calls/processes).
@@ -225,7 +225,7 @@ def country_to_collection(country: str | None) -> str:
     The collection key is the **language** of the rates, not the
     country. Multiple regions sharing a language (DE_BERLIN, AT_VIENNA,
     CH_ZURICH) all resolve to the same collection (``cwicr_de_v3``).
-    Per-country filtering happens via the ``country`` payload field —
+    Per-country filtering happens via the ``country`` payload field -
     see :func:`country_filter_for`.
 
     Accepts both bare country codes (``"DE"``) and full region ids
@@ -241,7 +241,7 @@ def country_to_collection(country: str | None) -> str:
     Brazil/Portugal project) is **not present** in Qdrant but other
     CWICR collections are, this returns the best available one rather
     than a dead name. BGE-M3 is multilingual so an English catalogue
-    still returns real candidates — the prior behaviour silently short-
+    still returns real candidates - the prior behaviour silently short-
     circuited every BIM-vs-cost match to ``catalog_not_vectorized`` and
     the wizard rendered an empty result. The pick is consistent across
     the vector-count probe and the search itself because both route
@@ -257,7 +257,7 @@ def country_to_collection(country: str | None) -> str:
     description-rich enrichment built by
     ``scripts/build_enriched_snapshot.py`` without touching the
     canonical snapshot. Falls back to the unsuffixed name automatically
-    when the enriched collection isn't present — see
+    when the enriched collection isn't present - see
     :func:`_collection_vectors` which empty-caches missing collections.
     """
 
@@ -274,7 +274,7 @@ def country_to_collection(country: str | None) -> str:
 
     available = _available_cwicr_collections()
     if not available:
-        # Qdrant unreachable / no cwicr_* collections discoverable —
+        # Qdrant unreachable / no cwicr_* collections discoverable -
         # keep the historical behaviour so the down-state UI is unchanged.
         return want
     if want in available:
@@ -285,7 +285,7 @@ def country_to_collection(country: str | None) -> str:
     fallback = _pick_fallback_cwicr(want, available)
     if fallback is not None:
         logger.info(
-            "qdrant_adapter: collection %r absent for region %r — falling back to %r (multilingual BGE-M3 recall)",
+            "qdrant_adapter: collection %r absent for region %r - falling back to %r (multilingual BGE-M3 recall)",
             want,
             country,
             fallback,
@@ -296,7 +296,7 @@ def country_to_collection(country: str | None) -> str:
 
 # Region-id heads DDC ships that differ from the 2-letter ISO-3166
 # alpha-2 code its snapshot writes into the ``country`` payload. Keep
-# in lockstep with the catalogue files DDC actually publishes — a new
+# in lockstep with the catalogue files DDC actually publishes - a new
 # 3-letter/language-style head means a new entry here, not a code
 # branch. 2-letter heads (DE, MX, BR, AT, CH, RU…) pass through
 # unchanged via ``dict.get(head, head)``.
@@ -340,7 +340,7 @@ def country_filter_for(country: str | None) -> str | None:
         return None
     raw = country.strip().upper()
     if "_" not in raw:
-        # Bare code (``DE``, ``USA``, ``RU``) — language-wide intent.
+        # Bare code (``DE``, ``USA``, ``RU``) - language-wide intent.
         return None
 
     # Language-fallback guard (the /match-elements "nothing happens" fix,
@@ -349,7 +349,7 @@ def country_filter_for(country: str | None) -> str | None:
     # CWICR collection (e.g. ``PT_SAOPAULO`` → ``cwicr_en_v3`` which
     # holds only ``country="US"`` rows), pinning the original region's
     # head (``"PT"``) as a payload filter matches **zero** points and
-    # silently eliminates every candidate — exactly the symptom the user
+    # silently eliminates every candidate - exactly the symptom the user
     # reported. Detect the fallback by comparing the collection the
     # native language *would* select against the one actually resolved;
     # when they differ, the fallback collection's country domain is not
@@ -363,13 +363,13 @@ def country_filter_for(country: str | None) -> str | None:
     if not head:
         return None
 
-    # Data-driven presence guard — extends the language-fallback guard above
+    # Data-driven presence guard - extends the language-fallback guard above
     # to the *same-language but country-absent* case it cannot see. The
     # English CWICR snapshot ``cwicr_en_v3`` is the native English collection
     # (no language fallback), yet it carries ONLY ``country="US"`` rows. A
     # Canadian-English catalogue (``CA_TORONTO`` → head ``"CA"``) or a UK one
     # (``GBR_LONDON`` → head ``"GB"``) would therefore pin a country the
-    # collection has zero rows for, and every candidate is filtered out — the
+    # collection has zero rows for, and every candidate is filtered out - the
     # user-reported "/match-elements returns nothing" for non-US English
     # projects. When the head is genuinely absent, don't pin it: let
     # multilingual BGE-M3 rank the whole collection (the best available
@@ -381,14 +381,14 @@ def country_filter_for(country: str | None) -> str | None:
         collection = country_to_collection(country)
         if not _country_head_present(collection, head):
             logger.info(
-                "country_filter_for: head %r absent in %r — searching the "
+                "country_filter_for: head %r absent in %r - searching the "
                 "whole collection instead of pinning an empty country (region %r)",
                 head,
                 collection,
                 country,
             )
             return None
-    except Exception:  # noqa: BLE001 — degrade to legacy pinning on any probe error
+    except Exception:  # noqa: BLE001 - degrade to legacy pinning on any probe error
         pass
     return head
 
@@ -423,7 +423,7 @@ def _language_fallback_active(country: str) -> bool:
         return resolved.rsplit("_v", 1)[0].removesuffix("_enriched") != naive.rsplit("_v", 1)[0].removesuffix(
             "_enriched"
         )
-    except Exception:  # noqa: BLE001 — degrade to legacy pinning
+    except Exception:  # noqa: BLE001 - degrade to legacy pinning
         return False
 
 
@@ -434,25 +434,25 @@ _client: Any = None  # qdrant_client.QdrantClient
 _encoder: Any = None  # FlagEmbedding.BGEM3FlagModel
 # Single-flight guard for the (heavy, ~2 GB) encoder load so a burst of
 # concurrent first /match requests can't race into a half-initialised
-# model. Re-entrant not required — the load body never re-acquires it.
+# model. Re-entrant not required - the load body never re-acquires it.
 _ENCODER_LOAD_LOCK = threading.Lock()
 
-# Per-collection capability cache — maps collection name to the set of
+# Per-collection capability cache - maps collection name to the set of
 # named-vector keys the collection actually exposes (``dense`` /
 # ``sparse`` / ``resources`` for fully-featured local catalogues; just
 # ``dense`` + ``sparse`` for the DDC v3 snapshots). Populated on first
 # ``search()`` against a given collection and consulted before issuing
 # a ``Prefetch(using=…)`` so we never ask Qdrant for a vector the
-# collection doesn't carry — that would 404 the whole query and force
+# collection doesn't carry - that would 404 the whole query and force
 # the ranker into the metadata-only fallback.
 _collection_vectors_cache: dict[str, frozenset[str]] = {}
 
-# Per-(collection, country-head) presence cache — answers "does this
+# Per-(collection, country-head) presence cache - answers "does this
 # collection carry any point tagged country==HEAD?". Consulted by
 # ``country_filter_for`` to avoid pinning a country payload predicate that
 # would eliminate every candidate (e.g. CA_TORONTO → head "CA" against the
 # US-only ``cwicr_en_v3`` English snapshot). One scroll(limit=1) per pair,
-# memoised for the process lifetime — the snapshot's country domain doesn't
+# memoised for the process lifetime - the snapshot's country domain doesn't
 # change without a re-ingest + restart.
 _country_presence_cache: dict[tuple[str, str], bool] = {}
 
@@ -462,11 +462,11 @@ def _country_head_present(collection: str, head: str) -> bool:
 
     Cached per ``(collection, head)``. Best-effort: any probe failure
     returns ``True`` so a transient Qdrant hiccup never silently drops a
-    country pin that would otherwise work — we only suppress a pin when we
+    country pin that would otherwise work - we only suppress a pin when we
     can positively prove the head is absent.
     """
 
-    # Pure-routing escape hatch — mirrors ``_available_cwicr_collections``.
+    # Pure-routing escape hatch - mirrors ``_available_cwicr_collections``.
     # When the live-Qdrant probe is disabled (deterministic bench / unit
     # tests, or any host that wants the naive pinning contract), behave as
     # if the head were present so ``country_filter_for`` keeps its pure
@@ -495,7 +495,7 @@ def _country_head_present(collection: str, head: str) -> bool:
     try:
         present = _probe(collection)
     except Exception:
-        # Versionless retry — same logic as ``search`` for dev installs
+        # Versionless retry - same logic as ``search`` for dev installs
         # that ingested before the ``_v3`` rename.
         base = collection.rsplit("_v", 1)[0] if "_v" in collection else collection
         if base != collection:
@@ -524,7 +524,7 @@ def _get_client() -> Any:
 
     try:
         from qdrant_client import QdrantClient
-    except ImportError as exc:  # pragma: no cover — optional [semantic] extra
+    except ImportError as exc:  # pragma: no cover - optional [semantic] extra
         raise RuntimeError(
             "qdrant-client is not installed; install the [semantic] extra: pip install openconstructionerp[semantic]"
         ) from exc
@@ -548,7 +548,7 @@ def _get_encoder() -> Any:
 
     Returns a ``BGEM3FlagModel`` whose ``.encode()`` produces both dense
     and sparse representations in one forward pass. INT8 ONNX path
-    (``gpahal/bge-m3-onnx-int8``) is the VPS default — ~700 MB on disk,
+    (``gpahal/bge-m3-onnx-int8``) is the VPS default - ~700 MB on disk,
     near-FP32 recall on AVX512_VNNI hardware.
 
     Failure mode: when the model can't load (offline install, missing
@@ -561,7 +561,7 @@ def _get_encoder() -> Any:
 
     global _encoder
     # ``False`` = HARD unavailable (the [semantic] extra isn't installed)
-    # — there is no point retrying within this process. A *load* failure
+    # - there is no point retrying within this process. A *load* failure
     # (broken HF cache entry, OOM during a concurrent first-call race,
     # transient disk error) must NOT poison the process: it used to
     # stamp ``False`` permanently which silently turned every later
@@ -603,7 +603,7 @@ def _get_encoder() -> Any:
 
 
 def _load_encoder_locked(BGEM3FlagModel: Any) -> Any:  # noqa: N803
-    """Inner load body — runs while holding :data:`_ENCODER_LOAD_LOCK`."""
+    """Inner load body - runs while holding :data:`_ENCODER_LOAD_LOCK`."""
 
     global _encoder
 
@@ -613,7 +613,7 @@ def _load_encoder_locked(BGEM3FlagModel: Any) -> Any:  # noqa: N803
 
     # Build the load plan. The INT8 ONNX checkpoint ships under a
     # separate HF repo (``gpahal/bge-m3-onnx-int8``) that contains ONLY
-    # ``model_quantized.onnx`` — no ``pytorch_model.bin`` /
+    # ``model_quantized.onnx`` - no ``pytorch_model.bin`` /
     # ``model.safetensors``. Some FlagEmbedding builds can't bootstrap
     # ``BGEM3FlagModel`` from an ONNX-only repo and raise
     # ``Error no file named pytorch_model.bin ...``. That used to stamp
@@ -623,7 +623,7 @@ def _load_encoder_locked(BGEM3FlagModel: Any) -> Any:  # noqa: N803
     # configured, but ALWAYS fall back to the canonical FP32
     # ``BAAI/bge-m3`` checkpoint before giving up. FP32 BGE-M3 is the
     # exact model the CWICR v3 collections were embedded with, so recall
-    # is unaffected — only a little slower/heavier than INT8.
+    # is unaffected - only a little slower/heavier than INT8.
     attempts: list[tuple[str, bool]] = []
     if use_int8:
         attempts.append(("gpahal/bge-m3-onnx-int8", True))
@@ -641,16 +641,16 @@ def _load_encoder_locked(BGEM3FlagModel: Any) -> Any:  # noqa: N803
                     last_exc,
                 )
             return _encoder
-        except Exception as exc:  # noqa: BLE001 — try the next plan entry
+        except Exception as exc:  # noqa: BLE001 - try the next plan entry
             last_exc = exc
             logger.warning(
-                "CWICR encoder: load of %s failed (%s) — %s",
+                "CWICR encoder: load of %s failed (%s) - %s",
                 model_id,
                 exc,
                 "trying FP32 fallback" if is_int8 else "no more fallbacks",
             )
 
-    # Every attempt failed. Do NOT stamp ``_encoder = False`` here — a
+    # Every attempt failed. Do NOT stamp ``_encoder = False`` here - a
     # load failure is treated as transient/retryable (broken cache that
     # may get repaired, a concurrent-load race, transient OOM). The next
     # match call re-enters and retries the full plan. Only the
@@ -679,7 +679,7 @@ def _encode(texts: list[str], *, with_resources: bool = False) -> dict[str, Any]
     sparse_vectors: list[SparseVector] = []
     for weight_map in out["lexical_weights"]:
         # Qdrant SparseVector expects parallel index/value lists.
-        # Token ids are stringified ints from FlagEmbedding — cast back.
+        # Token ids are stringified ints from FlagEmbedding - cast back.
         indices = [int(k) for k in weight_map]
         values = [float(v) for v in weight_map.values()]
         sparse_vectors.append(SparseVector(indices=indices, values=values))
@@ -707,7 +707,7 @@ def _collection_vectors(collection_name: str) -> frozenset[str]:
     snapshot shape). Without this, every match call against a snapshot
     install issued a ``Prefetch(using="resources", …)`` that Qdrant
     answered with a 404, forcing the ranker into the metadata-only
-    fallback path (score ≈ 0.0002, opaque rate codes — see
+    fallback path (score ≈ 0.0002, opaque rate codes - see
     :doc:`memory/match_elements_three_filter_bugs`).
     """
     cached = _collection_vectors_cache.get(collection_name)
@@ -717,7 +717,7 @@ def _collection_vectors(collection_name: str) -> frozenset[str]:
     try:
         client = _get_client()
         info = client.get_collection(collection_name)
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug(
             "qdrant_adapter: get_collection(%s) failed for capability probe: %s",
             collection_name,
@@ -738,13 +738,13 @@ def _collection_vectors(collection_name: str) -> frozenset[str]:
         if isinstance(vectors, dict):
             names.update(vectors.keys())
         elif vectors is not None:
-            # Single unnamed vector — pre-multivector schema. Treat as
+            # Single unnamed vector - pre-multivector schema. Treat as
             # the canonical ``dense`` channel.
             names.add("dense")
         sparse = getattr(params, "sparse_vectors", None)
         if isinstance(sparse, dict):
             names.update(sparse.keys())
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug(
             "qdrant_adapter: capability extraction failed for %s: %s",
             collection_name,
@@ -759,7 +759,7 @@ def _collection_vectors(collection_name: str) -> frozenset[str]:
 # Per-collection payload-key cache. Maps a collection name to the union
 # of payload keys observed across a small sample of its points. Used to
 # gate fragile hard filters (``ifc_class`` et al.) so they're only
-# pinned when the bound collection actually carries that field — the
+# pinned when the bound collection actually carries that field - the
 # DDC v3 CWICR snapshots (``cwicr_en_v3`` …) do NOT have an
 # ``ifc_class`` payload, so pinning it eliminated every BIM-vs-cost
 # candidate (the user-reported "/match-elements does nothing").
@@ -772,7 +772,7 @@ def collection_payload_keys(collection_name: str) -> frozenset[str]:
     Samples up to 32 points via a single ``scroll`` (no vector pulled)
     and unions their payload keys. Cached per-process. Returns an empty
     frozenset on any failure so callers treat "unknown schema" as "field
-    absent" and degrade by *not* pinning the fragile filter — which is
+    absent" and degrade by *not* pinning the fragile filter - which is
     the safe direction (broader recall, never an empty result).
     """
 
@@ -792,7 +792,7 @@ def collection_payload_keys(collection_name: str) -> frozenset[str]:
         for p in points or []:
             pl = getattr(p, "payload", None) or {}
             keys.update(pl.keys())
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug(
             "qdrant_adapter: payload-key probe for %s failed: %s",
             collection_name,
@@ -826,7 +826,7 @@ def _qdrant_collection_points(collection_name: str) -> int:
     """Return the point count of ``collection_name`` (0 on any failure).
 
     Tries the exact name, then the ``_v?``-stripped base (covers dev
-    installs that ingested before the v3 rename). Never raises — callers
+    installs that ingested before the v3 rename). Never raises - callers
     use this only as a "does this catalogue actually have data" signal,
     so an unreachable Qdrant collapses to 0 and the legacy SQL-only
     behaviour is preserved by the caller.
@@ -842,7 +842,7 @@ def _qdrant_collection_points(collection_name: str) -> int:
                 return 0
             info = client.get_collection(base)
         return int(getattr(info, "points_count", None) or getattr(info, "vectors_count", 0) or 0)
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug(
             "qdrant_adapter: point count for %s failed: %s",
             collection_name,
@@ -864,7 +864,7 @@ def _build_filter(filters: dict[str, Any]) -> Any | None:
     Booleans are coerced to ``bool()`` so a stray "true"/"1" string
     doesn't accidentally pin to a literal-string predicate.
 
-    Recognised keys (all optional — callers pass only what they need):
+    Recognised keys (all optional - callers pass only what they need):
 
     * Boolean flags (Pset-derived): ``is_abstract``, ``is_external``,
       ``is_loadbearing``, ``is_structural``, ``is_machine``,
@@ -897,7 +897,7 @@ def _build_filter(filters: dict[str, Any]) -> Any | None:
 
     must: list[FieldCondition] = []
 
-    # Boolean flags — coerced to ``bool()`` so polluted inputs
+    # Boolean flags - coerced to ``bool()`` so polluted inputs
     # ("true" / "1" / 0.0) don't sneak through as type-mismatched
     # MatchValue predicates that Qdrant would reject silently.
     _BOOL_KEYS = (
@@ -997,7 +997,7 @@ async def search(
 
     # Probe the collection's named-vector set BEFORE encoding the
     # resources query. The DDC v3 snapshot ships only ``dense`` +
-    # ``sparse`` — issuing a ``Prefetch(using="resources", …)`` against
+    # ``sparse`` - issuing a ``Prefetch(using="resources", …)`` against
     # such a collection 404s the entire query API call and the ranker
     # falls through to metadata-only (score ≈ 0). Skipping the encode
     # when the vector isn't there saves a BGE-M3 forward pass on every
@@ -1102,7 +1102,7 @@ async def lookup_full_rows(
 
     Thin proxy onto :mod:`app.modules.costs.parquet_lookup` so the
     ranker stays on a single ``qdrant_adapter`` import. Returns rows in
-    the same order as ``rate_codes`` — codes that don't match in the
+    the same order as ``rate_codes`` - codes that don't match in the
     parquet are dropped silently (the caller can re-correlate by
     ``rate_code`` if order matters).
     """
@@ -1118,7 +1118,7 @@ async def search_by_filter(
     filters: dict[str, Any] | None = None,
     limit: int = 100,
 ) -> list[QdrantHit]:
-    """Filter-only fetch — no vector encoding, no fusion.
+    """Filter-only fetch - no vector encoding, no fusion.
 
     Pulls candidates by Qdrant payload filter using the scroll API. The
     rows come back with ``score=0.0`` because there is no vector query
@@ -1166,7 +1166,7 @@ async def search_by_filter(
                 with_payload=True,
                 with_vectors=False,
             )
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.warning("search_by_filter: scroll failed for %s / %s: %s", collection, base, exc)
             return []
 
@@ -1195,26 +1195,26 @@ async def search_by_filter(
 # Per MAPPING_PROCESS.md v3 §5.2 the relaxation order trades the most
 # specific signals first (``ifc_predefined_type``, ``construction_stage``)
 # and keeps the bedrock predicates (``country``, ``unit_dim``,
-# ``ifc_class``, ``is_abstract=False``) until last — those define the
+# ``ifc_class``, ``is_abstract=False``) until last - those define the
 # "this rate is in the right ballpark" baseline. The Pset booleans are
 # dropped together because they are highly correlated and dropping just
 # one rarely opens a meaningful new candidate set.
 
-# Filter keys removed at each tier — earlier tiers preserve more
+# Filter keys removed at each tier - earlier tiers preserve more
 # specificity, later tiers progressively strip down to the bedrock.
 # A ``None`` entry means "no relaxation" (final tier yields the full
 # original filter set).
 _RELAX_TIERS: tuple[tuple[str, ...], ...] = (
-    (),  # tier 0 — full filter set
-    ("ifc_predefined_type",),  # tier 1 — drop subtype
-    ("ifc_predefined_type", "construction_stage"),  # tier 2 — drop stage too
+    (),  # tier 0 - full filter set
+    ("ifc_predefined_type",),  # tier 1 - drop subtype
+    ("ifc_predefined_type", "construction_stage"),  # tier 2 - drop stage too
     (
         "ifc_predefined_type",
         "construction_stage",
         "is_external",
         "is_loadbearing",
         "is_structural",
-    ),  # tier 3 — drop Psets
+    ),  # tier 3 - drop Psets
     (
         "ifc_predefined_type",
         "construction_stage",
@@ -1223,7 +1223,7 @@ _RELAX_TIERS: tuple[tuple[str, ...], ...] = (
         "is_structural",
         "department_code",
         "subsection_code",
-    ),  # tier 4 — drop trade bucket
+    ),  # tier 4 - drop trade bucket
     (
         "ifc_predefined_type",
         "construction_stage",
@@ -1233,7 +1233,7 @@ _RELAX_TIERS: tuple[tuple[str, ...], ...] = (
         "department_code",
         "subsection_code",
         "unit_dim",
-    ),  # tier 5 — drop unit dim
+    ),  # tier 5 - drop unit dim
 )
 
 
@@ -1278,7 +1278,7 @@ def _normalise_unit_dim(value: str | None) -> str | None:
 
     Lookup is case-insensitive and tolerant of typographic variants
     (``m³`` vs ``m3``, Cyrillic ``м²``). Unknown values are returned
-    verbatim — the parquet/Qdrant payload may use a vendor-specific
+    verbatim - the parquet/Qdrant payload may use a vendor-specific
     unit that the alias table doesn't yet know, and we'd rather pin
     that filter than silently drop it.
     """
@@ -1296,7 +1296,7 @@ def _dedup_hits(hits: list[QdrantHit]) -> list[QdrantHit]:
 
     Duplicates surface in two situations:
 
-    1. Cross-language fan-out (planned for v3-P8 ``base_code`` rollup) —
+    1. Cross-language fan-out (planned for v3-P8 ``base_code`` rollup) -
        the same rate code appears in DE+EN+RU collections and we want
        only the top-scoring representative.
     2. Defensive coding for collections that accidentally hold both an
@@ -1321,7 +1321,7 @@ def _filters_after_relax(filters: dict[str, Any] | None, drop_keys: tuple[str, .
     """Return a shallow copy of ``filters`` with ``drop_keys`` removed.
 
     Used by :func:`search_with_fallback` to walk the relax ladder
-    without mutating the caller's dict — pure-function semantics make
+    without mutating the caller's dict - pure-function semantics make
     the tier sequence trivially testable.
     """
 
@@ -1348,7 +1348,7 @@ def _filters_after_relax(filters: dict[str, Any] | None, drop_keys: tuple[str, .
 # code even though they live in different Qdrant collections).
 #
 # Codes without recognisable suffixes pass through unchanged so non-CWICR
-# catalogues — BR SINAPI numeric codes, vendor-specific BYO rates — are
+# catalogues - BR SINAPI numeric codes, vendor-specific BYO rates - are
 # never accidentally truncated.
 
 
@@ -1398,7 +1398,7 @@ def base_code(rate_code: str | None) -> str:
         base_code("CUSTOM-XYZ")       → "CUSTOM-XYZ"       # BYO vendor code
         base_code("03.330.10.xx.yy")  → "03.330.10.xx.yy"  # unknown suffixes
 
-    Returns the empty string for a falsy input — callers feed ``payload
+    Returns the empty string for a falsy input - callers feed ``payload
     .get("rate_code")`` directly without a None-check.
     """
 
@@ -1408,7 +1408,7 @@ def base_code(rate_code: str | None) -> str:
     sentinels = _canonical_unit_dims() | _known_language_tags()
     parts = str(rate_code).split(".")
 
-    # Strip up to TWO suffix segments — one lang, one unit (or two of
+    # Strip up to TWO suffix segments - one lang, one unit (or two of
     # the same kind, defensively, e.g. ``.de.de`` from a buggy seed).
     # Stop at the first non-sentinel so structural codes survive.
     stripped = 0
@@ -1425,14 +1425,14 @@ def _dedup_hits_by_base_code(hits: list[QdrantHit]) -> list[QdrantHit]:
     Cross-language fan-out (querying ``cwicr_de_v3`` AND ``cwicr_en_v3``
     for a translation-aware project) surfaces the same logical rate
     twice. This collapses them keeping the version that scored highest
-    in RRF — typically the one whose collection's language matches the
+    in RRF - typically the one whose collection's language matches the
     user's query language, which is the desired UX.
 
     Differs from :func:`_dedup_hits` by grouping on ``base_code`` rather
     than the full ``rate_code``: ``03.330.10.de.m3`` and
     ``03.330.10.en.m3`` map to the same key ``03.330.10``.
 
-    First-seen-highest-scored wins — assumes the input is sorted by
+    First-seen-highest-scored wins - assumes the input is sorted by
     score descending (RRF output already is).
     """
 
@@ -1470,7 +1470,7 @@ async def cross_language_search(
     """Fan-out :func:`search` across multiple language collections, dedup by base code.
 
     The primary country's collection is queried first so its rates anchor
-    the result list — if a base code is shared between primary and
+    the result list - if a base code is shared between primary and
     additional collections, the primary-language version wins (assuming
     its score is competitive; the dedup is highest-score-wins).
 
@@ -1478,7 +1478,7 @@ async def cross_language_search(
     probe. Empty list (default) is equivalent to a single :func:`search`
     call against ``primary_country``.
 
-    The fan-out is parallelised — one ``asyncio.gather`` so total latency
+    The fan-out is parallelised - one ``asyncio.gather`` so total latency
     is dominated by the slowest collection, not the sum.
 
     Returns up to ``limit`` deduped hits. Results across collections
@@ -1489,7 +1489,7 @@ async def cross_language_search(
     import asyncio
 
     countries = [primary_country, *additional_countries]
-    # De-dup the country list itself — a caller might pass DE_BERLIN
+    # De-dup the country list itself - a caller might pass DE_BERLIN
     # twice or include the primary in additional by mistake. Preserve
     # order so the primary stays first.
     seen_countries: set[str] = set()
@@ -1533,14 +1533,14 @@ def _enumerate_target_codes(base: str, target_country: str) -> list[str]:
     Used by :func:`cross_lang_lookup` to translate a rate code from one
     language collection to its sibling in another. The CWICR encoder
     appends ``.{lang}`` and / or ``.{unit}`` suffixes when it materialises
-    per-language code variants — but the suffix order, presence, and
+    per-language code variants - but the suffix order, presence, and
     cardinality vary across regions and snapshot vintages. Rather than
     hard-code one shape we enumerate every plausible permutation and let
     Qdrant's ``MatchAny`` resolve it in a single round-trip.
 
     The output is bounded: 1 (bare) + 1 (lang) + N units + N (lang.unit) +
     N (unit.lang) ≤ 2 + 3·|units|. With the canonical 7-element unit set
-    that's at most 23 variants — well within Qdrant's payload-match cap.
+    that's at most 23 variants - well within Qdrant's payload-match cap.
     """
 
     from app.core.match_service.region_language import language_for
@@ -1579,7 +1579,7 @@ async def cross_lang_lookup(
     2. Enumerate plausible target-language variants
        (:func:`_enumerate_target_codes`).
     3. Single Qdrant scroll on ``country_to_collection(target_country)``
-       with ``MatchAny`` on ``rate_code`` — at most one round-trip.
+       with ``MatchAny`` on ``rate_code`` - at most one round-trip.
     4. When the target language collection mixes regions (ES collection
        carries ES + MX + AR), narrow further with the
        :func:`country_filter_for` predicate so the lookup honours the
@@ -1635,7 +1635,7 @@ async def cross_lang_lookup(
                 FieldCondition(key="country", match=MatchValue(value=country_pin)),
             )
 
-        # Sync qdrant_client.scroll — mirrors the pattern used by
+        # Sync qdrant_client.scroll - mirrors the pattern used by
         # :func:`search` (see ``client.query_points`` callsite).
         points, _next = client.scroll(
             collection_name=coll,
@@ -1644,7 +1644,7 @@ async def cross_lang_lookup(
             with_payload=["rate_code"],
             with_vectors=False,
         )
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug(
             "cross_lang_lookup: %r → %s lookup failed: %s",
             source_rate_code,
@@ -1675,9 +1675,9 @@ async def search_with_fallback(
     Walks :data:`_RELAX_TIERS` until the result set has at least
     ``min_results`` hits or the bedrock filters are reached. Returns
     ``(hits, tier_used)`` so the caller can log which tier earned the
-    candidates — useful for v3-P10 analytics on filter-set tightness.
+    candidates - useful for v3-P10 analytics on filter-set tightness.
 
-    ``min_results`` defaults to ``max(1, limit // 4)`` — i.e., we try
+    ``min_results`` defaults to ``max(1, limit // 4)`` - i.e., we try
     to keep at least a quarter of the requested limit. Setting it to
     ``limit`` forces full relaxation; setting it to ``0`` disables
     fallback entirely (single tier-0 call).
@@ -1722,7 +1722,7 @@ async def substitute_abstract_parents(
     """Replace ``is_abstract=True`` rows with concrete children.
 
     Section headers (e.g., DIN 276 KG-330 "Außenwände") are valuable
-    semantically — the dense vector hits them when the query is broad —
+    semantically - the dense vector hits them when the query is broad -
     but worthless as cost rates because they have no unit price. v3
     indexes them with ``is_abstract=True`` so the ranker can spot them
     and issue a narrow follow-up search constrained to the same
@@ -1749,7 +1749,7 @@ async def substitute_abstract_parents(
             out.append(hit)
             continue
         if substitutions_done >= max_substitutions:
-            # Past the budget — keep the abstract as-is so the caller
+            # Past the budget - keep the abstract as-is so the caller
             # at least knows there's a section-header candidate.
             out.append(hit)
             continue
@@ -1776,7 +1776,7 @@ async def substitute_abstract_parents(
                 filters=sub_filters,
                 limit=children_per_parent,
             )
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.debug("substitute_abstract_parents: follow-up failed (%s)", exc)
             out.append(hit)
             continue
@@ -1790,7 +1790,7 @@ async def substitute_abstract_parents(
             added_any = True
 
         if not added_any:
-            # Children were all dupes of existing concrete hits — keep
+            # Children were all dupes of existing concrete hits - keep
             # the abstract so the caller can decide what to do.
             out.append(hit)
         substitutions_done += 1

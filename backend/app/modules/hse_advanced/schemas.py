@@ -1,4 +1,4 @@
-"""‌⁠‍HSE Advanced Pydantic schemas — request/response models."""
+"""‌⁠‍HSE Advanced Pydantic schemas - request/response models."""
 
 from datetime import date, datetime
 from decimal import Decimal
@@ -25,7 +25,7 @@ def _validate_safe_url(value: str | None) -> str | None:
     if lower.startswith(("http://", "https://", "/")):
         return stripped
     # Anything containing a scheme (``foo:bar``) that isn't whitelisted
-    # is rejected — keeps relative paths working but blocks javascript:.
+    # is rejected - keeps relative paths working but blocks javascript:.
     if ":" in stripped.split("/", 1)[0]:
         raise ValueError(
             "URL must use http(s):// or be a relative path; javascript:/data:/file: URIs are not allowed",
@@ -828,7 +828,7 @@ class RiskScoreResponse(BaseModel):
 
 
 class KPIResponse(BaseModel):
-    """KPI dashboard response — TRIR, LTIFR, days without LTI."""
+    """KPI dashboard response - TRIR, LTIFR, days without LTI."""
 
     project_id: UUID
     period_start: date | None = None
@@ -913,8 +913,8 @@ class CorrectiveActionUpdate(BaseModel):
 class CATransitionRequest(BaseModel):
     """Body for ``POST /corrective-actions/{id}/transition``.
 
-    The FSM is intentionally strict — ``pending → in_progress → verified
-    → closed`` — so any other ``to_status`` is rejected with a 409.
+    The FSM is intentionally strict - ``pending → in_progress → verified
+    → closed`` - so any other ``to_status`` is rejected with a 409.
     """
 
     model_config = ConfigDict(str_strip_whitespace=True)

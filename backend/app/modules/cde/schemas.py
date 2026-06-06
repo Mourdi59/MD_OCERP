@@ -1,4 +1,4 @@
-"""‌⁠‍CDE Pydantic schemas — request/response models.
+"""‌⁠‍CDE Pydantic schemas - request/response models.
 
 Defines create, update, and response schemas for document containers
 and revisions following ISO 19650.
@@ -139,10 +139,10 @@ class RevisionCreate(BaseModel):
 
     Two creation modes:
 
-    - **Upload mode** — ``storage_key`` carries a real storage key for a
+    - **Upload mode** - ``storage_key`` carries a real storage key for a
       freshly-uploaded file; the service materialises a new ``Document`` row in
       the Documents hub so the file is indexed there.
-    - **Link mode** — ``document_id`` references an *existing* ``Document``;
+    - **Link mode** - ``document_id`` references an *existing* ``Document``;
       the service reuses that document's real ``file_path`` / size / mime so the
       file remains downloadable, and never creates a duplicate Document row.
     """

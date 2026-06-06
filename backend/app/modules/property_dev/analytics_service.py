@@ -3,21 +3,21 @@
 Five director-grade dashboards, each built on a single SQL aggregate
 pass (no Python loops over rowsets):
 
-1. :func:`cohort_retention`  — bookings grouped by reservation-month,
+1. :func:`cohort_retention`  - bookings grouped by reservation-month,
    % still active at +30/60/90/180 days.
-2. :func:`time_to_close`     — days Lead → Reservation → Sale → Handover
+2. :func:`time_to_close`     - days Lead → Reservation → Sale → Handover
    for every closed sale, with mean / p50 / p90 + histogram per stage.
-3. :func:`lead_source_attribution` — per-source funnel, revenue and CPA.
-4. :func:`conversion_funnel` — Leads → Qualified → Reservation → Sale
+3. :func:`lead_source_attribution` - per-source funnel, revenue and CPA.
+4. :func:`conversion_funnel` - Leads → Qualified → Reservation → Sale
    → Handover.
-5. :func:`broker_performance` — per-broker leaderboard with GMV +
+5. :func:`broker_performance` - per-broker leaderboard with GMV +
    commission rollups.
 
 Every endpoint is window-scoped (``since`` / ``until`` as YYYY-MM-DD).
 Money is Decimal-as-string at the schema layer; this module only deals
 with Decimal arithmetic.
 
-The class is intentionally minimal — it only borrows the AsyncSession
+The class is intentionally minimal - it only borrows the AsyncSession
 from :class:`PropertyDevService` so existing IDOR closures still own
 tenant-scoping at the router layer.
 """
@@ -71,7 +71,7 @@ _QUALIFIED_LEAD_STATES: tuple[str, ...] = (
     "converted",
 )
 
-# Stage histogram buckets — sales directors think in weeks. We anchor on
+# Stage histogram buckets - sales directors think in weeks. We anchor on
 # "this week / next week / this month / quarter / longer" to match how
 # they communicate with the board. ``hi == -1`` marks the open-ended tail.
 _STAGE_BUCKETS: tuple[tuple[str, int, int], ...] = (
@@ -86,7 +86,7 @@ _STAGE_BUCKETS: tuple[tuple[str, int, int], ...] = (
 
 
 def _parse_iso_date(value: str | None) -> date | None:
-    """Return a ``date`` or ``None`` — raises ``ValueError`` on bad input.
+    """Return a ``date`` or ``None`` - raises ``ValueError`` on bad input.
 
     The router validates the YYYY-MM-DD shape via a Query regex; this
     helper is a safety net for service-layer callers.
@@ -105,7 +105,7 @@ def _percentile(values: list[Decimal], pct: int) -> Decimal:
     if pct >= 100:
         return values[-1]
     n = len(values)
-    # Nearest-rank — same convention pandas / numpy "nearest" uses.
+    # Nearest-rank - same convention pandas / numpy "nearest" uses.
     k = max(0, min(n - 1, (pct * n) // 100))
     return values[k]
 
@@ -284,7 +284,7 @@ class AnalyticsService:
                 retained = 0
                 for ev in slot["events"]:
                     if ev["age_days"] < offset:
-                        # The cohort hasn't aged this far yet — exclude
+                        # The cohort hasn't aged this far yet - exclude
                         # the row from the denominator at this offset.
                         # We collapse "not yet reached" to "not retained"
                         # which is mildly pessimistic but ensures the
@@ -445,7 +445,7 @@ class AnalyticsService:
     ) -> dict[str, Any]:
         """Per lead-source: count, conv-to-res%, conv-to-sale%, revenue, CPA.
 
-        SQL aggregates only — three GROUP BY queries against
+        SQL aggregates only - three GROUP BY queries against
         ``oe_property_dev_lead`` joined to reservation + SPA via the
         ``Reservation.lead_id`` and ``Reservation -> SalesContract``
         bridges.
@@ -585,7 +585,7 @@ class AnalyticsService:
             ]
             # CPA = total_source_cost / sales_count, expressed in the
             # currency of the single tallest revenue bucket (multi-currency
-            # CPA is meaningless without an FX cross — we surface the
+            # CPA is meaningless without an FX cross - we surface the
             # currency the rollup attached the cost to).
             cpa: Decimal | None = None
             cpa_currency = ""
@@ -635,12 +635,12 @@ class AnalyticsService:
         """5-step funnel scoped by date window + optional development + plot type.
 
         Stages:
-          * leads      — Lead rows in window (optionally filtered by dev)
-          * qualified  — leads whose ``status`` is past ``new``
-          * reservation — Reservations linked to those leads
-          * sale       — SalesContracts in ``_CLOSED_SPA_STATES`` linked
+          * leads      - Lead rows in window (optionally filtered by dev)
+          * qualified  - leads whose ``status`` is past ``new``
+          * reservation - Reservations linked to those leads
+          * sale       - SalesContracts in ``_CLOSED_SPA_STATES`` linked
                           to those reservations
-          * handover   — Handovers completed for the same plots
+          * handover   - Handovers completed for the same plots
         """
         since_d = _parse_iso_date(since)
         until_d = _parse_iso_date(until)
@@ -661,7 +661,7 @@ class AnalyticsService:
                 )
             )
         # plot_type filter narrows to leads where preferred_house_type
-        # matches the supplied label — used by directors who track
+        # matches the supplied label - used by directors who track
         # townhouse vs. apartment funnels separately.
         if plot_type is not None and plot_type != "":
             # Hop via plot.house_type_label using a sub-select.
@@ -676,7 +676,7 @@ class AnalyticsService:
             .where(Lead.id.in_(base.subquery().select()))
             .where(Lead.status.in_(_QUALIFIED_LEAD_STATES))
         )
-        # NB: Lead.id.in_(subquery.select()) — SQLAlchemy 2 form.
+        # NB: Lead.id.in_(subquery.select()) - SQLAlchemy 2 form.
 
         lead_count = (await self.session.execute(lead_count_q)).scalar_one() or 0
         qualified_count = (await self.session.execute(qual_count_q)).scalar_one() or 0
@@ -766,7 +766,7 @@ class AnalyticsService:
 
         Five SQL aggregates joined in Python by broker_id (avoids a
         ``FULL OUTER JOIN`` SQLite doesn't support). All numeric tallies
-        come from SQL ``COUNT`` / ``SUM`` — no row-by-row Python tallies.
+        come from SQL ``COUNT`` / ``SUM`` - no row-by-row Python tallies.
         """
         since_d = _parse_iso_date(since)
         until_d = _parse_iso_date(until)
@@ -789,7 +789,7 @@ class AnalyticsService:
             for bid, name in broker_rows
         }
 
-        # 1) leads_assigned — count(Lead) GROUP BY broker_id.
+        # 1) leads_assigned - count(Lead) GROUP BY broker_id.
         q_leads = _select(Lead.broker_id, _func.count(Lead.id).label("c")).where(Lead.broker_id.is_not(None))
         if since_dt is not None:
             q_leads = q_leads.where(Lead.created_at >= since_dt)
@@ -811,7 +811,7 @@ class AnalyticsService:
             )
             slot["leads_assigned"] = int(c or 0)
 
-        # 2) reservations_closed — Reservation joined back to Lead.broker_id.
+        # 2) reservations_closed - Reservation joined back to Lead.broker_id.
         q_res = (
             _select(
                 Lead.broker_id,
@@ -841,7 +841,7 @@ class AnalyticsService:
             )
             slot["reservations_closed"] = int(c or 0)
 
-        # 3) sales_closed + GMV — SalesContract joined back to Lead.broker_id.
+        # 3) sales_closed + GMV - SalesContract joined back to Lead.broker_id.
         q_sales = (
             _select(
                 Lead.broker_id,
@@ -876,9 +876,9 @@ class AnalyticsService:
             currency = cur or ""
             slot["gmv"][currency] = slot["gmv"].get(currency, Decimal("0")) + Decimal(str(gmv or 0))
 
-        # 4) commission_earned — CommissionAccrual GROUP BY broker_id +
+        # 4) commission_earned - CommissionAccrual GROUP BY broker_id +
         # currency. Counts ``accrued`` / ``approved`` / ``paid`` (all
-        # earned — only ``cancelled`` is excluded).
+        # earned - only ``cancelled`` is excluded).
         q_comm = (
             _select(
                 CommissionAccrual.broker_id,
@@ -911,7 +911,7 @@ class AnalyticsService:
             )
 
         # Backfill any broker name we discovered via the joined queries
-        # but missed on the initial active-only roster (defensive — when
+        # but missed on the initial active-only roster (defensive - when
         # a broker is marked inactive mid-window we still want their row
         # on the leaderboard).
         missing_names = [bid for bid, slot in per_broker.items() if not slot["broker_name"]]
@@ -950,7 +950,7 @@ class AnalyticsService:
                 }
             )
 
-        # Sort by GMV desc (largest contributor first) — sales directors
+        # Sort by GMV desc (largest contributor first) - sales directors
         # always want the leaderboard ordered. We use the first currency
         # in each row's GMV list as the sort key (consistent across rows
         # because we sorted the currencies dict above).

@@ -1,15 +1,15 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍``oe_job_run`` ORM model — RFC 34 §4 W0.1.
+"""‌⁠‍``oe_job_run`` ORM model - RFC 34 §4 W0.1.
 
 The JobRun row records every background task we hand off to Celery.
 It exists for three reasons:
 
-1. **Idempotency** — the unique ``idempotency_key`` lets multiple callers
+1. **Idempotency** - the unique ``idempotency_key`` lets multiple callers
    race the same submission without duplicating work.
-2. **Observability** — status / progress / result / error are visible to
+2. **Observability** - status / progress / result / error are visible to
    the UI without coupling to Celery's own result backend.
-3. **Replay** — once stored we can re-dispatch a stuck row without losing
+3. **Replay** - once stored we can re-dispatch a stuck row without losing
    the original payload or audit trail.
 
 The schema mirrors the validation report pattern (``oe_validation_report``)
@@ -54,7 +54,7 @@ class JobRun(Base):
         String(120),
         nullable=False,
         index=True,
-        doc="Logical handler key — e.g. 'cad.convert', 'eac.run'.",
+        doc="Logical handler key - e.g. 'cad.convert', 'eac.run'.",
     )
     status: Mapped[str] = mapped_column(
         String(20),

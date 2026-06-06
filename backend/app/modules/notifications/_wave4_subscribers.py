@@ -2,13 +2,13 @@
 
 Single landing zone for Wave-4 module subscribers that ship in parallel and
 shouldn't all crowd into ``events.py``. Each ``register_*`` function must be
-idempotent — :meth:`EventBus.subscribe` deduplicates on handler identity in
+idempotent - :meth:`EventBus.subscribe` deduplicates on handler identity in
 practice because handlers are module-level functions.
 
 Modules wired here:
 
-* **BI Dashboards** — ``bi.alert.triggered`` / ``bi.report.generated``
-* **Supplier Catalogs** — ``po.sent`` / ``invoice.exception`` /
+* **BI Dashboards** - ``bi.alert.triggered`` / ``bi.report.generated``
+* **Supplier Catalogs** - ``po.sent`` / ``invoice.exception`` /
   ``stock.low_threshold`` / ``vendor.blacklisted``
 """
 
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 async def _can_open_isolated_session() -> bool:
-    """‌⁠‍Always True post-Epic-B — see :mod:`app.modules.notifications.events`."""
+    """‌⁠‍Always True post-Epic-B - see :mod:`app.modules.notifications.events`."""
     return True
 
 
@@ -348,7 +348,7 @@ async def _on_supplier_peppol_ingested(event: Event) -> None:
     """``supplier_catalogs.invoice.peppol_ingested`` → AP team gets notified."""
     if not await _can_open_isolated_session():
         return
-    # Audit-only — no targeted user. Log for observability.
+    # Audit-only - no targeted user. Log for observability.
     logger.info(
         "Wave 4: PEPPOL invoice ingested: %s",
         (event.data or {}).get("invoice_id"),

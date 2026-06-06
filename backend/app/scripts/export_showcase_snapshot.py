@@ -11,7 +11,7 @@ single gzip-compressed JSON artifact next to this module:
 That artifact is what ``seed_showcase_snapshot`` bulk-loads on a fresh
 install so a new user immediately sees the whole platform working in
 seven languages. The artifact is the *only* thing that needs to be
-committed/packaged — no CWICR base or per-language CSVs required at
+committed/packaged - no CWICR base or per-language CSVs required at
 install time.
 
 Closure rules (every ``oe_*`` table):
@@ -53,7 +53,7 @@ SHOWCASE_PIDS = [
     "6128e9de-cb94-4278-9fbc-d2eeae77b4a6",  # ZH  上海浦东商务综合楼
     "afe169f9-0e4a-4b2f-b2a6-344f3a7a79c1",  # AR  برج الأعمال – دبي
     "8646ba9e-257d-477b-a3e0-db05b9b40578",  # HI  मुंबई आवासीय परिसर
-    "311bcdd8-111e-4d41-9e25-c1bdc953d016",  # RU  ЖК «Нева» — СПб
+    "311bcdd8-111e-4d41-9e25-c1bdc953d016",  # RU  ЖК «Нева» - СПб
     "0cefc29a-4e20-4287-be24-8ea0c2e4343b",  # BR  Edifício Faria Lima SP
 ]
 

@@ -1,30 +1,30 @@
 """‌⁠‍Users & authentication API routes.
 
 Endpoints:
-    POST /auth/register         — Register new user
-    POST /auth/login            — Login, get JWT tokens
-    POST /auth/refresh          — Refresh access token
-    POST /auth/forgot-password  — Request password reset token
-    POST /auth/reset-password   — Reset password with token
-    GET  /me                    — Current user profile
-    PATCH /me                   — Update own profile
-    POST /me/change-password    — Change own password
-    GET  /me/api-keys           — List own API keys
-    POST /me/api-keys           — Create API key
-    DELETE /me/api-keys/{id}    — Revoke API key
-    GET  /me/preferences         — Get regional preferences
-    PATCH /me/preferences         — Update regional preferences
-    GET  /me/module-preferences — Get saved module preferences
-    PATCH /me/module-preferences — Save module preferences
-    GET  /me/sidebar-preferences — Get sidebar visibility preferences
-    PUT  /me/sidebar-preferences — Save sidebar visibility preferences
-    GET  /me/dashboard-layout    — Get dashboard widget layout
-    PUT  /me/dashboard-layout    — Save dashboard widget layout
-    GET  /me/tour-state          — Get per-tour dismiss / completion state
-    PUT  /me/tour-state          — Save per-tour dismiss / completion state
-    GET  /                      — List users (admin/manager)
-    GET  /{id}                  — Get user by ID (admin/manager)
-    PATCH /{id}                 — Update user (admin only)
+    POST /auth/register         - Register new user
+    POST /auth/login            - Login, get JWT tokens
+    POST /auth/refresh          - Refresh access token
+    POST /auth/forgot-password  - Request password reset token
+    POST /auth/reset-password   - Reset password with token
+    GET  /me                    - Current user profile
+    PATCH /me                   - Update own profile
+    POST /me/change-password    - Change own password
+    GET  /me/api-keys           - List own API keys
+    POST /me/api-keys           - Create API key
+    DELETE /me/api-keys/{id}    - Revoke API key
+    GET  /me/preferences         - Get regional preferences
+    PATCH /me/preferences         - Update regional preferences
+    GET  /me/module-preferences - Get saved module preferences
+    PATCH /me/module-preferences - Save module preferences
+    GET  /me/sidebar-preferences - Get sidebar visibility preferences
+    PUT  /me/sidebar-preferences - Save sidebar visibility preferences
+    GET  /me/dashboard-layout    - Get dashboard widget layout
+    PUT  /me/dashboard-layout    - Save dashboard widget layout
+    GET  /me/tour-state          - Get per-tour dismiss / completion state
+    PUT  /me/tour-state          - Save per-tour dismiss / completion state
+    GET  /                      - List users (admin/manager)
+    GET  /{id}                  - Get user by ID (admin/manager)
+    PATCH /{id}                 - Update user (admin only)
 """
 
 import uuid
@@ -102,10 +102,10 @@ class DashboardLayoutPayload(BaseModel):
     customisation follows the user across browsers and devices, not just
     a single localStorage bucket.
 
-    * ``order`` — widget ids in the user's preferred top-to-bottom order.
+    * ``order`` - widget ids in the user's preferred top-to-bottom order.
       Unknown ids are dropped client-side at render time via
       ``reconcileOrder`` so a removed widget never corrupts a saved layout.
-    * ``hidden`` — widget ids the user has hidden via the customise panel.
+    * ``hidden`` - widget ids the user has hidden via the customise panel.
     """
 
     order: list[str]
@@ -113,10 +113,10 @@ class DashboardLayoutPayload(BaseModel):
 
 
 class TourStateEntry(BaseModel):
-    """Per-tour persistence record — when a user dismissed / completed a tour.
+    """Per-tour persistence record - when a user dismissed / completed a tour.
 
     Both timestamps are ISO-8601 strings (``datetime.now(UTC).isoformat()``).
-    Either may be ``None`` — Skip writes only ``dismissed_at``; Finish writes
+    Either may be ``None`` - Skip writes only ``dismissed_at``; Finish writes
     both. ProductTour reads the bucket on mount and skips auto-open when
     either timestamp is set.
     """
@@ -193,7 +193,7 @@ class DemoLoginRequest(BaseModel):
 
 
 # Whitelist of seeded demo accounts. Mirrors the spec list in
-# ``app.main._seed_demo_account``; both must stay in sync — the test
+# ``app.main._seed_demo_account``; both must stay in sync - the test
 # ``backend/tests/integration/test_demo_login_endpoint.py`` asserts this.
 _DEMO_EMAIL_WHITELIST: frozenset[str] = frozenset(
     {
@@ -214,13 +214,13 @@ async def demo_login(
     """Issue tokens for a seeded demo account without a password check.
 
     Why this exists: the seeder in ``app.main._seed_demo_account`` generates a
-    fresh ``secrets.token_urlsafe(16)`` for every new install (BUG-D01 — no
+    fresh ``secrets.token_urlsafe(16)`` for every new install (BUG-D01 - no
     hardcoded credential is shipped) and persists it to a 0600 credentials
     file. The frontend's "Demo login" button cannot read that file, so on a
     fresh install the documented ``DemoPass1234!`` stopped working and users
     saw "Demo login failed. Please try again." This endpoint accepts the
     demo email *only*, looks the row up, and issues the same JWT pair as the
-    regular login — without ever asking for the random password.
+    regular login - without ever asking for the random password.
 
     Hard guards:
         * Disabled when ``SEED_DEMO`` env var is ``false`` / ``0`` / ``no``
@@ -228,7 +228,7 @@ async def demo_login(
         * Email must be in the whitelist of seeded demo accounts.
         * Account must exist and be active. Missing rows return 404 with a
           message that points the operator at the seed log.
-        * Rate-limited per source IP (``demo_{ip}`` bucket) — the same
+        * Rate-limited per source IP (``demo_{ip}`` bucket) - the same
           login_limiter so repeated taps don't bypass throttling.
     """
     import os
@@ -241,7 +241,7 @@ async def demo_login(
 
     email = (data.email or "").strip().lower()
     if email not in _DEMO_EMAIL_WHITELIST:
-        # Same generic 401 as a wrong password — avoid leaking whether the
+        # Same generic 401 as a wrong password - avoid leaking whether the
         # email is in the whitelist via an attacker-distinguishable response.
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -338,7 +338,7 @@ async def get_me(
     ``/me/`` so requests against ``GET /api/v1/users/me`` resolve to "current
     user" instead of falling through to ``/{user_id}`` and 422-failing UUID
     parsing on the literal ``"me"``. Both must be declared *before* the
-    ``/{user_id}`` route — FastAPI matches in source order.
+    ``/{user_id}`` route - FastAPI matches in source order.
     """
     from app.core.permissions import permission_registry
 
@@ -551,7 +551,7 @@ async def get_dashboard_layout(
     """Get the current user's dashboard widget layout.
 
     Returns ``{order: [], hidden: []}`` (defaults) when the user has never
-    customised the dashboard — the client's ``reconcileOrder`` helper then
+    customised the dashboard - the client's ``reconcileOrder`` helper then
     falls back to the canonical registry order.
     """
     user = await service.get_user(uuid.UUID(user_id))
@@ -576,7 +576,7 @@ async def save_dashboard_layout(
     duplicates / non-strings, caps each id at 64 chars and the list at 200
     entries so a runaway client can't bloat the JSON column.
 
-    Pydantic enforces ``list[str]`` at the schema boundary — non-list bodies
+    Pydantic enforces ``list[str]`` at the schema boundary - non-list bodies
     or non-string array items 422 before reaching this handler.
     """
     cleaned_order = _sanitise_widget_ids(data.order)
@@ -645,7 +645,7 @@ async def get_tour_state(
 ) -> TourStatePayload:
     """Get the current user's per-tour dismiss / completion state.
 
-    Returns ``{"tours": {}}`` (defaults) when the user has never run a tour —
+    Returns ``{"tours": {}}`` (defaults) when the user has never run a tour -
     ProductTour then falls back to the localStorage flag for first-login auto-
     open. Tours outside the canonical id set are filtered out on read so an
     obsolete tour id never leaks back to the client.
@@ -671,7 +671,7 @@ async def save_tour_state(
     payload: drops unknown tour ids, caps each timestamp at 40 chars so a
     runaway client can't bloat the JSON column.
 
-    IDOR posture: writes the row keyed by ``CurrentUserId`` only — the body
+    IDOR posture: writes the row keyed by ``CurrentUserId`` only - the body
     has no ``user_id`` field, so a caller can never write to another user's
     tour state via this endpoint.
     """
@@ -834,7 +834,7 @@ async def complete_onboarding(
 async def get_onboarding_presets() -> list[dict[str, Any]]:
     """Return all available company-type presets for the onboarding wizard.
 
-    Public endpoint (no auth required) — the presets are non-sensitive.
+    Public endpoint (no auth required) - the presets are non-sensitive.
     """
     from app.core.onboarding_presets import get_all_presets
 
@@ -898,7 +898,7 @@ async def list_users(
 
     Demo-mode privacy: when ``OE_DEMO_MODE=true`` is set in the environment
     (only on the public hosted demo), personal data is stripped from the
-    response — first/last names are blanked and the email's local part is
+    response - first/last names are blanked and the email's local part is
     replaced with a hash. Only the email domain remains visible. This way
     the public demo can show registration counts without leaking PII from
     real users who signed up to try the product.

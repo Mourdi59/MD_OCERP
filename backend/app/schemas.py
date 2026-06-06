@@ -1,4 +1,4 @@
-"""‌⁠‍Core schemas — shared Pydantic models for the entire platform.
+"""‌⁠‍Core schemas - shared Pydantic models for the entire platform.
 
 These models define the canonical data structures.
 Used for API request/response, internal data passing, and validation.
@@ -73,9 +73,9 @@ class OEResponse(OEBase):
 class ProjectCreate(OEBase):
     name: str = Field(..., min_length=1, max_length=255)
     description: str = ""
-    region: str = Field(default="", max_length=100)  # User must choose — no default bias
+    region: str = Field(default="", max_length=100)  # User must choose - no default bias
     classification_standard: str = Field(default="", max_length=100)  # Any standard accepted
-    currency: str = Field(default="", max_length=10)  # User must choose — no default bias
+    currency: str = Field(default="", max_length=10)  # User must choose - no default bias
     locale: str = "en"
     validation_rule_sets: list[str] = Field(default=["boq_quality"])
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -161,7 +161,7 @@ class CostItemResponse(OEBase):
     descriptions: dict[str, str] = Field(default_factory=dict)  # {"en": "...", "de": "..."}
     unit: MeasurementUnit
     rate: Decimal
-    currency: str = ""  # No default — set by project or cost database context
+    currency: str = ""  # No default - set by project or cost database context
     source: str = "cwicr"  # cwicr, rsmeans, bki, custom
     classification: Classification = Field(default_factory=Classification)
     components: list[dict[str, Any]] = Field(default_factory=list)
@@ -189,7 +189,7 @@ class CostSearchQuery(OEBase):
 
 
 class CADElement(OEBase):
-    """Single element from CAD conversion — canonical format."""
+    """Single element from CAD conversion - canonical format."""
 
     id: str
     category: str  # wall, floor, roof, column, beam, door, window, ...

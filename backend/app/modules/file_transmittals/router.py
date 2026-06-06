@@ -6,15 +6,15 @@ Mounted by the module loader at ``/api/v1/file-transmittals``.
 
 Endpoints
 ~~~~~~~~~
-* ``GET    /``                 — list transmittals (filtered by project_id)
-* ``POST   /``                 — create draft + optional items/recipients
-* ``GET    /{id}``             — full transmittal
-* ``POST   /{id}/send/``       — flip draft to sent, mint tokens, gen cover
-* ``POST   /{id}/items/``      — append an item
-* ``DELETE /{id}/items/{iid}`` — remove an item
-* ``POST   /{id}/recipients/`` — append a recipient
-* ``POST   /ack/{token}/``     — recipient ack (public, no auth)
-* ``GET    /{id}/cover/``      — download cover sheet bytes
+* ``GET    /``                 - list transmittals (filtered by project_id)
+* ``POST   /``                 - create draft + optional items/recipients
+* ``GET    /{id}``             - full transmittal
+* ``POST   /{id}/send/``       - flip draft to sent, mint tokens, gen cover
+* ``POST   /{id}/items/``      - append an item
+* ``DELETE /{id}/items/{iid}`` - remove an item
+* ``POST   /{id}/recipients/`` - append a recipient
+* ``POST   /ack/{token}/``     - recipient ack (public, no auth)
+* ``GET    /{id}/cover/``      - download cover sheet bytes
 
 All authenticated routes go through a per-project IDOR guard so a
 viewer of one project can never read another's transmittals.
@@ -279,7 +279,7 @@ async def add_recipient(
         display_name=row.display_name,
         role=row.role,
         acknowledged_at=row.acknowledged_at,
-        # Token only surfaces via send/ — not on the recipient-add path.
+        # Token only surfaces via send/ - not on the recipient-add path.
         acknowledge_token=None,
     )
 
@@ -295,14 +295,14 @@ async def acknowledge(
     token: str,
     service: TransmittalService = Depends(_get_service),
 ) -> TransmittalAcknowledgeResponse:
-    """Public recipient ack endpoint — no auth required, token-gated.
+    """Public recipient ack endpoint - no auth required, token-gated.
 
     Token is matched against ``oe_file_transmittal_recipient.acknowledge_token``.
     Idempotent: a second call returns the same payload without re-stamping.
     """
     transmittal, recipient = await service.acknowledge_by_token(token)
     # ``acknowledged_at`` is set by the service; non-None invariant holds.
-    assert recipient.acknowledged_at is not None  # noqa: S101 — invariant
+    assert recipient.acknowledged_at is not None  # noqa: S101 - invariant
     return TransmittalAcknowledgeResponse(
         transmittal_number=transmittal.number,
         subject=transmittal.subject,

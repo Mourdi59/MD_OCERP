@@ -51,7 +51,7 @@ class SavedViewService:
 
         Visibility rules:
 
-        * The user's own views (any ``is_shared`` value) — both
+        * The user's own views (any ``is_shared`` value) - both
           project-scoped and global (``project_id IS NULL``).
         * Other users' views in the same project iff ``is_shared``.
 
@@ -63,7 +63,7 @@ class SavedViewService:
         if project_id is None:
             project_filter = FileSavedView.project_id.is_(None)
             shared_filter = (
-                and_(False)  # No shared global views — sharing is project-scoped.
+                and_(False)  # No shared global views - sharing is project-scoped.
             )
         else:
             project_filter = or_(
@@ -108,7 +108,7 @@ class SavedViewService:
         if view.user_id == user_id:
             return view
         # A shared, project-scoped view is readable by project members.
-        # We do NOT cross-check team membership here — the router has
+        # We do NOT cross-check team membership here - the router has
         # already verified project access before invoking the service,
         # so a request that reaches us with ``project_id == view.project_id``
         # implies access. We still gate on ``is_shared`` for non-owners.
@@ -156,12 +156,12 @@ class SavedViewService:
         """Patch supplied fields. Only the owner can mutate."""
         view = await self._load(view_id, user_id)
         if view.user_id != user_id:
-            # Shared views are read-only for non-owners — same surface
+            # Shared views are read-only for non-owners - same surface
             # as not-found to avoid leaking metadata on writes.
             raise SavedViewNotFoundError(str(view_id))
 
         data = payload.model_dump(exclude_unset=True)
-        # FilterSnapshot is nested — flatten to plain dict for the column.
+        # FilterSnapshot is nested - flatten to plain dict for the column.
         if "filter_json" in data and data["filter_json"] is not None:
             if isinstance(payload.filter_json, FilterSnapshot):
                 data["filter_json"] = payload.filter_json.model_dump(mode="json")
@@ -228,7 +228,7 @@ class SavedViewService:
         while await self._name_taken(candidate, user_id, original.project_id):
             candidate = f"{base_name} {i}"
             i += 1
-            if i > 999:  # pragma: no cover — defensive ceiling
+            if i > 999:  # pragma: no cover - defensive ceiling
                 raise SavedViewConflictError(base_name)
 
         clone = FileSavedView(

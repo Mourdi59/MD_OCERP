@@ -98,7 +98,7 @@ TEMPLATE = DemoTemplate(
                 ("02.008", "Instrumentacao geotecnica e monitoramento (Geotechnical monitoring)", "vb", 1, 165000.00, {"nbr": "NBR 6122"}),
             ],
         ),
-        # ── 03 Fundacoes (Foundations) — NBR 6122 ────────────────────────
+        # ── 03 Fundacoes (Foundations) - NBR 6122 ────────────────────────
         (
             "03",
             "Fundacoes (Foundations) - NBR 6122",

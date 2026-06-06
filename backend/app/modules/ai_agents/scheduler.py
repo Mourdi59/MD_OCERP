@@ -11,18 +11,18 @@ Design choices (architecture guide "LIGHTWEIGHT & SIMPLE"):
   reporting module already ships (:func:`app.modules.reporting.cron.next_occurrence`),
   rather than pulling in ``croniter`` and its transitive deps.
 * **In-process asyncio loop**, exactly like the existing KPI / reports
-  schedulers in ``main.py`` — no Celery, single-process is acceptable for the
+  schedulers in ``main.py`` - no Celery, single-process is acceptable for the
   single-tenant deploy. The central app lifespan wires :func:`start_scheduler`.
 * **UTC everywhere.** ``next_run_at`` is an ISO-8601 UTC string. Cron fields
   are interpreted in UTC (the reporting parser's contract).
 * **Determinism.** A scheduled run is a normal agent run: it spawns through the
   same loop, persists steps, and never auto-applies its output. If the operator
   has no LLM configured the run simply records ``failure_reason="no_llm"`` like
-  any manual run — no silent action is ever taken.
+  any manual run - no silent action is ever taken.
 
 Firing a scheduled run reuses the service's :meth:`AgentService.start_run`
 path; ``tagged`` metadata (``automation_trigger="schedule"``) is left for a
-future monitoring item — for now the run is identifiable by its ``agent_name``
+future monitoring item - for now the run is identifiable by its ``agent_name``
 (``custom:<id>``) and that it was not initiated by a user request.
 """
 
@@ -69,7 +69,7 @@ async def _fire_due_agent(service: AgentService, agent: CustomAgent, now: _dt.da
     """Fire one due agent and advance its ``next_run_at``.
 
     The schedule clock is advanced FIRST (and committed by the caller) so a run
-    that crashes mid-flight cannot wedge the agent into firing every tick — the
+    that crashes mid-flight cannot wedge the agent into firing every tick - the
     next occurrence is already pinned regardless of run outcome.
     """
     auto = dict(agent.automation) if isinstance(agent.automation, dict) else {}
@@ -79,7 +79,7 @@ async def _fire_due_agent(service: AgentService, agent: CustomAgent, now: _dt.da
 
     # Snapshot the identity BEFORE update_metadata(): that call expires the
     # whole identity map (``session.expire_all()``), after which any attribute
-    # access on ``agent`` would emit a lazy SELECT — illegal on an async session
+    # access on ``agent`` would emit a lazy SELECT - illegal on an async session
     # and surfacing as ``MissingGreenlet``. Plain locals dodge the reload.
     agent_id = agent.id
     agent_user_id = agent.user_id
@@ -89,7 +89,7 @@ async def _fire_due_agent(service: AgentService, agent: CustomAgent, now: _dt.da
     try:
         auto["next_run_at"] = compute_next_run_at(cron_expr, after=now)
     except Exception:
-        # Unparseable cron (should not happen — validated at setup). Disable
+        # Unparseable cron (should not happen - validated at setup). Disable
         # the schedule rather than re-evaluate a broken expression every minute.
         logger.exception("Disabling schedule for agent %s: bad cron %r", agent_id, cron_expr)
         auto["schedule_enabled"] = False

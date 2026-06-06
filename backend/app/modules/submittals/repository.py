@@ -25,7 +25,7 @@ class SubmittalRepository:
         status: str | None = None,
         submittal_type: str | None = None,
     ) -> int:
-        """Single-query count — used by list responses to avoid N+1."""
+        """Single-query count - used by list responses to avoid N+1."""
         base = (
             select(func.count())
             .select_from(Submittal)
@@ -69,7 +69,7 @@ class SubmittalRepository:
 
         Dialect-safety: the previous implementation pushed
         ``CAST(substr(number, 5) AS INTEGER)`` into SQL. That diverges by
-        backend — SQLite is lenient (``CAST('001-A' AS INTEGER)`` -> 1), but
+        backend - SQLite is lenient (``CAST('001-A' AS INTEGER)`` -> 1), but
         embedded PostgreSQL raises ``invalid input syntax for type integer``
         and 500s the whole create path for any row whose suffix is not a clean
         integer (e.g. a legacy import / seed / migrated row like ``SUBM-1`` or
@@ -105,7 +105,7 @@ class SubmittalRepository:
         """Persist a new submittal.
 
         Raises :class:`sqlalchemy.exc.IntegrityError` on unique-constraint
-        collision — the service layer retries with a fresh submittal
+        collision - the service layer retries with a fresh submittal
         number when this happens (concurrent create race).
         """
         self.session.add(submittal)

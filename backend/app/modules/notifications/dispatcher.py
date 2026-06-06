@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""Real notification dispatchers — email + webhook (Epic B / B2).
+"""Real notification dispatchers - email + webhook (Epic B / B2).
 
 Pre-Epic-B the email and webhook channels were event-bus stubs: the
 service published ``notifications.dispatch.{channel}`` and trusted some
@@ -20,7 +20,7 @@ This module wires real sinks:
   with HMAC-SHA256 and surfaced in the ``X-OE-Signature`` header.
 
 Both sinks are subscribed via the event bus to keep the
-``NotificationService`` dispatch path identical to before — the
+``NotificationService`` dispatch path identical to before - the
 service still publishes ``notifications.dispatch.email`` /
 ``notifications.dispatch.webhook``; this module simply provides
 real handlers for them.
@@ -51,7 +51,7 @@ from app.modules.notifications.templates import render as render_template
 
 logger = logging.getLogger(__name__)
 
-# Per-process HTTP client — reused across deliveries so we get
+# Per-process HTTP client - reused across deliveries so we get
 # connection pooling for free.  Lazily instantiated inside
 # ``_get_http_client`` because the dispatcher module is imported at
 # startup before the event loop is running, and ``httpx.AsyncClient``
@@ -142,7 +142,7 @@ async def _on_dispatch_email(event: Event) -> None:
     subject = render_template(title_key, ctx) or event_type
     body_text = render_template(body_key, ctx) or ""
 
-    # Digest payloads carry an "events" list — render a small bulleted
+    # Digest payloads carry an "events" list - render a small bulleted
     # summary so the recipient gets something readable in one glance.
     if event_type == "notifications.digest" and "events" in payload:
         lines = ["", "Recent notifications:", ""]
@@ -153,7 +153,7 @@ async def _on_dispatch_email(event: Event) -> None:
             etitle = render_template(etitle_key, ectx) or etype
             lines.append(f"  • {etitle}")
         body_text = (body_text + "\n" + "\n".join(lines)).strip()
-        subject = f"OpenEstimate digest — {len(payload.get('events') or [])} updates"
+        subject = f"OpenEstimate digest - {len(payload.get('events') or [])} updates"
 
     html_body = _render_email_html(name, subject, body_text, payload.get("action_url"))
 
@@ -188,7 +188,7 @@ def _render_email_html(
 ) -> str:
     """Tiny inline-styled HTML so notifications render cleanly across
     every email client.  We deliberately do not import the marketing
-    template (it pulls a full layout) — these are transactional
+    template (it pulls a full layout) - these are transactional
     one-liners with at most an action button.
     """
     safe_subject = (subject or "").replace("<", "&lt;").replace(">", "&gt;")
@@ -285,7 +285,7 @@ async def _on_dispatch_webhook(event: Event) -> None:
                     target.active = False
                     logger.warning(
                         "dispatcher: webhook target %s (%s) auto-deactivated "
-                        "after %d consecutive failures — re-activate once fixed",
+                        "after %d consecutive failures - re-activate once fixed",
                         target.id,
                         target.url[:60],
                         current_failures,
@@ -293,7 +293,7 @@ async def _on_dispatch_webhook(event: Event) -> None:
                     continue
                 if current_failures >= _CIRCUIT_OPEN_THRESHOLD:
                     logger.debug(
-                        "dispatcher: circuit open for webhook target %s (%d failures) — skipping delivery",
+                        "dispatcher: circuit open for webhook target %s (%d failures) - skipping delivery",
                         target.id,
                         current_failures,
                     )
@@ -334,7 +334,7 @@ async def _on_dispatch_webhook(event: Event) -> None:
         logger.exception("dispatcher: webhook batch crashed")
 
 
-# ── In-app push (WebSocket) — see ws_hub.py ────────────────────────────────
+# ── In-app push (WebSocket) - see ws_hub.py ────────────────────────────────
 
 
 async def _on_notification_created(event: Event) -> None:

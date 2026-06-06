@@ -9,7 +9,7 @@ def register_boq_permissions() -> None:
     # every signed-in user (including freshly self-registered viewers and
     # demo accounts) must be able to start AND fill an estimate. Otherwise
     # `boq.create=VIEWER` produces empty BOQs the same user can't populate
-    # — the actual symptom reported in v2.6.23: "Failed to add positions —
+    # - the actual symptom reported in v2.6.23: "Failed to add positions -
     # Missing permission: boq.update". The RBAC regression originally
     # tracked as issue #101 only patched create; this completes that fix.
     #

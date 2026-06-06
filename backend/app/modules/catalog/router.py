@@ -1,20 +1,20 @@
 """‌⁠‍Catalog API routes.
 
-The catalog stores **resources** — single-input items (one material, one
+The catalog stores **resources** - single-input items (one material, one
 labour rate, one machine, etc.) with one price per region. Resources do
 not have a material/labour/equipment breakdown because each resource
-*already is* one of those — the kind is in ``resource_type``.
+*already is* one of those - the kind is in ``resource_type``.
 
 Resources are referenced by **cost positions** (work compositions) in
 ``oe_costs_item``, exposed at ``/api/v1/costs/``. A position's
 ``components[]`` array names the resources it consumes by ``code`` and
 adds quantity / unit-rate / cost. So:
 
-    /api/v1/costs/         — work positions (≈55k canonical, more with
+    /api/v1/costs/         - work positions (≈55k canonical, more with
                              regional price variants). The "work items"
                              you see referenced in legacy CSV columns
                              *are* these.
-    /api/v1/catalog/       — leaf resources with prices. Each maps to
+    /api/v1/catalog/       - leaf resources with prices. Each maps to
                              zero or more cost positions via the
                              ``components[].code`` field.
 
@@ -205,7 +205,7 @@ async def import_catalog_from_github(
         # Offload blocking urllib to a worker thread so the event loop
         # stays responsive during the 60-second download window.
         def _fetch() -> bytes:
-            with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310 — host pinned above
+            with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310 - host pinned above
                 return resp.read()
 
         raw_bytes = await asyncio.to_thread(_fetch)
@@ -259,7 +259,7 @@ async def import_catalog_from_github(
                 specifications[key] = val
 
         try:
-            # CAT-001: normalise the price band on import — a CSV row may
+            # CAT-001: normalise the price band on import - a CSV row may
             # ship price_min > price_max (or an avg outside the band),
             # and this write path bypasses the create-time validator.
             _b, _lo, _hi = _normalise_band(
@@ -367,7 +367,7 @@ async def adjust_prices(
     - Regional coefficient: factor=1.12 (Munich vs Berlin)
     - Discount: factor=0.95 (-5%)
     """
-    # Explicit validation — Query(gt=, le=) may not be enforced in all FastAPI versions
+    # Explicit validation - Query(gt=, le=) may not be enforced in all FastAPI versions
     if factor <= 0 or factor > 10:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -409,7 +409,7 @@ async def adjust_prices(
                 new_lo = float(res.min_price) * factor
                 new_hi = float(res.max_price) * factor
                 # CAT-001: a uniform positive multiply preserves order,
-                # so it cannot *create* an inversion — but a row that
+                # so it cannot *create* an inversion - but a row that
                 # was ALREADY inverted (e.g. from an old import that
                 # predated the band validator) would survive every bulk
                 # run untouched. Normalise here so the invariant is
@@ -426,7 +426,7 @@ async def adjust_prices(
 
         # CAT-002: a bulk price change must notify subscribers so
         # assemblies / BOQ snapshots derived from these resources can
-        # refresh — consistent with the costs.item.updated → assemblies
+        # refresh - consistent with the costs.item.updated → assemblies
         # flow. Best-effort: never fail the request on a publish error.
         try:
             from app.core.events import event_bus
@@ -476,13 +476,13 @@ async def search_catalog(
     # Public endpoint (mirrors the unauthenticated ``/regions/`` route and
     # the "(public, query params)" contract in this module's docstring).
     # Use OPTIONAL auth: ``CurrentUserId = None`` looks optional but is an
-    # ``Annotated[..., Depends()]`` param — FastAPI ignores the ``= None``
+    # ``Annotated[..., Depends()]`` param - FastAPI ignores the ``= None``
     # default and ALWAYS resolves the dependency, so an anonymous /
     # expired-token request got a 401 here while ``/regions/`` returned
     # 200. The catalog page then rendered region tabs (with counts) but an
     # empty resource list. ``OptionalUserPayload`` returns ``None`` for an
     # anonymous request instead of raising, restoring the intended public
-    # behaviour. ``_user`` is unused — kept only as a presence marker.
+    # behaviour. ``_user`` is unused - kept only as a presence marker.
     _user: OptionalUserPayload = None,
     service: CatalogResourceService = Depends(_get_service),
     q: str | None = Query(default=None, description="Text search on code and name"),
@@ -527,7 +527,7 @@ async def catalog_stats(
         default=None,
         description="Scope counts to a single region so they match the region-filtered resource list",
     ),
-    # Public endpoint — same optional-auth fix as ``search_catalog`` above
+    # Public endpoint - same optional-auth fix as ``search_catalog`` above
     # (a forced 401 here left the page's type/category badges empty).
     _user: OptionalUserPayload = None,
     service: CatalogResourceService = Depends(_get_service),
@@ -538,7 +538,7 @@ async def catalog_stats(
 
 # ── Inverse lookup: positions that use a resource ─────────────────────────
 # Declared BEFORE ``/{resource_id}`` so FastAPI's ordered path-matcher
-# considers the longer pattern first — otherwise the bare resource-id
+# considers the longer pattern first - otherwise the bare resource-id
 # route can shadow this one.
 
 
@@ -553,7 +553,7 @@ async def list_cost_positions_using_resource(
     """List the cost positions that reference this resource.
 
     The catalog resource is the *leaf* (one material / labour rate /
-    equipment item). Cost positions are the *compositions* — each one
+    equipment item). Cost positions are the *compositions* - each one
     carries a ``components[]`` array naming the resources it consumes.
     This endpoint walks that link in the resource→positions direction:
     given a resource id, return every cost position whose
@@ -579,7 +579,7 @@ async def list_cost_positions_using_resource(
     Implementation: SQLAlchemy + DB-side JSON ``LIKE`` filter on the
     serialised ``components`` column. We post-filter in Python to extract
     the matched ``component`` dict (the row may carry many components).
-    For SQLite/Postgres parity we don't use JSON-path operators here —
+    For SQLite/Postgres parity we don't use JSON-path operators here -
     the LIKE on a small per-row payload is fast enough for catalog UI.
     """
     from sqlalchemy import func, or_, select
@@ -597,7 +597,7 @@ async def list_cost_positions_using_resource(
         )
 
     code = resource.resource_code
-    # JSON column stored as text — match the code as a quoted substring so
+    # JSON column stored as text - match the code as a quoted substring so
     # we don't false-positive on prefix collisions ("ME_X" matching "ME_XYZ").
     needle = f'"code": "{code}"'
     needle_alt = f'"code":"{code}"'  # compact JSON variant

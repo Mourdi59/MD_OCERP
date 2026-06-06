@@ -19,10 +19,10 @@ class FormatClassifier:
             file_path: Path to the file to classify.
 
         Returns:
-            Format string. Strongly-typed labels — 'IDS', 'COBie', 'BIMQ',
-            'Excel', 'RevitSP' — map to a dedicated parser. Loosely-detected
-            labels — 'GenericXML', 'MVD', 'ArchiCAD', 'GenericJSON',
-            'PlainText' — are *also* handled: ``service._get_parser`` routes
+            Format string. Strongly-typed labels - 'IDS', 'COBie', 'BIMQ',
+            'Excel', 'RevitSP' - map to a dedicated parser. Loosely-detected
+            labels - 'GenericXML', 'MVD', 'ArchiCAD', 'GenericJSON',
+            'PlainText' - are *also* handled: ``service._get_parser`` routes
             them to the closest content-compatible parser as a best effort
             (any XML → IDS, any JSON → BIMQ, text → RevitSP) so a valid
             generic requirements export is not rejected with a blanket 422

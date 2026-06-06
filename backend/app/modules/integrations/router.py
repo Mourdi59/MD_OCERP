@@ -1,13 +1,13 @@
 """‌⁠‍Integrations API routes.
 
-Endpoints — Chat Connectors (Teams / Slack / Telegram):
+Endpoints - Chat Connectors (Teams / Slack / Telegram):
     GET    /configs                         - List user's integration configs
     POST   /configs                         - Create integration config
     PATCH  /configs/{config_id}             - Update integration config
     DELETE /configs/{config_id}             - Delete (disconnect) integration config
     POST   /configs/{config_id}/test        - Send test notification
 
-Endpoints — Generic Webhooks:
+Endpoints - Generic Webhooks:
     GET    /webhooks                        - List user's webhooks
     POST   /webhooks                        - Create webhook
     PATCH  /webhooks/{webhook_id}           - Update webhook
@@ -166,7 +166,7 @@ async def _dispatch_integration_test(itype: str, cfg: dict) -> TestNotificationR
     Shared by the saved-config test (``/configs/{id}/test``) and the
     pre-save Connect-modal test (``/configs/test-connection``). Outbound URLs
     are re-validated against the SSRF deny-list right before dispatch. Never
-    raises — returns a TestNotificationResponse with the outcome.
+    raises - returns a TestNotificationResponse with the outcome.
     """
     title = "OpenConstructionERP Test"
     message = "This is a test notification. If you see this, the integration is working correctly."
@@ -307,7 +307,7 @@ async def test_integration_config(
 ) -> TestNotificationResponse:
     """Send a test notification through the integration config.
 
-    Rate-limited via ``approval_limiter`` (20 calls/min/user) — without
+    Rate-limited via ``approval_limiter`` (20 calls/min/user) - without
     a cap, a compromised account could turn the platform into a cheap
     DoS amplifier against arbitrary third-party webhook endpoints.
 
@@ -534,7 +534,7 @@ async def test_webhook(
 ):
     """Send a test payload to the webhook and return the delivery result.
 
-    Rate-limited at 20/min/user via ``approval_limiter`` — without a
+    Rate-limited at 20/min/user via ``approval_limiter`` - without a
     cap, a compromised account could fan out test deliveries against
     arbitrary third-party hosts and turn the platform into a DoS
     amplifier.
@@ -600,7 +600,7 @@ async def calendar_feed(
     from app.modules.users.models import APIKey
 
     # Authenticate via the FULL API-key token: compare its SHA-256 hash against
-    # APIKey.key_hash. A prefix match alone is NOT sufficient — key_prefix is
+    # APIKey.key_hash. A prefix match alone is NOT sufficient - key_prefix is
     # the first 8 chars and is non-secret (shown in key listings), so matching
     # on it would let anyone read the feed (auth bypass). The token is also
     # bound to its owner, who must have access to this project.
@@ -732,7 +732,7 @@ async def calendar_feed(
     try:
         from app.modules.schedule.models import Activity, Schedule
 
-        # Single JOIN query across all of the project's schedules — avoids the
+        # Single JOIN query across all of the project's schedules - avoids the
         # 1 + N pattern of fetching every schedule and then querying activities
         # once per schedule.
         act_result = await session.execute(

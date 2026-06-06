@@ -3,7 +3,7 @@
 Four states: WIP -> SHARED -> PUBLISHED -> ARCHIVED.
 Each transition has gate conditions (who can promote, what's required).
 
-This module is stateless — it encodes only the *rules*.  Persistence of a
+This module is stateless - it encodes only the *rules*.  Persistence of a
 document's current state is the caller's responsibility.
 
 Usage:
@@ -47,22 +47,22 @@ _ROLE_RANK: dict[str, int] = {
 
 # Each allowed transition maps to its gate metadata.
 _GATES: dict[tuple[CDEState, CDEState], dict[str, Any]] = {
-    # Gate A — WIP → SHARED
+    # Gate A - WIP → SHARED
     (CDEState.WIP, CDEState.SHARED): {
         "gate": "A",
-        "description": "Suitability check — task team manager promotes to shared area",
+        "description": "Suitability check - task team manager promotes to shared area",
         "min_role": "task_team_manager",
     },
-    # Gate B — SHARED → PUBLISHED
+    # Gate B - SHARED → PUBLISHED
     (CDEState.SHARED, CDEState.PUBLISHED): {
         "gate": "B",
-        "description": "Approval gate — lead appointed party or admin authorises publication",
+        "description": "Approval gate - lead appointed party or admin authorises publication",
         "min_role": "lead_ap",
     },
-    # Gate C — PUBLISHED → ARCHIVED
+    # Gate C - PUBLISHED → ARCHIVED
     (CDEState.PUBLISHED, CDEState.ARCHIVED): {
         "gate": "C",
-        "description": "Archive — document is superseded or project closes",
+        "description": "Archive - document is superseded or project closes",
         "min_role": "admin",
     },
 }
@@ -85,7 +85,7 @@ class CDEStateMachine:
     def can_transition(self, from_state: str, to_state: str) -> bool:
         """Return ``True`` if the transition is structurally valid.
 
-        This only checks whether the transition *exists* — it does **not**
+        This only checks whether the transition *exists* - it does **not**
         evaluate role-based authorisation.
         """
         key = self._gate_key(from_state, to_state)

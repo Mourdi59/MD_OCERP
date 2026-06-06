@@ -10,7 +10,7 @@ rejection reopens an answered RFI. See
 :meth:`RFIService.apply_approval_decision` for the exact mapping.
 
 The subscribers open their own short-lived session, gate on PostgreSQL,
-and are fail-soft — exactly like the submittals and wave-5 cross-module
+and are fail-soft - exactly like the submittals and wave-5 cross-module
 subscribers. Projects with no configured route never reach here, so the
 RFI keeps today's direct respond / close behaviour with zero breakage.
 """

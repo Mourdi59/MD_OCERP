@@ -1,31 +1,31 @@
 """‌⁠‍Schedule API routes.
 
 Endpoints:
-    POST   /schedules/                          — Create a new schedule
-    GET    /schedules/?project_id=xxx           — List schedules for a project
-    GET    /schedules/{id}                      — Get schedule detail
-    PATCH  /schedules/{id}                      — Update schedule
-    DELETE /schedules/{id}                      — Delete schedule
-    POST   /schedules/{id}/activities           — Add activity to schedule
-    GET    /schedules/{id}/activities           — List activities for schedule
-    GET    /schedules/{id}/gantt                — Get Gantt chart data
-    POST   /schedules/{id}/generate-from-boq   — Generate activities from BOQ
-    POST   /schedules/{id}/calculate-cpm       — Calculate critical path
-    GET    /schedules/{id}/risk-analysis       — PERT risk analysis
-    PATCH  /activities/{id}                     — Update activity
-    DELETE /activities/{id}                     — Delete activity
-    POST   /activities/{id}/link-position       — Link BOQ position to activity
-    PATCH  /activities/{id}/progress            — Update activity progress
-    POST   /activities/{activity_id}/work-orders — Create work order
-    GET    /work-orders/?schedule_id=xxx        — List work orders for schedule
-    PATCH  /work-orders/{id}                    — Update work order
+    POST   /schedules/                          - Create a new schedule
+    GET    /schedules/?project_id=xxx           - List schedules for a project
+    GET    /schedules/{id}                      - Get schedule detail
+    PATCH  /schedules/{id}                      - Update schedule
+    DELETE /schedules/{id}                      - Delete schedule
+    POST   /schedules/{id}/activities           - Add activity to schedule
+    GET    /schedules/{id}/activities           - List activities for schedule
+    GET    /schedules/{id}/gantt                - Get Gantt chart data
+    POST   /schedules/{id}/generate-from-boq   - Generate activities from BOQ
+    POST   /schedules/{id}/calculate-cpm       - Calculate critical path
+    GET    /schedules/{id}/risk-analysis       - PERT risk analysis
+    PATCH  /activities/{id}                     - Update activity
+    DELETE /activities/{id}                     - Delete activity
+    POST   /activities/{id}/link-position       - Link BOQ position to activity
+    PATCH  /activities/{id}/progress            - Update activity progress
+    POST   /activities/{activity_id}/work-orders - Create work order
+    GET    /work-orders/?schedule_id=xxx        - List work orders for schedule
+    PATCH  /work-orders/{id}                    - Update work order
 """
 
 import csv
 import io
 import logging
 import uuid
-import xml.etree.ElementTree as ET  # noqa: S405 — types + output tree building only; parsing routed through defusedxml below
+import xml.etree.ElementTree as ET  # noqa: S405 - types + output tree building only; parsing routed through defusedxml below
 
 import defusedxml.ElementTree as safe_ET
 from defusedxml.common import DefusedXmlException
@@ -90,12 +90,12 @@ async def _verify_schedule_project_owner(
     session: SessionDep,
     project_id: uuid.UUID,
     user_id: str,
-    payload: dict | None = None,  # noqa: ARG001 — kept for API compat; verify_project_access reads role from DB
+    payload: dict | None = None,  # noqa: ARG001 - kept for API compat; verify_project_access reads role from DB
 ) -> None:
     """‌⁠‍Verify the current user owns the project. Admins bypass.
 
     Returns HTTP 404 on both "project missing" and "access denied" so the
-    endpoint can't be turned into a UUID-existence oracle — matches the
+    endpoint can't be turned into a UUID-existence oracle - matches the
     convention used by ``verify_project_access`` everywhere else in the
     codebase.
     """
@@ -107,7 +107,7 @@ async def _verify_schedule_owner(
     session: SessionDep,
     schedule_id: uuid.UUID,
     user_id: str,
-    payload: dict | None = None,  # noqa: ARG001 — kept for API compat
+    payload: dict | None = None,  # noqa: ARG001 - kept for API compat
 ) -> object:
     """‌⁠‍Load a schedule and verify the user owns its project. Admins bypass.
 
@@ -499,7 +499,7 @@ async def get_risk_analysis(
 
     Computes optimistic/pessimistic durations for each activity and derives
     project-level probability estimates for schedule completion. Verifies the
-    caller owns the parent project (admins bypass) — risk analysis re-runs
+    caller owns the parent project (admins bypass) - risk analysis re-runs
     CPM, which mutates activity fields.
     """
     await _verify_schedule_owner(service, session, schedule_id, _user_id, payload)
@@ -852,7 +852,7 @@ async def list_relationships(
 ) -> list[RelationshipResponse]:
     """List CPM relationships for a schedule (capped, paginated by limit).
 
-    Previously fetched every relationship without bound — a schedule with
+    Previously fetched every relationship without bound - a schedule with
     a few thousand dependency rows (typical from large MS Project / P6
     imports) would dump 10+ MB JSON on a UI grid that only renders the
     first hundred. Capped at ``limit`` (default 200, max 500) and
@@ -922,7 +922,7 @@ async def delete_relationship(
     await service.activity_repo.update_fields(successor_id, dependencies=derived)
 
 
-# ── CPM Calculation (Phase 13 — uses core/cpm.py engine) ────────────────────
+# ── CPM Calculation (Phase 13 - uses core/cpm.py engine) ────────────────────
 
 
 @router.post(
@@ -1393,9 +1393,9 @@ def _parse_xer_tables(content: str) -> dict[str, list[dict[str, str]]]:
     """Parse Primavera P6 XER tab-delimited format into table dictionaries.
 
     XER format uses:
-      %T <TABLE_NAME>     — start of a table
-      %F <col1> <col2>    — field (column) names
-      %R <val1> <val2>    — row values
+      %T <TABLE_NAME>     - start of a table
+      %F <col1> <col2>    - field (column) names
+      %R <val1> <val2>    - row values
 
     Returns a dict mapping table name to a list of row dicts.
     """
@@ -1693,7 +1693,7 @@ async def import_msp_xml(
     except DefusedXmlException as e:
         # Hostile payload (XXE / billion-laughs / external DTD): defusedxml
         # raises EntitiesForbidden/DTDForbidden/ExternalReferenceForbidden,
-        # which are NOT ET.ParseError — reject cleanly instead of 500.
+        # which are NOT ET.ParseError - reject cleanly instead of 500.
         raise HTTPException(
             status_code=400,
             detail="XML rejected for security reasons",
@@ -2183,7 +2183,7 @@ async def critical_path_activities(
     """Return only critical-path activities for a schedule or across a project.
 
     Either ``schedule_id`` or ``project_id`` must be provided. ``schedule_id``
-    takes precedence — when supplied the project is inferred from the schedule.
+    takes precedence - when supplied the project is inferred from the schedule.
 
     Filters activities where ``is_critical=True``, ordered by early_start.
     Requires CPM calculation to have been run first.
@@ -2230,7 +2230,7 @@ async def critical_path_activities(
     # ``Activity.early_start`` is a ``String(20)`` column populated by the CPM
     # engine with integer day-offsets stringified (``"0"``, ``"1"``, ``"10"``,
     # ``"2"`` …). A plain SQL ``ORDER BY early_start`` does a lexicographic
-    # sort and would produce ``"0" < "1" < "10" < "2"`` — wrong for any
+    # sort and would produce ``"0" < "1" < "10" < "2"`` - wrong for any
     # project with >9 critical activities. Sort in Python with safe integer
     # coercion (legacy rows may also hold ISO dates or empty strings; both
     # fall through to a large sentinel so they sort last but remain stable).

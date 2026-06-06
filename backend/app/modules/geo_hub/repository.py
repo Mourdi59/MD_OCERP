@@ -1,5 +1,5 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""Geo Hub data access layer — one repository per entity."""
+"""Geo Hub data access layer - one repository per entity."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from app.modules.geo_hub.models import (
 
 
 class _BaseRepo:
-    """Tiny shared helper — create / update / delete boilerplate."""
+    """Tiny shared helper - create / update / delete boilerplate."""
 
     model: type
 
@@ -110,11 +110,11 @@ class TilesetRepository(_BaseRepo):
         if development_id:
             # ``Tileset.metadata_["development_id"].as_string()`` works on
             # both Postgres (JSONB ->> operator) and SQLite (json_extract)
-            # via SQLAlchemy's portable JSON accessor — no Postgres-only
+            # via SQLAlchemy's portable JSON accessor - no Postgres-only
             # SQL leaks into the dev-friendly SQLite path.
             try:
                 meta_match = Tileset.metadata_["development_id"].as_string() == development_id
-            except Exception:  # noqa: BLE001 — JSON accessor not supported
+            except Exception:  # noqa: BLE001 - JSON accessor not supported
                 meta_match = None
             native_match = and_(
                 Tileset.source_kind == "development",
@@ -137,7 +137,7 @@ class TilesetRepository(_BaseRepo):
         """Return the most recent tileset for a polymorphic source.
 
         ``project_id`` is optional but **must** be supplied by any caller
-        that exposes the result back to a tenant — otherwise the
+        that exposes the result back to a tenant - otherwise the
         ``(source_kind, source_id)`` pair can leak across tenants when
         two projects happen to import the same external upload key.
         Internal callers (event-bus subscribers that already know they
@@ -280,7 +280,7 @@ class GeoOverlayRepository(_BaseRepo):
 
 
 class GeoRasterOverlayRepository(_BaseRepo):
-    """Data access for raster overlays — soft-delete aware."""
+    """Data access for raster overlays - soft-delete aware."""
 
     model = GeoRasterOverlay
 

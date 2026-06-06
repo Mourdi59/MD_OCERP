@@ -218,7 +218,7 @@ async def seed_daily_diary_demo(
                         )
                     )
 
-    # Photos — distribute pool roughly evenly across all diaries.
+    # Photos - distribute pool roughly evenly across all diaries.
     diary_list = list(diary_index.values())
     if diary_list:
         for _ in range(photo_pool_remaining):

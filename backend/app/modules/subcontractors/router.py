@@ -79,7 +79,7 @@ from app.modules.subcontractors.service import SubcontractorService, validate_ta
 
 logger = logging.getLogger(__name__)
 
-# Cap upload bytes — 10 MiB is well above any realistic lien waiver scan
+# Cap upload bytes - 10 MiB is well above any realistic lien waiver scan
 # (typical 1-2 pages PDF / phone photo) and below the proxy default.
 LIEN_WAIVER_MAX_BYTES: int = 10 * 1024 * 1024
 
@@ -886,7 +886,7 @@ async def update_rating(
     """Upsert a subcontractor rating for a period.
 
     R5: this endpoint is gated by the dedicated ``subcontractors.rate``
-    permission (MANAGER-only) — previously any EDITOR could write a
+    permission (MANAGER-only) - previously any EDITOR could write a
     bogus rating and tamper with the subcontractor's roll-up score.
     """
     if events is not None and len(events) > 50:
@@ -974,14 +974,14 @@ async def validate_tax_id_endpoint(
 ) -> TaxIdValidationResponse:
     """Validate a tax-ID / VAT number against the country's published format.
 
-    Format-only — no live registry lookup. Returns the canonical (uppercase,
+    Format-only - no live registry lookup. Returns the canonical (uppercase,
     de-punctuated) form of the value plus a pass/fail flag and the name of
     the standard the value was matched against.
     """
     return validate_tax_id(body.country, body.tax_id)
 
 
-# ── Wave 4 / T12 — BuildingConnected-style prequal + insurance + block ──
+# ── Wave 4 / T12 - BuildingConnected-style prequal + insurance + block ──
 
 
 @router.post(
@@ -1104,7 +1104,7 @@ async def list_lien_waivers(
     """List every lien waiver / W-9 / W-8 filed against a subcontractor.
 
     Newest first so the most recent waiver wins on the dashboard. Returns
-    an empty list when no waivers exist — the UI shows an empty state.
+    an empty list when no waivers exist - the UI shows an empty state.
     """
     svc = SubcontractorService(session)
     rows = await svc.lien_waivers.list_for_subcontractor(sub_id)
@@ -1140,7 +1140,7 @@ async def upload_lien_waiver(
 
     422 when the form fields fail validation (bad waiver_type, bad
     currency, negative amount). 404 when the linked subcontractor does
-    not exist (IDOR-safe — generic message, no enumeration leak).
+    not exist (IDOR-safe - generic message, no enumeration leak).
     """
     # Cap the read at the configured ceiling. UploadFile streams in
     # chunks; we collect into memory here because a lien waiver is
@@ -1159,7 +1159,7 @@ async def upload_lien_waiver(
         )
 
     # Magic-byte gate. Returns the detected signature token (e.g. "pdf")
-    # or raises FileSignatureMismatch — which we convert to 415 so the
+    # or raises FileSignatureMismatch - which we convert to 415 so the
     # frontend can show a "Format not supported" toast.
     try:
         detected = require_signature(
@@ -1210,7 +1210,7 @@ async def upload_lien_waiver(
         )
 
     # IDOR-safe: 404 if the subcontractor doesn't exist BEFORE we touch
-    # the disk — avoids leaving orphan files when the URL was guessed.
+    # the disk - avoids leaving orphan files when the URL was guessed.
     svc = SubcontractorService(session)
     parent = await svc.subs.get_by_id(sub_id)
     if parent is None:
@@ -1228,7 +1228,7 @@ async def upload_lien_waiver(
             svc,
         )
 
-    # Disk write — per-subcontractor folder so listings stay cheap.
+    # Disk write - per-subcontractor folder so listings stay cheap.
     target_dir = LIEN_WAIVERS_DIR / str(sub_id)
     target_dir.mkdir(parents=True, exist_ok=True)
     ext = Path(file.filename or "waiver.pdf").suffix or ".pdf"

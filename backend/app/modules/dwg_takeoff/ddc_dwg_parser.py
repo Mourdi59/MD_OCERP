@@ -253,11 +253,11 @@ def _resolve_dwg_units(
     ``<AcDbDatabase>`` or a header/preferences row).
 
     Previously this was hardcoded to ``"unitless"``, which made
-    service.py apply a 1.0 scale factor — so a millimetre DWG routed
+    service.py apply a 1.0 scale factor - so a millimetre DWG routed
     through DDC read 1000× too large (BUG-D-TKC-002b).  This scans the
     export for any unit-bearing field and resolves it; only when nothing
     usable is present does it fall back to ``"unitless"`` (the honest
-    "unknown — assume model units" answer, same as the ezdxf path's
+    "unknown - assume model units" answer, same as the ezdxf path's
     ``$INSUNITS == 0`` default).
 
     Args:
@@ -312,7 +312,7 @@ def _resolve_dwg_units(
         key = re.sub(r"[^a-z]", "", s.lower())
         return _UNIT_TEXT_MAP.get(key)
 
-    # Pass A — prefer a value attached to an explicit database/header row.
+    # Pass A - prefer a value attached to an explicit database/header row.
     for row in all_rows[1:]:
         desc = str(get(row, "Description") or "")
         if desc in _DB_DESCRIPTORS:
@@ -321,7 +321,7 @@ def _resolve_dwg_units(
                 if val:
                     return val
 
-    # Pass B — converter build that puts the unit on a plain column of
+    # Pass B - converter build that puts the unit on a plain column of
     # any/every row (e.g. a per-export constant column).  Take the first
     # row that resolves to a non-unitless value.
     for row in all_rows[1:]:
@@ -330,7 +330,7 @@ def _resolve_dwg_units(
             if val and val != "unitless":
                 return val
 
-    # Nothing usable — honest fallback (model units, scale 1.0), the same
+    # Nothing usable - honest fallback (model units, scale 1.0), the same
     # default the ezdxf path uses when $INSUNITS is absent/0.
     return "unitless"
 
@@ -343,7 +343,7 @@ def parse_ddc_dwg_excel(excel_path: str | Path) -> dict[str, Any]:
         "layers": [...],
         "entities": [...],
         "extents": {"min_x", "min_y", "max_x", "max_y"},
-        "units": "<resolved from the DDC export — mm/cm/m/inches/...,"
+        "units": "<resolved from the DDC export - mm/cm/m/inches/...,"
                  " or 'unitless' when the export carries no unit field>",
         "entity_count": N,
     }
@@ -420,7 +420,7 @@ def parse_ddc_dwg_excel(excel_path: str | Path) -> dict[str, Any]:
     # across alternating rows survived.
     #
     # Fix: collect vertex rows in DXF order (preserving the AcDbVertex
-    # row sequence), then take ONLY the Start Point — or the Point /
+    # row sequence), then take ONLY the Start Point - or the Point /
     # End Point as fallback when Start is missing. The polyline's true
     # geometry is the sequence of vertex Start points; segment endpoints
     # are reconstructed as the next vertex's Start. Closed polylines
@@ -443,7 +443,7 @@ def parse_ddc_dwg_excel(excel_path: str | Path) -> dict[str, Any]:
         if coord is None:
             continue
         bucket = polyline_vertices.setdefault(parent_id, [])
-        # Skip immediate duplicates here too — defence in depth for
+        # Skip immediate duplicates here too - defence in depth for
         # exporters that occasionally emit zero-length segments.
         if not bucket or bucket[-1] != coord:
             bucket.append(coord)
@@ -649,7 +649,7 @@ def parse_ddc_dwg_excel(excel_path: str | Path) -> dict[str, Any]:
             ep = _parse_coord(get(row, "EndPoint") or get(row, "End Point"))
 
             if closed and min_ext and max_ext:
-                # Closed spline — approximate as ellipse from bounding box
+                # Closed spline - approximate as ellipse from bounding box
                 import math as _math
 
                 cx = (min_ext[0] + max_ext[0]) / 2
@@ -677,7 +677,7 @@ def parse_ddc_dwg_excel(excel_path: str | Path) -> dict[str, Any]:
                     if layer in layers_map:
                         layers_map[layer]["entity_count"] += 1
             elif sp and ep and sp != ep:
-                # Open spline — draw chord from start to end
+                # Open spline - draw chord from start to end
                 entities.append(
                     {
                         "entity_type": "LINE",
@@ -873,7 +873,7 @@ def parse_ddc_dwg_excel(excel_path: str | Path) -> dict[str, Any]:
         sorted_layouts.remove("*Model_Space")
         sorted_layouts.insert(0, "*Model_Space")
 
-    # BUG-D-TKC-002b — carry the real source unit from the DDC export
+    # BUG-D-TKC-002b - carry the real source unit from the DDC export
     # instead of hardcoding "unitless" (which forced a 1.0 scale factor in
     # service.py and made a millimetre DWG read 1000x too big).
     units = _resolve_dwg_units(all_rows, get)
@@ -884,7 +884,7 @@ def parse_ddc_dwg_excel(excel_path: str | Path) -> dict[str, Any]:
         "max_x": float(max_x),
         "max_y": float(max_y),
     }
-    # BUG-D-TKC-002c — when the export carries no usable unit, fall back to
+    # BUG-D-TKC-002c - when the export carries no usable unit, fall back to
     # an extents-based guess (a >=1000-unit drawing is almost certainly in
     # millimetres). Without this, an mm DWG with no $INSUNITS reads 1000x
     # too large because service.py applies a 1.0 factor for "unitless".

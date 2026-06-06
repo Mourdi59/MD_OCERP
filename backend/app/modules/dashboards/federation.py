@@ -2,8 +2,8 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """‌⁠‍Multi-Source Project Federation (T10 / task #193).
 
-Federation lets a single dashboard query span N snapshots — one or more
-per project — and aggregate rows across all of them while preserving the
+Federation lets a single dashboard query span N snapshots - one or more
+per project - and aggregate rows across all of them while preserving the
 ``project_id`` + ``snapshot_id`` provenance on every row.
 
 Wire shape
@@ -11,12 +11,12 @@ Wire shape
 The router endpoints take ``snapshot_ids: list[str]`` plus an optional
 ``schema_align`` mode and either:
 
-* :func:`build_federated_view` — register a ``UNION ALL`` view across
+* :func:`build_federated_view` - register a ``UNION ALL`` view across
   the snapshots' Parquet files inside an isolated DuckDB connection,
   return a :class:`FederatedView` handle (view name + merged schema).
-* :func:`federated_query` — run a whitelisted SELECT over the
+* :func:`federated_query` - run a whitelisted SELECT over the
   pre-built view.
-* :func:`federated_aggregate` — high-level rollup helper (no raw SQL),
+* :func:`federated_aggregate` - high-level rollup helper (no raw SQL),
   typically what the UI calls.
 
 Schema alignment
@@ -24,18 +24,18 @@ Schema alignment
 ``schema_align`` controls how heterogeneous snapshot schemas are
 combined into one view:
 
-* ``"intersect"`` — keep only columns common to *every* snapshot.
-* ``"union"``     — keep all columns; SELECT NULL for any snapshot
+* ``"intersect"`` - keep only columns common to *every* snapshot.
+* ``"union"``     - keep all columns; SELECT NULL for any snapshot
                     that lacks a given column.
-* ``"strict"``    — fail with :class:`SchemaMismatchError` (422) if any
+* ``"strict"``    - fail with :class:`SchemaMismatchError` (422) if any
                     snapshot's schema disagrees with the others.
 
 Every output view always carries two extra columns:
 
-* ``__project_id``  — the snapshot's owning project (UUID string)
-* ``__snapshot_id`` — the snapshot id (UUID string)
+* ``__project_id``  - the snapshot's owning project (UUID string)
+* ``__snapshot_id`` - the snapshot id (UUID string)
 
-These are reserved names — federated SQL must not declare them in
+These are reserved names - federated SQL must not declare them in
 SELECT lists; they're added on the federation side so the user can
 drill back to source.
 
@@ -49,7 +49,7 @@ SQL whitelist
   ``COPY INTO``, ``LOAD``, ``DROP``, ``CREATE``, ``DELETE``, ``INSERT``,
   ``UPDATE``, ``CALL``, ``PRAGMA``, ``EXPORT``, ``SET ``)
 
-This is intentionally conservative — it's complementary to DuckDB's
+This is intentionally conservative - it's complementary to DuckDB's
 parameter binding, not a replacement.
 
 DuckDB usage
@@ -110,7 +110,7 @@ defensive measure."""
 
 _MAX_SNAPSHOTS = 32
 """Hard cap on the number of snapshots per federation. The UNION ALL
-SQL grows linearly with this — beyond 32 the request is almost
+SQL grows linearly with this - beyond 32 the request is almost
 certainly malformed."""
 
 
@@ -139,7 +139,7 @@ class FederatedView:
     """Column names exposed by the federated view, in the order they
     appear in the underlying SELECT (provenance columns last)."""
     dtypes: dict[str, str]
-    """Resolved DuckDB type per column. Best-effort — for ``"union"``
+    """Resolved DuckDB type per column. Best-effort - for ``"union"``
     mode we surface the dtype that the *first* snapshot reported for
     that column; columns that conflict surface as ``"VARCHAR"``."""
     snapshots: list[FederatedSnapshotRef] = field(default_factory=list)
@@ -169,7 +169,7 @@ class FederatedView:
             return
         try:
             await asyncio.to_thread(self._conn.close)
-        except Exception as exc:  # pragma: no cover — last-ditch
+        except Exception as exc:  # pragma: no cover - last-ditch
             logger.warning(
                 "federation.close failed view=%s: %s",
                 self.view_name,
@@ -255,7 +255,7 @@ def _validate_snapshot_ids(snapshot_ids: list[str]) -> list[str]:
 # ── SQL whitelist ──────────────────────────────────────────────────────────
 
 
-# Tokens that must NOT appear anywhere in a federated SQL — even inside a
+# Tokens that must NOT appear anywhere in a federated SQL - even inside a
 # CTE or a sub-SELECT. We compile them as word-boundary regexes so harmless
 # substrings (e.g. ``copy_id``) don't trip the filter.
 _DENY_TOKENS: tuple[str, ...] = (
@@ -332,7 +332,7 @@ _IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.\-]*$")
 def _is_safe_identifier(name: str) -> bool:
     """A column/identifier we're willing to splice into raw SQL.
 
-    Anything not matching :data:`_IDENT_RE` is rejected — callers must
+    Anything not matching :data:`_IDENT_RE` is rejected - callers must
     pass it as a parameter instead.
     """
     return bool(_IDENT_RE.match(name or ""))
@@ -393,7 +393,7 @@ def _resolve_columns(
     """Reconcile per-snapshot column lists into a single column set.
 
     Returns ``(ordered_columns, dtypes)``. Provenance columns are NOT
-    added here — the caller appends them after this resolution.
+    added here - the caller appends them after this resolution.
     """
     if not per_snapshot:
         return [], {}
@@ -410,7 +410,7 @@ def _resolve_columns(
                 missing = sorted(first - ns)
                 extra = sorted(ns - first)
                 raise SchemaMismatchError(
-                    f"Snapshot #{idx} schema differs from snapshot #0 — missing={missing!r}, extra={extra!r}",
+                    f"Snapshot #{idx} schema differs from snapshot #0 - missing={missing!r}, extra={extra!r}",
                 )
         ordered = [c for c, _ in per_snapshot[0] if c not in _RESERVED_PROVENANCE_COLUMNS]
         dtypes = dict(name_to_dtype[0])
@@ -463,7 +463,7 @@ async def _open_isolated_connection() -> duckdb.DuckDBPyConnection:
     the lifecycle is bounded by :class:`FederatedView`."""
     try:
         import duckdb
-    except ImportError as exc:  # pragma: no cover — base dep after v2.5.0
+    except ImportError as exc:  # pragma: no cover - base dep after v2.5.0
         raise FederationError(
             "DuckDB is required for federated dashboards.",
         ) from exc
@@ -539,7 +539,7 @@ async def build_federated_view(
 
     columns, dtypes = _resolve_columns(per_snapshot, schema_align=schema_align)
 
-    # Append provenance columns last — same position in every part of
+    # Append provenance columns last - same position in every part of
     # the UNION so the column order matches across legs.
     final_columns = [*columns, PROVENANCE_PROJECT_COL, PROVENANCE_SNAPSHOT_COL]
     final_dtypes = {**dtypes, PROVENANCE_PROJECT_COL: "VARCHAR", PROVENANCE_SNAPSHOT_COL: "VARCHAR"}
@@ -568,7 +568,7 @@ async def build_federated_view(
             f"Failed to register federated view: {exc}",
         ) from exc
 
-    # Row-count probe — small enough query that it's worth doing eagerly
+    # Row-count probe - small enough query that it's worth doing eagerly
     # so the response payload can include the headline number without a
     # follow-up round-trip.
     try:
@@ -627,7 +627,7 @@ def _compose_union_sql(
         present = {c for c, _ in cols}
 
         # Quote columns. Each name was just read from the parquet
-        # schema, so it MUST satisfy ``_is_safe_identifier`` — defensive
+        # schema, so it MUST satisfy ``_is_safe_identifier`` - defensive
         # check guards against a malformed parquet leaking exotic names
         # (e.g. with embedded quotes) into raw SQL.
         select_parts: list[str] = []
@@ -639,11 +639,11 @@ def _compose_union_sql(
                     )
                 select_parts.append(f'"{col}"')
             elif schema_align == "union":
-                # Column missing from this leg — fill with NULL.
+                # Column missing from this leg - fill with NULL.
                 select_parts.append(f'NULL AS "{col}"')
             else:
                 # In intersect/strict modes the missing-column case must
-                # not happen — _resolve_columns already filtered out
+                # not happen - _resolve_columns already filtered out
                 # columns the leg doesn't have (intersect) or rejected
                 # the request (strict).
                 raise FederationSqlError(
@@ -651,7 +651,7 @@ def _compose_union_sql(
                     f"{ref.snapshot_id} under schema_align={schema_align!r}",
                 )
 
-        # Provenance literals — SQL-escape the single quote in case a
+        # Provenance literals - SQL-escape the single quote in case a
         # pathological UUID library ever lets one slip through.
         pid_lit = ref.project_id.replace("'", "''")
         sid_lit = ref.snapshot_id.replace("'", "''")
@@ -677,13 +677,13 @@ async def federated_query(
 ) -> list[dict[str, Any]]:
     """Run a whitelisted SELECT over a pre-built federated view.
 
-    The caller's SQL must reference the view by its ``view_name`` field —
+    The caller's SQL must reference the view by its ``view_name`` field -
     we don't rewrite identifiers or implicitly substitute ``entities``
     for the federated view, otherwise we'd be encouraging callers to
     paste snapshot-scoped SQL verbatim.
 
     ``limit`` is enforced even when the SQL already has a ``LIMIT``
-    clause — DuckDB handles redundant LIMIT cleanly, and this gives the
+    clause - DuckDB handles redundant LIMIT cleanly, and this gives the
     server-side a hard ceiling.
     """
     conn = view._conn
@@ -722,7 +722,7 @@ async def federated_aggregate(
 
     Always includes the provenance columns in the group-by so the user
     can pivot rollups per project / per snapshot without re-issuing
-    the query. Empty ``group_by`` is allowed — it produces a single
+    the query. Empty ``group_by`` is allowed - it produces a single
     row per (project, snapshot) combination.
 
     Supported ``agg`` values: ``"count"`` (rows; ``measure`` may be
@@ -736,7 +736,7 @@ async def federated_aggregate(
     if agg not in {"count", "sum", "avg", "min", "max"}:
         raise FederationSqlError(f"Unsupported agg: {agg!r}")
 
-    # Validate identifiers eagerly — group-by leaks straight into SQL.
+    # Validate identifiers eagerly - group-by leaks straight into SQL.
     for col in group_by:
         if not _is_safe_identifier(col):
             raise FederationSqlError(f"Unsafe group_by column: {col!r}")
@@ -756,12 +756,12 @@ async def federated_aggregate(
         if measure not in view.columns:
             raise FederationSqlError(f"Unknown measure column: {measure!r}")
         # Cast to DOUBLE so non-numeric snapshots don't crash the
-        # aggregate — DuckDB silently returns NULL for unparseable
+        # aggregate - DuckDB silently returns NULL for unparseable
         # values rather than raising on the SUM.
         measure_expr = f'TRY_CAST("{measure}" AS DOUBLE)'
         select_measure = f"{agg.upper()}({measure_expr}) AS measure_value"
 
-    # Always pivot by provenance — that's the whole point of the
+    # Always pivot by provenance - that's the whole point of the
     # federation result shape.
     full_group: list[str] = [
         PROVENANCE_PROJECT_COL,

@@ -16,7 +16,7 @@ _SCHEMA_PATH = Path(__file__).parent / "EacRuleDefinition.schema.json"
 def load_rule_definition_schema() -> dict[str, Any]:
     """‌⁠‍Return the full ``EacRuleDefinition`` JSON Schema as a dict.
 
-    Caches nothing — the file is small and reading it on demand keeps
+    Caches nothing - the file is small and reading it on demand keeps
     the module import-time light.
     """
     return json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))

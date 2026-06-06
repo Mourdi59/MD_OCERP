@@ -1,10 +1,10 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Project-profile service — apply / read / recompute / retrofit.
+"""‌⁠‍Project-profile service - apply / read / recompute / retrofit.
 
 Stateless; every method takes the AsyncSession explicitly. Presentation
 -only gating: writing :class:`ProjectModule` rows never unloads a module
-or blocks its API — it only feeds the sidebar's visual emphasis.
+or blocks its API - it only feeds the sidebar's visual emphasis.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from app.modules.projects.profile_scoring import (
 def discover_module_names() -> tuple[str, ...]:
     """‌⁠‍All real module folder ids (every ``app/modules/<id>/manifest.py``).
 
-    Cached — the module set is fixed for a process lifetime. Falls back
+    Cached - the module set is fixed for a process lifetime. Falls back
     to the preset/always-on universe if the directory can't be read
     (defensive; should never happen in a normal deploy).
     """
@@ -46,7 +46,7 @@ def discover_module_names() -> tuple[str, ...]:
     except OSError:
         pass
     if not found:
-        # Defensive fallback — union every preset's modules.
+        # Defensive fallback - union every preset's modules.
         from app.modules.projects.profile_presets import ALWAYS_ON
 
         found = set(ALWAYS_ON)
@@ -83,11 +83,11 @@ def _as_str_list(value: object) -> list[str]:
     The ``activity`` / ``phases`` / ``extensions_enabled`` columns are
     declared ``Mapped[list]`` but a profile can be persisted with a
     scalar there (e.g. legacy / gap-fill seeds wrote ``activity =
-    "construction"`` — a bare string, not ``["construction"]``).
+    "construction"`` - a bare string, not ``["construction"]``).
     ``list("construction")`` would silently explode into single
     characters, so coerce explicitly: a real list stays a list of its
     string items; a non-empty scalar becomes a one-element list; ``None``
-    / empty becomes ``[]``. Never raises — the read path must survive any
+    / empty becomes ``[]``. Never raises - the read path must survive any
     persisted state.
     """
 
@@ -103,7 +103,7 @@ def _as_dict(value: object) -> dict:
 
     ``setup_completion`` is declared ``Mapped[dict]`` but a profile can
     be persisted with a scalar there (gap-fill seeds wrote ``1``).
-    ``dict(1)`` raises ``TypeError: 'int' object is not iterable`` — the
+    ``dict(1)`` raises ``TypeError: 'int' object is not iterable`` - the
     actual root cause of the ``GET /profile`` HTTP 500. A real mapping is
     returned as-is; anything else (scalar / list / ``None``) collapses to
     ``{}`` so the contract (``setup_completion: dict``) always holds.
@@ -218,7 +218,7 @@ async def apply_profile(
 
     ordinals = assign_ordinals(assignments)
 
-    # Replace the project's module rows wholesale — simplest correct
+    # Replace the project's module rows wholesale - simplest correct
     # semantics; the table is tiny (≤88 rows/project).
     await db.execute(delete(ProjectModule).where(ProjectModule.project_id == project_id))
     now = datetime.now(UTC)
@@ -356,7 +356,7 @@ async def ensure_default_profile(
                 phase="setup",
                 source="core",
                 ordinal=i,
-                why="Retrofit default — all modules (focus mode off)",
+                why="Retrofit default - all modules (focus mode off)",
                 updated_at=now,
             )
         )

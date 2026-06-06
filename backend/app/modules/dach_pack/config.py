@@ -17,7 +17,7 @@ PACK_CONFIG: dict[str, Any] = {
     "standards": [
         {
             "code": "DIN_276",
-            "name": "DIN 276 — Kosten im Bauwesen",
+            "name": "DIN 276 - Kosten im Bauwesen",
             "description": "Cost classification for building construction (2018 edition)",
             "cost_groups": [
                 {
@@ -41,7 +41,7 @@ PACK_CONFIG: dict[str, Any] = {
                 },
                 {
                     "kg": "300",
-                    "title": "Bauwerk — Baukonstruktionen",
+                    "title": "Bauwerk - Baukonstruktionen",
                     "children": [
                         {"kg": "310", "title": "Baugrube/Erdbau"},
                         {"kg": "320", "title": "Gründung, Unterbau"},
@@ -55,7 +55,7 @@ PACK_CONFIG: dict[str, Any] = {
                 },
                 {
                     "kg": "400",
-                    "title": "Bauwerk — Technische Anlagen",
+                    "title": "Bauwerk - Technische Anlagen",
                     "children": [
                         {"kg": "410", "title": "Abwasser-, Wasser-, Gasanlagen"},
                         {"kg": "420", "title": "Wärmeversorgungsanlagen"},
@@ -113,7 +113,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "VOB",
-            "name": "VOB — Vergabe- und Vertragsordnung für Bauleistungen",
+            "name": "VOB - Vergabe- und Vertragsordnung für Bauleistungen",
             "description": "German procurement and contract regulations for construction",
             "parts": [
                 {"code": "VOB_A", "title": "Allgemeine Bestimmungen für die Vergabe"},
@@ -123,7 +123,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "HOAI",
-            "name": "HOAI — Honorarordnung für Architekten und Ingenieure",
+            "name": "HOAI - Honorarordnung für Architekten und Ingenieure",
             "description": "Fee schedule for architects and engineers (2021 edition)",
             "note": "Since 2021: fee tables are non-binding orientation values",
             "service_phases": [
@@ -134,7 +134,7 @@ PACK_CONFIG: dict[str, Any] = {
                 {"lp": 5, "title": "Ausführungsplanung", "fee_share_pct": "25"},
                 {"lp": 6, "title": "Vorbereitung der Vergabe", "fee_share_pct": "10"},
                 {"lp": 7, "title": "Mitwirkung bei der Vergabe", "fee_share_pct": "4"},
-                {"lp": 8, "title": "Objektüberwachung — Bauüberwachung", "fee_share_pct": "32"},
+                {"lp": 8, "title": "Objektüberwachung - Bauüberwachung", "fee_share_pct": "32"},
                 {"lp": 9, "title": "Objektbetreuung", "fee_share_pct": "2"},
             ],
         },
@@ -143,31 +143,31 @@ PACK_CONFIG: dict[str, Any] = {
     "gaeb_formats": [
         {
             "code": "X83",
-            "name": "GAEB XML 3.3 — Angebotsabgabe",
+            "name": "GAEB XML 3.3 - Angebotsabgabe",
             "description": "Tender submission (priced bill)",
             "supported": True,
         },
         {
             "code": "X84",
-            "name": "GAEB XML 3.3 — Nebenangebot",
+            "name": "GAEB XML 3.3 - Nebenangebot",
             "description": "Alternative tender submission",
             "supported": True,
         },
         {
             "code": "X86",
-            "name": "GAEB XML 3.3 — Auftragserteilung",
+            "name": "GAEB XML 3.3 - Auftragserteilung",
             "description": "Contract award",
             "supported": True,
         },
         {
             "code": "X81",
-            "name": "GAEB XML 3.3 — Ausschreibung (Leistungsverzeichnis)",
+            "name": "GAEB XML 3.3 - Ausschreibung (Leistungsverzeichnis)",
             "description": "Bill of quantities for tender",
             "supported": True,
         },
         {
             "code": "D81",
-            "name": "GAEB DA XML — Ausschreibung (legacy)",
+            "name": "GAEB DA XML - Ausschreibung (legacy)",
             "description": "Legacy GAEB DA 2000 format",
             "supported": False,
         },
@@ -199,42 +199,42 @@ PACK_CONFIG: dict[str, Any] = {
     "tax_rules": [
         {
             "code": "DE_MWST_STANDARD",
-            "name": "Mehrwertsteuer — Regelsteuersatz",
+            "name": "Mehrwertsteuer - Regelsteuersatz",
             "type": "vat",
             "country": "DE",
             "rate_pct": "19",
         },
         {
             "code": "DE_MWST_REDUCED",
-            "name": "Mehrwertsteuer — Ermäßigter Satz",
+            "name": "Mehrwertsteuer - Ermäßigter Satz",
             "type": "vat",
             "country": "DE",
             "rate_pct": "7",
         },
         {
             "code": "AT_UST_STANDARD",
-            "name": "Umsatzsteuer — Normalsteuersatz",
+            "name": "Umsatzsteuer - Normalsteuersatz",
             "type": "vat",
             "country": "AT",
             "rate_pct": "20",
         },
         {
             "code": "AT_UST_REDUCED",
-            "name": "Umsatzsteuer — Ermäßigter Satz",
+            "name": "Umsatzsteuer - Ermäßigter Satz",
             "type": "vat",
             "country": "AT",
             "rate_pct": "10",
         },
         {
             "code": "CH_MWST_STANDARD",
-            "name": "Mehrwertsteuer — Normalsatz",
+            "name": "Mehrwertsteuer - Normalsatz",
             "type": "vat",
             "country": "CH",
             "rate_pct": "8.1",
         },
         {
             "code": "CH_MWST_REDUCED",
-            "name": "Mehrwertsteuer — Reduzierter Satz",
+            "name": "Mehrwertsteuer - Reduzierter Satz",
             "type": "vat",
             "country": "CH",
             "rate_pct": "2.6",

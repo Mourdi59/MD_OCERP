@@ -2,13 +2,13 @@
 
 Events the safety module *publishes* (canonical names, payload shapes):
 
-* ``safety.incident.created`` — emitted on every incident create. Payload:
+* ``safety.incident.created`` - emitted on every incident create. Payload:
   ``{project_id, incident_id, incident_number, incident_type, severity,
   description}``. HSE Advanced and BI listen to recompute TRIR/LTIFR.
-* ``safety.observation.high_risk`` — emitted when an observation's
+* ``safety.observation.high_risk`` - emitted when an observation's
   ``risk_score`` exceeds 15 (on create or update). Payload includes
   ``risk_score`` and ``notify_user_ids``.
-* ``safety.threshold_alert_triggered`` — emitted by
+* ``safety.threshold_alert_triggered`` - emitted by
   :meth:`SafetyService.get_threshold_alert` when the current LTIFR or TRIR
   lands in the yellow/red band. Payload:
   ``{project_id, ltifr, trir, baseline_ltifr, baseline_trir, ltifr_status,

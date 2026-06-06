@@ -1,4 +1,4 @@
-"""‌⁠‍Cost-match router — populated by T12."""
+"""‌⁠‍Cost-match router - populated by T12."""
 
 from __future__ import annotations
 

@@ -4,7 +4,7 @@ Exposes the fixed set of ISO 19650-1 suitability codes grouped by CDE state,
 plus a helper that validates whether a given code is allowed for a given
 lifecycle state.
 
-Reference: ISO 19650-1:2018 — Tables A.1 and A.2.
+Reference: ISO 19650-1:2018 - Tables A.1 and A.2.
 
 The frontend fetches ``GET /v1/cde/suitability-codes`` and drives the
 container-create dropdown from this table, so codes must not be invented
@@ -55,7 +55,7 @@ def codes_for_state(state: str) -> list[tuple[str, str]]:
 def validate_suitability_for_state(code: str | None, state: str) -> tuple[bool, str]:
     """‌⁠‍Validate that ``code`` is allowed for the given CDE ``state``.
 
-    A blank / None code is always valid — suitability is optional at
+    A blank / None code is always valid - suitability is optional at
     container-create time (the UI surfaces the picker but users can defer).
 
     Returns ``(True, "ok")`` or ``(False, "<reason>")``.
@@ -72,7 +72,7 @@ def validate_suitability_for_state(code: str | None, state: str) -> tuple[bool, 
 
 
 def all_codes_flat() -> list[tuple[str, str, CDEStateKey]]:
-    """Return every code as (code, label, state) — used by the API response."""
+    """Return every code as (code, label, state) - used by the API response."""
     flat: list[tuple[str, str, CDEStateKey]] = []
     for state, entries in SUITABILITY_CODES.items():
         for code, label in entries:

@@ -2,7 +2,7 @@
 """‌⁠‍Project module-presence probe.
 
 A lightweight scanner that answers: *"does project X have any data in
-module Y?"* — one boolean per sidebar module. The frontend uses the
+module Y?"* - one boolean per sidebar module. The frontend uses the
 answers to dim empty modules in the sidebar so users see, at a glance,
 which surfaces actually carry data for the project they are looking at.
 
@@ -10,13 +10,13 @@ Design constraints
 ~~~~~~~~~~~~~~~~~~
 
 * **Cheap probes only.** Each module check is a single
-  ``SELECT 1 FROM <table> WHERE project_id = :pid LIMIT 1`` — no
+  ``SELECT 1 FROM <table> WHERE project_id = :pid LIMIT 1`` - no
   ``COUNT(*)``, no joins. Index hit per row, O(1) per probe.
 * **Sequential + isolated.** Probes run one-by-one (an ``AsyncSession`` is not
   concurrency-safe); each rolls back on failure so one bad probe can't abort the
   shared PostgreSQL transaction and cascade the rest into false negatives.
 * **Defensive.** A missing table (fresh DB, alembic not yet run) yields
-  ``False`` — never a 500. ``OperationalError`` / ``ProgrammingError``
+  ``False`` - never a 500. ``OperationalError`` / ``ProgrammingError``
   are swallowed silently per-probe; nothing else is.
 * **Cached.** Per-project payload kept in-memory for 60 s. Same pattern
   the coordination-hub dashboard uses. The sidebar polls this on every
@@ -61,7 +61,7 @@ _PRESENCE_CACHE: dict[uuid.UUID, tuple[dict[str, bool], float]] = {}
 def invalidate_presence_cache(project_id: uuid.UUID | None = None) -> None:
     """Drop cache for one project (or every project when ``None``).
 
-    Called by mutation hooks if/when we wire them in — for now the
+    Called by mutation hooks if/when we wire them in - for now the
     60 s TTL is sufficient since the sidebar polls on every navigation.
     """
     if project_id is None:
@@ -82,7 +82,7 @@ class Probe(NamedTuple):
         sql:        SQL fragment of the form
                     ``SELECT 1 FROM <table> WHERE <filter> LIMIT 1``.
                     The filter MUST bind ``:pid`` as the project UUID
-                    (rendered as ``str(uuid)`` by the executor — works
+                    (rendered as ``str(uuid)`` by the executor - works
                     for both PostgreSQL UUID and SQLite TEXT columns).
     """
 
@@ -95,7 +95,7 @@ def _project_probe(table: str, *, column: str = "project_id") -> str:
     return f"SELECT 1 FROM {table} WHERE {column} = :pid LIMIT 1"  # noqa: S608
 
 
-# The order here is informational only — probes run concurrently. Keys
+# The order here is informational only - probes run concurrently. Keys
 # MUST match ``ProjectModulePresence`` schema fields (or their aliases).
 PRESENCE_PROBES: tuple[Probe, ...] = (
     # ── Estimation & BIM ────────────────────────────────────────────────
@@ -122,16 +122,16 @@ PRESENCE_PROBES: tuple[Probe, ...] = (
     # 5D = BOQ × Schedule combined; sidebar lights it up only when
     # the schedule has activities (BOQ alone is a 2D check).
     # Schedule activities link to a project via their parent Schedule, not
-    # directly — so probe the project-scoped ``oe_schedule_schedule`` table.
+    # directly - so probe the project-scoped ``oe_schedule_schedule`` table.
     # (Probing oe_schedule_activity.project_id raised "column does not exist" on
     # PostgreSQL, which aborted the shared probe transaction and cascaded every
-    # subsequent probe to a false negative — dimming unrelated sidebar modules.)
+    # subsequent probe to a false negative - dimming unrelated sidebar modules.)
     Probe("5d", _project_probe("oe_schedule_schedule")),
     Probe("risk", _project_probe("oe_risk_register")),
     Probe("field_reports", _project_probe("oe_fieldreports_report")),
     Probe("daily_diary", _project_probe("oe_daily_diary_diary")),
     # Equipment master table is global; we treat "has any project-scoped
-    # assignment / utilisation" as the presence signal — fall back to
+    # assignment / utilisation" as the presence signal - fall back to
     # the equipment table itself if no assignment table exists. Many
     # deployments populate equipment without project assignments; the
     # cheap probe is the type table when it exists.
@@ -168,7 +168,7 @@ PRESENCE_PROBES: tuple[Probe, ...] = (
     Probe("submittals", _project_probe("oe_submittals_submittal")),
     Probe("transmittals", _project_probe("oe_transmittals_transmittal")),
     Probe("correspondence", _project_probe("oe_correspondence_correspondence")),
-    # Assets module — best-effort: bim asset register sits under bim_hub.
+    # Assets module - best-effort: bim asset register sits under bim_hub.
     Probe("assets", _project_probe("oe_bim_asset_register")),
     Probe("cde", _project_probe("oe_cde_container")),
     Probe("photos", _project_probe("oe_documents_photo")),
@@ -189,7 +189,7 @@ PRESENCE_PROBES: tuple[Probe, ...] = (
     Probe("ai_agents", _project_probe("oe_ai_agents_run")),
     # Advisor is part of erp_chat; treat as alias of chat messages.
     Probe("advisor", _project_probe("oe_erp_chat_session")),
-    # Estimation Dashboard is a BOQ aggregation — alias of boq.
+    # Estimation Dashboard is a BOQ aggregation - alias of boq.
     Probe("estimation_dashboard", _project_probe("oe_boq_boq")),
     Probe("erp_chat", _project_probe("oe_erp_chat_session")),
 )
@@ -210,7 +210,7 @@ async def _run_one_probe(
     ``project_id`` column (or doesn't exist yet) would otherwise cascade every
     later probe into ``InFailedSQLTransactionError`` and dim half the sidebar.
     To prevent that we roll the (read-only) session back to a clean state on any
-    error — safe because the caller now runs probes sequentially, not on a shared
+    error - safe because the caller now runs probes sequentially, not on a shared
     concurrent session. Errors stay swallowed: a 500 here would dim the whole
     sidebar for one unwired module, a much worse UX than a stale ``False``.
     """
@@ -223,7 +223,7 @@ async def _run_one_probe(
         return probe.module_key, row is not None
     except (OperationalError, ProgrammingError):
         # Missing table / column. Expected on fresh DBs or before
-        # migrations land. Don't log at WARNING — too noisy.
+        # migrations land. Don't log at WARNING - too noisy.
         await _safe_rollback(session)
         logger.debug(
             "module_presence: probe %s skipped (table missing or schema mismatch)",
@@ -239,7 +239,7 @@ async def _run_one_probe(
         )
         return probe.module_key, False
     except Exception:  # noqa: BLE001
-        # Anything else (e.g. dialect-specific cast failure) — still
+        # Anything else (e.g. dialect-specific cast failure) - still
         # return False so the endpoint stays a 200. Log loudly so we
         # notice in CI.
         await _safe_rollback(session)

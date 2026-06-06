@@ -5,17 +5,17 @@ the project on the receiving instance.
 
 Three import modes:
 
-* ``new_project``        — generate fresh UUIDs for every row, attachments
+* ``new_project``        - generate fresh UUIDs for every row, attachments
                            are extracted to the new project's storage roots.
                            Safe to run on the same instance that exported.
-* ``merge_into_existing``— keep source UUIDs; rows that already exist are
+* ``merge_into_existing``- keep source UUIDs; rows that already exist are
                            skipped (idempotent re-import). Attachments only
                            land on disk if the row is newly inserted.
-* ``replace_existing``   — wipes the target project's rows for every table
+* ``replace_existing``   - wipes the target project's rows for every table
                            in the bundle, then inserts the bundle rows
                            verbatim. Only for the same project_id.
 
-Validation step runs before any DB write — if the manifest is missing,
+Validation step runs before any DB write - if the manifest is missing,
 unparseable, format-version is incompatible, or the engine version is
 older than the bundle's compat-min, the call fails fast and the caller
 knows the bundle is unsafe.
@@ -74,7 +74,7 @@ def _read_zip(raw: bytes) -> zipfile.ZipFile:
 
 def _semver_key(v: str) -> tuple[int, int, int]:
     """‌⁠‍Parse ``"2.9.4"`` into ``(2, 9, 4)`` for comparison. Falls back to
-    zeros on malformed strings rather than raising — the import call is
+    zeros on malformed strings rather than raising - the import call is
     user-facing and a single typo in the manifest shouldn't 500."""
     parts = (v or "").split(".")
     nums: list[int] = []
@@ -132,7 +132,7 @@ def validate_bundle(raw: bytes) -> ImportPreview:
     has_attachments = manifest.attachment_count > 0
     if has_attachments and "attachments/index.json" not in zf.namelist():
         warnings.append(
-            "Manifest claims attachments but attachments/index.json is missing — "
+            "Manifest claims attachments but attachments/index.json is missing - "
             "files may not import. The bundle was likely truncated.",
         )
 
@@ -486,7 +486,7 @@ async def import_bundle(
         try:
             table_data[key] = json.loads(zf.read(entry))
         except json.JSONDecodeError:
-            logger.warning("Bundle has malformed tables/%s.json — skipping", key)
+            logger.warning("Bundle has malformed tables/%s.json - skipping", key)
 
     # 2. Decide effective project_id + UUID remap.
     source_project_id = str(manifest.project_id)
@@ -519,7 +519,7 @@ async def import_bundle(
             continue
         cls = _import_class(mod, cls_name)
         if cls is None:
-            warnings.append(f"Module for table '{key}' is not loaded — skipped")
+            warnings.append(f"Module for table '{key}' is not loaded - skipped")
             skipped_counts[key] = len(table_data[key])
             continue
         rows = [_remap_row(r, id_remap) for r in table_data[key]]
@@ -534,7 +534,7 @@ async def import_bundle(
                 # The project row's id is already remapped; just make sure
                 # we don't overwrite the merge-into target.
                 if mode == "merge_into_existing":
-                    # We do not insert a new project row when merging — the
+                    # We do not insert a new project row when merging - the
                     # caller already chose the destination.
                     pass
 

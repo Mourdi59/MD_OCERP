@@ -1,4 +1,4 @@
-"""‌⁠‍CRM service — business logic for sales pipeline, forecasting, analytics.
+"""‌⁠‍CRM service - business logic for sales pipeline, forecasting, analytics.
 
 Pure helpers (no I/O) for math + state-machine validation are kept at module
 level so they can be unit-tested in isolation. Anything that hits the DB
@@ -81,7 +81,7 @@ def _redact_email(email: str | None) -> str:
 
 
 def _redact_phone(phone: str | None) -> str:
-    """Return ``+49…567`` — preserves dial-code + last 3 digits only."""
+    """Return ``+49…567`` - preserves dial-code + last 3 digits only."""
     if not phone:
         return "<no-phone>"
     cleaned = re.sub(r"\D", "", phone)
@@ -94,7 +94,7 @@ def _redact_phone(phone: str | None) -> str:
 def _safe_lead_label(lead: Any) -> str:
     """Build a log-safe label from a Lead row. Never interpolates raw PII."""
     name = getattr(lead, "contact_name", None) or ""
-    # First name + last-initial only — full names are also PII under most
+    # First name + last-initial only - full names are also PII under most
     # interpretations of GDPR Art. 4(1).
     parts = name.split()
     if not parts:
@@ -132,7 +132,7 @@ def viewer_can_see_lead_pii(
 
 
 def _redact_email_response(email: str | None) -> str | None:
-    """Response-safe email redaction. Returns None on missing — never a label."""
+    """Response-safe email redaction. Returns None on missing - never a label."""
     if not email or "@" not in email:
         return None
     local, _, domain = email.partition("@")
@@ -140,7 +140,7 @@ def _redact_email_response(email: str | None) -> str | None:
 
 
 def _redact_phone_response(phone: str | None) -> str | None:
-    """Response-safe phone redaction. Returns None on missing — never a label."""
+    """Response-safe phone redaction. Returns None on missing - never a label."""
     if not phone:
         return None
     cleaned = re.sub(r"\D", "", phone)
@@ -156,7 +156,7 @@ def redact_lead_pii(
     viewer_id: str | None,
     viewer_role: str | None,
 ) -> tuple[str | None, str | None]:
-    """Return ``(email, phone)`` tuple — full values for owners, redacted otherwise.
+    """Return ``(email, phone)`` tuple - full values for owners, redacted otherwise.
 
     Use this in router handlers BEFORE constructing the ``LeadResponse`` so
     the response payload itself never carries raw PII for non-owners. Logs
@@ -233,7 +233,7 @@ def _opp_currency(opp: Any) -> str:
 
     Currency bug fix: every Opportunity carries its own ``currency`` column
     (it is copied from the deal/project at create time). We use that ISO code
-    verbatim and NEVER fall back to a hardcoded "EUR" — a blank currency means
+    verbatim and NEVER fall back to a hardcoded "EUR" - a blank currency means
     "unknown" and is grouped under the empty-string key so the UI can flag it
     rather than silently treating it as euros.
     """
@@ -250,7 +250,7 @@ def _group_money_by_currency(
     Currency bug fix: the scalar ``total_value`` / ``weighted_value`` /
     forecast totals sum ``estimated_value`` across deals regardless of each
     deal's currency, blending e.g. BRL + RUB + EUR into one meaningless
-    number. This helper keeps a per-currency subtotal instead — there is no
+    number. This helper keeps a per-currency subtotal instead - there is no
     cross-currency rate table here, so summing into a single base currency
     would be financially wrong. Mirrors the group-by-currency shape used in
     ``dashboard/service.py`` and ``bi_dashboards/kpis.py``.
@@ -270,14 +270,14 @@ def _is_mixed_currency(by_currency: list[dict[str, Any]]) -> bool:
     """True when more than one distinct *known* (non-blank) currency is present.
 
     Currency bug fix: when this is True the scalar money fields blend
-    currencies and must NOT be shown as a single headline figure — the UI
+    currencies and must NOT be shown as a single headline figure - the UI
     should read ``by_currency`` and warn the user.
     """
     return len({row["currency"] for row in by_currency if row["currency"]}) > 1
 
 
 def compute_pipeline_metrics(opportunities: Iterable[Any]) -> dict[str, Any]:
-    """Pure aggregation over opportunities — pipeline counts + weighted value.
+    """Pure aggregation over opportunities - pipeline counts + weighted value.
 
     Returns:
         {
@@ -547,7 +547,7 @@ def convert_opportunity_to_project_payload(opportunity: Any) -> dict[str, Any]:
     Used by the Projects module subscriber that auto-creates a Project on
     ``crm.opportunity.won`` events.
     """
-    # Estimated value goes downstream into Project.budget — keep it as a
+    # Estimated value goes downstream into Project.budget - keep it as a
     # str-formatted Decimal so the subscriber casts back to Decimal without
     # the float-binary-rounding hop. Round-5 audit fixed a ~1-cent drift on
     # round-trip for values >= $10M.
@@ -634,7 +634,7 @@ class CrmService:
         # returns a 500 (no unique index) OR a 200 with a silent
         # duplicate row (with index). Round-5 audit: pre-check (best
         # effort), then translate any IntegrityError on the INSERT
-        # itself to 409 — mirrors the contacts module pattern.
+        # itself to 409 - mirrors the contacts module pattern.
         normalised_email = data.contact_email.strip().lower() if data.contact_email else None
         if normalised_email:
             existing = await self.lead_repo.find_by_email(normalised_email)
@@ -706,13 +706,13 @@ class CrmService:
         in audit logs and activity bodies), this:
 
         * Nulls / scrubs every PII column on the Lead row itself (preserves
-          the row so downstream foreign keys — e.g. converted_opportunity_id
-          — stay valid; auditors still see "a lead existed").
+          the row so downstream foreign keys - e.g. converted_opportunity_id
+          - stay valid; auditors still see "a lead existed").
         * Scrubs PII bodies / subjects on every CrmActivity linked to the
           lead.
         * Writes an audit-log entry recording **who** triggered the erasure
           and **when**, so the org can prove compliance.
-        * Logs only the redacted label — never the raw values being erased.
+        * Logs only the redacted label - never the raw values being erased.
 
         Returns a small summary dict so the API can report what was touched
         (counts only; never the values).
@@ -724,7 +724,7 @@ class CrmService:
         # 1. Scrub the lead row itself. Keep status / lifecycle so audit
         #    counts (e.g. win-rate denominators) stay consistent.
         # R8 audit: ``source`` is String(32) but some integrations write a
-        # free-form referral label such as "referral:john.doe@corp.com" —
+        # free-form referral label such as "referral:john.doe@corp.com" -
         # that is GDPR-class PII (Art. 4(1) direct identifier) and must be
         # erased alongside the contact fields.
         await self.lead_repo.update_fields(
@@ -743,7 +743,7 @@ class CrmService:
         # outside the async greenlet (raising MissingGreenlet). Snapshot the
         # IDs up-front so the loop never touches stale ORM state.
         # R8 audit: ``outcome`` is a free-text field that reps often populate
-        # with direct-speech notes ("Spoke to John, he said …") — PII risk
+        # with direct-speech notes ("Spoke to John, he said …") - PII risk
         # identical to body/subject. Scrub it alongside body.
         activities, _ = await self.activity_repo.list_all(limit=10000, lead_id=lead_id)
         activity_ids = [act.id for act in activities]
@@ -1002,13 +1002,13 @@ class CrmService:
             # validation, and the crm.opportunity.won/lost events that drive
             # downstream Project creation and analytics). A generic PATCH
             # would silently skip all of them, leaving a "won" deal with
-            # won_at=None — which corrupts sales-cycle, win-rate and forecast
+            # won_at=None - which corrupts sales-cycle, win-rate and forecast
             # math. Force callers through the dedicated endpoints.
             if target_status in ("won", "lost"):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=(
-                        f"Cannot set status '{target_status}' via update — use the dedicated win/lose endpoint instead"
+                        f"Cannot set status '{target_status}' via update - use the dedicated win/lose endpoint instead"
                     ),
                 )
 
@@ -1056,7 +1056,7 @@ class CrmService:
             # Stages marked won/lost must go through win_opportunity / lose_opportunity
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=("Cannot move directly to a final won/lost stage — use the dedicated win/lose endpoint instead"),
+                detail=("Cannot move directly to a final won/lost stage - use the dedicated win/lose endpoint instead"),
             )
 
         # Update probability if user did not override and stage carries a default
@@ -1128,7 +1128,7 @@ class CrmService:
         # Validate win_reason_code against the catalogue. ``lost`` already
         # checks lost_reason_code; ``won`` was previously a silent no-op
         # accepting any free-text string, including codes from the lost-only
-        # side of the catalogue — that broke win-rate dashboards segmented
+        # side of the catalogue - that broke win-rate dashboards segmented
         # by reason. Round-5 audit closes the gap.
         if win_reason_code is not None:
             reason = await self.reason_repo.get_by_code(win_reason_code)
@@ -1276,7 +1276,7 @@ class CrmService:
         user_id: str | None = None,
     ) -> CrmActivity:
         # Activity-owner spoofing: before v4.3.0 the request body's
-        # ``owner_user_id`` was trusted blindly — a regular EDITOR could
+        # ``owner_user_id`` was trusted blindly - a regular EDITOR could
         # POST {"owner_user_id": "<sales-director-uuid>", ...} and falsely
         # attribute a touch to anyone in the org, corrupting per-rep
         # activity dashboards and commission reports. Round-5 audit:
@@ -1412,7 +1412,7 @@ class CrmService:
     ) -> dict[str, Any]:
         """Compute a BANT score for an opportunity and persist into notes JSON.
 
-        The score is stored in ``Opportunity.competitor_names`` extras? No —
+        The score is stored in ``Opportunity.competitor_names`` extras? No -
         we have no JSON field on Opportunity. We persist into the dedicated
         ``probability_percent`` (which the user can override) and into
         an audit trail via a CrmActivity of kind 'score'.
@@ -1554,7 +1554,7 @@ def _to_uuid_or_none(value: str | uuid.UUID | None) -> uuid.UUID | None:
 
 # ── BANT scoring (pure) ───────────────────────────────────────────────────
 
-# Default BANT-weights — sum must equal 100. Callers can override per tenant.
+# Default BANT-weights - sum must equal 100. Callers can override per tenant.
 _DEFAULT_BANT_WEIGHTS = {
     "budget": 30,
     "authority": 25,
@@ -1677,7 +1677,7 @@ def compute_stage_weighted_forecast(
     """Pure: aggregate weighted pipeline by pipeline stage.
 
     Returns ``{by_stage: {stage_id: {name, probability, count, total,
-    weighted}}, grand_total, grand_weighted}`` — useful for the kanban
+    weighted}}, grand_total, grand_weighted}`` - useful for the kanban
     forecast view.
     """
     by_stage: dict[str, dict[str, Any]] = {}

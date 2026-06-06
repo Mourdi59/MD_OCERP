@@ -7,7 +7,7 @@ These are used as sample BIM models when demo projects are installed.
 The generated IFC is deliberately simple (extruded boxes) so the text-based
 IFC parser can extract elements, storeys, and quantities without requiring
 the DDC converter.  The result is a realistic element list and a 3D preview
-that looks like an actual building — not a grid of boxes.
+that looks like an actual building - not a grid of boxes.
 """
 
 from __future__ import annotations
@@ -58,7 +58,7 @@ def _ifc_point(x: float, y: float, z: float) -> str:
 
 
 def _residential_berlin_elements() -> list[dict]:
-    """‌⁠‍48-unit residential complex — 4 storeys."""
+    """‌⁠‍48-unit residential complex - 4 storeys."""
     elements = []
     storeys = ["EG (Erdgeschoss)", "1.OG", "2.OG", "3.OG"]
     for si, storey in enumerate(storeys):
@@ -310,7 +310,7 @@ def _office_london_elements() -> list[dict]:
 
 
 def _medical_us_elements() -> list[dict]:
-    """Hospital — 3 floors + basement."""
+    """Hospital - 3 floors + basement."""
     elements = []
     storeys = ["Basement", "Ground Floor", "First Floor", "Second Floor"]
     for si, storey in enumerate(storeys):

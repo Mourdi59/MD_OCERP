@@ -7,18 +7,18 @@ uses for ``hooks.py`` / ``events.py``): importing it at module-load time
 registers every Phase-1 node type into the global Node Capability
 Registry. The executor only ever calls *registered* runners (§3.5).
 
-Six nodes — the smallest set that exercises the whole spine
+Six nodes - the smallest set that exercises the whole spine
 ``trigger.manual → source.boq → gate.validation → action.export.excel``
 plus the helpers the design lists for Phase 1:
 
     trigger.manual        entry / no-op seed
     source.project        load project meta (IDs + name only)
     source.boq            load a project's BOQ positions (IDs + counts +
-                          a small sample — NEVER the full universe)
+                          a small sample - NEVER the full universe)
     transform.filter      filter the upstream rows by a simple predicate
     gate.validation       run the validation engine; continue unless errors
     action.export.excel   reuse the existing openpyxl util → a file ref
-                          (side_effecting=False — it writes a file, not DB)
+                          (side_effecting=False - it writes a file, not DB)
 
 Every envelope obeys §3.2 hard rule 1: IDs + small previews on the wire,
 the big payload stays in its owning table.
@@ -39,12 +39,12 @@ logger = logging.getLogger(__name__)
 
 MODULE = "oe_pipelines"
 
-# A small, bounded sample size — never stream the element universe through
+# A small, bounded sample size - never stream the element universe through
 # the run rows (this is what protects the 2 GB-RAM / SQLite target).
 _SAMPLE_LIMIT = 25
 # Hard cap on the id-list that node-state envelopes can carry. Without
 # this a 100k-position project would JSON-encode 100k UUIDs into the
-# oe_pipeline_node_state.output column on every node hop — a slow
+# oe_pipeline_node_state.output column on every node hop - a slow
 # memory-bomb. ``count`` keeps the honest cardinality.
 _ROW_IDS_CAP = 5000
 
@@ -63,7 +63,7 @@ def _resolve_project_id(ctx: NodeContext) -> uuid.UUID | None:
 
 
 async def _run_trigger_manual(ctx: NodeContext) -> dict[str, Any]:
-    """‌⁠‍Entry node — seeds the run with the trigger context. No I/O."""
+    """‌⁠‍Entry node - seeds the run with the trigger context. No I/O."""
     return {
         "trigger": "manual",
         "actor_id": ctx.actor_id,
@@ -142,7 +142,7 @@ async def _run_source_boq(ctx: NodeContext) -> dict[str, Any]:
 
 
 def _matches(row: dict[str, Any], field: str, op: str, value: Any) -> bool:
-    """Tiny, safe predicate — no eval, just a fixed operator set."""
+    """Tiny, safe predicate - no eval, just a fixed operator set."""
     actual = row.get(field)
     if op in ("eq", "=="):
         return actual == value
@@ -208,7 +208,7 @@ async def _run_gate_validation(ctx: NodeContext) -> dict[str, Any]:
     Params: ``rule_sets`` (list[str], default ``["boq_quality"]``). The
     gate *continues* (status ``done``) unless the report has blocking
     errors, in which case it raises so the run records an error and every
-    downstream (write) node is skipped — the structural "AI proposes,
+    downstream (write) node is skipped - the structural "AI proposes,
     human confirms" contract enforced at run time.
     """
     from app.core.validation.engine import validation_engine
@@ -247,7 +247,7 @@ async def _run_action_export_excel(ctx: NodeContext) -> dict[str, Any]:
 
     No new dependency (LIGHTWEIGHT is a hard rule): ``openpyxl`` is already
     used by ``boq.cad_import`` / ``requirements.excel_io`` / many routers.
-    ``side_effecting=False`` — it produces a downloadable file, it does not
+    ``side_effecting=False`` - it produces a downloadable file, it does not
     mutate any DB row, so it does not require a preceding gate.
     """
     import openpyxl
@@ -394,7 +394,7 @@ def register_pipeline_nodes() -> None:
                 "items": {"type": "string"},
             },
         },
-        # Produces a file, not a DB mutation — so it needs no preceding gate.
+        # Produces a file, not a DB mutation - so it needs no preceding gate.
         side_effecting=False,
     )
 

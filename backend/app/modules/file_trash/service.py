@@ -4,12 +4,12 @@
 
 Stateless service layer. Owns the soft-delete + restore semantics:
 
-* ``soft_delete`` — snapshot the original row's payload into the trash
+* ``soft_delete`` - snapshot the original row's payload into the trash
   table and remove the original.
-* ``restore`` — re-insert the payload into its kind table; mark the
+* ``restore`` - re-insert the payload into its kind table; mark the
   trash row as ``restored_at``.
-* ``purge`` — hard-delete a trash row.
-* ``purge_expired_trash`` — nightly cron entry point that purges every
+* ``purge`` - hard-delete a trash row.
+* ``purge_expired_trash`` - nightly cron entry point that purges every
   trash row past its ``retention_days`` window.
 """
 
@@ -29,7 +29,7 @@ from app.modules.file_trash.repository import FileTrashRepository
 
 logger = logging.getLogger(__name__)
 
-# Valid file kinds — mirrors file_versions.models.FILE_KINDS so the
+# Valid file kinds - mirrors file_versions.models.FILE_KINDS so the
 # two modules agree on the polymorphic vocabulary.
 TRASH_KINDS: tuple[str, ...] = (
     "document",
@@ -223,7 +223,7 @@ class FileTrashService:
         else:
             # Caller pre-snapshotted (no live row to delete). Reject a
             # synthetic payload that lacks the columns the kind table
-            # marks NOT NULL — such a row could never be restored and
+            # marks NOT NULL - such a row could never be restored and
             # would only blow up later with an unhandled INSERT error.
             missing = _missing_required(model, snapshot)
             if missing:
@@ -321,7 +321,7 @@ class FileTrashService:
         # (forced-back) primary key. The kind table's PK constraint fires
         # on the loser, surfacing as an ``IntegrityError``. Wrap the
         # insert + flush so that becomes a clean 409 instead of an
-        # unhandled 500 — mirroring the duplicate-guard pattern other
+        # unhandled 500 - mirroring the duplicate-guard pattern other
         # services use (e.g. bid_management submission create).
         new_row = model(**clean)
         self.session.add(new_row)
@@ -367,7 +367,7 @@ def _candidate_storage_paths(payload: dict[str, Any]) -> list[str]:
 
     Snapshots are JSON blobs of the original ORM row; the column the
     file lives in depends on the kind. We probe a small whitelist of
-    well-known keys and return only non-empty strings — callers are
+    well-known keys and return only non-empty strings - callers are
     responsible for the actual existence / unlink check.
     """
     out: list[str] = []
@@ -409,7 +409,7 @@ async def purge_expired_trash(
     the snapshotted on-disk file as well: snapshots carry the original
     row's ``file_path`` / ``physical_path`` / ``image_path`` /
     ``model_path`` so the storage entry can be cleaned up alongside the
-    trash row. A failed unlink is logged but does not abort the purge —
+    trash row. A failed unlink is logged but does not abort the purge -
     the DB row is still removed so the trash table doesn't accumulate
     "stuck" entries.
     """
@@ -421,7 +421,7 @@ async def purge_expired_trash(
     for row in rows:
         # Storage-side cleanup first so we never DB-delete a row whose
         # file we still believe lives on disk. ``_delete_storage_file``
-        # is graceful — missing files count as success.
+        # is graceful - missing files count as success.
         payload = row.payload_json if isinstance(row.payload_json, dict) else {}
         for path in _candidate_storage_paths(payload):
             _delete_storage_file(path)

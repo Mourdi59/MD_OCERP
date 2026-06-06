@@ -118,8 +118,8 @@
       "scope": "Geltungsbereich",
       "exclusions": "Ausschlüsse"
     },
-    "structural_text": "Der Bauträger gewährleistet die strukturelle Integrität der Immobilie — einschließlich der tragenden Konstruktion, der Fundamente und der Abdichtung — für einen Zeitraum von {years} Jahren ab dem Datum der Übergabe.",
-    "finishing_text": "Der Bauträger gewährleistet die Ausbauarbeiten — einschließlich Anstrich, Sanitäreinrichtungen, vom Bauträger installierter Geräte und kleinerer kosmetischer Mängel — für einen Zeitraum von {years} Jahr(en) ab Übergabe.",
+    "structural_text": "Der Bauträger gewährleistet die strukturelle Integrität der Immobilie - einschließlich der tragenden Konstruktion, der Fundamente und der Abdichtung - für einen Zeitraum von {years} Jahren ab dem Datum der Übergabe.",
+    "finishing_text": "Der Bauträger gewährleistet die Ausbauarbeiten - einschließlich Anstrich, Sanitäreinrichtungen, vom Bauträger installierter Geräte und kleinerer kosmetischer Mängel - für einen Zeitraum von {years} Jahr(en) ab Übergabe.",
     "exclusions_text": "Diese Gewährleistung schließt Schäden durch Fehlgebrauch, vom Käufer oder Dritten durchgeführte Änderungen, normalen Verschleiß, höhere Gewalt sowie Gegenstände aus, die durch separate Herstellergarantien abgedeckt sind.",
     "claim_procedure": "Zur Einreichung eines Anspruchs muss der Käufer dem Bauträger innerhalb des Gewährleistungszeitraums eine schriftliche Mitteilung zukommen lassen, die den Mangel beschreibt und angemessene Nachweise enthält."
   },

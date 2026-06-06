@@ -2,8 +2,8 @@
 
 Wires diary close-out + signature into:
 
-* ``schedule_advanced.actuals_update`` — last-planner actuals tick.
-* ``bi_dashboards.kpi_recompute`` — project performance dashboards
+* ``schedule_advanced.actuals_update`` - last-planner actuals tick.
+* ``bi_dashboards.kpi_recompute`` - project performance dashboards
   pick up the new contemporaneous record bundle.
 
 Both follow-on events are published with the same diary payload so

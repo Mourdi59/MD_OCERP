@@ -1,4 +1,4 @@
-"""‌⁠‍Correspondence vector adapter — feeds the ``oe_correspondence_correspondence`` collection.
+"""‌⁠‍Correspondence vector adapter - feeds the ``oe_correspondence_correspondence`` collection.
 
 Each :class:`~app.modules.correspondence.models.Correspondence` row is
 embedded as the reference number, subject, direction, type and notes so
@@ -6,7 +6,7 @@ the AI advisor and the global Cmd+K modal can recall letters / emails /
 notices by meaning ("notice of delay", "claim for extension of time")
 rather than exact text match.
 
-The adapter is deliberately narrow — it knows nothing about the event bus
+The adapter is deliberately narrow - it knows nothing about the event bus
 or HTTP routing.  Wiring lives in :mod:`app.modules.correspondence.events`.
 Implements the :class:`~app.core.vector_index.EmbeddingAdapter` protocol.
 """
@@ -66,5 +66,5 @@ class CorrespondenceVectorAdapter:
         return str(project_id)
 
 
-# Singleton instance — adapters are stateless so one shared object is fine.
+# Singleton instance - adapters are stateless so one shared object is fine.
 correspondence_vector_adapter = CorrespondenceVectorAdapter()

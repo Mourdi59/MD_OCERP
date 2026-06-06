@@ -1,24 +1,24 @@
 """‌⁠‍Notification API routes.
 
 Endpoints:
-    GET    /                              — list current user's notifications
-    GET    /unread-count                  — unread count for current user
-    POST   /{notification_id}/read        — mark single as read
-    POST   /read-all                      — mark all as read
-    DELETE /{notification_id}             — delete single notification
+    GET    /                              - list current user's notifications
+    GET    /unread-count                  - unread count for current user
+    POST   /{notification_id}/read        - mark single as read
+    POST   /read-all                      - mark all as read
+    DELETE /{notification_id}             - delete single notification
 
 Preferences + digest (Wave 3 / T9):
-    GET    /preferences/                  — current user's prefs
-    POST   /preferences/                  — upsert a pref row
-    POST   /digest/flush                  — admin manual digest flush
-    GET    /event-types/                  — known event-type catalogue
+    GET    /preferences/                  - current user's prefs
+    POST   /preferences/                  - upsert a pref row
+    POST   /digest/flush                  - admin manual digest flush
+    GET    /event-types/                  - known event-type catalogue
 
 Epic B (Notifications Dispatcher):
-    WS     /ws/                           — real-time push for current user
-    GET    /webhooks/                     — admin list webhook targets
-    POST   /webhooks/                     — admin create webhook target
-    PATCH  /webhooks/{id}/                — admin update webhook target
-    DELETE /webhooks/{id}/                — admin delete webhook target
+    WS     /ws/                           - real-time push for current user
+    GET    /webhooks/                     - admin list webhook targets
+    POST   /webhooks/                     - admin create webhook target
+    PATCH  /webhooks/{id}/                - admin update webhook target
+    DELETE /webhooks/{id}/                - admin delete webhook target
 """
 
 from __future__ import annotations
@@ -220,7 +220,7 @@ async def upsert_preference(
 
 @router.get("/event-types/", response_model=list[EventTypeCatalogEntry])
 async def list_event_types(
-    user_id: CurrentUserId,  # noqa: ARG001 — auth gate only
+    user_id: CurrentUserId,  # noqa: ARG001 - auth gate only
 ) -> list[EventTypeCatalogEntry]:
     """‌⁠‍Return the catalogue of known event-types the platform may emit."""
     return [EventTypeCatalogEntry(**entry) for entry in KNOWN_EVENT_TYPES]
@@ -233,7 +233,7 @@ async def flush_digest(
 ) -> dict[str, int | str]:
     """‌⁠‍Manually trigger a digest flush for the given channel.
 
-    Admin-only — guarded inline because ``notifications.admin`` is not yet
+    Admin-only - guarded inline because ``notifications.admin`` is not yet
     registered with the global permission registry; falling back to the
     ``role == 'admin'`` check matches the pattern used by
     :class:`RequirePermission` for the admin role bypass.
@@ -267,7 +267,7 @@ async def _authenticate_ws(token: str | None) -> dict[str, Any] | None:
         payload = decode_access_token(token, get_settings())
     except HTTPException:
         return None
-    except Exception:  # noqa: BLE001 — never crash the WS on auth
+    except Exception:  # noqa: BLE001 - never crash the WS on auth
         logger.exception("notifications WS token decode failed")
         return None
 

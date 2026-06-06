@@ -4,12 +4,12 @@
 
 Tables (per RFC 35 §5):
 
-* ``oe_eac_ruleset``           — collection of rules forming a logical bundle
-* ``oe_eac_rule``              — declarative rule with ``definition_json`` body
-* ``oe_eac_run``               — execution record for a ruleset against a model
-* ``oe_eac_run_result_item``   — per-element row produced by a run
-* ``oe_eac_global_variable``   — org/project-scoped named values
-* ``oe_eac_rule_version``      — append-only history of rule definitions
+* ``oe_eac_ruleset``           - collection of rules forming a logical bundle
+* ``oe_eac_rule``              - declarative rule with ``definition_json`` body
+* ``oe_eac_run``               - execution record for a ruleset against a model
+* ``oe_eac_run_result_item``   - per-element row produced by a run
+* ``oe_eac_global_variable``   - org/project-scoped named values
+* ``oe_eac_rule_version``      - append-only history of rule definitions
 
 The schema follows the codebase's portable conventions:
 
@@ -17,7 +17,7 @@ The schema follows the codebase's portable conventions:
   available, otherwise ``String(36)``).
 * JSON columns via ``sqlalchemy.JSON`` so SQLite (test) and PostgreSQL
   (prod) speak the same dialect.
-* "Array" columns use ``JSON`` storing a list — the ``ARRAY(String)``
+* "Array" columns use ``JSON`` storing a list - the ``ARRAY(String)``
   PostgreSQL native type is not portable to SQLite.
 * Tenant scoping (``tenant_id``) is enforced at the application/RLS layer
   introduced in W0.4; models simply expose the column with an index.
@@ -170,7 +170,7 @@ class EacRuleset(Base):
 class EacRule(Base):
     """‌⁠‍Declarative rule. Body lives in ``definition_json``.
 
-    The Python and TypeScript layers never branch on rule shape — they
+    The Python and TypeScript layers never branch on rule shape - they
     parse ``definition_json`` against the ``EacRuleDefinition`` JSON
     Schema. This lets us version the schema and ship marketplace rule
     packs without code changes (RFC 35 L12).
@@ -258,7 +258,7 @@ class EacRun(Base):
     A run captures the inputs (ruleset + model version), outcome
     (status + summary), and per-element results (via
     :class:`EacRunResultItem`). Result rows that exceed a threshold
-    are spooled to Parquet — the schema stays unchanged.
+    are spooled to Parquet - the schema stays unchanged.
     """
 
     __tablename__ = "oe_eac_run"
@@ -321,9 +321,9 @@ class EacRun(Base):
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(GUID(), nullable=False, index=True)
 
-    # Wave 1 / v2.6.0 — Parquet spool path for runs that overflow
+    # Wave 1 / v2.6.0 - Parquet spool path for runs that overflow
     # HOT_RESULT_ITEM_CAP. NULL means no spill happened (or the run is
-    # still pending). The path is interpreted by app.core.storage —
+    # still pending). The path is interpreted by app.core.storage -
     # local filesystem or S3 depending on backend configuration.
     spool_path: Mapped[str | None] = mapped_column(
         String(512),
@@ -331,7 +331,7 @@ class EacRun(Base):
         doc="Storage key for spilled Parquet result data; NULL when fully in DB",
     )
 
-    # Wave 1 / v2.6.0 — Idempotency key for POST /rulesets/{id}:run.
+    # Wave 1 / v2.6.0 - Idempotency key for POST /rulesets/{id}:run.
     # Either supplied by the client via Idempotency-Key header, or
     # computed from sha256(ruleset_id + ruleset.updated_at + sorted
     # element stable_ids + elements content hash). Re-posting with the
@@ -394,7 +394,7 @@ class EacRunResultItem(Base):
     result_value: Mapped[dict | None] = mapped_column(  # type: ignore[assignment]
         JSON,
         nullable=True,
-        doc="Output payload — shape depends on output_mode",
+        doc="Output payload - shape depends on output_mode",
     )
     pass_: Mapped[bool | None] = mapped_column(
         "pass",
@@ -435,7 +435,7 @@ class EacGlobalVariable(Base):
 
     Variables are referenced inside ``definition_json`` and resolved
     at evaluation time. Locked variables cannot be edited via the UI
-    (``is_locked=True``) — useful for compliance-fixed values.
+    (``is_locked=True``) - useful for compliance-fixed values.
     """
 
     __tablename__ = "oe_eac_global_variable"
@@ -590,7 +590,7 @@ class EacParameterAlias(Base):
     default_unit: Mapped[str | None] = mapped_column(
         String(64),
         nullable=True,
-        doc="Default unit symbol — e.g. 'm', 'm2', 'kg'.",
+        doc="Default unit symbol - e.g. 'm', 'm2', 'kg'.",
     )
     version: Mapped[int] = mapped_column(
         Integer,
@@ -668,7 +668,7 @@ class EacAliasSynonym(Base):
         nullable=False,
         default=100,
         server_default="100",
-        doc="Ascending — lower wins. Built-in canonical names use 10.",
+        doc="Ascending - lower wins. Built-in canonical names use 10.",
     )
     pset_filter: Mapped[str | None] = mapped_column(
         String(255),

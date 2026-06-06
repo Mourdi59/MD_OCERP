@@ -1,10 +1,10 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""Document Analyst — answers questions strictly from a project's documents.
+"""Document Analyst - answers questions strictly from a project's documents.
 
-Tool (declarative — wired into the global registry on import):
+Tool (declarative - wired into the global registry on import):
 
-* ``search_documents(q, project_id, __agent_context__)`` — proxy over the
+* ``search_documents(q, project_id, __agent_context__)`` - proxy over the
   real file-search index (``file_search.service.search_content``), the
   full-text / indexed search over extracted document chunks. Scoped to a
   single project, it returns the top matches as
@@ -15,9 +15,9 @@ returns text the indexer actually extracted from a real uploaded file. It
 NEVER invents document content. It also distinguishes two very different
 empty states so the LLM can answer honestly:
 
-* **No index / unavailable** — file_search is unreachable, or the project
+* **No index / unavailable** - file_search is unreachable, or the project
   has zero indexed files. Returns ``{"error": "unavailable", ...}``.
-* **No results for this query** — the project IS indexed but nothing
+* **No results for this query** - the project IS indexed but nothing
   matched. Returns ``matches=[]`` with an explicit note so the agent can
   say "not found in the project documents" instead of guessing.
 """
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 SYSTEM_PROMPT = (
     "You are a Document Analyst answering questions about a single "
     "construction project. You may ONLY use information returned by the "
-    "search_documents tool — the project's uploaded documents. You must not "
+    "search_documents tool - the project's uploaded documents. You must not "
     "use outside knowledge to answer project-specific questions. "
     "Call search_documents to retrieve relevant snippets, then answer "
     "strictly from those snippets. For every statement you make, cite the "
@@ -71,12 +71,12 @@ async def _tool_search_documents(
     Returns the top matches, each ``{document_id, title_or_filename,
     snippet, score}``. Two distinct empty states are reported:
 
-    * ``{"error": "unavailable", ...}`` — file_search is unreachable OR the
+    * ``{"error": "unavailable", ...}`` - file_search is unreachable OR the
       project has no indexed files at all (nothing to search).
-    * ``{"matches": [], "note": "no_results", ...}`` — the index exists but
+    * ``{"matches": [], "note": "no_results", ...}`` - the index exists but
       nothing matched this query.
 
-    NEVER fabricates document text — every snippet comes from the indexer.
+    NEVER fabricates document text - every snippet comes from the indexer.
     """
     q_clean = (q or "").strip()
 
@@ -93,7 +93,7 @@ async def _tool_search_documents(
             "matches": [],
             "error": "unavailable",
             "detail": (
-                "No project in scope — cannot search documents without a project_id. Do not invent document content."
+                "No project in scope - cannot search documents without a project_id. Do not invent document content."
             ),
         }
 
@@ -141,7 +141,7 @@ async def _tool_search_documents(
                     "detail": (
                         "No documents are indexed for this project yet, so "
                         "there is nothing to search. Tell the user the "
-                        "project documents could not be searched — do not "
+                        "project documents could not be searched - do not "
                         "invent any document content."
                     ),
                 }
@@ -162,7 +162,7 @@ async def _tool_search_documents(
             "error": "unavailable",
             "detail": (
                 "Document search index is not reachable in this context. "
-                "No document text available — do not invent content; report "
+                "No document text available - do not invent content; report "
                 "that the project documents could not be searched."
             ),
         }
@@ -207,7 +207,7 @@ def register_document_analyst() -> None:
                 "Full-text search the current project's uploaded documents. "
                 "Returns up to 8 matches, each with document_id, "
                 "title_or_filename, snippet and score. Always call this "
-                "before answering — never quote a document you were not "
+                "before answering - never quote a document you were not "
                 "shown. matches=[] with note 'no_results' means nothing "
                 "matched (answer 'not found in the project documents'); "
                 "error='unavailable' means the index is missing or empty."
@@ -222,7 +222,7 @@ def register_document_analyst() -> None:
                     "project_id": {
                         "type": "string",
                         "description": (
-                            "Project UUID to scope the search to. Optional — "
+                            "Project UUID to scope the search to. Optional - "
                             "defaults to the project in the run context."
                         ),
                     },

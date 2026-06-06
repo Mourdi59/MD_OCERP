@@ -19,7 +19,7 @@ _logger = logging.getLogger("openestimate.config")
 
 # Minimum acceptable JWT secret length, enforced in non-development
 # environments. 32 bytes = 256 bits of entropy when generated via
-# ``secrets.token_urlsafe(32)`` — strong enough that HS256 token
+# ``secrets.token_urlsafe(32)`` - strong enough that HS256 token
 # forgery via brute-force is computationally infeasible.
 _JWT_SECRET_MIN_LENGTH = 32
 
@@ -84,7 +84,7 @@ def _detect_version() -> str:
 
     When running from the source tree (the common dev workflow:
     ``cd backend && python -m uvicorn app.main:create_app --factory``),
-    the *source* file is what's actually executing — but
+    the *source* file is what's actually executing - but
     ``importlib.metadata.version`` returns whatever is in ``site-packages``
     if a stale ``pip install openconstructionerp==X`` happened earlier.
     That made ``/api/health`` claim a wrong version after every dev
@@ -93,7 +93,7 @@ def _detect_version() -> str:
 
     Resolution order (first hit wins):
       1. If ``app/__init__.py`` lives outside ``site-packages`` and a
-         ``pyproject.toml`` is on disk above it, read that — the source
+         ``pyproject.toml`` is on disk above it, read that - the source
          tree is the source of truth.
       2. Otherwise, ``importlib.metadata.version("openconstructionerp")``.
       3. ``0.0.0+local`` sentinel when all else fails.
@@ -117,7 +117,7 @@ def build_provenance_tag(version: str) -> str:
     build checksum. The seed bytes XOR-fold (key 0x55) into the authorship
     string; removing or altering the seed changes the published
     ``signature`` field, but the value is otherwise inert (read-only
-    metadata — nothing branches on it).
+    metadata - nothing branches on it).
     """
     import hashlib as _h
 
@@ -137,7 +137,7 @@ def _find_env_file() -> list[str]:
 
     Uvicorn may be launched from the repo root, backend/, or anywhere else,
     and pydantic-settings's default ``env_file=".env"`` is resolved against
-    CWD — which silently drops the whole file when the CWD is "wrong".
+    CWD - which silently drops the whole file when the CWD is "wrong".
     A missing JWT_SECRET rotates Fernet keys every boot and makes stored
     AI API keys undecryptable. Anchor to the package directory instead.
     """
@@ -171,7 +171,7 @@ def _canonicalize_db_url(url: str, *, driver: str) -> str:
         from sqlalchemy.engine import make_url
 
         return make_url(url).set(drivername=f"postgresql+{driver}").render_as_string(hide_password=False)
-    except Exception:  # noqa: BLE001 — never block boot on a URL we cannot parse
+    except Exception:  # noqa: BLE001 - never block boot on a URL we cannot parse
         return url
 
 
@@ -210,7 +210,7 @@ class Settings(BaseSettings):
     max_batch_size: int = 443
     # Slow-query threshold (milliseconds). Statements exceeding this elapsed
     # wall time are logged at WARNING level via SQLAlchemy ``before_cursor_execute``
-    # / ``after_cursor_execute`` listeners — see ``app.database``. Set to 0 to
+    # / ``after_cursor_execute`` listeners - see ``app.database``. Set to 0 to
     # disable the check. Env: ``OE_SLOW_QUERY_MS``.
     slow_query_ms: int = 500
 
@@ -234,14 +234,14 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 60
     jwt_refresh_expire_days: int = 30
     # Default role handed to users who self-register after the very first
-    # (bootstrap) user. ``viewer`` is the safe default — read-only across
+    # (bootstrap) user. ``viewer`` is the safe default - read-only across
     # the app. Can be raised to ``editor`` or ``manager`` for trusted
     # internal deployments via ``OE_DEFAULT_REGISTRATION_ROLE``. ``admin``
     # is intentionally unreachable through this setting.
     default_registration_role: Literal["viewer", "editor", "manager"] = "viewer"
 
     # Self-registration policy. ``open`` (default) preserves backwards-compat
-    # with v2.5.x and earlier — anyone with network reach to ``POST
+    # with v2.5.x and earlier - anyone with network reach to ``POST
     # /auth/register`` lands an immediately-active viewer account. For
     # internet-exposed instances, set ``OE_REGISTRATION_MODE=admin-approve``:
     # new accounts arrive ``is_active=False`` and cannot log in until an
@@ -262,7 +262,7 @@ class Settings(BaseSettings):
     registration_mode: Literal["open", "email-verify", "admin-approve", "closed"] = "admin-approve"
 
     # ── AI / Vector ──────────────────────────────────────────────────────
-    # Default: Qdrant (CWICR v3 pipeline — BAAI/bge-m3 + 30 per-language
+    # Default: Qdrant (CWICR v3 pipeline - BAAI/bge-m3 + 30 per-language
     # collections + parquet lookup). LanceDB remains as a legacy fallback
     # for pre-v3 deployments that haven't migrated their cost-vector store
     # yet; it will be removed entirely in a future release.
@@ -311,7 +311,7 @@ class Settings(BaseSettings):
     # from the minimal Qdrant store. When empty, lookups return only what
     # is in the Qdrant payload.
     cwicr_parquet_root: str = ""
-    # BAAI/bge-m3 — 1024-dim dense + sparse + colbert in one forward pass,
+    # BAAI/bge-m3 - 1024-dim dense + sparse + colbert in one forward pass,
     # MIT license, 100+ languages. Replaces e5-small for CWICR matching
     # only; the legacy multi-collection memory layer (BOQ/Document/Task)
     # still uses ``embedding_model_name`` until that path is migrated.
@@ -333,10 +333,10 @@ class Settings(BaseSettings):
     # live Qdrant for the set of present ``cwicr_*`` collections and, when
     # a project's native-language collection is absent, falls back to the
     # best populated one (BGE-M3 is multilingual, so an English catalogue
-    # still returns real cross-language candidates — far better than the
+    # still returns real cross-language candidates - far better than the
     # hard ``catalog_not_vectorized`` empty result a dead collection name
     # produces). Set False to keep region→collection routing PURE (no
-    # Qdrant I/O at call time) — required for deterministic bench runs and
+    # Qdrant I/O at call time) - required for deterministic bench runs and
     # unit tests that pin the routing contract. Env: CWICR_COLLECTION_PROBE.
     cwicr_collection_probe: bool = True
     # On startup, scan every multi-collection vector store and backfill
@@ -346,7 +346,7 @@ class Settings(BaseSettings):
     # disable in low-resource deployments where you'd rather call
     # ``/vector/reindex/`` manually per module.
     vector_auto_backfill: bool = True
-    # Per-collection cap for the auto backfill — protects against the
+    # Per-collection cap for the auto backfill - protects against the
     # case where someone enables backfill on a 5M-row tenant on first
     # boot and the embedding loop saturates CPU for 30 minutes.  Set to
     # 0 to disable the cap entirely.
@@ -376,7 +376,7 @@ class Settings(BaseSettings):
     # password-reset flow without MSA credentials; production should set
     # ``smtp`` plus the SMTP fields below.
     #
-    # ``noop`` and ``memory`` are for automated tests — the service
+    # ``noop`` and ``memory`` are for automated tests - the service
     # layer in ``app.core.email`` resolves these names into concrete
     # backends.
     email_backend: Literal["console", "smtp", "noop", "memory"] = "console"
@@ -417,10 +417,10 @@ class Settings(BaseSettings):
         description="Default validation rule sets applied to all projects",
     )
     # Per the OpenEstimate philosophy ("validation is a first-class citizen
-    # — not optional, part of core workflow") every BOQ import (Excel / CSV
+    # - not optional, part of core workflow") every BOQ import (Excel / CSV
     # / GAEB X83 / X84) runs the configured rule packs before the response
     # is returned, so DIN276 / NRM / GAEB / MasterFormat / DPGF violations
-    # surface AT import time — not later when a user is staring at row 452
+    # surface AT import time - not later when a user is staring at row 452
     # of the BOQ wondering where the bad quantity came from. Set to
     # ``False`` on very large imports if the inline sweep is too slow; the
     # standalone ``POST /boqs/{id}/validate/`` endpoint remains available
@@ -440,10 +440,10 @@ class Settings(BaseSettings):
     # so /bim opens instantly on revisit without re-conversion.
     #
     # ``keep_original_cad`` controls only the raw upload (``original.{ext}``):
-    #   * ``False`` (default, production) — drop the original after the
+    #   * ``False`` (default, production) - drop the original after the
     #     conversion succeeds. Saves disk; failed conversions still keep
     #     it so retry works without re-upload.
-    #   * ``True`` (dev / debug) — keep both. Useful when iterating on the
+    #   * ``True`` (dev / debug) - keep both. Useful when iterating on the
     #     converter pipeline and you want to re-run against the exact bytes.
     keep_original_cad: bool = Field(
         default=False,
@@ -466,7 +466,7 @@ class Settings(BaseSettings):
         """
         if isinstance(value, str) and value.strip().lower() == "lancedb":
             raise ValueError(
-                "MATCH_BACKEND=lancedb is no longer supported — the legacy "
+                "MATCH_BACKEND=lancedb is no longer supported - the legacy "
                 "ranker was removed in v3. Set MATCH_BACKEND=qdrant (the new "
                 "default) or remove the line from your .env."
             )
@@ -522,12 +522,12 @@ class Settings(BaseSettings):
 
         Rejects three failure modes when ``APP_ENV != "development"``:
 
-        1. ``jwt_secret`` is the bundled dev default — published in the
+        1. ``jwt_secret`` is the bundled dev default - published in the
            public repo, admin-forgeable by anyone who can `git clone`.
         2. ``jwt_secret`` matches any other known weak / boilerplate
-           value (``change-me``, ``secret``, ``jwt-secret``, etc.) — these
+           value (``change-me``, ``secret``, ``jwt-secret``, etc.) - these
            leak into production all the time via copy-paste.
-        3. ``jwt_secret`` is shorter than 32 characters — HS256 token
+        3. ``jwt_secret`` is shorter than 32 characters - HS256 token
            forgery becomes computationally tractable below that length.
 
         In ``development`` the guard is a no-op so a fresh ``docker compose up``
@@ -568,7 +568,7 @@ class Settings(BaseSettings):
                     f"  openssl rand -hex 32"
                 )
 
-        # Development with the bundled default — log a one-shot WARNING so
+        # Development with the bundled default - log a one-shot WARNING so
         # the operator is reminded to override before promoting the
         # environment. We deliberately log the length (not the value) so
         # the warning is informative without leaking the secret if log

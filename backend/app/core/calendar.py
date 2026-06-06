@@ -1,4 +1,4 @@
-"""Working-days calendar engine — Wave 28 of the worldwide-parameterisation audit.
+"""Working-days calendar engine - Wave 28 of the worldwide-parameterisation audit.
 
 Provides:
     is_working_day(date, country_code) -> bool
@@ -231,12 +231,12 @@ def _holidays_us(year: int) -> set[date]:
         date(year, 12, 25),  # Christmas Day
     ]
     computed = [
-        _nth_weekday(year, 1, 0, 3),  # MLK Day — 3rd Monday January
-        _nth_weekday(year, 2, 0, 3),  # Presidents' Day — 3rd Monday February
-        _nth_weekday(year, 5, 0, -1),  # Memorial Day — last Monday May
-        _nth_weekday(year, 9, 0, 1),  # Labor Day — 1st Monday September
-        _nth_weekday(year, 10, 0, 2),  # Columbus Day — 2nd Monday October
-        _nth_weekday(year, 11, 3, 4),  # Thanksgiving — 4th Thursday November
+        _nth_weekday(year, 1, 0, 3),  # MLK Day - 3rd Monday January
+        _nth_weekday(year, 2, 0, 3),  # Presidents' Day - 3rd Monday February
+        _nth_weekday(year, 5, 0, -1),  # Memorial Day - last Monday May
+        _nth_weekday(year, 9, 0, 1),  # Labor Day - 1st Monday September
+        _nth_weekday(year, 10, 0, 2),  # Columbus Day - 2nd Monday October
+        _nth_weekday(year, 11, 3, 4),  # Thanksgiving - 4th Thursday November
     ]
     return {_observed(d) for d in fixed} | set(computed)
 
@@ -315,17 +315,17 @@ def _holidays_jp(year: int) -> set[date]:
     days: set[date] = set()
     for d in [
         date(year, 1, 1),  # New Year's Day (元旦)
-        _nth_weekday(year, 1, 0, 2),  # Coming of Age Day — 2nd Monday Jan
+        _nth_weekday(year, 1, 0, 2),  # Coming of Age Day - 2nd Monday Jan
         date(year, 2, 11),  # National Foundation Day (建国記念の日)
         date(year, 2, 23),  # Emperor's Birthday (天皇誕生日)
-        date(year, 4, 29),  # Showa Day (昭和の日) — start of Golden Week
+        date(year, 4, 29),  # Showa Day (昭和の日) - start of Golden Week
         date(year, 5, 3),  # Constitution Memorial Day (憲法記念日)
         date(year, 5, 4),  # Greenery Day (みどりの日)
-        date(year, 5, 5),  # Children's Day (こどもの日) — end of Golden Week
-        _nth_weekday(year, 7, 0, 3),  # Marine Day — 3rd Monday July
+        date(year, 5, 5),  # Children's Day (こどもの日) - end of Golden Week
+        _nth_weekday(year, 7, 0, 3),  # Marine Day - 3rd Monday July
         date(year, 8, 11),  # Mountain Day (山の日)
-        _nth_weekday(year, 9, 0, 3),  # Respect for the Aged Day — 3rd Monday Sep
-        date(year, 10, 14),  # Sports Day (スポーツの日) — 2nd Monday Oct (approx)
+        _nth_weekday(year, 9, 0, 3),  # Respect for the Aged Day - 3rd Monday Sep
+        date(year, 10, 14),  # Sports Day (スポーツの日) - 2nd Monday Oct (approx)
         date(year, 11, 3),  # Culture Day (文化の日)
         date(year, 11, 23),  # Labour Thanksgiving Day (勤労感謝の日)
     ]:
@@ -400,7 +400,7 @@ _WORKING_WEEK: dict[str, frozenset[int]] = {
     "RU": frozenset({0, 1, 2, 3, 4}),
     "JP": frozenset({0, 1, 2, 3, 4}),
     "CN": frozenset({0, 1, 2, 3, 4}),
-    # Middle East — Sunday through Thursday
+    # Middle East - Sunday through Thursday
     "AE": frozenset({6, 0, 1, 2, 3}),
     "SA": frozenset({6, 0, 1, 2, 3}),
     "QA": frozenset({6, 0, 1, 2, 3}),
@@ -467,7 +467,7 @@ def is_working_day(d: date, country_code: str) -> bool:
                       Unknown codes fall back to Mon–Fri with no holidays.
 
     Returns:
-        bool — True when the date is a scheduled working day.
+        bool - True when the date is a scheduled working day.
 
     Examples::
 
@@ -493,7 +493,7 @@ def next_working_day(d: date, country_code: str) -> date:
         country_code: ISO 3166-1 alpha-2 country code.
 
     Returns:
-        date — The first working day >= ``d``.
+        date - The first working day >= ``d``.
 
     Examples::
 
@@ -524,7 +524,7 @@ def add_working_days(start: date, working_days: int, country_code: str) -> date:
         country_code: ISO 3166-1 alpha-2 country code.
 
     Returns:
-        date — The finish date (inclusive).
+        date - The finish date (inclusive).
     """
     if working_days < 0:
         raise ValueError("working_days must be >= 0")

@@ -1,14 +1,14 @@
-"""Project Analyst — summarizes a project's budget vs committed vs actual.
+"""Project Analyst - summarizes a project's budget vs committed vs actual.
 
 The agent produces a concise executive cost summary for one project: total
 budget, committed, actual, the variance of committed/actual against budget, and
 the percentage spent. The user normally just asks "how is this project tracking
-against budget?" — the project id comes from the run context (the project the
+against budget?" - the project id comes from the run context (the project the
 user is looking at), or can be pasted into the prompt.
 
-Tool (declarative — wired into the global registry on import):
+Tool (declarative - wired into the global registry on import):
 
-* ``project_cost_summary(project_id=None, __agent_context__=None)`` — reads the
+* ``project_cost_summary(project_id=None, __agent_context__=None)`` - reads the
   REAL 5D cost dashboard for the project via
   ``costmodel.service.CostModelService.get_dashboard`` (the same aggregation the
   ``GET /5d/{project_id}/dashboard`` endpoint serves) and the project's name +
@@ -24,7 +24,7 @@ Money rule: amounts are carried as Decimal-as-string with their ISO 4217
 currency code. The dashboard sets ``mixed_currency`` when the project's budget
 lines span more than one currency (a missing fx_rate may have left a foreign
 amount unconverted and silently blended into the totals). When that flag is set,
-the tool does NOT compute a blended variance across currencies — it surfaces a
+the tool does NOT compute a blended variance across currencies - it surfaces a
 clear warning and returns the raw per-aggregate sums so the model presents the
 currencies separately instead of trusting a fictitious combined total.
 """
@@ -125,7 +125,7 @@ async def _tool_project_cost_summary(
 
     Returns a dict with the project name, ISO currency, ``total_budget``,
     ``committed``, ``actual`` (all Decimal-as-string), the ``mixed_currency``
-    flag, and — only when the project is single-currency — the
+    flag, and - only when the project is single-currency - the
     ``committed_vs_budget`` / ``actual_vs_budget`` variances and the
     ``percent_spent``. When ``mixed_currency`` is true a ``warning`` is included
     and no blended variance is computed (money rule: never combine currencies).
@@ -204,7 +204,7 @@ async def _tool_project_cost_summary(
     if mixed:
         # Money rule: the budget lines span more than one currency, so a missing
         # fx_rate may have left a foreign amount unconverted in these sums.
-        # Refuse to derive a blended variance — surface a warning and present
+        # Refuse to derive a blended variance - surface a warning and present
         # the amounts separately instead.
         summary["warning"] = (
             "This project's budget lines use more than one currency. The amounts "
@@ -214,7 +214,7 @@ async def _tool_project_cost_summary(
         )
         return summary
 
-    # Single-currency project — variance and % spent are meaningful. Variance is
+    # Single-currency project - variance and % spent are meaningful. Variance is
     # expressed as budget minus the spend measure (positive = under budget).
     committed_variance = total_budget - committed
     actual_variance = total_budget - actual
@@ -238,13 +238,13 @@ def register_project_analyst() -> None:
                 "Summarize a project's budget vs committed vs actual from the "
                 "real 5D cost dashboard. Returns the project name, ISO currency, "
                 "total_budget, committed and actual (Decimal as string), the "
-                "mixed_currency flag, and — only when the project uses a single "
-                "currency — committed_vs_budget / actual_vs_budget variances and "
+                "mixed_currency flag, and - only when the project uses a single "
+                "currency - committed_vs_budget / actual_vs_budget variances and "
                 "percent_spent. When mixed_currency is true it returns a warning "
                 "and NO blended variance (currencies must not be combined). The "
                 "project_id is optional: when omitted it is taken from the run "
                 "context. Returns an error object if there is no project id, the "
-                "project is missing, or the database is unreachable — never "
+                "project is missing, or the database is unreachable - never "
                 "invent figures."
             ),
             input_schema={
@@ -253,7 +253,7 @@ def register_project_analyst() -> None:
                     "project_id": {
                         "type": "string",
                         "description": (
-                            "UUID of the project to summarize. Optional — defaults to the project in the run context."
+                            "UUID of the project to summarize. Optional - defaults to the project in the run context."
                         ),
                     },
                 },
@@ -271,9 +271,9 @@ def register_project_analyst() -> None:
             icon="bar-chart-3",
             tagline="Summarize a project's budget vs committed vs actual",
             description=(
-                "Produces a concise executive cost summary for a project — "
+                "Produces a concise executive cost summary for a project - "
                 "budget vs committed vs actual with variance and percentage "
-                "spent — respecting currency isolation and clearly flagging when "
+                "spent - respecting currency isolation and clearly flagging when "
                 "the project mixes currencies. It never invents figures."
             ),
             example_prompts=[

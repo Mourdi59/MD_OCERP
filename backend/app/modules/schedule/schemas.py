@@ -1,4 +1,4 @@
-"""‌⁠‍Schedule Pydantic schemas — request/response models.
+"""‌⁠‍Schedule Pydantic schemas - request/response models.
 
 Defines create, update, and response schemas for schedules, activities,
 and work orders.  Numeric values are stored as strings in SQLite-compatible
@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_valid
 
 
 # ── v3 §10 money serialisation helper ─────────────────────────────────────
-# Mirrors backend/app/modules/boq/schemas.py — money fields are stored /
+# Mirrors backend/app/modules/boq/schemas.py - money fields are stored /
 # accepted as Decimal but emitted as plain decimal strings in JSON.
 def _serialise_money(v: Decimal | None) -> str | None:
     if v is None:
@@ -40,7 +40,7 @@ _MAX_SCHEDULE_DAYS = 365_000
 def _parse_iso_date(value: str | None, field_name: str) -> date | None:
     """Parse a YYYY-MM-DD prefix into a real calendar ``date``.
 
-    The Pydantic regex ``^\\d{4}-\\d{2}-\\d{2}$`` is structural — it accepts
+    The Pydantic regex ``^\\d{4}-\\d{2}-\\d{2}$`` is structural - it accepts
     impossible dates like ``2026-02-30`` or ``2026-13-99``. We re-parse via
     :func:`datetime.date.fromisoformat` to reject those before they propagate
     into compute_duration() and yield bogus durations.
@@ -277,7 +277,7 @@ class LinkPositionRequest(BaseModel):
 class ActivityBimLinkRequest(BaseModel):
     """Request body for replacing the BIM element link set on an activity.
 
-    The full ``bim_element_ids`` list is replaced atomically — callers that
+    The full ``bim_element_ids`` list is replaced atomically - callers that
     want to add/remove a single element should read the current list, mutate
     it, then PATCH the whole array back.
     """
@@ -290,7 +290,7 @@ class ActivityBimLinkRequest(BaseModel):
 class ActivityBrief(BaseModel):
     """Lightweight activity summary embedded in a BIM element response.
 
-    Mirrors the ``ActivityBrief`` schema declared in ``bim_hub.schemas`` —
+    Mirrors the ``ActivityBrief`` schema declared in ``bim_hub.schemas`` -
     the two are kept in sync so the viewer can render schedule badges on
     linked elements without a second round trip.
     """
@@ -317,7 +317,7 @@ class ProgressUpdateRequest(BaseModel):
 class WorkOrderCreate(BaseModel):
     """Create a new work order.
 
-    v3 §10 — ``planned_cost`` / ``actual_cost`` are money;
+    v3 §10 - ``planned_cost`` / ``actual_cost`` are money;
     Decimal-as-string in JSON.
     """
 
@@ -398,7 +398,7 @@ class WorkOrderStatusUpdate(BaseModel):
 class WorkOrderResponse(BaseModel):
     """Work order returned from the API.
 
-    v3 §10 — ``planned_cost`` / ``actual_cost`` are money;
+    v3 §10 - ``planned_cost`` / ``actual_cost`` are money;
     Decimal-as-string in JSON.
     """
 
@@ -658,7 +658,7 @@ class BaselineCreate(BaseModel):
 class BaselineUpdate(BaseModel):
     """Partial update for a schedule baseline.
 
-    Baselines are snapshot-in-time records — ``name``, ``baseline_date``
+    Baselines are snapshot-in-time records - ``name``, ``baseline_date``
     and ``snapshot_data`` are immutable by design. ``is_active`` stays
     writable because it's a workflow flag (which baseline is "current"
     for EVM comparisons), not a property of the snapshot itself.
@@ -761,11 +761,11 @@ class ProgressUpdateResponse(BaseModel):
 class LaborCostByPhaseRow(BaseModel):
     """Rolled-up labour cost for a single schedule phase / WBS group.
 
-    v3 §10 — ``labor_cost`` and ``total_cost`` are money;
+    v3 §10 - ``labor_cost`` and ``total_cost`` are money;
     Decimal-as-string in JSON.
     """
 
-    phase: str = Field("", description="Phase label — wbs_code prefix or activity_type")
+    phase: str = Field("", description="Phase label - wbs_code prefix or activity_type")
     activity_count: int = 0
     labor_cost: Decimal = Decimal("0")
     total_cost: Decimal = Decimal("0")

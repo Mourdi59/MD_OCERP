@@ -1,7 +1,7 @@
 """‌⁠‍Assembly data access layer.
 
 All database queries for assemblies and components live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import logging
@@ -68,7 +68,7 @@ class AssemblyRepository:
             owner_id: When provided, restrict to the caller's own
                 assemblies (per-tenant isolation). Pass ``None`` for an
                 admin / unscoped listing. Legacy/global templates with no
-                owner are excluded for scoped callers — they are readable
+                owner are excluded for scoped callers - they are readable
                 only by admins, matching ``_verify_assembly_owner``.
 
         Returns:
@@ -92,7 +92,7 @@ class AssemblyRepository:
             base = base.where(Assembly.unit == unit)
 
         if tag:
-            # Filter by tag in metadata JSON — uses LIKE on the JSON string
+            # Filter by tag in metadata JSON - uses LIKE on the JSON string
             # which works for both SQLite and PostgreSQL
             tag_pattern = f"%{tag.strip().lower()}%"
             base = base.where(Assembly.metadata_.cast(String).ilike(tag_pattern))
@@ -107,7 +107,7 @@ class AssemblyRepository:
         count_stmt = select(func.count()).select_from(base.subquery())
         total = (await self.session.execute(count_stmt)).scalar_one()
 
-        # Fetch — skip eager loading of components for list queries
+        # Fetch - skip eager loading of components for list queries
         stmt = base.options(noload(Assembly.components)).order_by(Assembly.code).offset(offset).limit(limit)
         result = await self.session.execute(stmt)
         assemblies = list(result.scalars().all())
@@ -185,7 +185,7 @@ class ComponentRepository:
         ``synchronize_session="evaluate"`` makes SQLAlchemy reconcile
         the bulk UPDATE with *only* the matching ORM instance in this
         session's identity map (the WHERE is always the primary key, so
-        the criteria evaluate purely in Python — no extra round-trip).
+        the criteria evaluate purely in Python - no extra round-trip).
         This replaces the previous ``session.expire_all()``, which
         invalidated every loaded entity mid-request and was the root
         cause of the scattered MissingGreenlet defensive fallbacks.
@@ -217,7 +217,7 @@ class ComponentRepository:
 class AssemblyTemplateRepository:
     """Data access for the AssemblyTemplate model (platform library).
 
-    Templates are read-only for end users — the only writer is the seed
+    Templates are read-only for end users - the only writer is the seed
     function ``seed_assembly_templates``. All getters return ORM rows
     without eager-loading anything else (the model has no relationships).
     """
@@ -249,7 +249,7 @@ class AssemblyTemplateRepository:
         Free-text ``q`` matches the canonical English ``name``, the
         serialised JSON ``name_translations`` (so a German user typing
         "Stahlbeton" hits ``Stahlbetonwand C30/37``), and the
-        serialised ``tags`` array — all via case-insensitive LIKE so the
+        serialised ``tags`` array - all via case-insensitive LIKE so the
         same code path works on SQLite and PostgreSQL without a JSON
         operator dance.
         """
@@ -303,7 +303,7 @@ class AssemblyTemplateRepository:
 
         Returns the persisted ORM row. The seeder uses this so re-running
         on an existing DB refreshes the recipe definition without
-        creating duplicates and without disturbing any user data —
+        creating duplicates and without disturbing any user data -
         templates carry no FK relationships.
         """
         name = str(payload["name"]).strip()
@@ -340,7 +340,7 @@ async def seed_assembly_templates(session: AsyncSession, *, force: bool = False)
     Args:
         session: An open async DB session.
         force: When False (default) the seeder short-circuits if any
-            template row already exists — the common boot-time case
+            template row already exists - the common boot-time case
             doesn't need to re-write 25 rows on every restart. Set True
             in migrations / tests when you want a guaranteed refresh.
 
@@ -349,7 +349,7 @@ async def seed_assembly_templates(session: AsyncSession, *, force: bool = False)
 
     The function is exception-tolerant: a missing table (a fresh DB
     where the v40 migration has not yet run) logs a warning and
-    returns 0 — never raises into the startup hook. This mirrors the
+    returns 0 - never raises into the startup hook. This mirrors the
     pattern other modules use for optional seed data.
     """
     from app.modules.assemblies.templates_seed import get_seed_templates
@@ -364,7 +364,7 @@ async def seed_assembly_templates(session: AsyncSession, *, force: bool = False)
     templates = get_seed_templates()
     if not force and existing_total >= len(templates):
         logger.debug(
-            "Assembly templates seed skipped — %d already present (target %d)",
+            "Assembly templates seed skipped - %d already present (target %d)",
             existing_total,
             len(templates),
         )

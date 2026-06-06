@@ -17,12 +17,12 @@ PACK_CONFIG: dict[str, Any] = {
     "standards": [
         {
             "code": "NRM1",
-            "name": "NRM 1 — Order of Cost Estimating and Cost Planning",
+            "name": "NRM 1 - Order of Cost Estimating and Cost Planning",
             "description": "RICS New Rules of Measurement for cost planning (2nd ed.)",
         },
         {
             "code": "NRM2",
-            "name": "NRM 2 — Detailed Measurement for Building Works",
+            "name": "NRM 2 - Detailed Measurement for Building Works",
             "description": "RICS rules for detailed measurement / bills of quantities",
             "measurement_groups": [
                 {"number": "1", "title": "Preliminaries"},
@@ -63,12 +63,12 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "NRM3",
-            "name": "NRM 3 — Order of Cost Estimating for Building Maintenance",
+            "name": "NRM 3 - Order of Cost Estimating for Building Maintenance",
             "description": "RICS rules for lifecycle cost planning",
         },
         {
             "code": "SMM7",
-            "name": "SMM7 — Standard Method of Measurement (legacy)",
+            "name": "SMM7 - Standard Method of Measurement (legacy)",
             "description": "Legacy measurement standard, superseded by NRM2",
         },
     ],
@@ -76,27 +76,27 @@ PACK_CONFIG: dict[str, Any] = {
     "contract_types": [
         {
             "code": "JCT_SBC",
-            "name": "JCT SBC/Q — Standard Building Contract with Quantities",
+            "name": "JCT SBC/Q - Standard Building Contract with Quantities",
             "description": "Lump-sum contract with bills of quantities (2024 ed.)",
         },
         {
             "code": "JCT_DB",
-            "name": "JCT DB — Design and Build Contract",
+            "name": "JCT DB - Design and Build Contract",
             "description": "Design-and-build single-stage (2024 ed.)",
         },
         {
             "code": "JCT_MC",
-            "name": "JCT MC — Management Contract",
+            "name": "JCT MC - Management Contract",
             "description": "Management contracting route (2024 ed.)",
         },
         {
             "code": "JCT_MWD",
-            "name": "JCT MWD — Minor Works with Contractor's Design",
+            "name": "JCT MWD - Minor Works with Contractor's Design",
             "description": "Suitable for smaller projects (2024 ed.)",
         },
         {
             "code": "NEC4_ECC",
-            "name": "NEC4 ECC — Engineering and Construction Contract",
+            "name": "NEC4 ECC - Engineering and Construction Contract",
             "description": "Process-based contract with 6 main options (A–F)",
             "options": [
                 {"code": "A", "title": "Priced contract with activity schedule"},
@@ -109,12 +109,12 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "NEC4_ECS",
-            "name": "NEC4 ECS — Engineering and Construction Subcontract",
+            "name": "NEC4 ECS - Engineering and Construction Subcontract",
             "description": "Back-to-back subcontract for NEC4 ECC",
         },
         {
             "code": "NEC4_TSC",
-            "name": "NEC4 TSC — Term Service Contract",
+            "name": "NEC4 TSC - Term Service Contract",
             "description": "Term maintenance and service works",
         },
     ],
@@ -122,44 +122,44 @@ PACK_CONFIG: dict[str, Any] = {
     "tax_rules": [
         {
             "code": "UK_VAT_STANDARD",
-            "name": "VAT — Standard Rate",
+            "name": "VAT - Standard Rate",
             "type": "vat",
             "rate_pct": "20",
         },
         {
             "code": "UK_VAT_REDUCED",
-            "name": "VAT — Reduced Rate",
+            "name": "VAT - Reduced Rate",
             "type": "vat",
             "rate_pct": "5",
             "note": "Applies to certain energy-saving materials, residential renovations",
         },
         {
             "code": "UK_VAT_ZERO",
-            "name": "VAT — Zero Rate",
+            "name": "VAT - Zero Rate",
             "type": "vat",
             "rate_pct": "0",
             "note": "New-build residential construction and approved alterations to listed buildings",
         },
         {
             "code": "UK_CIS_STANDARD",
-            "name": "CIS — Standard Deduction",
+            "name": "CIS - Standard Deduction",
             "type": "cis",
             "rate_pct": "20",
             "description": "Construction Industry Scheme withholding for registered subcontractors",
         },
         {
             "code": "UK_CIS_HIGHER",
-            "name": "CIS — Higher Deduction",
+            "name": "CIS - Higher Deduction",
             "type": "cis",
             "rate_pct": "30",
             "description": "CIS withholding for unregistered subcontractors",
         },
         {
             "code": "UK_CIS_GROSS",
-            "name": "CIS — Gross Payment",
+            "name": "CIS - Gross Payment",
             "type": "cis",
             "rate_pct": "0",
-            "description": "Gross payment status — no deduction",
+            "description": "Gross payment status - no deduction",
         },
     ],
     # ── Payment templates ────────────────────────────────────────────────────
@@ -192,7 +192,7 @@ PACK_CONFIG: dict[str, Any] = {
     "cost_database_references": [
         {
             "code": "BCIS",
-            "name": "BCIS — Building Cost Information Service",
+            "name": "BCIS - Building Cost Information Service",
             "description": "RICS cost data with regional tender price indices",
         },
         {
@@ -209,7 +209,7 @@ PACK_CONFIG: dict[str, Any] = {
         "weight": "kg",
         "temperature": "°C",
     },
-    # ── VAT rates (Wave 25 — HMRC VAT Notice 700) ────────────────────────────
+    # ── VAT rates (Wave 25 - HMRC VAT Notice 700) ────────────────────────────
     "vat_rates": {
         "GB": {
             "standard": Decimal("0.20"),

@@ -7,7 +7,7 @@ manifest = ModuleManifest(
     version="0.1.0",
     display_name="Tasks",
     description=(
-        "Project task management — tasks, topics, decisions,"
+        "Project task management - tasks, topics, decisions,"
         " and personal items with checklists and assignment workflows"
     ),
     author="OpenEstimate Core Team",

@@ -16,7 +16,7 @@ manifest = ModuleManifest(
     author="OpenEstimate Core Team",
     category="core",
     depends=["oe_projects", "oe_users", "oe_documents"],
-    # ``file_search`` is intentionally NOT declared here — the search
+    # ``file_search`` is intentionally NOT declared here - the search
     # endpoint detects it at runtime and falls back to canonical_name.
     optional_depends=["oe_file_search"],
     auto_install=True,

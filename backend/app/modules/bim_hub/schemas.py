@@ -1,4 +1,4 @@
-"""‌⁠‍BIM Hub Pydantic schemas — request/response models.
+"""‌⁠‍BIM Hub Pydantic schemas - request/response models.
 
 Defines create, update, and response schemas for BIM models, elements,
 BOQ links, quantity maps, element groups, and model diffs.
@@ -33,7 +33,7 @@ def _serialise_money(v: Decimal | None) -> str | None:
 
 
 def _validate_multiplier(raw: str | None) -> str | None:
-    """QR-001 — reject a structurally invalid quantity-map multiplier.
+    """QR-001 - reject a structurally invalid quantity-map multiplier.
 
     The multiplier feeds ``qty * multiplier * (1 + waste/100)`` at
     apply-time. A free string previously let ``"1e500"`` (overflows to
@@ -53,7 +53,7 @@ def _validate_multiplier(raw: str | None) -> str | None:
         return raw
     text = raw.strip()
     if not text:
-        # Empty string is meaningless for a multiplier — treat as the
+        # Empty string is meaningless for a multiplier - treat as the
         # neutral element rather than rejecting (back-compat with rows
         # that stored "").
         return "1"
@@ -78,11 +78,11 @@ def _validate_multiplier(raw: str | None) -> str | None:
 
 
 def _validate_waste_pct(raw: str | None) -> str | None:
-    """QR-001 — bound the quantity-map waste factor to a sane percentage.
+    """QR-001 - bound the quantity-map waste factor to a sane percentage.
 
     ``waste_factor_pct`` enters the apply-time math as
     ``(1 + waste/100)``. A negative value (e.g. ``"-50"``) silently
-    *halves* every matched quantity instead of adding waste — the
+    *halves* every matched quantity instead of adding waste - the
     opposite of the field's intent and impossible to spot in the
     dry-run preview. We require ``0 <= waste <= 100`` (a >100 % waste
     factor on a takeoff quantity is never legitimate). ``None`` / unset
@@ -118,7 +118,7 @@ class BIMUnitsMetadata(BaseModel):
     extracted quantities into canonical SI (metres, m², m³, kg, s).
 
     Quantities stored on ``BIMElement.quantities`` are always already
-    in canonical SI — this block exists so the frontend viewer can
+    in canonical SI - this block exists so the frontend viewer can
     display the SOURCE unit label ("12.5 mm originally → 0.0125 m"),
     validation rules can branch on imperial vs metric authoring, and
     the BOQ aggregator can detect mixed-system projects.
@@ -160,7 +160,7 @@ class BIMModelCreate(BaseModel):
     canonical_file_path: str | None = Field(default=None, max_length=500)
     parent_model_id: UUID | None = None
     # The ``metadata`` blob accepts an optional ``units`` sub-key
-    # following the ``BIMUnitsMetadata`` schema above — see audit C2.
+    # following the ``BIMUnitsMetadata`` schema above - see audit C2.
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -221,7 +221,7 @@ class BIMModelResponse(BaseModel):
     has_original: bool | None = None
     # ``True`` iff geometry (GLB or DAE) is available for this model.
     # Derived at response time from ``canonical_file_path`` (set by the
-    # background converter when DDC produced a usable mesh) — the
+    # background converter when DDC produced a usable mesh) - the
     # frontend BIM viewer uses this to decide whether to mount the 3D
     # canvas vs. show the "data only" element list. Defaults to False
     # so the field is always present in the JSON response (frontend
@@ -292,7 +292,7 @@ class BOQElementLinkBrief(BaseModel):
     boq_position_description: str | None = None
     boq_position_quantity: float | None = None  # measurement, not money
     boq_position_unit: str | None = None
-    # v3 §10 — money as Decimal, serialised to JSON as a plain string.
+    # v3 §10 - money as Decimal, serialised to JSON as a plain string.
     boq_position_unit_rate: Decimal | None = None
     boq_position_total: Decimal | None = None
     link_type: str
@@ -308,7 +308,7 @@ class DocumentLinkBrief(BaseModel):
 
     Mirrors ``BOQElementLinkBrief`` but lives in ``bim_hub.schemas`` to avoid
     a circular import with ``documents.schemas.DocumentBIMLinkBrief``. The
-    two shapes must stay in sync — add fields in both files.
+    two shapes must stay in sync - add fields in both files.
     """
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
@@ -326,7 +326,7 @@ class TaskBrief(BaseModel):
 
     Mirrors ``app.modules.tasks.schemas.TaskBrief`` but is defined locally
     here to avoid a circular import between ``bim_hub.schemas`` and
-    ``tasks.schemas``. The two shapes MUST stay in sync — add fields in
+    ``tasks.schemas``. The two shapes MUST stay in sync - add fields in
     both files.
     """
 
@@ -345,7 +345,7 @@ class ActivityBrief(BaseModel):
 
     Mirrors ``app.modules.schedule.schemas.ActivityBrief`` but is defined
     locally here to avoid a circular import between ``bim_hub.schemas`` and
-    ``schedule.schemas``. The two shapes MUST stay in sync — add fields in
+    ``schedule.schemas``. The two shapes MUST stay in sync - add fields in
     both files.
     """
 
@@ -364,7 +364,7 @@ class ElementValidationSummary(BaseModel):
 
     Mirrors the shape stored inside ``ValidationReport.results`` when the
     report's ``target_type`` is ``'bim_model'``. Only failing checks
-    produce these entries — a fully-passing element receives an empty
+    produce these entries - a fully-passing element receives an empty
     ``validation_results`` list and ``validation_status='pass'``.
     """
 
@@ -381,7 +381,7 @@ class RequirementBrief(BaseModel):
     Mirrors the relevant subset of
     ``app.modules.requirements.schemas.RequirementResponse`` but is
     defined locally to avoid a circular import between ``bim_hub`` and
-    ``requirements``.  The two shapes MUST stay in sync — add fields in
+    ``requirements``.  The two shapes MUST stay in sync - add fields in
     both files together.
 
     Surfaces the EAC triplet (entity / attribute / constraint) so the
@@ -433,7 +433,7 @@ class BIMElementResponse(BaseModel):
     validation_status: Literal["pass", "warning", "error", "unchecked"] = "unchecked"
     # Latest percent-complete (0-100) of the BOQ position(s) this element is
     # linked to, taken as the MAX across linked positions. ``None`` means the
-    # element is unlinked or no ProgressEntry has been recorded yet — the BIM
+    # element is unlinked or no ProgressEntry has been recorded yet - the BIM
     # viewer paints those neutral grey in the "By progress" colour mode.
     current_pct: float | None = None
     # ISO-8601 recorded date of the headline progress entry (the same entry
@@ -460,7 +460,7 @@ class BIMElementListResponse(BaseModel):
 class AssetInfoPayload(BaseModel):
     """Operational-phase metadata written into ``BIMElement.asset_info``.
 
-    All fields optional — the asset workflow is incremental (user fills
+    All fields optional - the asset workflow is incremental (user fills
     in what they know, updates later). Extra keys outside this schema
     are preserved on write so tenants can extend the bag.
     """
@@ -470,7 +470,7 @@ class AssetInfoPayload(BaseModel):
     manufacturer: str | None = Field(default=None, max_length=255)
     model: str | None = Field(default=None, max_length=255)
     serial_number: str | None = Field(default=None, max_length=255)
-    # ISO-8601 date — stored as string for cross-DB portability.
+    # ISO-8601 date - stored as string for cross-DB portability.
     warranty_until: str | None = Field(default=None, max_length=20)
     commissioned_at: str | None = Field(default=None, max_length=20)
     # operational | decommissioned | under_maintenance | retired | unknown
@@ -480,7 +480,7 @@ class AssetInfoPayload(BaseModel):
     parent_system: str | None = Field(default=None, max_length=255)
     # Stable asset tag used on physical labels / QR stickers.
     asset_tag: str | None = Field(default=None, max_length=100)
-    # Notes field — whatever the facility manager wants to remember.
+    # Notes field - whatever the facility manager wants to remember.
     notes: str | None = Field(default=None, max_length=2000)
 
 
@@ -499,7 +499,7 @@ class AssetInfoUpdateRequest(BaseModel):
 
 
 class AssetSummary(BaseModel):
-    """Thin row for the Assets list view — does NOT hydrate relationships.
+    """Thin row for the Assets list view - does NOT hydrate relationships.
 
     Joins BIMElement + BIMModel so the list shows project/model context
     without a second round-trip.
@@ -594,7 +594,7 @@ class BIMModelBOQLinkAggregate(BaseModel):
     boq_position_description: str | None = None
     boq_position_quantity: float | None = None  # measurement, not money
     boq_position_unit: str | None = None
-    # v3 §10 — money as Decimal, serialised to JSON as a plain string.
+    # v3 §10 - money as Decimal, serialised to JSON as a plain string.
     boq_position_unit_rate: Decimal | None = None
     boq_position_total: Decimal | None = None
     link_type: str
@@ -709,14 +709,14 @@ class QuantityMapApplyRequest(BaseModel):
 class QuantityMapApplyResult(BaseModel):
     """Result of applying quantity mapping rules.
 
-    ``links_created`` and ``positions_created`` are always reported — they
+    ``links_created`` and ``positions_created`` are always reported - they
     stay at 0 on a ``dry_run`` so the caller can safely display them as
     "would-be" counters without extra branching.
 
     ``skipped_count`` / ``skipped`` surface every (element, rule) pair
     that the engine considered but could not extract a quantity from.
     Each skip carries a ``reason`` so estimators can see at a glance
-    *why* their expected elements were excluded — the previous version
+    *why* their expected elements were excluded - the previous version
     silently dropped these and made under-population invisible.
     """
 
@@ -822,7 +822,7 @@ class BIMElementGroupResponse(BaseModel):
     member_element_ids: list[UUID] = Field(default_factory=list)
 
 
-# ── Smart Views — canonical-format rule builder (Phase 2.A) ─────────────────
+# ── Smart Views - canonical-format rule builder (Phase 2.A) ─────────────────
 
 
 class SmartViewPropertyEntry(BaseModel):
@@ -832,7 +832,7 @@ class SmartViewPropertyEntry(BaseModel):
     canonical element format, grouped by Identity / Geometry / Quantities
     / Properties and stamped with the source-format badge ("RVT" / "IFC"
     / "DWG" / "DGN" / "PDF").  ``sample_values`` is the alphabetically
-    sorted prefix of the distinct values observed in the model — feeds
+    sorted prefix of the distinct values observed in the model - feeds
     enum dropdowns in the UI without an extra fetch.
     """
 
@@ -887,7 +887,7 @@ class SmartViewPreviewResponse(BaseModel):
     normalised_rule_tree: dict[str, Any] = Field(default_factory=dict)
 
 
-# ── Model schema introspection (RFC 24 — Quantity Rules editor) ──────────────
+# ── Model schema introspection (RFC 24 - Quantity Rules editor) ──────────────
 
 
 class BIMModelSchemaResponse(BaseModel):
@@ -1029,7 +1029,7 @@ class FederationTypeTreeMember(BaseModel):
     """Per-member breakdown for one IfcClass inside the federation.
 
     Surfaces in the type-tree drill-down: "IfcWall has 1 234 instances
-    across 3 members — 600 in ARCH, 500 in STRUCT, 134 in MEP".
+    across 3 members - 600 in ARCH, 500 in STRUCT, 134 in MEP".
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -1057,7 +1057,7 @@ class FederationTypeTreeResponse(BaseModel):
 
     Empty (``total_elements=0``, ``classes=[]``) but valid when the
     federation has no members or none of the members have ingested
-    elements yet — the page renders an explicit empty state instead of
+    elements yet - the page renders an explicit empty state instead of
     blowing up.
     """
 

@@ -1,8 +1,8 @@
-# OpenConstructionERP — DataDrivenConstruction (DDC)
+# OpenConstructionERP - DataDrivenConstruction (DDC)
 # CWICR AI Estimation Engine
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 # AGPL-3.0 License · DDC-CWICR-OE-2026
-"""‌⁠‍AI API client — async calls to Anthropic, OpenAI, and Google Gemini.
+"""‌⁠‍AI API client - async calls to Anthropic, OpenAI, and Google Gemini.
 
 All calls use httpx for async HTTP. No SDK dependencies required.
 Each function takes an API key, prompt, optional image, and returns raw text.
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 # single source of truth so picking Opus/Haiku in the UI actually sends
 # Opus/Haiku (previously every choice collapsed to one hardcoded Sonnet id).
 # A user free-text override that is already a real API id (e.g.
-# "claude-opus-4-8") is NOT an alias and passes through unchanged — see
+# "claude-opus-4-8") is NOT an alias and passes through unchanged - see
 # resolve_anthropic_model().
 ANTHROPIC_MODELS: dict[str, str] = {
     "claude-sonnet": "claude-sonnet-4-6",
@@ -55,13 +55,13 @@ def resolve_anthropic_model(model: str | None) -> str:
 
 
 # gpt-4.1 is OpenAI's current flagship general model (vision + tool-calling,
-# 1M-token context, not deprecated). gpt-4o still works but is older — using
+# 1M-token context, not deprecated). gpt-4o still works but is older - using
 # the current id by default reduces "deprecated model" failures (issue #129).
 # Users can override per-provider via Settings > AI without an app release.
 OPENAI_MODEL = "gpt-4.1"
 GEMINI_MODEL = "gemini-2.5-flash"
 # OpenRouter uses date-less, vendor-prefixed slugs. The dated Anthropic id
-# ("...-20250514") is NOT a valid OpenRouter model — passing it makes even a
+# ("...-20250514") is NOT a valid OpenRouter model - passing it makes even a
 # perfectly valid OpenRouter key fail with HTTP 400 "not a valid model ID".
 OPENROUTER_MODEL = "anthropic/claude-sonnet-4"
 MISTRAL_MODEL = "mistral-large-latest"
@@ -105,13 +105,13 @@ def default_model_for(provider: str) -> str:
 
 # Stable, provider-managed fallback model ids that are tried AUTOMATICALLY
 # when the configured/overridden model name is rejected (renamed, retired,
-# or — for aggregators like OpenRouter — simply not a currently valid slug).
+# or - for aggregators like OpenRouter - simply not a currently valid slug).
 #
 # Issue #148: providers such as openrouter.ai continuously rename and retire
 # model slugs. The chat must keep working when that happens instead of
 # dead-ending the user with a "go fix Settings" error. OpenRouter exposes a
 # meta-model, ``openrouter/auto``, that always resolves to an available
-# model — using it as the fallback fully decouples the integration from any
+# model - using it as the fallback fully decouples the integration from any
 # specific OpenRouter naming convention (exactly the user's request).
 FALLBACK_MODELS: dict[str, str] = {
     "openrouter": "openrouter/auto",
@@ -127,7 +127,7 @@ def fallback_models_for(provider: str, attempted: str) -> list[str]:
 
     Never includes ``attempted`` (the id that just failed). Combines the
     provider-managed meta-model (e.g. ``openrouter/auto``) with the built-in
-    default — the latter helps when the failing id was a stale *user
+    default - the latter helps when the failing id was a stale *user
     override* and the shipped default is still valid.
     """
     candidates = [
@@ -144,7 +144,7 @@ def fallback_models_for(provider: str, attempted: str) -> list[str]:
     return out
 
 
-# Timeout for AI API calls (2 minutes — large BOQ generation can be slow)
+# Timeout for AI API calls (2 minutes - large BOQ generation can be slow)
 AI_TIMEOUT = 120.0
 
 
@@ -232,7 +232,7 @@ def _extract_openai_message_text(provider: str, data: Any) -> str:
     user saw "no response": an HTTP-200 in-body ``error``, an empty
     ``choices`` array, ``content`` returned as a list of typed parts, or
     the model emitting only a ``reasoning`` trace. Every shape is reduced
-    to a non-empty string or a precise, actionable ``ValueError`` — a paid
+    to a non-empty string or a precise, actionable ``ValueError`` - a paid
     completion is never silently discarded.
     """
     if isinstance(data, dict) and data.get("error") and not data.get("choices"):
@@ -244,7 +244,7 @@ def _extract_openai_message_text(provider: str, data: Any) -> str:
     choices = (data or {}).get("choices") or []
     if not choices:
         msg = (
-            f"{provider} returned no choices — the model may have refused or "
+            f"{provider} returned no choices - the model may have refused or "
             f"the request was filtered. Raw: {str(data)[:200]}"
         )
         raise ValueError(msg)
@@ -452,17 +452,17 @@ _OPENAI_COMPAT_CONFIG = {
         "url": "https://api.x.ai/v1/chat/completions",
         "model": "grok-2",
     },
-    # Zhipu AI (GLM) — OpenAI-compatible chat completions endpoint.
+    # Zhipu AI (GLM) - OpenAI-compatible chat completions endpoint.
     "zhipu": {
         "url": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
         "model": "glm-4-plus",
     },
-    # Baidu Qianfan (ERNIE) — OpenAI-compatible v2 endpoint.
+    # Baidu Qianfan (ERNIE) - OpenAI-compatible v2 endpoint.
     "baidu": {
         "url": "https://qianfan.baidubce.com/v2/chat/completions",
         "model": "ernie-4.0-8k",
     },
-    # Yandex Cloud Foundation Models — OpenAI-compatible endpoint. The
+    # Yandex Cloud Foundation Models - OpenAI-compatible endpoint. The
     # model id must be the bare alias here; the user typically configures
     # the fully-qualified ``gpt://<folder-id>/yandexgpt/latest`` id as a
     # per-provider model override in Settings > AI.
@@ -470,16 +470,16 @@ _OPENAI_COMPAT_CONFIG = {
         "url": "https://llm.api.cloud.yandex.net/v1/chat/completions",
         "model": "yandexgpt/latest",
     },
-    # Sber GigaChat — OpenAI-compatible chat completions endpoint.
+    # Sber GigaChat - OpenAI-compatible chat completions endpoint.
     "gigachat": {
         "url": "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
         "model": "GigaChat-Pro",
     },
-    # Local LLM runtimes — OpenAI-compatible REST API, no key required.
+    # Local LLM runtimes - OpenAI-compatible REST API, no key required.
     # Override base URL via OE_OLLAMA_URL / OE_VLLM_URL env vars to point at
     # a non-default host (default Ollama :11434, default VLLM :8001 to avoid
     # colliding with our backend on :8000). The "api_key" field stored in
-    # user settings is sent as bearer regardless — Ollama ignores it; VLLM
+    # user settings is sent as bearer regardless - Ollama ignores it; VLLM
     # may require it depending on `--api-key` startup flag.
     "ollama": {
         "url": os.environ.get("OE_OLLAMA_URL", "http://localhost:11434/v1/chat/completions"),
@@ -630,7 +630,7 @@ async def call_ai(
 
     # Build the provider coroutine for a given model id. Parameterising the
     # model (rather than closing over the single configured one) lets the
-    # error path transparently retry with a fallback id — issue #148.
+    # error path transparently retry with a fallback id - issue #148.
     if provider in _OPENAI_COMPAT_CONFIG:
 
         def _make_call(model_id: str | None):
@@ -670,7 +670,7 @@ async def call_ai(
         msg = f"Unknown AI provider: {provider}"
         raise ValueError(msg)
 
-    # The actual model id this call will use (override or built-in default) —
+    # The actual model id this call will use (override or built-in default) -
     # surfaced in "model not found" errors so the user knows exactly what to
     # change in Settings > AI.
     effective_model = model or default_model_for(provider)
@@ -691,7 +691,7 @@ async def call_ai(
         # provider phrases this differently and returns it under 400/404 (and
         # OpenRouter sometimes 400 with "not a valid model ID"). When the
         # provider rejects the *model* (not the key), tell the user exactly
-        # which model id failed and that they can override it in Settings —
+        # which model id failed and that they can override it in Settings -
         # this is the core fix for issue #129 (stale hardcoded model names).
         low = detail.lower()
         model_keywords = (
@@ -715,8 +715,8 @@ async def call_ai(
             # ── Issue #148: self-heal instead of dead-ending the user ───────
             # Providers (notably openrouter.ai) continuously rename/retire
             # model slugs. Rather than failing the chat outright, transparently
-            # retry with provider-stable fallbacks — OpenRouter's auto-router
-            # (``openrouter/auto``) and the shipped default — so the
+            # retry with provider-stable fallbacks - OpenRouter's auto-router
+            # (``openrouter/auto``) and the shipped default - so the
             # integration is decoupled from any specific model naming.
             for fb_model in fallback_models_for(provider, effective_model):
                 try:
@@ -736,7 +736,7 @@ async def call_ai(
             msg = (
                 f'The AI model "{effective_model}" was rejected by {provider} '
                 f"(HTTP {status_code}) and the automatic fallbacks did not "
-                f"succeed. Providers rename and retire models over time — open "
+                f"succeed. Providers rename and retire models over time - open "
                 f"Settings > AI, set the model name to a currently valid "
                 f"{provider} model id, and save. Provider said: {detail[:200]}"
             )
@@ -838,7 +838,7 @@ def _model_override_for(settings: Any, provider: str) -> str | None:
 # the live AI path agree on where keys may live. GEMINI also honours the very
 # common GOOGLE_API_KEY alias. Ordering inside each list is precedence
 # (first match wins). The top-level list order is also the provider-inference
-# precedence — Anthropic first, per the issue request.
+# precedence - Anthropic first, per the issue request.
 _ENV_KEY_NAMES: list[tuple[str, list[str]]] = [
     ("anthropic", ["ANTHROPIC_API_KEY"]),
     ("openai", ["OPENAI_API_KEY"]),
@@ -856,7 +856,7 @@ def _key_from_env_and_config(provider: str | None) -> tuple[str, str] | None:
     This is the fallback used when no usable key is stored in the DB. It mirrors
     the two locations `app/cli.py check_ai_provider_keys()` reports on:
 
-    1. Environment variables (e.g. ``ANTHROPIC_API_KEY``) — see
+    1. Environment variables (e.g. ``ANTHROPIC_API_KEY``) - see
        :data:`_ENV_KEY_NAMES`.
     2. ``~/.openestimate/config.json`` (CLI-managed): a flat JSON object whose
        ``*_api_key`` entries hold provider keys (key name ``<provider>_api_key``).
@@ -964,9 +964,9 @@ def resolve_provider_and_key(
                 decrypted = decrypt_secret(raw)
                 if decrypted:
                     return provider_name, decrypted
-                # key exists but is undecryptable (JWT_SECRET rotated) —
+                # key exists but is undecryptable (JWT_SECRET rotated) -
                 # fall through so the fallback loop can try other providers
-            break  # matched model but no (usable) key — fall through to fallback
+            break  # matched model but no (usable) key - fall through to fallback
 
     # Fallback: try any available key (in priority order)
     _FALLBACK_ORDER: list[tuple[str, str]] = [
@@ -1005,7 +1005,7 @@ def resolve_provider_and_key(
                 undecryptable = True
 
     # Fallback to environment variables / ~/.openestimate/config.json. Tried
-    # AFTER the DB (an explicitly-saved key wins) but BEFORE raising — a working
+    # AFTER the DB (an explicitly-saved key wins) but BEFORE raising - a working
     # env/config key should take effect even if a stale, undecryptable DB key
     # exists (telling the user to "re-enter your key" would be wrong when a
     # valid env var is present). Prefer the chosen model's provider, then scan
@@ -1017,7 +1017,7 @@ def resolve_provider_and_key(
 
     if undecryptable:
         raise ValueError(
-            "Stored AI API key could not be decrypted — the backend encryption "
+            "Stored AI API key could not be decrypted - the backend encryption "
             "key has rotated since the key was saved. Please re-enter and save "
             "your API key in Settings > AI."
         )
@@ -1041,7 +1041,7 @@ def resolve_provider_key_model(
     Thin wrapper over :func:`resolve_provider_and_key` that also reads the
     user's per-provider model-id override. New code should prefer this so the
     model name stays user-configurable (issue #129). ``model_override`` is
-    ``None`` when the user has not set one — callers pass it straight to
+    ``None`` when the user has not set one - callers pass it straight to
     :func:`call_ai`, which then falls back to the built-in default.
 
     For Anthropic, when no explicit per-provider override is set, the UI model

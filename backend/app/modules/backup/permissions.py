@@ -16,7 +16,7 @@ def register_backup_permissions() -> None:
     """Register RBAC permissions for the backup module.
 
     Permission layout:
-        backup.admin — export / import / purge user-data backups (ADMIN only)
+        backup.admin - export / import / purge user-data backups (ADMIN only)
     """
     permission_registry.register_module_permissions(
         "backup",

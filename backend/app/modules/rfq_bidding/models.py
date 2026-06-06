@@ -1,8 +1,8 @@
 """‌⁠‍RFQ Bidding ORM models.
 
 Tables:
-    oe_rfq_rfq  — Request for Quotation definitions
-    oe_rfq_bid  — Bids submitted against an RFQ
+    oe_rfq_rfq  - Request for Quotation definitions
+    oe_rfq_bid  - Bids submitted against an RFQ
 """
 
 import uuid

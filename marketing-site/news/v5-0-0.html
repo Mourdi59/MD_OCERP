@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
-  <title>v5.0.0 — The Deep-Coordination foundation. Notifications · file versioning · audit trail — OpenConstructionERP</title>
+  <title>v5.0.0 - The Deep-Coordination foundation. Notifications · file versioning · audit trail - OpenConstructionERP</title>
   <meta name="description" content="OpenConstructionERP v5.0.0 ships the first wave of the Deep-Coordination initiative: a unified notifications dispatcher, single canonical file-version table across every module, and a universal audit trail. The platform crosses 116 modules." />
   <meta name="robots" content="index,follow" />
   <link rel="canonical" href="https://openconstructionerp.com/news/v5-0-0.html" />
@@ -12,13 +12,13 @@
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="OpenConstructionERP" />
   <meta property="og:url" content="https://openconstructionerp.com/news/v5-0-0.html" />
-  <meta property="og:title" content="v5.0.0 — The Deep-Coordination foundation." />
+  <meta property="og:title" content="v5.0.0 - The Deep-Coordination foundation." />
   <meta property="og:description" content="Unified notifications dispatcher, canonical file versioning, universal audit trail. 116 modules." />
   <meta property="article:published_time" content="2026-05-26T00:00:00Z" />
   <meta property="article:author" content="Artem Boiko" />
   <meta property="article:tag" content="Release" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="v5.0.0 — The Deep-Coordination foundation" />
+  <meta name="twitter:title" content="v5.0.0 - The Deep-Coordination foundation" />
   <meta name="twitter:description" content="Notifications dispatcher · file versioning · audit trail. 116 modules." />
 
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -44,7 +44,7 @@
   {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
-    "headline": "v5.0.0 — The Deep-Coordination foundation.",
+    "headline": "v5.0.0 - The Deep-Coordination foundation.",
     "datePublished": "2026-05-26",
     "author": { "@type": "Person", "name": "Artem Boiko" },
     "publisher": {
@@ -141,7 +141,7 @@
     .article h3 { font-family: 'Inter Tight', sans-serif; font-weight: 600; font-size: 19px; letter-spacing: -0.01em; margin: 28px 0 10px; color: var(--ink-0); }
     .article a { color: var(--accent); text-decoration: none; border-bottom: 1px solid color-mix(in oklab, var(--accent) 32%, transparent); transition: border-color 0.15s ease; }
     .article a:hover { border-bottom-color: var(--accent); }
-    /* CTA buttons inside .article — outrank .article a {color:var(--accent)} */
+    /* CTA buttons inside .article - outrank .article a {color:var(--accent)} */
     .article .btn, .article .btn:hover { border-bottom: none; }
     .article .btn-primary, .article .btn-primary:hover { color: #fff; }
     .article .btn-ghost { color: var(--ink-0); }
@@ -229,18 +229,18 @@
     <div class="crumbs">
       <a href="/">Home</a><span class="sep">/</span>
       <a href="/news.html">News</a><span class="sep">/</span>
-      <span>v5.0.0 — Deep-Coordination foundation</span>
+      <span>v5.0.0 - Deep-Coordination foundation</span>
     </div>
     <div class="pill-row">
       <span class="chip release">Release</span>
       <span class="pill-meta">2026-05-26</span>
       <span class="pill-meta">~4 min read</span>
     </div>
-    <h1>v5.0.0 — <span class="accent">The Deep-Coordination foundation.</span><br />Notifications · file versioning · audit trail.</h1>
+    <h1>v5.0.0 - <span class="accent">The Deep-Coordination foundation.</span><br />Notifications · file versioning · audit trail.</h1>
     <p class="lede">
       The first stable v5 major. Wave 1 of the Deep-Coordination initiative lands three
       pieces of cross-module infrastructure that every workflow above them now relies on
-      — and the platform crosses <strong>116 modules</strong>.
+      - and the platform crosses <strong>116 modules</strong>.
     </p>
   </div>
 </section>
@@ -253,7 +253,7 @@
   <div class="narrow">
 
     <p>
-      v5.0.0 is a foundation release. v4 was about feature coverage — getting all 103
+      v5.0.0 is a foundation release. v4 was about feature coverage - getting all 103
       modules running on one install, on one database, behind one sidebar. v5 is about
       what happens <strong>between</strong> those modules: how an event in one ripples
       to the inbox of another, how an uploaded file keeps its history when six modules
@@ -268,10 +268,10 @@
         <div class="hi-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         </div>
-        <h4>Epic B — Unified notifications dispatcher</h4>
+        <h4>Epic B - Unified notifications dispatcher</h4>
         <p>
-          One subscriber model fans every cross-module event — RFI replies, snag
-          assignments, approval requests, schedule shifts — out to in-app inbox and
+          One subscriber model fans every cross-module event - RFI replies, snag
+          assignments, approval requests, schedule shifts - out to in-app inbox and
           email. SMTP path validated end-to-end on port 465 SSL and 587 STARTTLS.
           Replaces eight ad-hoc senders.
         </p>
@@ -280,22 +280,22 @@
         <div class="hi-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6M9 15h6"/></svg>
         </div>
-        <h4>Epic C — File versioning unification</h4>
+        <h4>Epic C - File versioning unification</h4>
         <p>
           <code>oe_file_version</code> is the canonical table for every uploaded
           artefact: BIM models, BOQ imports, doc-template attachments, BCF 3.0 issue
           containers, RFI replies, drawing markups. Each upload carries a monotonic
-          version plus an immutable parent reference — full audit history per file.
+          version plus an immutable parent reference - full audit history per file.
         </p>
       </div>
       <div class="hi-card">
         <div class="hi-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/></svg>
         </div>
-        <h4>Epic H — Universal audit trail</h4>
+        <h4>Epic H - Universal audit trail</h4>
         <p>
           <code>oe_activity_log</code> records every state-changing action across all
-          116 modules — who, what, when, before/after. Visible in
+          116 modules - who, what, when, before/after. Visible in
           <code>/settings?tab=audit</code> and queryable per-record from every detail
           page. Compliance-ready for GDPR Art. 30 and ISO 19650.
         </p>
@@ -309,7 +309,7 @@
       a module needs to alert another team, it doesn&rsquo;t roll its own SMTP. Once
       every file has a version row, every history view, every roll-back, every
       &ldquo;who replaced this drawing&rdquo; question gets the same answer. Once the
-      audit log is universal, you stop asking modules to add their own logging — you
+      audit log is universal, you stop asking modules to add their own logging - you
       query one table.
     </p>
     <p>
@@ -322,9 +322,9 @@
     <p>
       The public <code>/api/v1/*</code> contract introduced in v4.0 is unchanged. The
       three new subsystems are additive: existing integrations keep working, and the
-      new endpoints — <code>/api/v1/notifications/*</code>,
+      new endpoints - <code>/api/v1/notifications/*</code>,
       <code>/api/v1/files/{id}/versions</code>,
-      <code>/api/v1/audit/activities</code> — slot in next to them.
+      <code>/api/v1/audit/activities</code> - slot in next to them.
     </p>
 
     <h2>Upgrade</h2>
@@ -340,7 +340,7 @@
     </div>
 
     <p>
-      v5.0 turned out to be a foundation visible only in the second order — but the
+      v5.0 turned out to be a foundation visible only in the second order - but the
       next few v5.x point releases sit on top of it. v5.1 follows in a day with the
       TypeScript strict pass over the new dispatcher surface; v5.2 brings Epic I,
       international BOQ formats.

@@ -1,4 +1,4 @@
-"""‌⁠‍BCF API routes — mounted by the module loader at ``/api/v1/bcf``.
+"""‌⁠‍BCF API routes - mounted by the module loader at ``/api/v1/bcf``.
 
 Endpoints
     GET    /projects/{project_id}/topics/
@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["BCF"])
 
-# 100 MiB hard cap on an uploaded .bcfzip — harmonised with the
+# 100 MiB hard cap on an uploaded .bcfzip - harmonised with the
 # ``_BCF_IMPORT_MAX_BYTES`` cap on the clash-import endpoint below and
 # the BCFReader's ``DEFAULT_MAX_TOTAL_BYTES``. A typical coordination
 # round-trip is markup + small PNG snapshots, but federated models with
@@ -97,7 +97,7 @@ async def _require_project_access(
         user = await user_repo.get_by_id(uuid.UUID(str(user_id)))
         if user is not None and getattr(user, "role", "") == "admin":
             return str(getattr(project, "name", ""))
-    except Exception:  # noqa: BLE001 — best-effort admin check
+    except Exception:  # noqa: BLE001 - best-effort admin check
         logger.exception("Admin-role lookup failed during BCF access check")
 
     if str(getattr(project, "owner_id", "")) != str(user_id):
@@ -256,7 +256,7 @@ async def update_topic(
     session: SessionDep,
     service: BCFService = Depends(_get_service),
 ) -> TopicResponse:
-    """Patch a topic — only fields present in the body change."""
+    """Patch a topic - only fields present in the body change."""
     await _require_project_access(session, project_id, user_id)
     try:
         topic = await service.update_topic(project_id, topic_id, data, author=user_id)
@@ -515,7 +515,7 @@ async def import_project_bcf(
     """Import a ``.bcfzip``; topics/comments/viewpoints upsert by GUID.
 
     A malformed or non-BCF archive returns a structured report with
-    ``status='errors'`` — never a 500.
+    ``status='errors'`` - never a 500.
     """
     await _require_project_access(session, project_id, user_id)
     if version is not None and version not in SUPPORTED_VERSIONS:
@@ -573,7 +573,7 @@ async def export_clashes_bcfzip(
 ) -> Response:
     """Download all clashes for ``project_id`` as a BCF 3.0 ``.bcfzip``.
 
-    File-based — does not persist anything in the BCF tables. The
+    File-based - does not persist anything in the BCF tables. The
     ``status`` and ``severity`` query parameters narrow the export.
 
     Returns 503 when the clash schema (v41) has not been migrated yet.
@@ -620,14 +620,14 @@ async def export_clashes_bcfzip(
 #
 # Deliberate properties:
 #   * 100 MiB hard cap on the multipart payload (matches the BCFReader's
-#     default zip-bomb defence — we never read more than that into RAM)
+#     default zip-bomb defence - we never read more than that into RAM)
 #   * 413 on too-large uploads
 #   * 422 on a non-zip / malformed archive
 #   * 503 when the ClashIssue table hasn't been migrated yet (mirrors the
 #     503 emitted by /export/clashes for the same condition)
 
 
-_BCF_IMPORT_MAX_BYTES = 100 * 1024 * 1024  # 100 MiB — matches reader default
+_BCF_IMPORT_MAX_BYTES = 100 * 1024 * 1024  # 100 MiB - matches reader default
 
 
 @router.post(
@@ -652,16 +652,16 @@ async def import_clashes_bcfzip(
         }
 
     HTTP codes:
-        * 200 — import completed (the report may still carry per-topic
+        * 200 - import completed (the report may still carry per-topic
           errors; ``created+updated+skipped+len(errors) == topic_count``)
-        * 413 — uploaded archive exceeds the 100 MiB cap
-        * 422 — payload is not a BCF .bcfzip / zip-bomb / path traversal
-        * 503 — clash schema (v41) hasn't been migrated yet
+        * 413 - uploaded archive exceeds the 100 MiB cap
+        * 422 - payload is not a BCF .bcfzip / zip-bomb / path traversal
+        * 503 - clash schema (v41) hasn't been migrated yet
     """
     await _require_project_access(session, project_id, user_id)
 
     # Stream-read with a 100 MiB cap. We trust starlette's spool boundary
-    # (1 MiB default) — anything larger is rejected outright.
+    # (1 MiB default) - anything larger is rejected outright.
     try:
         payload = await file.read()
     except Exception as exc:  # noqa: BLE001
@@ -701,7 +701,7 @@ async def import_clashes_bcfzip(
             detail=str(exc),
         ) from exc
     except BCFSecurityError as exc:
-        # Zip-bomb / path-traversal — refuse to ingest.
+        # Zip-bomb / path-traversal - refuse to ingest.
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=str(exc),

@@ -1,4 +1,4 @@
-"""Management of Change (MoC) service — business logic.
+"""Management of Change (MoC) service - business logic.
 
 State machine:
     proposed  -> reviewed    (moc.review)
@@ -259,7 +259,7 @@ class MoCService:
         await self.repo.update_fields(entry_id, **fields)
         await self.session.refresh(entry)
 
-        # Audit trail — same transaction as status write.
+        # Audit trail - same transaction as status write.
         await _write_audit(
             self.session,
             actor_id=user_id,

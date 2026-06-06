@@ -1,7 +1,7 @@
 """‌⁠‍Contacts data access layer.
 
 All database queries for contacts live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 from __future__ import annotations
@@ -69,7 +69,7 @@ class ContactRepository:
         ``owner_id`` scopes the result to contacts in the caller's
         tenant (``tenant_id`` column, with a fallback to ``created_by``
         for rows inserted before the v2.3.1 migration).  Pass ``None``
-        to skip the scope filter — only admins should ever do that.
+        to skip the scope filter - only admins should ever do that.
 
         Returns (contacts, total_count).
         """
@@ -94,7 +94,7 @@ class ContactRepository:
         if tags:
             # Tags live in metadata.tags as a JSON array of strings. We
             # filter by casting metadata to text and substring-matching
-            # the quoted tag — portable across SQLite and Postgres without
+            # the quoted tag - portable across SQLite and Postgres without
             # dialect-specific JSON operators. AND-combined: a contact
             # must carry every requested tag.
             metadata_text = func.cast(Contact.metadata_, String)
@@ -147,7 +147,7 @@ class ContactRepository:
 
         ``owner_id`` scopes the aggregates to a single tenant via the
         ``tenant_id`` column (``created_by`` fallback for legacy rows).
-        Pass ``None`` for the global view — admins only.
+        Pass ``None`` for the global view - admins only.
 
         Returns dict with keys: total, by_type, by_country_top10,
         with_expiring_prequalification.
@@ -207,7 +207,7 @@ class ContactRepository:
         """Aggregate tag counts from active contacts.
 
         Returns the top ``limit`` tags as ``(tag, count)`` tuples, sorted
-        by count desc. Walks the metadata.tags arrays in Python — at
+        by count desc. Walks the metadata.tags arrays in Python - at
         contact-list scale (a few thousand rows) this is cheaper than
         dialect-specific JSON unnest queries.
         """

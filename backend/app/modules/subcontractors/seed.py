@@ -111,7 +111,7 @@ async def seed_subcontractors_demo(
     }
 
     if await _existing_count(session, Subcontractor) > 0:
-        logger.info("Subcontractor demo data already present — skipping seed")
+        logger.info("Subcontractor demo data already present - skipping seed")
         return counts
 
     today = date.today()
@@ -191,7 +191,7 @@ async def seed_subcontractors_demo(
             counts["certificates"] += 1
     await session.flush()
 
-    # Prequalification applications — one per subcontractor.
+    # Prequalification applications - one per subcontractor.
     for sub in subcontractors:
         sub_status = sub.prequalification_status
         prequal_status = (
@@ -227,7 +227,7 @@ async def seed_subcontractors_demo(
             agreement = SubcontractAgreement(
                 subcontractor_id=sub.id,
                 project_id=project_id,
-                title=f"Subcontract {i + 1:02d} — {sub.trade_name}",
+                title=f"Subcontract {i + 1:02d} - {sub.trade_name}",
                 total_value=value,
                 currency="EUR",
                 start_date=today - timedelta(days=rng.randint(30, 365)),
@@ -241,7 +241,7 @@ async def seed_subcontractors_demo(
             counts["agreements"] += 1
         await session.flush()
 
-        # Work packages — 1-3 per agreement.
+        # Work packages - 1-3 per agreement.
         for ag in agreements:
             for k in range(rng.randint(1, 3)):
                 session.add(

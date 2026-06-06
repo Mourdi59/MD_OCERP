@@ -7,8 +7,8 @@ worse (CPI lower is worse, TRIR higher is worse). Partner packs override these
 declaratively without touching core code.
 
 ``direction``:
-    * ``lower_is_worse`` — value below ``amber`` is amber, below ``red`` is red.
-    * ``higher_is_worse`` — value above ``amber`` is amber, above ``red`` is red.
+    * ``lower_is_worse`` - value below ``amber`` is amber, below ``red`` is red.
+    * ``higher_is_worse`` - value above ``amber`` is amber, above ``red`` is red.
 
 A KPI with no threshold entry always bands ``green`` (no opinion).
 """
@@ -24,7 +24,7 @@ HIGHER_IS_WORSE = "higher_is_worse"
 
 # Region-neutral default thresholds keyed by KPI code.
 DEFAULT_THRESHOLDS: dict[str, dict[str, Any]] = {
-    # Cost / schedule performance indices — below 1.0 means behind.
+    # Cost / schedule performance indices - below 1.0 means behind.
     "cpi": {"amber": "0.95", "red": "0.90", "direction": LOWER_IS_WORSE},
     "spi": {"amber": "0.95", "red": "0.90", "direction": LOWER_IS_WORSE},
     # Variances: negative is overrun / behind.

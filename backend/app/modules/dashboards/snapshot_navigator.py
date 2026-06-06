@@ -3,7 +3,7 @@
 """‌⁠‍Historical Snapshot Navigator (T11).
 
 Pure helpers that power the snapshot timeline + diff UX. The functions
-in this module never reach into FastAPI — they take a session-shaped
+in this module never reach into FastAPI - they take a session-shaped
 repository (or a pre-loaded list of ``Snapshot`` rows) and return plain
 dataclasses. The router glue maps the dataclasses onto Pydantic
 schemas; tests exercise this module directly without spinning up an
@@ -11,13 +11,13 @@ HTTP client.
 
 Two entry points
 ----------------
-* :func:`list_snapshots_for_project` — newest-first slice of snapshot
+* :func:`list_snapshots_for_project` - newest-first slice of snapshot
   metadata, optionally cursored with a ``before`` timestamp so the
   frontend can keep loading history without ``offset`` drift when new
   snapshots arrive concurrently.
-* :func:`diff_two_snapshots` — column-level adds / drops / dtype
+* :func:`diff_two_snapshots` - column-level adds / drops / dtype
   changes plus row-count delta for two arbitrary snapshots in the same
-  project. The two snapshots do not need to be parent/child — the
+  project. The two snapshots do not need to be parent/child - the
   navigator UX lets the user pick any pair.
 
 Schema introspection
@@ -25,7 +25,7 @@ Schema introspection
 For the diff we need each snapshot's column list. Two paths exist:
 
 1. The ``summary_stats`` blob on the row already encodes per-category
-   row counts — cheap, no I/O.
+   row counts - cheap, no I/O.
 2. The on-disk Parquet file gives the authoritative ``(name, dtype)``
    pairs and the row count. We prefer this path when the parquet is
    reachable; we fall back to ``summary_stats`` if it isn't (deleted
@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 class SnapshotMeta:
     """‌⁠‍Lightweight timeline row.
 
-    The historical navigator pulls these in pages of 50 — keeping the
+    The historical navigator pulls these in pages of 50 - keeping the
     shape narrow makes the JSON payload small for projects with
     hundreds of snapshots. ``schema_hash`` is taken from the manifest
     when available so the timeline can render an "identical schema"
@@ -93,13 +93,13 @@ class SchemaSnapshot:
     """‌⁠‍Column inventory for a single snapshot.
 
     Used only as an internal handle by :func:`diff_two_snapshots`. Not
-    exposed to the API — the diff endpoint returns the *delta*, not the
+    exposed to the API - the diff endpoint returns the *delta*, not the
     raw schemas.
     """
 
     snapshot_id: uuid.UUID
     columns: dict[str, str]
-    """``{column_name: dtype_string}`` — order is irrelevant for the
+    """``{column_name: dtype_string}`` - order is irrelevant for the
     diff but kept stable so callers that want to render the columns in
     file-order can sort by their own key."""
     row_count: int
@@ -133,22 +133,22 @@ class SnapshotDiff:
     a_created_at: datetime
     b_created_at: datetime
     columns_added: list[str] = field(default_factory=list)
-    """Columns present in B but missing from A — i.e. *new* in B."""
+    """Columns present in B but missing from A - i.e. *new* in B."""
     columns_removed: list[str] = field(default_factory=list)
-    """Columns present in A but missing from B — i.e. *dropped* in B."""
+    """Columns present in A but missing from B - i.e. *dropped* in B."""
     columns_changed: list[ColumnChange] = field(default_factory=list)
     """Columns whose dtype differs between A and B."""
     a_row_count: int = 0
     b_row_count: int = 0
     rows_added: int = 0
-    """``max(0, b_row_count - a_row_count)`` — the timeline always
+    """``max(0, b_row_count - a_row_count)`` - the timeline always
     diffs older→newer, so 'added' is the positive delta."""
     rows_removed: int = 0
     """``max(0, a_row_count - b_row_count)``."""
     schema_hash_match: bool = False
     """Whether the manifest-side schema hashes agree. ``False`` even
     when the column lists agree but at least one snapshot has no
-    schema hash recorded — callers should treat ``True`` as a strict
+    schema hash recorded - callers should treat ``True`` as a strict
     "identical structure" claim."""
 
     @property
@@ -188,7 +188,7 @@ class SnapshotDiff:
 class SnapshotNavigatorError(Exception):
     """Base error for navigator helpers.
 
-    Mirrors :class:`SnapshotError` from the service layer — each
+    Mirrors :class:`SnapshotError` from the service layer - each
     subclass carries a ``message_key`` so the router can localise the
     response without leaking internals.
     """
@@ -228,7 +228,7 @@ def list_snapshots_for_project(
 ) -> list[SnapshotMeta]:
     """Build the timeline from a pre-loaded list of ORM rows.
 
-    Pure / side-effect free — the caller (router or test) is
+    Pure / side-effect free - the caller (router or test) is
     responsible for fetching the rows. We accept an in-memory list
     rather than an :class:`AsyncSession` so the function stays
     trivially testable.
@@ -237,7 +237,7 @@ def list_snapshots_for_project(
     ----------
     rows
         Iterable of :class:`~app.modules.dashboards.models.Snapshot`
-        rows. Order does not matter — we sort newest-first ourselves.
+        rows. Order does not matter - we sort newest-first ourselves.
     limit
         Maximum number of timeline entries to return. Capped at 200.
     before
@@ -300,12 +300,12 @@ def diff_two_snapshots(
     """Compare two snapshot schemas and return the structural delta.
 
     The function is symmetric with respect to the labels (it does not
-    re-order based on timestamps) — callers decide which snapshot is
+    re-order based on timestamps) - callers decide which snapshot is
     "before" by passing it as A. The frontend always passes the older
     timestamp as A so ``columns_added`` reads as a chronological diff.
 
     ``schema_hash_match`` is ``True`` only if both sides recorded a
-    hash *and* the values agree — a missing hash on either side
+    hash *and* the values agree - a missing hash on either side
     forces ``False`` so callers don't accidentally treat
     "no hash" as "matches".
     """
@@ -361,7 +361,7 @@ def schema_from_summary_stats(
 
     This path is the fallback for snapshots whose Parquet is no
     longer reachable. It treats the per-category counts as
-    "categories present" — fine for the navigator UI, which only
+    "categories present" - fine for the navigator UI, which only
     surfaces high-level structural movement. Dtype is set to
     ``"int64"`` for every entry; this means dtype mismatches will
     *not* be detected on the fallback path. The frontend tags the diff

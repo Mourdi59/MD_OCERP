@@ -7,7 +7,7 @@ The evaluator is a thin wrapper over :class:`simpleeval.SimpleEval`:
 * Whitelist of FR-1.7 functions (``ABS``, ``MIN``, ``ROUND``, …,
   ``MM_TO_M`` and the rest of the unit conversions).
 * Hard execution-time cap: a runaway expression aborts.
-* No attribute access, no dunder access, no ``eval``/``exec`` —
+* No attribute access, no dunder access, no ``eval``/``exec`` -
   ``simpleeval`` blocks these by default; we re-raise as our typed
   errors so callers can branch on shape.
 
@@ -52,7 +52,7 @@ class FormulaTimeoutError(Exception):
 # ── Function whitelist (FR-1.7) ─────────────────────────────────────────
 #
 # Each entry maps the public formula name to a callable. The executor
-# will look up names from this dict — anything missing raises
+# will look up names from this dict - anything missing raises
 # ``FunctionNotDefined`` which we translate to ``FormulaUnsafeError``.
 
 
@@ -196,7 +196,7 @@ def _convert(value: float, from_unit: str, to_unit: str) -> float:
     return value * pairs[key]
 
 
-# Public function table — callable, but the validator only checks the
+# Public function table - callable, but the validator only checks the
 # *names* via the AST scan (it does not execute formulas).
 ALLOWED_FUNCTIONS: dict[str, Any] = {
     # Math
@@ -304,7 +304,7 @@ def evaluate_formula(
 def collect_variable_names(parsed: ast.Expression | ast.Module) -> set[str]:
     """Return the set of free variable names referenced by ``parsed``.
 
-    Function-call targets are excluded — ``ABS(x)`` returns ``{"x"}``.
+    Function-call targets are excluded - ``ABS(x)`` returns ``{"x"}``.
     Python builtins (``True`` / ``False`` / ``None``) are excluded.
     Whitelisted function names (``ABS``, ``MIN``, …) are excluded so
     the validator doesn't flag them as missing aliases.
@@ -343,7 +343,7 @@ def _scan_for_unsafe(parsed: ast.AST) -> None:
       need them, and they're a sandbox-escape vector).
     * Direct calls to ``eval`` / ``exec``.
 
-    ``simpleeval`` already enforces most of these — duplicating the
+    ``simpleeval`` already enforces most of these - duplicating the
     check at parse time gives the validator a deterministic error code
     even when the formula is never actually executed.
     """

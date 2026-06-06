@@ -3,11 +3,11 @@
 """File Comments ORM models.
 
 Tables:
-    oe_file_comment         — polymorphic threaded comment on any file
+    oe_file_comment         - polymorphic threaded comment on any file
                               kind. A comment can be anchored to a PDF
                               page + normalized (x, y) coordinate so it
                               renders as a pin.
-    oe_file_comment_mention — @username extractions resolved to a real
+    oe_file_comment_mention - @username extractions resolved to a real
                               user, with a ``notified_at`` watermark
                               for the "unread mentions" inbox query.
 
@@ -18,7 +18,7 @@ service layer) + ``file_id`` (a free-form string id) is used instead of
 seven concrete FK columns because the eight file kinds live in seven
 different tables (documents, photos, sheets, bim_models, dwg_drawings,
 takeoff, reports, markups) and Postgres polymorphic FKs require either
-inheritance or a join-table per kind — both significantly heavier than
+inheritance or a join-table per kind - both significantly heavier than
 the project-scoped ``(project_id, file_kind, file_id)`` index this table
 ships with.
 
@@ -26,7 +26,7 @@ Soft delete
 -----------
 ``DELETE /file-comments/{id}/`` replaces ``body`` with ``"[deleted]"``
 and clears mention rows; the row stays so child replies retain their
-thread structure. Hard-delete is intentionally not exposed — deleted-
+thread structure. Hard-delete is intentionally not exposed - deleted-
 ness is reflected in ``body`` so the UI can render a tombstone marker.
 """
 
@@ -97,7 +97,7 @@ class FileComment(Base):
         nullable=False,
     )
     body: Mapped[str] = mapped_column(Text, nullable=False)
-    # PDF pin anchor — all three nullable: a non-PDF comment leaves them
+    # PDF pin anchor - all three nullable: a non-PDF comment leaves them
     # NULL. anchor_x / anchor_y are normalized to [0.0, 1.0] of the page
     # bounding box so the pin survives PDF re-scales / rotations.
     page_number: Mapped[int | None] = mapped_column(Integer, nullable=True)

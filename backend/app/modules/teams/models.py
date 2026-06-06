@@ -1,9 +1,9 @@
 """‌⁠‍Teams ORM models.
 
 Tables:
-    oe_teams_team       — project teams for entity visibility
-    oe_teams_membership — user-to-team membership
-    oe_teams_visibility — entity-to-team visibility grants
+    oe_teams_team       - project teams for entity visibility
+    oe_teams_membership - user-to-team membership
+    oe_teams_visibility - entity-to-team visibility grants
 """
 
 import uuid

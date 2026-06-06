@@ -1,17 +1,17 @@
 """‌⁠‍RFQ Bidding API routes.
 
 Endpoints:
-    GET    /                       — List RFQs (requires rfq.read + project access)
-    POST   /                       — Create RFQ (requires rfq.create + project access)
-    GET    /{id}                   — Get single RFQ (requires rfq.read + project access)
-    PATCH  /{id}                   — Update RFQ (requires rfq.update + project access)
-    DELETE /{id}                   — Delete RFQ (requires rfq.delete + project access)
-    POST   /{id}/issue             — Issue RFQ (requires rfq.update + project access)
-    GET    /bids                   — List bids (requires rfq.read + project access via rfq_id)
-    POST   /bids                   — Submit bid (requires rfq.create + project access)
-    GET    /bids/{id}              — Get single bid (requires rfq.read + project access)
-    POST   /bids/{id}/evaluate     — Evaluate bid (requires rfq.update + project access)
-    POST   /bids/{id}/award        — Award bid (requires rfq.update + project access)
+    GET    /                       - List RFQs (requires rfq.read + project access)
+    POST   /                       - Create RFQ (requires rfq.create + project access)
+    GET    /{id}                   - Get single RFQ (requires rfq.read + project access)
+    PATCH  /{id}                   - Update RFQ (requires rfq.update + project access)
+    DELETE /{id}                   - Delete RFQ (requires rfq.delete + project access)
+    POST   /{id}/issue             - Issue RFQ (requires rfq.update + project access)
+    GET    /bids                   - List bids (requires rfq.read + project access via rfq_id)
+    POST   /bids                   - Submit bid (requires rfq.create + project access)
+    GET    /bids/{id}              - Get single bid (requires rfq.read + project access)
+    POST   /bids/{id}/evaluate     - Evaluate bid (requires rfq.update + project access)
+    POST   /bids/{id}/award        - Award bid (requires rfq.update + project access)
 """
 
 import uuid

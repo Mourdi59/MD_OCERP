@@ -1,9 +1,9 @@
-"""‌⁠‍DWG/DXF file processor — ezdxf wrapper.
+"""‌⁠‍DWG/DXF file processor - ezdxf wrapper.
 
 Parses DXF files to extract layers, entities, extents, and units.
 Generates SVG thumbnail previews and calculates entity measurements.
 
-ezdxf is an optional dependency — functions degrade gracefully with a
+ezdxf is an optional dependency - functions degrade gracefully with a
 clear error message if it is not installed.
 """
 
@@ -21,7 +21,7 @@ try:
     HAS_EZDXF = True
 except ImportError:
     HAS_EZDXF = False
-    logger.info("ezdxf not installed — DXF processing will be unavailable")
+    logger.info("ezdxf not installed - DXF processing will be unavailable")
 
 
 def _require_ezdxf() -> None:
@@ -178,7 +178,7 @@ def parse_dxf(file_path: str) -> dict[str, Any]:
     # signed-color encoding which some CAD packages don't honour, so
     # we now default to visible and only flip to hidden when the
     # source file *explicitly* marks the layer off.  Pulls each bit
-    # in its own try/except — ezdxf 1.4 occasionally raises on
+    # in its own try/except - ezdxf 1.4 occasionally raises on
     # malformed layer entries, and a single exception used to silently
     # collapse the whole expression to False (the canvas would then
     # render empty after import).
@@ -188,7 +188,7 @@ def parse_dxf(file_path: str) -> dict[str, Any]:
         is_frozen = False
         try:
             is_off = bool(layer.is_off)
-        except Exception:  # noqa: BLE001 — defensive: see comment above
+        except Exception:  # noqa: BLE001 - defensive: see comment above
             pass
         try:
             is_frozen = bool(layer.is_frozen)
@@ -286,7 +286,7 @@ def parse_dxf(file_path: str) -> dict[str, Any]:
     insunits = doc.header.get("$INSUNITS", 0)
     units = units_map.get(insunits, "unitless")
 
-    # BUG-D-TKC-002c — when $INSUNITS is absent/0 ("unitless") fall back to
+    # BUG-D-TKC-002c - when $INSUNITS is absent/0 ("unitless") fall back to
     # an extents-based guess. A drawing whose largest extent is >=1000 units
     # is almost certainly authored in millimetres; without this an mm DXF
     # with no header reads 1000x too large (service.py applies a 1.0 factor
@@ -331,9 +331,9 @@ def generate_svg_thumbnail(file_path: str) -> str:
 
         # ezdxf 1.4 reorganised the drawing add-on: the SVG bytes now come
         # from ``backend.get_string()`` (or its xml-tree variant), not
-        # ``frontend.out`` — that attribute was removed when the backend
+        # ``frontend.out`` - that attribute was removed when the backend
         # registry replaced the legacy ``Frontend.out`` slot (BUG-014).
-        # Fall through to the placeholder branch only on real errors —
+        # Fall through to the placeholder branch only on real errors -
         # don't let a single AttributeError silently downgrade the
         # thumbnail for every drawing.
         ctx = RenderContext(doc)
@@ -341,7 +341,7 @@ def generate_svg_thumbnail(file_path: str) -> str:
         Frontend(ctx, backend).draw_layout(msp)
         if hasattr(backend, "get_string"):
             return backend.get_string()
-        # ezdxf 1.5+ — backend exposes ``get_xml_root()`` instead; fall
+        # ezdxf 1.5+ - backend exposes ``get_xml_root()`` instead; fall
         # back to that and serialise via the stdlib.
         if hasattr(backend, "get_xml_root"):
             from xml.etree import ElementTree
@@ -349,7 +349,7 @@ def generate_svg_thumbnail(file_path: str) -> str:
             return ElementTree.tostring(backend.get_xml_root(), encoding="unicode")
         raise RuntimeError(
             "SVGBackend exposes neither get_string nor get_xml_root; "
-            "ezdxf API may have shifted again — bump the dependency pin."
+            "ezdxf API may have shifted again - bump the dependency pin."
         )
     except Exception as exc:
         # Fallback: generate a minimal placeholder SVG
@@ -393,7 +393,7 @@ def calculate_entity_measurement(entity_data: dict[str, Any]) -> float:
         # Bugfix (C3): start_angle/end_angle are ALREADY in radians (see
         # _extract_geometry above which writes math.radians(dxf.start_angle)).
         # The previous code applied math.radians() a second time, so arc
-        # lengths came out off by (π/180)² ≈ 3.05e-4 — a 90° arc rendered
+        # lengths came out off by (π/180)² ≈ 3.05e-4 - a 90° arc rendered
         # as ~0 metres. Use the stored radians directly; defensive modulo
         # 2π keeps sweep angles in [0, 2π) regardless of source orientation.
         radius = geometry.get("radius", 0)

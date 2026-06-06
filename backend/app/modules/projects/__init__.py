@@ -6,7 +6,7 @@ Each project defines its region, classification standard, and validation rule se
 
 
 async def on_startup() -> None:
-    """‌⁠‍Module startup hook — register permissions."""
+    """‌⁠‍Module startup hook - register permissions."""
     from app.modules.projects.permissions import register_project_permissions
 
     register_project_permissions()

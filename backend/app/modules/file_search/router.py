@@ -56,7 +56,7 @@ async def index_single_file(
     """Trigger indexing for one file.
 
     Caller passes the canonical (kind, file_id, project_id). We resolve
-    the on-disk path internally — clients never need to know storage
+    the on-disk path internally - clients never need to know storage
     layout.
     """
     await verify_project_access(body.project_id, user_id, session)
@@ -153,13 +153,13 @@ async def remove_index(
     """Remove a file from the index.
 
     Idempotent: removing a file that isn't indexed returns 204 with no
-    body and ``rowcount = 0`` — callers don't need to check existence
+    body and ``rowcount = 0`` - callers don't need to check existence
     first.
     """
     await verify_project_access(project_id, user_id, session)
     deleted = await delete_index_for_file(session, project_id, file_id, kind)
     if deleted == 0:
-        # Still 204 — the desired post-condition (no rows) holds.
+        # Still 204 - the desired post-condition (no rows) holds.
         logger.debug(
             "remove_index: no rows for project=%s file=%s kind=%s",
             project_id,

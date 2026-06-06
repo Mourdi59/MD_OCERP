@@ -1,15 +1,15 @@
 """‌⁠‍Tendering API routes.
 
 Endpoints:
-    POST   /packages/                       — Create a tender package
-    GET    /packages/?project_id=xxx        — List packages
-    GET    /packages/{package_id}           — Get package with bids
-    PATCH  /packages/{package_id}           — Update package
-    POST   /packages/{package_id}/bids      — Add a bid
-    GET    /packages/{package_id}/bids      — List bids
-    PATCH  /bids/{bid_id}                   — Update a bid
-    GET    /packages/{package_id}/comparison — Compare all bids side-by-side
-    GET    /packages/{package_id}/export/pdf — Export tender package as PDF
+    POST   /packages/                       - Create a tender package
+    GET    /packages/?project_id=xxx        - List packages
+    GET    /packages/{package_id}           - Get package with bids
+    PATCH  /packages/{package_id}           - Update package
+    POST   /packages/{package_id}/bids      - Add a bid
+    GET    /packages/{package_id}/bids      - List bids
+    PATCH  /bids/{bid_id}                   - Update a bid
+    GET    /packages/{package_id}/comparison - Compare all bids side-by-side
+    GET    /packages/{package_id}/export/pdf - Export tender package as PDF
 """
 
 import io
@@ -58,13 +58,13 @@ async def _verify_tender_project_owner(
     session: SessionDep,
     project_id: uuid.UUID,
     user_id: str,
-    payload: dict | None = None,  # noqa: ARG001 — kept for call-site symmetry
+    payload: dict | None = None,  # noqa: ARG001 - kept for call-site symmetry
 ) -> None:
     """Verify the caller may access the project.
 
     Routes through the shared ``verify_project_access`` helper so the
     tendering surface grants the SAME population (owner + admins + project
-    team members) as every other module — previously this was owner-only,
+    team members) as every other module - previously this was owner-only,
     which silently locked team members out of the package/bid endpoints
     even though they could already reach ``GET /bid-analysis/`` (which uses
     ``verify_project_access``). ``verify_project_access`` raises 404 on both
@@ -78,7 +78,7 @@ async def _verify_package_owner(
     session: SessionDep,
     package_id: uuid.UUID,
     user_id: str,
-    payload: dict | None = None,  # noqa: ARG001 — kept for call-site symmetry
+    payload: dict | None = None,  # noqa: ARG001 - kept for call-site symmetry
 ) -> object:
     """Load a package, then verify project access (owner + admin + team)."""
     package = await service.get_package(package_id)
@@ -92,7 +92,7 @@ async def _caller_scope_project_ids(
 ) -> list[uuid.UUID] | None:
     """Project IDs the caller may reach, for scoping addendum lookups.
 
-    Returns ``None`` for admins (no filter — cross-tenant by design) and the
+    Returns ``None`` for admins (no filter - cross-tenant by design) and the
     union of owned + team-member project IDs for everyone else. This is *only*
     used to keep ``find_addendum_package`` from scanning every package in the
     database; the authoritative access check stays ``verify_project_access`` on
@@ -231,7 +231,7 @@ async def list_tenders_root(
 
     Convenience root alias of ``GET /packages/`` so clients can probe
     ``/api/v1/tendering/`` without having to know the inner ``packages``
-    sub-prefix. ``project_id`` is still required to return data — when omitted
+    sub-prefix. ``project_id`` is still required to return data - when omitted
     we return ``[]`` rather than 422 to keep the route discoverable for
     smoke probes.
     """
@@ -285,7 +285,7 @@ async def list_packages(
 ) -> list[PackageResponse]:
     """List tender packages for a project.
 
-    ``project_id`` is REQUIRED to prevent cross-tenant enumeration — the
+    ``project_id`` is REQUIRED to prevent cross-tenant enumeration - the
     previous optional parameter let any authenticated user dump packages
     for every tenant when omitted.
     """
@@ -380,7 +380,7 @@ async def update_bid(
     """Update a bid.
 
     Verifies the caller owns the parent package's project before
-    accepting the mutation — otherwise a cross-tenant tamper attack
+    accepting the mutation - otherwise a cross-tenant tamper attack
     could silently rewrite competing bids.
     """
     await _verify_bid_access(service, session, bid_id, user_id, payload)
@@ -637,7 +637,7 @@ async def export_tender_pdf(
     _obj()
     _w("<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n")
 
-    # Page (obj 3) — references stream (4) and font (5)
+    # Page (obj 3) - references stream (4) and font (5)
     _obj()
     _w(
         "<< /Type /Page /Parent 2 0 R "
@@ -675,7 +675,7 @@ async def export_tender_pdf(
     return StreamingResponse(
         buf,
         media_type="application/pdf",
-        # RFC 6266 — a package name with non-Latin-1 chars would otherwise 500
+        # RFC 6266 - a package name with non-Latin-1 chars would otherwise 500
         # while the ASGI server encodes this header.
         headers={"Content-Disposition": content_disposition_attachment(filename)},
     )

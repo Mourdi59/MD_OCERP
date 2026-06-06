@@ -3,7 +3,7 @@
 Populated as T08 and T13 land. Until then the bundle is empty and
 ``translate()`` falls back to the raw key (logged WARNING once per key).
 Shares the :class:`~app.core.validation.messages.MessageBundle`
-implementation — see :mod:`app.modules.dashboards.messages` for the
+implementation - see :mod:`app.modules.dashboards.messages` for the
 pattern.
 """
 

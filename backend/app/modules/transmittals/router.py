@@ -1,13 +1,13 @@
 """‌⁠‍Transmittals API routes.
 
 Endpoints:
-    GET    /                                              — List transmittals by project
-    POST   /                                              — Create transmittal (auto-number)
-    GET    /{transmittal_id}                              — Get single transmittal
-    PATCH  /{transmittal_id}                              — Update (fails if locked)
-    POST   /{transmittal_id}/issue                        — Lock + set issued
-    POST   /{transmittal_id}/recipients/{id}/acknowledge  — Acknowledge receipt
-    POST   /{transmittal_id}/recipients/{id}/respond      — Submit response
+    GET    /                                              - List transmittals by project
+    POST   /                                              - Create transmittal (auto-number)
+    GET    /{transmittal_id}                              - Get single transmittal
+    PATCH  /{transmittal_id}                              - Update (fails if locked)
+    POST   /{transmittal_id}/issue                        - Lock + set issued
+    POST   /{transmittal_id}/recipients/{id}/acknowledge  - Acknowledge receipt
+    POST   /{transmittal_id}/recipients/{id}/respond      - Submit response
 """
 
 import uuid

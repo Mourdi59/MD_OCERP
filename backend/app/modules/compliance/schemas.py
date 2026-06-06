@@ -15,7 +15,7 @@ class DSLValidateRequest(BaseModel):
     """‌⁠‍Body for ``POST /dsl/validate-syntax``.
 
     Either ``definition_yaml`` (raw text) or ``definition`` (already
-    parsed mapping) — exactly one must be supplied.
+    parsed mapping) - exactly one must be supplied.
     """
 
     definition_yaml: str | None = None
@@ -34,7 +34,7 @@ class DSLValidateResponse(BaseModel):
 
 
 class DSLCompileRequest(BaseModel):
-    """‌⁠‍Body for ``POST /dsl/compile`` — persists + registers."""
+    """‌⁠‍Body for ``POST /dsl/compile`` - persists + registers."""
 
     definition_yaml: str = Field(..., min_length=1, max_length=64_000)
     activate: bool = True
@@ -71,7 +71,7 @@ class DSLFromNlRequest(BaseModel):
 
     ``text`` is the user's plain-language sentence. ``lang`` tells the
     pattern matcher which alias table to apply before regex matching;
-    unknown values fall back to ``en``. ``use_ai`` is a hint — even when
+    unknown values fall back to ``en``. ``use_ai`` is a hint - even when
     true, the call degrades gracefully if no API key is configured for
     the caller (the deterministic pattern still runs).
     """

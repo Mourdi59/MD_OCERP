@@ -12,14 +12,14 @@ configured stamp template is "burned" into a copy of the artifact:
 
 Tables
 ~~~~~~
-* :class:`ApprovalWorkflow`     — ``oe_file_approval_workflow``
-* :class:`ApprovalStep`         — ``oe_file_approval_step``
-* :class:`StampTemplate`        — ``oe_file_stamp_template``
+* :class:`ApprovalWorkflow`     - ``oe_file_approval_workflow``
+* :class:`ApprovalStep`         - ``oe_file_approval_step``
+* :class:`StampTemplate`        - ``oe_file_stamp_template``
 """
 
 
 async def on_startup() -> None:
-    """Module startup hook — register RBAC permissions."""
+    """Module startup hook - register RBAC permissions."""
     from app.modules.file_approvals.permissions import (
         register_file_approval_permissions,
     )

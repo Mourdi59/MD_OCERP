@@ -7,7 +7,7 @@ This is the single implementation of zip-member safety used by:
 
 It guards against the classic untrusted-archive attacks (Zip Slip and
 friends): absolute paths, ``..`` traversal, Windows drive letters, backslash
-separators and symlink members. Every member is validated **twice** — once up
+separators and symlink members. Every member is validated **twice** - once up
 front before any filesystem write, and again at write time against the resolved
 staging root (defence in depth against a crafted ``ZipInfo`` whose name passes
 the string checks but resolves outside the target).
@@ -73,7 +73,7 @@ def is_unsafe_zip_member(info: zipfile.ZipInfo) -> str | None:
     """
     name = getattr(info, "filename", "")
 
-    # Windows drive letter, e.g. "C:..." — also catches "C:\\..." once \\ -> /.
+    # Windows drive letter, e.g. "C:..." - also catches "C:\\..." once \\ -> /.
     if len(name) >= 2 and name[1] == ":":
         return f"drive-letter path: {name!r}"
 
@@ -120,7 +120,7 @@ def safe_extract_all(zf: zipfile.ZipFile, dest_dir: Path) -> None:
 
     Each member is re-validated against the *resolved* destination root at write
     time (not just by name), so a member that slips past the up-front name check
-    can never escape ``dest_dir``. Directory entries are skipped — they are
+    can never escape ``dest_dir``. Directory entries are skipped - they are
     created implicitly by file writes. The caller is responsible for having
     already run :func:`assert_safe_archive` (this re-checks as defence in depth).
 
@@ -134,7 +134,7 @@ def safe_extract_all(zf: zipfile.ZipFile, dest_dir: Path) -> None:
     dest_dir.mkdir(parents=True, exist_ok=True)
     root = dest_dir.resolve()
     for info in zf.infolist():
-        # Skip directory entries — created implicitly by file writes below.
+        # Skip directory entries - created implicitly by file writes below.
         if info.filename.endswith("/"):
             continue
         reason = is_unsafe_zip_member(info)

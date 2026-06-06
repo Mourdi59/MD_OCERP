@@ -92,7 +92,7 @@ def _validate_job_transition(current: str, target: str) -> None:
         )
 
 
-# Tileset lifecycle — mirrors the job FSM in the obvious way.
+# Tileset lifecycle - mirrors the job FSM in the obvious way.
 _TILESET_TRANSITIONS: dict[str, set[str]] = {
     "draft": {"generating", "obsolete"},
     "generating": {"ready", "failed", "obsolete"},
@@ -180,7 +180,7 @@ class GeoHubService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=not_found_detail,
             )
-        # Owner OR team member — mirror the projects module's access model
+        # Owner OR team member - mirror the projects module's access model
         # (app.modules.teams.access) so collaborators who can open a project
         # everywhere else aren't locked out of its geo map / anchors / pins.
         if str(project.owner_id) == str(user_id):
@@ -214,10 +214,10 @@ class GeoHubService:
 
         Raises ``HTTPException`` with explicit status codes:
 
-        * 404 — project not found or cross-tenant access.
-        * 409 — anchor already exists and ``force`` is False.
-        * 422 — project address missing or has no country.
-        * 502 — geocoder unavailable + no cached fallback.
+        * 404 - project not found or cross-tenant access.
+        * 409 - anchor already exists and ``force`` is False.
+        * 422 - project address missing or has no country.
+        * 502 - geocoder unavailable + no cached fallback.
         """
         from app.modules.geo_hub.geocoder import (
             geocode_address,
@@ -261,7 +261,7 @@ class GeoHubService:
                 detail={
                     "code": "address_missing",
                     "message": (
-                        "Project address is empty or missing a country — "
+                        "Project address is empty or missing a country - "
                         "fill in at least the country before auto-anchoring."
                     ),
                 },
@@ -466,7 +466,7 @@ class GeoHubService:
                     "precision": precision,
                 },
             )
-            _ = source  # silence lint — surfaced per-project in events only
+            _ = source  # silence lint - surfaced per-project in events only
         return {
             "succeeded": succeeded,
             "skipped": skipped,
@@ -488,7 +488,7 @@ class GeoHubService:
         )
         existing = await self.anchors.get_by_project(data.project_id)
         if existing is not None:
-            # Idempotent: project already has an anchor — overwrite in
+            # Idempotent: project already has an anchor - overwrite in
             # place. Mutate the ORM attributes directly so we avoid the
             # ``expire_all()`` cycle in ``update_fields`` which can
             # break lazy-load attribute access in the same request.
@@ -650,7 +650,7 @@ class GeoHubService:
 
         Pre-v5.2.9 this only removed the DB row, leaving the
         ``tilesets/{id}/tileset.json`` and ``…/tile_0.b3dm`` blobs orphaned
-        forever — a slow disk leak that broke the "delete frees storage"
+        forever - a slow disk leak that broke the "delete frees storage"
         contract surfaced to the user. We now sweep the per-tileset prefix
         through the storage backend before removing the row. Failures are
         logged but never abort the DB delete: a stuck blob is a sysadmin
@@ -678,7 +678,7 @@ class GeoHubService:
             # (older rows pre-v5.0.0).
             sweep_prefix = obj.prefix or f"tilesets/{tileset_id}"
             await backend.delete_prefix(sweep_prefix)
-        except Exception as exc:  # noqa: BLE001 — log + continue
+        except Exception as exc:  # noqa: BLE001 - log + continue
             logger.warning(
                 "geo_hub: storage cleanup failed for tileset %s: %s",
                 tileset_id,
@@ -1281,7 +1281,7 @@ class GeoHubService:
         Sweeps the storage blobs (source + rasterised PNG) before removing
         the DB row so the disk is actually freed. Returns a summary dict
         with ``swept`` (rows removed) and ``blob_errors`` (blob deletes
-        that failed — usually a "key not found" because the row was
+        that failed - usually a "key not found" because the row was
         already partially cleaned up).
 
         Designed to be safe to call repeatedly: each pass picks up where
@@ -1323,7 +1323,7 @@ class GeoHubService:
                     continue
                 try:
                     await backend.delete(key)
-                except Exception:  # noqa: BLE001 — log + continue
+                except Exception:  # noqa: BLE001 - log + continue
                     blob_errors += 1
                     logger.debug(
                         "geo_hub.sweeper: blob delete failed for key=%s",
@@ -1440,7 +1440,7 @@ class GeoHubService:
                 detail=f"Image not parseable: {exc}",
             ) from exc
 
-        # For images source == raster — store once, point both at it.
+        # For images source == raster - store once, point both at it.
         source_key, _ = await self._store_overlay_blobs(
             project_id=project_id,
             filename=filename,
@@ -1629,7 +1629,7 @@ class GeoHubService:
     ) -> list[list[float]]:
         """Return a small bbox centered on the project anchor.
 
-        ~250 m square (a rough city-block) — large enough to be visible
+        ~250 m square (a rough city-block) - large enough to be visible
         on a satellite map, small enough that the user immediately sees
         they need to drag it into place. Falls back to a placeholder
         bbox near 0,0 when the project has no anchor yet.
@@ -1718,7 +1718,7 @@ class GeoHubService:
 
         resolved_project_id = project_id or bim_model.project_id
         if str(resolved_project_id) != str(bim_model.project_id):
-            # IDOR — project mismatch collapses to 404.
+            # IDOR - project mismatch collapses to 404.
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="cad_import_not_found",
@@ -1765,7 +1765,7 @@ class GeoHubService:
         if heading:
             # Rotate every element AABB around the *combined* footprint
             # centre, not the local origin (0, 0, 0). Canonical exports
-            # are not guaranteed to be project-centred — many converters
+            # are not guaranteed to be project-centred - many converters
             # use site coordinates with the origin at the surveyor's
             # benchmark which can be hundreds of metres from the
             # building. Rotating around the origin then translates the
@@ -1789,7 +1789,7 @@ class GeoHubService:
             anchor_lon=anchor_lon,
             anchor_alt=anchor_alt,
         )
-        # Refuse to persist a tileset that has no usable geometry — the
+        # Refuse to persist a tileset that has no usable geometry - the
         # b3dm wrapper would still serialize, the region would collapse
         # to the anchor point, and Cesium would render an invisible tile.
         # That state would also poison the reuse short-circuit on the
@@ -1907,7 +1907,7 @@ class GeoHubService:
     ) -> list[dict[str, Any]]:
         """Return locatable projects the caller can access.
 
-        Powers the global Geo Hub's project-pin layer — non-admin users
+        Powers the global Geo Hub's project-pin layer - non-admin users
         see only their own projects, admins see everything.
 
         A project is "locatable" (and thus pinned) when EITHER:
@@ -1917,7 +1917,7 @@ class GeoHubService:
           coordinates (as the showcase / demo seeds do).
 
         The anchor takes precedence when both exist. This is a LEFT OUTER
-        join — projects with address coords but no anchor used to be
+        join - projects with address coords but no anchor used to be
         silently dropped, so the global map looked empty even though the
         projects clearly had a location. Projects with neither an anchor
         nor address coordinates are still excluded so the pin layer never
@@ -1938,7 +1938,7 @@ class GeoHubService:
         if user_id is None and not is_admin:
             return []
 
-        # LEFT OUTER join so address-only projects survive — the previous
+        # LEFT OUTER join so address-only projects survive - the previous
         # inner join silently dropped every project without a GeoAnchor.
         stmt = (
             select(Project, GeoAnchor)
@@ -1947,7 +1947,7 @@ class GeoHubService:
         )
         if not is_admin:
             # 404-safe scoping: non-admins see projects they own OR are a
-            # team member of — mirrors the projects module's access model so
+            # team member of - mirrors the projects module's access model so
             # collaborators aren't shown an empty global map. Cast user_id
             # through ``str`` because JWT subs can arrive as either UUID or
             # string depending on the auth path.
@@ -1966,7 +1966,7 @@ class GeoHubService:
             """Render the project's JSONB address as a single line.
 
             Used by the frontend to detect drift between the typed
-            address and the geocoded ``anchor.address`` — when the user
+            address and the geocoded ``anchor.address`` - when the user
             edits the project address after the first geocode the two
             strings diverge and we surface a "Re-anchor" chip.
             """
@@ -1989,7 +1989,7 @@ class GeoHubService:
             Seeds store the geocoded point on the address dict (``lat`` +
             ``lng``); some hand-entered data uses ``lon``. Returns
             ``(lat, lon)`` only when both are present and inside the valid
-            WGS-84 range — bad/partial coords are treated as "no location"
+            WGS-84 range - bad/partial coords are treated as "no location"
             rather than dropping a pin on null island.
             """
             if not isinstance(addr, dict):
@@ -2024,7 +2024,7 @@ class GeoHubService:
             else:
                 coords = _address_coords(project.address)
                 if coords is None:
-                    # No anchor and no usable address coords — not locatable.
+                    # No anchor and no usable address coords - not locatable.
                     continue
                 lat, lon = coords
                 alt = Decimal("0")
@@ -2065,7 +2065,7 @@ class GeoHubService:
         """Single round-trip bundle for the Cesium viewer boot path.
 
         When ``development_id`` is set the result is narrowed to tilesets
-        and overlays linked to that development — either by stamped
+        and overlays linked to that development - either by stamped
         ``metadata.development_id`` (PropDev-anchored tilesets), by
         ``source_kind="development"`` with the matching ``source_id``
         (native development tilesets), or by an overlay whose
@@ -2080,7 +2080,7 @@ class GeoHubService:
         )
 
         if development_id is not None:
-            # Validate the development belongs to this project — IDOR
+            # Validate the development belongs to this project - IDOR
             # closure (a malicious caller could pass a stranger's dev id
             # otherwise and have it silently filter the map to nothing).
             from app.modules.property_dev.models import Development
@@ -2098,7 +2098,7 @@ class GeoHubService:
         # Push dev_id filter into SQL on the tileset list so a PropDev
         # customer with many tilesets per project doesn't load 50 only to
         # throw 49 away. The overlay-side filter still happens in Python
-        # because GeoOverlay.metadata is opaque JSON — but that path is
+        # because GeoOverlay.metadata is opaque JSON - but that path is
         # bounded by the 200-row hard cap and SQLite has no portable
         # JSON-extract on arbitrary metadata.development_id.
         tilesets = await self.tilesets.list_for_project(
@@ -2142,10 +2142,10 @@ class GeoHubService:
     # These endpoints expose a thin read projection of other modules'
     # geo-tagged rows so the Cesium / Leaflet viewer can render them as
     # per-module layers. Each query is project-scoped and IDOR-gated
-    # through ``_verify_project_owner`` — cross-tenant access returns 404,
+    # through ``_verify_project_owner`` - cross-tenant access returns 404,
     # never 403.
     #
-    # We deliberately don't go through HTTP to the other modules — they
+    # We deliberately don't go through HTTP to the other modules - they
     # share the same SQLAlchemy session, and a SQL-level select is the
     # cheap path. We import the models lazily so geo_hub keeps its
     # dependency graph clean (the manifest only depends on bim_hub +
@@ -2349,12 +2349,12 @@ def _rotate_element(
 ) -> dict[str, Any]:
     """Rotate a canonical element's AABB around the local Z (up) axis.
 
-    Rotates the four XY corners around (``pivot_x``, ``pivot_y``) — the
+    Rotates the four XY corners around (``pivot_x``, ``pivot_y``) - the
     caller is expected to pass the project's combined-AABB centre so a
     site-coordinate canonical export does not drift away from its
     geographic anchor under non-zero heading. Replaces the AABB with
     the axis-aligned envelope of the rotated box so the downstream
-    pipeline still sees an AABB. Loses orientation fidelity by design —
+    pipeline still sees an AABB. Loses orientation fidelity by design -
     heading is a coarse hint, not a transform.
     """
     import math as _math
@@ -2396,7 +2396,7 @@ def _rotate_element(
 def _safe_filename(name: str) -> str:
     """Return a filename stripped of path separators + non-ASCII bytes.
 
-    Storage keys are flat strings — backends differ wildly on what they
+    Storage keys are flat strings - backends differ wildly on what they
     accept. We allow ASCII alphanumerics, dots, dashes, underscores;
     everything else collapses to ``_``. Length is capped so a
     pathological filename can't blow past S3 key limits.

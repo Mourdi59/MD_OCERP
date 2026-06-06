@@ -14,7 +14,7 @@ Source of truth for:
 
 The table is keyed by canonical IFC class name (CamelCase, IFC 4.3
 spelling) and falls back to a deterministic ``Ifc → ""`` strip when an
-unknown class is queried — so a brand-new IFC entity ships without a
+unknown class is queried - so a brand-new IFC entity ships without a
 crash, just an underlabelled chip.
 
 The frontend mirrors this table as i18n keys ``ifc.<snake>``; the
@@ -46,7 +46,7 @@ class IfcClassMeta(NamedTuple):
     en_label: str
     i18n_key: str
     trade: Trade
-    # Suggested DIN 276 cost group (3-digit). A hint, not authoritative —
+    # Suggested DIN 276 cost group (3-digit). A hint, not authoritative -
     # actual classification stays many-to-many per the CWICR catalogue.
     din276_hint: str | None = None
     # When True, the class is a void/annotation/analytical placeholder
@@ -61,7 +61,7 @@ class IfcClassMeta(NamedTuple):
     # IfcSlab=03 30 53, IfcDuctSegment=23 31 13.
     masterformat_hint: str | None = None
     # Suggested NRM (RICS New Rules of Measurement, UK) prefix. Same
-    # philosophy as masterformat_hint — only set on safe cross-walks.
+    # philosophy as masterformat_hint - only set on safe cross-walks.
     # Examples: IfcWall="2.5", IfcSlab="2.4", IfcDuctSegment="5.4".
     nrm_hint: str | None = None
 
@@ -75,7 +75,7 @@ def _arch(label: str, key: str, din: str | None, mf: str | None = None, nrm: str
 
 
 _ARCH: dict[str, IfcClassMeta] = {
-    # Walls — structural concrete vs CMU vs partitions all map to the
+    # Walls - structural concrete vs CMU vs partitions all map to the
     # same head; the matcher uses material_class to disambiguate.
     "IfcWall": _arch("Wall", "ifc.wall", "330", "04 21 00", "2.5"),
     "IfcWallStandardCase": _arch("Wall", "ifc.wall", "330", "04 21 00", "2.5"),
@@ -205,7 +205,7 @@ _CIVIL: dict[str, IfcClassMeta] = {
 }
 
 
-# ── Spatial / logical (NOT priced — used for grouping) ───────────────────
+# ── Spatial / logical (NOT priced - used for grouping) ───────────────────
 
 
 _SPATIAL: dict[str, IfcClassMeta] = {
@@ -232,7 +232,7 @@ _SUBTRACTIVE: dict[str, IfcClassMeta] = {
 }
 
 
-# ── Always-suspect (proxy / fastener — needs reclassification) ───────────
+# ── Always-suspect (proxy / fastener - needs reclassification) ───────────
 
 
 _SUSPECT: dict[str, IfcClassMeta] = {
@@ -258,7 +258,7 @@ _TABLE: dict[str, IfcClassMeta] = {
 
 # Default exclusion set materialised on every fresh session. Estimators
 # never price a void or a grid axis, but they sometimes want to inspect
-# them — the settings rail offers a "show non-billable" toggle that
+# them - the settings rail offers a "show non-billable" toggle that
 # clears this list temporarily.
 DEFAULT_EXCLUDED_CATEGORIES: tuple[str, ...] = tuple(cls for cls, meta in _TABLE.items() if meta.is_subtractive)
 
@@ -279,14 +279,14 @@ def lookup(ifc_class: str | None) -> IfcClassMeta:
     # full label + din276 / masterformat / nrm hints + trade. Genuine
     # IFC keys never reach here (they hit ``_TABLE`` above), and
     # ``normalize_to_ifc_class`` returns ``None`` for anything it cannot
-    # confidently map — so the bare fallback below still handles unknown
+    # confidently map - so the bare fallback below still handles unknown
     # IFC entities exactly as before.
     aliased = normalize_to_ifc_class(ifc_class)
     if aliased is not None and aliased != ifc_class:
         aliased_meta = _TABLE.get(aliased)
         if aliased_meta is not None:
             return aliased_meta
-    # Fallback — strip "Ifc" prefix, leave the rest.
+    # Fallback - strip "Ifc" prefix, leave the rest.
     fallback = ifc_class
     if fallback.startswith("Ifc"):
         fallback = fallback[3:]

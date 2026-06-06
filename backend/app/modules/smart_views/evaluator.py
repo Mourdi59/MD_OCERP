@@ -1,7 +1,7 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 """‌⁠‍Smart Views rule engine.
 
-The evaluator is **pure** — no DB, no IO, no globals. Callers pass in a
+The evaluator is **pure** - no DB, no IO, no globals. Callers pass in a
 :class:`SmartView` (or its rules + defaults) and a list of element-like
 mappings; the function returns a ``{stable_id: ElementState}`` dict and
 optional colour legend. That purity is what makes the engine cheap to
@@ -16,7 +16,7 @@ Counter-intuitive design choices
   catastrophic-backtracking ``re.fullmatch`` over a long input).
 * Rule order is **explicit** (``rule.order``) and ties resolve by
   stable id, so two saves of the same rule list always produce the same
-  evaluation — important for visual diff in the UI.
+  evaluation - important for visual diff in the UI.
 * ``isolate`` is implemented as "hide the complement", not "show the
   match + hide everything else", because the latter would clobber any
   ``color`` / ``transparent`` an earlier rule already applied to the
@@ -90,7 +90,7 @@ def _ifc_class_of(element: Any) -> str:
 
 
 def _prop_value(element: Any, name: str) -> Any:
-    """Look up a single property — case-insensitive on miss.
+    """Look up a single property - case-insensitive on miss.
 
     Source converters are inconsistent on casing (``FireRating`` vs
     ``fireRating`` vs ``fire_rating``); we try the literal first
@@ -100,7 +100,7 @@ def _prop_value(element: Any, name: str) -> Any:
     props = _props_of(element)
     if name in props:
         return props[name]
-    # Case-insensitive fallback — bounded by len(props), no regex.
+    # Case-insensitive fallback - bounded by len(props), no regex.
     lname = name.lower()
     for k, v in props.items():
         if isinstance(k, str) and k.lower() == lname:
@@ -149,7 +149,7 @@ def _eval_operator(operator: str, lhs: Any, rhs: Any) -> bool:
 
     *Important semantic*: every comparison operator (``eq`` / ``neq`` /
     ``contains`` / ``regex`` / ``gt`` / ``lt`` / ``between`` / ``in``)
-    returns False when ``lhs is None`` — i.e. the property is absent
+    returns False when ``lhs is None`` - i.e. the property is absent
     from the element. That mirrors SQL three-valued logic where
     ``NULL != 'x'`` is NULL (not TRUE) and stops a ``neq`` rule from
     accidentally hiding every element that simply doesn't carry the
@@ -159,7 +159,7 @@ def _eval_operator(operator: str, lhs: Any, rhs: Any) -> bool:
         return lhs is not None
     # Treat a missing property as "no match" for every comparison op.
     # Without this gate a ``neq Material 'Wood'`` rule hides every
-    # element that has no Material property at all — counterintuitive
+    # element that has no Material property at all - counterintuitive
     # and useless.
     if lhs is None:
         return False
@@ -204,14 +204,14 @@ def _eval_operator(operator: str, lhs: Any, rhs: Any) -> bool:
             return False
         lhs_s = _safe_str(lhs)
         return any(_safe_str(x) == lhs_s for x in rhs)
-    # Unknown operator — match miss, not a crash. Validation should
+    # Unknown operator - match miss, not a crash. Validation should
     # already have caught this upstream.
     return False
 
 
 def _matches(selector: SmartViewSelector, element: Any) -> bool:
     """True iff ``element`` satisfies *every* clause of ``selector``."""
-    # ifc_class clause — case-insensitive exact match. The user often
+    # ifc_class clause - case-insensitive exact match. The user often
     # types ``IfcWall`` but Revit-derived elements surface ``Wall`` or
     # ``ifcwall``; an ``IfcClass`` rule is meant to be a coarse "kind
     # of thing" filter so we are permissive with casing.
@@ -241,7 +241,7 @@ def _hash_to_hcl(label: str) -> str:
     """Deterministic, perceptually-distinct colour for an arbitrary label.
 
     Hashing through SHA-1 to spread similar inputs uniformly (a plain
-    ``hash()`` is salt-randomised in CPython by default — explicit hash
+    ``hash()`` is salt-randomised in CPython by default - explicit hash
     keeps colours stable across processes). The first 32 bits seed a
     hue in [0, 360); we fix chroma + lightness so every bucket is
     legible against a neutral viewer background. Returns ``#RRGGBB``.
@@ -296,11 +296,11 @@ def evaluate_rules(
     The signature is independent of the ORM SmartView row so the
     evaluator stays trivially testable: the service layer just unpacks
     the row and forwards the JSON rules. Returns
-    ``(states_by_stable_id, color_legend)`` — ``color_legend`` is
+    ``(states_by_stable_id, color_legend)`` - ``color_legend`` is
     populated only when at least one rule used
     ``color_by_property``.
     """
-    # Materialise once — we iterate multiple times (one pass per rule).
+    # Materialise once - we iterate multiple times (one pass per rule).
     elem_list = list(elements)
 
     # 1. Seed every element with the default action.
@@ -312,7 +312,7 @@ def evaluate_rules(
             continue
         states[sid] = ElementState(visible=start_visible, color=None, opacity=1.0)
 
-    # 2. Normalise rules — accept either Pydantic objects or raw dicts
+    # 2. Normalise rules - accept either Pydantic objects or raw dicts
     #    (so the evaluator works in service code without re-validating).
     norm_rules: list[SmartViewRule] = []
     for r in rules:
@@ -320,9 +320,9 @@ def evaluate_rules(
             norm_rules.append(r)
         elif isinstance(r, dict):
             norm_rules.append(SmartViewRule.model_validate(r))
-        # silently skip anything else — defensive
+        # silently skip anything else - defensive
 
-    # 3. Sort by (order, id) — deterministic across rebuilds.
+    # 3. Sort by (order, id) - deterministic across rebuilds.
     norm_rules.sort(key=lambda r: (r.order, r.id))
 
     # 4. Apply rules in order. Later rules override earlier ones.
@@ -345,7 +345,7 @@ def evaluate_rules(
                 states[sid].visible = False
 
         elif rule.action == "isolate":
-            # Hide the *complement* — see module docstring.
+            # Hide the *complement* - see module docstring.
             matched_ids = {sid for sid, _ in matched}
             for sid in list(states.keys()):
                 if sid not in matched_ids:
@@ -390,7 +390,7 @@ def evaluate_smart_view(
 
     Accepts either the ORM model (``view.rules`` is a list of dicts
     stored in JSON) or any object exposing ``rules`` /
-    ``default_action`` attributes — keeps the test surface friendly
+    ``default_action`` attributes - keeps the test surface friendly
     while letting routers pass the row straight through.
     """
     rules = getattr(view, "rules", None) or []

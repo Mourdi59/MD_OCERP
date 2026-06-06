@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""File Distribution module — cross-project search + distribution lists.
+"""File Distribution module - cross-project search + distribution lists.
 
 Two sub-features sharing the ``/api/v1/file-distribution`` namespace
 because they are conceptually two halves of the same "distribute a
@@ -11,7 +11,7 @@ Sub-A: Cross-project search
     across every project the caller can read, optionally augmenting
     the match with content-text snippets when the ``file_search``
     module is installed. ``file_search`` is a soft optional dependency
-    — its absence simply collapses search to canonical_name.
+    - its absence simply collapses search to canonical_name.
 
 Sub-B: Distribution lists & subscriptions
     Named recipient groups (with optional roles like ``for_review`` /
@@ -24,7 +24,7 @@ Sub-B: Distribution lists & subscriptions
 
 
 async def on_startup() -> None:
-    """Module startup hook — register RBAC permissions."""
+    """Module startup hook - register RBAC permissions."""
     from app.modules.file_distribution.permissions import (
         register_file_distribution_permissions,
     )

@@ -1,4 +1,4 @@
-"""‌⁠‍Field Reports Pydantic schemas — request/response models.
+"""‌⁠‍Field Reports Pydantic schemas - request/response models.
 
 Defines create, update, response, and summary schemas
 for field reports.
@@ -18,13 +18,13 @@ _INT32_MAX = 2_147_483_647
 # Cap at 2 MB so a single field report can't blow the request body up
 # into the megabytes (and so a malicious client can't dump arbitrary
 # blobs into the signature column). Anything > 2 MB is rejected at the
-# schema layer before the row is built — this also caps the eventual
+# schema layer before the row is built - this also caps the eventual
 # PDF export size.
 _SIGNATURE_MAX_LEN = 2 * 1024 * 1024
 
 
 def _check_signature_data(value: str | None) -> str | None:
-    """Sniff the signature payload — accept only base64 image data URIs.
+    """Sniff the signature payload - accept only base64 image data URIs.
 
     A real signature pad emits ``data:image/png;base64,...`` (Chrome /
     Firefox / Safari all default to PNG). Allow PNG / JPEG / WebP /
@@ -379,7 +379,7 @@ class FieldReportTemplateUpdate(BaseModel):
 class FieldReportTemplateResponse(BaseModel):
     """Report template returned from the API.
 
-    ``is_builtin`` flags the code-defined defaults — those have a
+    ``is_builtin`` flags the code-defined defaults - those have a
     synthetic string id (``builtin:<slug>``), are read-only, and are
     merged in by the service layer rather than stored as rows.
     """

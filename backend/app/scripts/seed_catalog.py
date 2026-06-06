@@ -84,7 +84,7 @@ async def main() -> None:
         await conn.run_sync(Base.metadata.create_all)
 
     print("=" * 70)
-    print("  CATALOG SEED — Extract top 100 resources from CWICR components")
+    print("  CATALOG SEED - Extract top 100 resources from CWICR components")
     print("=" * 70)
 
     async with async_session_factory() as session:

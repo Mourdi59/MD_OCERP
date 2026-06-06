@@ -3,9 +3,9 @@
 """File Distribution ORM models.
 
 Tables:
-    oe_file_distribution_list         — named recipient group
-    oe_file_distribution_member       — one recipient in a list
-    oe_file_distribution_subscription — per-project/kind subscription
+    oe_file_distribution_list         - named recipient group
+    oe_file_distribution_member       - one recipient in a list
+    oe_file_distribution_subscription - per-project/kind subscription
 
 Cross-project search has NO table of its own: it reads the existing
 ``oe_documents_document`` / ``oe_documents_sheet`` / ``oe_documents_photo``
@@ -35,7 +35,7 @@ from app.database import GUID, Base
 class FileDistributionList(Base):
     """A named recipient group authored by ``owner_id``.
 
-    ``project_id`` is nullable — NULL means a personal list usable on
+    ``project_id`` is nullable - NULL means a personal list usable on
     any project the owner can access (e.g. "External Consultants").
     When ``is_shared`` is true and ``project_id`` is set, project
     members can re-use the list (read + send to) but never edit it.
@@ -73,7 +73,7 @@ class FileDistributionList(Base):
         lazy="selectin",
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — debug helper
+    def __repr__(self) -> str:  # pragma: no cover - debug helper
         return (
             f"<FileDistributionList {self.name!r} owner={self.owner_id} "
             f"project={self.project_id} shared={self.is_shared}>"
@@ -83,9 +83,9 @@ class FileDistributionList(Base):
 class FileDistributionMember(Base):
     """One recipient in a :class:`FileDistributionList`.
 
-    ``email`` is the canonical key — a member is identified by the
+    ``email`` is the canonical key - a member is identified by the
     address messages will go to. ``display_name`` is a free-text label
-    so the list reads naturally ("Lena Schmidt — Structural Reviewer")
+    so the list reads naturally ("Lena Schmidt - Structural Reviewer")
     even when the address is a shared inbox. ``role`` is an optional
     transmittal-style label (``for_review`` / ``fyi`` / ``for_construction``)
     so the same list can be used to drive review packages.
@@ -122,7 +122,7 @@ class FileDistributionMember(Base):
         back_populates="members",
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — debug helper
+    def __repr__(self) -> str:  # pragma: no cover - debug helper
         return f"<FileDistributionMember {self.email} list={self.list_id}>"
 
 
@@ -189,7 +189,7 @@ class FileDistributionSubscription(Base):
         server_default="1",
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — debug helper
+    def __repr__(self) -> str:  # pragma: no cover - debug helper
         return (
             f"<FileDistributionSubscription project={self.project_id} "
             f"kind={self.file_kind} email={self.subscriber_email}>"

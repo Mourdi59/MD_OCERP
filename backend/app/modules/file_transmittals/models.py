@@ -4,11 +4,11 @@
 
 Tables
 ------
-* ``oe_file_transmittal`` — header row (one per outgoing transmittal).
-* ``oe_file_transmittal_item`` — files included in the transmittal
+* ``oe_file_transmittal`` - header row (one per outgoing transmittal).
+* ``oe_file_transmittal_item`` - files included in the transmittal
   (polymorphic ``file_kind`` + ``file_id`` reference, matching the
   existing ``file_versions`` convention).
-* ``oe_file_transmittal_recipient`` — recipient email + ack token.
+* ``oe_file_transmittal_recipient`` - recipient email + ack token.
 
 Numbering
 ~~~~~~~~~
@@ -58,7 +58,7 @@ TRANSMITTAL_STATUSES: tuple[str, ...] = (
 
 
 class FileTransmittal(Base):
-    """One outgoing transmittal — header + relations to items + recipients."""
+    """One outgoing transmittal - header + relations to items + recipients."""
 
     __tablename__ = "oe_file_transmittal"
     __table_args__ = (
@@ -106,7 +106,7 @@ class FileTransmittal(Base):
 
 
 class FileTransmittalItem(Base):
-    """One file inside a transmittal — snapshots canonical_name + version."""
+    """One file inside a transmittal - snapshots canonical_name + version."""
 
     __tablename__ = "oe_file_transmittal_item"
     __table_args__ = (
@@ -131,7 +131,7 @@ class FileTransmittalItem(Base):
 
 
 class FileTransmittalRecipient(Base):
-    """One recipient of a transmittal — email + ack state."""
+    """One recipient of a transmittal - email + ack state."""
 
     __tablename__ = "oe_file_transmittal_recipient"
     __table_args__ = (

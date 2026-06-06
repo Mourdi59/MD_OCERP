@@ -1,7 +1,7 @@
 """‌⁠‍Collaboration-lock ORM models.
 
 Tables:
-    oe_collab_lock — pessimistic per-entity soft lock.
+    oe_collab_lock - pessimistic per-entity soft lock.
 
 A lock is a row uniquely keyed by ``(entity_type, entity_id)``.  The
 holder renews it with ``heartbeat_at`` and a new ``expires_at`` every
@@ -11,7 +11,7 @@ an entity hostage.
 
 The table is intentionally *append-in-place*: there is no history.  If
 you need an audit trail of who edited a row, use the existing
-collaboration comments / event bus — the lock table is state, not log.
+collaboration comments / event bus - the lock table is state, not log.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ class CollabLock(Base):
     )
 
     # Multi-tenant scope.  Nullable because the current user model has no
-    # organisation column — when one is added, the service fills it in.
+    # organisation column - when one is added, the service fills it in.
     org_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
 
     entity_type: Mapped[str] = mapped_column(String(64), nullable=False)

@@ -1,4 +1,4 @@
-"""‌⁠‍Procurement Pydantic schemas — request/response models."""
+"""‌⁠‍Procurement Pydantic schemas - request/response models."""
 
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -53,7 +53,7 @@ class POCreate(BaseModel):
     po_type: str = Field(default="standard", max_length=50)
     issue_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$", max_length=20)
     delivery_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$", max_length=20)
-    # Empty by default — the service inherits the parent project's currency
+    # Empty by default - the service inherits the parent project's currency
     # when the caller does not supply one. Never hardcode EUR (task #217).
     currency_code: str = Field(default="", max_length=10)
     amount_subtotal: str = Field(default="0", max_length=50)
@@ -133,7 +133,7 @@ class POResponse(BaseModel):
     po_type: str = "standard"
     issue_date: str | None = None
     delivery_date: str | None = None
-    currency_code: str = ""  # empty until set — never assume EUR (task #217)
+    currency_code: str = ""  # empty until set - never assume EUR (task #217)
     amount_subtotal: str = "0"
     tax_amount: str = "0"
     amount_total: str = "0"
@@ -168,7 +168,7 @@ class POResponse(BaseModel):
     @field_validator("retention_percent", mode="before")
     @classmethod
     def _coerce_retention_percent(cls, v: Any) -> str:
-        """Numeric(5,2) arrives as a Decimal from the ORM — render as string."""
+        """Numeric(5,2) arrives as a Decimal from the ORM - render as string."""
         if v is None:
             return "0.00"
         return str(v)
@@ -177,7 +177,7 @@ class POResponse(BaseModel):
     @classmethod
     def _coerce_retainage(cls, v: Any) -> str:
         """These are ORM *methods*, not columns. ``from_attributes`` hands us
-        the bound method object — collapse any callable (or None) to "0"; the
+        the bound method object - collapse any callable (or None) to "0"; the
         router stamps the real computed value after validation."""
         if v is None or callable(v):
             return "0"
@@ -200,7 +200,7 @@ class PORetainageReleaseResponse(BaseModel):
     @field_validator("release_amount", mode="before")
     @classmethod
     def _coerce_release_amount(cls, v: Any) -> str:
-        """Numeric(18,4) arrives as a Decimal from the ORM — render as string."""
+        """Numeric(18,4) arrives as a Decimal from the ORM - render as string."""
         if v is None:
             return "0"
         return str(v)
@@ -316,12 +316,12 @@ class GRResponse(BaseModel):
 
     # api-HIGH (GR tab): the frontend Goods-Receipts table renders these
     # fields, but they were missing from the response and rendered blank.
-    # All ADDITIVE + OPTIONAL — existing consumers are unaffected.
-    #   * gr_reference   — friendly label, aliased from delivery_note_number
-    #   * po_number      — parent PO number (populated by the router/service)
-    #   * received_qty   — Σ items[].quantity_received  (Decimal-as-string)
-    #   * ordered_qty    — Σ items[].quantity_ordered   (Decimal-as-string)
-    #   * description    — passthrough notes/summary for the row
+    # All ADDITIVE + OPTIONAL - existing consumers are unaffected.
+    #   * gr_reference   - friendly label, aliased from delivery_note_number
+    #   * po_number      - parent PO number (populated by the router/service)
+    #   * received_qty   - Σ items[].quantity_received  (Decimal-as-string)
+    #   * ordered_qty    - Σ items[].quantity_ordered   (Decimal-as-string)
+    #   * description    - passthrough notes/summary for the row
     gr_reference: str | None = Field(
         default=None,
         # ``delivery_note_number`` is the natural reference shown to the user;
@@ -329,7 +329,7 @@ class GRResponse(BaseModel):
         validation_alias="delivery_note_number",
     )
     po_number: str | None = None
-    # Decimal quantities MUST serialise as STRING (never float) — mirrors
+    # Decimal quantities MUST serialise as STRING (never float) - mirrors
     # quantity_received / quantity_ordered on GRItemResponse.
     received_qty: str | None = None
     ordered_qty: str | None = None
@@ -394,11 +394,11 @@ class POLineMatchStatus(BaseModel):
     ``match_status`` collapses the PO/GR/Invoice quantity comparison into
     one tag the UI badge consumes:
 
-    * ``ok``             — invoiced and received quantities cover the order.
-    * ``partial``        — some quantity received or invoiced, more pending.
-    * ``unmatched``      — nothing received or invoiced yet.
-    * ``over_received``  — confirmed GR quantity exceeds the PO line.
-    * ``over_invoiced``  — invoiced quantity exceeds received quantity.
+    * ``ok``             - invoiced and received quantities cover the order.
+    * ``partial``        - some quantity received or invoiced, more pending.
+    * ``unmatched``      - nothing received or invoiced yet.
+    * ``over_received``  - confirmed GR quantity exceeds the PO line.
+    * ``over_invoiced``  - invoiced quantity exceeds received quantity.
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -448,6 +448,6 @@ class SupplierScorecardResponse(BaseModel):
     total_gr_count: int = 0
     # Number of GRs counted as on-time (numerator of on_time_delivery_pct).
     on_time_count: int = 0
-    # GRs whose parent PO had no delivery_date — excluded from on-time
+    # GRs whose parent PO had no delivery_date - excluded from on-time
     # denominator so unscheduled POs do not inflate the score (P0-2).
     unscheduled_count: int = 0

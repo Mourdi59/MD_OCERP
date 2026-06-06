@@ -7,12 +7,12 @@ Before this module existed, ``ReportingService.generate_report`` persisted a
 was always ``None``, no HTML/PDF body was emitted, and there was no endpoint
 to fetch the rendered content back. The /reporting + /reports UIs surfaced
 the metadata row in their history panels but a user clicking "view" had
-nothing to view — the renderer was the missing piece (W23 P0 audit, task
+nothing to view - the renderer was the missing piece (W23 P0 audit, task
 #252).
 
 This file is the engine. It is deliberately tiny:
 
-- Pure stdlib — no Jinja2, no WeasyPrint, no LaTeX, no headless Chrome. The
+- Pure stdlib - no Jinja2, no WeasyPrint, no LaTeX, no headless Chrome. The
   the architecture guide lightweight constraint rules out heavy template engines for
   the core 2-GB-VPS deploy. A real PDF backend can layer on later via a
   marketplace module.
@@ -39,7 +39,7 @@ free-text fields" block so a custom template never falls off the page.
 
 Each section reads a sub-dict from ``data_snapshot[section.id]``. If that
 key is missing the section is skipped (so a partially populated snapshot
-still renders — important when the cron worker can't reach every
+still renders - important when the cron worker can't reach every
 downstream module).
 
 Public API
@@ -55,7 +55,7 @@ Public API
 ...     generated_at="2026-05-27T10:00:00Z",
 ... )
 
-The function is sync and pure — no DB, no network, no clock. The service
+The function is sync and pure - no DB, no network, no clock. The service
 layer is responsible for assembling ``data_snapshot`` from the live module
 state before invoking the renderer.
 """
@@ -71,7 +71,7 @@ from typing import Any
 class ReportRenderer:
     """Lightweight HTML report renderer.
 
-    Stateless — instances are cheap and the class exists purely so the
+    Stateless - instances are cheap and the class exists purely so the
     service layer can hold a dependency it can swap for a fake in tests.
     """
 
@@ -96,7 +96,7 @@ class ReportRenderer:
                 but we ``html.escape`` again at the renderer boundary.
             project_name: Human-readable project identifier shown in the
                 report header.
-            template_data: ``ReportTemplate.template_data`` — expects an
+            template_data: ``ReportTemplate.template_data`` - expects an
                 optional ``sections`` list. Sections without IDs are
                 skipped; sections with unknown IDs render as a generic
                 heading + free-text dump.
@@ -150,7 +150,7 @@ class ReportRenderer:
                 rendered_any = True
 
         if not rendered_any:
-            # Empty snapshot — render an explicit "no data" notice instead
+            # Empty snapshot - render an explicit "no data" notice instead
             # of an empty <main>. Surfacing this in the HTML matters for
             # the cron-worker path: if a scheduled render produced zero
             # sections we want the recipient to see why, not a blank PDF.
@@ -186,7 +186,7 @@ class ReportRenderer:
         """Render one section block, or return ``None`` to skip it.
 
         Empty payloads (``None`` / empty dict / empty list) are treated
-        as "skip" rather than "render an empty block" — the report
+        as "skip" rather than "render an empty block" - the report
         should not contain headings with no body.
         """
         if payload is None:
@@ -343,7 +343,7 @@ class ReportRenderer:
 
         Nested dicts collapse into sub-tables, nested lists collapse via
         ``_render_list``. Scalars are HTML-escaped string-coerced. This
-        is intentionally generic — every system template's
+        is intentionally generic - every system template's
         ``template_data`` block uses ``"fields": [...]`` lists that the
         service layer is expected to materialise into matching keys, but
         we don't enforce the shape: an unknown / partial dict still
@@ -430,7 +430,7 @@ class ReportRenderer:
 
     @staticmethod
     def _stylesheet() -> str:
-        """Embedded CSS — kept inline so the HTML is fully portable.
+        """Embedded CSS - kept inline so the HTML is fully portable.
 
         Print-friendly: black-on-white, readable at A4, no external
         assets (which would also trip the SSRF concern flagged in

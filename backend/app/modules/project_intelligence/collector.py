@@ -1,4 +1,4 @@
-"""‌⁠‍Project state collector — gathers project data from all modules.
+"""‌⁠‍Project state collector - gathers project data from all modules.
 
 Uses raw SQL via session.execute(text(...)) for speed and to avoid
 circular imports with other module services. All queries are project-scoped
@@ -141,7 +141,7 @@ class CostModelState:
 
 # ── v1.4.6: 4 newly-wired domains ─────────────────────────────────────────
 #
-# These 4 modules existed but the collector was blind to them — score
+# These 4 modules existed but the collector was blind to them - score
 # was a partial picture.  Each new dataclass mirrors the shape of the
 # pre-existing ones (one ``completion_pct`` for the dashboard, plus the
 # few counts the scorer needs to detect "missing" gaps).
@@ -606,7 +606,7 @@ async def _collect_documents(
         # GROUP_CONCAT is SQLite-only; PostgreSQL spells the same aggregate
         # ``string_agg(category, ',')``. Without this branch the query raises
         # "function group_concat does not exist" on PG, which the bare except
-        # below swallows — silently returning 0 files / no categories. Detect
+        # below swallows - silently returning 0 files / no categories. Detect
         # the dialect from this session's bind (not the global engine, which can
         # differ from the session under test).
         dialect_name = session.bind.dialect.name if session.bind else "sqlite"
@@ -708,7 +708,7 @@ async def _collect_cost_model(
         state.completion_pct = min(1.0, pct)
 
         # Latest predictive EVM forecast (TOP-30 #19). Read directly from
-        # the full_evm table — additive, fail-soft. ``alert_status`` of
+        # the full_evm table - additive, fail-soft. ``alert_status`` of
         # 'triggered' or 'snoozed' means a forecast threshold is currently
         # breached, which the forecast-gap rule turns into a critical gap.
         try:
@@ -945,7 +945,7 @@ async def _collect_assemblies(
     """Collect assemblies / calculations domain state."""
     state = AssembliesState()
     try:
-        # Project-scoped + template assemblies — templates are global
+        # Project-scoped + template assemblies - templates are global
         # but available to every project, so we count both.
         row = (
             await session.execute(
@@ -1030,7 +1030,7 @@ async def collect_project_state(
     now = datetime.now(UTC).isoformat()
 
     # Run all collectors in parallel.  v1.4.6 added the last 4
-    # entries (requirements / bim / tasks / assemblies) — the
+    # entries (requirements / bim / tasks / assemblies) - the
     # collector was previously blind to these domains so the score
     # was a partial picture and the advisor could not surface gaps
     # like "no requirements defined" or "BIM elements not linked".
@@ -1039,7 +1039,7 @@ async def collect_project_state(
     # sharing the request-scoped ``session``. An AsyncSession is not
     # safe for concurrent use, and on PostgreSQL (the v6 default) a
     # single failing query inside one collector aborts the shared
-    # transaction — every concurrent sibling then dies with
+    # transaction - every concurrent sibling then dies with
     # InFailedSQLTransactionError, gets swallowed by its broad except,
     # and silently returns an empty default. Isolated sessions keep the
     # parallel fan-out (each session used by exactly one coroutine) and

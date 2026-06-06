@@ -1,16 +1,16 @@
-"""‌⁠‍4D module HTTP API (Section 6 — MVP slice).
+"""‌⁠‍4D module HTTP API (Section 6 - MVP slice).
 
 Two routers are exported here so :mod:`app.main` can mount them under the
 ``/api/v2/`` surface called out in the spec:
 
-* :data:`schedules_v2_router`         — ``/api/v2/schedules/...``
-* :data:`eac_schedule_links_router`   — ``/api/v2/eac/schedule-links/...``
+* :data:`schedules_v2_router`         - ``/api/v2/schedules/...``
+* :data:`eac_schedule_links_router`   - ``/api/v2/eac/schedule-links/...``
 
 The router defers business logic to :mod:`service_4d`. Tenant / project
 authorisation re-uses the existing helpers from the v1 schedule router.
 
 The routes intentionally cover the MVP surface only. PMXML / MSPDI / video
-export / AI auto-suggest are not wired up — see the section deliverables note
+export / AI auto-suggest are not wired up - see the section deliverables note
 for the deferred slice list.
 """
 
@@ -46,7 +46,7 @@ schedules_v2_router = APIRouter(prefix="/schedules", tags=["4D Schedules"])
 eac_schedule_links_router = APIRouter(prefix="/eac/schedule-links", tags=["4D EAC Schedule Links"])
 
 
-# ── Pydantic schemas (router-local — kept here to avoid bloating the v1 module) ──
+# ── Pydantic schemas (router-local - kept here to avoid bloating the v1 module) ──
 
 
 class EacScheduleLinkCreate(BaseModel):
@@ -388,7 +388,7 @@ async def dry_run_link(
     user_id: CurrentUserId,
     body: DryRunRequest = Body(default_factory=DryRunRequest),
 ) -> DryRunResponse:
-    """Re-resolve a saved link's selector — no DB writes other than caching."""
+    """Re-resolve a saved link's selector - no DB writes other than caching."""
     service = EacScheduleLinkService(session)
     link = await service.get(link_id)
     if link is None:

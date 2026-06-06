@@ -3,15 +3,15 @@
 Centralises three concerns that the historical inline parsers each
 re-implemented (and got slightly differently right) in ``router.py``:
 
-* ``decode_text_bytes()`` — try a sequence of codecs (UTF-8 BOM,
+* ``decode_text_bytes()`` - try a sequence of codecs (UTF-8 BOM,
   UTF-8, Latin-1, CP1252) and return the first that round-trips
   losslessly. BC3 files in particular ship in CP1252 / Latin-1 by
   convention, and DACH CSV exports from Excel default to Latin-1.
-* ``safe_float()`` — locale-tolerant float parse. Understands
+* ``safe_float()`` - locale-tolerant float parse. Understands
   European (``1.234,56``) and US (``1,234.56``) thousand/decimal
   conventions, trailing currency / unit suffixes (``"185.00 EUR"``),
   and Spanish negative signs (``-3,5``).
-* ``parse_numeric_cell()`` — strict variant for Excel/CSV imports:
+* ``parse_numeric_cell()`` - strict variant for Excel/CSV imports:
   empty cells parse to ``0.0`` with ``error=None``; non-empty cells
   that can't be coerced return ``(None, error_message)`` so the
   caller can surface a per-row diagnostic.
@@ -25,7 +25,7 @@ from typing import Any
 
 # Encoding probe order matters: BOM-tagged UTF-8 first (Excel exports),
 # then plain UTF-8, then the DACH/Spanish/LATAM legacy CP1252 (covers
-# Latin-1 as a strict subset). Latin-1 is the last-resort fallback —
+# Latin-1 as a strict subset). Latin-1 is the last-resort fallback -
 # it never raises (every byte is a valid code-point), so it must come
 # last or it would shadow legitimate UTF-8.
 DEFAULT_ENCODINGS: tuple[str, ...] = ("utf-8-sig", "utf-8", "cp1252", "latin-1")
@@ -56,7 +56,7 @@ def decode_text_bytes(
         except UnicodeDecodeError as exc:
             last_exc = exc
             continue
-    # If we got here every codec failed — re-raise the last exception
+    # If we got here every codec failed - re-raise the last exception
     # rather than synthesising a fresh one (preserves the offending
     # byte position for the debug log).
     if last_exc is not None:
@@ -72,7 +72,7 @@ def safe_float(value: Any, default: float = 0.0) -> float:
 
     * European decimal-comma (``"1.234,56"`` → ``1234.56``).
     * US decimal-dot (``"1,234.56"`` → ``1234.56``).
-    * Single decimal-comma (``"42,5"`` → ``42.5``) — covers de_DE,
+    * Single decimal-comma (``"42,5"`` → ``42.5``) - covers de_DE,
       es_ES, fr_FR, pt_PT.
     * Trailing whitespace + currency / unit suffix
       (``"150,00 EUR"`` / ``"3.0 m"`` → ``150.0`` / ``3.0``).
@@ -84,7 +84,7 @@ def safe_float(value: Any, default: float = 0.0) -> float:
     if value is None:
         return default
     if isinstance(value, bool):
-        # bool is an int subclass — explicitly reject so True/False
+        # bool is an int subclass - explicitly reject so True/False
         # is not silently accepted as 1/0 in a numeric column.
         return default
     if isinstance(value, (int, float)):
@@ -104,7 +104,7 @@ def safe_float(value: Any, default: float = 0.0) -> float:
             sign = -1.0
         text = text[1:].strip()
 
-    # Take only the leading numeric run plus separators — trailing
+    # Take only the leading numeric run plus separators - trailing
     # ``" EUR"`` / ``" m"`` is silently dropped.
     import re
 
@@ -147,7 +147,7 @@ def safe_float(value: Any, default: float = 0.0) -> float:
 def parse_numeric_cell(value: Any) -> tuple[float | None, str | None]:
     """Strict numeric parse for spreadsheet imports.
 
-    Empty cells parse to ``(0.0, None)`` — the column was simply blank.
+    Empty cells parse to ``(0.0, None)`` - the column was simply blank.
     Non-empty cells that can't be coerced return ``(None, error_message)``
     so the caller can surface a per-row diagnostic instead of silently
     zero-filling.
@@ -167,6 +167,6 @@ def parse_numeric_cell(value: Any) -> tuple[float | None, str | None]:
     # Sentinel for unparseable: safe_float returns NaN-equivalent only
     # if we explicitly ask for it. Easier to re-parse with a NaN-default.
     parsed = safe_float(text, default=float("nan"))
-    if parsed != parsed:  # NaN — safe_float couldn't coerce it.
+    if parsed != parsed:  # NaN - safe_float couldn't coerce it.
         return None, f"expected a number, got {text!r}"
     return parsed, None

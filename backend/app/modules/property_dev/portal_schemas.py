@@ -61,9 +61,9 @@ class PortalTokenResponse(BaseModel):
 
 
 class PortalTokenIssueResponse(BaseModel):
-    """Response from ``POST /issue/`` — includes the one-time token URL.
+    """Response from ``POST /issue/`` - includes the one-time token URL.
 
-    The full URL is rendered once and never again — the JWT is not
+    The full URL is rendered once and never again - the JWT is not
     persisted in plaintext (only its ``jti`` lands on the audit row).
     """
 
@@ -77,7 +77,7 @@ class PortalTokenIssueResponse(BaseModel):
 
 
 class PortalVerifyRequest(BaseModel):
-    """``POST /verify/`` body — the magic-link token from the URL."""
+    """``POST /verify/`` body - the magic-link token from the URL."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -85,7 +85,7 @@ class PortalVerifyRequest(BaseModel):
 
 
 class PortalVerifyResponse(BaseModel):
-    """Minimal buyer summary — what the portal landing page renders."""
+    """Minimal buyer summary - what the portal landing page renders."""
 
     buyer_id: UUID
     buyer_full_name: str
@@ -164,7 +164,7 @@ class PortalInstalmentRow(BaseModel):
 class PortalDocumentRow(BaseModel):
     """A signed/delivered document the buyer can download.
 
-    ``download_url`` is scoped to the magic-link's TTL — when the
+    ``download_url`` is scoped to the magic-link's TTL - when the
     token expires, the URL stops working.
     """
 
@@ -221,7 +221,7 @@ class PortalOverviewResponse(BaseModel):
 # These are KYC document-type codes the buyer is allowed to upload via
 # the portal. Free-string at the storage layer (metadata.kyc_code on the
 # stored document) so we don't need a migration each time a jurisdiction
-# adds a doc type — the validation is in the schema.
+# adds a doc type - the validation is in the schema.
 _KYC_DOC_TYPE_PATTERN = (
     r"^(passport|national_id|address_proof|income_statement|"
     r"bank_statement|tax_return|source_of_funds|aml_questionnaire|"
@@ -235,7 +235,7 @@ class PortalKycUploadResponse(BaseModel):
     document_id: UUID
     document_type: str
     accepted_at: datetime
-    storage_path: str  # diagnostic — buyer doesn't act on this
+    storage_path: str  # diagnostic - buyer doesn't act on this
 
 
 # ── Contact agent (public via token) ───────────────────────────────────

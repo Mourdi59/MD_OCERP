@@ -104,7 +104,7 @@ router = APIRouter(tags=["Dashboards"])
 
 @router.get("/_health", include_in_schema=False)
 async def module_health() -> dict[str, str]:
-    """‌⁠‍Module-scoped health probe — mirrors the `/api/health` shape."""
+    """‌⁠‍Module-scoped health probe - mirrors the `/api/health` shape."""
     return {
         "module": manifest.name,
         "version": manifest.version,
@@ -467,7 +467,7 @@ async def post_cascade_values(
     Returns the distinct values of ``target_column`` whose row-set is
     consistent with every entry in ``selected`` AND fuzzy-matches ``q``
     (case-insensitive substring). Empty arrays in ``selected`` are
-    silently dropped — they mean "no filter on that column".
+    silently dropped - they mean "no filter on that column".
     """
     tenant_id = _tenant_id_from_payload(payload)
     service = SnapshotService(repo=SnapshotRepository(session))
@@ -533,7 +533,7 @@ async def get_cascade_row_count(
     """Return the matched / total row count for a selection.
 
     The selection arrives as a single URL-safe JSON blob to keep the
-    GET query string flat — the cascade panel sends it on every chip
+    GET query string flat - the cascade panel sends it on every chip
     add/remove for the live "X of Y rows match" counter.
     """
     import json
@@ -798,7 +798,7 @@ async def post_preset_sync_check(
 
     The probe is non-destructive: it returns a :class:`SyncReport`
     describing column renames, dropped columns, dropped filter values
-    and dtype changes — and crucially flips ``last_sync_check_at`` plus
+    and dtype changes - and crucially flips ``last_sync_check_at`` plus
     re-classifies ``sync_status`` so the dashboard list can show the
     right badge colour without re-running the probe.
     """
@@ -920,7 +920,7 @@ async def _build_sync_report(
     probe = PresetSyncProbe()
 
     if not snapshot_id:
-        # No snapshot referenced — the preset is trivially in-sync but
+        # No snapshot referenced - the preset is trivially in-sync but
         # we still hand back an empty report so the UI badge updates.
         return probe.run(
             config,
@@ -931,7 +931,7 @@ async def _build_sync_report(
     pool = get_duckdb_pool()
     # Best-effort: any exception means "no DuckDB-visible snapshot" and
     # we fall back to an empty meta. The probe will surface every
-    # referenced column as "dropped" — which is the correct behaviour
+    # referenced column as "dropped" - which is the correct behaviour
     # for a snapshot that's been deleted.
     columns_to_probe: list[str] = []
     cfg_filters = config.get("filters") if isinstance(config, dict) else None
@@ -941,7 +941,7 @@ async def _build_sync_report(
     try:
         # The probe needs a project_id to namespace the parquet read.
         # ``config_json`` carries one when the preset was saved against
-        # a specific project — global presets have no DuckDB-resolvable
+        # a specific project - global presets have no DuckDB-resolvable
         # snapshot so we fall through to the empty-meta path.
         project_id = config.get("project_id")
         if not project_id:
@@ -1202,7 +1202,7 @@ async def post_integrity_report(
     """Compute the dataset-integrity report for ``snapshot_id``.
 
     Returns null counts, dtype mismatches, IQR outliers and a per-column
-    issue list — the panel surfaces these as a "did this upload land
+    issue list - the panel surfaces these as a "did this upload land
     cleanly?" dashboard before the user starts slicing charts.
 
     Both ``snapshot_id`` and ``project_id`` are required in the body so
@@ -1216,7 +1216,7 @@ async def post_integrity_report(
     except SnapshotError as exc:
         _raise_http(exc, locale)
 
-    # Defence in depth — the body's project_id must agree with the
+    # Defence in depth - the body's project_id must agree with the
     # owning row, otherwise a caller could request integrity for a
     # snapshot in a project they don't own.
     if str(row.project_id) != str(body.project_id):
@@ -1232,7 +1232,7 @@ async def post_integrity_report(
     from app.modules.dashboards.integrity import compute_integrity_report
 
     if df is None:
-        # Snapshot has no on-disk parquet — return an empty report
+        # Snapshot has no on-disk parquet - return an empty report
         # rather than 404; this keeps the UI consistent for in-flight
         # / freshly-deleted snapshots.
         report = compute_integrity_report(
@@ -1293,7 +1293,7 @@ async def get_snapshot_timeline(
     session: SessionDep,
     project_id: Annotated[uuid.UUID, Query(description="Project to scope the timeline to")],
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
-    before: Annotated[datetime | None, Query(description="Cursor — only return rows with created_at < before")] = None,
+    before: Annotated[datetime | None, Query(description="Cursor - only return rows with created_at < before")] = None,
     locale: Annotated[str, Query()] = "en",
 ):
     """Return the snapshot timeline newest-first.
@@ -1381,7 +1381,7 @@ async def get_snapshot_diff(
     enforces this client-side, but we re-check server-side to avoid
     cross-project leaks). The endpoint reports schema-level changes
     (columns added / removed / dtype changed) and the row-count
-    delta — it does **not** scan parquet files for value-level diffs;
+    delta - it does **not** scan parquet files for value-level diffs;
     that would be too expensive for a "click any two snapshots" UX.
     """
     from app.modules.dashboards.schemas import (
@@ -1482,7 +1482,7 @@ async def post_federation_build(
     enforced), opens an isolated DuckDB connection, registers a UNION
     ALL view across the snapshots' parquet files, and returns the
     reconciled column list + provenance counts. The DuckDB view itself
-    does not survive the request — clients call ``/aggregate`` to do
+    does not survive the request - clients call ``/aggregate`` to do
     the rollup in a single round trip.
     """
     from app.modules.dashboards.federation import (
@@ -1706,14 +1706,14 @@ def _raise_rows_http(exc: RowsIOError, locale: str) -> None:
 # Bug: the dynamic route ``GET /snapshots/{snapshot_id}`` is declared above the
 # literal routes ``GET /snapshots/timeline`` and ``GET /snapshots/diff``.
 # Starlette matches routes in declaration order, so "timeline"/"diff" were being
-# captured by ``{snapshot_id}`` and validated as a UUID — both literal endpoints
+# captured by ``{snapshot_id}`` and validated as a UUID - both literal endpoints
 # permanently returned 422 and were unreachable (the frontend's getSnapshotTimeline
 # / diffSnapshots calls always hit their error state).
 #
 # Fix without relocating the (large) handler bodies: after the router is fully
 # built, promote the literal ``/snapshots/<literal>`` routes ahead of the
 # dynamic ``/snapshots/{snapshot_id}`` route in ``router.routes``. Idempotent and
-# additive — no paths, methods, signatures or response models change, so the
+# additive - no paths, methods, signatures or response models change, so the
 # frontend contract (which already targets these exact paths) is untouched.
 def _promote_literal_snapshot_routes() -> None:
     routes = router.routes
@@ -1733,7 +1733,7 @@ def _promote_literal_snapshot_routes() -> None:
         return
     for r in to_move:
         routes.remove(r)
-    # Recompute the dynamic route's index — removals above may have shifted it.
+    # Recompute the dynamic route's index - removals above may have shifted it.
     insert_at = next(
         (i for i, r in enumerate(routes) if getattr(r, "path", None) == "/snapshots/{snapshot_id}"),
         len(routes),

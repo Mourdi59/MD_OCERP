@@ -1,7 +1,7 @@
 """‌⁠‍Procurement data access layer.
 
 All database queries for procurement entities live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid
@@ -250,7 +250,7 @@ class GoodsReceiptRepository:
         status: str | None = None,
         limit: int = 50,
         offset: int = 0,
-        # NOTE: annotation is quoted (lazy) on purpose — this class defines a
+        # NOTE: annotation is quoted (lazy) on purpose - this class defines a
         # method named ``list`` above, which shadows the ``list`` builtin inside
         # the class-body namespace, so an *eagerly evaluated* ``list[...]`` here
         # raises "'function' object is not subscriptable" at import time.
@@ -316,7 +316,7 @@ class GRItemRepository:
 
 
 class PORetainageReleaseRepository:
-    """Data access for PORetainageRelease — the retainage-release audit log."""
+    """Data access for PORetainageRelease - the retainage-release audit log."""
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session

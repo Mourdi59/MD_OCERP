@@ -6,10 +6,10 @@ grade NAT / link-local ranges, cloud-metadata addresses, multicast, or any
 non-http(s) scheme (``file://``, ``gopher://``, ``dict://`` …).
 
 Two layers of protection:
-    1. ``validate_external_url`` — synchronous, no DNS, good for Pydantic
+    1. ``validate_external_url`` - synchronous, no DNS, good for Pydantic
        validators. Rejects bad schemes, literal IPs in blocklisted ranges,
        and the small set of hard-coded cloud metadata hostnames.
-    2. ``resolve_and_validate_external_url`` — async, performs DNS lookup
+    2. ``resolve_and_validate_external_url`` - async, performs DNS lookup
        and rejects any resolved address in a blocklisted range. Call this
        right before ``httpx.post`` so a DNS rebinding or a hostname that
        resolves to a private IP is caught at dispatch time.
@@ -80,7 +80,7 @@ def _parse_host(url: str) -> tuple[str, str]:
 
     scheme = (parsed.scheme or "").lower()
     if scheme not in _ALLOWED_SCHEMES:
-        raise UnsafeUrlError(f"URL scheme {scheme!r} is not allowed — use http or https")
+        raise UnsafeUrlError(f"URL scheme {scheme!r} is not allowed - use http or https")
 
     host = (parsed.hostname or "").strip().lower()
     if not host:
@@ -105,7 +105,7 @@ def validate_external_url(url: str) -> str:
     try:
         addr = ipaddress.ip_address(host)
     except ValueError:
-        return url  # hostname — resolve later
+        return url  # hostname - resolve later
 
     if _is_blocked_address(addr):
         raise UnsafeUrlError(f"URL targets non-routable address {addr}")
@@ -123,7 +123,7 @@ async def resolve_and_validate_external_url(url: str) -> str:
     validate_external_url(url)  # fast-path
     _, host = _parse_host(url)
 
-    # Skip DNS for literal IPs — already validated above.
+    # Skip DNS for literal IPs - already validated above.
     try:
         ipaddress.ip_address(host)
         return url

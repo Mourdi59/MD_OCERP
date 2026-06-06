@@ -3,7 +3,7 @@
 """Pydantic schemas for the client-error sink endpoint.
 
 The payload mirrors the anonymised entry produced by
-``frontend/src/shared/lib/errorLogger.ts`` — emails, UUIDs, API keys,
+``frontend/src/shared/lib/errorLogger.ts`` - emails, UUIDs, API keys,
 bearer tokens, long numeric ids, and well-known PII JSON fields are
 already scrubbed client-side before the POST is fired.
 

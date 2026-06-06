@@ -1,5 +1,5 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""‌⁠‍Customer & Partner Portal — business logic.
+"""‌⁠‍Customer & Partner Portal - business logic.
 
 Pure-function helpers (token gen, hashing, permission predicate) plus a
 :class:`PortalService` that wraps the repositories with idempotent operations
@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 MAGIC_LINK_TTL = timedelta(hours=24)
 SESSION_TTL = timedelta(days=7)
 
-# Permission rank — higher number satisfies all lower-number requirements.
+# Permission rank - higher number satisfies all lower-number requirements.
 _PERMISSION_RANK: dict[str, int] = {
     "view": 1,
     "comment": 2,
@@ -71,7 +71,7 @@ def generate_token() -> str:
     """‌⁠‍Generate a random 64-hex-char token (32 bytes of entropy).
 
     Used for both magic-link tokens and session tokens. The plaintext is
-    shown to the caller exactly once — only ``hash_token(plain)`` is stored.
+    shown to the caller exactly once - only ``hash_token(plain)`` is stored.
     """
     return secrets.token_hex(32)
 
@@ -157,7 +157,7 @@ class PortalService:
         else:
             user = existing
             # Refresh the invitation window. Don't downgrade a confirmed
-            # account back to "invited" — that would break access checks.
+            # account back to "invited" - that would break access checks.
             if user.status == "expired":
                 await self.user_repo.update_fields(user.id, status="invited")
                 user.status = "invited"
@@ -275,7 +275,7 @@ class PortalService:
 
         Raises HTTPException 400 on expired / consumed / wrong-purpose tokens
         and 401 on unknown tokens (no plaintext-token comparison hits the DB
-        — only the sha256 hash).
+        - only the sha256 hash).
 
         Returns ``(user, session, plain_session_token, session_expires_at)``.
         """
@@ -321,7 +321,7 @@ class PortalService:
 
         # Snapshot scalars BEFORE any repo write. Every repo's
         # ``update_fields`` ends with ``session.expire_all()``, which detaches
-        # *all* attributes on every loaded ORM instance — including ``user``
+        # *all* attributes on every loaded ORM instance - including ``user``
         # and ``link``. Touching ``user.status`` / ``user.id`` after that
         # point triggers an illegal *synchronous* lazy-load on the async
         # session (MissingGreenlet → 500). The PKs/status are stable, so
@@ -330,12 +330,12 @@ class PortalService:
         user_id = user.id
         user_status = user.status
 
-        # Mark link consumed — atomically. The ``link.consumed_at is not None``
+        # Mark link consumed - atomically. The ``link.consumed_at is not None``
         # check above is only a fast-path for the common already-consumed case;
         # the actual one-time-use guarantee comes from this conditional
         # ``UPDATE ... WHERE consumed_at IS NULL``. Under two concurrent
         # requests both can pass the read-check (TOCTOU), but only the one whose
-        # row was still NULL flips it — the loser gets rowcount 0 and is
+        # row was still NULL flips it - the loser gets rowcount 0 and is
         # rejected here, so exactly one session is ever opened per link.
         if not await self.magic_repo.consume(link_id, consumed_at=now):
             raise HTTPException(
@@ -370,7 +370,7 @@ class PortalService:
         session_id = sess.id
         session_expires_at = sess.expires_at
 
-        # Re-load ``user`` as a live, fully-populated instance — the router
+        # Re-load ``user`` as a live, fully-populated instance - the router
         # serialises it via ``PortalUserResponse.model_validate(user)`` and
         # the expire_all() chain above left every attribute detached.
         await self.session.refresh(user)

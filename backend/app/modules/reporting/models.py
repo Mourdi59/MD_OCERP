@@ -1,9 +1,9 @@
 """‌⁠‍Reporting & Dashboards ORM models.
 
 Tables:
-    oe_reporting_kpi_snapshot — periodic KPI snapshots per project
-    oe_reporting_template     — reusable report templates (system + custom)
-    oe_reporting_generated    — generated report instances
+    oe_reporting_kpi_snapshot - periodic KPI snapshots per project
+    oe_reporting_template     - reusable report templates (system + custom)
+    oe_reporting_generated    - generated report instances
 """
 
 import uuid
@@ -149,7 +149,7 @@ class ReportTemplate(Base):
         server_default="0",
         index=True,
     )
-    # ISO-8601 strings for cross-DB portability — matches the rest of
+    # ISO-8601 strings for cross-DB portability - matches the rest of
     # this module's datetime conventions.
     last_run_at: Mapped[str | None] = mapped_column(
         String(32),
@@ -162,7 +162,7 @@ class ReportTemplate(Base):
         default=None,
         index=True,
     )
-    # Optional scope — when set, the worker renders the report for just
+    # Optional scope - when set, the worker renders the report for just
     # this project. ``None`` = portfolio report across every project the
     # creator can read.
     project_id_scope: Mapped[uuid.UUID | None] = mapped_column(

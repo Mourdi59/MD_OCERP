@@ -6,7 +6,7 @@ agreements, work packages, payment applications, retention, and rating.
 
 
 async def on_startup() -> None:
-    """‌⁠‍Module startup hook — register permissions."""
+    """‌⁠‍Module startup hook - register permissions."""
     from app.modules.subcontractors.permissions import register_subcontractors_permissions
 
     register_subcontractors_permissions()

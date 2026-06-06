@@ -1,9 +1,9 @@
-"""‌⁠‍MUSE + IATE lookup tables — phrase-aware matching against TSV files.
+"""‌⁠‍MUSE + IATE lookup tables - phrase-aware matching against TSV files.
 
 Files live under ``~/.openestimate/translations/{muse,iate}/{src}-{tgt}.tsv``
 in the format ``source_word<TAB>target_word<TAB>weight``. Header lines
 starting with ``#`` are ignored. The user downloads these on demand via the
-``downloader`` module — this file never touches the network.
+``downloader`` module - this file never touches the network.
 
 Phrase strategy
 ~~~~~~~~~~~~~~~
@@ -11,7 +11,7 @@ For an input phrase ``"Concrete C30/37 Wall"`` we try in order:
 
 1. **Whole-phrase exact** lookup (case-insensitive, normalised whitespace).
 2. **Whole-phrase fuzzy** match via rapidfuzz (>= 90 score).
-3. **Per-token translation** — look up each whitespace token, but skip
+3. **Per-token translation** - look up each whitespace token, but skip
    tokens that look like a code (digits, punctuation, mixed alphanumerics
    like ``C30/37`` or ``L=2.5m``). Codes are passed through unchanged.
 4. If fewer than half the lexical tokens were translated, return ``None``
@@ -66,7 +66,7 @@ def _load_tsv(path_str: str) -> dict[str, tuple[str, float]]:
     """‌⁠‍Load a TSV dictionary into a normalised lookup dict.
 
     Cached on a per-path basis. Returns an empty dict when the file is
-    missing — the caller then falls through to the next tier.
+    missing - the caller then falls through to the next tier.
     """
     path = Path(path_str)
     if not path.exists():
@@ -118,7 +118,7 @@ async def lookup_phrase(
     """
     path = _dictionary_path(dictionary, src, tgt, root)
 
-    # File I/O off the event loop — TSVs may be 100k+ lines.
+    # File I/O off the event loop - TSVs may be 100k+ lines.
     table = await asyncio.get_running_loop().run_in_executor(None, _load_tsv, str(path))
     if not table:
         return None
@@ -132,7 +132,7 @@ async def lookup_phrase(
 
     # 2. Whole-phrase fuzzy match (rapidfuzz). We MUST use ``fuzz.ratio``
     #    (full-string similarity), not the default ``WRatio`` / partial
-    #    matching — partial-ratio would happily match "concrete c30/37
+    #    matching - partial-ratio would happily match "concrete c30/37
     #    wall" against the dictionary key "concrete" with score 100, which
     #    is a false positive that defeats per-token fallback below.
     try:
@@ -144,7 +144,7 @@ async def lookup_phrase(
             best_key, score, _ = match
             translated, _w = table[best_key]
             return translated, score / 100.0
-    except ImportError:  # pragma: no cover — rapidfuzz is in base deps
+    except ImportError:  # pragma: no cover - rapidfuzz is in base deps
         pass
 
     # 3. Per-token translation, code-aware.
@@ -170,7 +170,7 @@ async def lookup_phrase(
             out_tokens.append(tok)  # leave untranslated; report low coverage
 
     if lexical_total == 0:
-        # Pure-code phrase ("C30/37"). Treat as a perfect translation —
+        # Pure-code phrase ("C30/37"). Treat as a perfect translation -
         # the codes are preserved verbatim.
         return " ".join(out_tokens), 1.0
 

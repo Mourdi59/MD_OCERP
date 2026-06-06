@@ -10,7 +10,7 @@ Security model (v3.0.x IDOR sweep):
   (``verify_project_access``). Project-less calls are tenant-wide and
   remain gated only by ``RequirePermission``.
 * **Dashboards / Widgets / Reports / Schedules / Saved Filters**: these
-  are *not* project-scoped — they belong to a single user
+  are *not* project-scoped - they belong to a single user
   (``owner_user_id``). We enforce ownership inline: load the object,
   compare ``owner_user_id`` to the current user, raise 404 on mismatch
   (404 not 403 to avoid leaking existence). Widgets and schedules
@@ -114,7 +114,7 @@ async def _ensure_dashboard_owner(
     Returns the dashboard for downstream use. Raises 404 on miss or
     ownership mismatch to avoid leaking dashboard UUIDs across tenants.
     Global/role-scoped dashboards (``scope in ('global', 'role')``) are
-    treated as public-read but still ownership-gated for mutations —
+    treated as public-read but still ownership-gated for mutations -
     enforcement of read-vs-write semantics lives at the handler level.
     """
     dashboard = await session.get(Dashboard, dashboard_id)
@@ -141,7 +141,7 @@ async def _ensure_dashboard_read_access(
     project team members with legitimate project access could never read a
     project-scoped dashboard.
 
-    Read policy — kept in sync with
+    Read policy - kept in sync with
     :meth:`BIDashboardsRepository.list_dashboards_visible_to`:
 
     * admin                      -> allowed (cross-tenant superpower)
@@ -152,7 +152,7 @@ async def _ensure_dashboard_read_access(
       team members; 404 on denial)
     * otherwise (personal/unknown, non-owner) -> 404 (IDOR-safe, no leak)
 
-    Writes are unaffected — mutation endpoints keep ``_ensure_dashboard_owner``.
+    Writes are unaffected - mutation endpoints keep ``_ensure_dashboard_owner``.
     """
     dashboard = await session.get(Dashboard, dashboard_id)
     if dashboard is None:
@@ -225,7 +225,7 @@ async def _ensure_alert_access(
     Mirrors the ``create_alert`` guard: an alert carrying a
     ``scope_project_id`` is data about one project, so mutating it
     (toggle) must be restricted to a caller who can access that project
-    (``verify_project_access`` — which 404s on miss/denied to avoid
+    (``verify_project_access`` - which 404s on miss/denied to avoid
     leaking UUIDs across tenants). Tenant-wide alerts
     (``scope_project_id is None``) stay gated by the route-level
     ``bi.alert.write`` permission only, matching the documented model.
@@ -247,7 +247,7 @@ async def _ensure_alert_access(
     dependencies=[Depends(RequirePermission("bi.kpi.read"))],
 )
 async def list_kpis(
-    user_id: CurrentUserId,  # noqa: ARG001 — auth-only
+    user_id: CurrentUserId,  # noqa: ARG001 - auth-only
     service: BIDashboardsService = Depends(_service),
     category: str | None = Query(default=None),
 ) -> list[KPIDefinitionRead]:
@@ -267,7 +267,7 @@ async def compute_kpi(
     session: SessionDep,
     service: BIDashboardsService = Depends(_service),
 ) -> KPIComputeResponse:
-    # IDOR guard — if the caller asks for a project-scoped computation,
+    # IDOR guard - if the caller asks for a project-scoped computation,
     # verify they own that project. Project-less calls remain tenant-wide.
     if payload.project_id is not None:
         await verify_project_access(payload.project_id, user_id, session)
@@ -363,7 +363,7 @@ async def drill_down(
 # ── Dashboards ─────────────────────────────────────────────────────────
 
 
-# v3.12.1 Wave 1 — fresh-install dashboards bootstrap. The page used
+# v3.12.1 Wave 1 - fresh-install dashboards bootstrap. The page used
 # to render an empty grid on every new tenant because the seed_all()
 # helper that materialises the 5 role-based starter dashboards was only
 # called from tests. Exposing it as an idempotent POST lets the FE
@@ -379,7 +379,7 @@ async def install_starter_pack(
     session: SessionDep,
 ) -> dict[str, int]:
     """Seed system KPIs, 5 role-based dashboards, 3 reports, 2 schedules
-    and 4 alert rules. Idempotent — re-running is safe and only inserts
+    and 4 alert rules. Idempotent - re-running is safe and only inserts
     rows that don't already exist. Returns per-step row counts so the
     UI can toast a meaningful result.
     """
@@ -469,7 +469,7 @@ async def render_dashboard(
     session: SessionDep,
     service: BIDashboardsService = Depends(_service),
 ) -> DashboardRenderResponse:
-    # Read-vs-write RBAC: render is a READ — allow owner/admin + shared
+    # Read-vs-write RBAC: render is a READ - allow owner/admin + shared
     # (global/role) + project-team access, matching the dashboards grid.
     await _ensure_dashboard_read_access(dashboard_id, user_id, session)
     result = await service.render_dashboard(dashboard_id)
@@ -498,9 +498,9 @@ async def evaluate_dashboard(
     is ignored and widgets return their static aggregate.
 
     If ``filters['project_id']`` is supplied we also verify the caller
-    can access that project — same IDOR pattern as the KPI endpoints.
+    can access that project - same IDOR pattern as the KPI endpoints.
     """
-    # Read-vs-write RBAC: evaluate is a READ — allow owner/admin + shared
+    # Read-vs-write RBAC: evaluate is a READ - allow owner/admin + shared
     # (global/role) + project-team access, matching the dashboards grid.
     await _ensure_dashboard_read_access(dashboard_id, user_id, session)
     filters = payload.filters or {}
@@ -646,7 +646,7 @@ async def list_schedules(
 
     Ownership is inherited from the parent report (own + shared
     global/role), matching ``GET /reports``. Until this endpoint existed
-    the Schedules tab could only render fabricated "On demand / —" rows;
+    the Schedules tab could only render fabricated "On demand / -" rows;
     now it shows real frequency, next-run and recipient counts.
     """
     rows = await service.list_schedules_visible_to(owner_user_id=_user_uuid(user_id))
@@ -724,7 +724,7 @@ async def list_alerts(
 ) -> list[AlertRuleRead]:
     # Tenant-wide alerts (scope_project_id IS NULL) are visible to any
     # caller with bi.alert.read. Project-scoped alerts are data about one
-    # project, so only return those whose project the caller can access —
+    # project, so only return those whose project the caller can access -
     # mirrors ``_ensure_alert_access`` used on toggle and the per-caller
     # filtering dashboards/reports already do. Without this, every tenant's
     # project-scoped rule names / thresholds leak cross-tenant.
@@ -766,7 +766,7 @@ async def create_alert(
     session: SessionDep,
     service: BIDashboardsService = Depends(_service),
 ) -> AlertRuleRead:
-    # AlertRule may carry a scope_project_id — if so, gate against it.
+    # AlertRule may carry a scope_project_id - if so, gate against it.
     scope_pid = getattr(payload, "scope_project_id", None)
     if scope_pid is not None:
         await verify_project_access(scope_pid, user_id, session)
@@ -786,7 +786,7 @@ async def toggle_alert(
     enabled: bool = Query(...),
     service: BIDashboardsService = Depends(_service),
 ) -> AlertRuleRead:
-    # IDOR guard: a project-scoped alert is data about one project — only
+    # IDOR guard: a project-scoped alert is data about one project - only
     # a caller with access to that project may flip it on/off.
     await _ensure_alert_access(alert_id, user_id, session)
     row = await service.toggle_alert(alert_id, enabled=enabled)
@@ -900,7 +900,7 @@ async def download_report_file(
     # report-builder so it should already point inside the reports
     # directory, but if a future bug or direct DB tamper plants
     # ``/etc/passwd`` here we refuse rather than serve it. Also drops
-    # the file if it's a symlink — defence against a malicious local
+    # the file if it's a symlink - defence against a malicious local
     # actor swapping the on-disk artefact between write and read.
     from pathlib import Path as _Path
 

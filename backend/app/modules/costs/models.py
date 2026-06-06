@@ -1,9 +1,9 @@
 """‌⁠‍Cost item ORM models.
 
 Tables:
-    oe_costs_item — cost database entries (CWICR, RSMeans, BKI, custom)
-    oe_regional_indices — region × category cost-factor matrix (v3.12.0)
-    oe_cost_item_usage — append-only usage ledger backing the certainty
+    oe_costs_item - cost database entries (CWICR, RSMeans, BKI, custom)
+    oe_regional_indices - region × category cost-factor matrix (v3.12.0)
+    oe_cost_item_usage - append-only usage ledger backing the certainty
         badge (v3.12.0)
 """
 
@@ -43,7 +43,7 @@ class CostItem(Base):
         # Covers the per-region keyset-paginated search hot path:
         # ``WHERE region=? AND is_active=? ORDER BY code, id LIMIT N``.
         # Without this composite the planner picks ix_costs_is_active and
-        # sorts 55K rows in a temp B-tree — 6 s vs 1 ms with the index.
+        # sorts 55K rows in a temp B-tree - 6 s vs 1 ms with the index.
         Index("ix_costs_region_active_code", "region", "is_active", "code"),
         # Mirrors the above for the all-regions search ("region" filter
         # absent). The leading-column rule means ``ix_costs_region_active_code``
@@ -91,7 +91,7 @@ class CostItem(Base):
 class RegionalIndex(Base):
     """‌⁠‍Regional cost-factor row (region × category × effective_date).
 
-    Backs ``GET /v1/costs/regional-adjust`` — given a base rate, the
+    Backs ``GET /v1/costs/regional-adjust`` - given a base rate, the
     service multiplies by ``factor`` to estimate the same line item's
     cost in a different region (RSMeans-style city cost index).
 
@@ -140,9 +140,9 @@ class CostItemUsage(Base):
     tender". The certainty badge reads ``count(*) + max(used_at)`` from
     this table to grade rate freshness:
 
-    * green  — used ≥ 10× AND last use < 365 days ago
-    * yellow — used 3..9× OR last use 365..1095 days ago
-    * red    — everything else (never used, or very old)
+    * green  - used ≥ 10× AND last use < 365 days ago
+    * yellow - used 3..9× OR last use 365..1095 days ago
+    * red    - everything else (never used, or very old)
 
     Pure append: no updates, no deletes (CASCADE wipes rows when the
     parent cost item is deleted). Index on ``(cost_item_id,

@@ -1,4 +1,4 @@
-"""AI Agents service — business logic for starting and inspecting runs.
+"""AI Agents service - business logic for starting and inspecting runs.
 
 The service is what wires the in-process :class:`AgentRunner` to:
     1. The DB-backed :class:`AgentRun` / :class:`AgentStep` persistence.
@@ -156,7 +156,7 @@ def custom_agent_to_runtime(row: CustomAgent) -> Agent:
     here so the ReAct loop can dispatch to them. Granting a tool already
     required the operator to hold that tool's permission (enforced in
     :meth:`AgentService.set_tools`), and the runner still re-verifies the
-    invoking user's permission inside each privileged tool — so an agent never
+    invoking user's permission inside each privileged tool - so an agent never
     widens its creator's reach. When no tools are granted the loop returns the
     model's first answer. The runtime ``name`` is the ``custom:<id>`` slug so
     the run path and persisted ``AgentRun.agent_name`` round-trip unambiguously.
@@ -187,7 +187,7 @@ def _iso_now() -> str:
 async def _resolve_production_llm(session: AsyncSession, user_id: uuid.UUID) -> LLMBridge | None:
     """Pull the user's AI settings and build a :class:`CallAILLM` bridge.
 
-    Returns ``None`` when no API key is configured — the caller decides
+    Returns ``None`` when no API key is configured - the caller decides
     whether that's a hard error (it is, for ``run_agent``).
     """
     try:
@@ -305,7 +305,7 @@ class AgentService:
         """Resolve a runtime :class:`Agent` by name for a given caller.
 
         ``custom:<id>`` slugs resolve from the DB (and only if the agent
-        belongs to ``user_id`` — a user cannot run another user's custom
+        belongs to ``user_id`` - a user cannot run another user's custom
         agent); everything else resolves from the built-in registry.
         """
         if agent_name.startswith(CUSTOM_AGENT_PREFIX):
@@ -399,7 +399,7 @@ class AgentService:
         Returns the normalised expression. Raises :class:`ValueError` on a
         malformed expression (the router maps this to a 422). Reuses the
         reporting module's parser so the supported grammar is identical to the
-        scheduled-reports feature — no new dependency.
+        scheduled-reports feature - no new dependency.
         """
         from app.modules.reporting.cron import CronParseError, parse_cron
 
@@ -521,12 +521,12 @@ class AgentService:
         """Grant a vetted set of tools to an owned agent. Returns metadata or None.
 
         Each requested tool must (a) exist in the live tool registry and (b) be
-        one the operator already has permission to use — otherwise a
+        one the operator already has permission to use - otherwise a
         :class:`ToolPermissionError` is raised (router → 403). Unknown tools are
         dropped silently. ``None`` when the agent is not owned/found.
 
         Permission is checked against the live registry using the operator's
-        role, mirroring ``RequirePermission``'s stale-JWT fallback — so the
+        role, mirroring ``RequirePermission``'s stale-JWT fallback - so the
         grant honours the operator's CURRENT role, not a cached token.
         """
         row = await self.custom_repo.get_for_user(agent_id, user_id)
@@ -595,7 +595,7 @@ class AgentService:
         """Create the run row, execute the loop synchronously, and persist steps.
 
         "Background task" wiring (``BackgroundTasks.add_task``) lives in
-        the router — here we just run the loop. The router can choose to
+        the router - here we just run the loop. The router can choose to
         ``await`` us inline (tests do) or schedule us for later.
 
         Resolves built-ins from the in-memory registry AND the caller's own
@@ -690,7 +690,7 @@ class AgentService:
             finished_at=_iso_now(),
         )
         # An automated run (scheduler/event) has no user watching the page, so
-        # surface a failure through the notifications module — otherwise a
+        # surface a failure through the notifications module - otherwise a
         # silently-failing schedule is invisible. Manual runs already show the
         # failure inline on the timeline, so they are not notified.
         if trigger_source != "manual" and result.status == "failed":

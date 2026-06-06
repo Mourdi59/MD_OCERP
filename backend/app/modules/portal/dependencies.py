@@ -1,7 +1,7 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 """‌⁠‍Module-local FastAPI dependencies for the Customer & Partner Portal.
 
-We deliberately do NOT touch the global :mod:`app.dependencies` — portal
+We deliberately do NOT touch the global :mod:`app.dependencies` - portal
 authentication is a parallel surface to the internal JWT auth used by
 ``RequirePermission``. Internal admins use the internal auth; portal users
 use the magic-link + session-token flow defined here.

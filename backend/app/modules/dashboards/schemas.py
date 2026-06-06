@@ -32,7 +32,7 @@ class SnapshotSourceFileOut(BaseModel):
 
 
 class SnapshotSummaryOut(BaseModel):
-    """‌⁠‍List-row shape. No ``source_files`` — list views don't need them."""
+    """‌⁠‍List-row shape. No ``source_files`` - list views don't need them."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -68,7 +68,7 @@ class SnapshotCreateForm(BaseModel):
 
     label: str = Field(..., min_length=1, max_length=200)
     disciplines: list[str] = Field(default_factory=list)
-    # Optional — if provided and matches an existing snapshot on the
+    # Optional - if provided and matches an existing snapshot on the
     # same project, the new snapshot records that relationship
     # (powers the historical diff in T11).
     parent_snapshot_id: uuid.UUID | None = None
@@ -159,7 +159,7 @@ class CascadeValuesRequest(BaseModel):
     """Body for ``POST /snapshots/{id}/cascade-values``.
 
     ``selected`` is a column → allowed-values map. An empty list under a
-    key means "no filter on that column" — the engine drops it before
+    key means "no filter on that column" - the engine drops it before
     generating SQL (DuckDB rejects ``WHERE col IN ()``).
     """
 
@@ -293,7 +293,7 @@ class SyncReportOut(BaseModel):
 
 
 class SyncHealOut(BaseModel):
-    """Result of POST /presets/{id}/sync-heal — patched preset + report."""
+    """Result of POST /presets/{id}/sync-heal - patched preset + report."""
 
     preset: DashboardPresetOut
     report: SyncReportOut
@@ -378,7 +378,7 @@ class IntegrityReportOut(BaseModel):
 
     ``completeness_score`` is the average of per-column completeness
     (1 − null_pct). ``schema_hash`` lets the frontend cache column
-    detail views across reloads — a hash change means the snapshot's
+    detail views across reloads - a hash change means the snapshot's
     column shape moved.
     """
 
@@ -397,7 +397,7 @@ class IntegrityReportRequest(BaseModel):
 
     The endpoint takes ``snapshot_id`` in the body (rather than the URL)
     so the panel can refresh after a snapshot edit without re-keying
-    the route. ``project_id`` is required up front — the report has to
+    the route. ``project_id`` is required up front - the report has to
     namespace caches by project, and we don't want to round-trip the
     snapshot detail just for that.
     """
@@ -414,7 +414,7 @@ class IntegrityReportRequest(BaseModel):
 class SnapshotTimelineItemOut(BaseModel):
     """One row of the navigator timeline.
 
-    Narrow on purpose — the timeline must scroll smoothly through
+    Narrow on purpose - the timeline must scroll smoothly through
     hundreds of snapshots, so we ship only what the timeline card and
     the per-row badges need. The diff endpoint does the heavier work.
     """
@@ -492,7 +492,7 @@ class FederationBuildRequest(BaseModel):
     The federation handler converts the supplied ``snapshot_ids`` into
     a UNION-ALL DuckDB view that carries ``__project_id`` +
     ``__snapshot_id`` provenance columns on every row. The endpoint
-    looks up each snapshot's owning project from the registry — the
+    looks up each snapshot's owning project from the registry - the
     client only needs to supply the ids.
     """
 
@@ -512,7 +512,7 @@ class FederationSnapshotRefOut(BaseModel):
 class FederationViewOut(BaseModel):
     """Response envelope for ``POST /federation/build``.
 
-    ``view_name`` is opaque to the client — the build endpoint does not
+    ``view_name`` is opaque to the client - the build endpoint does not
     keep the view alive across requests today (DuckDB views live on
     a per-call connection). The shape is forward-compatible with a
     persistent-session model where ``view_name`` becomes a token.

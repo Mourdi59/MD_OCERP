@@ -1,4 +1,4 @@
-"""‌⁠‍Notification templates — English fallback strings for every notification.
+"""‌⁠‍Notification templates - English fallback strings for every notification.
 
 Notifications are stored with i18n keys (``title_key`` + ``body_key``) so
 the frontend can translate them. But translation can fail silently for
@@ -9,7 +9,7 @@ several reasons:
 * a third-party module emits a key the platform doesn't recognise.
 
 When that happens the user used to see the raw key string
-("notifications.rfi.assigned") in the bell — confusing and unprofessional.
+("notifications.rfi.assigned") in the bell - confusing and unprofessional.
 
 This module is the **server-side English source of truth** for every
 notification template the platform emits. The schema layer
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 # Each entry is ``i18n_key → English template`` with ``{name}``-style
 # placeholders. The placeholder names must match the keys the event
 # subscriber puts into ``body_context``. Mismatch is logged at debug
-# but never raises — an empty placeholder is preferable to a 500.
+# but never raises - an empty placeholder is preferable to a 500.
 #
 # Keep templates short and concrete: bell rows truncate at ~50 chars
 # for the title and ~80 chars for the body.
@@ -56,50 +56,50 @@ _TEMPLATES: dict[str, str] = {
     "notifications.cde.state_transitioned.body": "Container moved to '{new_state}'.",
     # ── RFIs ─────────────────────────────────────────────────────────
     "notifications.rfi.assigned.title": "RFI assigned to you",
-    "notifications.rfi.assigned.body": "{code} — {title}",
+    "notifications.rfi.assigned.body": "{code} - {title}",
     "notifications.rfi.responded.title": "RFI answered",
     "notifications.rfi.responded.body": "Your request {code} ({title}) has a response.",
     # ── Risks ────────────────────────────────────────────────────────
     "notifications.risk.assigned.title": "Risk assigned to you",
-    "notifications.risk.assigned.body": "{code} — {title}",
+    "notifications.risk.assigned.body": "{code} - {title}",
     # ── Cost overrun (budget line) ───────────────────────────────────
     "notifications.costmodel.overrun_alert.title": "Cost Overrun Alert",
     "notifications.costmodel.overrun_alert.body": "{category} cost is over budget: actual {actual} {currency} exceeds the +{threshold_pct}% alert threshold on planned {planned} {currency}.",
     # ── Submittals ───────────────────────────────────────────────────
     "notifications.submittal.submitted.title": "Submittal awaiting review",
-    "notifications.submittal.submitted.body": "{code} — {title}",
+    "notifications.submittal.submitted.body": "{code} - {title}",
     "notifications.submittal.approved.title": "Submittal approved",
-    "notifications.submittal.approved.body": "{code} — {title}",
+    "notifications.submittal.approved.body": "{code} - {title}",
     "notifications.submittal.rejected.title": "Submittal rejected",
     "notifications.submittal.rejected.body": "{code} ({title}). Reason: {reason}",
     "notifications.submittal.revise_resubmit.title": "Submittal needs revision",
     "notifications.submittal.revise_resubmit.body": "{code} ({title}). Reason: {reason}",
     # ── Transmittals ─────────────────────────────────────────────────
     "notifications.transmittal.issued.title": "Transmittal issued to you",
-    "notifications.transmittal.issued.body": "{code} — {title}",
+    "notifications.transmittal.issued.body": "{code} - {title}",
     "notifications.transmittal.acknowledged.title": "Transmittal acknowledged",
     "notifications.transmittal.acknowledged.body": "Recipient confirmed {code} ({title}).",
     "notifications.transmittal.responded.title": "Transmittal answered",
     "notifications.transmittal.responded.body": "{code} ({title}). {response_summary}",
-    # ── Singular-namespace keys (event_handlers.py — Wave 5+) ────────
+    # ── Singular-namespace keys (event_handlers.py - Wave 5+) ────────
     # These use the `notification.<event>_(title|body)` convention,
     # distinct from the older `notifications.<module>.<event>.(title|body)`
     # entries above. Keep both naming conventions until the legacy
     # subscribers are migrated.
     "notification.rfi_assigned_title": "RFI assigned to you",
-    "notification.rfi_assigned_body": "RFI {rfi_number} — {subject}",
+    "notification.rfi_assigned_body": "RFI {rfi_number} - {subject}",
     "notification.task_assigned_title": "New task assigned",
     "notification.task_assigned_body": "{task_title}",
     "notification.invoice_approved_title": "Invoice approved",
-    "notification.invoice_approved_body": "Invoice {invoice_number} — {amount_total} {currency_code}",
+    "notification.invoice_approved_body": "Invoice {invoice_number} - {amount_total} {currency_code}",
     "notification.inspection_scheduled_title": "Inspection scheduled",
-    "notification.inspection_scheduled_body": "{inspection_number} — {title} on {inspection_date}",
+    "notification.inspection_scheduled_body": "{inspection_number} - {title} on {inspection_date}",
     "notification.submittal_status_changed_title": "Submittal status changed",
-    "notification.submittal_status_changed_body": "{submittal_number} ({title}) — {new_status}",
+    "notification.submittal_status_changed_body": "{submittal_number} ({title}) - {new_status}",
     "notification.meeting_scheduled_title": "Meeting scheduled",
     "notification.meeting_scheduled_body": "{title} on {meeting_date}",
     "notification.ncr_created_title": "Non-conformance raised",
-    "notification.ncr_created_body": "NCR {ncr_number} — {title} ({severity})",
+    "notification.ncr_created_body": "NCR {ncr_number} - {title} ({severity})",
     "notification.document_uploaded_title": "Document uploaded",
     "notification.document_uploaded_body": "{document_name}",
     # ── File comments (Epic B / B1) ──────────────────────────────────
@@ -130,33 +130,33 @@ _TEMPLATES: dict[str, str] = {
 # icon instead of falling back to a generic Info.
 #
 # This mapping is intentionally on the backend so the frontend doesn't
-# need to know about every event type — it just reads ``icon_category``
+# need to know about every event type - it just reads ``icon_category``
 # off the API response.
 
 _TYPE_TO_ICON: dict[str, str] = {
     # Generic
     "info": "info",
     "system": "system",
-    # Assignments — a person now owes something
+    # Assignments - a person now owes something
     "task_assigned": "warning",
     "rfi_assigned": "warning",
     "risk_assigned": "warning",
     "transmittal_issued": "warning",
     "submittal_submitted": "warning",
-    # Approvals / acknowledgements — positive
+    # Approvals / acknowledgements - positive
     "submittal_approved": "success",
     "transmittal_acknowledged": "success",
-    # Rejections / errors — negative
+    # Rejections / errors - negative
     "submittal_rejected": "error",
     "submittal_revise_resubmit": "error",
-    # Responses — neutral inbound
+    # Responses - neutral inbound
     "rfi_responded": "info",
     "transmittal_responded": "info",
     # File comment mention (Epic B / B1)
     "file_comment_mention": "info",
-    # Clash coordination — a serious interference needs attention
+    # Clash coordination - a serious interference needs attention
     "clash_high_severity": "warning",
-    # Validation reports — errors are blocking, warnings are advisory
+    # Validation reports - errors are blocking, warnings are advisory
     "validation_errors": "error",
     "validation_warnings": "warning",
 }
@@ -171,18 +171,18 @@ def render(key: str | None, context: dict[str, Any] | None = None) -> str:
     Resolution order:
         1. Template from :data:`_TEMPLATES` interpolated with ``context``.
         2. Template raw (if interpolation fails because a placeholder is
-           missing — the user still sees something coherent).
+           missing - the user still sees something coherent).
         3. The key itself (so missing entries are visible during dev
            rather than rendering as an empty string in the bell).
 
-    Never raises — notification rendering is a hot path, a malformed
+    Never raises - notification rendering is a hot path, a malformed
     template must not surface as a 500 to the user.
     """
     if not key:
         return ""
     template = _TEMPLATES.get(key)
     if template is None:
-        # Unknown key — log once at debug so a new template gets added,
+        # Unknown key - log once at debug so a new template gets added,
         # but show the key string so the user has *something* to read.
         logger.debug("notifications.templates: no template for key=%r", key)
         return key
@@ -191,7 +191,7 @@ def render(key: str | None, context: dict[str, Any] | None = None) -> str:
     try:
         return template.format(**context)
     except (KeyError, IndexError, ValueError) as exc:
-        # Placeholder mismatch (event payload changed shape) — surface
+        # Placeholder mismatch (event payload changed shape) - surface
         # the un-interpolated template so the user sees readable text
         # instead of a half-substituted string.
         logger.debug(
@@ -214,5 +214,5 @@ def icon_category_for(notification_type: str | None) -> str:
 
 
 def all_template_keys() -> list[str]:
-    """Return every known i18n key — used by tests + the i18n audit."""
+    """Return every known i18n key - used by tests + the i18n audit."""
     return sorted(_TEMPLATES.keys())

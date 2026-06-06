@@ -6,13 +6,13 @@ queries and indexes work at the SQL layer.
 
 Goals:
 
-* **Native storage** — money is ``NUMERIC(precision, scale)`` and a
+* **Native storage** - money is ``NUMERIC(precision, scale)`` and a
   calendar date is ``DATE``.
-* **Python-side strictness** — callers always see :class:`decimal.Decimal`
+* **Python-side strictness** - callers always see :class:`decimal.Decimal`
   or :class:`datetime.date`, never strings. This removes a whole class of
   ``float("abc")`` / ``ValueError`` bugs that used to surface deep inside
   services.
-* **Read tolerance for migrated rows** — the result-readers still accept a
+* **Read tolerance for migrated rows** - the result-readers still accept a
   stored string and coerce it back to the strict Python type. Older rows
   migrated in from the previous string-storage SQLite era (``String(50)``
   / ``String(20)``) keep round-tripping without a data fixup.
@@ -25,7 +25,7 @@ Usage:
         amount_total: Mapped[Decimal] = mapped_column(MoneyType(), default=Decimal("0"))
         invoice_date: Mapped[date]    = mapped_column(SafeDate(), nullable=False)
 
-BOTH types normalise inputs — pass a string, a ``Decimal``, an ``int``
+BOTH types normalise inputs - pass a string, a ``Decimal``, an ``int``
 or a ``float`` and you always read back a ``Decimal``. Invalid input
 raises at bind time, not in downstream code.
 """
@@ -140,8 +140,8 @@ class AwareDateTime(TypeDecorator):
       ``"2026-05-30T00:00:00"``) is parsed;
     * a *naive* ``datetime`` is assumed UTC.
 
-    This matters on PostgreSQL: asyncpg refuses to bind a naive ``datetime`` — or
-    any ``str`` — to a ``TIMESTAMPTZ`` parameter and raises ``DataError``. SQLite
+    This matters on PostgreSQL: asyncpg refuses to bind a naive ``datetime`` - or
+    any ``str`` - to a ``TIMESTAMPTZ`` parameter and raises ``DataError``. SQLite
     silently stored whatever it was given, so loose callers (weather auto-fetch
     writing ISO strings, API payloads with offset-less timestamps) only broke on
     PG. Normalising at bind time keeps those call sites working on both dialects.

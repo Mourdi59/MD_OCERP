@@ -47,7 +47,7 @@ def _get_positions(context: ValidationContext) -> list[dict[str, Any]]:
 
 
 def _get_leaf_positions(context: ValidationContext) -> list[dict[str, Any]]:
-    """Leaf-only positions — sections (parent / header rows) are skipped.
+    """Leaf-only positions - sections (parent / header rows) are skipped.
 
     Why: section rows aggregate children and intentionally lack `unit`,
     `quantity`, and `unit_rate`. Rules that enforce those fields would
@@ -56,7 +56,7 @@ def _get_leaf_positions(context: ValidationContext) -> list[dict[str, Any]]:
 
     Detection: a row is a section if (a) `metadata.type == "section"`
     (explicit), or (b) any other row in the dataset names this row as
-    its parent (implicit — derived from the parent_id graph). The
+    its parent (implicit - derived from the parent_id graph). The
     implicit branch covers seed/import paths that don't stamp the type
     metadata field.
     """
@@ -88,7 +88,7 @@ def _position_currency(pos: dict[str, Any]) -> str:
     """‌⁠‍Resolve one position's currency from whatever shape the loader supplied.
 
     The per-position currency is authoritative in the BOQ metadata
-    (``Position.metadata_['currency']`` — see ``boq.service._position_currency``),
+    (``Position.metadata_['currency']`` - see ``boq.service._position_currency``),
     but different callers flatten the position dict differently: some put
     ``currency`` at the top level, some nest it under ``metadata`` /
     ``metadata_``, and the BOQ validation loaders historically dropped it
@@ -115,7 +115,7 @@ def _position_currency(pos: dict[str, Any]) -> str:
 
 
 def _ok(locale: str) -> str:
-    """Shared "OK" string — every rule that emits passing results uses this."""
+    """Shared "OK" string - every rule that emits passing results uses this."""
     return translate("common.ok", locale=locale)
 
 
@@ -152,18 +152,18 @@ def _to_number(value: Any) -> float | object | None:
     understands those formats so a rule never crashes on a legal number.
 
     Returns:
-        * ``None`` if ``value`` is ``None`` (missing — caller decides default).
+        * ``None`` if ``value`` is ``None`` (missing - caller decides default).
         * a ``float`` if the value is/became a finite number.
         * :data:`_NOT_A_NUMBER` if the value is present but un-parseable as a
           number (caller must treat this as "not a number", never crash).
     """
     if value is None:
         return None
-    if isinstance(value, bool):  # bool is an int subclass — reject explicitly
+    if isinstance(value, bool):  # bool is an int subclass - reject explicitly
         return _NOT_A_NUMBER
     if isinstance(value, (int, float)):
         f = float(value)
-        # Reject NaN/Infinity — they would silently poison comparisons.
+        # Reject NaN/Infinity - they would silently poison comparisons.
         return f if f == f and f not in (float("inf"), float("-inf")) else _NOT_A_NUMBER
     if isinstance(value, Decimal):
         try:
@@ -210,7 +210,7 @@ def _to_number(value: Any) -> float | object | None:
     elif has_comma:
         # Only commas. ``1,234,567`` (>1 comma, no decimal) is unambiguous
         # US/UK thousands grouping. A *single* comma is the German/EU decimal
-        # separator (``0,24``, ``2,5``, ``150,00``) — US thousands ``1,234``
+        # separator (``0,24``, ``2,5``, ``150,00``) - US thousands ``1,234``
         # virtually always carries a ``.`` decimal part too, which is the
         # both-present branch above, so a lone comma is safely a decimal.
         if numeric.count(",") > 1:
@@ -219,7 +219,7 @@ def _to_number(value: Any) -> float | object | None:
             numeric = numeric.replace(",", ".")  # 1,5 / 12,50 / 0,24 → decimal
     elif has_dot:
         # A *single* dot with no comma is always a canonical decimal point
-        # (``3.0``, ``0.24``, ``185184.0``) — never reinterpret it, that is
+        # (``3.0``, ``0.24``, ``185184.0``) - never reinterpret it, that is
         # the source-of-truth storage format. Only multi-dot strings
         # (``1.234.567``) are unambiguously German thousands grouping.
         if numeric.count(".") > 1:
@@ -235,7 +235,7 @@ def _median(values: list[float]) -> float:
     """True statistical median.
 
     For an even-length list this is the mean of the two central elements
-    (``statistics.median`` semantics) — not ``sorted[n // 2]`` which is the
+    (``statistics.median`` semantics) - not ``sorted[n // 2]`` which is the
     *upper*-middle element and skews threshold-based anomaly detection on
     small even samples (E-VAL-013).
     """
@@ -659,7 +659,7 @@ class GAEBLVStructure(ValidationRule):
     severity = Severity.WARNING
     category = RuleCategory.STRUCTURE
     description = (
-        "Flags leaf positions with no parent_id — GAEB LV hierarchy requires "
+        "Flags leaf positions with no parent_id - GAEB LV hierarchy requires "
         "every Leistungsposition to live under a Leistungsgruppe."
     )
 
@@ -714,7 +714,7 @@ class GAEBEinheitspreisSanity(ValidationRule):
     """Flags zero/negative Einheitspreis on non-lump-sum positions.
 
     GAEB X83 treats an Einheitspreis of 0 as a bid-withdrawal signal.
-    Importing such a position silently is almost always a mistake — the
+    Importing such a position silently is almost always a mistake - the
     rule forces reviewers to confirm whether they meant a zero-priced
     lump sum (valid) or a missing rate (invalid).
     """
@@ -748,7 +748,7 @@ class GAEBEinheitspreisSanity(ValidationRule):
             parsed_rate = _to_number(rate)
             if parsed_rate is None or parsed_rate is _NOT_A_NUMBER:
                 # Non-numeric / unparseable rate is a formatting issue, not a
-                # GAEB pricing violation — keep signals orthogonal.
+                # GAEB pricing violation - keep signals orthogonal.
                 continue
             rate_val: float = parsed_rate  # type: ignore[assignment]
             passed = rate_val > 0
@@ -961,7 +961,7 @@ class NegativeValues(ValidationRule):
             qty = pos.get("quantity")
             rate = pos.get("unit_rate")
             # Unparseable / non-numeric is a *formatting* issue, not a
-            # negative value — treat as 0 so a locale string never masquerades
+            # negative value - treat as 0 so a locale string never masquerades
             # as a compliance ERROR (E-I18N-004).
             qty_val = _num(qty, default=0.0) or 0.0
             rate_val = _num(rate, default=0.0) or 0.0
@@ -1063,7 +1063,7 @@ class TotalMismatch(ValidationRule):
     category = RuleCategory.CONSISTENCY
     description = "Computed total (quantity × unit_rate) must match stored total within tolerance"
 
-    # Absolute floor (one currency minor unit — absorbs IEEE-754 noise like
+    # Absolute floor (one currency minor unit - absorbs IEEE-754 noise like
     # 0.1 * 0.2 == 0.020000000000000004) plus a magnitude-aware relative
     # term so a systematic sub-cent drift on large-value positions is no
     # longer invisible (E-VAL-014).
@@ -1084,7 +1084,7 @@ class TotalMismatch(ValidationRule):
             rate_p = _to_number(rate)
             stored_p = _to_number(stored_total)
             # A formatting issue must not masquerade as a consistency ERROR
-            # (E-I18N-004) — skip rather than crash/false-flag.
+            # (E-I18N-004) - skip rather than crash/false-flag.
             if (
                 qty_p is None
                 or qty_p is _NOT_A_NUMBER
@@ -1186,7 +1186,7 @@ class EmptyUnit(ValidationRule):
 
 
 # ── Wave 24: unit-system consistency (metric vs imperial) ──────────────────
-# Units that are definitively metric (SI) — m, m2, m3, kg, etc.
+# Units that are definitively metric (SI) - m, m2, m3, kg, etc.
 _METRIC_BOQ_UNITS: frozenset[str] = frozenset(
     {
         "m",
@@ -1207,7 +1207,7 @@ _METRIC_BOQ_UNITS: frozenset[str] = frozenset(
         "ha",  # hectare
     },
 )
-# Units that are definitively imperial (US/UK) — ft, lb, etc.
+# Units that are definitively imperial (US/UK) - ft, lb, etc.
 _IMPERIAL_BOQ_UNITS: frozenset[str] = frozenset(
     {
         "ft",
@@ -1372,7 +1372,7 @@ _COUNTRY_TO_DISPLAY_NAME: dict[str, str] = {
 
 # Rough cross-walk between DIN 276 KG groups and MasterFormat divisions.
 # Used as ``suggested_*`` hints when a position is missing the preferred
-# standard. None means "no mapping available — fire nudge but leave
+# standard. None means "no mapping available - fire nudge but leave
 # suggestion blank".
 _MF_DIV_TO_DIN276: dict[str, str | None] = {
     "01": "100",  # General requirements → Grundstück
@@ -1495,7 +1495,7 @@ class ClassificationCountryMismatchRule(ValidationRule):
         country_display = _COUNTRY_TO_DISPLAY_NAME.get(country, country)
         positions = _get_positions(context)
 
-        # Find the first position that triggers a nudge — i.e. classifications
+        # Find the first position that triggers a nudge - i.e. classifications
         # present but missing the preferred standard for this country.
         nudge_pos: dict[str, Any] | None = None
         for pos in positions:
@@ -1672,7 +1672,7 @@ class RateVsBenchmark(ValidationRule):
                 continue
             parsed = _to_number(rate)
             if parsed is None or parsed is _NOT_A_NUMBER:
-                continue  # Formatting issue — not a benchmark violation
+                continue  # Formatting issue - not a benchmark violation
             rate_val: float = parsed  # type: ignore[assignment]
             if rate_val <= 0:
                 continue
@@ -1726,7 +1726,7 @@ class LumpSumRatio(ValidationRule):
     severity = Severity.INFO
     category = RuleCategory.QUALITY
     description = (
-        "Flags BOQs where more than 30% of positions use lump sum (lsum) unit — indicates poor estimation granularity"
+        "Flags BOQs where more than 30% of positions use lump sum (lsum) unit - indicates poor estimation granularity"
     )
 
     THRESHOLD = 0.30  # 30%
@@ -1785,7 +1785,7 @@ class CostConcentration(ValidationRule):
     severity = Severity.WARNING
     category = RuleCategory.CONSISTENCY
     description = (
-        "Flags positions that account for more than 40% of total BOQ cost — "
+        "Flags positions that account for more than 40% of total BOQ cost - "
         "indicates potential scope error or missing breakdown"
     )
 
@@ -1951,7 +1951,7 @@ class DIN276Completeness(ValidationRule):
     description = "Major KG groups 300 (Building Construction) and 400 (Technical Systems) should be present"
 
     REQUIRED_GROUPS = {"300", "400"}
-    # Group names kept in English only — passed through {group_name} into
+    # Group names kept in English only - passed through {group_name} into
     # the i18n template so de/ru translations embed the canonical German
     # term in parentheses.
     GROUP_NAMES = {
@@ -2398,7 +2398,7 @@ class SINAPIValidCode(ValidationRule):
         return results
 
 
-# ── NBR 12721 Rules (Brazil — ABNT cost-group hierarchy) ───────────────
+# ── NBR 12721 Rules (Brazil - ABNT cost-group hierarchy) ───────────────
 #
 # ABNT NBR 12721 defines the cost-classification structure used by
 # Brazilian construction estimators alongside SINAPI compositions. A
@@ -3179,7 +3179,7 @@ class BC3CodeRequired(ValidationRule):
     BC3 ties every partida back to a concept code (``~C`` record); a
     position without one cannot be exported back to FIEBDC-3 without
     losing the original catalogue reference. Rule fires only when the
-    project's classification_standard is bc3 or region is ES / LATAM —
+    project's classification_standard is bc3 or region is ES / LATAM -
     other regions can leave the field blank without penalty.
     """
 
@@ -3194,7 +3194,7 @@ class BC3CodeRequired(ValidationRule):
         locale = _get_locale(context)
         results: list[RuleResult] = []
         for pos in _get_positions(context):
-            # Skip section rows — chapters carry their own code in ordinal.
+            # Skip section rows - chapters carry their own code in ordinal.
             if (pos.get("type") or "position") == "section":
                 continue
             classification = pos.get("classification") or {}
@@ -3239,7 +3239,7 @@ class BC3ValidCode(ValidationRule):
 
     Codes can be alphanumeric (e.g. ``E04CM040`` is a valid common code).
     We reject obviously malformed values (spaces, leading dots, control
-    chars) — the FIEBDC-3 spec doesn't fix a strict length, so we lean
+    chars) - the FIEBDC-3 spec doesn't fix a strict length, so we lean
     on shape rather than length.
     """
 
@@ -3309,7 +3309,7 @@ class CurrencyConsistency(ValidationRule):
         if not positions:
             # An empty BOQ has nothing to be consistent about. Emitting a
             # *passing* row here is what made an empty estimate look "100%
-            # green" instead of SKIPPED (E-VAL-008) — return nothing so the
+            # green" instead of SKIPPED (E-VAL-008) - return nothing so the
             # engine's no-results → SKIPPED branch can fire.
             return []
         currencies: set[str] = set()
@@ -3364,7 +3364,7 @@ class MeasurementConsistency(ValidationRule):
         locale = _get_locale(context)
         positions = _get_positions(context)
         if not positions:
-            # See CurrencyConsistency — no positions means nothing to check;
+            # See CurrencyConsistency - no positions means nothing to check;
             # a passing row here defeats the SKIPPED status (E-VAL-008).
             return []
         has_metric = False
@@ -3411,7 +3411,7 @@ class MeasurementConsistency(ValidationRule):
 class PipelineSideEffectGated(ValidationRule):
     """Structural "AI proposes, human confirms" gate (design §3.5).
 
-    Fails the graph (ERROR — blocks publish) if any ``side_effecting``
+    Fails the graph (ERROR - blocks publish) if any ``side_effecting``
     node can be reached from a trigger/AI node *without* passing through a
     ``gate.validation`` or ``gate.human_approval`` on that path. A failing
     graph stays ``is_published=false`` and cannot be triggered.
@@ -3541,7 +3541,7 @@ class PipelineSideEffectGated(ValidationRule):
 #     async def validate(self, context):
 #         ctx = _propdev_context(context)
 #         if ctx is None:
-#             return []        # not enough context — skip cleanly
+#             return []        # not enough context - skip cleanly
 #         session, dev_id = ctx
 #         ...                  # query, compute, build results
 #
@@ -3555,7 +3555,7 @@ def _propdev_context(context: ValidationContext) -> tuple[Any, Any] | None:
     """Pull session + development_id from a property-dev rule context.
 
     Returns ``None`` when either is missing so the caller can short-circuit
-    with an empty result list (rules MUST NOT raise on missing context —
+    with an empty result list (rules MUST NOT raise on missing context -
     that would surface as a phantom DIAGNOSTIC engine-error row).
     """
     meta = getattr(context, "metadata", None) or {}
@@ -3621,7 +3621,7 @@ def _iban_is_valid(iban: str) -> bool:
     country = raw[:2]
     expected_len = _IBAN_LENGTHS.get(country)
     if expected_len is None:
-        # Unknown country — accept range only.
+        # Unknown country - accept range only.
         if not (15 <= len(raw) <= 34):
             return False
     elif expected_len > 0 and len(raw) != expected_len:
@@ -3692,7 +3692,7 @@ class PropDevEscrowAccountRequired(ValidationRule):
             elif jurisdiction.startswith("SA"):
                 regulator = "CMA"
         if regulator not in _PROPDEV_REGULATORS_REQUIRING_ESCROW:
-            # Not subject to escrow rules — pass.
+            # Not subject to escrow rules - pass.
             return [
                 RuleResult(
                     rule_id=self.rule_id,
@@ -3838,7 +3838,7 @@ class PropDevEscrowBalanceReconciled(ValidationRule):
     ``EscrowAccount`` ledger (we treat the txn sum as ground truth and
     flag accounts whose ``metadata.ledger_balance`` declares something
     different). Drift > 0.01 currency unit triggers WARNING (it is a
-    soft signal — actual reconciliation lives in the dedicated workflow).
+    soft signal - actual reconciliation lives in the dedicated workflow).
     """
 
     rule_id = "property_dev.escrow_balance_reconciled"
@@ -3890,7 +3890,7 @@ class PropDevEscrowBalanceReconciled(ValidationRule):
             meta = acc.metadata_ or {}
             declared_raw = meta.get("ledger_balance") if isinstance(meta, dict) else None
             if declared_raw is None:
-                # No declared ledger — nothing to compare against. Skip.
+                # No declared ledger - nothing to compare against. Skip.
                 continue
             try:
                 declared = Decimal(str(declared_raw))
@@ -3970,7 +3970,7 @@ class PropDevSalesContractPartyOwnershipSumsTo100(ValidationRule):
     severity = Severity.ERROR
     category = RuleCategory.CONSISTENCY
     description = (
-        "Every SalesContract's parties must collectively own 100.00% — neither over-subscribed nor under-allocated."
+        "Every SalesContract's parties must collectively own 100.00% - neither over-subscribed nor under-allocated."
     )
 
     async def validate(self, context: ValidationContext) -> list[RuleResult]:
@@ -4109,7 +4109,7 @@ class PropDevPaymentScheduleInstalmentsSumToContractValue(ValidationRule):
             sched_stmt = _sql_select(PaymentSchedule).where(PaymentSchedule.sales_contract_id == c.id)
             sched = (await session.execute(sched_stmt)).scalar_one_or_none()
             if sched is None:
-                # No schedule yet — not the consistency rule's concern.
+                # No schedule yet - not the consistency rule's concern.
                 continue
             inst_stmt = _sql_select(Instalment).where(Instalment.schedule_id == sched.id)
             instalments = list((await session.execute(inst_stmt)).scalars().all())
@@ -4543,7 +4543,7 @@ def register_builtin_rules() -> None:
         (DIN276ValidCostGroup(), None),
         (DIN276Hierarchy(), None),
         (DIN276Completeness(), None),
-        # GAEB (DACH) — slice D expansion
+        # GAEB (DACH) - slice D expansion
         (GAEBOrdinalFormat(), None),
         (GAEBLVStructure(), None),
         (GAEBEinheitspreisSanity(), None),
@@ -4560,7 +4560,7 @@ def register_builtin_rules() -> None:
         # SINAPI (Brazil)
         (SINAPICodeRequired(), None),
         (SINAPIValidCode(), None),
-        # NBR 12721 (Brazil — ABNT cost-group hierarchy)
+        # NBR 12721 (Brazil - ABNT cost-group hierarchy)
         (NBR12721ClassificationRequired(), None),
         (NBR12721ValidSection(), None),
         # GESN (Russia/CIS)
@@ -4587,7 +4587,7 @@ def register_builtin_rules() -> None:
         # BC3 / FIEBDC-3 (Spain + LATAM)
         (BC3CodeRequired(), None),
         (BC3ValidCode(), None),
-        # Pipeline Builder — structural graph-validity gate
+        # Pipeline Builder - structural graph-validity gate
         (PipelineSideEffectGated(), None),
         # Property Development (task #139)
         (PropDevEscrowAccountRequired(), None),

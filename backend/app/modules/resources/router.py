@@ -716,7 +716,7 @@ async def portfolio_capacity(
 
     Returns, per resource per time bucket, the total allocation across every
     project plus the per-project breakdown, flagging over-allocation and
-    cross-project competition. Gated by ``resources.read`` only — like the
+    cross-project competition. Gated by ``resources.read`` only - like the
     org-wide dispatcher board, this is a portfolio (not project-scoped) view.
     """
     if end <= start:
@@ -746,7 +746,7 @@ async def portfolio_leveling(
     over-allocated only when the resource's declared ``capacity_percent`` is
     exceeded; resources with no declared capacity are returned as
     ``capacity_unknown`` and never as overloaded. For each overloaded bucket a
-    leveling suggestion (shift / spread) is attached. Nothing is moved — the
+    leveling suggestion (shift / spread) is attached. Nothing is moved - the
     planner confirms each action. The unscoped (portfolio) view is gated by
     ``resources.read`` like the org-wide dispatcher board; the project-scoped
     view additionally verifies access to that project so it cannot be used as a
@@ -800,10 +800,10 @@ async def rank_candidates(
     """‌⁠‍Return ranked candidate resources scored on skills × availability × proximity.
 
     Body:
-        required_skill_ids: list[uuid] — required skills
+        required_skill_ids: list[uuid] - required skills
         start: ISO datetime
         end: ISO datetime
-        home_project_id: optional uuid — for proximity bonus
+        home_project_id: optional uuid - for proximity bonus
         weight_skill / weight_availability / weight_proximity: optional floats
         limit: optional int (default 20)
     """
@@ -855,8 +855,8 @@ async def cert_expiry_scan(
     """‌⁠‍Scan expiring certifications and emit ``resources.cert_expiring`` events.
 
     Body (optional):
-        windows_days: list[int] — default [60, 30, 14, 7]
-        emit: bool — when true, publish events; when false, just preview.
+        windows_days: list[int] - default [60, 30, 14, 7]
+        emit: bool - when true, publish events; when false, just preview.
     """
     body = payload or {}
     windows = body.get("windows_days") or [60, 30, 14, 7]
@@ -917,10 +917,10 @@ async def import_timecards(
     """Import a batch of time-card rows as completed Assignments.
 
     Body:
-        rows: list[dict] — each row needs resource_code or resource_id,
+        rows: list[dict] - each row needs resource_code or resource_id,
             start_at, end_at, plus optional project_id, allocation_percent,
             cost_rate, currency, notes.
-        default_status: optional — defaults to "completed".
+        default_status: optional - defaults to "completed".
     """
     rows = payload.get("rows")
     if not isinstance(rows, list):

@@ -17,8 +17,8 @@ PACK_CONFIG: dict[str, Any] = {
     "standards": [
         {
             "code": "GESN",
-            "name": "ГЭСН — Государственные элементные сметные нормы",
-            "name_en": "GESN — State Elemental Estimate Norms",
+            "name": "ГЭСН - Государственные элементные сметные нормы",
+            "name_en": "GESN - State Elemental Estimate Norms",
             "description": "Federal elemental cost norms for construction works",
             "editions": ["GESN-2001", "GESN-2020", "GESN-2024"],
             "sections": [
@@ -41,20 +41,20 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "FER",
-            "name": "ФЕР — Федеральные единичные расценки",
-            "name_en": "FER — Federal Unit Rates",
+            "name": "ФЕР - Федеральные единичные расценки",
+            "name_en": "FER - Federal Unit Rates",
             "description": "Federal unit rates derived from GESN (base prices)",
         },
         {
             "code": "TER",
-            "name": "ТЕР — Территориальные единичные расценки",
-            "name_en": "TER — Territorial Unit Rates",
+            "name": "ТЕР - Территориальные единичные расценки",
+            "name_en": "TER - Territorial Unit Rates",
             "description": "Regional unit rates with territorial coefficients",
         },
         {
             "code": "SP",
-            "name": "СП — Своды правил (Building Codes)",
-            "name_en": "SP — Codes of Practice",
+            "name": "СП - Своды правил (Building Codes)",
+            "name_en": "SP - Codes of Practice",
             "description": "Russian construction codes of practice",
         },
     ],
@@ -104,23 +104,23 @@ PACK_CONFIG: dict[str, Any] = {
     "tax_rules": [
         {
             "code": "RU_NDS_STANDARD",
-            "name": "НДС — Стандартная ставка",
-            "name_en": "VAT — Standard Rate",
+            "name": "НДС - Стандартная ставка",
+            "name_en": "VAT - Standard Rate",
             "type": "vat",
             "rate_pct": "20",
         },
         {
             "code": "RU_NDS_REDUCED",
-            "name": "НДС — Пониженная ставка",
-            "name_en": "VAT — Reduced Rate",
+            "name": "НДС - Пониженная ставка",
+            "name_en": "VAT - Reduced Rate",
             "type": "vat",
             "rate_pct": "10",
             "note": "Applies to certain food, children's goods, medical supplies",
         },
         {
             "code": "RU_NDS_ZERO",
-            "name": "НДС — Нулевая ставка",
-            "name_en": "VAT — Zero Rate",
+            "name": "НДС - Нулевая ставка",
+            "name_en": "VAT - Zero Rate",
             "type": "vat",
             "rate_pct": "0",
             "note": "Export and certain international services",
@@ -130,8 +130,8 @@ PACK_CONFIG: dict[str, Any] = {
     "index_sources": [
         {
             "code": "MINSTROI",
-            "name": "Минстрой России — индексы пересчёта",
-            "name_en": "Ministry of Construction — recalculation indices",
+            "name": "Минстрой России - индексы пересчёта",
+            "name_en": "Ministry of Construction - recalculation indices",
             "description": "Quarterly price indices published by the Ministry of Construction",
             "url": "https://minstroyrf.gov.ru",
         },

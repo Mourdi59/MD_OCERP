@@ -1,4 +1,4 @@
-"""‌⁠‍Carbon & Sustainability Pydantic schemas — request/response models."""
+"""‌⁠‍Carbon & Sustainability Pydantic schemas - request/response models."""
 
 from __future__ import annotations
 

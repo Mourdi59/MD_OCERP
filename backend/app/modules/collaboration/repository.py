@@ -1,7 +1,7 @@
 """‌⁠‍Collaboration data access layer.
 
 All database queries for comments, mentions, and viewpoints live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid
@@ -31,7 +31,7 @@ class CommentRepository:
         ``CommentResponse.replies`` is a self-referential schema that Pydantic
         serializes recursively. The model's ``lazy="selectin"`` only pre-loads
         ONE level, so accessing a grandchild's ``replies`` during synchronous
-        serialization emits a lazy SELECT — which raises ``MissingGreenlet`` on
+        serialization emits a lazy SELECT - which raises ``MissingGreenlet`` on
         asyncpg (SQLite tolerated it). Assigning the collection with
         ``set_committed_value`` marks it as loaded-from-DB without triggering any
         IO or cascade, so the recursive serialize is fully in-memory on both
@@ -79,7 +79,7 @@ class CommentRepository:
         :meth:`_pin_reply_tree`) so the nested ``replies`` serialize without lazy
         IO. Deleted comments are kept in the reply tree (rendered as "[deleted]"
         to preserve threading) but excluded from the top-level page/count unless
-        ``include_deleted`` is set — matching the previous behaviour.
+        ``include_deleted`` is set - matching the previous behaviour.
         """
         all_comments = await self._load_entity_comments(entity_type, entity_id)
         self._pin_reply_tree(all_comments)

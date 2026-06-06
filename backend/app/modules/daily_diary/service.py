@@ -5,12 +5,12 @@ tested without a database. The :class:`DailyDiaryService` orchestrates
 state transitions, persistence, and event publication.
 
 Events emitted:
-    * ``daily_diary.closed``                 — diary transitioned open→closed
-    * ``daily_diary.signed``                 — diary signed (snapshot frozen)
-    * ``daily_diary.archived``               — diary archived (terminal state)
-    * ``daily_diary.photo.registered``       — new photo recorded
-    * ``daily_diary.drone.attached``         — drone survey attached
-    * ``daily_diary.reality_capture.attached`` — reality-capture attached
+    * ``daily_diary.closed``                 - diary transitioned open→closed
+    * ``daily_diary.signed``                 - diary signed (snapshot frozen)
+    * ``daily_diary.archived``               - diary archived (terminal state)
+    * ``daily_diary.photo.registered``       - new photo recorded
+    * ``daily_diary.drone.attached``         - drone survey attached
+    * ``daily_diary.reality_capture.attached`` - reality-capture attached
 """
 
 from __future__ import annotations
@@ -100,7 +100,7 @@ def _ensure_can_transition(current: str, target: str) -> None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
-                f"Cannot transition diary from '{current}' to '{target}' — "
+                f"Cannot transition diary from '{current}' to '{target}' - "
                 "status flow is open→closed→signed→archived and is one-way."
             ),
         )
@@ -130,7 +130,7 @@ def _entry_signed_immutable_detail(diary_id: uuid.UUID, status_str: str) -> dict
     return {
         "code": "entry_signed_immutable",
         "message": (
-            f"Cannot modify entries of a {status_str} diary — the signed "
+            f"Cannot modify entries of a {status_str} diary - the signed "
             "snapshot would be invalidated. Use POST /diaries/{diary_id}/"
             "unlock (manager+) first."
         ),
@@ -621,7 +621,7 @@ class DailyDiaryService:
 
         The archive signature is preserved (with its hash) so the
         original sealed snapshot remains forensically traceable. After
-        editing, a fresh ``sign_diary`` call produces a new revision —
+        editing, a fresh ``sign_diary`` call produces a new revision -
         the integrity audit thus sees two signatures with two different
         hashes against the same diary_id.
 
@@ -637,7 +637,7 @@ class DailyDiaryService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
                     "code": "diary_archived_cannot_unlock",
-                    "message": ("Cannot unlock an archived diary — archive is terminal. Open a new diary instead."),
+                    "message": ("Cannot unlock an archived diary - archive is terminal. Open a new diary instead."),
                     "diary_id": str(diary_id),
                     "status": "archived",
                 },
@@ -692,7 +692,7 @@ class DailyDiaryService:
         here. The authoritative roll-up (header + entries) is computed
         on demand by :meth:`workforce_summary_for_diary` so that:
 
-            * closing is idempotent — re-running it does not silently
+            * closing is idempotent - re-running it does not silently
               keep inflating the counts;
             * the workforce summary is internally consistent (header +
               entries) regardless of whether the diary is open or closed.
@@ -749,7 +749,7 @@ class DailyDiaryService:
         algorithm: str = "sha256",
         user_id: str | None = None,
     ) -> DiaryArchiveSignature:
-        """Sign the diary — emit ``daily_diary.signed``. Idempotent on re-sign."""
+        """Sign the diary - emit ``daily_diary.signed``. Idempotent on re-sign."""
         diary = await self.get_diary(diary_id)
         if diary.status == "open":
             # Auto-close on first sign so the transition stays one-way.
@@ -762,7 +762,7 @@ class DailyDiaryService:
             )
 
         entries = await self.entry_repo.list_for_diary(diary_id)
-        # Single indexed query scoped to the diary — previously we fetched
+        # Single indexed query scoped to the diary - previously we fetched
         # every photo in the entire project (limit=10 000) and filtered in
         # Python, which scaled O(project size) per signature operation.
         photos = await self.photo_repo.photos_for_diary(diary_id)
@@ -805,7 +805,7 @@ class DailyDiaryService:
             **{sig_field: signer_name or content_hash[:32]},
         )
         # update_fields() ends with session.expire_all(), which expires *every*
-        # instance in the identity map — including the just-created ``signature``
+        # instance in the identity map - including the just-created ``signature``
         # and ``diary``. Refresh both before any synchronous attribute access:
         # the router serializes ``signature`` (DiaryArchiveSignatureResponse) and
         # the event payload below reads ``diary.project_id``. Without the refresh
@@ -835,7 +835,7 @@ class DailyDiaryService:
     ) -> DailyDiary:
         """Transition diary signed→archived. Cannot transition back.
 
-        Archiving is only meaningful for a *signed* diary — the archive's
+        Archiving is only meaningful for a *signed* diary - the archive's
         legal value is the sealed SHA-256 snapshot taken at sign time.
         Archiving an unsigned diary would produce a terminal record with
         no contemporaneous integrity proof, so it is rejected.
@@ -846,7 +846,7 @@ class DailyDiaryService:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
-                    f"Cannot archive a '{diary.status}' diary — it must be "
+                    f"Cannot archive a '{diary.status}' diary - it must be "
                     "signed first so the archive carries a sealed snapshot."
                 ),
             )
@@ -1186,7 +1186,7 @@ class DailyDiaryService:
         # Cross-field invariant: elevation_min_m ≤ elevation_max_m. The
         # schema validator catches the case where BOTH come in the same
         # request; here we cover the partial PATCH that updates only one
-        # side — the existing row supplies the missing end of the range.
+        # side - the existing row supplies the missing end of the range.
         if "elevation_min_m" in fields or "elevation_max_m" in fields:
             new_lo = fields.get("elevation_min_m", survey.elevation_min_m)  # type: ignore[attr-defined]
             new_hi = fields.get("elevation_max_m", survey.elevation_max_m)  # type: ignore[attr-defined]
@@ -1542,7 +1542,7 @@ class DailyDiaryService:
                 kept.append(d)
             drones = kept
 
-        # Weather records in range — a single ranged query (no N+1, and no
+        # Weather records in range - a single ranged query (no N+1, and no
         # fragile LIKE against a typed DateTime column which breaks on
         # PostgreSQL). The range mirrors the photo/drone window so the
         # sealed bundle is internally consistent.

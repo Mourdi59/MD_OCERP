@@ -1,10 +1,10 @@
-"""‌⁠‍Assemblies event subscribers​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ — keep total_rate fresh.
+"""‌⁠‍Assemblies event subscribers​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ - keep total_rate fresh.
 
 Without this subscriber, ``Assembly.total_rate`` was a denormalised
 string snapshot computed once at component create/update/delete time.
 When a ``CostItem.rate`` changed externally via the costs module,
 every Assembly that referenced it carried a stale unit_cost on its
-Components and a stale total_rate on the parent — and any BOQ
+Components and a stale total_rate on the parent - and any BOQ
 position created from the assembly inherited the stale value
 forever.
 
@@ -14,7 +14,7 @@ the component's ``unit_cost`` + ``total`` from the new rate, and then
 re-runs the assembly total math on each parent assembly so the
 denormalised total stays in sync.
 
-This is the "additive" cost-flow direction — assemblies stay
+This is the "additive" cost-flow direction - assemblies stay
 synchronised with the cost database without the BOQ positions
 already created from them having to be hand-rebuilt.  Positions
 created BEFORE the rate change are NOT touched (they're locked
@@ -52,7 +52,7 @@ async def _on_cost_item_updated(event: Event) -> None:
     Pulls the new ``rate`` straight out of the event payload (the
     costs module emits the field-level diff with the new value).
     Falls back to a fresh DB lookup if the payload is missing the
-    rate — older publishers may not include it.
+    rate - older publishers may not include it.
     """
     data = event.data or {}
     # The costs module publishes ``costs.item.updated`` with the key
@@ -193,15 +193,15 @@ async def _on_catalog_resource_updated(event: Event) -> None:
 
     Three payload shapes are handled (CAT-002):
 
-    * **bulk adjust** — ``catalog.resources.updated`` carries
+    * **bulk adjust** - ``catalog.resources.updated`` carries
       ``{count, resource_ids, factor, filters}``. The catalog router
       has already written the new ``base_price`` to every matched row
       *before* publishing, so we re-price exactly the Components whose
       ``catalog_resource_id`` is in ``resource_ids`` from the current
       authoritative ``CatalogResource.base_price``.
-    * **single resource** — payload has ``resource_id`` (+ optionally
+    * **single resource** - payload has ``resource_id`` (+ optionally
       the new ``base_price``); only matching Components are refreshed.
-    * **legacy / unknown bulk** — neither id list nor single id: every
+    * **legacy / unknown bulk** - neither id list nor single id: every
       Component that points at *any* catalog resource is re-priced from
       the current ``CatalogResource.base_price`` (the only correct
       source of truth after a filtered bulk multiply).
@@ -223,12 +223,12 @@ async def _on_catalog_resource_updated(event: Event) -> None:
                     return
                 comp_stmt = select(Component).where(Component.catalog_resource_id == res_id)
             elif scoped_ids:
-                # Bulk adjust-prices — only the resources that were
+                # Bulk adjust-prices - only the resources that were
                 # actually re-priced. Keeps the blast radius tight
                 # instead of re-walking every catalog-linked component.
                 comp_stmt = select(Component).where(Component.catalog_resource_id.in_(scoped_ids))
             else:
-                # Bulk price adjust — every catalog-linked component.
+                # Bulk price adjust - every catalog-linked component.
                 comp_stmt = select(Component).where(Component.catalog_resource_id.isnot(None))
 
             components = list((await session.execute(comp_stmt)).scalars().all())
@@ -236,7 +236,7 @@ async def _on_catalog_resource_updated(event: Event) -> None:
                 return
 
             # Resolve the authoritative price per resource id (one
-            # lookup per distinct resource — the bulk path may span
+            # lookup per distinct resource - the bulk path may span
             # many). Prefer the event-supplied price for the single
             # case to avoid a redundant read.
             price_cache: dict[uuid.UUID, Decimal] = {}
@@ -286,7 +286,7 @@ def register_assemblies_subscribers() -> None:
     event_bus.subscribe("costs.item.updated", _on_cost_item_updated)
     # ASM-007 / CAT-002: keep catalog-resource-linked components fresh.
     # ``catalog.resources.updated`` (PLURAL) is the name the catalog
-    # router actually emits from its bulk ``adjust-prices`` endpoint —
+    # router actually emits from its bulk ``adjust-prices`` endpoint -
     # the prior subscriptions used the singular / ``.price_adjusted``
     # names that nothing published, so a catalog price change never
     # propagated to assemblies. The singular names are kept as

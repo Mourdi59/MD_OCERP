@@ -7,7 +7,7 @@ names are declared so publishers and subscribers agree on one spelling.
 
 Published events:
 
-* :data:`EVENT_BUDGET_LINE_ACTUAL_POSTED` — emitted by
+* :data:`EVENT_BUDGET_LINE_ACTUAL_POSTED` - emitted by
   :meth:`CostSpineService.post_actual_to_budget_line` whenever a realised cost
   is posted onto a ``BudgetLine.actual_amount`` (Gap B). The payload carries
   ``project_id``, ``budget_line_id``, ``cost_line_id`` (nullable), ``category``,

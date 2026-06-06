@@ -1,5 +1,5 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""‌⁠‍BCF 3.0 zip writer — high-level builder API.
+"""‌⁠‍BCF 3.0 zip writer - high-level builder API.
 
 This module provides :class:`BCFWriter`, an instance-style builder that
 assembles a valid BCF 3.0 ``.bcfzip`` from clash topics + viewpoints
@@ -16,21 +16,21 @@ Design goals
 3. **Shorter-list visibility encoding.** BCF 3.0 ``Visibility`` carries
    a ``DefaultVisibility`` bool + an ``Exceptions`` list. We always
    emit whichever side (visible / hidden) is shorter and flip
-   ``DefaultVisibility`` to match — exactly per the BCF 3.0 markup.xsd
+   ``DefaultVisibility`` to match - exactly per the BCF 3.0 markup.xsd
    guidance.
 4. **Safe filenames.** Topic-folder names come from the Topic GUID
-   (validated as RFC 4122) — never from user-controlled text — so a
+   (validated as RFC 4122) - never from user-controlled text - so a
    malicious title can never escape the archive root.
 
 Public API
 ----------
-* :class:`BCFTopic`             — topic data transfer object
-* :class:`BCFComment`           — comment DTO
-* :class:`BCFViewpoint`         — viewpoint DTO (camera + components)
-* :class:`BCFWriter`            — the builder
-* :data:`BCF_VERSION`           — the schema version this writer emits
+* :class:`BCFTopic`             - topic data transfer object
+* :class:`BCFComment`           - comment DTO
+* :class:`BCFViewpoint`         - viewpoint DTO (camera + components)
+* :class:`BCFWriter`            - the builder
+* :data:`BCF_VERSION`           - the schema version this writer emits
 
-The writer is purposely **3.0-only** — the platform's BCF 2.1 export
+The writer is purposely **3.0-only** - the platform's BCF 2.1 export
 already lives in :mod:`app.modules.bcf.bcf_xml.build_bcfzip`; this
 module is the new clash-coordination surface and ships the modern
 schema by default.
@@ -96,7 +96,7 @@ class BCFViewpoint:
     camera_up_vector: tuple[float, float, float] = (0.0, 0.0, 1.0)
     field_of_view: float = 60.0
     view_to_world_scale: float = 1.0
-    aspect_ratio: float = 1.7777778  # 16:9 default — matches buildingSMART samples
+    aspect_ratio: float = 1.7777778  # 16:9 default - matches buildingSMART samples
     default_visibility: bool = True
     visible: list[str] = field(default_factory=list)
     hidden: list[str] = field(default_factory=list)
@@ -119,7 +119,7 @@ class BCFComment:
 
 @dataclass
 class BCFTopic:
-    """‌⁠‍Topic DTO — only the BCF 3.0 mandatory fields are required.
+    """‌⁠‍Topic DTO - only the BCF 3.0 mandatory fields are required.
 
     See https://github.com/buildingSMART/BCF-XML/blob/release_3_0/Schemas/markup.xsd
     for the authoritative schema. Anything not modelled here (custom
@@ -217,7 +217,7 @@ def build_extensions_xml(lists: dict[str, tuple[str, ...]]) -> bytes:
     """Build the BCF 3.0 ``extensions.xml`` document.
 
     Every list emits as ``<{Kind}><{Singular}>value</{Singular}></{Kind}>``,
-    with the singular tag derived by chopping a trailing ``s`` — matches
+    with the singular tag derived by chopping a trailing ``s`` - matches
     the schema's element naming (``<TopicTypes><TopicType>`` etc.).
     """
     root = ET.Element("Extensions")
@@ -286,7 +286,7 @@ def build_markup_xml(topic: BCFTopic) -> bytes:
     if topic.due_date:
         ET.SubElement(topic_el, "DueDate").text = _iso_utc(topic.due_date)
 
-    # Comments — repeated under <Topic> in 3.0.
+    # Comments - repeated under <Topic> in 3.0.
     for c in topic.comments:
         c_el = ET.SubElement(topic_el, "Comment", {"Guid": _normalize_guid(c.guid)})
         ET.SubElement(c_el, "Date").text = _iso_utc(c.date)
@@ -299,7 +299,7 @@ def build_markup_xml(topic: BCFTopic) -> bytes:
         if c.viewpoint_guid:
             ET.SubElement(c_el, "Viewpoint").set("Guid", _normalize_guid(c.viewpoint_guid))
 
-    # Viewpoints — one <Viewpoints><DocumentReference>-style block in 3.0.
+    # Viewpoints - one <Viewpoints><DocumentReference>-style block in 3.0.
     if topic.viewpoints:
         vps_el = ET.SubElement(topic_el, "Viewpoints")
         for vp in topic.viewpoints:
@@ -331,7 +331,7 @@ def build_visinfo_xml(vp: BCFViewpoint) -> bytes:
             sel_el = ET.SubElement(comps_el, "Selection")
             for guid in vp.selection:
                 ET.SubElement(sel_el, "Component", {"IfcGuid": guid})
-        # Visibility — shorter-list rule
+        # Visibility - shorter-list rule
         vis_el = ET.SubElement(comps_el, "Visibility")
         # If both sides are populated, the one with fewer entries wins. If
         # only one side is populated we still flip DefaultVisibility to
@@ -360,7 +360,7 @@ def build_visinfo_xml(vp: BCFViewpoint) -> bytes:
             for guid in exceptions:
                 ET.SubElement(exc_el, "Component", {"IfcGuid": guid})
 
-    # Camera — exactly one.
+    # Camera - exactly one.
     if vp.camera_type == "orthogonal":
         cam_el = ET.SubElement(root, "OrthogonalCamera")
         _vec(cam_el, "CameraViewPoint", vp.camera_view_point)
@@ -520,7 +520,7 @@ def synthesize_viewpoint_from_centroid(
 ) -> BCFViewpoint:
     """Construct a perspective viewpoint 5m back from ``centroid``.
 
-    Looks down the +Y axis at the centroid with +Z up — the canonical
+    Looks down the +Y axis at the centroid with +Z up - the canonical
     "isometric-ish" coordination camera. Handy when a clash row has a
     centroid but no native viewpoint of its own.
     """

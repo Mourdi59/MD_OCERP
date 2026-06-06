@@ -1,16 +1,16 @@
-# OpenConstructionERP — DataDrivenConstruction (DDC)
+# OpenConstructionERP - DataDrivenConstruction (DDC)
 # DDC-CWICR-OE-2026
 """Progress tracking API routes.
 
 Endpoints:
-    POST   /entries/                        — Record a progress observation
-    GET    /entries/?project_id=X           — List entries (with filters)
-    GET    /entries/{id}                    — Get single entry
-    GET    /cumulative/?project_id=X        — Per-period breakdown + running total
-    GET    /position/{position_id}/summary  — Position summary (parent rollup)
-    GET    /s-curve/?project_id=X           — Actual vs planned S-curve
-    POST   /plan/                           — Upsert a planned data point
-    GET    /plan/?project_id=X              — List plan data points
+    POST   /entries/                        - Record a progress observation
+    GET    /entries/?project_id=X           - List entries (with filters)
+    GET    /entries/{id}                    - Get single entry
+    GET    /cumulative/?project_id=X        - Per-period breakdown + running total
+    GET    /position/{position_id}/summary  - Position summary (parent rollup)
+    GET    /s-curve/?project_id=X           - Actual vs planned S-curve
+    POST   /plan/                           - Upsert a planned data point
+    GET    /plan/?project_id=X              - List plan data points
 """
 
 from __future__ import annotations

@@ -1,11 +1,11 @@
-"""‌⁠‍ERP Chat message vector adapter — feeds the ``oe_chat`` collection.
+"""‌⁠‍ERP Chat message vector adapter - feeds the ``oe_chat`` collection.
 
 Indexes the textual ``content`` field of every chat message so the
 AI advisor and global semantic search can recall past conversations
 ("show me messages where we discussed the basement waterproofing
 budget").
 
-System and tool messages are skipped — only user and assistant turns
+System and tool messages are skipped - only user and assistant turns
 carry the kind of free-text the user might want to search later.
 
 Implements the :class:`~app.core.vector_index.EmbeddingAdapter`
@@ -57,7 +57,7 @@ class ChatMessageAdapter:
         """Resolve project_id via the parent ChatSession.
 
         ``project_id`` is optional on a session, so this returns ``None``
-        for tenant-wide chats — those still get indexed but won't show
+        for tenant-wide chats - those still get indexed but won't show
         up in project-scoped search results.
         """
         session = getattr(row, "session", None)

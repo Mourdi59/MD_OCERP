@@ -1,7 +1,7 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 """‌⁠‍BI Dashboards cross-module subscribers (Wave M4 deep-pass).
 
-BI Dashboards is a *read-only* module — it consumes events from every
+BI Dashboards is a *read-only* module - it consumes events from every
 other module and feeds them into a lightweight projection layer. The
 real per-KPI recompute happens lazily on the next dashboard render
 (``service.compute_kpi``). What this module does at event time:
@@ -13,7 +13,7 @@ real per-KPI recompute happens lazily on the next dashboard render
    ``kpi_codes`` payload.
 
 All handlers are fail-soft. Subscribers are gated to PostgreSQL when
-they need a writeable session — on SQLite the in-memory dev DB collapses
+they need a writeable session - on SQLite the in-memory dev DB collapses
 to a single writer and would deadlock.
 """
 
@@ -143,7 +143,7 @@ async def _on_invalidation_event(event: Event) -> None:
     """
     data = event.data or {}
     # If the source has already published a ``kpi_recompute`` directly
-    # (as our other Wave-M4 subscribers do) skip — avoid duplicate fan-out.
+    # (as our other Wave-M4 subscribers do) skip - avoid duplicate fan-out.
     if event.name == "bi_dashboards.kpi_recompute":
         return
     try:

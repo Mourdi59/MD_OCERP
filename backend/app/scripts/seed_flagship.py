@@ -166,7 +166,7 @@ async def install_flagship(
                 content = gzip.decompress(gpath.read_bytes())
                 canonical_key = await save_geometry(pid, mid, ".dae", content)
         # Status must match what is actually on storage. Only a model whose
-        # geometry blob was written can be "ready" — the geometry endpoint
+        # geometry blob was written can be "ready" - the geometry endpoint
         # treats a "ready" model with no blob as a data-loss error and
         # returns the alarming `geometry_missing` 404 ("marked ready but its
         # 3D geometry file is no longer on the server"). The flagship DWG is
@@ -365,7 +365,7 @@ async def install_flagship(
                         metadata_={"source": "flagship_seed"},
                     )
                 )
-        except Exception:  # noqa: BLE001 — PDF is non-critical
+        except Exception:  # noqa: BLE001 - PDF is non-critical
             logger.warning("flagship: PDF attach skipped", exc_info=True)
 
     await session.commit()

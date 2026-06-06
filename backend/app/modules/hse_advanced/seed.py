@@ -137,7 +137,7 @@ _CERT_TYPES: tuple[str, ...] = (
 )
 _CERT_STATUSES: tuple[str, ...] = ("valid", "expired", "revoked")
 _TOPIC_TITLES: tuple[str, ...] = (
-    "Working at height — fall protection basics",
+    "Working at height - fall protection basics",
     "Hot work permit walk-through",
     "Confined space entry procedures",
     "Electrical hazards on site",
@@ -452,7 +452,7 @@ async def seed_hse_advanced_demo(
         audits.append(audit)
     await session.flush()
 
-    # ── Audit findings (300) — 6 per audit × 50 audits ───────────────────
+    # ── Audit findings (300) - 6 per audit × 50 audits ───────────────────
     findings: list[SafetyAuditFinding] = []
     for audit in audits:
         for j in range(6):
@@ -547,7 +547,7 @@ async def seed_hse_advanced_demo(
     await session.flush()
     counts["certifications"] = len(certs)
 
-    # ── Incident investigations (10) — light demo set ────────────────────
+    # ── Incident investigations (10) - light demo set ────────────────────
     investigations: list[HSEIncidentInvestigation] = []
     for idx in range(10):
         inv = HSEIncidentInvestigation(

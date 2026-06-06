@@ -1,13 +1,13 @@
 """‌⁠‍Teams API routes.
 
 Endpoints:
-    GET    /project/{project_id}        — List teams for project
-    POST   /                            — Create team (auth required)
-    PATCH  /{team_id}                   — Update team
-    DELETE /{team_id}                   — Delete team
-    POST   /{team_id}/members           — Add member
-    DELETE /{team_id}/members/{user_id} — Remove member
-    GET    /{team_id}/members           — List members
+    GET    /project/{project_id}        - List teams for project
+    POST   /                            - Create team (auth required)
+    PATCH  /{team_id}                   - Update team
+    DELETE /{team_id}                   - Delete team
+    POST   /{team_id}/members           - Add member
+    DELETE /{team_id}/members/{user_id} - Remove member
+    GET    /{team_id}/members           - List members
 """
 
 import logging
@@ -66,7 +66,7 @@ async def create_team(
     """Create a new team within a project.
 
     RBAC: caller must own (or be admin of) the parent project. The
-    service-layer ``_assert_project_access`` enforces this — the router
+    service-layer ``_assert_project_access`` enforces this - the router
     just forwards ``user_id``.
     """
     try:

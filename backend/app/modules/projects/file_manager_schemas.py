@@ -1,7 +1,7 @@
 """‌⁠‍Pydantic schemas for the project file manager (Issue #109).
 
-The file manager surfaces every binary that belongs to a project — drawings,
-photos, BIM models, BOQ exports, takeoffs — alongside the *real* on-disk
+The file manager surfaces every binary that belongs to a project - drawings,
+photos, BIM models, BOQ exports, takeoffs - alongside the *real* on-disk
 path so users can answer "where is my project actually stored?" without
 guessing. The schemas here are the wire contracts for the new endpoints
 under ``/api/v1/projects/{project_id}/files/``.
@@ -15,7 +15,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 # Kind of file as far as the UI is concerned. Drives the icon + which
-# download endpoint to call. Stable string identifiers — never i18n.
+# download endpoint to call. Stable string identifiers - never i18n.
 FileKind = Literal[
     "document",
     "photo",
@@ -32,7 +32,7 @@ class FileRow(BaseModel):
     """‌⁠‍Single file as shown in the file-manager grid/list."""
 
     id: str = Field(..., description="UUID of the underlying row (Document/Photo/...)")
-    kind: FileKind = Field(..., description="Logical file type — drives UI icon and download URL")
+    kind: FileKind = Field(..., description="Logical file type - drives UI icon and download URL")
     name: str = Field(..., description="Human-readable file name (without folder)")
     project_id: str
     size_bytes: int = Field(default=0, ge=0)
@@ -69,9 +69,9 @@ class FileRow(BaseModel):
 
 
 class FileTreeNode(BaseModel):
-    """‌⁠‍Logical tree node — a category, kind, or virtual folder."""
+    """‌⁠‍Logical tree node - a category, kind, or virtual folder."""
 
-    id: str = Field(..., description="Stable identifier — used as React key")
+    id: str = Field(..., description="Stable identifier - used as React key")
     label: str = Field(..., description="Localised label fallback (UI re-translates if available)")
     kind: Literal["category", "type", "folder", "trash"] = "category"
     file_count: int = 0
@@ -84,13 +84,13 @@ class FileTreeNode(BaseModel):
     children: list[FileTreeNode] = Field(default_factory=list)
 
 
-# Pydantic v2 forward-reference resolution — the recursive list[FileTreeNode]
+# Pydantic v2 forward-reference resolution - the recursive list[FileTreeNode]
 # above needs an explicit rebuild call so child-node validation works.
 FileTreeNode.model_rebuild()
 
 
 class StorageLocations(BaseModel):
-    """Real on-disk roots used by the project — surfaced in the path bar."""
+    """Real on-disk roots used by the project - surfaced in the path bar."""
 
     project_id: str
     project_name: str
@@ -112,7 +112,7 @@ class StorageLocations(BaseModel):
     )
     notes: list[str] = Field(
         default_factory=list,
-        description="Operator-facing notes — typo warnings, mixed-root callouts, ...",
+        description="Operator-facing notes - typo warnings, mixed-root callouts, ...",
     )
 
 
@@ -130,11 +130,11 @@ class FileListResponse(BaseModel):
 
 
 BundleScope = Literal[
-    "metadata_only",  # DB rows only, no attachments — small zip suitable for email
+    "metadata_only",  # DB rows only, no attachments - small zip suitable for email
     "documents",  # DB + documents + photos + sheets
     "bim",  # BIM models + elements + their geometry files
     "dwg",  # DWG/DXF drawings + parsed entities
-    "full",  # Everything — DB + every attachment kind
+    "full",  # Everything - DB + every attachment kind
 ]
 
 
@@ -157,7 +157,7 @@ class ExportOptions(BaseModel):
 
 
 class ExportPreview(BaseModel):
-    """Returned by POST /export/preview/ — sizes only, no zip."""
+    """Returned by POST /export/preview/ - sizes only, no zip."""
 
     scope: BundleScope
     table_counts: dict[str, int]
@@ -168,7 +168,7 @@ class ExportPreview(BaseModel):
 
 
 class BundleManifest(BaseModel):
-    """Embedded manifest.json contract — also returned by /import/validate/."""
+    """Embedded manifest.json contract - also returned by /import/validate/."""
 
     app: str = "openestimate"
     format: str = "ocep"

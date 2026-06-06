@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 
 # R5 / BUG-RFI-ATT: allow-list of magic-byte tokens accepted for RFI reply
 # attachments. Mirrors ``correspondence`` (PDF + photos + Office ZIP +
-# legacy OLE). ``xml`` is deliberately excluded — the stdlib detector
+# legacy OLE). ``xml`` is deliberately excluded - the stdlib detector
 # treats ``<html>`` as XML and an HTML payload served back out is a
 # stored-XSS vector.
 ALLOWED_ATTACHMENT_TYPES = frozenset({"pdf", "png", "jpeg", "gif", "webp", "heic", "heif", "tiff", "zip", "ole"})
@@ -244,7 +244,7 @@ async def export_rfi_log(
     items = result.scalars().all()
 
     # Resolve the project's currency so the cost-impact cell carries its ISO
-    # code — the value lives in the project's currency (EUR/BRL/GBP/…), never
+    # code - the value lives in the project's currency (EUR/BRL/GBP/…), never
     # a bare number that downstream readers might assume is USD.
     project_currency = (
         (await session.scalar(select(Project.currency).where(Project.id == project_id)) or "").strip().upper()
@@ -384,7 +384,7 @@ async def batch_update_rfi_status(
 ) -> dict:
     """Bulk-update status on multiple RFIs.
 
-    BUG-RFI-BULK-ADMIN: see ``batch_delete_rfis`` — same is_admin gap.
+    BUG-RFI-BULK-ADMIN: see ``batch_delete_rfis`` - same is_admin gap.
     """
     from sqlalchemy import select as _select
 
@@ -518,7 +518,7 @@ async def create_variation_from_rfi(
     session: SessionDep,
     _perm: None = Depends(RequirePermission("rfi.update")),
     # This flow mints a ChangeOrder, so the caller must also hold the
-    # changeorders.create permission — otherwise RBAC is inconsistent across
+    # changeorders.create permission - otherwise RBAC is inconsistent across
     # the two modules (a user who cannot create a CO directly could mint one
     # via the RFI side door). Both verbs are EDITOR-tier, so this does not
     # raise the floor for legitimate editors.
@@ -536,7 +536,7 @@ async def create_variation_from_rfi(
     if not rfi.cost_impact:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="RFI has no cost impact — cannot create a variation.",
+            detail="RFI has no cost impact - cannot create a variation.",
         )
 
     if rfi.status not in ("answered", "closed"):
@@ -565,7 +565,7 @@ async def create_variation_from_rfi(
         description_parts.extend(["", "Response:", rfi.official_response])
 
     # Route through ChangeOrderService.create_order so the change order
-    # inherits the project's currency (never an empty string / silent EUR —
+    # inherits the project's currency (never an empty string / silent EUR -
     # see ChangeOrderService._resolve_currency) and uses the collision-retry
     # code generator instead of a non-atomic count+1 CO-{n} that can collide
     # and surface as a generic 500.
@@ -736,7 +736,7 @@ async def upload_rfi_attachment(
     malicious filename cannot poison the storage path or escape from
     :data:`ATTACHMENTS_DIR`.
     """
-    # IDOR gate first — never read the body for a caller that can't see
+    # IDOR gate first - never read the body for a caller that can't see
     # the project.
     existing = await service.get_rfi(rfi_id)
     await verify_project_access(existing.project_id, str(user_id), session)
@@ -776,7 +776,7 @@ async def upload_rfi_attachment(
             detail=str(exc),
         ) from exc
 
-    # Server-derived filename — extension is purely a hint for OS file
+    # Server-derived filename - extension is purely a hint for OS file
     # managers; the magic-byte gate above decided what we actually keep.
     ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
     ext = Path(file.filename or "attachment.bin").suffix or ".bin"
@@ -795,7 +795,7 @@ async def upload_rfi_attachment(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to save attachment — storage error",
+            detail="Unable to save attachment - storage error",
         ) from exc
 
     relative_path = f"rfi/attachments/{safe_name}"

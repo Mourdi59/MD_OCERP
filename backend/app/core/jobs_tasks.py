@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Celery task definitions — RFC 34 §4 W0.1.
+"""‌⁠‍Celery task definitions - RFC 34 §4 W0.1.
 
 There is exactly one task: ``oe.dispatch_job``. Module-specific work
 attaches via :func:`app.core.job_runner.register_handler`, NOT via
@@ -41,8 +41,8 @@ def _get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 @celery_app.task(name="oe.dispatch_job", bind=True)
-def dispatch_job(self, job_run_id: str) -> dict[str, str]:  # noqa: ANN001 — Celery's bind=True
-    """‌⁠‍Generic dispatch task — runs the handler registered for JobRun.kind.
+def dispatch_job(self, job_run_id: str) -> dict[str, str]:  # noqa: ANN001 - Celery's bind=True
+    """‌⁠‍Generic dispatch task - runs the handler registered for JobRun.kind.
 
     Returns a small dict with the outcome so Celery's own result
     backend has something useful to log. The authoritative outcome is
@@ -67,7 +67,7 @@ def dispatch_job(self, job_run_id: str) -> dict[str, str]:  # noqa: ANN001 — C
     return {"job_run_id": job_run_id, "status": "dispatched"}
 
 
-def _run_async_in_dedicated_thread(coro) -> None:  # noqa: ANN001 — coroutine
+def _run_async_in_dedicated_thread(coro) -> None:  # noqa: ANN001 - coroutine
     """Run a coroutine to completion on its own thread + event loop.
 
     Required by the Celery dispatch task because:
@@ -88,7 +88,7 @@ def _run_async_in_dedicated_thread(coro) -> None:  # noqa: ANN001 — coroutine
     def _runner() -> None:
         try:
             asyncio.run(coro)
-        except BaseException as exc:  # noqa: BLE001 — re-raise on caller thread
+        except BaseException as exc:  # noqa: BLE001 - re-raise on caller thread
             exception_holder.append(exc)
 
     thread = threading.Thread(target=_runner, daemon=True)

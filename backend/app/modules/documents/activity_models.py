@@ -1,7 +1,7 @@
 """‌⁠‍Document activity log ORM models.
 
 Tables:
-    oe_documents_activity — append-only log of per-document events
+    oe_documents_activity - append-only log of per-document events
                             (upload / rename / download / delete / cde
                             state change). Used by the file-preview pane
                             timeline and by audit dashboards.
@@ -30,7 +30,7 @@ class DocumentActivity(Base):
     blob whose shape is keyed by ``action`` (e.g. ``renamed`` carries
     ``{"old": "...", "new": "..."}``).
 
-    The table is intentionally write-only at the application layer — there
+    The table is intentionally write-only at the application layer - there
     is no PATCH / DELETE endpoint. Cleanup is delegated to the parent
     document's ``ON DELETE CASCADE``.
 

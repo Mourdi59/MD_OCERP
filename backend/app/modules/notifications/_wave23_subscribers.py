@@ -11,7 +11,7 @@ Same conventions as ``_wave1_subscribers.py``:
        the upstream service.
     3. Catch all exceptions at debug.
 
-We don't fan out to every event — only ones a human is plausibly waiting on.
+We don't fan out to every event - only ones a human is plausibly waiting on.
 Pure status-change events (e.g. ``crm.opportunity.stage_changed``) stay
 unsubscribed; analytics modules can listen separately.
 """
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 async def _can_open_isolated_session() -> bool:
-    """‌⁠‍Always True post-Epic-B — see :mod:`app.modules.notifications.events`."""
+    """‌⁠‍Always True post-Epic-B - see :mod:`app.modules.notifications.events`."""
     return True
 
 

@@ -503,7 +503,7 @@ async def create_scope1(
     _perm: None = Depends(RequirePermission("carbon.create")),
     service: CarbonService = Depends(_get_service),
 ) -> Scope1EntryResponse:
-    # inventory_id arrives in the BODY — must verify project ownership.
+    # inventory_id arrives in the BODY - must verify project ownership.
     project_id = await service.get_inventory_project_id(data.inventory_id)
     await verify_project_access(project_id, user_id, session)
     entry = await service.create_scope1(data)
@@ -820,7 +820,7 @@ async def ingest_epd_by_identifier(
     """‌⁠‍Ingest an EPD record by parsing a public-database identifier or URL.
 
     Body:
-        identifier: str — e.g. "oekobaudat:1.4.01.04" or a URL.
+        identifier: str - e.g. "oekobaudat:1.4.01.04" or a URL.
         gwp_a1a3: required, the GWP-100 value.
         product_name, material_class: required identification.
         manufacturer, region, declared_unit, validity_until, document_url: optional.
@@ -925,7 +925,7 @@ async def assign_boq_position(
             detail="quantity and quantity_unit are required",
         )
     # IDOR gate: assignment writes into the inventory, so the caller must own
-    # the inventory's project — not just have carbon.create somewhere.
+    # the inventory's project - not just have carbon.create somewhere.
     project_id = await service.get_inventory_project_id(inventory_id)
     await verify_project_access(project_id, user_id, session)
     stage = payload.get("stage") or "a1a3"
@@ -963,7 +963,7 @@ async def generate_tcfd_report(
 
     Body:
         project_id: uuid, required.
-        inventory_id: uuid, optional — when omitted, uses the latest
+        inventory_id: uuid, optional - when omitted, uses the latest
             baseline/current inventory.
         period_start / period_end: ISO date strings, optional.
         gross_floor_area_m2 / net_internal_area_m2 / revenue_million: optional

@@ -1,4 +1,4 @@
-"""‌⁠‍IFC/RVT file processor — uses DDC cad2data when available, text parser as fallback.
+"""‌⁠‍IFC/RVT file processor - uses DDC cad2data when available, text parser as fallback.
 
 Processing pipeline:
 1. Try DDC cad2data (external tool) → full DataFrame + COLLADA geometry
@@ -18,7 +18,7 @@ Identity mapping (DDC RvtExporter):
 import hashlib
 import logging
 import re
-import xml.etree.ElementTree as ET  # noqa: S405 — tree building + types; all parsing goes through defusedxml
+import xml.etree.ElementTree as ET  # noqa: S405 - tree building + types; all parsing goes through defusedxml
 from pathlib import Path
 from typing import Any
 
@@ -28,7 +28,7 @@ _COLLADA_NS = "http://www.collada.org/2005/11/COLLADASchema"
 
 logger = logging.getLogger(__name__)
 
-# IFC entity types we care about — includes IFC2x3, IFC4, and IFC4x3 civil types
+# IFC entity types we care about - includes IFC2x3, IFC4, and IFC4x3 civil types
 _ELEMENT_TYPES = {
     # ── Structural / architectural (IFC2x3+) ──
     "IFCWALL",
@@ -106,7 +106,7 @@ _STRING_RE = re.compile(r"'([^']*)'")
 # while parsing, then restored after _STRING_RE.findall. Without this an
 # entity such as IFCWALL('22…','#5','O''Brien Tower','…') would have its
 # GUID truncated to "O" because the first '' would terminate the second
-# string. See audit C1 — affects every RVT export where someone typed an
+# string. See audit C1 - affects every RVT export where someone typed an
 # apostrophe in a name field. The placeholder is chosen so it can never
 # legally appear inside a STEP P21 string (no \x00 in STEP serialisation).
 _STEP_DOUBLE_QUOTE_PLACEHOLDER = "\x00DDC_STEP_DQ\x00"
@@ -132,7 +132,7 @@ def _decode_step_string(s: str) -> str:
     if "\\" not in s:
         return s
 
-    # \X2\…\X0\ — UTF-16BE block (greedy until terminator)
+    # \X2\…\X0\ - UTF-16BE block (greedy until terminator)
     def _x2(match: "re.Match[str]") -> str:
         hexstr = match.group(1)
         try:
@@ -142,7 +142,7 @@ def _decode_step_string(s: str) -> str:
 
     s = re.sub(r"\\X2\\([0-9A-Fa-f]+)\\X0\\", _x2, s)
 
-    # \X\NN — Latin-1 (single byte)
+    # \X\NN - Latin-1 (single byte)
     def _x1(match: "re.Match[str]") -> str:
         try:
             return bytes.fromhex(match.group(1)).decode("latin-1", errors="replace")
@@ -151,7 +151,7 @@ def _decode_step_string(s: str) -> str:
 
     s = re.sub(r"\\X\\([0-9A-Fa-f]{2})", _x1, s)
 
-    # \S\X — Latin-1 high-bit (ASCII char + 0x80)
+    # \S\X - Latin-1 high-bit (ASCII char + 0x80)
     def _ss(match: "re.Match[str]") -> str:
         ch = match.group(1)
         return chr(ord(ch) | 0x80) if len(ch) == 1 else match.group(0)
@@ -164,14 +164,14 @@ def _decode_step_string(s: str) -> str:
 #
 # The DDC subprocess can fail for many reasons (Wine crash, RVT version too
 # new, license probe failed). When that happens, ``_try_cad2data`` returns
-# None — and historically the caller had no way to know WHY. The router
+# None - and historically the caller had no way to know WHY. The router
 # then shipped a generic "Converter Required" message that didn't help the
 # user diagnose anything.
 #
 # We now stash the last failure's structured context here so the router can
 # pick it up and surface it to the frontend (in ``model.error_message`` and
 # ``model.metadata_``). Module-level state is fine because conversions are
-# serialised per upload — the data is consumed immediately after the call.
+# serialised per upload - the data is consumed immediately after the call.
 _LAST_DDC_FAILURE: dict[str, Any] = {}
 
 
@@ -179,12 +179,12 @@ def last_ddc_failure() -> dict[str, Any]:
     """‌⁠‍Return the most recent DDC conversion failure context, if any.
 
     Keys are best-effort and may be missing:
-      * ``reason`` — short tag: ``timeout`` / ``nonzero_exit`` / ``empty_output``
-      * ``exit_code`` — int from the subprocess (may be missing on timeout)
-      * ``stderr`` — last ~2 KB of stderr from the converter (decoded utf-8)
-      * ``rvt_info`` — dict from ``read_rvt_revit_version`` (RVT only)
-      * ``converter_info`` — dict from ``detect_converter_version``
-      * ``extension`` — the file ext that failed (``rvt`` / ``ifc`` / …)
+      * ``reason`` - short tag: ``timeout`` / ``nonzero_exit`` / ``empty_output``
+      * ``exit_code`` - int from the subprocess (may be missing on timeout)
+      * ``stderr`` - last ~2 KB of stderr from the converter (decoded utf-8)
+      * ``rvt_info`` - dict from ``read_rvt_revit_version`` (RVT only)
+      * ``converter_info`` - dict from ``detect_converter_version``
+      * ``extension`` - the file ext that failed (``rvt`` / ``ifc`` / …)
 
     Returns an empty dict if there has been no failure since startup.
     """
@@ -204,14 +204,14 @@ _OUTDATED_CLI_STDERR_MARKERS = (
 def _infer_failure_cause(*, reason: str, exit_code: int | None, stderr_text: str) -> str:
     """‌⁠‍Map raw subprocess output to a stable ``cause`` enum for the UI.
 
-    The frontend dispatches on this string — keep the values stable.
+    The frontend dispatches on this string - keep the values stable.
     Currently supported:
-      * ``converter_outdated`` — CLI parse error (exit 15 + unknown-arg
+      * ``converter_outdated`` - CLI parse error (exit 15 + unknown-arg
         substring, or any exit with the substring).  Triggers the
         Reinstall CTA.
-      * ``timeout`` — converter hung.
-      * ``empty_output`` — converter ran, produced no rows.
-      * ``unknown`` — anything else; UI shows the generic guidance.
+      * ``timeout`` - converter hung.
+      * ``empty_output`` - converter ran, produced no rows.
+      * ``unknown`` - anything else; UI shows the generic guidance.
     """
     lower = stderr_text.lower()
     if any(m in lower for m in _OUTDATED_CLI_STDERR_MARKERS):
@@ -219,7 +219,7 @@ def _infer_failure_cause(*, reason: str, exit_code: int | None, stderr_text: str
     if exit_code == 15:
         # Exit 15 from the DDC CLIs almost always means "argument parse
         # error".  Even with empty stderr, surfacing the Reinstall CTA is
-        # the right call — a fresh install can only help.
+        # the right call - a fresh install can only help.
         return "converter_outdated"
     if reason == "timeout":
         return "timeout"
@@ -240,7 +240,7 @@ def _record_ddc_failure(
     """‌⁠‍Update the module-level failure record with everything the router
     needs to render an actionable error message.
 
-    ``cause`` may be passed explicitly to skip the heuristic — used by
+    ``cause`` may be passed explicitly to skip the heuristic - used by
     the ``_run_ddc`` retry path which already knows the failure was a
     CLI mismatch.  When omitted, ``_infer_failure_cause`` looks at the
     exit code and stderr substrings to pick a value.
@@ -257,7 +257,7 @@ def _record_ddc_failure(
         if extension == "rvt" and ifc_path is not None and ifc_path.exists():
             rvt_info = _read_rvt(ifc_path)
         conv_info = _detect(extension)
-    except Exception:  # noqa: BLE001 — diagnostics must never raise
+    except Exception:  # noqa: BLE001 - diagnostics must never raise
         rvt_info = {}
         conv_info = {}
 
@@ -295,7 +295,7 @@ def _detect_converter_version_safe(extension: str) -> dict[str, str | None]:
     Used by the ``_try_cad2data`` success path to attach a DDC version stamp
     to the BIM result. Re-exports the same dict shape as the underlying
     helper: ``{"version": str | None, "source": str | None,
-    "binary_path": str | None}``. Never raises — diagnostics must not block
+    "binary_path": str | None}``. Never raises - diagnostics must not block
     a successful import.
     """
     try:
@@ -337,7 +337,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
 
         # Resolve the converter, auto-downloading it on first use when it is
         # missing. ``ensure_converter`` is concurrency-safe (per-format
-        # install lock) and idempotent — a present binary is returned with
+        # install lock) and idempotent - a present binary is returned with
         # no network IO. On an unsupported platform / failed download it
         # raises ``ConverterUnavailableError``; we treat that exactly like
         # the historical "converter not found" case (fall through to the
@@ -366,7 +366,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
             # retry path can branch off it without re-reading the dict on
             # every call.  v18 binaries (flag-driven CLI) and v17/legacy
             # binaries (positional CLI) build completely different command
-            # lines — see ``cad_import.build_ddc_args`` for the canonical
+            # lines - see ``cad_import.build_ddc_args`` for the canonical
             # mapping.
             from app.modules.boq.cad_import import (
                 CLI_PROFILE_LEGACY,
@@ -379,7 +379,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
             # Whether this binary can produce geometry (a COLLADA/.dae pass)
             # at all.  The v18 flag CLI only does so when it advertises the
             # ``-d/--dae`` geometry group: the full RvtExporter / IfcExporter
-            # do, but the DwgExporter (XLSX/JSON/CSV-only) does NOT — running
+            # do, but the DwgExporter (XLSX/JSON/CSV-only) does NOT - running
             # a DAE pass against it aborts with ``exit 15``.  v17 positional /
             # legacy binaries always emit geometry via their positional output
             # path, so they keep the DAE pass unconditionally.
@@ -390,7 +390,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
             # Track whether the conservative path was taken for any reason
             # (probe-driven OR exit-15 retry) so callers can surface a
             # "converter_outdated" diagnostic to the UI.  v18 is the
-            # current release — only v17_positional / legacy / no-flag
+            # current release - only v17_positional / legacy / no-flag
             # paths get the "outdated" badge.
             outdated_cli_observed = cli_profile not in (
                 CLI_PROFILE_V18_FLAG,
@@ -398,7 +398,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
             )
 
             # Stderr substrings that prove the failure was specifically an
-            # "unknown argument" rejection — keep these tight to avoid
+            # "unknown argument" rejection - keep these tight to avoid
             # false-retries on genuine conversion failures (license probe,
             # corrupt file, missing DLL, …).  Match is case-insensitive on
             # the decoded text.  Both phrasings have been observed across
@@ -415,7 +415,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
             def _stderr_indicates_unknown_arg(stderr_bytes: bytes) -> bool:
                 """‌⁠‍True iff stderr contains an 'unknown CLI arg' substring.
 
-                Used in conjunction with exit-15 — *both* must be true for
+                Used in conjunction with exit-15 - *both* must be true for
                 the retry-without-extras path to fire, so a normal
                 conversion failure with a non-zero exit and unrelated
                 stderr keeps the strict error report instead of being
@@ -439,7 +439,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
                 """‌⁠‍Compose the CLI invocation honouring the capability flags.
 
                 Routes through ``cad_import.build_ddc_args`` whenever the
-                probe identified a v18 flag-driven binary — that path
+                probe identified a v18 flag-driven binary - that path
                 emits ``-x out.xlsx`` / ``-d out.dae`` / ``-m mode``
                 / ``--force-path`` instead of the legacy positional
                 ``output [mode] [-no-collada]`` shape that v18 rejects
@@ -452,7 +452,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
                 Depth-mode is only appended when both the caller asked for
                 it AND the binary advertises support.  ``extra`` is the
                 tuple of caller-supplied flags (currently only
-                ``-no-collada`` for the Excel pass) — those are filtered
+                ``-no-collada`` for the Excel pass) - those are filtered
                 against ``allow_no_collada`` so a probe-confirmed legacy
                 binary never sees the flag at all.
                 """
@@ -480,13 +480,13 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
                         dae_out=out_path if is_dae else None,
                         mode=ddc_mode,
                         # Default-skip the *other* output on every v18
-                        # single-output pass — saves a roundtrip and
+                        # single-output pass - saves a roundtrip and
                         # keeps the work on-spec.
                         include_no_dae=is_xlsx,
                         include_no_xlsx=is_dae,
                     )
 
-                # Legacy / v17 positional path — unchanged historical behaviour.
+                # Legacy / v17 positional path - unchanged historical behaviour.
                 args_list = [str(converter), str(input_abs), str(out_path)]
                 if ext in ("rvt", "ifc") and allow_depth_mode:
                     args_list.append(ddc_mode)
@@ -497,7 +497,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
                 return args_list
 
             def _invoke(args_list: list[str]) -> tuple[int, bytes, bytes]:
-                """‌⁠‍Thin subprocess wrapper — separated so the retry path can
+                """‌⁠‍Thin subprocess wrapper - separated so the retry path can
                 rebuild the args list and call again without re-implementing
                 the cwd/timeout/stdin plumbing."""
                 logger.debug("DDC call: %s", args_list)
@@ -548,13 +548,13 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
                 # downgrade us to the bare form (otherwise we'd retry the
                 # same command), and the failure looks like a CLI parse
                 # error.  Either both signals (exit 15 + stderr marker) or
-                # any-exit + stderr marker is sufficient — DDC has shipped
+                # any-exit + stderr marker is sufficient - DDC has shipped
                 # at least one release that exits 64 for unknown args.
                 #
                 # "Already bare" is profile-dependent: on the v18 flag
                 # CLI the minimum-acceptable call is
                 # ``[exe, input, -x out, -m standard, --force-path]`` (or
-                # ``-d`` for the COLLADA pass) — never the bare positional
+                # ``-d`` for the COLLADA pass) - never the bare positional
                 # ``[exe, input, output]`` that the v17/legacy bare branch
                 # would emit.  Recognising this prevents a v18 binary from
                 # retrying with a shape it doesn't understand, and prevents
@@ -569,7 +569,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
                 if rc == 15 or stderr_hit:
                     if cli_profile == CLI_PROFILE_V18_FLAG:
                         # v18 retry: keep the flag CLI but drop the
-                        # output-suppression flags + mode preset — leaves
+                        # output-suppression flags + mode preset - leaves
                         # ``[exe, input, -x out, --force-path]`` (or -d).
                         # If THIS still fails we surface the original
                         # error; falling through to the legacy positional
@@ -592,7 +592,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
                             extra=(),
                         )
                     logger.warning(
-                        "DDC converter rejected modern CLI args (rc=%d, marker=%s, profile=%s) — "
+                        "DDC converter rejected modern CLI args (rc=%d, marker=%s, profile=%s) - "
                         "retrying with reduced invocation: %s",
                         rc,
                         stderr_hit,
@@ -603,11 +603,11 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
                     if rc2 == 0:
                         # Latch the diagnostic so the caller can record
                         # cause="converter_outdated" once the conversion
-                        # completes — the user keeps their result, but the
+                        # completes - the user keeps their result, but the
                         # next page-load nudges them to reinstall.
                         outdated_cli_observed = True
                         return rc2, stdout2, stderr2
-                    # Second attempt also failed — surface the original
+                    # Second attempt also failed - surface the original
                     # error so the user sees the parse complaint, not a
                     # downstream "file not found" from a stripped-down
                     # invocation that the legacy CLI also couldn't run.
@@ -619,8 +619,8 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
             # for each invocation (no shared state between processes), so
             # running the Excel and COLLADA passes sequentially used to
             # double the effective conversion time.  The two output files
-            # are independent — both passes only read the input and write
-            # to a different target — so we run them in parallel threads.
+            # are independent - both passes only read the input and write
+            # to a different target - so we run them in parallel threads.
             # Wall-time drops to roughly max(Excel, COLLADA) instead of sum.
             #
             # The previously-present third synchronous pass for PDF sheet
@@ -636,7 +636,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
             # The DAE pass is only meaningful when the binary can produce
             # geometry.  For a data-only converter (e.g. DwgExporter, which
             # has no ``-d/--dae`` group) we SKIP it entirely instead of
-            # invoking it and logging a failure — "no geometry" is a normal
+            # invoking it and logging a failure - "no geometry" is a normal
             # outcome for that format, not an error.
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as _pool:
                 fut_xlsx = _pool.submit(_run_ddc, output_xlsx, "-no-collada")
@@ -706,17 +706,17 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
                     try:
                         rc2, _stdout2, stderr2 = fut_dae.result()
                     except subprocess.TimeoutExpired:
-                        logger.warning("DDC COLLADA pass timed out — will fall back to box geometry")
+                        logger.warning("DDC COLLADA pass timed out - will fall back to box geometry")
                         rc2 = -1
                         stderr2 = b""
 
             real_dae_path: Path | None = None
             if not geometry_supported:
-                # Data-only converter (no ``-d/--dae`` support) — geometry was
+                # Data-only converter (no ``-d/--dae`` support) - geometry was
                 # never attempted.  Not a failure: the entity properties from
                 # the XLSX pass are the real, expected output for this format.
                 logger.info(
-                    "Converter for .%s is data-only (no geometry group) — "
+                    "Converter for .%s is data-only (no geometry group) - "
                     "skipping COLLADA pass; %d entity rows extracted",
                     ext,
                     len(raw_elements),
@@ -729,7 +729,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
                 )
             else:
                 logger.warning(
-                    "DDC COLLADA pass failed (rc=%s, stderr=%s) — using box fallback",
+                    "DDC COLLADA pass failed (rc=%s, stderr=%s) - using box fallback",
                     rc2,
                     stderr2.decode(errors="replace")[:200] if stderr2 else "",
                 )
@@ -742,7 +742,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
             )
             # Surface the converter version so the frontend can render a
             # "Processed with DDC v{X}" badge on the model card (Stream D
-            # / v3.12.0). Detection is best-effort and never raises —
+            # / v3.12.0). Detection is best-effort and never raises -
             # missing values silently degrade to ``None`` and the badge
             # hides. See ``detect_converter_version`` for the dpkg /
             # parent-dir resolution logic.
@@ -752,12 +752,12 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
                     result_excel["converter_version"] = conv_info["version"]
                 if conv_info.get("source"):
                     result_excel["converter_source"] = conv_info["source"]
-            except Exception:  # noqa: BLE001 — diagnostics must never block import
+            except Exception:  # noqa: BLE001 - diagnostics must never block import
                 pass
             # If the conversion only succeeded because we stripped modern
             # CLI args (or had to retry without them), flag the result so
             # the router can persist a "converter_outdated" warning in the
-            # model metadata.  The data is good — but the user should be
+            # model metadata.  The data is good - but the user should be
             # nudged to reinstall before the next file fails.
             if outdated_cli_observed:
                 result_excel["converter_cli_outdated"] = True
@@ -850,7 +850,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
             ok, reason = _validate_geometry_file(dae_path)
             if not ok:
                 logger.warning(
-                    "Produced DAE failed validation (%s): %s — dropping geometry path",
+                    "Produced DAE failed validation (%s): %s - dropping geometry path",
                     dae_path.name,
                     reason,
                 )
@@ -867,7 +867,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
                 ok, reason = _validate_geometry_file(glb_path)
                 if not ok:
                     logger.warning(
-                        "Produced GLB failed validation (%s): %s — dropping GLB path",
+                        "Produced GLB failed validation (%s): %s - dropping GLB path",
                         glb_path.name,
                         reason,
                     )
@@ -887,7 +887,7 @@ def _try_cad2data(ifc_path: Path, output_dir: Path, *, conversion_depth: str = "
             "raw_elements": csv_raw_rows,
         }
         # Same converter-version stamp the DDC RvtExporter / IfcExporter
-        # success path applies — keeps the frontend badge consistent
+        # success path applies - keeps the frontend badge consistent
         # regardless of which DDC method handled the file.
         try:
             conv_info = _detect_converter_version_safe(ext)
@@ -930,11 +930,11 @@ def _excel_elements_to_bim_result(
     nothing usable" from "this converter can't do geometry at all". When it
     is ``False`` (e.g. the DwgExporter, which is XLSX/JSON/CSV-only) we do NOT
     synthesise placeholder boxes and report ``geometry_quality="data_only"``
-    rather than ``"placeholder"`` — the elements are the genuine, complete
+    rather than ``"placeholder"`` - the elements are the genuine, complete
     output for that format, so the UI must not nudge the user to install /
     retry a converter that is already working as designed.
     """
-    # Skip these categories — they're not building elements.
+    # Skip these categories - they're not building elements.
     # Expanded set covers views, sheets, materials, annotations, tags,
     # dimensions, analytical model, model groups, revisions, schedules,
     # legends, and other non-physical Revit categories.
@@ -1051,7 +1051,7 @@ def _excel_elements_to_bim_result(
         "ost_pad",
         "ost_entourage",
         "ost_planting",
-        # IFC spatial/project types (from DDC IfcExporter — not physical elements)
+        # IFC spatial/project types (from DDC IfcExporter - not physical elements)
         "ifcproject",
         "ifcsite",
         "ifcbuilding",
@@ -1109,7 +1109,7 @@ def _excel_elements_to_bim_result(
         # category from the classname so DWG entities become real elements
         # rather than being dropped as "no category".  Sub-geometry rows
         # (polyline segments / hatch loops) have a ``parentid`` and NO
-        # ``classname`` — those are skipped so we only keep top-level
+        # ``classname`` - those are skipped so we only keep top-level
         # entities (1 element per drawing object, not per vertex).
         dwg_classname = str(lc_row.get("classname") or "").strip()
         if (not category or cat_lower in ("none", "null", "", "n/a")) and dwg_classname:
@@ -1124,13 +1124,13 @@ def _excel_elements_to_bim_result(
         # Skip non-element rows: those with no category at all (likely orphan
         # parameter rows from the DDC converter), and known non-element categories.
         # DDC writes the literal string "None" for elements without a Revit
-        # category — treat it the same as Python None.
+        # category - treat it the same as Python None.
         if not category or cat_lower in SKIP_CATEGORIES or cat_lower in ("none", "null", "", "n/a"):
             continue
 
         # Friendly element type derived from OST_ category name.
         # DDC writes raw Revit built-in category names like
-        # "OST_CurtainWallMullions" — we strip the prefix, split
+        # "OST_CurtainWallMullions" - we strip the prefix, split
         # CamelCase into words, and title-case the result so the
         # filter panel shows "Curtain Wall Mullions" instead of
         # "Curtainwallmullions".
@@ -1157,7 +1157,7 @@ def _excel_elements_to_bim_result(
         # categories, but walls/columns sometimes only fill "Base Constraint"
         # or "Reference Level". Fall back through all known synonyms.  For DWG
         # entities (no Revit level) the drawing ``layer`` is the natural
-        # grouping — it is tried LAST so it never shadows a real Revit level.
+        # grouping - it is tried LAST so it never shadows a real Revit level.
         storey = (
             lc_row.get("level")
             or lc_row.get("storey")
@@ -1180,7 +1180,7 @@ def _excel_elements_to_bim_result(
             storeys_set.add(storey)
         disciplines_set.add(discipline)
 
-        # Numeric quantity fields — handle Revit native (mm/m²/m³) units.
+        # Numeric quantity fields - handle Revit native (mm/m²/m³) units.
         # DDC Excel columns have exact names; we map them all.
         quantities: dict[str, float] = {}
         for src_key, dest_key in (
@@ -1218,19 +1218,19 @@ def _excel_elements_to_bim_result(
             except (ValueError, TypeError):
                 pass
 
-        # Stable ID — prefer Revit uniqueid, fall back to type ifcguid, then row index
+        # Stable ID - prefer Revit uniqueid, fall back to type ifcguid, then row index
         stable_id = str(
             lc_row.get("uniqueid") or lc_row.get("type ifcguid") or lc_row.get("globalid") or lc_row.get("id") or i
         )
 
-        # mesh_ref — numeric Revit ElementId that matches the DAE <node id="...">.
+        # mesh_ref - numeric Revit ElementId that matches the DAE <node id="...">.
         # DDC's Excel ``ID`` column IS ``Element.Id.IntegerValue``. If it is
         # missing we can still recover it from the last segment of ``UniqueId``
         # (which encodes the ElementId in hex).
         mesh_ref_int = _extract_revit_element_id(lc_row)
         mesh_ref: str | None = str(mesh_ref_int) if mesh_ref_int is not None else None
 
-        # Bounding box — DDC RvtExporter Excel does NOT emit bbox columns at
+        # Bounding box - DDC RvtExporter Excel does NOT emit bbox columns at
         # all, so we compute bbox per element from the DAE geometry (in metres;
         # COLLADA is unit-normalised by DDC).
         bbox: dict[str, float] | None = None
@@ -1340,7 +1340,7 @@ def _excel_elements_to_bim_result(
                 if sval and sval.lower() not in ("none", "0", ""):
                     properties[prop_key] = sval[:500]
 
-        # Cap properties at 30 entries to keep per-element payloads small —
+        # Cap properties at 30 entries to keep per-element payloads small -
         # Revit/IFC exports often expose 100+ parameters, most irrelevant.
         # Priority order: critical DDC/hierarchy keys win, then remaining
         # properties by insertion order (stable output across runs).
@@ -1389,7 +1389,7 @@ def _excel_elements_to_bim_result(
     geometry_path: Path | None = None
     bounding_box = None
     if real_dae_path and real_dae_path.exists() and real_dae_path.stat().st_size > 0:
-        # Already named geometry.dae in output_dir — use as-is.
+        # Already named geometry.dae in output_dir - use as-is.
         geometry_path = real_dae_path
         logger.info(
             "Using real Revit COLLADA geometry: %s (%d KB)",
@@ -1415,7 +1415,7 @@ def _excel_elements_to_bim_result(
         ok, reason = _validate_geometry_file(geometry_path)
         if not ok:
             logger.warning(
-                "Generated DAE failed validation (%s): %s — dropping geometry path",
+                "Generated DAE failed validation (%s): %s - dropping geometry path",
                 geometry_path.name,
                 reason,
             )
@@ -1426,7 +1426,7 @@ def _excel_elements_to_bim_result(
                 ok, reason = _validate_geometry_file(glb_path)
                 if not ok:
                     logger.warning(
-                        "Generated GLB failed validation (%s): %s — dropping GLB path",
+                        "Generated GLB failed validation (%s): %s - dropping GLB path",
                         glb_path.name,
                         reason,
                     )
@@ -1444,7 +1444,7 @@ def _excel_elements_to_bim_result(
     data_only = not geometry_supported
     if not is_real and not data_only:
         # When DDC produced an Excel pass but no real .dae, we generated
-        # placeholder boxes — tag the elements so downstream consumers can
+        # placeholder boxes - tag the elements so downstream consumers can
         # warn the user.
         for elem in elements:
             elem["is_placeholder"] = True
@@ -1526,7 +1526,7 @@ def _dae_element_bboxes(
 
     for node in tree.findall(".//c:visual_scene/c:node", ns):
         nid = node.get("id", "") or ""
-        # Only numeric ids — Revit ElementId. Lights/cameras/named nodes skipped.
+        # Only numeric ids - Revit ElementId. Lights/cameras/named nodes skipped.
         if not nid.isdigit():
             continue
         ig = node.find("c:instance_geometry", ns)
@@ -1549,14 +1549,14 @@ def _validate_geometry_file(geom_path: Path) -> tuple[bool, str]:
 
     Returns ``(ok, reason)``. When ``ok`` is False the caller should
     treat the file as corrupt and drop the path before returning it to
-    the frontend — surfacing a broken file to the BIM viewer manifests
+    the frontend - surfacing a broken file to the BIM viewer manifests
     as an opaque ``Cannot read properties of undefined (reading
     'getAttribute')`` JS error deep inside Three.js's loader, which the
     user cannot diagnose. We re-parse the file's surface structure here
     so that failure becomes a server-side ``geometry_type=placeholder``
     fallback instead.
 
-    Checks (cheap, file-shape only — no full mesh re-parse):
+    Checks (cheap, file-shape only - no full mesh re-parse):
 
     - File exists and size > 200 bytes (smaller than any legal output)
     - GLB: starts with the 4-byte magic ``glTF`` (0x67 0x6c 0x54 0x46)
@@ -1600,7 +1600,7 @@ def _validate_geometry_file(geom_path: Path) -> tuple[bool, str]:
         local = root.tag.rsplit("}", 1)[-1].lower()
         if local != "collada":
             return False, f"root tag is <{local}>, expected <COLLADA>"
-        # Require at least one visual_scene — a COLLADA with only
+        # Require at least one visual_scene - a COLLADA with only
         # libraries and no scene is renderable as nothing.
         ns = {"c": _COLLADA_NS}
         if root.find(".//c:visual_scene", ns) is None:
@@ -1619,11 +1619,11 @@ def _convert_dae_to_glb(dae_path: Path, output_dir: Path) -> Path | None:
     we skip the conversion entirely: trimesh loads the whole mesh into
     Python memory and routinely OOMs on a 200+ MB DAE produced from a
     large Revit model (Hugo Lee / Glodon, 204MB RVT). The browser can
-    still load the raw DAE — it's ~3x larger over the wire but parses
+    still load the raw DAE - it's ~3x larger over the wire but parses
     fine in ColladaLoader on a modern desktop.
 
     Returns the GLB path on success, ``None`` on failure.  Failure is
-    non-fatal — the DAE file remains available as a fallback.
+    non-fatal - the DAE file remains available as a fallback.
 
     Trimesh handles DAE -> GLB natively (via collada-exporter + numpy).
     Typical conversion: 32 MB DAE -> 9.5 MB GLB (3.4x smaller).
@@ -1641,11 +1641,11 @@ def _convert_dae_to_glb(dae_path: Path, output_dir: Path) -> Path | None:
     chain.  Bounding boxes survive trimesh's vertex-deduplication /
     primitive-splitting unchanged, making them a robust fingerprint.
     """
-    # Hard size guard — trimesh.load() materialises the entire mesh
+    # Hard size guard - trimesh.load() materialises the entire mesh
     # graph into Python memory; on a 200+ MB DAE (typical for a 200+ MB
     # RVT through DDC) it routinely OOMs or thrashes for 5+ minutes.
     # Skip the conversion and let the frontend ColladaLoader stream the
-    # DAE directly — slower over the wire, but it actually works.
+    # DAE directly - slower over the wire, but it actually works.
     MAX_DAE_FOR_GLB_BYTES = 250 * 1024 * 1024  # 250 MB
     try:
         dae_size = dae_path.stat().st_size
@@ -1653,7 +1653,7 @@ def _convert_dae_to_glb(dae_path: Path, output_dir: Path) -> Path | None:
         dae_size = 0
     if dae_size > MAX_DAE_FOR_GLB_BYTES:
         logger.info(
-            "DAE is %d MB (>%d MB threshold) — skipping GLB conversion and serving DAE directly to avoid trimesh OOM",
+            "DAE is %d MB (>%d MB threshold) - skipping GLB conversion and serving DAE directly to avoid trimesh OOM",
             dae_size // (1024 * 1024),
             MAX_DAE_FOR_GLB_BYTES // (1024 * 1024),
         )
@@ -1718,7 +1718,7 @@ def _convert_dae_to_glb(dae_path: Path, output_dir: Path) -> Path | None:
                 def _key(
                     bb: tuple[float, float, float, float, float, float],
                 ) -> tuple[int, int, int]:
-                    # 0.5-unit bucket — trimesh preserves coords exactly, so
+                    # 0.5-unit bucket - trimesh preserves coords exactly, so
                     # the match is effectively exact; the bucket is only a
                     # prefilter for speed.
                     cx = (bb[0] + bb[3]) * 0.5
@@ -1804,7 +1804,7 @@ def _convert_dae_to_glb(dae_path: Path, output_dir: Path) -> Path | None:
                         + new_json
                         + bin_chunk
                     )
-        except Exception as patch_err:  # noqa: BLE001 — non-fatal post-process
+        except Exception as patch_err:  # noqa: BLE001 - non-fatal post-process
             logger.debug("GLB node-name patching skipped: %s", patch_err, exc_info=True)
 
         glb_target.write_bytes(glb_data)
@@ -1879,7 +1879,7 @@ def process_ifc_file(
     # Bugfix (C5): split by ';' instead of '\n'. STEP-21 statements are
     # terminated by ';', and exporters routinely write multi-line entities
     # (large IFCRELAGGREGATES, IFCPOLYLOOP, IFCINDEXEDPOLYCURVE). Splitting
-    # by newline lost those entities silently — only single-line
+    # by newline lost those entities silently - only single-line
     # statements were ever parsed.
     #
     # Bugfix (C6): strip /* … */ comments before tokenising. Tekla/Allplan
@@ -1917,7 +1917,7 @@ def process_ifc_file(
 
     logger.info("Parsed %d IFC entities", len(entities))
 
-    # Audit C2 v3 — full ISO 16739-1 §5.4.3 IFCUNITASSIGNMENT parser.
+    # Audit C2 v3 - full ISO 16739-1 §5.4.3 IFCUNITASSIGNMENT parser.
     #
     # The text-fallback used to only PROBE units (flag non-SI files,
     # refuse to roll their numbers into a BOQ).  As of v3.0.2 we
@@ -1928,7 +1928,7 @@ def process_ifc_file(
     #
     # ``unit_uncertain`` is preserved for back-compat: it's now ``True``
     # iff the file shipped without an IFCUNITASSIGNMENT block at all
-    # (legacy Allplan/Tekla exporter bug) — in that case we DO fall
+    # (legacy Allplan/Tekla exporter bug) - in that case we DO fall
     # back to metric defaults per ISO 16739, but downstream callers
     # may still want to flag the file for review.
     unit_ctx = _parse_unit_assignment(entities)
@@ -1989,7 +1989,7 @@ def process_ifc_file(
             disciplines_set.add(discipline)
 
             # Extract quantities from related IfcElementQuantity (simplified).
-            # Audit C2 — pass the unit context so values are returned in
+            # Audit C2 - pass the unit context so values are returned in
             # canonical SI (m, m², m³, kg, s) regardless of declared units.
             quantities = _extract_quantities_for_element(eid, entities, unit_ctx)
 
@@ -2004,7 +2004,7 @@ def process_ifc_file(
                     "discipline": discipline,
                     "properties": {"ifc_type": ifc_type, "ifc_id": eid},
                     "quantities": quantities,
-                    # Audit C2 — propagate the unit-assignment probe result
+                    # Audit C2 - propagate the unit-assignment probe result
                     # so downstream code (validation rules, BOQ aggregator,
                     # frontend viewer) can decide whether to trust these
                     # numbers. True when units are not canonical SI metres
@@ -2054,7 +2054,7 @@ def process_ifc_file(
     for elem in elements:
         elem["is_placeholder"] = True
 
-    # Audit C2 — surface the resolved unit system + scale table in
+    # Audit C2 - surface the resolved unit system + scale table in
     # canonical.metadata.units so the BOQ aggregator, validation
     # rules, and the frontend viewer all see the same authoritative
     # answer.  ``unit_system`` is one of "metric" / "imperial" /
@@ -2080,17 +2080,17 @@ def process_ifc_file(
         "geometry_path": str(geometry_path) if geometry_path else None,
         "bounding_box": bounding_box,
         "geometry_type": "placeholder",
-        # Top-level quality flag — read by the bim_hub router and copied
+        # Top-level quality flag - read by the bim_hub router and copied
         # into BIMModel.metadata_ so the frontend can show a "placeholder
         # geometry" banner without having to inspect every element.
         "geometry_quality": "placeholder",
-        # Audit C2 — back-compat flag.  True iff the file shipped
+        # Audit C2 - back-compat flag.  True iff the file shipped
         # without any IFCUNITASSIGNMENT block (legacy exporter bug).
         # The new parser still produces canonical-SI quantities by
         # falling back to ISO 16739 defaults, but downstream consumers
         # may still want to flag the file for human review.
         "unit_uncertain": unit_uncertain,
-        # Audit C2 v3 — full parsed unit context surfaced for
+        # Audit C2 v3 - full parsed unit context surfaced for
         # downstream consumers (frontend viewer label, validation
         # rules, BOQ aggregator).  Schema is documented on
         # canonical.metadata.units in bim_hub/schemas.py.
@@ -2100,7 +2100,7 @@ def process_ifc_file(
     }
 
 
-# ─── IFC unit-assignment parser (audit C2 v3 — full ISO 16739-1 §5.4.3) ──
+# ─── IFC unit-assignment parser (audit C2 v3 - full ISO 16739-1 §5.4.3) ──
 #
 # Earlier revisions of this module shipped a "probe" that merely flagged
 # files with non-SI-metre length units and refused to roll their numbers
@@ -2188,7 +2188,7 @@ _SI_PREFIX_FACTOR: dict[str, float] = {
 #   energy  → joule              (1 BTU_IT = 1055.05585262 J)
 #
 # Keys are upper-cased Name fields from IFCCONVERSIONBASEDUNIT (the IFC
-# specification fixes these strings — see ISO 16739-1 Table 75-77).
+# specification fixes these strings - see ISO 16739-1 Table 75-77).
 # Aliases (FT vs FOOT, etc.) handle exporter inconsistency.
 _CONVERSION_BASED_FACTORS: dict[str, float] = {
     # ── Length ──
@@ -2249,7 +2249,7 @@ _CONVERSION_BASED_FACTORS: dict[str, float] = {
     # entries used for differences (ΔT). Absolute conversions need a
     # bias term that is dimension-specific and is applied at quantity
     # extraction, not here.
-    "FAHRENHEIT": 0.5555555555555556,  # 5/9 (scale only — bias 32 °F → 0 °C handled at extract)
+    "FAHRENHEIT": 0.5555555555555556,  # 5/9 (scale only - bias 32 °F → 0 °C handled at extract)
     "RANKINE": 0.5555555555555556,  # 5/9
     # ── Pressure ──
     "PSI": 6894.757293168,
@@ -2316,7 +2316,7 @@ _QUANTITY_KIND_TO_UNIT: dict[str, str] = {
     "IFCQUANTITYVOLUME": "VOLUMEUNIT",
     "IFCQUANTITYWEIGHT": "MASSUNIT",
     "IFCQUANTITYTIME": "TIMEUNIT",
-    "IFCQUANTITYCOUNT": "",  # dimensionless — no scale
+    "IFCQUANTITYCOUNT": "",  # dimensionless - no scale
     "IFCQUANTITYNUMBER": "",
 }
 
@@ -2391,7 +2391,7 @@ def _resolve_ifc_si_unit(ent: dict[str, Any]) -> tuple[str, float, str] | None:
     prefix_factor = _SI_PREFIX_FACTOR.get(prefix_name)
     if prefix_factor is None:
         # Unknown prefix → treat as unity but log; better than crashing.
-        logger.debug("Unknown SI prefix %r — assuming unity", prefix_name)
+        logger.debug("Unknown SI prefix %r - assuming unity", prefix_name)
         prefix_factor = 1.0
     # Dimensional scaling: for AREAUNIT the prefix applies to the LENGTH
     # part inside the area, so the area scale is prefix^2; for VOLUMEUNIT
@@ -2500,7 +2500,7 @@ def _resolve_conversion_based_unit(
         scale = _CONVERSION_BASED_FACTORS.get(normalised)
     if scale is None or scale <= 0:
         logger.debug(
-            "Unresolvable IFCCONVERSIONBASEDUNIT %r — assuming SI canonical",
+            "Unresolvable IFCCONVERSIONBASEDUNIT %r - assuming SI canonical",
             name_raw,
         )
         scale = 1.0
@@ -2518,7 +2518,7 @@ def _resolve_derived_unit(
     Signature: IfcDerivedUnit(Elements, UnitType, UserDefinedType?, Name?)
     Elements is a SET of IfcDerivedUnitElement, each carrying
     (Unit=#ref, Exponent=int).  The composite scale is the product of
-    each element's own scale raised to its exponent — so for ``m³/h``
+    each element's own scale raised to its exponent - so for ``m³/h``
     (CubicMetre^+1, Hour^-1) we end up with 1.0 * (3600)^-1 = 1/3600.
     """
     parts = _step_args_top_level(ent["args_raw"])
@@ -2578,12 +2578,12 @@ def _resolve_derived_unit(
 
 
 def _resolve_monetary_unit(ent: dict[str, Any]) -> tuple[str, float, str] | None:
-    """Resolve an IFCMONETARYUNIT — currency code only, no scale.
+    """Resolve an IFCMONETARYUNIT - currency code only, no scale.
 
     Signature (IFC4+): IfcMonetaryUnit(Currency)
     Legacy IFC2x3 used IfcMonetaryUnit(Currency=enum).  We extract the
     currency code string and report scale=1.0 because the canonical SI
-    base for money is "the value as written" — currency conversion is
+    base for money is "the value as written" - currency conversion is
     out of scope for this parser.
     """
     parts = _step_args_top_level(ent["args_raw"])
@@ -2653,14 +2653,14 @@ class UnitContext:
 def _parse_unit_assignment(entities: dict[int, dict]) -> UnitContext:
     """Build a UnitContext from a parsed IFC entity table.
 
-    Walks every IFCUNITASSIGNMENT (there may be multiple — IFC4 attaches
+    Walks every IFCUNITASSIGNMENT (there may be multiple - IFC4 attaches
     them via IfcContext.UnitsInContext; legacy IFC2x3 via
     IfcProject.UnitsInContext) and resolves each referenced unit entity.
     When no IFCUNITASSIGNMENT is found we fall back to ISO 16739-1
     metric defaults so legacy files without an explicit block still
     parse correctly.
 
-    The result is always a non-empty UnitContext — callers don't need
+    The result is always a non-empty UnitContext - callers don't need
     to guard against ``None``.
     """
     ctx = UnitContext()
@@ -2747,7 +2747,7 @@ def _ifc_units_are_non_si_metres(entities: dict[int, dict]) -> bool:
     Backward-compatibility shim.  Older regression tests called this to
     obtain a single boolean "is the LENGTHUNIT non-canonical?" answer.
     The current parser computes a full UnitContext but we keep the
-    helper for those tests — it now just inspects the context's
+    helper for those tests - it now just inspects the context's
     LENGTHUNIT scale.
 
     Probe shape (IFC2x3 + IFC4 + IFC4x3 all use the same):
@@ -2759,7 +2759,7 @@ def _ifc_units_are_non_si_metres(entities: dict[int, dict]) -> bool:
     Behaviour preserved from v3.0.0:
       * Returns ``True`` when a non-SI length unit is declared.
       * Returns ``True`` when no IFCSIUNIT / IFCCONVERSIONBASEDUNIT row
-        mentions LENGTHUNIT at all (conservative — exporter bug).
+        mentions LENGTHUNIT at all (conservative - exporter bug).
       * Returns ``True`` if BOTH an SI metre row AND a conversion-based
         length unit are declared (mixed-unit file is suspicious).
     """
@@ -2779,7 +2779,7 @@ def _ifc_units_are_non_si_metres(entities: dict[int, dict]) -> bool:
             # sub-arguments) but for IFCSIUNIT every positional arg is
             # atomic so the simple split is safe.
             parts = [p.strip() for p in args_raw.split(",")]
-            # Find the prefix arg — it's the one right before .METRE.
+            # Find the prefix arg - it's the one right before .METRE.
             # The canonical SI-metre row is:
             #   ($,.LENGTHUNIT.,$,.METRE.)
             # Anything with a non-$ prefix (MILLI, CENTI, …) is NOT
@@ -2832,11 +2832,11 @@ def _extract_quantities_for_element(
         # The previous code took refs[:-1] which included OwnerHistory.
         # On at least one major exporter the OwnerHistory id collided with
         # element ids and we associated unrelated property sets to walls.
-        # Real RelatedObjects live INSIDE the SET literal — pull them
+        # Real RelatedObjects live INSIDE the SET literal - pull them
         # explicitly. The relating definition is the very last #ref in the
         # statement.
         args_raw = ent["args_raw"]
-        # RelatedObjects parenthesised list — non-greedy match.
+        # RelatedObjects parenthesised list - non-greedy match.
         set_match = re.search(r"\(([^()]*)\)\s*,\s*#\d+\s*$", args_raw)
         related_ids: list[int] = []
         if set_match:
@@ -2878,7 +2878,7 @@ def _extract_quantities_for_element(
             q_strings = q_ent["strings"]
             q_name = q_strings[0] if q_strings else "unknown"
             # Bugfix (C7): the old regex r"[\d.]+(?:E[+-]?\d+)?" also
-            # matched the digit portion of #N references — so
+            # matched the digit portion of #N references - so
             # IFCQUANTITYAREA('NetArea',$,$,#5,42.5) parsed as nums[0]="5"
             # and we recorded NetArea=5 m² instead of 42.5. Strip all
             # #N tokens first, then look for the trailing numeric literal.
@@ -2892,7 +2892,7 @@ def _extract_quantities_for_element(
                 except ValueError:
                     continue
                 if val > 0:
-                    # Audit C2 — apply unit scale so the recorded value is
+                    # Audit C2 - apply unit scale so the recorded value is
                     # always in canonical SI (m, m², m³, kg, s) regardless
                     # of whether the source IFC used millimetres, feet, or
                     # any other declared unit. unit_ctx is None for the
@@ -2909,7 +2909,7 @@ def _extract_quantities_for_element(
 def _classify_discipline(ifc_type: str) -> str:
     """Classify IFC type into a discipline."""
     t = ifc_type.lower()
-    # Check architecture first — curtainwall contains "wall" so must precede structural
+    # Check architecture first - curtainwall contains "wall" so must precede structural
     if any(x in t for x in ["door", "window", "curtainwall", "covering", "furnishing"]):
         return "architecture"
     if any(
@@ -3179,7 +3179,7 @@ def _assign_logical_grid_positions(elements: list[dict[str, Any]]) -> None:
 
 # IFC-type → typical placeholder extents (length × width × height in metres).
 # Used only when real Width/Height/Length quantities are absent from the
-# IFC quantity sets — otherwise the real values win in ``_generate_collada_boxes``.
+# IFC quantity sets - otherwise the real values win in ``_generate_collada_boxes``.
 # The numbers come from common building-element averages (rooms ~4×4×3, slabs
 # wide-and-flat, doors slim-and-tall) so the resulting placeholder scene reads
 # as a building rather than a uniform grid of identical rectangles.
@@ -3266,7 +3266,7 @@ def _generate_collada_boxes(
         # Per-ifc-type default extents so the placeholder scene reads as
         # a building rather than a uniform grid of identical rectangles
         # (audit P3 minor 2026-05-06). Real IFC quantities still win
-        # when present — these are only used when Width/Height/Length
+        # when present - these are only used when Width/Height/Length
         # are missing or zero.
         ifc_type_raw = (elem.get("properties") or {}).get("ifc_type", "")
         ifc_type_upper = str(ifc_type_raw).upper()
@@ -3372,7 +3372,7 @@ def _extract_revit_element_id(lc_row: dict[str, Any]) -> int | None:
 
     Tries, in order:
     1. The lowercase ``id`` column (DDC's first column, already an integer).
-    2. The last hyphenated segment of ``uniqueid`` parsed as hex — the Revit
+    2. The last hyphenated segment of ``uniqueid`` parsed as hex - the Revit
        UniqueId format is ``<EpisodeGUID>-<ElementIdHex>``.
     3. Any column whose normalised name matches one of the known aliases for
        "revit element id".
@@ -3386,7 +3386,7 @@ def _extract_revit_element_id(lc_row: dict[str, Any]) -> int | None:
             return int(raw)
         except (TypeError, ValueError) as exc:
             logger.debug(
-                "DDC id column not numeric (%r) — trying UniqueId fallback: %s",
+                "DDC id column not numeric (%r) - trying UniqueId fallback: %s",
                 raw,
                 exc,
             )
@@ -3399,7 +3399,7 @@ def _extract_revit_element_id(lc_row: dict[str, Any]) -> int | None:
             return int(last, 16)
         except ValueError as exc:
             logger.debug(
-                "UniqueId tail not hex (%r) — trying alternate columns: %s",
+                "UniqueId tail not hex (%r) - trying alternate columns: %s",
                 last,
                 exc,
             )
@@ -3424,7 +3424,7 @@ def _extract_dae_bboxes_by_node_id(dae_path: Path) -> dict[int, dict[str, float]
     max_x, max_y, max_z}}`` keyed by the integer ``<node id="...">`` value
     (which DDC RvtExporter sets to the Revit ElementId).
 
-    Non-numeric node ids are skipped — they correspond to lights, cameras,
+    Non-numeric node ids are skipped - they correspond to lights, cameras,
     and other auxiliary scene entries that do not map to BIM elements.
 
     Coordinates are returned in the DAE's own units (DDC emits metres).
@@ -3477,7 +3477,7 @@ def _extract_dae_bboxes_by_node_id(dae_path: Path) -> dict[int, dict[str, float]
             continue
         elem_id = int(nid)
 
-        # Collect parent-chain transforms — DDC usually flattens geometry,
+        # Collect parent-chain transforms - DDC usually flattens geometry,
         # but we still respect any direct <matrix> on the node.
         matrix: tuple[float, ...] | None = None
         mat_el = node.find("c:matrix", ns)
@@ -3510,7 +3510,7 @@ def _extract_dae_bboxes_by_node_id(dae_path: Path) -> dict[int, dict[str, float]
                     max_z = tp[2]
 
         if min_x == float("inf"):
-            continue  # No geometry attached — skip.
+            continue  # No geometry attached - skip.
 
         result[elem_id] = {
             "min_x": round(min_x, 4),
@@ -3550,7 +3550,7 @@ def _patch_collada_node_names(dae_path: Path) -> int:
         nid = node.get("id") or ""
         nname = node.get("name") or ""
         # Only patch element nodes (numeric id from DDC) that have a generic
-        # name like "node" — leave lights/cameras/named nodes alone.
+        # name like "node" - leave lights/cameras/named nodes alone.
         if nid and nid != nname and (nname in ("node", "") or nid.isdigit()):
             node.set("name", nid)
             patched += 1
@@ -3563,7 +3563,7 @@ def _patch_collada_node_names(dae_path: Path) -> int:
         # the namespace is not in the global prefix registry, which causes the
         # frontend's literal "<COLLADA" text-scan to reject the file with
         # "Not a COLLADA document".
-        # NOTE: default_namespace= cannot be used here — Python ET rejects it
+        # NOTE: default_namespace= cannot be used here - Python ET rejects it
         # whenever any element or attribute carries a non-qualified name
         # (e.g. the `version` attribute on <COLLADA>): ValueError "cannot use
         # non-qualified names with default_namespace option".

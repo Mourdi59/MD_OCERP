@@ -118,8 +118,8 @@
       "scope": "Étendue",
       "exclusions": "Exclusions"
     },
-    "structural_text": "Le Promoteur garantit l'intégrité structurelle du bien — y compris la structure porteuse, les fondations et l'étanchéité — pour une durée de {years} ans à compter de la date de remise.",
-    "finishing_text": "Le Promoteur garantit les travaux de finition — peinture, sanitaires, équipements installés par le Promoteur et finitions cosmétiques mineures — pour une durée de {years} an(s) à compter de la date de remise.",
+    "structural_text": "Le Promoteur garantit l'intégrité structurelle du bien - y compris la structure porteuse, les fondations et l'étanchéité - pour une durée de {years} ans à compter de la date de remise.",
+    "finishing_text": "Le Promoteur garantit les travaux de finition - peinture, sanitaires, équipements installés par le Promoteur et finitions cosmétiques mineures - pour une durée de {years} an(s) à compter de la date de remise.",
     "exclusions_text": "La garantie exclut les dommages causés par une utilisation incorrecte, les modifications réalisées par l'Acquéreur ou des tiers, l'usure normale, la force majeure ainsi que les éléments couverts par des garanties fabricants séparées.",
     "claim_procedure": "Pour faire valoir un recours, l'Acquéreur doit adresser au Promoteur, dans le délai de garantie, une notification écrite décrivant le défaut accompagnée de pièces justificatives raisonnables."
   },

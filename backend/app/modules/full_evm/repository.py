@@ -1,7 +1,7 @@
 """‌⁠‍Full EVM data access layer.
 
 All database queries for EVM forecast entities live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 from __future__ import annotations
@@ -63,7 +63,7 @@ class EVMForecastRepository:
     async def list_active_alerts(self, project_id: uuid.UUID) -> list[EVMForecast]:  # noqa: A003
         """Return forecasts whose alert is still actionable for a project.
 
-        "Active" means ``alert_status`` is ``triggered`` or ``snoozed`` —
+        "Active" means ``alert_status`` is ``triggered`` or ``snoozed`` -
         ``acknowledged`` rows are resolved and ``NULL`` rows never alerted.
         Snoozed rows are included so the UI can show a countdown; the
         router decides whether a snooze has lapsed.

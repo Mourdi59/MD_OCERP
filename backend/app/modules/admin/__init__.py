@@ -1,4 +1,4 @@
-"""‌⁠‍Admin module — operator endpoints for QA pipelines.
+"""‌⁠‍Admin module - operator endpoints for QA pipelines.
 
 The qa-reset endpoint is the only public entrypoint here. It is intentionally
 guarded by three independent gates so it cannot be hit by accident:

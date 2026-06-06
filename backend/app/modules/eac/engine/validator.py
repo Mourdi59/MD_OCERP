@@ -16,9 +16,9 @@ operates on an already-parsed :class:`EacRuleDefinition` instance.
 
 Public surface:
 
-* :class:`ValidatorIssue`  — one diagnostic
-* :class:`ValidatorResult` — pass/fail + list of issues
-* :func:`validate_rule`    — async entry point
+* :class:`ValidatorIssue`  - one diagnostic
+* :class:`ValidatorResult` - pass/fail + list of issues
+* :func:`validate_rule`    - async entry point
 """
 
 from __future__ import annotations
@@ -105,7 +105,7 @@ async def validate_rule(
 ) -> ValidatorResult:
     """Run every semantic check on a parsed rule definition.
 
-    Issues are accumulated rather than raising — the validator never
+    Issues are accumulated rather than raising - the validator never
     fail-fast so the UI can render every blocker in one round-trip.
 
     :param definition: a Pydantic-parsed rule body (shape already valid).
@@ -115,10 +115,10 @@ async def validate_rule(
     """
     ctx = _ValidationContext()
 
-    # 1. Selector — walk and collect classifier_id refs (deferred to EAC-5).
+    # 1. Selector - walk and collect classifier_id refs (deferred to EAC-5).
     _walk_selector(definition.selector, "$.selector", ctx)
 
-    # 2. Predicate — collect alias_id refs and run regex / between checks.
+    # 2. Predicate - collect alias_id refs and run regex / between checks.
     if definition.predicate is not None:
         _walk_predicate(definition.predicate, "$.predicate", ctx)
 
@@ -389,8 +389,8 @@ def _check_formula(
     definition: EacRuleDefinition,
     ctx: _ValidationContext,
     *,
-    session: AsyncSession,  # noqa: ARG001 — async lookups happen later
-    tenant_id: uuid.UUID | None,  # noqa: ARG001 — reserved for tenant-scoped checks
+    session: AsyncSession,  # noqa: ARG001 - async lookups happen later
+    tenant_id: uuid.UUID | None,  # noqa: ARG001 - reserved for tenant-scoped checks
 ) -> None:
     """Parse the formula (if any) and surface name-resolution problems.
 
@@ -444,7 +444,7 @@ def _check_formula(
 
         for name in names:
             # Names like ``project`` / ``org`` are scope handles, not
-            # free variables — they're consumed by the attribute scan
+            # free variables - they're consumed by the attribute scan
             # above. Skip them here.
             if name in {"project", "org"}:
                 continue
@@ -454,7 +454,7 @@ def _check_formula(
                 continue
             # Otherwise the name must be either a known alias by name,
             # or it'll fall through to ``unknown_variable``. We don't
-            # hit the DB here — the alias-by-name probe already runs in
+            # hit the DB here - the alias-by-name probe already runs in
             # ``_check_alias_refs`` for explicit ``alias_id`` refs. For
             # bare names we register them as unknown unless they look
             # like upper-snake constants the user is likely to define
@@ -503,7 +503,7 @@ def _check_local_variable_cycles(
 
     def _dfs(node: str, path: list[str]) -> None:
         if node in on_stack:
-            # Found a back-edge — record the cycle.
+            # Found a back-edge - record the cycle.
             cycle_start = path.index(node)
             cycles.append(path[cycle_start:] + [node])
             return

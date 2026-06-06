@@ -1,10 +1,10 @@
-"""‌⁠‍Reporting service — business logic for KPI snapshots, templates, and report generation.
+"""‌⁠‍Reporting service - business logic for KPI snapshots, templates, and report generation.
 
 Event publishing (slice E):
-    reporting.kpi_snapshot.created — new KPI snapshot row
-    reporting.template.created     — new custom template
-    reporting.template.scheduled   — cron schedule attached/cleared
-    reporting.report.generated     — new report rendered
+    reporting.kpi_snapshot.created - new KPI snapshot row
+    reporting.template.created     - new custom template
+    reporting.template.scheduled   - cron schedule attached/cleared
+    reporting.report.generated     - new report rendered
 """
 
 import html
@@ -38,7 +38,7 @@ _logger_ev = logging.getLogger(__name__ + ".events")
 
 
 async def _safe_publish(name: str, data: dict, source_module: str = "oe_reporting") -> None:
-    """‌⁠‍Best-effort event publish — never blocks the caller on failure."""
+    """‌⁠‍Best-effort event publish - never blocks the caller on failure."""
     try:
         event_bus.publish_detached(name, data, source_module=source_module)
     except Exception:
@@ -179,9 +179,9 @@ class ReportingService:
         ``oe_reporting_kpi_snapshot`` has a UNIQUE(project_id,
         snapshot_date) constraint: a project has exactly one snapshot per
         day. A blind INSERT on a date that already had a snapshot raised an
-        unhandled ``IntegrityError`` → 500. We upsert instead — the same
+        unhandled ``IntegrityError`` → 500. We upsert instead - the same
         date-idempotent behaviour ``auto_recalculate_kpis`` already
-        implements — so re-posting a day's KPIs updates that day's row.
+        implements - so re-posting a day's KPIs updates that day's row.
         """
         from sqlalchemy import select
 
@@ -400,7 +400,7 @@ class ReportingService:
                 template.next_run_at = next_run.strftime("%Y-%m-%dT%H:%M:%SZ")
             except CronParseError:
                 logger.exception(
-                    "Template %s has invalid cron %r — pausing",
+                    "Template %s has invalid cron %r - pausing",
                     template.id,
                     template.schedule_cron,
                 )
@@ -440,7 +440,7 @@ class ReportingService:
         """Hard-delete a generated report. 404 if not found.
 
         Caller is expected to enforce project access via
-        ``verify_project_access`` before invoking this — the service layer
+        ``verify_project_access`` before invoking this - the service layer
         does not gate on the user's project ownership.
         """
         report = await self.report_repo.get_by_id(report_id)
@@ -464,7 +464,7 @@ class ReportingService:
         global storage backend, recording its key on ``report.storage_key``
         so the ``/reports/{id}/content`` endpoint can fetch it back. Before
         this wiring landed (W23 P0 audit, task #252) the row existed but
-        ``storage_key`` was always ``None`` — clicking the report in the
+        ``storage_key`` was always ``None`` - clicking the report in the
         history panel showed nothing because there was nothing to show.
 
         Rendering and storage failures are best-effort: we log them and
@@ -477,7 +477,7 @@ class ReportingService:
         # is stamped onto the row *and* into the data_snapshot so every
         # money figure in the report reads in a single, explicit currency.
         # ``override_currency`` is already shape-validated (3-letter, upper)
-        # at the schema layer, so an invalid code never reaches here — it
+        # at the schema layer, so an invalid code never reaches here - it
         # is rejected with HTTP 422 before this method runs.
         currency = await resolve_template_currency(
             session=self.session,
@@ -488,7 +488,7 @@ class ReportingService:
         # If the caller did not supply a data snapshot, assemble one
         # server-side from the project's live module state. Without this
         # the renderer falls straight through to its "No data available"
-        # notice and every report a user generates is a blank shell — the
+        # notice and every report a user generates is a blank shell - the
         # only generation path the UI exposes never sends a snapshot
         # (W2 audit, /reporting). Best-effort: a failure here degrades to
         # the empty-snapshot notice rather than failing the whole call.
@@ -513,7 +513,7 @@ class ReportingService:
         # Stamp the resolved currency into the snapshot. A caller-supplied
         # snapshot is copied (never mutated in place) so the request object
         # stays pristine, and the stamped ``currency`` key always reflects
-        # the resolved code — overriding any stale currency the caller may
+        # the resolved code - overriding any stale currency the caller may
         # have embedded. This is what guarantees a USD report never carries
         # a euro sign and vice versa: money lives under one currency code.
         if effective_snapshot is not None:
@@ -629,7 +629,7 @@ class ReportingService:
 
         Returns ``(report, html_string)``. Raises 404 if the report is
         unknown or 410 (Gone) if the metadata row exists but the rendered
-        body is no longer reachable from the storage backend — a clearer
+        body is no longer reachable from the storage backend - a clearer
         signal than blank 200 OK.
         """
         report = await self.get_report(report_id)
@@ -844,7 +844,7 @@ class ReportingService:
         and open-item counts) plus the finance dashboard (payable /
         receivable / budget / cash-flow). Money values always carry the
         report's *resolved* currency code (``currency`` arg) so the whole
-        report reads in one currency — we never blend the finance
+        report reads in one currency - we never blend the finance
         dashboard's own currency with the resolved report currency.
 
         Args:
@@ -923,7 +923,7 @@ class ReportingService:
             dash = await FinanceService(self.session).get_dashboard(project_id=project_id)
             dash_data = dash.model_dump() if hasattr(dash, "model_dump") else dict(dash)
 
-            # Money always reads in the report's *resolved* currency — never
+            # Money always reads in the report's *resolved* currency - never
             # the finance dashboard's own currency. Blending the two would
             # let a USD-override report show EUR-denominated finance figures
             # (or vice versa), which is exactly the cross-currency leak the
@@ -1089,7 +1089,7 @@ class ReportingService:
                         budget_consumed_pct = str(round((total_actual / total_budget) * 100, 1))
                 except Exception:
                     logger.warning(
-                        "reporting.kpi_recalc finance.get_dashboard failed for project_id=%s — "
+                        "reporting.kpi_recalc finance.get_dashboard failed for project_id=%s - "
                         "budget_consumed_pct will be null",
                         pid,
                         exc_info=True,
@@ -1106,7 +1106,7 @@ class ReportingService:
                         spi = str(cm_dash["spi"])
                 except Exception:
                     logger.warning(
-                        "reporting.kpi_recalc costmodel.get_dashboard failed for project_id=%s — cpi/spi will be null",
+                        "reporting.kpi_recalc costmodel.get_dashboard failed for project_id=%s - cpi/spi will be null",
                         pid,
                         exc_info=True,
                     )
@@ -1127,7 +1127,7 @@ class ReportingService:
                     open_defects = getattr(safety_stats, "total_incidents", 0)
                 except Exception:
                     logger.warning(
-                        "reporting.kpi_recalc safety.get_stats failed for project_id=%s — "
+                        "reporting.kpi_recalc safety.get_stats failed for project_id=%s - "
                         "open_defects/open_observations default to 0",
                         pid,
                         exc_info=True,
@@ -1143,7 +1143,7 @@ class ReportingService:
                     open_rfis = getattr(rfi_stats, "open", 0)
                 except Exception:
                     logger.warning(
-                        "reporting.kpi_recalc rfi.get_stats failed for project_id=%s — open_rfis defaults to 0",
+                        "reporting.kpi_recalc rfi.get_stats failed for project_id=%s - open_rfis defaults to 0",
                         pid,
                         exc_info=True,
                     )
@@ -1166,7 +1166,7 @@ class ReportingService:
                     open_submittals = sub_count
                 except Exception:
                     logger.warning(
-                        "reporting.kpi_recalc submittals count failed for project_id=%s — "
+                        "reporting.kpi_recalc submittals count failed for project_id=%s - "
                         "open_submittals defaults to 0",
                         pid,
                         exc_info=True,
@@ -1193,7 +1193,7 @@ class ReportingService:
                             schedule_progress_pct = str(round(avg_progress, 1))
                 except Exception:
                     logger.warning(
-                        "reporting.kpi_recalc schedule.avg_progress failed for project_id=%s — "
+                        "reporting.kpi_recalc schedule.avg_progress failed for project_id=%s - "
                         "schedule_progress_pct will be null",
                         pid,
                         exc_info=True,
@@ -1216,7 +1216,7 @@ class ReportingService:
                         risk_score_avg = str(round(avg_risk, 2))
                 except Exception:
                     logger.warning(
-                        "reporting.kpi_recalc risk.avg_score failed for project_id=%s — risk_score_avg will be null",
+                        "reporting.kpi_recalc risk.avg_score failed for project_id=%s - risk_score_avg will be null",
                         pid,
                         exc_info=True,
                     )

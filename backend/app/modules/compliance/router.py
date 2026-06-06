@@ -5,13 +5,13 @@
 Endpoints
 ~~~~~~~~~
 
-* ``POST   /dsl/validate-syntax`` — lint a definition before saving.
-* ``POST   /dsl/compile``         — parse, persist, and register a rule.
-* ``GET    /dsl/rules``           — list rules visible to the caller.
-* ``GET    /dsl/rules/{rule_pk}`` — read a single rule.
-* ``DELETE /dsl/rules/{rule_pk}`` — remove a rule (owner-only).
+* ``POST   /dsl/validate-syntax`` - lint a definition before saving.
+* ``POST   /dsl/compile``         - parse, persist, and register a rule.
+* ``GET    /dsl/rules``           - list rules visible to the caller.
+* ``GET    /dsl/rules/{rule_pk}`` - read a single rule.
+* ``DELETE /dsl/rules/{rule_pk}`` - remove a rule (owner-only).
 
-The compile / list / get / delete verbs are RBAC-gated — a user-authored
+The compile / list / get / delete verbs are RBAC-gated - a user-authored
 rule is registered into the global validation engine and runs against
 project data, so authoring or deleting one is a privileged action a
 read-only VIEWER must not be able to take (``compliance.rule.create`` /
@@ -109,7 +109,7 @@ def _raise_compliance_http(exc: ComplianceError) -> None:
 )
 async def validate_syntax(
     body: DSLValidateRequest,
-    payload: CurrentUserPayload,  # noqa: ARG001 — auth-only side effect
+    payload: CurrentUserPayload,  # noqa: ARG001 - auth-only side effect
 ) -> DSLValidateResponse:
     if (body.definition_yaml is None) == (body.definition is None):
         raise HTTPException(
@@ -158,7 +158,7 @@ async def compile_rule_endpoint(
         )
     except ComplianceError as exc:
         _raise_compliance_http(exc)
-        raise  # pragma: no cover — _raise always raises
+        raise  # pragma: no cover - _raise always raises
 
     await session.commit()
     return DSLRuleOut.model_validate(row)
@@ -250,15 +250,15 @@ async def delete_rule(
 
 
 async def _build_ai_caller(
-    payload: dict[str, Any],  # noqa: ARG001 — placeholder for future per-tenant routing
-    session: Any,  # noqa: ANN401 — typed as AsyncSession by SessionDep, kept loose to avoid an import cycle
+    payload: dict[str, Any],  # noqa: ARG001 - placeholder for future per-tenant routing
+    session: Any,  # noqa: ANN401 - typed as AsyncSession by SessionDep, kept loose to avoid an import cycle
 ) -> Any:
     """‌⁠‍Build a bound ``(system, prompt) -> str`` callable, or ``None``.
 
     The returned coroutine wraps :func:`app.modules.ai.ai_client.call_ai`
     so the DSL module never imports HTTP / settings models. If no API
-    key is configured for the caller — or any error happens during
-    resolution — we return ``None`` so :func:`parse_nl_to_dsl` skips the
+    key is configured for the caller - or any error happens during
+    resolution - we return ``None`` so :func:`parse_nl_to_dsl` skips the
     AI path silently. **Never raises**.
     """
     try:
@@ -268,7 +268,7 @@ async def _build_ai_caller(
             resolve_provider_key_model,
         )
         from app.modules.ai.repository import AISettingsRepository
-    except Exception:  # pragma: no cover — defensive
+    except Exception:  # pragma: no cover - defensive
         return None
 
     user_id_raw = payload.get("sub") or payload.get("user_id")
@@ -305,7 +305,7 @@ async def _build_ai_caller(
     summary="List supported NL → DSL patterns (for the builder hints panel)",
 )
 async def list_nl_patterns(
-    payload: CurrentUserPayload,  # noqa: ARG001 — auth-only side effect
+    payload: CurrentUserPayload,  # noqa: ARG001 - auth-only side effect
 ) -> DSLNlPatternsResponse:
     items = [DSLNlPatternOut.model_validate(p) for p in list_supported_patterns()]
     return DSLNlPatternsResponse(items=items)
@@ -342,7 +342,7 @@ async def from_nl(
                 allow_unicode=True,
                 default_flow_style=False,
             )
-        except yaml.YAMLError as exc:  # pragma: no cover — defensive
+        except yaml.YAMLError as exc:  # pragma: no cover - defensive
             logger.warning("Failed to serialise NL builder result: %s", exc)
             yaml_str = None
 

@@ -3,8 +3,8 @@
 """‌⁠‍HTTP routes for the element-to-CWICR matcher.
 
 Endpoints:
-    * ``POST /api/v1/match/element``  — run the matcher.
-    * ``POST /api/v1/match/feedback`` — record user confirmation.
+    * ``POST /api/v1/match/element``  - run the matcher.
+    * ``POST /api/v1/match/feedback`` - record user confirmation.
 
 Both require auth via the existing JWT bearer scheme.
 """
@@ -165,12 +165,12 @@ async def feedback_endpoint(
     "/accept",
     response_model=MatchAcceptResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Accept a CWICR match — create or update the linked BOQ position",
+    summary="Accept a CWICR match - create or update the linked BOQ position",
     description=(
         "Consolidated accept flow: writes a BOQ position with the matched "
         "CWICR cost item, optionally links it to a BIM element, and "
         "captures the accept + rejected list into the match feedback "
-        "audit log — all in one transaction."
+        "audit log - all in one transaction."
     ),
 )
 async def accept_endpoint(

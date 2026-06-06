@@ -1,7 +1,7 @@
 """‌⁠‍Field Reports data access layer.
 
 All database queries for field reports live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid
@@ -116,7 +116,7 @@ class FieldReportRepository:
 
         Pushes status / report_type counts and the delay_hours sum into SQL
         instead of hydrating every FieldReport row in Python. Workforce
-        hours still need a JSON pass — see ``workforce_for_project``.
+        hours still need a JSON pass - see ``workforce_for_project``.
         """
         total_stmt = select(func.count()).select_from(FieldReport).where(FieldReport.project_id == project_id)
         total = (await self.session.execute(total_stmt)).scalar_one()
@@ -156,7 +156,7 @@ class FieldReportRepository:
         """Return only the workforce JSON column per report.
 
         The summary needs to walk the JSON to compute count*hours, so we
-        can't fully aggregate in SQL — but we can drop every other column
+        can't fully aggregate in SQL - but we can drop every other column
         and skip ORM hydration.
         """
         stmt = select(FieldReport.workforce).where(FieldReport.project_id == project_id)

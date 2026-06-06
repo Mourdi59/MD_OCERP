@@ -2,10 +2,10 @@
 
 Defines the contract every BOQ importer must satisfy:
 
-1. ``detect(head_bytes, filename) -> bool`` — cheap, magic-byte/extension
+1. ``detect(head_bytes, filename) -> bool`` - cheap, magic-byte/extension
    sniff against the first ~4 KB of the upload. Must NEVER raise; must
    NEVER read past the supplied head bytes.
-2. ``parse(content, *, locale='en') -> ImportedBOQ`` — full parse. May
+2. ``parse(content, *, locale='en') -> ImportedBOQ`` - full parse. May
    raise ``ImportError`` (we re-export :class:`ImporterParseError`) to
    surface a user-safe 400.
 
@@ -15,10 +15,10 @@ which keeps them testable in isolation against synthetic fixtures.
 
 Every importer also advertises:
 
-* ``format_id`` — stable identifier (``"gaeb_xml"``, ``"bc3"``, ``"excel"``).
-* ``extensions`` — tuple of lowercased extensions (``(".xlsx", ".csv")``).
-* ``display_name`` — i18n-key-friendly human label.
-* ``rule_packs`` — validation rule packs to fire after import (e.g.
+* ``format_id`` - stable identifier (``"gaeb_xml"``, ``"bc3"``, ``"excel"``).
+* ``extensions`` - tuple of lowercased extensions (``(".xlsx", ".csv")``).
+* ``display_name`` - i18n-key-friendly human label.
+* ``rule_packs`` - validation rule packs to fire after import (e.g.
   ``("gaeb", "din276", "boq_quality")``). The dispatcher unions this
   with the project's configured ``REGION_RULES`` so DACH projects still
   pick up DIN 276 on an Excel import.
@@ -32,7 +32,7 @@ from typing import Any, ClassVar, Protocol, runtime_checkable
 
 class ImporterParseError(ValueError):
     """Raised by an importer's ``parse()`` when the bytes can't be turned
-    into positions. The dispatcher translates this into HTTP 400 — the
+    into positions. The dispatcher translates this into HTTP 400 - the
     message must be user-safe (no stack traces, no internal paths).
     """
 
@@ -47,7 +47,7 @@ class ImportedPosition:
     plain dicts (no ``JSONB`` typing) because importers are sync and
     don't touch the DB.
 
-    ``ordinal`` may be left blank — the dispatcher will auto-number any
+    ``ordinal`` may be left blank - the dispatcher will auto-number any
     blank ordinals before persisting (consistent with the historical
     Excel/CSV behaviour).
     """
@@ -77,7 +77,7 @@ class ImportedBOQ:
 
     positions: list[ImportedPosition] = field(default_factory=list)
     # Number of rows the importer intentionally skipped (e.g. blank
-    # description rows, "Total" footer rows). Pure diagnostic — the
+    # description rows, "Total" footer rows). Pure diagnostic - the
     # dispatcher echoes this back to the client.
     skipped: int = 0
     # Per-row errors that did not abort the import. Each entry is a
@@ -88,7 +88,7 @@ class ImportedBOQ:
     # Free-form metadata for round-trip export / UI rendering.
     metadata: dict[str, Any] = field(default_factory=dict)
     # Source format token (``"gaeb"``, ``"bc3"``, ``"xlsx"``, ``"csv"``)
-    # — surfaced in the import response as ``source_format``.
+    # - surfaced in the import response as ``source_format``.
     source_format: str = ""
     # Currency captured from the source file (GAEB ``<Cur>``, BC3 ``DC``
     # record). Empty if the source did not carry one.

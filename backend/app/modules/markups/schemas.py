@@ -1,4 +1,4 @@
-"""‌⁠‍Markups & Annotations Pydantic schemas — request/response models.
+"""‌⁠‍Markups & Annotations Pydantic schemas - request/response models.
 
 Defines create, update, and response schemas for markups, scale configs,
 and stamp templates.
@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 # Bound ints at PostgreSQL INT4 max; a PDF with > ~100k pages is obviously junk.
 _INT32_MAX = 2_147_483_647
 _MAX_PAGE = 100_000
-_MAX_MEASUREMENT = 1e12  # m, m², m³ — no real drawing needs higher
+_MAX_MEASUREMENT = 1e12  # m, m², m³ - no real drawing needs higher
 _MAX_LENGTH = 500
 
 # ── Markup schemas ──────────────────────────────────────────────────────
@@ -27,7 +27,7 @@ class MarkupCreate(BaseModel):
 
     project_id: UUID
     document_id: str | None = Field(default=None, max_length=_MAX_LENGTH)
-    # Epic C — explicit version pin. When omitted the service resolves
+    # Epic C - explicit version pin. When omitted the service resolves
     # the current chain head for ``document_id``. Clients can pin to a
     # historical version to draw on an old revision.
     file_version_id: UUID | None = None
@@ -117,7 +117,7 @@ class MarkupResponse(BaseModel):
     assignee_id: UUID | None = None
     status: str = "active"
     label: str | None = None
-    # Stored as Numeric(18, 6) in the model — calibration / measurement
+    # Stored as Numeric(18, 6) in the model - calibration / measurement
     # values flow into BOQ quantities, so we keep them as ``Decimal`` here
     # rather than ``float``. Typing the field ``float`` made Pydantic coerce
     # the ORM ``Decimal`` through a binary float on serialization, dropping

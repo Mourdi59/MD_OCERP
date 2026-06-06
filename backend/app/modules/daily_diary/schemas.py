@@ -1,4 +1,4 @@
-"""‌⁠‍Daily Site Diary Pydantic schemas — request/response models (Pydantic v2)."""
+"""‌⁠‍Daily Site Diary Pydantic schemas - request/response models (Pydantic v2)."""
 
 from __future__ import annotations
 
@@ -45,17 +45,17 @@ _WEATHER_SOURCE_RE = r"^(open_meteo|manual|sensor)$"
 _CAPTURE_TYPE_RE = r"^(laser_scan|photogrammetry|mobile_scan)$"
 _SIGNER_ROLE_RE = r"^(owner|supervisor|inspector|client)$"
 # Photo MIME is client-declared (the file itself lives in object storage),
-# so it MUST be constrained to the platform image allow-list — otherwise a
+# so it MUST be constrained to the platform image allow-list - otherwise a
 # caller could persist e.g. ``text/html`` and the UI would trust it. Mirrors
 # documents.ALLOWED_IMAGE_TYPES (+ avif, which site cameras now emit).
-# SVG is explicitly NOT in this set — it can carry arbitrary script payload
+# SVG is explicitly NOT in this set - it can carry arbitrary script payload
 # and the UI would render it inline.
 _PHOTO_MIME_RE = r"^image/(jpeg|png|gif|webp|heic|heif|avif|tiff)$"
-# Video MIME — site recorders emit mp4/quicktime/webm/AVI; absolutely no
+# Video MIME - site recorders emit mp4/quicktime/webm/AVI; absolutely no
 # ``text/*`` / ``application/*`` / ``image/svg+xml`` allowed (a maliciously
 # stored MIME would be served back verbatim and trusted by the UI).
 _VIDEO_MIME_RE = r"^video/(mp4|quicktime|webm|x-msvideo|x-matroska|3gpp|3gpp2|mpeg)$"
-# Caps for file_size_bytes — preventing nonsense values that would distort
+# Caps for file_size_bytes - preventing nonsense values that would distort
 # storage-quota dashboards and break downstream aggregation. 5 GB matches
 # what a long drone-flight clip realistically produces; nothing in a site
 # diary should ever be larger than that.
@@ -64,7 +64,7 @@ _MAX_VIDEO_BYTES = 5 * 1024 * 1024 * 1024  # 5 GB
 
 # Realistic upper bound for headcount / equipment count on a single site
 # on a single calendar day. The world's largest projects (e.g. Riyadh
-# Metro mega-package, Three Gorges peak) topped out around 30 000 — but
+# Metro mega-package, Three Gorges peak) topped out around 30 000 - but
 # THOSE are reported as PROGRAMME totals, not as a single-site daily
 # diary. 10 000 is generous for a single diary; anything higher is
 # almost certainly a unit-mistake (line items × people, or a typo).
@@ -359,7 +359,7 @@ class DiaryVideoCreate(BaseModel):
     recorded_at: datetime
     file_url: str = Field(..., min_length=1, max_length=2000)
     thumbnail_url: str | None = Field(default=None, max_length=2000)
-    # 24h hard cap — a site video longer than a calendar day is nonsense and
+    # 24h hard cap - a site video longer than a calendar day is nonsense and
     # almost certainly indicates a unit-mistake (e.g. milliseconds in a
     # ``seconds`` field) that would corrupt the SCL bundle hash.
     duration_seconds: int = Field(default=0, ge=0, le=86_400)
@@ -425,7 +425,7 @@ class DroneSurveyCreate(BaseModel):
     flown_at: datetime
     pilot_name: str | None = Field(default=None, max_length=255)
     drone_model: str | None = Field(default=None, max_length=255)
-    # Surveyed coverage area, m² — Numeric(14, 2) in the model. Capped at
+    # Surveyed coverage area, m² - Numeric(14, 2) in the model. Capped at
     # 100 km² since no realistic single drone flight exceeds that
     # (battery + line-of-sight limits); rejects a stray unit-mistake
     # (e.g. mm² confused with m²) before it pollutes the DB.
@@ -433,7 +433,7 @@ class DroneSurveyCreate(BaseModel):
     ortho_file_url: str | None = Field(default=None, max_length=2000)
     dsm_file_url: str | None = Field(default=None, max_length=2000)
     point_cloud_url: str | None = Field(default=None, max_length=2000)
-    # Elevations are bounded by realistic surveyed terrain — Mariana
+    # Elevations are bounded by realistic surveyed terrain - Mariana
     # Trench (-11 km) to Everest (8.85 km) plus a comfortable margin.
     elevation_min_m: Decimal | None = Field(
         default=None,
@@ -632,7 +632,7 @@ class PhotoTimelineBucket(BaseModel):
 
 
 class PhotoTimelineResponse(BaseModel):
-    """Photo-timeline response — one bucket per day."""
+    """Photo-timeline response - one bucket per day."""
 
     project_id: UUID
     buckets: list[PhotoTimelineBucket] = Field(default_factory=list)

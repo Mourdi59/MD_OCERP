@@ -1,7 +1,7 @@
 """‌⁠‍Catalog resource data access layer.
 
 All database queries for catalog resources live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid
@@ -18,7 +18,7 @@ def _escape_like(term: str) -> str:
     r"""Escape LIKE/ILIKE wildcards in a user-supplied search term.
 
     Without this, ``q='%'`` expands to the pattern ``'%%%'`` (matches
-    every row) and ``q='_'`` matches any single character — a literal
+    every row) and ``q='_'`` matches any single character - a literal
     ``%`` / ``_`` in the query is treated as a wildcard, so the search
     returns ALL resources instead of the ones containing that literal
     (NEW-CAT-105). We escape the escape char first (so a literal
@@ -163,7 +163,7 @@ class CatalogResourceRepository:
     async def stats_by_category(self, region: str | None = None) -> list[tuple[str, int]]:
         """Count of active resources grouped by category.
 
-        Scoped by ``region`` when supplied — otherwise a category badge
+        Scoped by ``region`` when supplied - otherwise a category badge
         could show a non-zero count while the region-filtered list under
         it is empty (the reported "count says N but No resources found").
         """

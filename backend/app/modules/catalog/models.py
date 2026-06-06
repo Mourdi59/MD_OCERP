@@ -1,7 +1,7 @@
 """‌⁠‍Catalog resource ORM models.
 
 Tables:
-    oe_catalog_resource — curated resources (materials, equipment, labor, operators)
+    oe_catalog_resource - curated resources (materials, equipment, labor, operators)
 """
 
 from sqlalchemy import JSON, Boolean, Integer, String

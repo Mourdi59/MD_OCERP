@@ -1,6 +1,6 @@
 """‌⁠‍Internationalization foundation data access layer.
 
-Four repository classes — one per entity. Pure data access, no business logic.
+Four repository classes - one per entity. Pure data access, no business logic.
 All queries use SQLAlchemy async select() + where() patterns.
 """
 

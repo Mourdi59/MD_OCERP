@@ -7,7 +7,7 @@ manifest = ModuleManifest(
     version="0.1.0",
     display_name="Semantic Search",
     description=(
-        "Cross-collection vector search — fans out to BOQ, documents, "
+        "Cross-collection vector search - fans out to BOQ, documents, "
         "tasks, risks, BIM elements and chat history, then merges the "
         "results via Reciprocal Rank Fusion."
     ),

@@ -4,7 +4,7 @@
 
 Receives anonymised error reports from the React frontend's
 ``errorLogger.ts``. The endpoint is intentionally write-only and
-storage-free in v4.2.x — payloads are logged at WARNING level via the
+storage-free in v4.2.x - payloads are logged at WARNING level via the
 standard logger so they show up alongside backend errors in the existing
 log aggregation pipeline. Persistent storage (a ``client_error_events``
 table + retention sweep) is a v4.3 follow-up.

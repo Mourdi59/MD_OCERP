@@ -1,4 +1,4 @@
-"""‌⁠‍Console email backend — logs structured records instead of sending.
+"""‌⁠‍Console email backend - logs structured records instead of sending.
 
 Purpose: zero-config default for local development.  A fresh checkout
 runs without MSA credentials, but developers still need to see *what*
@@ -7,7 +7,7 @@ test password-reset and notification flows without a real SMTP server.
 
 The backend is also a useful fallback in production for environments
 where outbound SMTP is intentionally disabled (air-gapped installs,
-compliance freezes) — operators see every attempted send in the app log
+compliance freezes) - operators see every attempted send in the app log
 instead of a silent no-op.
 """
 
@@ -24,7 +24,7 @@ class ConsoleEmailBackend(EmailBackend):
     """‌⁠‍Log messages to the application logger at INFO level.
 
     Body is truncated to 500 characters in the log line so a multi-KB HTML
-    email does not dominate the log file — the full body is still emitted
+    email does not dominate the log file - the full body is still emitted
     at DEBUG if you need it for template debugging.
     """
 

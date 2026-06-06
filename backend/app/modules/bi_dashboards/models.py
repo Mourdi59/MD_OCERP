@@ -3,7 +3,7 @@
 
 All tables prefixed ``oe_bi_dashboards_``. Cross-module references
 (project_id, owner_user_id, widget→dashboard) deliberately omit ORM
-foreign keys to other modules' tables — this is a read-only consumer
+foreign keys to other modules' tables - this is a read-only consumer
 module and must not be coupled to upstream model lifecycles. Only
 intra-module FKs (widget → dashboard, snapshot → widget,
 schedule → report_definition) use SQLAlchemy ForeignKey because they're
@@ -107,7 +107,7 @@ class Dashboard(Base):
         default="",
         server_default="",
     )
-    # No ORM FK to oe_users_user — keep the consumer module decoupled
+    # No ORM FK to oe_users_user - keep the consumer module decoupled
     owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(),
         nullable=True,
@@ -121,7 +121,7 @@ class Dashboard(Base):
         index=True,
     )
     role_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # No ORM FK to oe_projects_project — read-only consumer
+    # No ORM FK to oe_projects_project - read-only consumer
     project_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(),
         nullable=True,
@@ -145,7 +145,7 @@ class Dashboard(Base):
         default=300,
         server_default="300",
     )
-    # Wave 4 / T11 — cross-filter opt-in flag. When True the evaluate
+    # Wave 4 / T11 - cross-filter opt-in flag. When True the evaluate
     # endpoint propagates a caller-supplied filter dict into every widget.
     # Default False keeps the v3.x static-render contract for existing rows.
     cross_filter_enabled: Mapped[bool] = mapped_column(
@@ -217,7 +217,7 @@ class DashboardWidget(Base):
         default=0,
         server_default="0",
     )
-    # Wave 4 / T11 — drill-path JSON describes how a click on this widget
+    # Wave 4 / T11 - drill-path JSON describes how a click on this widget
     # propagates a filter to the rest of the dashboard. None means the
     # widget is not clickable for cross-filter purposes. Shape:
     # ``{"filter_field": "project_id", "filter_value_from": "row.project_id"}``.
@@ -348,7 +348,7 @@ class AlertRule(Base):
     The default mode is a single ``condition + threshold_value`` against
     ``kpi_code``. For composite rules (e.g. ``cpi < 0.95 AND project.phase
     == 'execution'``), populate ``expression_json`` with a tree of
-    ``{op, lhs, rhs}`` nodes — see :func:`evaluate_alert_expression` for
+    ``{op, lhs, rhs}`` nodes - see :func:`evaluate_alert_expression` for
     the supported grammar. When ``expression_json`` is non-empty it takes
     precedence over ``condition`` / ``threshold_value``.
     """
@@ -411,7 +411,7 @@ class AlertRule(Base):
         default=True,
         server_default="1",
     )
-    # Composite expression — JSON tree of {op, lhs, rhs}; empty for single KPI
+    # Composite expression - JSON tree of {op, lhs, rhs}; empty for single KPI
     expression_json: Mapped[dict] = mapped_column(  # type: ignore[type-arg]
         JSON,
         nullable=False,
@@ -426,7 +426,7 @@ class SavedFilter(Base):
     Sharing model: ``owner_user_id`` is the creator. ``shared_with_user_ids``
     is the explicit allow-list of additional users who see the filter in
     their personal library. ``scope='global'`` or ``'role'`` bypasses the
-    list — everyone in scope sees it.
+    list - everyone in scope sees it.
     """
 
     __tablename__ = "oe_bi_dashboards_saved_filter"
@@ -469,7 +469,7 @@ class SavedFilter(Base):
 
 
 class ReportRun(Base):
-    """An execution of a ReportDefinition — for audit + download history.
+    """An execution of a ReportDefinition - for audit + download history.
 
     ``file_path`` is a server-local path to the rendered PDF/XLSX/CSV; the
     HTTP layer exposes it via a streamed download endpoint and does NOT

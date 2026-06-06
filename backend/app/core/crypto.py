@@ -3,7 +3,7 @@
 Uses Fernet (cryptography lib, already in deps via python-jose). The key
 is derived from settings.jwt_secret + a fixed app salt so existing
 deployments do not need a new env var. If JWT_SECRET rotates, all
-encrypted secrets become unreadable — same threat model as JWTs.
+encrypted secrets become unreadable - same threat model as JWTs.
 """
 
 import base64
@@ -35,7 +35,7 @@ def decrypt_secret(ciphertext: str | None) -> str | None:
         return Fernet(_key()).decrypt(ciphertext.encode("ascii")).decode("utf-8")
     except (InvalidToken, ValueError):
         # If the value looks like a Fernet token (``gAAAAA…``) but the
-        # current key can't open it, the encryption key has rotated —
+        # current key can't open it, the encryption key has rotated -
         # treat it as unusable so callers don't end up shipping
         # encrypted garbage as an API key to a remote provider. Genuine
         # plaintext values (no Fernet prefix) pass through unchanged

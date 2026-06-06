@@ -71,7 +71,7 @@ def write_dataframe(
     parquet_path = dest_dir / "elements.parquet"
 
     # pyarrow.Table.from_pylist infers the schema from the FIRST dict
-    # only — keys that appear in later dicts but not the first are
+    # only - keys that appear in later dicts but not the first are
     # silently dropped.  DDC Excel rows are sparse (a Material element
     # has 6 keys, a Wall has 21, a Door has 35), so we must collect
     # ALL keys first and normalise every row to include them all.

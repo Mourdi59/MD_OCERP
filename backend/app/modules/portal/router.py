@@ -1,5 +1,5 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""‌⁠‍Customer & Partner Portal — FastAPI routes.
+"""‌⁠‍Customer & Partner Portal - FastAPI routes.
 
 Two surfaces, mounted under ``/api/v1/portal/``:
 
@@ -17,8 +17,8 @@ Two surfaces, mounted under ``/api/v1/portal/``:
 
     Portal-user-facing (``RequirePortalSession``-gated unless noted)
     ---------------------------------------------------------------
-        POST   /auth/magic-link    — no auth (rate-limited upstream)
-        POST   /auth/consume       — no auth
+        POST   /auth/magic-link    - no auth (rate-limited upstream)
+        POST   /auth/consume       - no auth
         POST   /auth/logout
         GET    /me
         GET    /me/accessible/{resource_type}
@@ -246,7 +246,7 @@ async def admin_list_access_rules(
     """List access rules (optionally filtered by user / resource type).
 
     Without this, the admin UI could only display grants made in the
-    current browser session — every rule vanished from the table on reload
+    current browser session - every rule vanished from the table on reload
     and seeded/previously-granted rules were never visible at all.
     """
     items, total = await service.list_access_rules(
@@ -452,7 +452,7 @@ async def portal_me_patch(
 ) -> PortalUserResponse:
     """Self-edit the small subset of profile fields a portal user can change.
 
-    Explicitly excludes ``status`` and ``email`` — only an internal admin
+    Explicitly excludes ``status`` and ``email`` - only an internal admin
     can suspend an account, and email changes go through the invite flow
     so the new address is verifiable.
     """
@@ -481,7 +481,7 @@ async def portal_create_ticket(
     rule for ``data.contract_id``. On success, a real ``ServiceTicket`` row
     is created with ``source="portal"`` and ``reported_by="<portal_user_id>"``
     so the dispatcher can triage portal vs phone tickets via the ``source``
-    column. ``reported_by`` holds the bare portal-user UUID (36 chars) — a
+    column. ``reported_by`` holds the bare portal-user UUID (36 chars) - a
     ``portal:`` prefix would overflow the 36-char ``reported_by`` field of
     ``ServiceTicketCreate`` / the ``ServiceTicket.reported_by`` column and
     422/500 every portal ticket.
@@ -534,7 +534,7 @@ async def portal_list_tickets(
 
     Returns only tickets where ``source == "portal"`` and
     ``reported_by == "<my_id>"`` AND the caller still has a
-    ``service_contract`` access rule on the parent contract — i.e. tickets
+    ``service_contract`` access rule on the parent contract - i.e. tickets
     stay visible to the buyer who filed them as long as their contract
     access has not been revoked. ``source == "portal"`` is part of the
     predicate so a portal user UUID can never alias an internal
@@ -559,7 +559,7 @@ async def portal_list_tickets(
         .where(_ST.reported_by == str(user.id))
     )
 
-    # Total via SQL aggregate — do not materialise every row just to count.
+    # Total via SQL aggregate - do not materialise every row just to count.
     count_stmt = _select(_func.count()).select_from(base.subquery())
     total = int((await session.execute(count_stmt)).scalar_one())
 
@@ -594,10 +594,10 @@ async def portal_list_change_orders(
     1. **Per-CO grants.** The caller has individual
        ``change_order`` resource rules for specific COs.
     2. **Per-project grants.** The caller has a ``project`` resource rule
-       — they then see every approved/executed CO under that project.
+       - they then see every approved/executed CO under that project.
 
     Returns only status in
-    (``approved``, ``executed``, ``rejected``, ``closed``) — drafts and
+    (``approved``, ``executed``, ``rejected``, ``closed``) - drafts and
     in-flight workflow rows stay invisible. Output is the buyer-facing
     redacted projection (no internal notes, no markup, no submission trail).
     """
@@ -622,7 +622,7 @@ async def portal_list_change_orders(
 
     # The caller may see a CO iff it is under a project they were granted
     # OR it is one of the specific COs granted to them. This predicate is
-    # ALWAYS applied — even when ``project_id`` is supplied — so that a
+    # ALWAYS applied - even when ``project_id`` is supplied - so that a
     # per-CO grant on project B cannot be used to read every CO of an
     # unrelated project A. (Previously, holding any per-CO grant disabled
     # the project-scope check entirely → cross-project data leak.)

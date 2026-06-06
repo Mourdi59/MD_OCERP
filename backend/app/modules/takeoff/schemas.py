@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-# Round-6 audit (2026-05-22) — hard bound on per-axis coordinates inside a
+# Round-6 audit (2026-05-22) - hard bound on per-axis coordinates inside a
 # polygon. PDF pages render in PostScript points (72 dpi); ISO A0 at 72 dpi
 # is 3370 × 2384 px. The frontend zoom factor caps the visible canvas at
 # ~50× before WebGL gives up, so a legitimate point will never exceed
@@ -46,7 +46,7 @@ class ExtractedElement(BaseModel):
     quantity: float
     unit: str
     # R7 deep-improve: confidence must be a probability in [0, 1]. Out-of-
-    # range values from an AI model indicate a bug — fail loudly instead
+    # range values from an AI model indicate a bug - fail loudly instead
     # of silently allowing 1.5 or -3 to propagate through the UI.
     confidence: float = Field(..., ge=0.0, le=1.0)
 
@@ -113,7 +113,7 @@ class CadExtractResponse(BaseModel):
 class PointSchema(BaseModel):
     """A single 2D point in page coordinates.
 
-    Round-6 audit — both axes are clamped to ``±_MAX_COORD_ABS`` so a
+    Round-6 audit - both axes are clamped to ``±_MAX_COORD_ABS`` so a
     malicious payload (``x: 1e30``) cannot inflate polygon areas via
     the shoelace formula and contaminate BOQ totals. NaN and infinity
     are rejected outright (they would produce ``NaN`` areas that
@@ -126,7 +126,7 @@ class PointSchema(BaseModel):
     @field_validator("x", "y")
     @classmethod
     def _reject_nan_inf(cls, v: float) -> float:
-        # Pydantic's ge/le accept NaN through silently on some versions —
+        # Pydantic's ge/le accept NaN through silently on some versions -
         # belt-and-braces. Without this guard, a polygon with NaN points
         # produces NaN areas that the upstream Decimal cast turns into
         # ``Decimal('NaN')`` and the downstream rollup never errors.

@@ -13,7 +13,7 @@ ready to plug into a subscriber.
 
 
 async def on_startup() -> None:
-    """‌⁠‍Module startup hook — register RBAC permissions + cross-module wiring."""
+    """‌⁠‍Module startup hook - register RBAC permissions + cross-module wiring."""
     from app.modules.daily_diary.events import register_subscribers
     from app.modules.daily_diary.permissions import register_daily_diary_permissions
 

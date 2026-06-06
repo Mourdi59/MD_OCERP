@@ -372,10 +372,10 @@ async def _seed_kpi_history(session: AsyncSession) -> int:
     violated the no-stubs / data-integrity rule.
 
     Instead we compute each KPI's real current value over the whole
-    portfolio and persist a single history point — but only when the KPI
+    portfolio and persist a single history point - but only when the KPI
     actually has source data (``source_record_count > 0``), exactly the same
     guard ``compute_kpi(persist=True)`` uses. A KPI with no underlying rows
-    yet gets no row: the library shows "—" with an empty sparkline rather
+    yet gets no row: the library shows "-" with an empty sparkline rather
     than an invented number. As real records accrue, on-demand computes
     (and dashboard renders) append further real points over time.
     """
@@ -391,7 +391,7 @@ async def _seed_kpi_history(session: AsyncSession) -> int:
         if (await session.execute(q)).scalar_one_or_none() is not None:
             continue
         result = await _kpis.compute(code, session, project_id=None)
-        # Never persist a fabricated/empty value — only real measurements.
+        # Never persist a fabricated/empty value - only real measurements.
         if result.source_record_count <= 0:
             continue
         kv = KPIValue(

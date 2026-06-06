@@ -1,7 +1,7 @@
 """‌⁠‍DACH regional pack API routes.
 
 Endpoints:
-    GET /config  — Return the full DACH regional configuration
+    GET /config  - Return the full DACH regional configuration
 """
 
 import logging

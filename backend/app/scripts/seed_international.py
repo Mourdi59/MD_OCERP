@@ -1,10 +1,10 @@
 """‌⁠‍Seed international demo projects with realistic construction data.
 
 Creates 4 demo projects covering different regions and standards:
-1. Germany (DACH/DIN 276) — Residential complex
-2. UK (NRM) — Office building
-3. USA (MasterFormat) — Elementary school
-4. International (DIN 276) — Bridge infrastructure
+1. Germany (DACH/DIN 276) - Residential complex
+2. UK (NRM) - Office building
+3. USA (MasterFormat) - Elementary school
+4. International (DIN 276) - Bridge infrastructure
 
 Usage: python -m app.scripts.seed_international
 """
@@ -39,7 +39,7 @@ async def main() -> None:
         print("Authenticated.\n")
 
         # ═══════════════════════════════════════════════════════════════════
-        # PROJECT 1: Germany — Wohnanlage Berlin-Mitte
+        # PROJECT 1: Germany - Wohnanlage Berlin-Mitte
         # ═══════════════════════════════════════════════════════════════════
         p1 = await create_project(
             c,
@@ -57,7 +57,7 @@ async def main() -> None:
             c,
             h,
             p1["id"],
-            "LV 01 — Rohbauarbeiten",
+            "LV 01 - Rohbauarbeiten",
             "Leistungsverzeichnis Rohbau: Erdarbeiten, Beton- und Stahlbetonarbeiten, Mauerwerk, Abdichtung, Stahlbau",
         )
 
@@ -171,13 +171,13 @@ async def main() -> None:
         )
 
         # ═══════════════════════════════════════════════════════════════════
-        # PROJECT 2: UK — Commercial Office, Manchester
+        # PROJECT 2: UK - Commercial Office, Manchester
         # ═══════════════════════════════════════════════════════════════════
         p2 = await create_project(
             c,
             h,
             {
-                "name": "Victoria House — Grade A Office",
+                "name": "Victoria House - Grade A Office",
                 "description": "New build 6-storey Grade A office building in Manchester city centre. GIA 4,200 m², BREEAM Excellent target. Steel frame with curtain wall facade.",
                 "region": "UK",
                 "classification_standard": "nrm",
@@ -189,7 +189,7 @@ async def main() -> None:
             c,
             h,
             p2["id"],
-            "BOQ — Substructure & Frame",
+            "BOQ - Substructure & Frame",
             "NRM 2 cost plan: substructure, frame, upper floors, roof, stairs",
         )
 
@@ -299,7 +299,7 @@ async def main() -> None:
         )
 
         # ═══════════════════════════════════════════════════════════════════
-        # PROJECT 3: USA — Elementary School, Austin TX
+        # PROJECT 3: USA - Elementary School, Austin TX
         # ═══════════════════════════════════════════════════════════════════
         p3 = await create_project(
             c,
@@ -317,7 +317,7 @@ async def main() -> None:
             c,
             h,
             p3["id"],
-            "Schedule of Values — General Construction",
+            "Schedule of Values - General Construction",
             "CSI MasterFormat Divisions 01-14: Site work, concrete, masonry, metals, carpentry, thermal/moisture, doors/windows, finishes",
         )
 
@@ -458,7 +458,7 @@ async def main() -> None:
         )
 
         # ═══════════════════════════════════════════════════════════════════
-        # PROJECT 4: International — Highway Bridge, UAE
+        # PROJECT 4: International - Highway Bridge, UAE
         # ═══════════════════════════════════════════════════════════════════
         p4 = await create_project(
             c,
@@ -476,7 +476,7 @@ async def main() -> None:
             c,
             h,
             p4["id"],
-            "BOQ — Bridge Structure",
+            "BOQ - Bridge Structure",
             "Foundations, substructure, superstructure, post-tensioning, barriers, surfacing",
         )
 
@@ -623,10 +623,10 @@ async def main() -> None:
         print("DEMO PROJECTS CREATED:")
         print("=" * 70)
         for label, pid in [
-            ("DE — Wohnanlage Berlin-Mitte", p1["id"]),
-            ("UK — Victoria House Office", p2["id"]),
-            ("US — Cedar Park Elementary School", p3["id"]),
-            ("INTL — Al Reem Island Bridge", p4["id"]),
+            ("DE - Wohnanlage Berlin-Mitte", p1["id"]),
+            ("UK - Victoria House Office", p2["id"]),
+            ("US - Cedar Park Elementary School", p3["id"]),
+            ("INTL - Al Reem Island Bridge", p4["id"]),
         ]:
             boqs = (await c.get(f"/api/v1/boq/boqs/?project_id={pid}", headers=h)).json()
             for boq in boqs:

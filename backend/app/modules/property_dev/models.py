@@ -1,18 +1,18 @@
 """‌⁠‍Property Development ORM models.
 
 Tables (all prefixed ``oe_property_dev_``):
-    development          — top-level development (1:1 with a Project)
-    house_type           — reusable house type within a development
-    house_type_variant   — price-modifying variant of a house type
-    plot                 — sale-able plot within a development
-    buyer_option_group   — group of buyer-selectable options (kitchen, bathroom, ...)
-    buyer_option         — individual option (with price delta, lead time, ...)
-    buyer                — buyer / lead linked to a plot
-    buyer_selection      — buyer's current options selection
-    buyer_selection_item — single line within a buyer selection
-    handover             — handover ceremony / snag record per plot
-    snag                 — defect noted during/after handover
-    warranty_claim       — post-handover warranty claim
+    development          - top-level development (1:1 with a Project)
+    house_type           - reusable house type within a development
+    house_type_variant   - price-modifying variant of a house type
+    plot                 - sale-able plot within a development
+    buyer_option_group   - group of buyer-selectable options (kitchen, bathroom, ...)
+    buyer_option         - individual option (with price delta, lead time, ...)
+    buyer                - buyer / lead linked to a plot
+    buyer_selection      - buyer's current options selection
+    buyer_selection_item - single line within a buyer selection
+    handover             - handover ceremony / snag record per plot
+    snag                 - defect noted during/after handover
+    warranty_claim       - post-handover warranty claim
 
 External references (kept as plain UUID columns, NO FK):
     portal_user_id              → oe_portal_user.id  (Module 21)
@@ -23,7 +23,7 @@ External references (kept as plain UUID columns, NO FK):
 from __future__ import annotations
 
 import uuid
-from datetime import datetime  # noqa: F401  — used in Mapped[datetime] annotations
+from datetime import datetime  # noqa: F401  - used in Mapped[datetime] annotations
 from decimal import Decimal
 
 from sqlalchemy import (
@@ -47,7 +47,7 @@ from app.database import GUID, Base
 
 
 class Development(Base):
-    """‌⁠‍A property development — a collection of plots tied to one project."""
+    """‌⁠‍A property development - a collection of plots tied to one project."""
 
     __tablename__ = "oe_property_dev_development"
 
@@ -71,7 +71,7 @@ class Development(Base):
     # house-type catalogue picker and the tax engine.
     country_code: Mapped[str | None] = mapped_column(String(2), nullable=True, index=True)
     # Geo coordinates (WGS84). Stored as Numeric so we don't lose precision
-    # round-tripping through SQLite. Optional — only populated when the
+    # round-tripping through SQLite. Optional - only populated when the
     # operator pins the development on the map.
     latitude: Mapped[Decimal | None] = mapped_column(Numeric(10, 7), nullable=True)
     longitude: Mapped[Decimal | None] = mapped_column(Numeric(10, 7), nullable=True)
@@ -102,7 +102,7 @@ class Development(Base):
     developer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     architect_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     general_contractor_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    # Marketing assets — URLs only. File uploads belong to the Documents
+    # Marketing assets - URLs only. File uploads belong to the Documents
     # module; this column just stores the canonical link.
     cover_image_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     brochure_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
@@ -139,7 +139,7 @@ class HouseType(Base):
     levels: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     base_price: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False, default=Decimal("0"))
     currency: Mapped[str] = mapped_column(String(8), nullable=False, default="")
-    # Canonical BIM model id — NO FK (intentional, see module docstring).
+    # Canonical BIM model id - NO FK (intentional, see module docstring).
     bim_model_ref: Mapped[str | None] = mapped_column(String(120), nullable=True)
     thumbnail_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -203,7 +203,7 @@ class Plot(Base):
         ForeignKey("oe_property_dev_house_type_variant.id", ondelete="SET NULL"),
         nullable=True,
     )
-    # Task #138: Phase/Block hierarchy — Plot belongs to a Block, Block belongs
+    # Task #138: Phase/Block hierarchy - Plot belongs to a Block, Block belongs
     # to a Phase, Phase belongs to a Development. All FKs nullable so legacy
     # Plot rows (created before the hierarchy existed) keep working.
     block_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -218,7 +218,7 @@ class Plot(Base):
     # Free-text label kept until a future task replaces this with a
     # user-creatable HouseType catalogue (tracked separately).
     house_type_label: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    # Compass / cardinal view subject — sea, mountain, garden, courtyard,
+    # Compass / cardinal view subject - sea, mountain, garden, courtyard,
     # street, park, other. Kept as String (not enum) so a developer can
     # add bespoke values per project without a migration.
     view_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
@@ -228,12 +228,12 @@ class Plot(Base):
     storage_area_m2: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
     # Per-plot bedroom / bathroom override. Defaults to 0 so the form
     # column is always present. The HouseType row carries the "default"
-    # for a model — these per-plot fields capture deviations
+    # for a model - these per-plot fields capture deviations
     # (e.g. converted study -> bedroom).
     bedrooms: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     bathrooms: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     parking_spaces: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
-    # Best-effort average daily sun exposure. Optional — most listings
+    # Best-effort average daily sun exposure. Optional - most listings
     # don't have this measured, but high-end / passive-house brochures do.
     sun_exposure_hours: Mapped[Decimal | None] = mapped_column(Numeric(4, 2), nullable=True)
     # ``price_base`` = explicit override (priority 1).
@@ -347,7 +347,7 @@ class Buyer(Base):
         ForeignKey("oe_property_dev_plot.id", ondelete="SET NULL"),
         nullable=True,
     )
-    # Plain UUID — refers to oe_portal_user.id but NOT a FK (cross-module).
+    # Plain UUID - refers to oe_portal_user.id but NOT a FK (cross-module).
     portal_user_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     # ── Contacts bridge ────────────────────────────────────────────
     # Optional FK back to the canonical contact row in
@@ -371,7 +371,7 @@ class Buyer(Base):
     contract_signed_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     deposit_paid_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     freeze_deadline: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    # Deposit accounting — drives forfeiture rules per jurisdiction.
+    # Deposit accounting - drives forfeiture rules per jurisdiction.
     deposit_amount: Mapped[Decimal] = mapped_column(
         Numeric(18, 2), nullable=False, default=Decimal("0"), server_default="0"
     )
@@ -381,7 +381,7 @@ class Buyer(Base):
     deposit_refunded: Mapped[Decimal] = mapped_column(
         Numeric(18, 2), nullable=False, default=Decimal("0"), server_default="0"
     )
-    # ISO 3166-1 alpha-2 country code — selects forfeiture rules.
+    # ISO 3166-1 alpha-2 country code - selects forfeiture rules.
     jurisdiction: Mapped[str] = mapped_column(String(8), nullable=False, default="", server_default="")
     cancelled_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     cancelled_reason: Mapped[str] = mapped_column(String(500), nullable=False, default="", server_default="")
@@ -592,7 +592,7 @@ class WarrantyClaim(Base):
     Extended in v3113 with deep-integration columns so the UI can:
       * file the claim against a specific handover (warranty period
         is computed from ``Handover.completed_at`` + the configured
-        warranty years — see ``WarrantyClaimResponse.is_in_warranty``).
+        warranty years - see ``WarrantyClaimResponse.is_in_warranty``).
       * assign the claim to a contractor / PM (``assigned_to_user_id``).
       * attach magic-byte-validated photos (``photos`` JSON list of
         relative storage paths, mirrors ``Snag.photos``).
@@ -633,13 +633,13 @@ class WarrantyClaim(Base):
         nullable=True,
         index=True,
     )
-    # Optional assignee — contractor / PM responsible for resolution.
+    # Optional assignee - contractor / PM responsible for resolution.
     # No FK on oe_users_user (cross-module ref kept loose; matches the
     # rest of property_dev's external-ref convention).
     assigned_to_user_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     raised_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     category: Mapped[str] = mapped_column(String(40), nullable=False, default="defect", index=True)
-    # NOTE: severity mirrors Snag.severity (minor/major/critical) — used
+    # NOTE: severity mirrors Snag.severity (minor/major/critical) - used
     # for SLA escalation in the UI.
     severity: Mapped[str] = mapped_column(
         String(20),
@@ -660,7 +660,7 @@ class WarrantyClaim(Base):
     accepted_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     closed_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     resolution_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Cross-module ref to oe_service_ticket.id — plain UUID, NO FK.
+    # Cross-module ref to oe_service_ticket.id - plain UUID, NO FK.
     linked_service_ticket_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata", JSON, nullable=False, default=dict, server_default="{}"
@@ -674,7 +674,7 @@ class WarrantyClaim(Base):
 
 
 class Lead(Base):
-    """A sales lead — separate from :class:`Buyer`.
+    """A sales lead - separate from :class:`Buyer`.
 
     A Lead can predate any plot/buyer relationship (top-of-funnel). On
     conversion the service creates a Reservation (and optionally a
@@ -689,7 +689,7 @@ class Lead(Base):
         nullable=True,
         index=True,
     )
-    # Multi-tenant column — nullable for single-tenant deployments.
+    # Multi-tenant column - nullable for single-tenant deployments.
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     source: Mapped[str] = mapped_column(String(40), nullable=False, default="other", index=True)
     # ── Contacts bridge ────────────────────────────────────────────
@@ -752,7 +752,7 @@ class Reservation(Base):
 
     FSM: ``active`` -> ``converted | expired | cancelled``. Terminal
     states are ``converted`` / ``expired`` / ``cancelled`` /
-    ``refunded`` — once entered the row is read-only at the service
+    ``refunded`` - once entered the row is read-only at the service
     layer.
     """
 
@@ -793,7 +793,7 @@ class Reservation(Base):
     expires_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     status: Mapped[str] = mapped_column(String(40), nullable=False, default="active", index=True)
     # Pricing-engine snapshot captured at the moment this reservation was
-    # created — the canonical audit record of "why did this deal close at
+    # created - the canonical audit record of "why did this deal close at
     # X?". Shape mirrors :class:`PriceQuote` from
     # :mod:`app.modules.property_dev.pricing_engine` (base_price, lines[],
     # total, currency, computed_at, price_list_id). Legacy rows pre-dating
@@ -841,7 +841,7 @@ class SalesContract(Base):
     )
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     signing_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    # ISO 3166-2 region code (e.g. "DE-BE", "GB-ENG"). Optional —
+    # ISO 3166-2 region code (e.g. "DE-BE", "GB-ENG"). Optional -
     # falls back to the development's jurisdiction at write time.
     governing_law: Mapped[str] = mapped_column(String(16), nullable=False, default="")
     language: Mapped[str] = mapped_column(String(10), nullable=False, default="en")
@@ -987,7 +987,7 @@ class ContractParty(Base):
 
     Supports multi-buyer SPAs (joint ownership, co-borrowers,
     guarantors, PoA). ``ownership_pct`` of all parties in a contract
-    must sum to exactly 100 — enforced at the service layer.
+    must sum to exactly 100 - enforced at the service layer.
     """
 
     __tablename__ = "oe_property_dev_contract_party"
@@ -1109,7 +1109,7 @@ class Broker(Base):
         ),
     )
 
-    # Multi-tenant key. Held as a plain UUID (no FK) — mirrors the
+    # Multi-tenant key. Held as a plain UUID (no FK) - mirrors the
     # cross-module convention used elsewhere in property_dev.
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
@@ -1158,7 +1158,7 @@ class CommissionAgreement(Base):
         nullable=True,
         index=True,
     )
-    # Array of plot UUIDs (as strings) — empty/null means "all plots".
+    # Array of plot UUIDs (as strings) - empty/null means "all plots".
     specific_plot_ids: Mapped[list | None] = mapped_column(  # type: ignore[assignment]
         JSON, nullable=True
     )
@@ -1229,7 +1229,7 @@ class CommissionAccrual(Base):
 class EscrowAccount(Base):
     """A regulator-supervised escrow account holding buyer instalments.
 
-    One Development can have multiple accounts — typically one per currency
+    One Development can have multiple accounts - typically one per currency
     + regulator (RERA AED, MAHARERA INR, etc).
     """
 
@@ -1281,7 +1281,7 @@ class EscrowTransaction(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False, default=Decimal("0"))
     currency: Mapped[str] = mapped_column(String(8), nullable=False, default="")
     source_type: Mapped[str] = mapped_column(String(40), nullable=False, default="instalment", index=True)
-    # Plain UUID (no FK) — instalment lives in PaymentSchedule (task #137).
+    # Plain UUID (no FK) - instalment lives in PaymentSchedule (task #137).
     source_instalment_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     source_reference: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     bank_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -1350,7 +1350,7 @@ class PropertyDevHouseType(Base):
 
     Distinct from :class:`HouseType` (which is per-Development and carries
     full pricing/area/bedroom data). This catalogue is a lightweight
-    classification list used when filling out a Plot — the user picks
+    classification list used when filling out a Plot - the user picks
     e.g. "Reihenhaus" or "Townhouse" without committing to a specific
     floor plan. The chosen entry is stored on the Plot via metadata
     (``metadata.house_type_catalogue_id``) so the existing
@@ -1404,16 +1404,16 @@ class PropertyDevHouseType(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     area_typical_m2: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     floors_typical: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # Layout — purely typical/illustrative, the actual Plot row carries
+    # Layout - purely typical/illustrative, the actual Plot row carries
     # the source-of-truth quantities. Kept nullable so partial info is OK.
     typical_bedrooms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     typical_bathrooms: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # On-plot parking — typical count of parking spots (driveway + garage
+    # On-plot parking - typical count of parking spots (driveway + garage
     # + carport, whichever the operator wants to advertise). Nullable so
     # multi-family schemes that don't advertise per-unit parking can omit
     # the value. Capped at 10 by the schema validator.
     parking_spots: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # Pricing — both bounds optional so the operator can store a single-
+    # Pricing - both bounds optional so the operator can store a single-
     # ended hint ("from 250k", "up to 1.2M"). ``currency`` is ISO 4217.
     typical_price_min: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     typical_price_max: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
@@ -1424,13 +1424,13 @@ class PropertyDevHouseType(Base):
     energy_class: Mapped[str | None] = mapped_column(String(10), nullable=True)
     sales_channel: Mapped[str | None] = mapped_column(String(20), nullable=True)
     image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    # Free-form tag list. JSON (not JSONB) because SQLite-compat — this
+    # Free-form tag list. JSON (not JSONB) because SQLite-compat - this
     # is settings data, never queried by content.
     tags: Mapped[list] = mapped_column(  # type: ignore[type-arg]
         JSON, nullable=False, default=list, server_default="[]"
     )
     is_preset: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0", index=True)
-    # Owning user — NULL for migration-seeded presets. Plain UUID, NOT a
+    # Owning user - NULL for migration-seeded presets. Plain UUID, NOT a
     # FK to oe_users_user (cross-module convention; SET NULL on user
     # delete would need a real FK with on-delete callback, which we
     # explicitly avoid here to match the rest of property_dev).
@@ -1453,7 +1453,7 @@ class PropertyDevCustomTemplate(Base):
     by the upload endpoint; the row carries only metadata.
 
     Scoping: ``project_id`` is the owning project (and matches every
-    other property_dev row). ``development_id`` is optional — populated
+    other property_dev row). ``development_id`` is optional - populated
     when the operator wants a template available only inside a
     specific development context (the settings page's "set default
     for current development" toggle persists this client-side).
@@ -1473,7 +1473,7 @@ class PropertyDevCustomTemplate(Base):
         nullable=True,
         index=True,
     )
-    # Optional development scope (no FK — same convention as the rest
+    # Optional development scope (no FK - same convention as the rest
     # of property_dev cross-table refs).
     development_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -1522,7 +1522,7 @@ class SalesPriceList(Base):
 
     Distinct from :class:`app.modules.supplier_catalogs.models.PriceList`
     (which is a vendor catalogue of materials). This is a *property-sales*
-    price list — per-plot ``base_price`` rows + an ordered chain of
+    price list - per-plot ``base_price`` rows + an ordered chain of
     :class:`SalesPricingRule` objects (early-bird, view premium, floor
     premium, corner, size, promo code, friends & family, loyalty,
     bulk-buy). The class name carries the ``Sales`` prefix so the
@@ -1554,7 +1554,7 @@ class SalesPriceList(Base):
         server_default="draft",
         index=True,
     )
-    # Plain UUID — refers to oe_users_user.id but kept FK-less (cross-module).
+    # Plain UUID - refers to oe_users_user.id but kept FK-less (cross-module).
     created_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -1666,13 +1666,13 @@ class PortalToken(Base):
     Each row is the persisted counterpart of a ``scope='portal'`` JWT
     issued at SPA / Reservation creation. The JWT itself stays stateless
     (verifiable from ``JWT_SECRET`` alone) but we keep the ``jti`` on
-    this row so an operator can REVOKE a leaked link — the verify path
+    this row so an operator can REVOKE a leaked link - the verify path
     rejects any matching ``jti`` whose ``revoked_at`` is set, regardless
     of the JWT's in-flight ``exp`` claim.
 
     The buyer / reservation / SPA scope columns drive the per-endpoint
     IDOR guard so a buyer cannot swap UUIDs in the URL to read another
-    buyer's payment schedule or signed documents — the guard re-checks
+    buyer's payment schedule or signed documents - the guard re-checks
     that ``doc.buyer_id == token.buyer_id`` on every read.
 
     Per the v3119 fresh-install lock-cascade memory: every NOT NULL
@@ -1724,7 +1724,7 @@ class PortalToken(Base):
         DateTime(timezone=True),
         nullable=True,
     )
-    # Single-use semantics (industry standard — Slack/Notion/Linear).
+    # Single-use semantics (industry standard - Slack/Notion/Linear).
     # NULL = unused, NOT NULL = the moment the magic-link was redeemed.
     # The verify endpoint flips this from NULL → NOW() in a single atomic
     # UPDATE (``WHERE consumed_at IS NULL``), so a second / concurrent
@@ -1744,14 +1744,14 @@ class PortalToken(Base):
         String(64),
         nullable=True,
     )
-    # Plain UUID (no FK) — matches the cross-module convention used
+    # Plain UUID (no FK) - matches the cross-module convention used
     # elsewhere in property_dev to dodge a hard dep on oe_users_user.
     issued_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(),
         nullable=True,
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — debug only
+    def __repr__(self) -> str:  # pragma: no cover - debug only
         return (
             f"<PortalToken buyer={self.buyer_id} "
             f"revoked={self.revoked_at is not None} "

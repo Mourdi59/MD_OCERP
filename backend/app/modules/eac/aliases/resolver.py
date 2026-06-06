@@ -19,7 +19,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-# Local type aliases — kept narrow on purpose so the resolver doesn't
+# Local type aliases - kept narrow on purpose so the resolver doesn't
 # accidentally pull SQLAlchemy into a hot path.
 PropertyBag = dict[str, Any]
 ElementDict = dict[str, Any]
@@ -50,7 +50,7 @@ def _iter_properties(element: ElementDict) -> list[tuple[str | None, str, Any]]:
     A *flat* leaf has ``pset_name=None`` so a synonym with
     ``pset_filter`` won't match it (psets must be explicitly nested).
 
-    The function is tolerant of missing or non-dict ``properties`` —
+    The function is tolerant of missing or non-dict ``properties`` -
     callers don't have to pre-validate.
     """
     out: list[tuple[str | None, str, Any]] = []
@@ -95,11 +95,11 @@ def _source_filter_matches(synonym_filter: str, pset_name: str | None) -> bool:
     EAC-2.1 surfaces a coarse three-way split inferred from where the
     property lives in the element dict:
 
-    * ``any``                       — every property qualifies
-    * ``pset``                      — only properties nested under a pset
-    * ``instance`` / ``type``       — flat properties (best-effort —
+    * ``any``                       - every property qualifies
+    * ``pset``                      - only properties nested under a pset
+    * ``instance`` / ``type``       - flat properties (best-effort -
       heuristics deferred to EAC-2.2 once ddc_extras tags origin)
-    * ``external_classification``   — properties whose pset_name starts
+    * ``external_classification``   - properties whose pset_name starts
       with ``Classification`` (heuristic, refined later)
     """
     if synonym_filter == "any":
@@ -134,7 +134,7 @@ def _matches_pattern(
             return bool(re.fullmatch(pattern, candidate, flags))
         except re.error:
             return False
-    # Unknown kinds never match — fail closed.
+    # Unknown kinds never match - fail closed.
     return False
 
 
@@ -143,7 +143,7 @@ def _apply_unit_multiplier(value: Any, multiplier: Decimal | float) -> Any:
     if multiplier in (1, 1.0, Decimal("1")):
         return value
     if isinstance(value, bool):
-        # bool is a subclass of int — explicitly preserve it.
+        # bool is a subclass of int - explicitly preserve it.
         return value
     if isinstance(value, (int, float)):
         return float(Decimal(str(value)) * Decimal(str(multiplier)))
@@ -162,7 +162,7 @@ def resolve_alias(
 ) -> ResolveResult:
     """Resolve ``alias`` against ``element`` using ``synonyms``.
 
-    The function does not touch the DB — both ``alias`` and ``synonyms``
+    The function does not touch the DB - both ``alias`` and ``synonyms``
     must be objects that expose attributes by name (ORM rows, dataclasses,
     or duck-typed namespaces all work).
 
@@ -174,7 +174,7 @@ def resolve_alias(
                    ``.kind`` (exact|regex), ``.case_sensitive``,
                    ``.priority``, ``.pset_filter``, ``.source_filter``,
                    ``.unit_multiplier``.
-        element:   ``{"properties": {...}, ...}`` — both nested-pset and
+        element:   ``{"properties": {...}, ...}`` - both nested-pset and
                    flat shapes supported.
 
     Returns:
@@ -189,7 +189,7 @@ def resolve_alias(
     if not synonyms:
         return ResolveResult(matched=False)
 
-    # Sort by priority asc — None last so deterministic.
+    # Sort by priority asc - None last so deterministic.
     sorted_synonyms = sorted(
         synonyms,
         key=lambda s: (getattr(s, "priority", 100) is None, getattr(s, "priority", 100)),

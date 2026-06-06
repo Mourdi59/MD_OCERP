@@ -5,7 +5,7 @@ methods on state changes. Consumers (activity feed, audit, integrity
 refresh) subscribe through the wildcard handler in
 ``app.core.event_handlers``.
 
-Never hand-craft event type strings at call sites — always import the
+Never hand-craft event type strings at call sites - always import the
 constant from here. This keeps the event contract greppable and prevents
 typo-driven silent drift.
 """
@@ -23,7 +23,7 @@ total_categories, tenant_id}``."""
 
 SNAPSHOT_DELETED: Final = "snapshot.deleted"
 """‌⁠‍Published after a snapshot row is removed (Parquet cleanup may still
-be in flight — see ``SnapshotService.delete`` for orphan handling).
+be in flight - see ``SnapshotService.delete`` for orphan handling).
 Payload: ``{snapshot_id, project_id, tenant_id}``."""
 
 SNAPSHOT_REFRESHED: Final = "snapshot.refreshed"

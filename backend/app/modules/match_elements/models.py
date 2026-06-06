@@ -3,12 +3,12 @@
 """‌⁠‍Match Elements ORM models.
 
 Tables:
-    oe_match_elements_session   — per-project session: source, group-by config,
+    oe_match_elements_session   - per-project session: source, group-by config,
                                   filters, scope exclusions, threshold, name
-    oe_match_elements_group     — one row per group inside a session: element ids,
+    oe_match_elements_group     - one row per group inside a session: element ids,
                                   rolled-up quantities, matcher results, status,
                                   applied BOQ position
-    oe_match_elements_template  — cross-project library: tenant-scoped reusable
+    oe_match_elements_template  - cross-project library: tenant-scoped reusable
                                   signature → CWICR position mapping that the
                                   next project's match flow auto-suggests
 """
@@ -129,7 +129,7 @@ class MatchSession(Base):
         server_default="0",
     )
     # v3-P10b: User-picked construction stage that pins the SearchPlan's
-    # ``construction_stage`` hard filter. Null = no stage pin (default —
+    # ``construction_stage`` hard filter. Null = no stage pin (default -
     # search the full catalogue without temporal narrowing). Allowed
     # values are the 12 OmniClass-aligned stages ("02_Demolition" ...
     # "13_Sitework"); enforced by the schema validator, not the column
@@ -157,7 +157,7 @@ class MatchSession(Base):
 
 
 class MatchGroup(Base):
-    """‌⁠‍A single group within a session — N elements that share group-by values.
+    """‌⁠‍A single group within a session - N elements that share group-by values.
 
     ``group_key`` is the human-readable composite key
     (``"ifc_class:IfcWall|material:STB|thickness:240"``). ``signature`` is the
@@ -234,7 +234,7 @@ class MatchGroup(Base):
     )
     # Optional override of which attribute fields to consider when computing
     # the cross-project signature (default = session.group_by). Lets the user
-    # decide "this match was about wall material only — ignore thickness".
+    # decide "this match was about wall material only - ignore thickness".
     signature_fields: Mapped[list | None] = mapped_column(  # type: ignore[assignment]
         JSON,
         nullable=True,
@@ -260,7 +260,7 @@ class MatchGroup(Base):
 
 
 class MatchTemplate(Base):
-    """Cross-project mapping library — tenant-scoped reusable signatures.
+    """Cross-project mapping library - tenant-scoped reusable signatures.
 
     When a user confirms a match in Project A, a row goes here. When they
     open a session in Project B and a group's normalized ``signature``
@@ -345,7 +345,7 @@ class MatchSearchLog(Base):
     * Latency monitoring: p95 of ``took_ms`` segmented by
       ``bge_rerank_used`` shows the cross-encoder cost in production.
 
-    Retention: rows accumulate forever by design — search logs are
+    Retention: rows accumulate forever by design - search logs are
     cheap (one INSERT per match call, no cascading writes) and the
     analytics value compounds with history. Operators can prune via
     SQL when the table grows past 50M rows.
@@ -357,7 +357,7 @@ class MatchSearchLog(Base):
         Index("ix_match_search_log_catalog_time", "catalog_id", "created_at"),
         Index("ix_match_search_log_session", "session_id"),
         Index("ix_match_search_log_tier", "relax_tier_used"),
-        # v2936 — feedback + envelope-context analytics
+        # v2936 - feedback + envelope-context analytics
         Index("ix_match_search_log_picked_rank", "picked_rank"),
         Index("ix_match_search_log_source_type", "source_type"),
         Index("ix_match_search_log_country_time", "country", "created_at"),
@@ -369,7 +369,7 @@ class MatchSearchLog(Base):
         nullable=False,
         index=True,
     )
-    # Both nullable — ad-hoc /costs/qdrant-search calls have no session.
+    # Both nullable - ad-hoc /costs/qdrant-search calls have no session.
     session_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(),
         ForeignKey("oe_match_elements_session.id", ondelete="SET NULL"),
@@ -380,7 +380,7 @@ class MatchSearchLog(Base):
         ForeignKey("oe_match_elements_group.id", ondelete="SET NULL"),
         nullable=True,
     )
-    # Catalogue + collection routing — keep both so analytics can join
+    # Catalogue + collection routing - keep both so analytics can join
     # against config changes (e.g., when the v3 → v4 schema flip
     # rebrands ``cwicr_de_v3`` → ``cwicr_de_v4``).
     catalog_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -441,7 +441,7 @@ class MatchSearchLog(Base):
         server_default="{}",
     )
 
-    # ── v2936 — user-feedback columns (MAPPING_PROCESS.md §10) ───────
+    # ── v2936 - user-feedback columns (MAPPING_PROCESS.md §10) ───────
     # Populated by the /confirm hook in service.MatchService.confirm().
     # Without these the §10 alerts (`user_picked_rank > 4` for >20% of
     # requests = re-train classifier) cannot fire.
@@ -451,13 +451,13 @@ class MatchSearchLog(Base):
         DateTime(timezone=True),
         nullable=True,
     )
-    # ── v2936 — envelope-context columns ────────────────────────────
+    # ── v2936 - envelope-context columns ────────────────────────────
     # Populated by ranker_qdrant._write_search_log() at INSERT time.
     # Lets analytics filter "recall by ifc_class" without a 3-table
     # JOIN through session → group → element.
     source_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
     ifc_class: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # Region head (``DE``, ``RU``, ``USA``) — derived from catalog_id
+    # Region head (``DE``, ``RU``, ``USA``) - derived from catalog_id
     # at write time.
     country: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
@@ -472,18 +472,18 @@ class MatchSearchLog(Base):
 class MatchStageState(Base):
     """Per-session × per-stage runtime state for the visible pipeline.
 
-    The pipeline has seven named stages — ``convert``, ``load``, ``schema``,
+    The pipeline has seven named stages - ``convert``, ``load``, ``schema``,
     ``filter``, ``group``, ``match``, ``rollup``. Each gets exactly one row
     per session; ``status`` advances pending → running → done | error so
     the UI can render a status pill, an output preview, and a "Re-run from
     here" button per stage.
 
-    ``inputs`` and ``output`` are JSON envelopes the stage runner writes —
+    ``inputs`` and ``output`` are JSON envelopes the stage runner writes -
     inputs capture the knobs (group_by, filter expression, prompt body,
     LLM provider, threshold) so the user can tweak and re-run; output
     captures a small preview (row count, sample rows, score histogram)
     plus pointers into the underlying tables (matched group_ids, etc.).
-    The full element/candidate payload stays in the existing tables —
+    The full element/candidate payload stays in the existing tables -
     this row is the audit + control surface.
     """
 
@@ -517,7 +517,7 @@ class MatchStageState(Base):
         default=dict,
         server_default="{}",
     )
-    # Stage output envelope — never the raw payload, just a small preview:
+    # Stage output envelope - never the raw payload, just a small preview:
     # element_count, sample rows, top-N scores, summary metrics. Used by
     # the StageCard to render the "what happened" panel without a second
     # roundtrip.
@@ -536,7 +536,7 @@ class MatchStageState(Base):
         GUID(),
         nullable=True,
     )
-    # LLM provider/model — only set when prompt_template_id is set. e.g.
+    # LLM provider/model - only set when prompt_template_id is set. e.g.
     # ``"anthropic/claude-sonnet-4-6"``, ``"openai/gpt-4o"``,
     # ``"local/ollama-mistral"``.
     llm_provider: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -558,11 +558,11 @@ class MatchPromptTemplate(Base):
 
     Two kinds of rows live here:
 
-    * **System prompts** (``is_system=True``, ``created_by=NULL``) — seeded
+    * **System prompts** (``is_system=True``, ``created_by=NULL``) - seeded
       by the migration from the n8n workflow we ported from. The user
       cannot edit a system row directly; the UI offers a "Fork" action
       that copies it into a user-owned row.
-    * **User prompts** (``is_system=False``, ``created_by`` set) — created
+    * **User prompts** (``is_system=False``, ``created_by`` set) - created
       by forking a system prompt or by typing a new one from scratch.
       Fully editable; carry their own ``version`` so an estimator can
       revert.
@@ -587,7 +587,7 @@ class MatchPromptTemplate(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     system_prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
     # Jinja-ish ``{var}`` placeholders for the user-supplied row data.
-    # No sandboxed execution — pure string ``str.format()`` so the call
+    # No sandboxed execution - pure string ``str.format()`` so the call
     # surface is the same regardless of provider.
     user_template: Mapped[str] = mapped_column(Text, nullable=False)
     # Comma-separated list of allowed providers, or empty for "any". e.g.

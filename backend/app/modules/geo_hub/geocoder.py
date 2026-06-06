@@ -3,7 +3,7 @@
 
 Powers the new auto-anchor flow: when a project sets an address we
 resolve it to lat / lon via this module and write a GeoAnchor without
-the user having to click a map. Designed for graceful degradation —
+the user having to click a map. Designed for graceful degradation -
 every failure path returns ``None`` so callers can fall back to manual
 anchoring without seeing an exception.
 
@@ -14,7 +14,7 @@ Honoured environment variables:
 * ``OE_GEOCODER_BASE_URL``  e.g. ``https://nominatim.example.com`` →
   point at a self-hosted Nominatim mirror (defaults to the public
   service at ``https://nominatim.openstreetmap.org``).
-* ``OE_GEOCODER_USER_AGENT_CONTACT`` (optional) — extra contact info
+* ``OE_GEOCODER_USER_AGENT_CONTACT`` (optional) - extra contact info
   appended to the User-Agent header. The bundled default already satisfies
   Nominatim's UA policy with our project contact email.
 
@@ -62,7 +62,7 @@ class ProjectAddress:
     """Minimal address shape consumed by the geocoder.
 
     Matches the JSONB ``Project.address`` we store today. Country is the
-    only required field — Nominatim can geocode bare country names well
+    only required field - Nominatim can geocode bare country names well
     enough to drop a sensible pin without other fields.
     """
 
@@ -89,7 +89,7 @@ class GeocodeResult:
 
 # ── Tunables (also published in the deliverables paragraph) ────────────
 
-# 30-day TTL — matches OSM's recommended re-fetch cadence for address
+# 30-day TTL - matches OSM's recommended re-fetch cadence for address
 # data that doesn't change every day (vs. POIs which can be edited
 # hourly). After 30 days the cache entry is treated as stale and
 # re-fetched on the next request.
@@ -104,12 +104,12 @@ _MIN_INTERVAL_SECONDS = 1.0
 # can easily take 5-8 s. Ten seconds is the well-known operator default.
 _HTTP_TIMEOUT_SECONDS = 10.0
 
-# Default base URL — overridable via ``OE_GEOCODER_BASE_URL`` so users
+# Default base URL - overridable via ``OE_GEOCODER_BASE_URL`` so users
 # with a self-hosted mirror don't have to ship our public-service rate
 # limit.
 _DEFAULT_BASE_URL = "https://nominatim.openstreetmap.org"
 
-# Photon (Komoot, https://photon.komoot.io) — OSM-based geocoder with
+# Photon (Komoot, https://photon.komoot.io) - OSM-based geocoder with
 # generous CORS, no documented rate limit, and Apache 2.0 / ODbL data.
 # We try Photon first for the autocomplete suggest endpoint because it
 # returns results in well under 1 s and isn't gated by Nominatim's 1
@@ -119,16 +119,16 @@ _DEFAULT_BASE_URL = "https://nominatim.openstreetmap.org"
 # to Nominatim.
 _DEFAULT_PHOTON_URL = "https://photon.komoot.io"
 
-# Default contact in the UA header — required by Nominatim's UA policy.
+# Default contact in the UA header - required by Nominatim's UA policy.
 # Falls back to the project email when no override is set.
 _DEFAULT_CONTACT_EMAIL = "info@datadrivenconstruction.io"
 
-# Global rate-limit guard. Process-scoped (not container-scoped) — a
+# Global rate-limit guard. Process-scoped (not container-scoped) - a
 # multi-worker uvicorn deployment behind a single egress IP will still
 # hit Nominatim above 1 req/s. Operators with strict bulk needs should
 # point at a self-hosted mirror.
 #
-# ``Semaphore(1)`` is exactly one outbound call at a time — functionally
+# ``Semaphore(1)`` is exactly one outbound call at a time - functionally
 # equivalent to ``Lock()`` but matches the upstream design doc verbatim
 # and reads as obvious intent ("max one in flight").
 _RATE_SEMAPHORE = asyncio.Semaphore(1)
@@ -172,7 +172,7 @@ def _app_version() -> str | None:
         from app.config import get_settings
 
         return get_settings().app_version
-    except Exception:  # noqa: BLE001 — settings import is best-effort
+    except Exception:  # noqa: BLE001 - settings import is best-effort
         return None
 
 
@@ -180,7 +180,7 @@ def _normalised_query(addr: ProjectAddress) -> str:
     """Return the canonical query string used for hashing + Nominatim.
 
     Strips whitespace, lower-cases, drops empty parts. Empty country
-    raises ``ValueError`` — caller is expected to check before calling.
+    raises ``ValueError`` - caller is expected to check before calling.
     """
     country = (addr.country or "").strip()
     if not country:
@@ -310,7 +310,7 @@ async def _read_cache(
         await session.execute(
             update(GeocodeCache).where(GeocodeCache.id == row.id).values(hit_count=(row.hit_count or 0) + 1)
         )
-    except Exception:  # noqa: BLE001 — best-effort hit counter
+    except Exception:  # noqa: BLE001 - best-effort hit counter
         pass
     bbox: tuple[Decimal, Decimal, Decimal, Decimal] | None = None
     if (
@@ -411,7 +411,7 @@ async def _fetch_nominatim(
     Serialises through the global rate lock + min-interval so concurrent
     callers never violate the 1 req/s ToS. Operators with a private
     mirror can bypass via ``OE_GEOCODER_BASE_URL`` (the same lock still
-    applies — defensive, since the cost of an extra ~1 s on a bulk run
+    applies - defensive, since the cost of an extra ~1 s on a bulk run
     is negligible).
     """
     if _disabled():
@@ -460,7 +460,7 @@ async def _fetch_nominatim(
         )
         return None
     if res.status_code != 200:
-        # 4xx beyond rate-limit (which OSM signals as 429) — just give up.
+        # 4xx beyond rate-limit (which OSM signals as 429) - just give up.
         logger.info(
             "nominatim non-200 (%s) for query: %s",
             res.status_code,
@@ -512,7 +512,7 @@ async def geocode_address(
     address: ProjectAddress,
     *,
     session: AsyncSession | None = None,
-    settings: Any | None = None,  # noqa: ARG001 — reserved for caller wiring
+    settings: Any | None = None,  # noqa: ARG001 - reserved for caller wiring
     http_client: httpx.AsyncClient | None = None,
     force_refresh: bool = False,
 ) -> GeocodeResult | None:
@@ -525,7 +525,7 @@ async def geocode_address(
     3. Hit Nominatim, respecting the 1 req/s ToS rate limit.
     4. Persist the fresh response back into the cache.
 
-    Returns ``None`` on any failure — caller is responsible for surfacing
+    Returns ``None`` on any failure - caller is responsible for surfacing
     that as a 502 / "geocoder unavailable" UX message.
 
     Args:
@@ -566,7 +566,7 @@ async def geocode_address(
 
         payload = await _fetch_nominatim(query_text, http_client=http_client)
         if payload is None:
-            # Fall back to a stale cache entry if one exists — better an
+            # Fall back to a stale cache entry if one exists - better an
             # old pin than a 502 on a transient Nominatim hiccup.
             if not force_refresh:
                 # We already read the cache above; nothing else to try.
@@ -591,7 +591,7 @@ async def geocode_address(
         if own_session:
             await sess.commit()
         return result
-    except Exception as exc:  # noqa: BLE001 — never raise to caller
+    except Exception as exc:  # noqa: BLE001 - never raise to caller
         logger.warning("geocode_address: unexpected failure: %s", exc)
         if own_session:
             try:
@@ -612,7 +612,7 @@ async def cache_stats(session: AsyncSession) -> dict[str, Any]:
 
     Reports total row count, fresh vs stale split (against ``CACHE_TTL``),
     sum of ``hit_count`` and the oldest / newest cached_at timestamps.
-    Cheap — a single grouped query against the SQL backend.
+    Cheap - a single grouped query against the SQL backend.
     """
     from sqlalchemy import func as sql_func
     from sqlalchemy import select as sql_select
@@ -646,7 +646,7 @@ async def purge_cache(
     """Delete rows older than ``older_than_days`` (or all when ``None``).
 
     Returns the number of deleted rows. Defaults to a no-op (returns 0)
-    when ``older_than_days`` is negative — we never want a stray param
+    when ``older_than_days`` is negative - we never want a stray param
     to silently flush the entire cache without an explicit ``None`` from
     the caller.
     """
@@ -667,7 +667,7 @@ async def purge_cache(
 class SuggestionResult:
     """Single Nominatim search result returned by the suggest endpoint.
 
-    Lightweight projection — keeps just what the autocomplete dropdown
+    Lightweight projection - keeps just what the autocomplete dropdown
     needs (display name + lat/lon + country flag + bbox + addresstype).
     Returned in the response order from Nominatim so the upstream
     relevance ranking is preserved.
@@ -706,7 +706,7 @@ def _suggestion_from_payload(item: dict[str, Any]) -> SuggestionResult | None:
         country_code = cc_raw.lower()
     # Whitelist of address-part keys we forward to the client. The full
     # Nominatim object can include county, suburb, ISO codes etc. that
-    # the project form doesn't use — trimming keeps the response slim.
+    # the project form doesn't use - trimming keeps the response slim.
     address_parts: dict[str, str] | None = None
     if isinstance(addr, dict):
         wanted = {
@@ -776,7 +776,7 @@ def _photon_suggestion_from_feature(feature: dict[str, Any]) -> SuggestionResult
             max_lon = Decimal(str(bbox_raw[2]))
             min_lat = Decimal(str(bbox_raw[3]))
             # SuggestionResult.bbox convention matches Nominatim:
-            # (south, north, west, east) — (minLat, maxLat, minLon, maxLon).
+            # (south, north, west, east) - (minLat, maxLat, minLon, maxLon).
             bbox = (min_lat, max_lat, min_lon, max_lon)
         except (TypeError, ValueError, ArithmeticError):
             bbox = None
@@ -813,7 +813,7 @@ async def _photon_suggest(
     limit: int,
     http_client: httpx.AsyncClient | None,
 ) -> list[SuggestionResult]:
-    """Photon (Komoot) autocomplete — fast first-line provider.
+    """Photon (Komoot) autocomplete - fast first-line provider.
 
     Returns an empty list on any failure so the caller can transparently
     fall back to Nominatim. Photon's API mirrors GeoJSON
@@ -862,7 +862,7 @@ async def suggest_addresses(
     """Search OSM-based geocoders for up to ``limit`` matches.
 
     Provider chain: Photon (fast, no rate limit) → Nominatim (1 req/s).
-    Used by the autocomplete dropdown — *not* the auto-anchor flow (which
+    Used by the autocomplete dropdown - *not* the auto-anchor flow (which
     keeps the structured ``geocode_address`` for cache-keying by parts).
 
     Returns an empty list on any failure (network, parse, disabled env,
@@ -881,7 +881,7 @@ async def suggest_addresses(
 
     # ── Provider 1: Photon ────────────────────────────────────────────
     # Generous CORS, no rate limit, sub-second response on warm cache.
-    # Skip silently if disabled by env or if it returns no hits — we
+    # Skip silently if disabled by env or if it returns no hits - we
     # don't want a flaky Photon to hide a useful Nominatim result.
     if not _photon_disabled():
         photon_hits = await _photon_suggest(
@@ -954,7 +954,7 @@ def project_address_from_jsonb(
 ) -> ProjectAddress | None:
     """Lift a ``Project.address`` JSONB dict into a typed ``ProjectAddress``.
 
-    Returns ``None`` when the dict is missing or has no ``country`` —
+    Returns ``None`` when the dict is missing or has no ``country`` -
     the geocoder cannot make sense of an addressless project.
     """
     if not isinstance(address_jsonb, dict):

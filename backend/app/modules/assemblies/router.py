@@ -1,17 +1,17 @@
 """‌⁠‍Assembly API routes.
 
 Endpoints:
-    POST   /                          — Create a new assembly
-    GET    /                          — Search assemblies (q, category, unit, project_id, is_template)
-    POST   /ai-generate               — AI-generate an assembly from natural language
-    GET    /{assembly_id}             — Get assembly with all components
-    PATCH  /{assembly_id}             — Update assembly
-    DELETE /{assembly_id}             — Delete assembly and all components
-    POST   /{assembly_id}/components            — Add a component
-    PATCH  /{assembly_id}/components/{cid}      — Update a component
-    DELETE /{assembly_id}/components/{cid}      — Delete a component
-    POST   /{assembly_id}/apply-to-boq          — Apply assembly to a BOQ
-    POST   /{assembly_id}/clone                 — Clone assembly
+    POST   /                          - Create a new assembly
+    GET    /                          - Search assemblies (q, category, unit, project_id, is_template)
+    POST   /ai-generate               - AI-generate an assembly from natural language
+    GET    /{assembly_id}             - Get assembly with all components
+    PATCH  /{assembly_id}             - Update assembly
+    DELETE /{assembly_id}             - Delete assembly and all components
+    POST   /{assembly_id}/components            - Add a component
+    PATCH  /{assembly_id}/components/{cid}      - Update a component
+    DELETE /{assembly_id}/components/{cid}      - Delete a component
+    POST   /{assembly_id}/apply-to-boq          - Apply assembly to a BOQ
+    POST   /{assembly_id}/clone                 - Clone assembly
 """
 
 import logging
@@ -60,7 +60,7 @@ def _get_service(session: SessionDep) -> AssemblyService:
 def _scope_owner_id(user_id: str, payload: dict | None) -> uuid.UUID | None:
     """Resolve the owner scope for collection/stats endpoints.
 
-    Admins (role claim == ``admin``) get ``None`` — an unscoped,
+    Admins (role claim == ``admin``) get ``None`` - an unscoped,
     platform-wide view. Everyone else is pinned to their own ``owner_id``
     so list + stats never leak another tenant's assemblies (the per-item
     endpoints already 404 for non-owners; this closes the matching gap in
@@ -137,7 +137,7 @@ async def _verify_target_boq_owner(
             status_code=status.HTTP_404_NOT_FOUND, detail=translate("errors.project_not_found", locale=get_locale())
         )
     if str(project.owner_id) != str(user_id):
-        # 404 here too — don't let callers probe for valid BOQ ids.
+        # 404 here too - don't let callers probe for valid BOQ ids.
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="BOQ not found")
 
 
@@ -187,7 +187,7 @@ def _component_to_response(comp: object) -> ComponentResponse:
         quantity=_str_to_float(comp.quantity),  # type: ignore[attr-defined]
         unit=comp.unit,  # type: ignore[attr-defined]
         unit_cost=_str_to_float(comp.unit_cost),  # type: ignore[attr-defined]
-        # v3 §10 — money as Decimal so the field_serializer emits an exact
+        # v3 §10 - money as Decimal so the field_serializer emits an exact
         # decimal string, not a lossy float (mirrors the service builder).
         total=Decimal(str(comp.total or "0")),  # type: ignore[attr-defined]
         sort_order=comp.sort_order,  # type: ignore[attr-defined]
@@ -237,7 +237,7 @@ async def search_assemblies(
     """Search assemblies with optional filters and pagination.
 
     Scoped to the caller's own assemblies (per-tenant isolation) so the
-    collection cannot leak other tenants' recipes — admins see all.
+    collection cannot leak other tenants' recipes - admins see all.
     """
     scope_owner = _scope_owner_id(user_id, payload)
     assemblies, total = await service.search_assemblies(
@@ -351,7 +351,7 @@ async def ai_generate_assembly(
     """Generate an assembly from a natural language description.
 
     Searches the cost database for matching components and builds a
-    preview assembly. The result is NOT saved — the user reviews and
+    preview assembly. The result is NOT saved - the user reviews and
     confirms before creating.
 
     Args:
@@ -776,7 +776,7 @@ async def update_tags(
     return _assembly_to_response(assembly)
 
 
-# ── Assembly Library templates (v3.13.0 — Slice 1) ───────────────────────────
+# ── Assembly Library templates (v3.13.0 - Slice 1) ───────────────────────────
 
 
 def _template_to_response(template: object) -> AssemblyTemplateResponse:
@@ -861,7 +861,7 @@ async def get_template(
 
 
 def _component_total(factor: float, quantity: float, unit_rate: float) -> float:
-    """Compute one applied component's total — pure float, finite-only.
+    """Compute one applied component's total - pure float, finite-only.
 
     Returns 0.0 on overflow / non-finite inputs so the rolled-up
     ``grand_total`` is always a serialisable number.
@@ -895,7 +895,7 @@ async def apply_template(
     1. Run the existing ``costs.matcher.match_cwicr_items`` lexical
        search against the project's bound catalogue (filtered by region
        / source when those are set on the project). The lexical channel
-       is the documented fallback that works without Qdrant — tests use
+       is the documented fallback that works without Qdrant - tests use
        this path.
     2. Pick the top match and capture its rate, code, currency.
     3. Scale ``factor`` by the user-supplied ``quantity``.
@@ -926,7 +926,7 @@ async def apply_template(
 
     is_admin = bool(payload and payload.get("role") == "admin")
     if not is_admin and str(project.owner_id) != str(user_id):
-        # 404 instead of 403 — don't leak project existence to attackers.
+        # 404 instead of 403 - don't leak project existence to attackers.
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=translate("errors.project_not_found", locale=get_locale()),
@@ -940,7 +940,7 @@ async def apply_template(
     grand_total = 0.0
     # Target currency for the rolled-up ``grand_total``. The project currency is
     # authoritative; when the project has none we lock the target to the first
-    # matched component's currency (below). Money rule: NEVER blend currencies —
+    # matched component's currency (below). Money rule: NEVER blend currencies -
     # each component is converted into the target via the project's ``fx_rates``
     # before it is summed; a foreign component with no configured FX rate is
     # kept in its own currency and flagged (non-blocking), mirroring
@@ -956,14 +956,14 @@ async def apply_template(
         """Convert ``amount`` from ``src_currency`` into the locked target.
 
         Foreign→target is multiplication by ``fx_rates[src]`` (units of target
-        per 1 unit of source — the same convention the BOQ rollup uses). When no
+        per 1 unit of source - the same convention the BOQ rollup uses). When no
         rate is configured the amount is returned unchanged and a warning is
         recorded so the un-converted value is visible, never silently blended.
         """
         nonlocal currency
         src = (src_currency or "").strip().upper()
         if not src:
-            # Match carried no currency — treat as already in the target.
+            # Match carried no currency - treat as already in the target.
             return amount
         if not currency:
             # Project had no currency: lock the target to this first currency.
@@ -979,7 +979,7 @@ async def apply_template(
                 rate = 0.0
             if rate > 0.0 and rate == rate and rate not in (float("inf"), float("-inf")):
                 return amount * rate
-        # No usable FX rate — keep the native value and flag the mismatch.
+        # No usable FX rate - keep the native value and flag the mismatch.
         fx_warnings.add(
             f"Component priced in {src} could not be converted to {currency} "
             f"(no FX rate configured); its value was kept in {src}. "
@@ -1006,7 +1006,7 @@ async def apply_template(
                     region=region,
                     source="cwicr",
                 )
-            except Exception:  # noqa: BLE001 — keep the apply preview alive
+            except Exception:  # noqa: BLE001 - keep the apply preview alive
                 matches = []
 
             # Fallback: relax to source=None when the bound catalogue is
@@ -1035,7 +1035,7 @@ async def apply_template(
         match_channel = "lexical"
         if matches:
             top = matches[0]
-            # ``MatchResult`` is a flat pydantic model — fields are read
+            # ``MatchResult`` is a flat pydantic model - fields are read
             # directly, not through a wrapped ``.item``.
             try:
                 unit_rate = float(getattr(top, "unit_rate", 0.0) or 0.0)
@@ -1056,7 +1056,7 @@ async def apply_template(
             m_currency = ""
             unresolved.append(query or description)
 
-        # Native total (in the matched item's currency) — what the component row
+        # Native total (in the matched item's currency) - what the component row
         # displays. The rolled-up ``grand_total`` instead accumulates each
         # component CONVERTED into the target currency so currencies are never
         # blended (``_convert_component`` also locks the target on first match).

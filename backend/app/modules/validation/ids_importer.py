@@ -1,4 +1,4 @@
-"""‌⁠‍IDS importer — buildingSMART Information Delivery Specification → ValidationRule.
+"""‌⁠‍IDS importer - buildingSMART Information Delivery Specification → ValidationRule.
 
 Parses an IDS v1.0 XML file (one ``<specification>`` per business rule) and
 generates one :class:`ValidationRule` per specification.  The rules check
@@ -6,18 +6,18 @@ canonical-format BIM elements (see ``data/bim_canonical/*.json``) for the
 predicates declared in each spec's ``<applicability>`` and ``<requirements>``.
 
 Design notes:
-    * NO IfcOpenShell — ban from the architecture guide §"Важные ограничения".  We treat
+    * NO IfcOpenShell - ban from the architecture guide §"Важные ограничения".  We treat
       IDS as plain XML and walk the DOM via :mod:`defusedxml` (XXE-safe).
     * Each spec becomes one rule.  ``rule_id`` is derived from the spec's
       ``identifier`` attribute when present, otherwise from the spec name +
       a hash so re-imports stay idempotent.
-    * Rules are NOT auto-registered with the global ``rule_registry`` —
+    * Rules are NOT auto-registered with the global ``rule_registry`` -
       callers decide whether to plug them in (the API endpoint does so).
 
 Public API:
-    * :func:`parse_ids` — parse an IDS file/bytes/string into a list of
+    * :func:`parse_ids` - parse an IDS file/bytes/string into a list of
       ``ValidationRule`` instances.
-    * :class:`IDSImportError` — raised for malformed input.
+    * :class:`IDSImportError` - raised for malformed input.
 
 Spec reference: https://github.com/buildingSMART/IDS
 """
@@ -27,7 +27,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
-import xml.etree.ElementTree as ET  # noqa: S405 — types + traversal only
+import xml.etree.ElementTree as ET  # noqa: S405 - types + traversal only
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -73,7 +73,7 @@ class _ValueRestriction:
 
         ``None`` always fails (the property is missing).  Empty restriction
         passes anything (used for ``cardinality=required`` with no value
-        constraint — only presence matters).
+        constraint - only presence matters).
         """
         if value is None:
             return False
@@ -130,7 +130,7 @@ class _Applicability:
             target = self.ifc_class.upper()
             # Allow either ifc_class or category to match.  Canonical-format
             # files sometimes carry "Walls" in ``category`` and "IfcWall" in
-            # ``ifc_class`` — both should satisfy IFCWALL.
+            # ``ifc_class`` - both should satisfy IFCWALL.
             if ifc != target and cat != target and not cat.startswith(target):
                 # Try the "IfcWall" → "WALL" / "Walls" relaxation.
                 short = target.removeprefix("IFC")
@@ -143,7 +143,7 @@ class _Applicability:
         if self.classification_system is not None or self.classification_value is not None:
             classif = element.get("classification") or {}
             if self.classification_system is not None:
-                # canonical-format stores e.g. {"din276": "330"} — use the
+                # canonical-format stores e.g. {"din276": "330"} - use the
                 # system as the dict KEY (lowercased) for an exact lookup.
                 key = self.classification_system.lower().replace(" ", "_")
                 if key not in {k.lower() for k in classif}:
@@ -170,7 +170,7 @@ class _Requirement:
         """Evaluate this requirement against an element.
 
         Returns:
-            (passed, message) — message describes the failure when ``passed`` is False.
+            (passed, message) - message describes the failure when ``passed`` is False.
         """
         actual = self._extract_value(element)
         present = actual is not None
@@ -299,7 +299,7 @@ def _parse_restriction(value_el: ET.Element | None) -> _ValueRestriction:
 
     simple = _simple_value(value_el)
 
-    # xs:restriction lookups — try ids namespace, then xs namespace, then bare.
+    # xs:restriction lookups - try ids namespace, then xs namespace, then bare.
     restriction = (
         _find(value_el, "xs:restriction") or value_el.find(f"{{{_XS_NS}}}restriction") or value_el.find("restriction")
     )
@@ -413,7 +413,7 @@ class IDSValidationRule(ValidationRule):
     """A :class:`ValidationRule` synthesised from one IDS ``<specification>``.
 
     The ``validate()`` walks ``context.data`` (expected to be a dict with
-    ``elements: list[dict]`` — i.e. canonical-format BIM data) and emits one
+    ``elements: list[dict]`` - i.e. canonical-format BIM data) and emits one
     :class:`RuleResult` per applicable element.
     """
 
@@ -500,7 +500,7 @@ def _read_source(source: Path | str | bytes) -> str:
         return source.decode("utf-8")
     if isinstance(source, Path):
         return source.read_text(encoding="utf-8")
-    # str: heuristic — looks like an existing path?
+    # str: heuristic - looks like an existing path?
     if isinstance(source, str):
         if "\n" not in source and "<" not in source and Path(source).exists():
             return Path(source).read_text(encoding="utf-8")
@@ -515,7 +515,7 @@ def _stable_rule_id(spec_idx: int, identifier: str | None, name: str) -> str:
         if slug:
             return f"ids.{slug}"
     base = name or f"spec_{spec_idx}"
-    digest = hashlib.sha1(base.encode("utf-8")).hexdigest()[:8]  # noqa: S324 — short id, not crypto
+    digest = hashlib.sha1(base.encode("utf-8")).hexdigest()[:8]  # noqa: S324 - short id, not crypto
     slug = re.sub(r"[^a-zA-Z0-9]+", "_", base).strip("_").lower()[:40] or "spec"
     return f"ids.{slug}.{digest}"
 
@@ -545,7 +545,7 @@ def parse_ids(source: Path | str | bytes) -> list[ValidationRule]:
     except ET.ParseError as exc:
         msg = f"Invalid IDS XML: {exc}"
         raise IDSImportError(msg) from exc
-    except Exception as exc:  # noqa: BLE001 — defusedxml may raise its own subclasses
+    except Exception as exc:  # noqa: BLE001 - defusedxml may raise its own subclasses
         msg = f"Failed to parse IDS XML: {exc}"
         raise IDSImportError(msg) from exc
 
@@ -573,7 +573,7 @@ def parse_ids(source: Path | str | bytes) -> list[ValidationRule]:
         requirements = _parse_requirements(spec)
 
         if not requirements:
-            logger.debug("IDS spec %s has no requirements — skipping", spec_name)
+            logger.debug("IDS spec %s has no requirements - skipping", spec_name)
             continue
 
         rule_id = _stable_rule_id(idx, identifier, spec_name)

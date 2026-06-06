@@ -10,13 +10,13 @@ Tables
 
 ``oe_approval_routes_step``
     Ordered step inside a route. Either ``approver_role`` OR
-    ``approver_user_id`` is set — not both — and the service validates
+    ``approver_user_id`` is set - not both - and the service validates
     this. ``mode`` describes aggregation when the role expands to
     several users.
 
 ``oe_approval_routes_instance``
     A running workflow for a concrete target row. Polymorphic via
-    ``(target_kind, target_id)`` — the engine never FKs into a specific
+    ``(target_kind, target_id)`` - the engine never FKs into a specific
     module's table.
 
 ``oe_approval_routes_step_state``
@@ -44,7 +44,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import GUID, Base
 
-# Canonical target kinds — open-ended ``String(64)`` in the DB so new
+# Canonical target kinds - open-ended ``String(64)`` in the DB so new
 # kinds don't need a migration; this tuple is the validated whitelist
 # surfaced to API consumers.
 TARGET_KINDS: tuple[str, ...] = (
@@ -101,7 +101,7 @@ class Route(Base):
         default=None,
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — debug only
+    def __repr__(self) -> str:  # pragma: no cover - debug only
         return f"<Route {self.name!r} kind={self.target_kind} active={self.is_active}>"
 
 

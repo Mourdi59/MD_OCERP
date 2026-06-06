@@ -78,7 +78,7 @@ CURRENCIES: dict[str, dict[str, Any]] = {
     "AED": {"symbol": "د.إ", "name": "UAE Dirham", "decimals": 2},
     "SAR": {"symbol": "﷼", "name": "Saudi Riyal", "decimals": 2},
     "QAR": {"symbol": "﷼", "name": "Qatari Riyal", "decimals": 2},
-    # Audit I1 — three-decimal Gulf/oil-trading currencies. Adding them
+    # Audit I1 - three-decimal Gulf/oil-trading currencies. Adding them
     # explicitly means ``format_money`` and ``MoneyValue.convert`` quantise
     # to the correct fils/dirhams instead of rounding to 2 decimals.
     "KWD": {"symbol": "د.ك", "name": "Kuwaiti Dinar", "decimals": 3},
@@ -213,7 +213,7 @@ class MoneyValue(BaseModel):
             A new ``MoneyValue`` with the converted amount.  The original
             amount is preserved as the base amount.
 
-        Audit I1 — uses the target currency's ISO-4217 minor-unit count
+        Audit I1 - uses the target currency's ISO-4217 minor-unit count
         for quantisation instead of the previous hardcoded
         ``Decimal("0.01")``. The old behaviour silently introduced a
         fractional fil/yen/won on every JPY/KWD conversion (e.g.
@@ -388,7 +388,7 @@ def format_money(
 ) -> str:
     """Format a monetary amount for display.
 
-    Uses ``Decimal`` internally — never ``float`` — to preserve precision.
+    Uses ``Decimal`` internally - never ``float`` - to preserve precision.
     Applies thousands separators and the currency symbol where known.
 
     Args:

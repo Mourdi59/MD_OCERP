@@ -1,4 +1,4 @@
-"""‌⁠‍RFI event handlers — vector indexing subscribers.
+"""‌⁠‍RFI event handlers - vector indexing subscribers.
 
 Subscribes to ``rfi.created`` / ``rfi.updated`` / ``rfi.deleted``
 lifecycle events and keeps the ``oe_rfi_rfis`` vector collection in sync
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 #
 # Keep the ``oe_rfi_rfis`` collection in sync with the live RFI rows.  Each
 # handler opens its own short-lived session, loads the row and forwards it
-# to the adapter.  Failures are logged and swallowed — vector indexing is
+# to the adapter.  Failures are logged and swallowed - vector indexing is
 # best-effort and must never break a normal CRUD path.
 
 

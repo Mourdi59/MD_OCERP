@@ -1,4 +1,4 @@
-"""‌⁠‍Finance service — business logic for invoicing, payments, budgets, and EVM.
+"""‌⁠‍Finance service - business logic for invoicing, payments, budgets, and EVM.
 
 Stateless service layer.
 """
@@ -60,7 +60,7 @@ def _utcnow_iso() -> str:
 def _project_fx_map(project: object | None) -> dict[str, str]:
     """Project the ``Project.fx_rates`` JSON list into ``{code: rate}``.
 
-    Mirrors :func:`app.modules.boq.service._project_fx_map` — defensive
+    Mirrors :func:`app.modules.boq.service._project_fx_map` - defensive
     against missing attribute / malformed entries so callers can always
     pass the result through :func:`_convert_to_base` without further guards.
     A rate is "units of base currency per 1 unit of the foreign currency".
@@ -174,12 +174,12 @@ def compute_payment_withholding(
     The cash paid out is ``gross - withheld``. The retainage withheld is either
     the explicit ``withholding_amount`` (when supplied) or ``gross *
     retention_pct / 100`` otherwise. Both legs are clamped so they stay within
-    ``[0, gross]`` — a retention percentage above 100 or a withholding above the
+    ``[0, gross]`` - a retention percentage above 100 or a withholding above the
     gross can never produce a negative cash payment (which would be a phantom
     refund) nor a withholding larger than the claim.
 
     Returns ``(amount_to_pay, withheld)`` both quantized to 2dp. Pure function:
-    no DB, no I/O — the unit suite asserts exact Decimals against it.
+    no DB, no I/O - the unit suite asserts exact Decimals against it.
     """
     g = _safe_decimal(gross)
     if g < 0:
@@ -360,7 +360,7 @@ class FinanceService:
         if fields:
             await self.invoices.update(invoice_id, **fields)
 
-        # Replace line items if provided — record a single audit row that
+        # Replace line items if provided - record a single audit row that
         # captures the count + total delta (no per-item diff, just the
         # aggregate so audit logs aren't flooded by every bulk edit).
         if data.line_items is not None:
@@ -450,7 +450,7 @@ class FinanceService:
     ) -> Invoice:
         """Transition invoice to ``sent`` status (legacy alias: ``approved``).
 
-        The FSM nomenclature was unified in v3033 — what the legacy code path
+        The FSM nomenclature was unified in v3033 - what the legacy code path
         called ``approved`` is now stored as ``sent`` in the database. The
         method keeps its old name for backwards compatibility but writes the
         new value and records the transition in :class:`ActivityLog`.
@@ -463,7 +463,7 @@ class FinanceService:
                 detail=f"Cannot approve invoice in status '{prior}'",
             )
         await self.invoices.update(invoice_id, status="sent")
-        # FSM audit row — see :mod:`app.core.fsm.registry` for the invoice
+        # FSM audit row - see :mod:`app.core.fsm.registry` for the invoice
         # lifecycle. Best-effort: an audit failure must NOT roll back the
         # status change, but it MUST surface as a warning so audit-log
         # outages don't go silently undetected (the prior debug-level log
@@ -617,7 +617,7 @@ class FinanceService:
                         bucketed[(item.wbs_id, item.cost_category)] += amt
                         total_actual += amt
                 else:
-                    # No breakdown — attribute the full invoice total to the
+                    # No breakdown - attribute the full invoice total to the
                     # catch-all bucket.
                     try:
                         amt = Decimal(str(inv.amount_total))
@@ -633,7 +633,7 @@ class FinanceService:
 
             # Reset every budget row before assignment so removing a
             # cost_category from future invoices drains the actual back to 0.
-            # Assign Decimal (not str) — MoneyType column expects Decimal on
+            # Assign Decimal (not str) - MoneyType column expects Decimal on
             # the ORM side; str assignment works on SQLite but triggers a
             # type-coercion warning on PostgreSQL (BUG-FINANCE-ACT01).
             for budget in budgets:
@@ -662,8 +662,8 @@ class FinanceService:
         #
         # Idempotency: the spine method is keyed on (source_kind, source_ref)
         # where source_ref is "{invoice_id}:{item_id}" (or ":full"), so paying
-        # the same invoice twice — or replaying this loop over every already-paid
-        # invoice of the project on each pay — posts each line exactly once.
+        # the same invoice twice - or replaying this loop over every already-paid
+        # invoice of the project on each pay - posts each line exactly once.
         #
         # FX: amounts are converted to the project base currency BEFORE posting
         # (the spine stores base-currency actuals). A missing rate keeps the
@@ -673,7 +673,7 @@ class FinanceService:
             await self._post_paid_invoices_to_spine(invoice.project_id)
         except Exception:
             logger.exception(
-                "Spine posting failed for invoice %s — payment unaffected",
+                "Spine posting failed for invoice %s - payment unaffected",
                 invoice.invoice_number,
             )
 
@@ -701,7 +701,7 @@ class FinanceService:
         line item (or the full total for a headerless invoice) into
         ``CostSpineService.post_actual_to_budget_line``. The spine method is
         idempotent on ``(source_kind, source_ref)``, so re-running this sweep on
-        every pay only ever posts each line once — no double counting, and a
+        every pay only ever posts each line once - no double counting, and a
         newly-paid invoice's lines get posted on the pass triggered by its own
         payment.
 
@@ -775,7 +775,7 @@ class FinanceService:
                     idempotency_key=idempotency,
                 )
             except Exception:
-                logger.exception("Spine posting failed for invoice line ref=%s — skipped", posting_ref)
+                logger.exception("Spine posting failed for invoice line ref=%s - skipped", posting_ref)
 
         for inv in paid_invoices:
             inv_currency = inv.currency_code or ""
@@ -813,7 +813,7 @@ class FinanceService:
            return that row without writing a duplicate.
         2. Currency normalization: if the payment currency differs from the
            invoice currency, an explicit FX rate (exchange_rate_snapshot != "1")
-           must be provided — prevents silent silent currency confusion.
+           must be provided - prevents silent silent currency confusion.
         3. Refund guard: total refunds cannot exceed total forward payments
            (net_paid >= 0).
 
@@ -839,7 +839,7 @@ class FinanceService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=(
                         f"Payment currency '{pay_currency}' differs from invoice "
-                        f"currency '{inv_currency}' — supply an explicit "
+                        f"currency '{inv_currency}' - supply an explicit "
                         f"exchange_rate_snapshot != '1'."
                     ),
                 )
@@ -1063,7 +1063,7 @@ class FinanceService:
                 detail="Failed to re-fetch created receivable invoice",
             )
 
-        # Audit row — best-effort (mirrors create_invoice / approve paths).
+        # Audit row - best-effort (mirrors create_invoice / approve paths).
         try:
             from app.core.audit_log import log_activity
 
@@ -1142,7 +1142,7 @@ class FinanceService:
         Idempotent on ``idempotency_key`` (a replay returns the existing row).
 
         After the payment is written, the cash paid out (NOT the withheld
-        retainage — that is not yet a realised cost to the client/payer) is
+        retainage - that is not yet a realised cost to the client/payer) is
         posted to the cost spine via
         :meth:`CostSpineService.post_actual_to_budget_line`. The spine call is
         non-fatal: a failure there must never roll back the payment.
@@ -1200,11 +1200,11 @@ class FinanceService:
             )
         except Exception:
             logger.exception(
-                "Spine posting failed for claim payment %s — payment unaffected",
+                "Spine posting failed for claim payment %s - payment unaffected",
                 payment.id,
             )
 
-        # Audit row — best-effort.
+        # Audit row - best-effort.
         try:
             from app.core.audit_log import log_activity
 
@@ -1312,7 +1312,7 @@ class FinanceService:
           order revises it; without this, variance and consumed-% would be
           computed against a zero baseline (always 0%, nonsensical).
         * ``currency_code`` is inherited from the parent project when the
-          caller does not supply one — never hardcoded (task #217).
+          caller does not supply one - never hardcoded (task #217).
         """
         from sqlalchemy import select
 
@@ -1328,14 +1328,14 @@ class FinanceService:
         currency_code = data.currency_code
         if not currency_code:
             # Best-effort, mirrors boq ``_resolve_project_currency``: a
-            # failed/unavailable lookup must never 500 a budget create —
+            # failed/unavailable lookup must never 500 a budget create -
             # fall back to "" (honest unknown, never a wrong hardcoded
-            # EUR — task #217).
+            # EUR - task #217).
             try:
                 proj = (
                     await self.session.execute(select(Project.currency).where(Project.id == data.project_id))
                 ).scalar_one_or_none()
-            except Exception:  # noqa: BLE001 — lookup is non-critical
+            except Exception:  # noqa: BLE001 - lookup is non-critical
                 proj = None
             currency_code = proj or ""
 
@@ -1356,7 +1356,7 @@ class FinanceService:
         except IntegrityError as exc:
             # ``oe_finance_budget`` has a UNIQUE constraint on
             # (project_id, wbs_id, category). A duplicate budget line is a
-            # caller error, not a server fault — surface a clean 409 instead
+            # caller error, not a server fault - surface a clean 409 instead
             # of letting the IntegrityError bubble as a raw 500.
             await self.session.rollback()
             raise HTTPException(
@@ -1501,7 +1501,7 @@ class FinanceService:
         vac = (bac - eac).quantize(Decimal("0.01"))
         # ETC ("estimate to complete") = forecast spend remaining. When a
         # project is already over-forecast (ac > eac), ``eac - ac`` would
-        # report a negative remaining cost which is semantically wrong —
+        # report a negative remaining cost which is semantically wrong -
         # the answer is "nothing more should be spent" (i.e. 0), not a
         # negative budget recovery. Clamp at zero so the FE KPI card
         # doesn't render a misleading negative figure.
@@ -1564,7 +1564,7 @@ class FinanceService:
         """Compute aggregated finance KPIs for a project or globally.
 
         Uses SQL-level aggregation for invoices, budgets, and payments
-        instead of loading all rows into Python — significantly faster
+        instead of loading all rows into Python - significantly faster
         for projects with many financial records.
         """
         from app.modules.finance.schemas import FinanceDashboardResponse
@@ -1686,7 +1686,7 @@ class FinanceService:
         * Two rows are written atomically via a SAVEPOINT:
             - debit row:  debit_amount > 0, credit_amount == 0
             - credit row: credit_amount > 0, debit_amount == 0
-        * Rows are NEVER mutated after insert — corrections use
+        * Rows are NEVER mutated after insert - corrections use
           :meth:`reverse_ledger_transaction`.
         """
         debit_val = _safe_decimal(data.debit_amount)

@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""File Comments Pydantic schemas — request/response models."""
+"""File Comments Pydantic schemas - request/response models."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ _FILE_KIND_PATTERN = r"^(document|photo|sheet|bim_model|dwg_drawing|takeoff|repo
 # Sane body length: a comment is not a wiki page. 10k chars covers the
 # longest reasonable structured triage note without inviting abuse.
 _MAX_BODY = 10_000
-# Maximum nesting depth at which we still render replies as nested — the
+# Maximum nesting depth at which we still render replies as nested - the
 # service flattens deeper threads onto the deepest visible parent.
 MAX_NESTING_DEPTH = 8
 # A PDF page is one-indexed; 100k pages covers every real-world document.
@@ -46,10 +46,10 @@ class FileCommentCreate(BaseModel):
     project_id: UUID
     file_kind: str = Field(..., pattern=_FILE_KIND_PATTERN)
     file_id: str = Field(..., min_length=1, max_length=255)
-    # Pre-Epic-C label snapshot (V01 etc.) — kept for one release as a
+    # Pre-Epic-C label snapshot (V01 etc.) - kept for one release as a
     # fallback. Prefer ``file_version_id`` below.
     file_version_snapshot: str | None = Field(default=None, max_length=32)
-    # Epic C — explicit version pin. When omitted the service looks up
+    # Epic C - explicit version pin. When omitted the service looks up
     # the chain head and uses it, so comments default to the current
     # revision (the usual behaviour). Clients can pin to a historical
     # version by passing this explicitly (e.g. when annotating an old
@@ -65,7 +65,7 @@ class FileCommentCreate(BaseModel):
 class FileCommentUpdate(BaseModel):
     """Body for ``PATCH /file-comments/{id}/``.
 
-    ``body`` is an optional edit, ``resolved`` is an optional toggle —
+    ``body`` is an optional edit, ``resolved`` is an optional toggle -
     both can be set in one request (edit + resolve in one round-trip).
     """
 
@@ -125,7 +125,7 @@ class FileCommentThread(FileCommentResponse):
 
 
 class FileCommentListResponse(BaseModel):
-    """``GET /file-comments/?kind=&file_id=`` payload — top-level threads."""
+    """``GET /file-comments/?kind=&file_id=`` payload - top-level threads."""
 
     file_kind: str
     file_id: str

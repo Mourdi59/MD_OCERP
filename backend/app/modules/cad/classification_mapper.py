@@ -1,4 +1,4 @@
-# OpenConstructionERP — DataDrivenConstruction (DDC)
+# OpenConstructionERP - DataDrivenConstruction (DDC)
 # CAD2DATA Pipeline · CWICR Cost Database Engine
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 # AGPL-3.0 License · DDC-CWICR-OE-2026
@@ -11,11 +11,11 @@ vector search is available, and as confidence anchors for AI suggestions.
 
 Two layers of resolution:
 
-1. **Coarse map** (``REVIT_TO_DIN276`` etc.) — category alone yields a
+1. **Coarse map** (``REVIT_TO_DIN276`` etc.) - category alone yields a
    3-digit (DIN-276) / 1-2-segment (NRM) / 6-digit (MasterFormat) code.
    This is the legacy behaviour and the always-available fallback.
 
-2. **Material-aware refinement** (``MATERIAL_AWARE_DIN276`` etc.) — when
+2. **Material-aware refinement** (``MATERIAL_AWARE_DIN276`` etc.) - when
    the upstream BIM extractor surfaces a material name (and optionally a
    fire rating), we deepen the code by one level. Example: a generic
    ``"wall"`` resolves to ``"330"``; a ``"wall"`` with material
@@ -26,7 +26,7 @@ German BIM source ("Stahlbeton") and an English one ("reinforced
 concrete") collapse to the same canonical key. The deeper codes were
 cross-checked against the seed data in ``app/scripts/seed_*.py`` and the
 golden ground-truth in ``tests/eval/golden_set.yaml`` (the matcher
-evaluation set) — only codes that appear in those fixtures are emitted.
+evaluation set) - only codes that appear in those fixtures are emitted.
 
 Supported standards:
     - DIN 276 (DACH region cost groups)
@@ -112,7 +112,7 @@ _STANDARD_MAPPINGS: dict[str, dict[str, str]] = {
 }
 
 # ---------------------------------------------------------------------------
-# Category aliasing — Revit emits Pascal-case plurals ("Walls"); BIM
+# Category aliasing - Revit emits Pascal-case plurals ("Walls"); BIM
 # canonical-format and the matcher's golden set use lowercase singulars
 # ("wall"). Normalise to the Revit form so the coarse maps still hit.
 # ---------------------------------------------------------------------------
@@ -154,7 +154,7 @@ _CATEGORY_ALIASES: dict[str, str] = {
     "topography": "Topography",
     "site": "Site",
     "parking": "Parking",
-    # IFC entity-type aliases — when a BIM extractor surfaces the raw
+    # IFC entity-type aliases - when a BIM extractor surfaces the raw
     # IFC class verbatim (``"IfcWall"``, ``"IfcSlab"``, …) the coarse
     # maps would otherwise miss because they're keyed on Revit Pascal-
     # case plurals. Folding IFC → Revit here lets ``enrich_classification``
@@ -199,7 +199,7 @@ _CATEGORY_ALIASES: dict[str, str] = {
     "ifcairterminalbox": "Mechanical Equipment",
     "ifcfurniture": "Generic Models",
     "ifcfurnishingelement": "Generic Models",
-    "ifccovering": "Generic Models",  # finishings — KG 350 / 360 inherit
+    "ifccovering": "Generic Models",  # finishings - KG 350 / 360 inherit
     "ifcbuildingelementproxy": "Generic Models",
     "ifcbuildingelementpart": "Generic Models",
     "ifcvirtualelement": "Generic Models",
@@ -225,7 +225,7 @@ def _canonical_category(category: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Material vocabulary — fold synonyms (DE/EN, technical/colloquial) into
+# Material vocabulary - fold synonyms (DE/EN, technical/colloquial) into
 # the canonical key the material-aware tables index on.
 # ---------------------------------------------------------------------------
 # Order matters: longer / more-specific tokens checked first so that
@@ -322,7 +322,7 @@ def _normalise_material(material: str | None) -> str | None:
     """‌⁠‍Fold a free-form material string into a canonical synonym key.
 
     Returns one of ``"concrete"``, ``"masonry"``, ``"timber"``, ``"steel"``,
-    ``"drywall"``, ``"aluminium"``, ``"glass"`` — or ``None`` when no
+    ``"drywall"``, ``"aluminium"``, ``"glass"`` - or ``None`` when no
     synonym substring matches. The caller falls back to the coarse map
     in that case.
     """
@@ -341,7 +341,7 @@ def _normalise_material(material: str | None) -> str | None:
 # ---------------------------------------------------------------------------
 # Material-aware DIN 276 refinements.
 # Codes verified against tests/eval/golden_set.yaml (the matcher's golden
-# ground truth) — every code below appears as a ground-truth entry there
+# ground truth) - every code below appears as a ground-truth entry there
 # OR matches the structure documented in the v2.8.0 Phase-1 spec.
 # Format: (revit_category, material_canonical_key) -> deeper_code.
 # ---------------------------------------------------------------------------
@@ -361,7 +361,7 @@ MATERIAL_AWARE_DIN276: dict[tuple[str, str], str] = {
     # Foundations (KG 320 = Gründung; 322 in fixture data)
     ("Structural Foundations", "concrete"): "322.10",
     # Columns: golden set uses 340.10 for concrete columns and 340.20
-    # for structural steel framing — that's the project's actual fixture
+    # for structural steel framing - that's the project's actual fixture
     # convention, not the spec's draft 330.40/330.50.
     ("Columns", "concrete"): "340.10",
     ("Columns", "steel"): "340.20",
@@ -379,7 +379,7 @@ MATERIAL_AWARE_DIN276: dict[tuple[str, str], str] = {
 }
 
 # ---------------------------------------------------------------------------
-# Material-aware NRM 1 refinements (smaller scope — coarse map is thin).
+# Material-aware NRM 1 refinements (smaller scope - coarse map is thin).
 # Format: (revit_category, material_canonical_key) -> deeper_code.
 # ---------------------------------------------------------------------------
 MATERIAL_AWARE_NRM: dict[tuple[str, str], str] = {
@@ -471,7 +471,7 @@ def map_category_to_standard(category: str, standard: str = "din276") -> str | N
     Args:
         category: Revit category name (e.g. ``"Walls"``, ``"Doors"``)
             or canonical-format singular (``"wall"``, ``"door"``).
-        standard: Classification standard key — one of ``"din276"``,
+        standard: Classification standard key - one of ``"din276"``,
             ``"nrm"``, or ``"masterformat"``.
 
     Returns:
@@ -510,16 +510,16 @@ def enrich_classification(
             lookup. ``None`` skips material refinement.
         fire_rating: Fire-resistance code (e.g. ``"F90"``). When set on
             doors, prefers the steel variant.
-        structural: Reserved — currently unused, exposed for callers
+        structural: Reserved - currently unused, exposed for callers
             that already have the bit and may inform future refinement.
-        standard: Classification standard key — one of ``"din276"``,
+        standard: Classification standard key - one of ``"din276"``,
             ``"nrm"``, or ``"masterformat"``.
 
     Returns:
         Classification code (deep when material is recognised, coarse
         otherwise), or ``None`` when no entry exists.
     """
-    del structural  # reserved — currently no structural-aware split
+    del structural  # reserved - currently no structural-aware split
     canon_category = _canonical_category(category)
     if not canon_category:
         return None
@@ -562,7 +562,7 @@ def map_elements_to_classification(
         elements: List of element dicts. Each is expected to have a
             ``"category"`` key and optionally a ``"properties"`` dict
             with ``"material"`` / ``"fire_rating"`` strings.
-        standard: Classification standard to apply — ``"din276"``,
+        standard: Classification standard to apply - ``"din276"``,
             ``"nrm"``, or ``"masterformat"``.
 
     Returns:

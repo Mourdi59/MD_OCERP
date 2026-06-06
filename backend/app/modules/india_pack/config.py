@@ -17,11 +17,11 @@ PACK_CONFIG: dict[str, Any] = {
     "standards": [
         {
             "code": "IS",
-            "name": "IS — Indian Standards (Bureau of Indian Standards)",
+            "name": "IS - Indian Standards (Bureau of Indian Standards)",
             "description": "National construction standards published by BIS",
             "key_codes": [
-                {"code": "IS 456", "title": "Plain and Reinforced Concrete — Code of Practice"},
-                {"code": "IS 800", "title": "General Construction in Steel — Code of Practice"},
+                {"code": "IS 456", "title": "Plain and Reinforced Concrete - Code of Practice"},
+                {"code": "IS 800", "title": "General Construction in Steel - Code of Practice"},
                 {"code": "IS 875", "title": "Code of Practice for Design Loads (Parts 1–5)"},
                 {"code": "IS 1200", "title": "Method of Measurement of Building Works"},
                 {"code": "IS 1893", "title": "Criteria for Earthquake Resistant Design"},
@@ -33,12 +33,12 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "NBC",
-            "name": "NBC — National Building Code of India",
+            "name": "NBC - National Building Code of India",
             "description": "Comprehensive building code covering all aspects of construction (2016 ed.)",
         },
         {
             "code": "IS_1200",
-            "name": "IS 1200 — Method of Measurement of Building Works",
+            "name": "IS 1200 - Method of Measurement of Building Works",
             "description": "Standard method of measurement for Indian construction",
             "parts": [
                 {"part": "I", "title": "Earthwork"},
@@ -60,7 +60,7 @@ PACK_CONFIG: dict[str, Any] = {
     "cost_database_references": [
         {
             "code": "CPWD",
-            "name": "CPWD — Central Public Works Department",
+            "name": "CPWD - Central Public Works Department",
             "description": (
                 "Delhi Schedule of Rates (DSR) and analysis of rates "
                 "published by CPWD; widely used as benchmark across India"
@@ -74,7 +74,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "MES",
-            "name": "MES — Military Engineer Services",
+            "name": "MES - Military Engineer Services",
             "description": (
                 "Schedule of rates for defence construction works; often referenced for government projects"
             ),
@@ -117,7 +117,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "EPC",
-            "name": "EPC — Engineering, Procurement, Construction",
+            "name": "EPC - Engineering, Procurement, Construction",
             "description": "Turnkey contract for large infrastructure projects",
         },
         {
@@ -130,7 +130,7 @@ PACK_CONFIG: dict[str, Any] = {
     "tax_rules": [
         {
             "code": "IN_GST_28",
-            "name": "GST — 28% Slab",
+            "name": "GST - 28% Slab",
             "type": "gst",
             "rate_pct": "28",
             "description": "Luxury goods, cement, paints, certain construction materials",
@@ -138,7 +138,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "IN_GST_18",
-            "name": "GST — 18% Slab",
+            "name": "GST - 18% Slab",
             "type": "gst",
             "rate_pct": "18",
             "description": "Most construction services, steel, electrical fittings",
@@ -146,7 +146,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "IN_GST_12",
-            "name": "GST — 12% Slab",
+            "name": "GST - 12% Slab",
             "type": "gst",
             "rate_pct": "12",
             "description": "Works contracts for government entities, affordable housing",
@@ -154,7 +154,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "IN_GST_5",
-            "name": "GST — 5% Slab",
+            "name": "GST - 5% Slab",
             "type": "gst",
             "rate_pct": "5",
             "description": "Sand, marble, building bricks (certain categories)",
@@ -162,7 +162,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "IN_GST_0",
-            "name": "GST — Exempt / 0% Slab",
+            "name": "GST - Exempt / 0% Slab",
             "type": "gst",
             "rate_pct": "0",
             "description": "Agricultural produce, certain essential materials",
@@ -215,7 +215,7 @@ PACK_CONFIG: dict[str, Any] = {
         "weight": "kg",
         "temperature": "°C",
     },
-    # ── GST rates (Wave 25 — India uses CGST+SGST split; standard combined) ──
+    # ── GST rates (Wave 25 - India uses CGST+SGST split; standard combined) ──
     "vat_rates": {
         "IN": {
             "standard": Decimal("0.18"),

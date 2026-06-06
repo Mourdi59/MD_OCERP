@@ -1,4 +1,4 @@
-"""‌⁠‍BIM element vector adapter — feeds the ``oe_bim_elements`` collection.
+"""‌⁠‍BIM element vector adapter - feeds the ``oe_bim_elements`` collection.
 
 Each :class:`~app.modules.bim_hub.models.BIMElement` row is embedded as
 its display name plus element type, category, discipline, storey,
@@ -7,7 +7,7 @@ material and any classification / family metadata stored in
 multi-collection vector store via the helpers in
 :mod:`app.core.vector_index`.
 
-The adapter is intentionally narrow — it knows nothing about the event
+The adapter is intentionally narrow - it knows nothing about the event
 bus or HTTP routing.  Wiring lives in :mod:`app.modules.bim_hub.events`
 and ``router.py`` respectively.
 """
@@ -89,7 +89,7 @@ class BIMElementVectorAdapter:
         """Resolve the owning project id via the parent BIMModel.
 
         Only works when the caller has eager-loaded the ``model``
-        relationship — otherwise returns ``None`` and lets the router /
+        relationship - otherwise returns ``None`` and lets the router /
         event handler populate ``project_id`` explicitly.
         """
         model = getattr(row, "model", None)
@@ -98,5 +98,5 @@ class BIMElementVectorAdapter:
         return None
 
 
-# Singleton instance — adapters are stateless so one shared object is fine.
+# Singleton instance - adapters are stateless so one shared object is fine.
 bim_element_vector_adapter = BIMElementVectorAdapter()

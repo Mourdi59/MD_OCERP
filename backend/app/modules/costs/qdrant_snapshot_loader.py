@@ -3,7 +3,7 @@
 """‌⁠‍Load DDC-published CWICR snapshots into a server-mode Qdrant.
 
 Companion to :mod:`app.modules.costs.qdrant_adapter`. The adapter handles
-*search*; this module handles *populate-from-DDC* — i.e. taking the
+*search*; this module handles *populate-from-DDC* - i.e. taking the
 ``*_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot``
 files DDC publishes and restoring them into the language-keyed Qdrant
 collections (``cwicr_de_v3``, ``cwicr_ru_v3``, …) the search path
@@ -13,7 +13,7 @@ Why a dedicated module?
 -----------------------
 
 The adapter docstring documents the constraint we hit on 2026-05-09:
-embedded ``QdrantClient(path=...)`` cannot ``recover_snapshot`` —
+embedded ``QdrantClient(path=...)`` cannot ``recover_snapshot`` -
 ``NotImplementedError: Snapshots are not supported in the local
 Qdrant``. So the snapshot ingest path is *server-mode only*. Splitting
 it out keeps the runtime ``search()`` import graph from pulling httpx
@@ -27,18 +27,18 @@ DDC snapshot filename convention
 
     {REGION}_workitems_costs_resources_EMBEDDINGS_BGEM3_V3_DDC_CWICR.snapshot
 
-* ``{REGION}`` — the canonical CWICR region id (``RU_STPETERSBURG``,
+* ``{REGION}`` - the canonical CWICR region id (``RU_STPETERSBURG``,
   ``USA_USD``, ``ENG_TORONTO``, …). Resolved to a language collection
   via :func:`region_language.language_for`.
-* ``BGEM3_V3`` — encoder + schema marker. We deliberately filter on
+* ``BGEM3_V3`` - encoder + schema marker. We deliberately filter on
   this so legacy ``*_EMBEDDINGS_3072_DDC_CWICR.snapshot`` files (the
   text-embedding-3-large run that predates the bge-m3 cutover) are
-  skipped — restoring one would corrupt the v3 collection vector
+  skipped - restoring one would corrupt the v3 collection vector
   schema.
 
 Multiple regions sharing a language (``USA_USD`` and ``GB_LONDON`` →
 ``cwicr_en_v3``) collide on restore. The current implementation logs a
-WARNING and proceeds — last-write-wins. Operator workflow: restore the
+WARNING and proceeds - last-write-wins. Operator workflow: restore the
 canonical English variant (typically USA_USD) **last** so its rates
 end up in the live collection. A per-region collection layout is
 tracked as a v4 candidate; do not change it here without updating
@@ -74,7 +74,7 @@ _V3_MARKER_RE = re.compile(r"BGEM3_V3", re.IGNORECASE)
 def cwicr_snapshot_target_for(snapshot_filename: str | Path) -> str | None:
     """‌⁠‍Return the target collection name for a DDC v3 snapshot, or ``None``.
 
-    ``None`` means "skip this file" — either it isn't a BGE-M3 v3
+    ``None`` means "skip this file" - either it isn't a BGE-M3 v3
     snapshot, or its filename doesn't follow the DDC convention. The
     caller logs a structured skip reason and moves on.
 
@@ -114,12 +114,12 @@ class SnapshotLoadSummary:
 
     Three buckets:
 
-    * ``loaded`` — snapshots successfully restored (or, in dry-run mode,
+    * ``loaded`` - snapshots successfully restored (or, in dry-run mode,
       that would have been restored).
-    * ``skipped`` — snapshots ignored because they aren't BGE-M3 v3 or
+    * ``skipped`` - snapshots ignored because they aren't BGE-M3 v3 or
       their filename didn't parse. The string carries the reason for
       operator triage.
-    * ``errors`` — snapshots that matched the v3 pattern but failed to
+    * ``errors`` - snapshots that matched the v3 pattern but failed to
       upload. Includes the exception class + first 200 chars of message
       so a single corrupted file doesn't tank the whole run.
 
@@ -152,20 +152,20 @@ def restore_snapshot_from_url(
     """Tell Qdrant to fetch a snapshot from ``snapshot_url`` directly.
 
     Uses ``PUT /collections/{name}/snapshots/recover`` which makes Qdrant
-    issue its own HTTP GET for the URL — no multipart upload, no
+    issue its own HTTP GET for the URL - no multipart upload, no
     ``max_request_size_mb`` ceiling. This is the only working path for
     snapshots over Qdrant's default 32 MB upload limit (BGE-M3 v3 CWICR
     snapshots are 400–800 MB).
 
     The caller is responsible for ensuring ``snapshot_url`` is reachable
-    *from inside the Qdrant process* — for dockerised Qdrant on Windows
+    *from inside the Qdrant process* - for dockerised Qdrant on Windows
     the host's localhost is exposed as ``host.docker.internal``. For
     cloud-hosted snapshots (HuggingFace, GitHub raw) the URL is reached
     over the public internet.
 
     Returns ``True`` on ``{"result": true, "status": "ok"}``. Raises
     :class:`SnapshotRestoreError` with Qdrant's verbatim error message on
-    any non-success — callers convert that to a 502 with a human-readable
+    any non-success - callers convert that to a 502 with a human-readable
     hint (Windows AV / disk space / 404 / etc.).
     """
 
@@ -186,7 +186,7 @@ def restore_snapshot_from_url(
     # The Qdrant download + restore can take 5–15 min for 400 MB on a
     # slow link. httpx.Timeout splits connect/read/write/pool so the
     # read budget is what gets exhausted while we wait for the recover
-    # response — bump it to the full timeout, leave connect/pool short
+    # response - bump it to the full timeout, leave connect/pool short
     # so a dead Qdrant URL fails fast.
     timeout = httpx.Timeout(connect=10.0, read=timeout_s, write=timeout_s, pool=10.0)
 
@@ -221,7 +221,7 @@ def restore_snapshot_from_url(
         )
         return True
 
-    # Surface Qdrant's own error message verbatim — it's the most useful
+    # Surface Qdrant's own error message verbatim - it's the most useful
     # diagnostic ("Failed to download snapshot from <url>: status - 404
     # Not Found", "Wrong input: <…>", "failed to sync file … Access is
     # denied. (os error 5)" on Windows Defender, etc).
@@ -260,13 +260,13 @@ def restore_snapshot_file(
 
     Note: Qdrant's default ``service.max_request_size_mb`` is **32 MB**.
     Snapshots over that size (i.e. every BGE-M3 v3 CWICR snapshot,
-    typically 400–800 MB) will be rejected with ``HTTP 500 — An error
+    typically 400–800 MB) will be rejected with ``HTTP 500 - An error
     occurred processing field: snapshot``. Use
     :func:`restore_snapshot_from_url` for those instead, which sidesteps
     the multipart endpoint entirely.
 
     Returns ``True`` on a 2xx response, ``False`` (with an ERROR log) on
-    any failure. Does not raise — the caller wants to continue with the
+    any failure. Does not raise - the caller wants to continue with the
     next snapshot, not bail out.
 
     Embedded mode is rejected explicitly: passing a ``qdrant_url`` of
@@ -278,7 +278,7 @@ def restore_snapshot_file(
         raise RuntimeError(
             "restore_snapshot_file requires a server-mode Qdrant URL "
             "(set CWICR_QDRANT_URL or pass qdrant_url=...). Embedded "
-            "mode does not support snapshot recovery — see "
+            "mode does not support snapshot recovery - see "
             "qdrant_adapter module docstring."
         )
 
@@ -288,7 +288,7 @@ def restore_snapshot_file(
 
     try:
         import httpx
-    except ImportError as exc:  # pragma: no cover — httpx is in pyproject base deps
+    except ImportError as exc:  # pragma: no cover - httpx is in pyproject base deps
         raise RuntimeError(
             "httpx is required for snapshot upload; install via the project's base requirements"
         ) from exc
@@ -306,7 +306,7 @@ def restore_snapshot_file(
     if api_key:
         headers["api-key"] = api_key
 
-    # httpx.Timeout(...) splits connect/read/write/pool — without this a
+    # httpx.Timeout(...) splits connect/read/write/pool - without this a
     # single int applies the same value to read, which quietly clamps the
     # whole upload to 5s on httpx>=0.25 if `timeout_s` is treated as a
     # connect-only hint. For a 400 MB+ snapshot Qdrant needs minutes to
@@ -344,7 +344,7 @@ def restore_snapshot_file(
         # body carries the actual restore outcome as ``{"result": true,
         # "status": "ok", "time": ...}``. A 200 with ``result: false``
         # (or a malformed body) means the bytes landed but the recover
-        # step rejected them — historically this looked like a successful
+        # step rejected them - historically this looked like a successful
         # install in the UI while the collection never appeared. Treat
         # it as a hard failure and let the caller raise.
         try:
@@ -388,14 +388,14 @@ def load_ddc_snapshot_dir(
 
     ``snapshots_dir`` can point at any of:
 
-    * The repo root (``OpenConstructionEstimate-DDC-CWICR/``) — recursively
+    * The repo root (``OpenConstructionEstimate-DDC-CWICR/``) - recursively
       finds every ``RU___DDC_CWICR/RU_STPETERSBURG_*.snapshot`` etc.
     * A single language directory (``RU___DDC_CWICR/``).
     * A directory of mixed snapshots (e.g. a download bucket).
 
     Snapshots whose filenames don't match the BGE-M3 v3 pattern are
     pushed to ``summary.skipped`` and ignored. This includes the legacy
-    ``*_EMBEDDINGS_3072_*`` files that ship in the same DDC repo —
+    ``*_EMBEDDINGS_3072_*`` files that ship in the same DDC repo -
     restoring those would clobber the v3 collection schema.
 
     Multiple snapshots resolving to the same language collection
@@ -405,7 +405,7 @@ def load_ddc_snapshot_dir(
     operator can re-order if needed.
 
     ``dry_run=True`` walks the directory and resolves targets without
-    issuing any HTTP requests — useful for previewing what a real run
+    issuing any HTTP requests - useful for previewing what a real run
     would do, especially against a large repo where the bandwidth cost
     is non-trivial.
     """
@@ -436,7 +436,7 @@ def load_ddc_snapshot_dir(
         prior = seen_collections.get(target)
         if prior is not None:
             logger.warning(
-                "Two snapshots map to %s — %s will overwrite %s "
+                "Two snapshots map to %s - %s will overwrite %s "
                 "(last-write-wins). Operator: re-order or use a "
                 "per-region collection layout if this is unwanted.",
                 target,
@@ -483,7 +483,7 @@ def server_collections(
     Used by the CLI's pre/post snapshot restore probe so the operator
     sees which ``cwicr_*_v3`` collections appeared after the run.
     Tolerates a missing /collections endpoint (returns empty list with
-    a WARN log) so the CLI doesn't crash on an unexpected response —
+    a WARN log) so the CLI doesn't crash on an unexpected response -
     surfacing the snapshot summary is more useful than a stack trace.
     """
 
@@ -523,13 +523,13 @@ def enumerate_qdrant_v3_collections(
     Wraps :func:`server_collections` and filters to names matching the
     ``cwicr_*_v3`` convention so callers can answer "what BGE-M3 v3
     catalogues are actually installed on this server, including the ones
-    not listed in :data:`CWICR_V3_CATALOGUES`?" — e.g. tenant-installed
+    not listed in :data:`CWICR_V3_CATALOGUES`?" - e.g. tenant-installed
     custom rate books that landed in Qdrant via the operator CLI.
 
     Resolves ``qdrant_url`` from ``cwicr_qdrant_url`` then ``qdrant_url``
     on :func:`get_settings` when not passed, mirroring the router's
     ``_v3_qdrant_url`` resolver. Returns an empty list (with a DEBUG log)
-    when no server is configured or the probe fails — callers treat the
+    when no server is configured or the probe fails - callers treat the
     result as authoritative only when non-empty, and the static
     registry remains the source of truth for installable cards.
     """
@@ -537,12 +537,12 @@ def enumerate_qdrant_v3_collections(
         try:
             settings = get_settings()
             qdrant_url = getattr(settings, "cwicr_qdrant_url", None) or getattr(settings, "qdrant_url", None)
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.debug("enumerate_qdrant_v3_collections: settings read failed: %s", exc)
             qdrant_url = None
 
     if not qdrant_url:
-        logger.debug("enumerate_qdrant_v3_collections: no Qdrant URL configured — returning []")
+        logger.debug("enumerate_qdrant_v3_collections: no Qdrant URL configured - returning []")
         return []
 
     all_collections = server_collections(

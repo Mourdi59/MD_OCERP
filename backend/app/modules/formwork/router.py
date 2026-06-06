@@ -3,10 +3,10 @@
 Mounted at ``/api/v1/formwork/`` by the module loader.
 
 Endpoint groups:
-    /systems/                              — catalogue CRUD + seed
-    /assignments/                          — per-project assignment CRUD
-    /assignments/{id}/schedule-lines/      — pour-cycle sub-resource
-    /schedule-lines/{id}                   — schedule-line delete
+    /systems/                              - catalogue CRUD + seed
+    /assignments/                          - per-project assignment CRUD
+    /assignments/{id}/schedule-lines/      - pour-cycle sub-resource
+    /schedule-lines/{id}                   - schedule-line delete
 
 Tenant scoping follows the Wave-5 IDOR posture: requests for an object
 the caller cannot see return **404, never 403**, so we never leak the
@@ -124,7 +124,7 @@ async def list_systems(
 ) -> list[FormworkSystemResponse]:
     """List formwork systems.
 
-    Catalogue is tenant-wide read for the MVP — every authenticated user
+    Catalogue is tenant-wide read for the MVP - every authenticated user
     can see every system. Per-tenant gating ships with the multi-tenant
     sweep.
     """
@@ -193,7 +193,7 @@ async def delete_system(
     session: SessionDep,
     _user_id: CurrentUserId,
 ) -> None:
-    # IDOR posture: a missing row returns 404, never 403, never 422 —
+    # IDOR posture: a missing row returns 404, never 403, never 422 -
     # so probing the catalogue for a UUID never leaks its existence.
     await _load_system_or_404(session, system_id)
     service = FormworkService(session)
@@ -256,7 +256,7 @@ async def create_assignment(
     try:
         obj = await service.create_assignment(data)
     except LookupError as exc:
-        # Same IDOR rationale as ``/systems/{id}`` — a typo'd system
+        # Same IDOR rationale as ``/systems/{id}`` - a typo'd system
         # UUID is a 404, never 422.
         raise HTTPException(
             status_code=404,
@@ -297,7 +297,7 @@ async def update_assignment(
             status_code=404,
             detail="Formwork system not found",
         ) from exc
-    if obj is None:  # defensive — load_or_404 already proved existence
+    if obj is None:  # defensive - load_or_404 already proved existence
         raise HTTPException(
             status_code=404,
             detail="Formwork assignment not found",

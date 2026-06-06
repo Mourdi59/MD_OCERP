@@ -10,7 +10,7 @@ def register_bim_requirements_permissions() -> None:
     Mirrors the sibling ``clash`` / ``validation`` verb set: viewers read
     requirement sets and run model validations / exports; editors import
     new sets and YAML rule packs; managers can delete a set. Excel/IDS
-    export is a read-class capability (it does not mutate stored data —
+    export is a read-class capability (it does not mutate stored data -
     it just serialises an existing set).
     """
     permission_registry.register_module_permissions(

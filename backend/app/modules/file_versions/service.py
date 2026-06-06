@@ -4,9 +4,9 @@
 
 Stateless service layer. Owns the version-chain rules:
 
-* ``register_new_version`` — supersede the current row + insert a new
+* ``register_new_version`` - supersede the current row + insert a new
   one as current; auto-increment ``version_number`` per chain.
-* ``restore_version`` — flip a historical row back to current; the
+* ``restore_version`` - flip a historical row back to current; the
   previously-current row is moved to superseded with a chain pointer.
 
 The service is wired through the router but the public functions are
@@ -40,7 +40,7 @@ def _validate_kind(kind: str) -> None:
 
 
 def _canonicalize(name: str) -> str:
-    """Strip trailing whitespace; case-preserving — chain key is exact."""
+    """Strip trailing whitespace; case-preserving - chain key is exact."""
     return name.strip()
 
 
@@ -148,7 +148,7 @@ class FileVersionService:
         )
         await self.repo.add(row)
 
-        # Supersede the prior current — done AFTER adding the new row
+        # Supersede the prior current - done AFTER adding the new row
         # so the supersede pointer is set in one transaction.
         if previous_current is not None and previous_current.id != row.id:
             previous_current.is_current = False
@@ -158,7 +158,7 @@ class FileVersionService:
 
         # ── Fan-out subscription notifications (W10) ─────────────────
         # Only when this revision actually supersedes a prior current
-        # row do we count it as a "new revision posted" event — the
+        # row do we count it as a "new revision posted" event - the
         # very first version of a brand-new file is a "created" event
         # and is owned by the kind module's own upload handler.
         # Lazy-import so the file_versions module stays runnable when
@@ -197,7 +197,7 @@ class FileVersionService:
         """Promote ``version_id`` back to current; demote the prior current."""
         target = await self.get(version_id)
         if target.is_current:
-            # Already the current row — nothing to do, just echo back.
+            # Already the current row - nothing to do, just echo back.
             return target
 
         now = datetime.now(UTC)
@@ -205,7 +205,7 @@ class FileVersionService:
         # the same chain are serialised. The second restore blocks here
         # until the first commits, then re-reads the now-promoted row as
         # the current one and demotes *that* instead of the stale prior
-        # current — keeping exactly one is_current=True row per chain.
+        # current - keeping exactly one is_current=True row per chain.
         previous_current = await self.repo.get_current(
             project_id=target.project_id,
             file_kind=target.file_kind,
@@ -222,7 +222,7 @@ class FileVersionService:
         target.superseded_at = None
         target.superseded_by_id = None
         # Record actor on the restored row's audit trail by reusing the
-        # ``uploaded_by_id`` slot when caller provided one — historical
+        # ``uploaded_by_id`` slot when caller provided one - historical
         # uploader is preserved on the prior current row.
         if actor_id is not None and target.uploaded_by_id is None:
             target.uploaded_by_id = actor_id

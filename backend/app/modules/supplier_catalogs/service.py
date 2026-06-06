@@ -1,8 +1,8 @@
-"""‌⁠‍Supplier Catalogs service — vendor management, catalog, PR/PO/GR/Invoice,
+"""‌⁠‍Supplier Catalogs service - vendor management, catalog, PR/PO/GR/Invoice,
 warehouse stock control, 3-way match.
 
 Stateless. All cross-module references (project_id, contract_id, user_id,
-contact_id) are plain UUID/strings — no ORM FK joins out of the module.
+contact_id) are plain UUID/strings - no ORM FK joins out of the module.
 """
 
 from __future__ import annotations
@@ -95,7 +95,7 @@ _logger_ev = logging.getLogger(__name__ + ".events")
 
 VALID_VENDOR_STATUSES = {"active", "suspended", "blacklisted"}
 # Allowed vendor status transitions. ``blacklisted`` is a terminal
-# compliance state — a vendor can only leave it via an explicit
+# compliance state - a vendor can only leave it via an explicit
 # reactivation (which is itself a deliberate compliance decision), never
 # be re-suspended or silently flipped. ``active`` ⇄ ``suspended`` is the
 # normal operational toggle.
@@ -255,7 +255,7 @@ class SupplierCatalogsService:
                 status_code=400,
                 detail=(f"Illegal vendor status transition '{vendor.status}' → '{new_status}'"),
             )
-        # Snapshot scalars before the bulk update expires the instance — reading
+        # Snapshot scalars before the bulk update expires the instance - reading
         # them afterwards would refresh the expired Vendor and trigger the
         # selectin price_lists load outside the greenlet (MissingGreenlet).
         prev_code = vendor.code
@@ -932,7 +932,7 @@ class SupplierCatalogsService:
         data: GoodsReceiptCreate,
         user_id: str | None = None,
     ) -> GoodsReceipt:
-        """Post a goods receipt — update PO line received_qty + stock balance.
+        """Post a goods receipt - update PO line received_qty + stock balance.
 
         Validates:
             - PO is in (sent / acknowledged / partial) status
@@ -1547,7 +1547,7 @@ class SupplierCatalogsService:
         data: StocktakePayload,
         user_id: str | None = None,
     ) -> list[StockMovement]:
-        """Reconcile counted quantities vs on-hand — record ADJUST movements."""
+        """Reconcile counted quantities vs on-hand - record ADJUST movements."""
         wh = await self.warehouses.get(warehouse_id)
         if wh is None:
             raise HTTPException(status_code=404, detail="Warehouse not found")
@@ -1627,7 +1627,7 @@ class SupplierCatalogsService:
     async def seed_commodity_codes(self) -> dict[str, int]:
         """Bulk-load UNSPSC + CPV codes from the bundled CSV.
 
-        Idempotent — re-runs upsert existing entries. Returns counts per scheme.
+        Idempotent - re-runs upsert existing entries. Returns counts per scheme.
         """
         counts: dict[str, int] = {}
         try:
@@ -1867,13 +1867,13 @@ class SupplierCatalogsService:
         """Compute a weighted multi-criteria scorecard for a vendor.
 
         Score components (each 0..100):
-            * **delivery_score** — on-time delivery from GR.received_at vs
+            * **delivery_score** - on-time delivery from GR.received_at vs
               PO.expected_delivery (100 = always on or early).
-            * **quality_score**  — accepted_qty / received_qty over the
+            * **quality_score**  - accepted_qty / received_qty over the
               period (100 = no rejections).
-            * **price_score**    — vendor's avg unit_price vs cheapest
+            * **price_score**    - vendor's avg unit_price vs cheapest
               vendor for matching items (100 = cheapest).
-            * **esg_score**      — derived from active KYC docs
+            * **esg_score**      - derived from active KYC docs
               (ISO certs + non-expired tax docs count positively).
         """
         vendor = await self.vendors.get(vendor_id)
@@ -1893,7 +1893,7 @@ class SupplierCatalogsService:
                 detail="Sum of weights must be > 0",
             )
 
-        # 1. Delivery score — fraction of GRs that arrived on or before expected
+        # 1. Delivery score - fraction of GRs that arrived on or before expected
         from sqlalchemy import select as _select
 
         po_stmt = _select(PurchaseOrder).where(
@@ -1930,7 +1930,7 @@ class SupplierCatalogsService:
         delivery_score = (Decimal(on_time) * Decimal("100") / Decimal(total_grs)) if total_grs > 0 else Decimal("0")
         quality_score = (accepted_sum * Decimal("100") / received_sum) if received_sum > 0 else Decimal("0")
 
-        # 2. Price score — vendor avg unit_price vs cheapest competing vendor
+        # 2. Price score - vendor avg unit_price vs cheapest competing vendor
         # For each catalog item the vendor prices, compute the ratio
         # cheapest/this; average over the basket. Two grouped aggregate
         # queries (NOT a per-item N+1): one for this vendor's lowest price
@@ -1982,7 +1982,7 @@ class SupplierCatalogsService:
             sample_count += 1
         price_score = (ratio_sum * Decimal("100") / Decimal(sample_count)) if sample_count > 0 else Decimal("0")
 
-        # 3. ESG score — based on KYC documents in good standing
+        # 3. ESG score - based on KYC documents in good standing
         kyc_docs = await self.kyc_docs.list_for_vendor(vendor_id)
         active_docs = [d for d in kyc_docs if d.status == "active"]
         iso_present = any(d.doc_type == "iso" for d in active_docs)

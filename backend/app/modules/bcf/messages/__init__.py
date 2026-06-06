@@ -1,9 +1,9 @@
 """‌⁠‍Self-contained i18n bundle for the BCF module.
 
-OpenEstimate principle #2: i18n EVERYWHERE — zero hardcoded user-facing
+OpenEstimate principle #2: i18n EVERYWHERE - zero hardcoded user-facing
 strings. This mirrors the design of
 :mod:`app.core.validation.messages`: a module-local ``messages/``
-directory makes the BCF module "plugin-like" — it carries its own
+directory makes the BCF module "plugin-like" - it carries its own
 translations without touching the global locales.
 
 Resolution chain: requested locale → ``en`` → humanised key fallback.
@@ -12,7 +12,7 @@ Resolution chain: requested locale → ``en`` → humanised key fallback.
 Public API
     * :func:`translate(key, locale="en", **params) -> str`
     * :func:`available_locales() -> list[str]`
-    * :func:`reload_bundle()` — test helper.
+    * :func:`reload_bundle()` - test helper.
 """
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ class _Bundle:
             if key not in self._warned:
                 self._warned.add(key)
                 logger.warning(
-                    "BCF message key %r missing for locale %r — humanising",
+                    "BCF message key %r missing for locale %r - humanising",
                     key,
                     locale,
                 )

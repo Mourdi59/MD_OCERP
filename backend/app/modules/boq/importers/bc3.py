@@ -1,7 +1,7 @@
 """FIEBDC-3 / BC3 BOQ importer (Spain + Hispanophone LATAM).
 
 FIEBDC (Formato de Intercambio Estándar para Bases de Datos de
-Construcción) version 3 — the de-facto BOQ exchange format used across
+Construcción) version 3 - the de-facto BOQ exchange format used across
 Spain, Mexico, Argentina, Chile, Peru, Colombia and most of LATAM.
 Mandated by AENOR for Spanish public tenders. Specification:
 http://www.fiebdc.es/
@@ -9,18 +9,18 @@ http://www.fiebdc.es/
 Records are pipe-delimited (``|``), one logical record per ``~``-prefixed
 header. The records the importer cares about:
 
-* ``~V`` — Property record (file metadata, exporter version, currency).
-* ``~K`` — Coefficient record (global tax / overhead factors). Captured
+* ``~V`` - Property record (file metadata, exporter version, currency).
+* ``~K`` - Coefficient record (global tax / overhead factors). Captured
   in metadata, not applied to unit rates.
-* ``~C`` — Concept record. The core BOQ position:
+* ``~C`` - Concept record. The core BOQ position:
   ``~C|CODE|UNIT|SUMMARY|PRICE|DATE|TYPE|``
   ``TYPE`` is ``0`` for partidas (work items), ``1`` for capítulos
   (chapter / section), ``3`` for chapter aggregates etc.
-* ``~D`` — Decomposition record. Parent → children with factors. Not
+* ``~D`` - Decomposition record. Parent → children with factors. Not
   used by this importer (we keep top-level partidas only; assembly
   recipes belong to the assemblies module).
-* ``~T`` — Extended text record (long description for a concept).
-* ``~M`` — Measurement record. ``~M|PARENT\\CHILD|...|QTY|COMMENT|``.
+* ``~T`` - Extended text record (long description for a concept).
+* ``~M`` - Measurement record. ``~M|PARENT\\CHILD|...|QTY|COMMENT|``.
 
 Encoding: FIEBDC-3 files in the wild ship in CP1252 (Spain), Latin-1
 (LATAM) and UTF-8 (modern exporters). We probe in that order and accept
@@ -56,9 +56,9 @@ _HDR_MEASUREMENT = "~M"
 _HDR_DATA_CONFIG = "~DC"
 
 # Concept type → semantic role.
-#  0  — partida (work item / position)
-#  1  — capítulo (section / chapter)
-#  3  — agrupador (aggregator — generally treated as a section)
+#  0  - partida (work item / position)
+#  1  - capítulo (section / chapter)
+#  3  - agrupador (aggregator - generally treated as a section)
 _CONCEPT_TYPE_PARTIDA = "0"
 _CONCEPT_TYPE_CAPITULO = "1"
 
@@ -87,7 +87,7 @@ def _split_logical_records(text: str) -> list[str]:
             if current:
                 current.append(line)
             else:
-                # Stray line before any header — ignore.
+                # Stray line before any header - ignore.
                 continue
     if current:
         records.append(" ".join(current))
@@ -177,7 +177,7 @@ class BC3Importer:
         """Detect by ``.bc3`` extension or a ``~V`` header in the first KB.
 
         FIEBDC-3 files always start with the ``~V`` Version/Property
-        record — that's the cheapest content sniff. We sample 2 KB to
+        record - that's the cheapest content sniff. We sample 2 KB to
         survive UTF-8 BOMs / leading whitespace.
         """
         if not head_bytes:
@@ -260,7 +260,7 @@ class BC3Importer:
                 unit = fields[1] if len(fields) > 1 else ""
                 summary = fields[2] if len(fields) > 2 else ""
                 price = fields[3] if len(fields) > 3 else ""
-                # date is fields[4] — we don't use it.
+                # date is fields[4] - we don't use it.
                 concept_type = fields[6] if len(fields) > 6 else ""
                 concepts[code] = {
                     "code": code,
@@ -322,7 +322,7 @@ class BC3Importer:
                             qty = parsed
                             break
                 # Attach to the concept (overrides any previous measurement
-                # — last writer wins, matching FIEBDC reference behaviour).
+                # - last writer wins, matching FIEBDC reference behaviour).
                 if child in concepts:
                     concepts[child]["measured_qty"] = qty
 

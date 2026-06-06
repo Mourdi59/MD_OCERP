@@ -1,4 +1,4 @@
-"""‌⁠‍Contacts service — business logic for contact management.
+"""‌⁠‍Contacts service - business logic for contact management.
 
 Stateless service layer. Handles:
 - Contact CRUD
@@ -48,7 +48,7 @@ def _safe_label(
 ) -> str:
     """Build a log-safe label from the most-public attribute available.
 
-    Falls back to initials-only when no company is set — full personal
+    Falls back to initials-only when no company is set - full personal
     names should never hit the log stream verbatim.
     """
     if company_name:
@@ -66,7 +66,7 @@ async def _safe_audit(
     user_id: str | None = None,
     details: dict | None = None,
 ) -> None:
-    """‌⁠‍Best-effort audit log — never blocks the caller on failure."""
+    """‌⁠‍Best-effort audit log - never blocks the caller on failure."""
     try:
         from app.core.audit import audit_log
 
@@ -172,7 +172,7 @@ class ContactService:
         )
 
         # Audit ``details`` survive into the audit table and may be reviewed
-        # by support staff — keep the same PII-minimising rule that applies
+        # by support staff - keep the same PII-minimising rule that applies
         # to the log line. The full contact remains queryable by ``entity_id``
         # for an authorised operator who actually needs the row.
         await _safe_audit(
@@ -222,7 +222,7 @@ class ContactService:
         ``owner_id`` scopes the result by the caller's ``tenant_id``
         (with a ``created_by`` fallback for rows that existed before
         the v2.3.1 backfill). Pass ``None`` to opt out of the scope
-        filter — only admin callers should do that.
+        filter - only admin callers should do that.
         """
         return await self.repo.list(
             contact_type=contact_type,
@@ -257,7 +257,7 @@ class ContactService:
         """Update contact fields.
 
         Validates email format and checks for duplicate emails on update.
-        ``user_id`` is the authenticated caller — recorded in the audit
+        ``user_id`` is the authenticated caller - recorded in the audit
         row so PATCH events are attributable just like create/delete.
         Earlier revisions of this method dropped the caller id, leaving
         the audit table with ``user_id=NULL`` for every update.

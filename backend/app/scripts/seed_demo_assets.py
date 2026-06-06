@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 ASSETS = Path(__file__).resolve().parent / "flagship_assets"
 SPEC_PATH = ASSETS / "flagship.json"
 
-# Per-project namespace seed — distinct from seed_flagship's namespace so the
+# Per-project namespace seed - distinct from seed_flagship's namespace so the
 # generalized demo assets never collide with the dedicated flagship project.
 _NS = uuid.UUID("d3705eed-0000-4000-8000-000000000000")
 
@@ -88,7 +88,7 @@ BUNDLES: dict[str, dict[str, Any]] = {
 # Maps each known demo_id to a bundle. Residential / housing / condo demos get
 # the IFC architectural bundle; everything else (commercial, towers, hospitals,
 # schools, mixed-use, structures, data centres, offices, …) gets the richer RVT
-# coordinated bundle. ``flagship-house`` is intentionally absent — it owns its
+# coordinated bundle. ``flagship-house`` is intentionally absent - it owns its
 # dedicated seed path (seed_flagship) and must not be double-seeded.
 
 BUNDLE_MAP: dict[str, str] = {

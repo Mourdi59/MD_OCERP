@@ -2,15 +2,15 @@
 """Field Diary ORM models.
 
 Tables (all prefixed ``oe_field_diary_``):
-    oe_field_diary_entry              — header per (project, author, date)
-    oe_field_diary_activity           — append-only work/delay/inspection rows
-    oe_field_diary_attachment         — file metadata (storage key only)
-    oe_field_module_grant             — dedicated per-project module permission
+    oe_field_diary_entry              - header per (project, author, date)
+    oe_field_diary_activity           - append-only work/delay/inspection rows
+    oe_field_diary_attachment         - file metadata (storage key only)
+    oe_field_module_grant             - dedicated per-project module permission
                                         table (BYPASSES standard RBAC).
-    oe_field_diary_magic_link         — PIN-gated magic-link token (sha256 hash)
-    oe_field_diary_session            — long-lived field session (sha256 hash)
+    oe_field_diary_magic_link         - PIN-gated magic-link token (sha256 hash)
+    oe_field_diary_session            - long-lived field session (sha256 hash)
 
-The ``oe_field_module_grant`` table is intentionally generic — the
+The ``oe_field_module_grant`` table is intentionally generic - the
 ``module_key`` column is free-form so future field modules (timesheet,
 photos, deliveries) reuse the same grant table without a schema change.
 The MVP only writes ``module_key = 'field_diary'``.
@@ -67,7 +67,7 @@ class DiaryEntry(Base):
         nullable=False,
         index=True,
     )
-    # Plain ISO ``YYYY-MM-DD`` string — matches the legacy ``daily_diary``
+    # Plain ISO ``YYYY-MM-DD`` string - matches the legacy ``daily_diary``
     # convention and avoids a timezone trap when site clocks roll over at
     # local midnight while the server is on UTC.
     entry_date: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
@@ -83,7 +83,7 @@ class DiaryEntry(Base):
     # Origin marker: ``pwa`` when the entry was captured through the offline
     # field shell, null for office/desktop-entered. Lets reporting distinguish
     # field-captured from office-entered without parsing ``metadata``. Nullable,
-    # no server_default — absent means "not field-captured", not a real value.
+    # no server_default - absent means "not field-captured", not a real value.
     field_source: Mapped[str | None] = mapped_column(String(16), nullable=True)
     # draft / submitted / approved. Free-form on the DB side so future
     # statuses can land without a migration; the FSM in the service layer
@@ -115,7 +115,7 @@ class DiaryEntry(Base):
         server_default="{}",
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — debug only
+    def __repr__(self) -> str:  # pragma: no cover - debug only
         return f"<DiaryEntry {self.entry_date} author={self.author_id} ({self.status})>"
 
 
@@ -137,7 +137,7 @@ class DiaryActivity(Base):
         nullable=False,
         index=True,
     )
-    # work / delay / inspection / visit / incident — service-layer enum.
+    # work / delay / inspection / visit / incident - service-layer enum.
     activity_type: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
@@ -188,7 +188,7 @@ class DiaryAttachment(Base):
         nullable=False,
         index=True,
     )
-    # Filename as supplied by the client — purely informational. The
+    # Filename as supplied by the client - purely informational. The
     # router never trusts this to build a path (path-traversal guard).
     filename: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     mime_type: Mapped[str] = mapped_column(
@@ -218,21 +218,21 @@ class DiaryAttachment(Base):
 class FieldModuleGrant(Base):
     """Dedicated per-project field-module permission.
 
-    Distinct from ``oe_permission`` / ``oe_role`` — a row here grants
+    Distinct from ``oe_permission`` / ``oe_role`` - a row here grants
     access to ``module_key`` on ``project_id`` for ``user_id`` regardless
     of the user's standard RBAC role. Soft-revoke is via ``revoked_at``
     so historical audit data stays available.
 
     Unique constraint on the active row is enforced PARTIALLY (only when
     ``revoked_at IS NULL``). On SQLite this is implemented as a partial
-    index — see the migration for the exact predicate. On PostgreSQL the
+    index - see the migration for the exact predicate. On PostgreSQL the
     same partial index applies.
     """
 
     __tablename__ = "oe_field_module_grant"
     __table_args__ = (
         # Lookup hot path: "does this user have a non-revoked grant for
-        # (project, module)?" — covered by the partial unique index in
+        # (project, module)?" - covered by the partial unique index in
         # the migration. The plain composite below is the SQLAlchemy
         # metadata hint; the *unique* part is added in the migration as
         # a partial index for portability.
@@ -273,7 +273,7 @@ class FieldModuleGrant(Base):
         DateTime(timezone=True),
         nullable=False,
     )
-    # Optional sunset — null = no expiry. Service layer compares against
+    # Optional sunset - null = no expiry. Service layer compares against
     # UTC ``now()``.
     expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
@@ -309,7 +309,7 @@ class FieldMagicLink(Base):
         ),
     )
 
-    # Owning field worker (a regular ``oe_users_user`` row — provisioned
+    # Owning field worker (a regular ``oe_users_user`` row - provisioned
     # by the request-magic-link endpoint if missing).
     user_id: Mapped[uuid.UUID] = mapped_column(
         GUID(),
@@ -443,7 +443,7 @@ class FieldSyncLedger(Base):
 class FieldSession(Base):
     """Long-lived field-worker session.
 
-    Scoped to a single ``(project_id, module_key)`` — once the field
+    Scoped to a single ``(project_id, module_key)`` - once the field
     worker scans a different project's QR code they need a fresh magic
     link. Token stored as SHA-256 hash; plaintext returned to the
     client exactly once on consume.

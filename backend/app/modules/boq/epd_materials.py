@@ -1,12 +1,12 @@
 """‌⁠‍Embedded EPD (Environmental Product Declaration) material database.
 
 Data sourced from:
-- OKOBAUDAT (Germany) — https://www.oekobaudat.de
-- ICE Database v3.0 (UK) — University of Bath
+- OKOBAUDAT (Germany) - https://www.oekobaudat.de
+- ICE Database v3.0 (UK) - University of Bath
 - EU Level(s) framework reference values
 
 GWP values in kg CO2e per declared unit (lifecycle stages A1-A3, cradle to gate).
-All values are representative averages — actual EPDs vary by manufacturer.
+All values are representative averages - actual EPDs vary by manufacturer.
 """
 
 from __future__ import annotations
@@ -767,7 +767,7 @@ EU_CPR_BENCHMARKS: dict[str, float] = {
 # When multiple keywords match, the first match wins (most specific first).
 
 KEYWORD_TO_EPD: list[tuple[list[str], str]] = [
-    # Concrete — specific grades first
+    # Concrete - specific grades first
     (["c50/60", "c50", "c 50/60"], "c50-60"),
     (["c40/50", "c40", "c 40/50"], "c40-50"),
     (["c35/45", "c35", "c 35/45"], "c35-45"),

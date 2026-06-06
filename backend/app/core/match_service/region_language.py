@@ -4,10 +4,10 @@
 
 Two callsites historically maintained their own copy of this mapping:
 
-    * ``app.modules.costs.vector_adapter._REGION_LANGUAGE`` — used to
+    * ``app.modules.costs.vector_adapter._REGION_LANGUAGE`` - used to
       stamp every CWICR row with its dominant language during the
       LanceDB upsert and to filter results by language at query time.
-    * ``app.core.match_service.ranker._CATALOG_LANGUAGE`` — used by the
+    * ``app.core.match_service.ranker._CATALOG_LANGUAGE`` - used by the
       translation cascade to rewrite the user's BIM-element name into
       the catalogue's native language before the vector search.
 
@@ -19,10 +19,10 @@ the next addition can never silently regress.
 
 Public API:
 
-    * ``REGION_LANGUAGE`` — canonical dict of catalogue id → ISO-639-1.
+    * ``REGION_LANGUAGE`` - canonical dict of catalogue id → ISO-639-1.
       Use this for membership tests when a callsite needs to enumerate
       known regions (rare).
-    * ``language_for(code)`` — resolve any region or catalogue id to a
+    * ``language_for(code)`` - resolve any region or catalogue id to a
       language tag. Handles historical aliases and falls back to
       ``"en"`` so search ranking still works on rows whose language
       we couldn't infer.
@@ -58,7 +58,7 @@ def _default_fallback_language() -> str:
 #   - the ``project.cost_database_id`` catalogue picker
 #
 # Add new regions HERE. If a tenant has loaded a catalogue under a
-# non-canonical id, register the alias in ``_ALIASES`` below — do not
+# non-canonical id, register the alias in ``_ALIASES`` below - do not
 # duplicate the entry here. Otherwise the next maintainer can't tell
 # which id is canonical.
 REGION_LANGUAGE: dict[str, str] = {
@@ -96,7 +96,7 @@ REGION_LANGUAGE: dict[str, str] = {
     "ZW_HARARE": "en",
     "MW_LILONGWE": "en",
     "IN_MUMBAI": "en",
-    # Africa — Francophone / Arabic / Lusophone
+    # Africa - Francophone / Arabic / Lusophone
     "MA_CASABLANCA": "ar",
     "DZ_ALGIERS": "ar",
     "TN_TUNIS": "ar",
@@ -164,7 +164,7 @@ _ALIASES: dict[str, str] = {
 }
 
 
-# YAML overlay — operators can extend region/alias mappings in
+# YAML overlay - operators can extend region/alias mappings in
 # ``data/match/region_language.yaml`` without a code change. Loaded
 # defensively: any failure (missing pyyaml, missing file, malformed
 # content) logs a warning and leaves the hardcoded dicts untouched.
@@ -183,27 +183,27 @@ def _load_region_language_yaml_overlay() -> None:
           XX: lang
 
     YAML wins on conflicts so a tenant override sticks. Safe to call
-    multiple times — re-invocations re-merge from disk.
+    multiple times - re-invocations re-merge from disk.
     """
     yaml_path = Path(__file__).resolve().parents[4] / "data" / "match" / "region_language.yaml"
     if not yaml_path.is_file():
-        logger.debug("region_language YAML overlay not found at %s — using hardcoded only", yaml_path)
+        logger.debug("region_language YAML overlay not found at %s - using hardcoded only", yaml_path)
         return
 
     try:
         import yaml  # noqa: PLC0415
     except ImportError:
-        logger.warning("region_language: pyyaml not installed — skipping YAML overlay")
+        logger.warning("region_language: pyyaml not installed - skipping YAML overlay")
         return
 
     try:
         raw = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
     except (OSError, yaml.YAMLError) as exc:
-        logger.warning("region_language: YAML overlay read failed (%s) — using hardcoded only", exc)
+        logger.warning("region_language: YAML overlay read failed (%s) - using hardcoded only", exc)
         return
 
     if not isinstance(raw, dict):
-        logger.warning("region_language: YAML overlay is not a mapping — skipping")
+        logger.warning("region_language: YAML overlay is not a mapping - skipping")
         return
 
     regions = raw.get("regions") or {}
@@ -228,7 +228,7 @@ def _load_region_language_yaml_overlay() -> None:
         logger.info("region_language: YAML overlay merged %d entries from %s", merged, yaml_path)
 
 
-# NOTE: _BARE_COUNTRY_OVERRIDES is defined below — we call the loader
+# NOTE: _BARE_COUNTRY_OVERRIDES is defined below - we call the loader
 # AFTER it's declared (at the very bottom of the static-config block)
 # so the YAML can extend all three dicts in one pass.
 
@@ -236,23 +236,23 @@ def _load_region_language_yaml_overlay() -> None:
 # REGION_LANGUAGE at module load. ``"DE"`` resolves via the first
 # ``DE_*`` key (deterministic dict iteration since Python 3.7), so
 # ``language_for("DE")`` returns ``"de"`` without the caller having to
-# know which city is canonical. Built once at import — the underlying
+# know which city is canonical. Built once at import - the underlying
 # REGION_LANGUAGE never mutates at runtime.
 #
 # Country codes whose ISO-3166 letters happen to clash with ISO-639
-# language codes — explicit overrides so the country interpretation
+# language codes - explicit overrides so the country interpretation
 # wins. ``AR`` is Argentina (es) not Arabic; ``ID`` is Indonesia (id);
 # ``HR`` is Croatia (hr); etc. Most of these resolve identically via
 # the head fallback because the matching ``COUNTRY_CITY`` row already
 # carries the right language, but pinning them explicitly makes the
 # intent unambiguous to the next maintainer who reads ``language_for``.
 _BARE_COUNTRY_OVERRIDES: dict[str, str] = {
-    "AR": "es",  # Argentina (Buenos Aires) — not Arabic
+    "AR": "es",  # Argentina (Buenos Aires) - not Arabic
     "BG": "bg",  # Bulgaria
     "BR": "pt",  # Brazil
     "CN": "zh",  # China
-    "CZ": "cs",  # Czech Republic — language is cs, not cz
-    "GB": "en",  # United Kingdom — historical British alias
+    "CZ": "cs",  # Czech Republic - language is cs, not cz
+    "GB": "en",  # United Kingdom - historical British alias
     "HR": "hr",  # Croatia
     "ID": "id",  # Indonesia
     "JP": "ja",  # Japan
@@ -297,7 +297,7 @@ def language_for(code: str | None) -> str:
            auto-built :data:`_HEAD_LANGUAGE` map (``"DE"`` → ``"de"``,
            ``"DE_BREMEN"`` → ``"de"`` even though the row isn't in the
            canonical table yet).
-        5. ``"en"`` fallback — search ranking still works without a
+        5. ``"en"`` fallback - search ranking still works without a
            translation pass; we just lose the cross-lingual signal.
 
     The lookup is case-insensitive on the input but case-sensitive on
@@ -318,7 +318,7 @@ def language_for(code: str | None) -> str:
         return _BARE_COUNTRY_OVERRIDES[key]
     head = key.split("_", 1)[0]
     if head != key:
-        # ``DE_BREMEN`` — try resolving the head only.
+        # ``DE_BREMEN`` - try resolving the head only.
         if head in REGION_LANGUAGE:
             return REGION_LANGUAGE[head]
         if head in _BARE_COUNTRY_OVERRIDES:

@@ -1,9 +1,9 @@
 """‌⁠‍Unified semantic search HTTP router.
 
 Routes:
-    GET  /api/v1/search/         — cross-collection semantic search
-    GET  /api/v1/search/status/  — vector store + per-collection health
-    GET  /api/v1/search/types/   — list of supported collection short names
+    GET  /api/v1/search/         - cross-collection semantic search
+    GET  /api/v1/search/status/  - vector store + per-collection health
+    GET  /api/v1/search/types/   - list of supported collection short names
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ async def unified_search_endpoint(
     types: list[str] | None = Query(
         default=None,
         description=(
-            "Optional list of collection short names — accepts both 'boq' / "
+            "Optional list of collection short names - accepts both 'boq' / "
             "'documents' / 'tasks' / 'risks' / 'bim' / 'validation' / 'chat' "
             "and the canonical 'oe_*' forms.  When omitted, fans out to "
             "every registered collection."
@@ -49,7 +49,7 @@ async def unified_search_endpoint(
     The query text is embedded once via the active multilingual model and
     the resulting vector is searched against every selected collection in
     parallel.  Results are then fused into a single global ranking using
-    Reciprocal Rank Fusion (RRF) — score-agnostic, parameter-free, robust
+    Reciprocal Rank Fusion (RRF) - score-agnostic, parameter-free, robust
     to per-collection score scale differences.
 
     Project-scoped queries pass ``project_id`` to drop hits from other

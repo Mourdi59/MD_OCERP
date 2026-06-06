@@ -1,6 +1,6 @@
 """‌⁠‍Supplier Catalogs data access layer.
 
-Thin SQLAlchemy wrappers — no business logic.
+Thin SQLAlchemy wrappers - no business logic.
 """
 
 from __future__ import annotations
@@ -251,7 +251,7 @@ class POExtRepository:
     async def get(self, po_id: uuid.UUID) -> PurchaseOrder | None:
         # ``populate_existing`` forces the identity-map entry (if any) to be
         # refreshed from the row, and the selectinload sub-queries always
-        # re-run — needed so callers see freshly-inserted GR rows that were
+        # re-run - needed so callers see freshly-inserted GR rows that were
         # added in the same session after a previous ``get`` cached an empty
         # ``receipts`` collection.
         stmt = (

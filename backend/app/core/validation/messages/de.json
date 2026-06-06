@@ -19,15 +19,15 @@
     },
     "unit_rate_in_range": {
       "fail": "Position {ordinal}: Preis {rate} ist >{threshold} (5-facher Median)",
-      "suggestion": "Diesen Einheitspreis prüfen — er ist ungewöhnlich hoch"
+      "suggestion": "Diesen Einheitspreis prüfen - er ist ungewöhnlich hoch"
     },
     "negative_values": {
       "fail": "Position {ordinal} enthält negative Werte: {details}",
-      "suggestion": "Negative Werte korrigieren — positive Zahlen verwenden"
+      "suggestion": "Negative Werte korrigieren - positive Zahlen verwenden"
     },
     "unrealistic_rate": {
       "fail": "Position {ordinal}: {details}",
-      "suggestion": "Diesen Wert prüfen — er wirkt unrealistisch hoch"
+      "suggestion": "Diesen Wert prüfen - er wirkt unrealistisch hoch"
     },
     "total_mismatch": {
       "fail": "Position {ordinal}: berechnet {computed} != gespeichert {stored} (Differenz={diff})",
@@ -42,23 +42,23 @@
       "suggestion": "Positionen unter diesem Abschnitt ergänzen oder den leeren Abschnitt entfernen"
     },
     "rate_vs_benchmark": {
-      "fail": "Position {ordinal}: Einheitspreis {rate}/{unit} überschreitet Benchmark-Schwellenwert {threshold}/{unit} — möglicherweise unrealistisch",
-      "suggestion": "Preis prüfen — übliche Preise für {unit} liegen unter {threshold}. Einheit bzw. Dezimalstellen kontrollieren."
+      "fail": "Position {ordinal}: Einheitspreis {rate}/{unit} überschreitet Benchmark-Schwellenwert {threshold}/{unit} - möglicherweise unrealistisch",
+      "suggestion": "Preis prüfen - übliche Preise für {unit} liegen unter {threshold}. Einheit bzw. Dezimalstellen kontrollieren."
     },
     "lump_sum_ratio": {
-      "fail": "{lsum_count} von {total_count} Positionen ({percent}) sind Pauschalen — überschreitet {threshold}-Schwelle",
+      "fail": "{lsum_count} von {total_count} Positionen ({percent}) sind Pauschalen - überschreitet {threshold}-Schwelle",
       "suggestion": "Pauschalen in messbare Mengen aufteilen (m, m2, m3, kg, Stk) für genauere Kalkulation"
     },
     "cost_concentration": {
-      "fail": "Position {ordinal} entspricht {share} der Gesamtkosten ({value} von {grand_total}) — überschreitet {threshold}-Schwelle",
-      "suggestion": "Position in kleinere Elemente aufteilen oder Kosten prüfen — eine einzelne Position sollte den Voranschlag nicht dominieren"
+      "fail": "Position {ordinal} entspricht {share} der Gesamtkosten ({value} von {grand_total}) - überschreitet {threshold}-Schwelle",
+      "suggestion": "Position in kleinere Elemente aufteilen oder Kosten prüfen - eine einzelne Position sollte den Voranschlag nicht dominieren"
     },
     "currency_consistency": {
       "fail": "Unterschiedliche Währungen gefunden: {currencies}",
       "suggestion": "Durchgängig eine einheitliche Währung verwenden"
     },
     "measurement_consistency": {
-      "fail": "LV vermischt metrische und imperiale Einheiten — einheitliches System verwenden",
+      "fail": "LV vermischt metrische und imperiale Einheiten - einheitliches System verwenden",
       "suggestion": "Alle Mengen entweder in metrische oder imperiale Einheiten umrechnen"
     }
   },
@@ -75,7 +75,7 @@
       "suggestion": "Position in die korrekte Eltern-KG verschieben oder KG-Code an die Hierarchie anpassen ({prefix}xx)"
     },
     "completeness": {
-      "fail": "KG-Gruppe {group} — {group_name} fehlt im LV",
+      "fail": "KG-Gruppe {group} - {group_name} fehlt im LV",
       "suggestion": "Positionen für KG {group} ({group_name}) ergänzen, um vollständige Abdeckung zu gewährleisten"
     }
   },
@@ -85,7 +85,7 @@
       "suggestion": "Format wie 01.02.0030 verwenden"
     },
     "lv_structure": {
-      "fail": "Position {ordinal}: Endposition ohne übergeordneten Abschnitt — GAEB-LV-Hierarchie erfordert eine Leistungsgruppe als Elternteil",
+      "fail": "Position {ordinal}: Endposition ohne übergeordneten Abschnitt - GAEB-LV-Hierarchie erfordert eine Leistungsgruppe als Elternteil",
       "suggestion": "Position einem übergeordneten Abschnitt zuweisen (Leistungsgruppe / Titel)"
     },
     "einheitspreis_sanity": {
@@ -94,10 +94,10 @@
     },
     "trade_section_code": {
       "fail": "Übergeordneter Abschnitt '{ordinal}' hat keinen GAEB-Leistungsbereich-Code (erwarteter 3-stelliger Gewerkecode, z.B. '012')",
-      "suggestion": "Dem Abschnitt einen 3-stelligen Leistungsbereich-Code hinzufügen — z.B. '012' für Erdarbeiten, '013' für Mauerarbeiten"
+      "suggestion": "Dem Abschnitt einen 3-stelligen Leistungsbereich-Code hinzufügen - z.B. '012' für Erdarbeiten, '013' für Mauerarbeiten"
     },
     "quantity_decimals": {
-      "fail": "Position {ordinal}: Menge {quantity} hat {decimals} Nachkommastellen — GAEB X83 erlaubt maximal 3",
+      "fail": "Position {ordinal}: Menge {quantity} hat {decimals} Nachkommastellen - GAEB X83 erlaubt maximal 3",
       "suggestion": "Menge auf maximal 3 Nachkommastellen runden gemäß GAEB X83"
     }
   },
@@ -110,7 +110,7 @@
       "fail": "Ungültiger NRM-Code '{code}' in Position {ordinal}"
     },
     "completeness": {
-      "fail": "NRM-Gruppe {group} — {group_name} fehlt im LV",
+      "fail": "NRM-Gruppe {group} - {group_name} fehlt im LV",
       "suggestion": "Positionen für NRM-Gruppe {group} ({group_name}) ergänzen"
     }
   },
@@ -124,7 +124,7 @@
       "suggestion": "6-stelliges MasterFormat-Format verwenden: XX XX XX (z.B. 03 30 00)"
     },
     "completeness": {
-      "fail": "Division {division} — {division_name} fehlt im LV",
+      "fail": "Division {division} - {division_name} fehlt im LV",
       "suggestion": "Positionen für Division {division} ({division_name}) ergänzen"
     }
   },
@@ -163,7 +163,7 @@
       "suggestion": "Ein Lot technique zuweisen (z.B. Lot 01 Gros Œuvre)"
     },
     "pricing_complete": {
-      "fail": "Nur {priced}/{total} Positionen ({percent}) sind bepreist — unter 80%-Schwelle",
+      "fail": "Nur {priced}/{total} Positionen ({percent}) sind bepreist - unter 80%-Schwelle",
       "suggestion": "Bepreisung aller Positionen vor der DPGF-Einreichung abschließen"
     }
   },
@@ -183,7 +183,7 @@
       "suggestion": "9-stelligen GB/T 50500-Code zuweisen (z.B. 010101001)"
     },
     "valid_code": {
-      "fail": "Ungültiger GB/T 50500-Code '{code}' — erwartet 9 oder 12 Stellen"
+      "fail": "Ungültiger GB/T 50500-Code '{code}' - erwartet 9 oder 12 Stellen"
     }
   },
   "cpwd": {
@@ -243,7 +243,7 @@
     },
     "escrow_balance_reconciled": {
       "fail": "Treuhandkonto {account}: Buchsaldo {ledger} weicht um {drift} von der Transaktionssumme ({transactions} Buchungen) ab",
-      "suggestion": "Treuhandkonto abstimmen — unverbuchte Eingänge oder fehlende Lastschriften prüfen"
+      "suggestion": "Treuhandkonto abstimmen - unverbuchte Eingänge oder fehlende Lastschriften prüfen"
     },
     "sales_contract_party_ownership_sums_to_100": {
       "fail": "Vertrag {contract}: Eigentumsanteile summieren sich auf {total}% (Soll: exakt 100%)",

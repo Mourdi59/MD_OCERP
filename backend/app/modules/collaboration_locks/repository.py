@@ -54,16 +54,16 @@ class CollabLockRepository:
 
         Returns a two-tuple ``(acquired, conflict)``:
 
-        * ``(row, None)`` — the caller now owns the lock.  ``row`` is
+        * ``(row, None)`` - the caller now owns the lock.  ``row`` is
           either a freshly-inserted record or the caller's existing
           lock refreshed with a new expiry (idempotent re-acquire).
-        * ``(None, row)`` — someone else holds a still-live lock.  The
+        * ``(None, row)`` - someone else holds a still-live lock.  The
           caller should 409.
-        * ``(None, None)`` — a race condition we could not resolve.
+        * ``(None, None)`` - a race condition we could not resolve.
           The caller should retry or 503.
 
         The function opportunistically deletes an expired row held by
-        any user before attempting the insert — this keeps the
+        any user before attempting the insert - this keeps the
         lock-free path fast without needing the sweeper to have run.
         """
         expires_at = now + timedelta(seconds=ttl_seconds)
@@ -77,7 +77,7 @@ class CollabLockRepository:
             is_mine = existing.user_id == user_id
 
             if is_mine and not is_expired:
-                # Idempotent re-acquire — refresh TTL, return the row.
+                # Idempotent re-acquire - refresh TTL, return the row.
                 existing.locked_at = now
                 existing.heartbeat_at = now
                 existing.expires_at = expires_at
@@ -85,7 +85,7 @@ class CollabLockRepository:
                 return existing, None
 
             if is_mine and is_expired:
-                # My own stale lock — reset it in place.
+                # My own stale lock - reset it in place.
                 existing.locked_at = now
                 existing.heartbeat_at = now
                 existing.expires_at = expires_at
@@ -101,7 +101,7 @@ class CollabLockRepository:
             # Expired lock held by another user.  Delete it first, then
             # fall through to the INSERT path.  This avoids a TOCTOU race
             # where two sessions could both read the expired row and try
-            # to update it — only one INSERT will succeed thanks to the
+            # to update it - only one INSERT will succeed thanks to the
             # unique constraint.
             await self.session.delete(existing)
             try:
@@ -110,7 +110,7 @@ class CollabLockRepository:
                 await self.session.rollback()
                 return None, None
 
-        # 2. No row exists (or we just deleted the expired one) — try a
+        # 2. No row exists (or we just deleted the expired one) - try a
         # straight insert.  If two requests race here, one of them hits
         # the unique constraint; we reload the winner and return it as
         # the conflict.
@@ -136,7 +136,7 @@ class CollabLockRepository:
             if winner.user_id == user_id and winner_exp > now:
                 return winner, None
             if winner_exp <= now:
-                # Winner is already stale — let the caller retry.
+                # Winner is already stale - let the caller retry.
                 return None, None
             return None, winner
 
@@ -235,7 +235,7 @@ class CollabLockRepository:
         """Bulk-delete every lock whose ``expires_at`` has passed.
 
         Used by the sweeper background task.  Returns the number of
-        rows actually removed (best-effort — some dialects do not
+        rows actually removed (best-effort - some dialects do not
         report rowcount, in which case we return ``0``).
         """
         stmt = delete(CollabLock).where(CollabLock.expires_at <= now)

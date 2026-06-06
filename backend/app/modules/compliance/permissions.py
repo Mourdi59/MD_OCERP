@@ -3,7 +3,7 @@
 """‌⁠‍Compliance DSL module permission definitions.
 
 A user-authored DSL rule is registered into the global validation engine
-and runs against project data — authoring or deleting one is a privileged
+and runs against project data - authoring or deleting one is a privileged
 action, not something a read-only VIEWER should be able to do. These
 permissions gate the write/delete verbs on the rule-builder router. The
 read-only natural-language helper endpoints (``from-nl``, ``nl-patterns``,

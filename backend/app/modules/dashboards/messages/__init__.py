@@ -1,7 +1,7 @@
 """‌⁠‍Locale-scoped message bundle for the dashboards module.
 
 Mirrors :mod:`app.core.validation.messages` and delegates to the same
-:class:`~app.core.validation.messages.MessageBundle` implementation —
+:class:`~app.core.validation.messages.MessageBundle` implementation -
 the class is generic, only its path is module-specific.
 
 Usage:
@@ -25,14 +25,14 @@ def translate(key: str, locale: str = DEFAULT_LOCALE, **params: object) -> str:
 
     Follows the standard fallback chain: requested locale → ``en`` →
     raw key (with a deduped WARNING log). See
-    :func:`app.core.validation.messages.translate` for the semantics —
+    :func:`app.core.validation.messages.translate` for the semantics -
     this is a thin wrapper that binds the dashboards bundle.
     """
     return _bundle.translate(key, locale=locale, **params)
 
 
 def is_key_present(key: str, locale: str = DEFAULT_LOCALE) -> bool:
-    """‌⁠‍Diagnostic — used by tests to assert locale-coverage parity."""
+    """‌⁠‍Diagnostic - used by tests to assert locale-coverage parity."""
     return _bundle.is_key_present(key, locale=locale)
 
 

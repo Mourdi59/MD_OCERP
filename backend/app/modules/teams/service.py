@@ -1,4 +1,4 @@
-"""‌⁠‍Teams service — business logic for team management.
+"""‌⁠‍Teams service - business logic for team management.
 
 Stateless service layer. Handles:
 - Team CRUD within projects
@@ -10,7 +10,7 @@ Authorisation model
 Team membership is the seed of permission inheritance: a user added to a
 team inherits whatever effective permissions that team grants on the
 parent project. That makes ``add_member`` (and to a lesser degree
-``create_team`` / ``update_team`` / ``remove_member``) RBAC-sensitive —
+``create_team`` / ``update_team`` / ``remove_member``) RBAC-sensitive -
 we MUST gate them on project ownership / admin status so a low-privilege
 user cannot self-elevate by joining a high-permission team.
 
@@ -61,7 +61,7 @@ class TeamService:
         already implements the admin-bypass + owner-only rule used across
         every other module. Centralising the call here means service-layer
         callers (cron jobs, tests, future internal modules) get the same
-        guard as the HTTP router — defence in depth against routes that
+        guard as the HTTP router - defence in depth against routes that
         forget to gate.
 
         ``actor_id is None`` is treated as a SYSTEM call and skipped (only
@@ -85,7 +85,7 @@ class TeamService:
         Used to gate ELEVATED team roles. Returns False for ordinary
         project members (anyone whose access passes
         :func:`verify_project_access` only because they're already in a
-        team) — we deliberately don't propagate elevation through
+        team) - we deliberately don't propagate elevation through
         team-membership to avoid infinite-bootstrap of `owner`.
         """
         from app.modules.projects.repository import ProjectRepository
@@ -268,7 +268,7 @@ class TeamService:
         """Add a user to a team.
 
         RBAC: caller must have project-admin access (owner / system admin).
-        Elevated roles (``owner``, ``project_manager``) are doubly gated —
+        Elevated roles (``owner``, ``project_manager``) are doubly gated -
         even a project owner cannot promote another user into them without
         a separate ownership-transfer flow (see TODO in the matrix UI). This
         closes the self-elevation hole where a low-privilege authenticated
@@ -352,7 +352,7 @@ class TeamService:
             },
         )
         # Publish so any per-user permission cache can drop ``user_id``'s
-        # entry — they no longer inherit this team's grants.
+        # entry - they no longer inherit this team's grants.
         await self._publish_event(
             "teams.membership.removed",
             {
@@ -435,7 +435,7 @@ class TeamService:
                 action=action,
                 metadata=metadata,
             )
-        except Exception:  # pragma: no cover — best-effort audit
+        except Exception:  # pragma: no cover - best-effort audit
             logger.exception("audit write failed for team=%s action=%s", team_id, action)
 
     async def _publish_event(self, name: str, payload: dict[str, object]) -> None:
@@ -450,5 +450,5 @@ class TeamService:
                 publish_detached(name, payload, source_module="oe_teams")
             else:
                 await event_bus.publish(name, payload, source_module="oe_teams")
-        except Exception:  # pragma: no cover — best-effort fanout
+        except Exception:  # pragma: no cover - best-effort fanout
             logger.exception("event publish failed: %s", name)

@@ -1,4 +1,4 @@
-"""Property-dev pricing engine — rule-driven, versioned, Decimal-exact.
+"""Property-dev pricing engine - rule-driven, versioned, Decimal-exact.
 
 Computes a final sale price for a plot by:
 
@@ -13,7 +13,7 @@ Computes a final sale price for a plot by:
     5. Returning a :class:`PriceQuote` (lines + total + currency +
        price_list_id + computed_at).
 
-Decimal arithmetic throughout — never float (a single 0.1 round-trip can
+Decimal arithmetic throughout - never float (a single 0.1 round-trip can
 shift the final price by cents). Quantize to 2dp on emit to keep the
 wire format predictable.
 
@@ -33,7 +33,7 @@ The matcher reads plot attributes from ``Plot`` columns first (``view_type``,
 ``level_in_block``, ``area_m2``) and falls back to ``Plot.metadata_`` for
 custom flags (``is_corner``, custom view tags). Buyer tags come from
 ``Buyer.metadata_["tags"]`` (list of strings). Prior-purchases lookup
-counts the buyer's existing reservations against this engine — caller
+counts the buyer's existing reservations against this engine - caller
 supplies the count to keep the engine stateless and testable.
 """
 
@@ -172,7 +172,7 @@ def _buyer_tags(buyer: Any) -> set[str]:
 
 # ── Rule matchers ───────────────────────────────────────────────────────
 #
-# Each matcher returns True/False. Matchers are PURE — they never read
+# Each matcher returns True/False. Matchers are PURE - they never read
 # the database; everything they need is passed in. This keeps the engine
 # trivially unit-testable.
 
@@ -349,7 +349,7 @@ def compute_quote_pure(
     prior_purchases: int = 0,
     computed_at: datetime | None = None,
 ) -> PriceQuote:
-    """Pure pricing computation — no I/O, fully testable.
+    """Pure pricing computation - no I/O, fully testable.
 
     Caller resolves ``base_price`` (from PriceListEntry or fallback) and
     passes the list of candidate ``rules`` (already filtered by

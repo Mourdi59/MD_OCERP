@@ -89,7 +89,7 @@ def _detect_image_mime(content: bytes) -> str | None:
     """Return the canonical image MIME from magic bytes, or ``None``.
 
     Recognises JPEG, PNG and WebP (RIFF container). Anything else is
-    rejected upstream as an unsupported upload — better a clean 400 than
+    rejected upstream as an unsupported upload - better a clean 400 than
     handing a non-image to the vision provider.
     """
     for prefix, mime in _IMAGE_MAGIC_PREFIXES:
@@ -161,7 +161,7 @@ async def create_session_from_excel(
     project_id: uuid.UUID = Form(...),
     file: UploadFile = File(..., description="Bill of Quantities .xlsx file"),
     name: str | None = Form(None),
-    # Accepts a CWICR v3 region id ("DE_BERLIN", ...) or a legacy UUID —
+    # Accepts a CWICR v3 region id ("DE_BERLIN", ...) or a legacy UUID -
     # the service layer routes each kind to its own storage slot. Was
     # ``uuid.UUID | None`` before, which 422'd every wizard submission.
     catalogue_id: str | None = Form(None),
@@ -169,12 +169,12 @@ async def create_session_from_excel(
 ) -> schemas.SessionRead:
     """‌⁠‍Upload an xlsx BoQ and create a match session in one round-trip.
 
-    Implements MAPPING_PROCESS.md §4.1.5 — the Excel BoQ source. Column
+    Implements MAPPING_PROCESS.md §4.1.5 - the Excel BoQ source. Column
     detection is multi-language (English/German/Russian/Spanish/Chinese
     /Japanese/Korean/Turkish/Polish/etc.); see
     :mod:`match_elements.excel_import` for the full alias table.
     Caller-side parsing is still supported via the regular
-    ``POST /sessions`` endpoint with ``boq_rows`` populated — this route
+    ``POST /sessions`` endpoint with ``boq_rows`` populated - this route
     is the convenience path for end users.
     """
     await verify_project_access(project_id, current_user_id, session)
@@ -475,10 +475,10 @@ async def get_match_progress(
 ) -> dict[str, object]:
     """Lightweight progress poll for an in-flight or finished match run.
 
-    Read-only — fetches from the process-local in-memory dict the
+    Read-only - fetches from the process-local in-memory dict the
     match runner writes to. The wizard's MatchProgressCard polls this
     every ~800ms while the match is running and stops as soon as
-    ``status`` flips to ``done`` or ``error``. Always 200 — an idle
+    ``status`` flips to ``done`` or ``error``. Always 200 - an idle
     session returns a neutral payload so the FE never has to
     special-case 404 vs "no run yet".
     """
@@ -499,11 +499,11 @@ async def debug_set_progress(
     MatchProgressCard at each of the 5 stages even when the real
     match completes in <2s on the local backend's tiny text fixture.
     Hidden from the OpenAPI schema (``include_in_schema=False``)
-    because it's not part of the public contract — the only legit
+    because it's not part of the public contract - the only legit
     caller is the QA probe.
 
     Safety: the same project-access check the real progress endpoint
-    runs gates this one — a stranger can't poison someone else's
+    runs gates this one - a stranger can't poison someone else's
     session.
     """
     await _assert_session_access(session, session_id, current_user_id)
@@ -933,7 +933,7 @@ async def suggest_symbols(
     )
 
 
-# ── Visible pipeline (v3034 — 7-stage match wizard) ──────────────────────
+# ── Visible pipeline (v3034 - 7-stage match wizard) ──────────────────────
 
 
 @router.get(
@@ -1072,7 +1072,7 @@ async def create_prompt_template(
     session: SessionDep,
     current_user_id: CurrentUserId,
 ) -> schemas.PromptTemplateRead:
-    """Create a user-owned prompt — typically a fork of a system prompt.
+    """Create a user-owned prompt - typically a fork of a system prompt.
 
     The ``key`` is validated against the known stage hooks so a typo
     can't orphan a prompt that no stage will ever resolve.
@@ -1128,14 +1128,14 @@ async def update_prompt_template(
     session: SessionDep,
     current_user_id: CurrentUserId,
 ) -> schemas.PromptTemplateRead:
-    """Edit a user-owned prompt. System prompts are immutable — fork first."""
+    """Edit a user-owned prompt. System prompts are immutable - fork first."""
     row = await session.get(MatchPromptTemplate, template_id)
     if row is None:
         raise HTTPException(status_code=404, detail=translate("errors.prompt_not_found", locale=get_locale()))
     if row.is_system:
         raise HTTPException(
             status_code=403,
-            detail="System prompts are read-only — fork it first",
+            detail="System prompts are read-only - fork it first",
         )
     try:
         uid = uuid.UUID(current_user_id)
@@ -1195,7 +1195,7 @@ async def get_match_analytics(
     ``cwicr_DE``) further narrows the window when diagnosing one
     catalogue's recall.
 
-    Always 200 — empty windows return zero-counters with no alerts so
+    Always 200 - empty windows return zero-counters with no alerts so
     the dashboard renders cleanly on a fresh deploy.
     """
     if project_id is not None:
@@ -1266,7 +1266,7 @@ async def qdrant_install(_current_user_id: CurrentUserId) -> dict[str, object]:
     Mirrors the converter-install pattern used by /takeoff and /bim:
     one-click, no Docker. The download is signed by Qdrant and stored
     under ``~/.openestimator/qdrant``. After install we re-probe so the
-    response reflects the live binding state — front-end can branch on
+    response reflects the live binding state - front-end can branch on
     ``reachable`` to flip the card immediately.
 
     After a successful install we also drop the cached vector-client

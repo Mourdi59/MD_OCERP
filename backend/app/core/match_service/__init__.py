@@ -1,17 +1,17 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Match service — element-to-CWICR vector matcher.
+"""‌⁠‍Match service - element-to-CWICR vector matcher.
 
 Public API:
 
-    * :func:`match_element` — eval-harness entrypoint:
+    * :func:`match_element` - eval-harness entrypoint:
         ``async (element_info: dict, top_k: int) -> list[dict]``.
         Wraps ``build_envelope`` + ``rank``. Each returned dict
         carries at minimum ``code`` and ``unit_rate`` (the eval
         contract).
-    * :func:`match_envelope` — when the caller already built an
+    * :func:`match_envelope` - when the caller already built an
         :class:`ElementEnvelope` (typically the router).
-    * :func:`record_feedback` — persist user confirmation/rejection
+    * :func:`record_feedback` - persist user confirmation/rejection
         for offline boost-weight tuning.
 
 Source extractors live under ``extractors/`` and self-register via
@@ -89,7 +89,7 @@ async def match_envelope(
             cascade + reranker).
 
     Returns:
-        :class:`MatchResponse` (always — never raises for normal input).
+        :class:`MatchResponse` (always - never raises for normal input).
     """
     project_uuid = project_id if isinstance(project_id, uuid.UUID) else uuid.UUID(str(project_id))
     request = MatchRequest(
@@ -102,7 +102,7 @@ async def match_envelope(
     # OE_MATCH_DETERMINISTIC=1 pins RNGs + forces BGE batch_size=1 so
     # the bench harness can compare runs without run-to-run variance
     # drowning out the signal. No-op in production (default off). The
-    # call is idempotent so cost is amortised across the process — only
+    # call is idempotent so cost is amortised across the process - only
     # the first match request pays the seed/patch overhead.
     enter_deterministic_mode()
 
@@ -135,7 +135,7 @@ async def match_element(
     """‌⁠‍Eval-harness contract: ``async (element_info, top_k) -> list[dict]``.
 
     The harness signature passes only positional ``element_info`` and
-    ``top_k`` — every other argument is keyword-only with a sensible
+    ``top_k`` - every other argument is keyword-only with a sensible
     default so the call surface stays simple for that runner.
 
     Source resolution:
@@ -148,7 +148,7 @@ async def match_element(
         * Explicit ``project_id`` keyword if provided.
         * ``element_info["project_id"]`` otherwise.
         * Falls back to a sentinel UUID so the matcher can still build
-          settings — this keeps the eval harness independent of a real
+          settings - this keeps the eval harness independent of a real
           DB row.
 
     Returns:
@@ -179,7 +179,7 @@ async def match_element(
 
     project_uuid: uuid.UUID
     if raw_project is None:
-        # Sentinel — generates a row on first call inside the test DB.
+        # Sentinel - generates a row on first call inside the test DB.
         project_uuid = uuid.UUID("00000000-0000-0000-0000-000000000000")
     elif isinstance(raw_project, uuid.UUID):
         project_uuid = raw_project

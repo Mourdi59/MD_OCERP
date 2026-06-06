@@ -3,14 +3,14 @@
 Owns:
     * Topic / comment / viewpoint CRUD.
     * Snapshot binary persistence via the platform storage abstraction
-      (:func:`app.core.storage.get_storage_backend`) — keys live under
+      (:func:`app.core.storage.get_storage_backend`) - keys live under
       ``bcf/<project_id>/<topic_guid>/<viewpoint_guid>.png``, the same
       abstraction BIM geometry and takeoff PDFs use. We never invent a
       new on-disk path.
     * ``.bcfzip`` export (2.1 + 3.0) and idempotent import.
 
 The service is stateless apart from the injected session; it commits
-nothing — the request session dependency owns the transaction boundary.
+nothing - the request session dependency owns the transaction boundary.
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ def _now() -> datetime:
 def _snapshot_key(project_id: uuid.UUID, topic_guid: str, vp_guid: str) -> str:
     """‌⁠‍Storage key for a viewpoint snapshot PNG.
 
-    POSIX, no leading slash — matches ``app.core.storage`` key rules and
+    POSIX, no leading slash - matches ``app.core.storage`` key rules and
     the ``bim/<project>/...`` style used elsewhere.
     """
     return f"bcf/{project_id}/{topic_guid}/{vp_guid}.png"
@@ -340,7 +340,7 @@ class BCFService:
                         pv.snapshot_filename = "snapshot.png"
                     except FileNotFoundError:
                         logger.warning(
-                            "Snapshot blob missing for viewpoint %s (key=%s) — exporting viewpoint without image",
+                            "Snapshot blob missing for viewpoint %s (key=%s) - exporting viewpoint without image",
                             v.guid,
                             v.snapshot_key,
                         )
@@ -368,7 +368,7 @@ class BCFService:
 
         Topics/comments/viewpoints are matched by BCF GUID: an existing
         GUID is updated in place, a new GUID is inserted. A malformed
-        archive yields an ``errors`` report — never a 500.
+        archive yields an ``errors`` report - never a 500.
         """
         try:
             result = bcf_xml.parse_bcfzip(data, forced_version=forced_version)
@@ -563,7 +563,7 @@ class BCFService:
             if vp.snapshot_key:
                 try:
                     await storage.delete(vp.snapshot_key)
-                except Exception:  # noqa: BLE001 — storage cleanup is best-effort
+                except Exception:  # noqa: BLE001 - storage cleanup is best-effort
                     logger.warning("Failed to delete snapshot blob %s", vp.snapshot_key)
 
     @staticmethod
@@ -576,21 +576,21 @@ class BCFService:
             raw = base64.b64decode(payload, validate=True)
         except (binascii.Error, ValueError) as exc:
             raise BCFServiceError("snapshot_png_b64 is not valid base64") from exc
-        # PNG magic number — reject anything that is not a PNG so a
+        # PNG magic number - reject anything that is not a PNG so a
         # malicious payload can't be smuggled through the snapshot field.
         if not raw.startswith(b"\x89PNG\r\n\x1a\n"):
             raise BCFServiceError("snapshot_png_b64 is not a PNG image")
         return raw
 
 
-# ── BCF 3.0 clash export service (v41 — file-based, no REST yet) ──────────
+# ── BCF 3.0 clash export service (v41 - file-based, no REST yet) ──────────
 
 
 class BCFExportFeatureUnavailable(Exception):
     """Raised when the clash module's storage table isn't migrated yet.
 
     Mirrors the platform's pattern of degrading gracefully when a sibling
-    module's alembic migration hasn't landed — the router maps this to a
+    module's alembic migration hasn't landed - the router maps this to a
     structured 503 rather than letting it bubble as a generic 500.
     """
 
@@ -600,7 +600,7 @@ class BCFExportService:
 
     Decoupled from :class:`BCFService` (the BCF-Topic CRUD service) so
     the clash export can run without touching the BCF persistence
-    tables — it reads from clash and writes to a zip stream.
+    tables - it reads from clash and writes to a zip stream.
 
     The service is intentionally defensive about the clash module's
     schema: if the v41 migration that adds ``ClashIssue`` hasn't run
@@ -645,7 +645,7 @@ class BCFExportService:
 
         Args:
             project_id: project to export from.
-            filter_dict: optional clash filter — keys are ``status`` (one
+            filter_dict: optional clash filter - keys are ``status`` (one
                 of ``new|persisted|resolved|ignored|archived`` or the
                 special ``"open"`` which expands to the unresolved set)
                 and ``severity`` (one of the engine's four levels).
@@ -663,20 +663,20 @@ class BCFExportService:
         # the clash module is missing or its migration hasn't run.
         try:
             from app.modules.clash.models import ClashResult, ClashRun
-        except Exception as exc:  # noqa: BLE001 — module-level missing/broken
+        except Exception as exc:  # noqa: BLE001 - module-level missing/broken
             raise BCFExportFeatureUnavailable(
-                "Clash module not available — BCF clash export requires the v41 clash schema migration."
+                "Clash module not available - BCF clash export requires the v41 clash schema migration."
             ) from exc
 
         # Probe table existence so we degrade cleanly on a partial DB.
         try:
             rows = await self._load_clash_rows(project_id, filter_dict or {}, ClashRun, ClashResult)
-        except Exception as exc:  # noqa: BLE001 — table missing / probe failure
+        except Exception as exc:  # noqa: BLE001 - table missing / probe failure
             # OperationalError 'no such table' is the common case.
             msg = str(exc).lower()
             if "no such table" in msg or "does not exist" in msg:
                 raise BCFExportFeatureUnavailable(
-                    "Clash storage table missing — BCF clash export requires the v41 migration."
+                    "Clash storage table missing - BCF clash export requires the v41 migration."
                 ) from exc
             raise
 
@@ -705,7 +705,7 @@ class BCFExportService:
         self,
         project_id: uuid.UUID,
         filter_dict: dict,
-        ClashRun,  # noqa: N803 — runtime-imported ORM class
+        ClashRun,  # noqa: N803 - runtime-imported ORM class
         ClashResult,  # noqa: N803
     ) -> list:
         """Return the filtered :class:`ClashResult` rows for ``project_id``."""

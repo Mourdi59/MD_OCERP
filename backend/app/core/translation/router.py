@@ -1,11 +1,11 @@
-"""‌⁠‍Translation API — test harness + dictionary download/status.
+"""‌⁠‍Translation API - test harness + dictionary download/status.
 
 Mounted at ``/api/v1/translation``. Three endpoints:
 
-* ``POST /translate``                        — translate one term (test harness)
-* ``POST /lookup-tables/download``           — kick off a MUSE / IATE download
+* ``POST /translate``                        - translate one term (test harness)
+* ``POST /lookup-tables/download``           - kick off a MUSE / IATE download
                                                in the background, return a task id
-* ``GET  /lookup-tables/status``             — what's downloaded, sizes, age,
+* ``GET  /lookup-tables/status``             - what's downloaded, sizes, age,
                                                in-flight download tasks
 
 Auth: requires a logged-in user (the LLM tier needs the user's AISettings;
@@ -118,7 +118,7 @@ async def _run_muse(task_id: str, src: str, tgt: str) -> None:
             on_progress=lambda v: _record_task(task_id, progress=float(v)),
         )
         _record_task(task_id, status="done", progress=1.0, path=str(path))
-    except Exception as exc:  # noqa: BLE001 — surface message to status
+    except Exception as exc:  # noqa: BLE001 - surface message to status
         logger.warning("MUSE download %s-%s failed: %s", src, tgt, exc)
         _record_task(task_id, status="failed", error=str(exc))
 
@@ -162,7 +162,7 @@ async def translate_one(
     user_id: CurrentUserId,
     session: SessionDep,
 ) -> TranslateResponse:
-    """‌⁠‍Translate a single term — test harness for the cascade.
+    """‌⁠‍Translate a single term - test harness for the cascade.
 
     Looks up the caller's AISettings so the LLM tier has a key to use;
     if no settings row exists the LLM tier just degrades to a miss.
@@ -173,7 +173,7 @@ async def translate_one(
         user_uuid = uuid.UUID(user_id)
         user_settings = await repo.get_by_user_id(user_uuid)
     except (ValueError, TypeError):
-        # Malformed user id — translate without LLM tier.
+        # Malformed user id - translate without LLM tier.
         user_settings = None
 
     result: TranslationResult = await translate(
@@ -248,14 +248,14 @@ async def lookup_status(
     cache = TranslationCache()
     try:
         cache_stats = await cache.stats()
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug("cache stats failed: %s", exc)
         cache_stats = {"rows": 0, "hits": 0}
 
     # Filter in-flight tasks by owner so user A can't see user B's
     # task IDs, error strings (which can leak filesystem paths from
     # ``process_iate_tbx``), or download progress.  Admins still see
-    # only their own tasks here — there's a separate audit view for
+    # only their own tasks here - there's a separate audit view for
     # cross-tenant inspection if needed.
     return StatusResponse(
         dictionaries=list_downloaded(),

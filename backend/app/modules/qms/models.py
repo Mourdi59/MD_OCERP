@@ -1,18 +1,18 @@
 """‌⁠‍QMS ORM models.
 
 Tables (all prefixed ``oe_qms_``):
-    oe_qms_itp_plan              — Inspection & Test Plan header
-    oe_qms_itp_item              — line within an ITP
-    oe_qms_itp_template          — tenant-level reusable ITP template
-    oe_qms_inspection            — actual inspection event
-    oe_qms_inspection_signature  — multi-signature on an inspection
-    oe_qms_ncr                   — non-conformance report (QMS variant)
-    oe_qms_ncr_action            — corrective action against an NCR
-    oe_qms_punch_item            — rolling punch list entry
-    oe_qms_audit                 — quality audit (ISO 9001 style)
-    oe_qms_audit_finding         — finding within an audit
-    oe_qms_audit_log             — append-only FSM transition audit trail
-    oe_qms_calibration           — instrument calibration tracking
+    oe_qms_itp_plan              - Inspection & Test Plan header
+    oe_qms_itp_item              - line within an ITP
+    oe_qms_itp_template          - tenant-level reusable ITP template
+    oe_qms_inspection            - actual inspection event
+    oe_qms_inspection_signature  - multi-signature on an inspection
+    oe_qms_ncr                   - non-conformance report (QMS variant)
+    oe_qms_ncr_action            - corrective action against an NCR
+    oe_qms_punch_item            - rolling punch list entry
+    oe_qms_audit                 - quality audit (ISO 9001 style)
+    oe_qms_audit_finding         - finding within an audit
+    oe_qms_audit_log             - append-only FSM transition audit trail
+    oe_qms_calibration           - instrument calibration tracking
 
 External entity FKs (``project_id``, ``inspector_user_id``,
 ``raised_by``, ``assigned_to``, ``verified_by``, ``signer_user_id``,
@@ -38,8 +38,8 @@ class ITPPlan(Base):
     """‌⁠‍Inspection & Test Plan header.
 
     An ITP is the project's checklist of control points (hold points,
-    witness points, document reviews) for a specific work type — e.g.
-    "Concrete pour — slab on grade". It is the QA template against
+    witness points, document reviews) for a specific work type - e.g.
+    "Concrete pour - slab on grade". It is the QA template against
     which inspections are scheduled and signed off.
     """
 
@@ -465,7 +465,7 @@ class ITPTemplate(Base):
 
     Used to seed project-level :class:`ITPPlan` rows. The template stores
     items inline as JSON so the entire library lives in a single row per
-    template — easier to import/export across tenants.
+    template - easier to import/export across tenants.
     """
 
     __tablename__ = "oe_qms_itp_template"
@@ -503,18 +503,18 @@ class QMSAuditLog(Base):
     activity.
 
     Fields:
-        tenant_id        — caller's tenant for GDPR / multi-tenant scoping
-        entity_type      — "ncr" / "inspection" / "punch" / "audit" /
+        tenant_id        - caller's tenant for GDPR / multi-tenant scoping
+        entity_type      - "ncr" / "inspection" / "punch" / "audit" /
                             "itp_plan" / "calibration"
-        entity_id        — UUID of the row that transitioned
-        action           — short verb ("created", "status_change",
+        entity_id        - UUID of the row that transitioned
+        action           - short verb ("created", "status_change",
                             "closed", "escalated", "signed", ...)
-        actor_user_id    — caller; may be NULL for system-driven events
-        old_status       — prior status; NULL on first creation
-        new_status       — new status; NULL for non-FSM events (e.g. note)
-        reason           — free-text justification (optional)
-        before_state     — JSON snapshot of changed fields before the hop
-        after_state      — JSON snapshot of the same fields after the hop
+        actor_user_id    - caller; may be NULL for system-driven events
+        old_status       - prior status; NULL on first creation
+        new_status       - new status; NULL for non-FSM events (e.g. note)
+        reason           - free-text justification (optional)
+        before_state     - JSON snapshot of changed fields before the hop
+        after_state      - JSON snapshot of the same fields after the hop
 
     Index strategy:
         ix_qms_audit_log_entity            (entity_type, entity_id)

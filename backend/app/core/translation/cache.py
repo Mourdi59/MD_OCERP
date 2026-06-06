@@ -4,7 +4,7 @@ Past translations are persisted in the ``oe_translation_cache`` table of
 the main application database (embedded PostgreSQL 16 by default, or an
 external PostgreSQL via ``DATABASE_URL``). Keeping the cache in the main
 DB means it is backed up, migrated, and connection-pooled together with
-the rest of the application state — no separate file to manage.
+the rest of the application state - no separate file to manage.
 
 The table is defined here on ``Base.metadata`` so application startup
 (``Base.metadata.create_all``) provisions it, and a lazy idempotent
@@ -18,7 +18,7 @@ that already has the table stays compatible (``create_all`` uses
 In-process LRU
 ==============
 Even with the DB-backed cache, every translate() under concurrent match
-load issues a SELECT round-trip — for 50 walls of identical material in
+load issues a SELECT round-trip - for 50 walls of identical material in
 one batch that's 50 SELECTs on identical keys. We layer an in-process
 LRU cache on top so a single SELECT round-trip is amortised across the
 whole batch. The LRU is invalidated on every ``upsert()`` so a new
@@ -87,13 +87,13 @@ _TABLE = Table(
 
 # ── In-process LRU on top of the DB cache ───────────────────────────────
 #
-# Bounded by ``_LRU_MAXSIZE`` (~1k entries — a few MB at most for typical
+# Bounded by ``_LRU_MAXSIZE`` (~1k entries - a few MB at most for typical
 # construction-domain phrases). Each entry is the dict shape returned by
 # :meth:`TranslationCache.get` so the cache layer above can pretend it
 # came straight from the DB. A ``None`` sentinel marks "looked up but
 # missed" so we don't re-query the DB for a known cold key.
 #
-# Key shape ``(namespace, text_hash, src, tgt, domain)`` — the cache now
+# Key shape ``(namespace, text_hash, src, tgt, domain)`` - the cache now
 # lives in the single shared main database, so the namespace slot is a
 # constant ``"pg"`` rather than a per-file path. The 5-tuple shape is
 # preserved so the LRU helpers below are unchanged.
@@ -110,7 +110,7 @@ _lru_lock = threading.Lock()
 
 
 def _lru_get(key: _LRUKey) -> tuple[bool, dict[str, Any] | None]:
-    """‌⁠‍Return ``(hit, value)`` — caller distinguishes "miss" from "known None"."""
+    """‌⁠‍Return ``(hit, value)`` - caller distinguishes "miss" from "known None"."""
     with _lru_lock:
         if key not in _lru:
             return False, None
@@ -138,7 +138,7 @@ def _lru_invalidate(key: _LRUKey | None = None) -> None:
     """‌⁠‍Drop one or all entries from the in-process LRU.
 
     Called on every ``upsert()`` so a write is visible on the next
-    ``get()`` from any other coroutine — without this, a freshly cached
+    ``get()`` from any other coroutine - without this, a freshly cached
     translation would be hidden by a stale ``None`` sentinel for as
     long as the entry stayed in the LRU.
     """
@@ -156,7 +156,7 @@ def _lru_invalidate_by_row_id(row_id: int) -> None:
     """Drop the LRU entry that points at ``row_id``.
 
     ``mark_used`` only knows the row id, not the (text, src, tgt, domain)
-    tuple — without this hook, a usage_count bump would persist to the
+    tuple - without this hook, a usage_count bump would persist to the
     DB but stay invisible to subsequent ``get()`` calls served by the
     LRU.
     """
@@ -173,7 +173,7 @@ def lru_stats() -> dict[str, int]:
 
 
 def _hash(text_value: str) -> str:
-    # SHA1 is fine here — it's a cache key, not a security primitive.
+    # SHA1 is fine here - it's a cache key, not a security primitive.
     # ``usedforsecurity=False`` silences Bandit B324 / FIPS-mode warnings.
     return hashlib.sha1(text_value.encode("utf-8"), usedforsecurity=False).hexdigest()
 
@@ -223,7 +223,7 @@ class TranslationCache:
 
     async def get(
         self,
-        text: str,  # noqa: A002 — public signature kept stable for callers
+        text: str,  # noqa: A002 - public signature kept stable for callers
         source_lang: str,
         target_lang: str,
         domain: str,
@@ -286,7 +286,7 @@ class TranslationCache:
     async def upsert(
         self,
         *,
-        text: str,  # noqa: A002 — public signature kept stable for callers
+        text: str,  # noqa: A002 - public signature kept stable for callers
         translated_text: str,
         source_lang: str,
         target_lang: str,

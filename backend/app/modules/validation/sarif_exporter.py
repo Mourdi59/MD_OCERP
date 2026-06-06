@@ -14,11 +14,11 @@ Why SARIF?
 Spec reference: https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html
 
 Public API:
-    * :func:`report_to_sarif` — convert a report → SARIF dict.
+    * :func:`report_to_sarif` - convert a report → SARIF dict.
 
 Schema-completeness note:  We emit a *minimal-valid* SARIF document.  Optional
 features (codeFlows, fixes, taxonomies, suppressions, conversion provenance)
-are intentionally omitted — see the report at the bottom of the task.
+are intentionally omitted - see the report at the bottom of the task.
 """
 
 from __future__ import annotations
@@ -63,7 +63,7 @@ def _level_for(severity: str | Severity) -> str:
 
 
 def _get_tool_version() -> str:
-    """‌⁠‍Read the package version from pyproject — fall back to '0.0.0'."""
+    """‌⁠‍Read the package version from pyproject - fall back to '0.0.0'."""
     try:
         from importlib.metadata import PackageNotFoundError, version
 
@@ -88,7 +88,7 @@ def _get_tool_version() -> str:
     return "0.0.0"
 
 
-# ── Coercion helpers — accept both dataclass + ORM reports ─────────────────
+# ── Coercion helpers - accept both dataclass + ORM reports ─────────────────
 
 
 def _normalize_report(report: Any) -> dict[str, Any]:
@@ -197,7 +197,7 @@ def _build_locations(element_ref: str | None, target_type: str, target_id: str) 
 
     Strategy:
         * If we have ``element_ref`` (e.g. a CAD element id or BOQ position id)
-          we emit a ``logicalLocations`` entry — these IDs are not file paths.
+          we emit a ``logicalLocations`` entry - these IDs are not file paths.
         * We always include a synthetic ``physicalLocation`` whose URI is
           ``<target_type>:<target_id>`` (URI scheme follows the SARIF guidance
           for non-file artifacts).  Consumers like GitHub will render this as
@@ -267,7 +267,7 @@ def report_to_sarif(report: Any) -> dict[str, Any]:
     """
     norm = _normalize_report(report)
 
-    # Build the rule registry — one entry per unique rule that produced a result.
+    # Build the rule registry - one entry per unique rule that produced a result.
     rules_by_id: dict[str, dict[str, Any]] = {}
     sarif_results: list[dict[str, Any]] = []
 
@@ -279,7 +279,7 @@ def report_to_sarif(report: Any) -> dict[str, Any]:
                 rule_name=item.get("rule_name") or rule_id,
                 severity=item.get("severity", "info"),
             )
-        # Emit results only for failing rules — SARIF idiom.  Passing rules
+        # Emit results only for failing rules - SARIF idiom.  Passing rules
         # are still captured via properties.run.invocations.passingChecks.
         if item.get("passed", False):
             continue
@@ -298,7 +298,7 @@ def report_to_sarif(report: Any) -> dict[str, Any]:
             "passingChecks": sum(1 for r in norm["results"] if r.get("passed")),
             "totalChecks": len(norm["results"]),
             "ruleSets": norm["rule_sets"],
-            # Authorship pin — SARIF properties survive even when tool.driver
+            # Authorship pin - SARIF properties survive even when tool.driver
             # values get rebranded by a downstream consumer / fork.
             "engineSignature": "DDC-CWICR-OE-2026",
             "engineUri": "https://datadrivenconstruction.io",

@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""File Favourites service — toggle / pin / list.
+"""File Favourites service - toggle / pin / list.
 
 Stateless helpers around :class:`FileFavorite`. Polymorphic on
 ``(file_kind, file_id)``; ownership is implicit via ``user_id``.
@@ -110,7 +110,7 @@ async def toggle_favorite(
     try:
         await session.flush()
     except IntegrityError:
-        # Concurrent insert — fall back to the existing row.
+        # Concurrent insert - fall back to the existing row.
         await session.rollback()
         existing = await get_favorite(
             session,

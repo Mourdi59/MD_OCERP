@@ -6,14 +6,14 @@ Mounted by the module loader at ``/api/v1/file-approvals``.
 
 Endpoints
 ~~~~~~~~~
-* ``GET    /``                            — list workflows
-* ``POST   /``                            — submit a file for approval
-* ``GET    /{id}``                         — workflow detail
-* ``POST   /{id}/steps/{step_id}/decide/`` — record per-step decision
-* ``POST   /{id}/withdraw/``               — submitter withdraws
-* ``GET    /{id}/stamped/``                — stamped artifact bytes
-* ``GET    /stamp-templates/``             — list templates (global + project)
-* ``POST   /stamp-templates/``             — create custom template
+* ``GET    /``                            - list workflows
+* ``POST   /``                            - submit a file for approval
+* ``GET    /{id}``                         - workflow detail
+* ``POST   /{id}/steps/{step_id}/decide/`` - record per-step decision
+* ``POST   /{id}/withdraw/``               - submitter withdraws
+* ``GET    /{id}/stamped/``                - stamped artifact bytes
+* ``GET    /stamp-templates/``             - list templates (global + project)
+* ``POST   /stamp-templates/``             - create custom template
 """
 
 from __future__ import annotations
@@ -134,7 +134,7 @@ async def submit_for_approval(
     session: SessionDep,
     service: ApprovalService = Depends(_get_service),
 ) -> ApprovalWorkflowResponse:
-    """Submit a file for approval — creates the workflow + steps."""
+    """Submit a file for approval - creates the workflow + steps."""
     await _require_project_access(session, data.project_id, user_id)
     workflow = await service.submit(data, submitted_by_id=user_id)
     return ApprovalWorkflowResponse.model_validate(workflow)

@@ -1,4 +1,4 @@
-"""‌⁠‍Change Order service — business logic for change order management.
+"""‌⁠‍Change Order service - business logic for change order management.
 
 Stateless service layer. Handles:
 - Change order CRUD with auto-generated codes
@@ -40,7 +40,7 @@ def _dec(value: object) -> Decimal:
 
     Always routes through ``str()`` so a binary float such as ``0.1`` does
     not poison money math with ``0.1000000000000000055…``. Bad input
-    degrades to ``Decimal("0")`` rather than raising — the schema layer
+    degrades to ``Decimal("0")`` rather than raising - the schema layer
     already validates ranges/NaN.
     """
     try:
@@ -452,7 +452,7 @@ class ChangeOrderService:
     async def create_order(self, data: ChangeOrderCreate) -> ChangeOrder:
         """Create a new change order with auto-generated code.
 
-        BUG-354 race condition: ``count + 1`` is not atomic — two concurrent
+        BUG-354 race condition: ``count + 1`` is not atomic - two concurrent
         creates could both read ``count=4`` and both emit ``CO-005``. We
         retry on integrity-error (unique-constraint violation) by re-reading
         the current max ordinal from the DB and bumping from there. After
@@ -478,7 +478,7 @@ class ChangeOrderService:
             initial_cost_impact = Decimal("0")
 
         # Resolve currency: caller-supplied → project default → "" (honest
-        # unknown). Task #217 / the architecture guide forbid a literal "EUR" here — a
+        # unknown). Task #217 / the architecture guide forbid a literal "EUR" here - a
         # change order on a BRL/USD/etc. project must inherit that project's
         # currency, never silently become Euro. Resolved once, before the
         # retry loop, so a code-collision retry doesn't re-query the project.
@@ -547,7 +547,7 @@ class ChangeOrderService:
         try:
             project = (await self.session.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
         except Exception:
-            # No real session (unit-test stub) or transient lookup error —
+            # No real session (unit-test stub) or transient lookup error -
             # fall back to empty rather than guessing a currency.
             logger.debug("Project currency lookup skipped for %s", project_id)
             return ""
@@ -898,7 +898,7 @@ class ChangeOrderService:
     ) -> None:
         """BUG-353: prevent the same user who submitted from approving / rejecting.
 
-        Self-approval is a classic four-eyes-principle violation — in
+        Self-approval is a classic four-eyes-principle violation - in
         construction it means a site manager could both request and sign
         off a scope change without anyone else seeing it. Enforced at
         service layer so router shortcuts don't bypass it.
@@ -961,7 +961,7 @@ class ChangeOrderService:
 
         T3 forward-compat: if this CO has any rows in its approval chain,
         the caller must drive the chain via ``advance_approval`` and we
-        refuse the single-step approval with HTTP 409 — silently bypassing
+        refuse the single-step approval with HTTP 409 - silently bypassing
         the chain would let one user approve a CO that was supposed to
         require N signatures.
         """
@@ -994,7 +994,7 @@ class ChangeOrderService:
             )
         # The four-eyes principle still applies on the legacy path, but
         # a chain-driven final approval has already enforced that the
-        # acting user is a designated approver — keep the chain path
+        # acting user is a designated approver - keep the chain path
         # free of the self-approval check so a submitter can legally be
         # an approver later in the chain.
         if not _from_chain:
@@ -1042,7 +1042,7 @@ class ChangeOrderService:
         project_updated = False
         if delta != 0:
             # Use the project_id_s snapshot captured before update_fields()
-            # called expire_all() — accessing ``order.project_id`` here
+            # called expire_all() - accessing ``order.project_id`` here
             # would trigger a sync-context attribute refresh and raise
             # ``MissingGreenlet`` under async aiosqlite.
             project = (
@@ -1059,16 +1059,16 @@ class ChangeOrderService:
 
         # v2.6.45: Push CO items into the project's primary BOQ as a
         # dedicated section. Construction PMs expect approved scope to
-        # appear in the BOQ — previously only project.budget_estimate
+        # appear in the BOQ - previously only project.budget_estimate
         # moved, leaving the BOQ silently out of date.
-        # Re-fetch the order so its ``items`` collection is fresh —
+        # Re-fetch the order so its ``items`` collection is fresh -
         # repo.update_fields() above called session.expire_all() which
         # invalidated the original ORM instance.
         fresh_for_apply = await self.repo.get_by_id(order_id)
         boq_result = await self._apply_to_boq(fresh_for_apply or order, boq_id=boq_id)
 
         # v2.9.17 Gap B: write a ProjectBudget delta row so EVM BAC reflects
-        # the post-CO scope. Wrapped in try/except — never roll back the
+        # the post-CO scope. Wrapped in try/except - never roll back the
         # approval if the budget write fails.
         budget_writeback = await self._write_budget_delta_row(
             order_id=order_id,
@@ -1124,7 +1124,7 @@ class ChangeOrderService:
         existing row instead of inserting duplicates.
 
         Returns ``{"action": "created"|"updated"|"skipped", "budget_id": str|None}``
-        — the ``action`` value flows into the ``changeorder.approved`` event
+        - the ``action`` value flows into the ``changeorder.approved`` event
         payload so subscribers can tell what happened. Never raises: a
         budget-write failure must not roll back the approval.
         """
@@ -1145,7 +1145,7 @@ class ChangeOrderService:
                 ).scalar_one_or_none()
                 if project is not None:
                     currency_code = project.currency
-            # Empty when neither CO nor project carries a currency —
+            # Empty when neither CO nor project carries a currency -
             # the budget row stores empty rather than mis-stamping EUR
             # onto a non-Eurozone project.
             currency_code = currency_code or ""
@@ -1198,7 +1198,7 @@ class ChangeOrderService:
             return {"action": "created", "budget_id": str(budget.id)}
         except Exception:
             logger.warning(
-                "Budget delta-row write failed for change order %s — approval still committed.",
+                "Budget delta-row write failed for change order %s - approval still committed.",
                 code,
                 exc_info=True,
             )
@@ -1212,7 +1212,7 @@ class ChangeOrderService:
     ) -> dict:
         """Push the approved CO's items into the project's first non-locked BOQ.
 
-        Idempotent — if a section with ``metadata.change_order_id == order.id``
+        Idempotent - if a section with ``metadata.change_order_id == order.id``
         already exists, returns ``already_applied`` and does nothing. Section
         ordinal is ``CO-{code}`` (assumed unique because CO codes are unique
         per project), description ``{code}: {title}``. Each ChangeOrderItem
@@ -1230,7 +1230,7 @@ class ChangeOrderService:
 
         from app.modules.boq.models import BOQ, Position
 
-        # Items must be fetched async — accessing ``order.items`` on an
+        # Items must be fetched async - accessing ``order.items`` on an
         # ORM object whose attributes were expired by a prior flush()
         # triggers MissingGreenlet inside async SQLAlchemy. Pull them
         # explicitly so we don't depend on lazy-load state.
@@ -1273,7 +1273,7 @@ class ChangeOrderService:
             ).scalar_one_or_none()
             if boq is None:
                 logger.info(
-                    "Change order %s approved but no unlocked BOQ in project %s — BOQ writeback skipped",
+                    "Change order %s approved but no unlocked BOQ in project %s - BOQ writeback skipped",
                     order.code,
                     order.project_id,
                 )
@@ -1503,7 +1503,7 @@ class ChangeOrderService:
         # trigger a lazy load and crash with MissingGreenlet in async context.
         order_code = order.code
 
-        # Decimal money math — go through ``str()`` so a float like 0.1
+        # Decimal money math - go through ``str()`` so a float like 0.1
         # doesn't enter the calculation as 0.1000000000000000055…; round
         # only at the persisted boundary (presentation rounds again in the
         # response builder / UI).
@@ -1529,7 +1529,7 @@ class ChangeOrderService:
         await self._recalculate_cost_impact(order_id)
 
         # _recalculate_cost_impact expires all session objects, so the freshly
-        # created item's attributes are stale — refresh before returning so the
+        # created item's attributes are stale - refresh before returning so the
         # router can build the response without lazy-loading.
         await self.session.refresh(item)
 
@@ -1568,7 +1568,7 @@ class ChangeOrderService:
             fields["metadata_"] = fields.pop("metadata")
 
         # Recalculate cost_delta if quantities or rates changed. Decimal
-        # throughout — mixing the stored string column with an incoming
+        # throughout - mixing the stored string column with an incoming
         # float and rounding once keeps the persisted delta exact.
         orig_qty = _dec(fields.get("original_quantity", item.original_quantity))
         new_qty = _dec(fields.get("new_quantity", item.new_quantity))
@@ -1685,7 +1685,7 @@ class ChangeOrderService:
         """Return the approval rows for ``order_id`` ordered by ``step_order``."""
         from sqlalchemy import select
 
-        # Guarantee the CO exists (404s if not) before we expose its chain —
+        # Guarantee the CO exists (404s if not) before we expose its chain -
         # otherwise an unauth caller could enumerate CO ids by probing the
         # /approvals endpoint.
         await self.get_order(order_id)
@@ -1710,7 +1710,7 @@ class ChangeOrderService:
         ``current_approval_step`` cursor to 1 so the first approver is
         recognised as the active one.
 
-        The chain can only be started on a CO in ``submitted`` state —
+        The chain can only be started on a CO in ``submitted`` state -
         starting it on a ``draft`` CO would let scope authors hand-pick
         their own approvers before review, and starting it on
         ``approved``/``rejected`` is non-sensical.
@@ -1748,7 +1748,7 @@ class ChangeOrderService:
         # ``_assert_not_self_approval``; without the equivalent guard
         # here a scope author could discreetly slot themselves into the
         # chain (e.g. as step 2 of 3) and silently rubber-stamp their
-        # own change — defeating the multi-approver requirement that
+        # own change - defeating the multi-approver requirement that
         # the chain exists to encode.
         if order.submitted_by:
             submitter_s = str(order.submitted_by)
@@ -1774,7 +1774,7 @@ class ChangeOrderService:
             rows.append(row)
 
         await self.repo.update_fields(order_id, current_approval_step=1)
-        # Race-safety: ``_has_approval_chain`` is a TOCTOU check — two
+        # Race-safety: ``_has_approval_chain`` is a TOCTOU check - two
         # concurrent callers can both pass the probe and then both
         # attempt to write step 1. The unique index
         # ``uq_oe_changeorder_approval_change_order_id_step_order``
@@ -1830,7 +1830,7 @@ class ChangeOrderService:
           ``approved`` and the same side-effects as the legacy
           ``approve_order`` fire (budget writeback, BOQ section, event).
         * ``decision='rejected'``: stamps the row, clears the cursor,
-          and the CO transitions to ``rejected`` — downstream pending
+          and the CO transitions to ``rejected`` - downstream pending
           steps stay pending (audit trail) but the chain is dead.
         """
         from sqlalchemy import select
@@ -1845,13 +1845,13 @@ class ChangeOrderService:
         if order.status not in ("submitted",):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(f"Cannot advance approval — change order is not in 'submitted' state (got '{order.status}')."),
+                detail=(f"Cannot advance approval - change order is not in 'submitted' state (got '{order.status}')."),
             )
         cursor = order.current_approval_step
         if cursor is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=("No approval chain is active — call /approval-chain first."),
+                detail=("No approval chain is active - call /approval-chain first."),
             )
 
         # Resolve the active step's row.
@@ -1880,13 +1880,13 @@ class ChangeOrderService:
         if active_row.decision != "pending":
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=("This step has already been decided — chain may be out of sync."),
+                detail=("This step has already been decided - chain may be out of sync."),
             )
 
         # Race-safety: the python-side "set active_row.decision" pattern
         # is a TOCTOU window when two approvers click at the same moment.
         # Both fetch the row with decision='pending' before either commits,
-        # both then overwrite the column and both bump the cursor — the
+        # both then overwrite the column and both bump the cursor - the
         # CO advances two steps at once and the last write wins on
         # decided_at / comments.
         #
@@ -1913,13 +1913,13 @@ class ChangeOrderService:
         # rowcount is None on some dialects when the connection didn't
         # report it (e.g. async drivers in autocommit). Treat that as a
         # success only when ``active_row`` reflects pending (we just
-        # checked it above) — but if the driver reports 0, fail hard so
+        # checked it above) - but if the driver reports 0, fail hard so
         # we never silently drop the loser.
         affected = getattr(result, "rowcount", None)
         if affected == 0:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=("This approval step was concurrently decided by another approver — refresh and retry."),
+                detail=("This approval step was concurrently decided by another approver - refresh and retry."),
             )
         # Keep the in-memory row in sync for the rest of this method so
         # downstream code (event payload, return value) sees the new

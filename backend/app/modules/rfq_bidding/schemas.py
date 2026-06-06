@@ -1,4 +1,4 @@
-"""‌⁠‍RFQ Bidding Pydantic schemas — request/response models."""
+"""‌⁠‍RFQ Bidding Pydantic schemas - request/response models."""
 
 import re
 from datetime import datetime
@@ -48,7 +48,7 @@ def _validate_money_amount(value: str | None, field: str) -> str | None:
 
     The bid_amount column is ``String`` (not numeric) for legacy reasons,
     but we must NEVER store unparseable junk like ``"abc"`` or
-    scientific notation in a money field — that would crash totals,
+    scientific notation in a money field - that would crash totals,
     PDF exports and downstream FX rollups (see #111). We store the
     normalised canonical form (no thousands separators, no sci-notation).
     """
@@ -65,7 +65,7 @@ def _validate_money_amount(value: str | None, field: str) -> str | None:
         raise ValueError(f"{field} must be finite, got {value!r}")
     if d < 0:
         raise ValueError(f"{field} must be >= 0, got {value!r}")
-    # Cap fractional precision at 6 places — enough for FX-converted amounts
+    # Cap fractional precision at 6 places - enough for FX-converted amounts
     # but rejects pathological inputs like "1.0000000000000000000001".
     sign, _digits, exponent = d.as_tuple()
     if isinstance(exponent, int) and exponent < -6:
@@ -213,7 +213,7 @@ class BidCreate(BaseModel):
     @classmethod
     def _validate_bid_amount(cls, v: str) -> str:
         result = _validate_money_amount(v, "bid_amount")
-        # bid_amount is required, never None — assert for type-checker.
+        # bid_amount is required, never None - assert for type-checker.
         assert result is not None
         return result
 

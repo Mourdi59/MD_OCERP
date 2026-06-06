@@ -1,4 +1,4 @@
-"""Formwork Pydantic schemas — request / response models.
+"""Formwork Pydantic schemas - request / response models.
 
 Money fields use ``Decimal`` on input and ``str`` on output to match the
 project's v3 §10 "Decimal as string" contract. Returning a float would
@@ -104,7 +104,7 @@ class FormworkAssignmentCreate(BaseModel):
     """Create a new formwork assignment.
 
     ``computed_unit_cost`` and ``computed_total`` are derived server-side
-    from ``unit_rate`` × waste × reuse_count — they are NOT accepted in
+    from ``unit_rate`` × waste × reuse_count - they are NOT accepted in
     the request body even if the client sends them (they would be a lie
     until they go through the service-layer recomputation).
     """

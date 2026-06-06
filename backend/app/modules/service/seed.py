@@ -11,7 +11,7 @@ Function ``seed_service_demo(session)`` populates:
 Idempotent only at the *no-existing-rows* level: if any contract already
 exists for the seeded customer ids the function returns early.
 
-Never auto-executed — call it explicitly from a CLI / Alembic data-only
+Never auto-executed - call it explicitly from a CLI / Alembic data-only
 migration if you want the demo data.
 """
 
@@ -41,7 +41,7 @@ from app.modules.service.models import (
 
 logger = logging.getLogger(__name__)
 
-# Localised customer names — small, neutral list spanning EN/DE/RU markets.
+# Localised customer names - small, neutral list spanning EN/DE/RU markets.
 _CUSTOMER_NAMES: list[str] = [
     "ACME Facilities Ltd",
     "Bauhaus Wartung GmbH",
@@ -99,7 +99,7 @@ async def _customer_id_for(session: AsyncSession, idx: int) -> uuid.UUID:
         return contact.id
     except Exception:
         # Fallback: deterministic UUID derived from the customer name. The FK
-        # is RESTRICT-on-delete — orphan ids are tolerated for demos.
+        # is RESTRICT-on-delete - orphan ids are tolerated for demos.
         logger.warning("Could not resolve/create demo Contact; using synthetic UUID")
         return uuid.uuid5(uuid.NAMESPACE_DNS, f"openconstructionerp/service/demo/{name}")
 
@@ -183,7 +183,7 @@ async def seed_service_demo(session: AsyncSession) -> dict[str, int]:
             customer_id=customer_id,
             project_id=None,
             contract_number=f"SC-DEMO-{idx + 1:02d}",
-            title=f"Service contract — {_CUSTOMER_NAMES[idx]}",
+            title=f"Service contract - {_CUSTOMER_NAMES[idx]}",
             description="Demo seed contract for the Service & Maintenance module.",
             period_start=(today - timedelta(days=180)).isoformat(),
             period_end=(today + timedelta(days=185)).isoformat(),
@@ -331,7 +331,7 @@ async def seed_service_demo(session: AsyncSession) -> dict[str, int]:
             counters["work_order_items"] += 1
 
         # Patch the WO total via the loaded object (no extra UPDATE needed
-        # — the row is still in the session).
+        # - the row is still in the session).
         wo.billed_amount = items_total
 
         # Debrief

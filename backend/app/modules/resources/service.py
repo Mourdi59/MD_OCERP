@@ -1,4 +1,4 @@
-"""‌⁠‍Resources service — business logic for assignment, conflicts, skill matching."""
+"""‌⁠‍Resources service - business logic for assignment, conflicts, skill matching."""
 
 from __future__ import annotations
 
@@ -103,7 +103,7 @@ def _as_aware(dt: datetime) -> datetime:
     """Coerce a datetime to timezone-aware UTC.
 
     Columns are declared ``DateTime(timezone=True)`` (so Postgres returns aware
-    values), but SQLite — used in dev and on the single-node VPS — ignores the
+    values), but SQLite - used in dev and on the single-node VPS - ignores the
     timezone flag and hands back naive datetimes. Comparing such a naive value
     with ``datetime.now(UTC)`` raises ``TypeError: can't compare offset-naive and
     offset-aware datetimes`` (a 500 on every resource dashboard). Stored values
@@ -275,7 +275,7 @@ def detect_conflicts(
     # 120% and must be flagged even though no single pair exceeds 100%.
     # (The previous implementation summed the candidate with each existing
     # row independently, so N small overlaps that together blew the budget
-    # slipped through silently — a real over-booking integrity hole.)
+    # slipped through silently - a real over-booking integrity hole.)
     overlapping: list[Assignment] = []
     for existing in existing_for_resource:
         if exclude_id is not None and existing.id == exclude_id:
@@ -454,7 +454,7 @@ def compute_resource_utilization(
             continue
         # Only committed work counts toward utilization. 'cancelled' never
         # consumed the resource, and 'proposed' is a tentative booking still
-        # awaiting confirm/decline — counting either as assigned hours
+        # awaiting confirm/decline - counting either as assigned hours
         # inflates the figure and can push utilization past 100%.
         if a.status in ("cancelled", "proposed"):
             continue
@@ -824,7 +824,7 @@ class ResourcesService:
             )
         # A cancelled/completed assignment consumes no allocation, so a PATCH
         # that lands the row in one of those terminal states must NOT be
-        # conflict-checked — otherwise cancelling an (already over-allocated)
+        # conflict-checked - otherwise cancelling an (already over-allocated)
         # assignment via the edit modal, which sends status+dates together,
         # is spuriously blocked with a 409.
         new_status = fields.get("status", assignment.status)
@@ -915,7 +915,7 @@ class ResourcesService:
                 raise SkillMismatchError(f"Resource {resource.code} missing required skills", missing)
 
         # Cost-rate snapshot policy: the assignment freezes whatever the
-        # caller supplied AT THIS MOMENT. A *missing* cost_rate (None — only
+        # caller supplied AT THIS MOMENT. A *missing* cost_rate (None - only
         # possible when extra fields drift) falls back to the resource
         # default; a *zero* cost_rate (legit for donated kit / loaned staff
         # / pro-bono crews) is honoured exactly as sent. Pre-fix, the
@@ -1010,7 +1010,7 @@ class ResourcesService:
         if actual_end is not None:
             # A caller-supplied actual end before the assignment start would
             # produce a negative-length window that corrupts utilization and
-            # availability math downstream — reject it at the boundary.
+            # availability math downstream - reject it at the boundary.
             if actual_end <= assignment.start_at:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -1226,8 +1226,8 @@ class ResourcesService:
         all_assignments, _ = await self.assignment_repo.list_for_resource(resource_id, offset=0, limit=500)
         # "Active" = anything that is happening right now and still needs
         # attention. A *proposed* assignment whose window has already
-        # started is the most important thing to show — it is awaiting a
-        # confirm/decline decision — yet the old filter only matched
+        # started is the most important thing to show - it is awaiting a
+        # confirm/decline decision - yet the old filter only matched
         # confirmed/in_progress, so a live-but-unconfirmed booking fell
         # into a dead zone (not "active", and not "upcoming" because its
         # start is in the past). Include running proposed rows here.
@@ -1347,7 +1347,7 @@ class ResourcesService:
         sums the ``allocation_percent`` of active assignments overlapping that
         bucket, grouped by project. A bucket is *over-allocated* when the total
         exceeds 100% and *cross-project* when more than one distinct project
-        competes for the resource in that bucket — the exact signal portfolio
+        competes for the resource in that bucket - the exact signal portfolio
         leveling exists to resolve. Only resources with at least one assignment
         in the window are returned, conflicts first.
         """
@@ -1453,7 +1453,7 @@ class ResourcesService:
                 }
             )
 
-        # Conflicts first, then highest peak, then name — the order a planner reads.
+        # Conflicts first, then highest peak, then name - the order a planner reads.
         rows_out.sort(key=lambda r: (not r["has_conflict"], -r["peak_allocation_percent"], r["name"]))
         total_resources = len(rows_out)
         rows_out = rows_out[:max_resources]
@@ -1488,7 +1488,7 @@ class ResourcesService:
         capacity are surfaced as ``capacity_unknown`` and are NEVER flagged
         over-allocated (we never fabricate a ceiling). For each overloaded bucket
         a deterministic leveling suggestion (shift / spread) is attached. No
-        booking is moved — the planner confirms each action.
+        booking is moved - the planner confirms each action.
 
         When ``project_id`` is set the grid is scoped to that project's
         assignments only; otherwise it spans every project (portfolio view).
@@ -1627,7 +1627,7 @@ class ResourcesService:
             )
 
         # Overloaded first, then most overloaded buckets, then highest peak, then
-        # name — the order a planner reads to triage the worst offenders first.
+        # name - the order a planner reads to triage the worst offenders first.
         rows_out.sort(
             key=lambda r: (
                 not r["has_overload"],
@@ -1732,7 +1732,7 @@ class ResourcesService:
             owned_skill_ids = {rs.skill_id for rs in res_skills}
             matched = required_set & owned_skill_ids
             if not matched and required_set:
-                continue  # zero overlap — not a candidate
+                continue  # zero overlap - not a candidate
             skill_score = len(matched) / len(required_set) if required_set else 1.0
 
             # Availability: sum allocation_percent of overlapping non-cancelled
@@ -1750,7 +1750,7 @@ class ResourcesService:
             # Blocking availability windows (holiday/sick/unavailable).
             # No defensive try/except here: a failing window query is a real
             # fault and must surface, not be silently downgraded to "fully
-            # available" — that would rank an out-of-office resource top of
+            # available" - that would rank an out-of-office resource top of
             # the list and let a dispatcher book someone who is on leave.
             blocking = False
             windows = windows_by_resource.get(res.id, [])
@@ -1801,7 +1801,7 @@ class ResourcesService:
 
         For each window N in ``windows_days`` (descending), return certs whose
         ``valid_until`` falls between today and today+N, exclusive of any
-        earlier (smaller) bucket — so a cert expiring in 6 days lands only
+        earlier (smaller) bucket - so a cert expiring in 6 days lands only
         in the 7-day bucket, not also in 14/30/60.
         """
         if not windows_days:
@@ -1838,7 +1838,7 @@ class ResourcesService:
         """Emit ``resources.cert_expiring`` events bucketed by ``windows_days``.
 
         Returns the total count of events emitted. Idempotency is the
-        subscriber's responsibility — we publish a deterministic ``key`` so
+        subscriber's responsibility - we publish a deterministic ``key`` so
         downstream notification stores can dedupe.
         """
         buckets = await self.scan_expiring_certifications(windows_days=windows_days)

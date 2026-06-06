@@ -25,7 +25,7 @@ from app.modules.hse_advanced.models import (
 
 
 class _BaseRepo:
-    """‌⁠‍Common CRUD helpers — kept simple, not a generic ORM."""
+    """‌⁠‍Common CRUD helpers - kept simple, not a generic ORM."""
 
     model = None  # type: ignore[assignment]
 
@@ -101,7 +101,7 @@ class InvestigationRepository(_BaseRepo):
             )
             incident_ids = [row[0] for row in result.all()]
         except Exception:
-            # Safety module not present / table missing — degrade to empty.
+            # Safety module not present / table missing - degrade to empty.
             return [], 0
 
         if not incident_ids:

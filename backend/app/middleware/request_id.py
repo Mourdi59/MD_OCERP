@@ -20,7 +20,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-# Public contextvar — log filters read this. Default ``None`` so off-request
+# Public contextvar - log filters read this. Default ``None`` so off-request
 # log lines (boot, background tasks) render as "-" rather than a stale ID.
 _request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 
@@ -36,7 +36,7 @@ def get_request_id() -> str | None:
 
 
 def _new_request_id() -> str:
-    """Generate a compact 16-char hex ID — short enough for log columns."""
+    """Generate a compact 16-char hex ID - short enough for log columns."""
     return uuid.uuid4().hex[:16]
 
 
@@ -82,6 +82,6 @@ class RequestIDLogFilter:
     module's class hierarchy at definition time.
     """
 
-    def filter(self, record) -> bool:  # noqa: ANN001 — logging.LogRecord
+    def filter(self, record) -> bool:  # noqa: ANN001 - logging.LogRecord
         record.request_id = get_request_id() or "-"
         return True

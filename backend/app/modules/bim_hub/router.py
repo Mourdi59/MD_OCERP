@@ -5,53 +5,53 @@ Endpoint convention
 **Canonical** path for any per-model endpoint is ``/models/{model_id}/...``
 to match the spatial intent (``models`` is a collection of resources). The
 older flat ``/{model_id}/...`` paths are kept as back-compat aliases so
-existing SDK callers don't break — both paths resolve to the same handler.
+existing SDK callers don't break - both paths resolve to the same handler.
 New endpoints SHOULD use the ``/models/{model_id}/...`` form.
 
 Endpoints:
     Models:
-        GET    /                                — List models for a project
-        POST   /                                — Create model
-        POST   /upload                          — Upload BIM data (DataFrame + optional DAE)
-        GET    /models/{model_id}                — Get single model (canonical)
-        GET    /{model_id}                       — Get single model (alias)
-        PATCH  /models/{model_id}                — Update model (canonical)
-        PATCH  /{model_id}                       — Update model (alias)
-        DELETE /models/{model_id}                — Delete model (canonical)
-        DELETE /{model_id}                       — Delete model (alias)
-        GET    /models/{model_id}/geometry       — Serve DAE geometry file
+        GET    /                                - List models for a project
+        POST   /                                - Create model
+        POST   /upload                          - Upload BIM data (DataFrame + optional DAE)
+        GET    /models/{model_id}                - Get single model (canonical)
+        GET    /{model_id}                       - Get single model (alias)
+        PATCH  /models/{model_id}                - Update model (canonical)
+        PATCH  /{model_id}                       - Update model (alias)
+        DELETE /models/{model_id}                - Delete model (canonical)
+        DELETE /{model_id}                       - Delete model (alias)
+        GET    /models/{model_id}/geometry       - Serve DAE geometry file
 
     Elements:
-        GET    /models/{model_id}/elements      — List elements (paginated, filterable)
-        POST   /models/{model_id}/elements      — Bulk import elements
-        GET    /{model_id}/elements             — List elements (alias)
-        GET    /elements/{element_id}            — Get single element
+        GET    /models/{model_id}/elements      - List elements (paginated, filterable)
+        POST   /models/{model_id}/elements      - Bulk import elements
+        GET    /{model_id}/elements             - List elements (alias)
+        GET    /elements/{element_id}            - Get single element
 
     BOQ Links:
-        GET    /links                            — List links for a BOQ position
-        POST   /links                            — Create link
-        DELETE /links/{link_id}                  — Delete link
+        GET    /links                            - List links for a BOQ position
+        POST   /links                            - Create link
+        DELETE /links/{link_id}                  - Delete link
 
     Quantity Maps:
-        GET    /quantity-maps                    — List quantity map rules
-        POST   /quantity-maps                    — Create quantity map rule
-        PATCH  /quantity-maps/{map_id}           — Update quantity map rule
-        POST   /quantity-maps/apply              — Apply rules on model
+        GET    /quantity-maps                    - List quantity map rules
+        POST   /quantity-maps                    - Create quantity map rule
+        PATCH  /quantity-maps/{map_id}           - Update quantity map rule
+        POST   /quantity-maps/apply              - Apply rules on model
 
     Diffs:
-        POST   /models/{model_id}/diff/{old_id}  — Compute diff
-        GET    /diffs/{diff_id}                   — Get diff
+        POST   /models/{model_id}/diff/{old_id}  - Compute diff
+        GET    /diffs/{diff_id}                   - Get diff
 
     Element Groups (saved selections):
-        GET    /element-groups/                   — List groups for a project
-        POST   /element-groups/                   — Create a group
-        PATCH  /element-groups/{group_id}         — Update a group
-        DELETE /element-groups/{group_id}         — Delete a group
+        GET    /element-groups/                   - List groups for a project
+        POST   /element-groups/                   - Create a group
+        PATCH  /element-groups/{group_id}         - Update a group
+        DELETE /element-groups/{group_id}         - Delete a group
 
     Dataframe (Parquet + DuckDB analytical queries):
-        GET    /models/{model_id}/dataframe/schema/              — Column names + types
-        POST   /models/{model_id}/dataframe/query/               — Query via DuckDB SQL
-        GET    /models/{model_id}/dataframe/columns/{col}/values — Value counts for a column
+        GET    /models/{model_id}/dataframe/schema/              - Column names + types
+        POST   /models/{model_id}/dataframe/query/               - Query via DuckDB SQL
+        GET    /models/{model_id}/dataframe/columns/{col}/values - Value counts for a column
 """
 
 import csv
@@ -132,7 +132,7 @@ def _quick_validate_geometry_bytes(blob: bytes, ext: str) -> tuple[bool, str]:
 
     Bug context: external user (Downtown Medical Center / Projet1, RVT)
     reported "Impossible de charger la géométrie 3D" with magic bytes
-    ``3c 3f 78 6d 6c`` (``<?xml``) — the stored ``geometry.dae`` was
+    ``3c 3f 78 6d 6c`` (``<?xml``) - the stored ``geometry.dae`` was
     XML but not COLLADA. Ingest-time validation existed but only for
     *new* uploads; old corrupt blobs kept streaming. This guard closes
     that gap for every read.
@@ -145,7 +145,7 @@ def _quick_validate_geometry_bytes(blob: bytes, ext: str) -> tuple[bool, str]:
     ext_norm = ext.lower()
     if ext_norm == ".glb":
         if blob[:4] != b"glTF":
-            return False, (f"GLB magic mismatch — first 4 bytes are {blob[:4]!r}, expected b'glTF'")
+            return False, (f"GLB magic mismatch - first 4 bytes are {blob[:4]!r}, expected b'glTF'")
         # Version is the 4-byte LE integer at offset 4.
         if len(blob) >= 12:
             version = int.from_bytes(blob[4:8], "little", signed=False)
@@ -155,18 +155,18 @@ def _quick_validate_geometry_bytes(blob: bytes, ext: str) -> tuple[bool, str]:
 
     if ext_norm == ".dae":
         # Peek at the first 4 KB and verify a COLLADA root tag exists.
-        # We deliberately do NOT do a full XML parse here — we trust
+        # We deliberately do NOT do a full XML parse here - we trust
         # the in-memory tax of a 4 KB head scan and let the browser do
         # the heavy lifting once the file is known-good shape.
         # Accept namespace-prefixed roots like `<ns0:COLLADA>` (Revit /
-        # DDC pipeline) as well as the bare `<COLLADA>` — both are valid
+        # DDC pipeline) as well as the bare `<COLLADA>` - both are valid
         # COLLADA per the XML namespace spec. Closes issue #153.
         import re as _re
 
         head = blob[:4096]
         try:
             head_text = head.decode("utf-8", errors="replace")
-        except Exception as exc:  # pragma: no cover — utf-8 with errors='replace' can't raise
+        except Exception as exc:  # pragma: no cover - utf-8 with errors='replace' can't raise
             return False, f"DAE head undecodable: {exc}"
         if not _re.search(r"<(?:[a-zA-Z_][\w.-]*:)?COLLADA\b", head_text, _re.IGNORECASE):
             # Surface what we DID find so the user/admin can recognise it
@@ -177,7 +177,7 @@ def _quick_validate_geometry_bytes(blob: bytes, ext: str) -> tuple[bool, str]:
         return True, "ok"
 
     if ext_norm == ".gltf":
-        # gltf JSON — must parse as JSON object with an "asset" key.
+        # gltf JSON - must parse as JSON object with an "asset" key.
         try:
             head = blob[: min(len(blob), 16384)]
             obj = json.loads(head.decode("utf-8", errors="replace"))
@@ -187,7 +187,7 @@ def _quick_validate_geometry_bytes(blob: bytes, ext: str) -> tuple[bool, str]:
             return False, "glTF JSON missing required 'asset' field"
         return True, "ok"
 
-    # Unknown extension — let it through (preserves prior behaviour for
+    # Unknown extension - let it through (preserves prior behaviour for
     # any future extension we add without remembering to update this).
     return True, f"unknown extension {ext_norm}; skipped checks"
 
@@ -232,7 +232,7 @@ def _get_service(session: SessionDep) -> BIMHubService:
 # This closes the IDOR from the v1.3.13 audit: previously any authenticated
 # user could read/modify/delete models belonging to projects they do not own
 # simply by guessing UUIDs. We now resolve the underlying project, verify
-# ownership (or admin bypass) and return a 404 — not a 403 — so we also don't
+# ownership (or admin bypass) and return a 404 - not a 403 - so we also don't
 # leak the existence of UUIDs the caller is not allowed to see.
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -259,14 +259,14 @@ async def _verify_project_access(
             detail=translate("errors.project_not_found", locale=get_locale()),
         )
 
-    # Admin bypass — admins can touch any project regardless of ownership.
+    # Admin bypass - admins can touch any project regardless of ownership.
     try:
         user_repo = UserRepository(session)
         user = await user_repo.get_by_id(uuid.UUID(str(user_id)))
         if user is not None and getattr(user, "role", "") == "admin":
             return
     except Exception:
-        # If the role lookup explodes, fall through to the ownership check —
+        # If the role lookup explodes, fall through to the ownership check -
         # never silently bypass authorization.
         logger.exception("Admin-role lookup failed during BIM access check")
 
@@ -568,7 +568,7 @@ _STOREY_PROPERTY_FALLBACK_KEYS: tuple[str, ...] = (
     "geschoss",
 )
 
-# Literal-string sentinels that mean "no storey assigned" — Revit
+# Literal-string sentinels that mean "no storey assigned" - Revit
 # exports often write "None" / "<None>" instead of leaving the cell
 # blank.  Matched case-insensitively after stripping.
 _STOREY_NULL_LITERALS: frozenset[str] = frozenset(
@@ -580,7 +580,7 @@ _STOREY_NULL_LITERALS: frozenset[str] = frozenset(
         "n/a",
         "na",
         "-",
-        "—",
+        "-",
     }
 )
 
@@ -609,7 +609,7 @@ def _extract_storey(row: dict[str, Any], props: dict[str, Any]) -> str | None:
            ``base_level`` / etc. via :data:`_BIM_COLUMN_ALIASES`).
         2. Case-insensitive match against
            :data:`_STOREY_PROPERTY_FALLBACK_KEYS` inside the
-           ``properties`` JSON blob — Revit/IFC exports frequently
+           ``properties`` JSON blob - Revit/IFC exports frequently
            bury "Level" inside the property bag instead of promoting
            it to a column.
 
@@ -667,7 +667,7 @@ def _parse_bim_rows_from_csv(content_bytes: bytes) -> list[dict[str, Any]]:
         except UnicodeDecodeError:
             continue
     else:
-        raise ValueError("Unable to decode CSV file — unsupported encoding")
+        raise ValueError("Unable to decode CSV file - unsupported encoding")
 
     sniffer = csv.Sniffer()
     try:
@@ -781,7 +781,7 @@ def _rows_to_elements(
         else:
             mesh_ref = None
 
-        # Explicit bbox — either a pre-built JSON blob in ``bounding_box`` or
+        # Explicit bbox - either a pre-built JSON blob in ``bounding_box`` or
         # six individual min/max columns.
         bbox: dict[str, float] | None = None
         raw_bbox = row.get("bounding_box")
@@ -956,7 +956,7 @@ async def upload_bim_data(
             detail="Uploaded data file is empty.",
         )
 
-    # No upload size cap — per product policy.
+    # No upload size cap - per product policy.
 
     # --- Validate geometry file (if provided) ---
     has_geometry = False
@@ -1087,7 +1087,7 @@ _NEEDS_CONVERTER_EXTS = {".rvt", ".dwg", ".dgn"}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Background workers — invoked via FastAPI BackgroundTasks so the upload
+# Background workers - invoked via FastAPI BackgroundTasks so the upload
 # request returns in milliseconds even when DDC conversion takes minutes.
 # Each worker uses a fresh AsyncSession (the request session is closed by
 # the time the task runs) and the same storage abstraction as the router.
@@ -1121,7 +1121,7 @@ def _surface_parquet_failure(
 ) -> tuple[str, str]:
     """Emit structured diagnostics for a failed Parquet sidecar write.
 
-    Logs at ERROR level (degraded state — even if non-fatal for the user's
+    Logs at ERROR level (degraded state - even if non-fatal for the user's
     current upload, operators should see how often this fires), bumps a
     process-local counter, and returns the ``(status, error)`` pair the
     caller stamps onto ``model.metadata_``.
@@ -1165,7 +1165,7 @@ def _surface_parquet_failure(
         },
     )
 
-    # The error string stamped onto the model row stays short — the full
+    # The error string stamped onto the model row stays short - the full
     # traceback is in the log event. The UI only needs enough to render
     # "ParquetWriteError: disk full" without exposing the whole stack.
     short_error = f"{exc_type}: {exc_msg}"[:500]
@@ -1185,7 +1185,7 @@ async def _process_cad_in_background(
     Scheduled after the upload endpoint returns so the HTTP request finishes
     in milliseconds while the (potentially minutes-long) conversion happens
     off the request path.  Updates the model row's ``status`` to
-    ``ready`` / ``error`` / ``needs_converter`` when finished — the frontend
+    ``ready`` / ``error`` / ``needs_converter`` when finished - the frontend
     already polls ``GET /{model_id}`` and transitions the UI automatically.
     """
     import asyncio
@@ -1209,8 +1209,8 @@ async def _process_cad_in_background(
     #
     # Two-stage check (added 2026-04-28 to address "many problems with the
     # converters and downloading"):
-    #   1. ``find_converter`` — file exists on disk (cheap, file-stat only).
-    #   2. ``smoke_test_converter`` — binary actually loads (8 s timeout,
+    #   1. ``find_converter`` - file exists on disk (cheap, file-stat only).
+    #   2. ``smoke_test_converter`` - binary actually loads (8 s timeout,
     #      result cached 5 min). Catches Qt-DLL / Mark-of-the-Web /
     #      VC-Redist-missing breakage that the first check can't see.
     if ext.lower() == ".rvt":
@@ -1273,7 +1273,7 @@ async def _process_cad_in_background(
                     failure_code,
                 )
                 return
-        except Exception:  # noqa: BLE001 — pre-flight is best-effort
+        except Exception:  # noqa: BLE001 - pre-flight is best-effort
             logger.exception("RVT converter pre-flight check failed for %s", model_id)
 
     try:
@@ -1337,7 +1337,7 @@ async def _process_cad_in_background(
                         row_count=len(raw_elements),
                     )
             else:
-                # No rows means we never tried — keep "skipped" so the UI
+                # No rows means we never tried - keep "skipped" so the UI
                 # can distinguish "ingest produced nothing" from a real
                 # write failure that needs operator attention.
                 parquet_status = "skipped"
@@ -1362,13 +1362,13 @@ async def _process_cad_in_background(
                 # viewer can self-detect placeholders without an extra API
                 # round-trip for the model metadata.
                 result_quality = result.get("geometry_quality") or result.get("geometry_type")
-                # BUG-V320-DDC-01 / D-TKC-NEW-01 — honesty gate.  When the DDC
+                # BUG-V320-DDC-01 / D-TKC-NEW-01 - honesty gate.  When the DDC
                 # cad2data converter is unavailable the IFC text-parser still
                 # imports element geometry, but it can only recover quantities
                 # if the file happens to ship explicit IfcElementQuantity
                 # blocks.  Track whether *any* element carries a non-empty
                 # quantities map; if none do, we must NOT advertise the model
-                # as a clean 'ready' import with error_message=null — that is
+                # as a clean 'ready' import with error_message=null - that is
                 # the dishonest "successful import, zero quantities" state the
                 # QA audit flagged.
                 any_quantities = False
@@ -1425,26 +1425,26 @@ async def _process_cad_in_background(
                     **(model.metadata_ or {}),
                     "geometry_type": result.get("geometry_type", "unknown"),
                     # geometry_quality drives the frontend's "placeholder
-                    # geometry" banner — set to "placeholder" when DDC
+                    # geometry" banner - set to "placeholder" when DDC
                     # cad2data is unavailable and we synthesized boxes.
                     "geometry_quality": result.get(
                         "geometry_quality",
                         result.get("geometry_type", "unknown"),
                     ),
-                    # DDC converter version stamp — drives the "Processed
+                    # DDC converter version stamp - drives the "Processed
                     # with DDC v{X}" badge on the BIM model card and the
                     # /about page. Both keys are optional: missing values
                     # leave the badge hidden (v3.12.0 / Stream D).
                     **({"converter_version": result["converter_version"]} if result.get("converter_version") else {}),
                     **({"converter_source": result["converter_source"]} if result.get("converter_source") else {}),
-                    # Honesty signal — set when the import only succeeded
+                    # Honesty signal - set when the import only succeeded
                     # because the runtime stripped modern CLI args (or
                     # retried without them) to accommodate an older DDC
                     # binary.  Drives the post-success "converter
                     # outdated" nudge in the BIM viewer.  Conversion
                     # itself is fine; the warning is informational only.
                     **({"converter_cli_outdated": True} if result.get("converter_cli_outdated") else {}),
-                    # Parquet sidecar status — non-fatal for the model
+                    # Parquet sidecar status - non-fatal for the model
                     # itself, but operators want to know how often the
                     # sidecar write fails so the analytics surface
                     # (/dataframe/* endpoints) doesn't silently return
@@ -1454,13 +1454,13 @@ async def _process_cad_in_background(
                     "parquet_attempted_at": _dt.now(_UTC).isoformat(),
                 }
 
-                # BUG-V320-DDC-01 / D-TKC-NEW-01 — non-destructive honesty
+                # BUG-V320-DDC-01 / D-TKC-NEW-01 - non-destructive honesty
                 # path.  The elements were imported (geometry is useful for
                 # the viewer / element linking) but if the DDC converter was
                 # absent OR no quantities could be extracted we downgrade the
                 # status from a misleading 'ready' to a distinct 'degraded'
                 # state and populate a user-facing warning so the UI can show
-                # "imported, but no quantities — DDC converter required"
+                # "imported, but no quantities - DDC converter required"
                 # instead of pretending the import fully succeeded.
                 if converter_absent or no_quantities:
                     model.status = "degraded"
@@ -1518,7 +1518,7 @@ async def _process_cad_in_background(
                         model_id,
                     )
 
-                # Storage policy — drop the raw upload after a *successful*
+                # Storage policy - drop the raw upload after a *successful*
                 # conversion when ``keep_original_cad`` is False (production
                 # default).  Failed conversions fall through to the else
                 # branch below and keep the original so retry works without
@@ -1552,7 +1552,7 @@ async def _process_cad_in_background(
                 if ext == ".rvt":
                     model.status = "needs_converter"
 
-                    # Compose the message in pieces — every clause is added
+                    # Compose the message in pieces - every clause is added
                     # only when its underlying datum is non-empty so we never
                     # ship "File saved with Revit None".
                     parts: list[str] = []
@@ -1658,7 +1658,7 @@ async def _generate_pdf_in_background(
     """Run DDC PDF-only export for an existing model and link as a Document.
 
     Invoked from POST /{model_id}/generate-pdf-sheets/ via BackgroundTasks.
-    Calls the DDC converter exactly once with a ``.pdf`` output target — no
+    Calls the DDC converter exactly once with a ``.pdf`` output target - no
     re-export of XLSX/DAE.  Silently skips when no converter is installed
     on the host (the upload itself stays usable; PDF export is opt-in).
     """
@@ -1675,13 +1675,13 @@ async def _generate_pdf_in_background(
     try:
         from app.modules.boq.cad_import import _converter_subprocess_env, find_converter
     except ImportError:
-        logger.warning("PDF generation skipped — cad_import not available")
+        logger.warning("PDF generation skipped - cad_import not available")
         return
 
     converter = find_converter(converter_ext)
     if not converter:
         logger.info(
-            "PDF generation skipped — %s converter not installed",
+            "PDF generation skipped - %s converter not installed",
             converter_ext.upper(),
         )
         return
@@ -1739,7 +1739,7 @@ async def _generate_pdf_in_background(
                 async with async_session_factory() as session:
                     pdf_doc = DocModel(
                         project_id=_uuid.UUID(project_id),
-                        name=f"{model_name or 'BIM Model'} — Sheets (PDF)",
+                        name=f"{model_name or 'BIM Model'} - Sheets (PDF)",
                         category="drawing",
                         file_path=pdf_storage_key,
                         file_size=len(pdf_bytes),
@@ -1823,14 +1823,14 @@ async def upload_cad_file(
 
     # Stream the upload to a temp file in 1 MB chunks instead of buffering
     # the whole body in memory.  A 500 MB IFC used to cost ~500 MB of heap
-    # in the request handler — on the 2 GB-RAM VPS, two concurrent uploads
+    # in the request handler - on the 2 GB-RAM VPS, two concurrent uploads
     # were enough to OOM the process.  ``StreamedUpload`` exposes:
-    #   - ``upload.path``    — the spooled temp file
-    #   - ``upload.size``    — bytes written
-    #   - ``upload.head``    — first 64 bytes for magic-byte validation
+    #   - ``upload.path``    - the spooled temp file
+    #   - ``upload.size``    - bytes written
+    #   - ``upload.head``    - first 64 bytes for magic-byte validation
     # Storage's ``put_stream`` then ``rename(2)``s the file into place
     # (single syscall on same-FS local backend; ``upload_fileobj`` with
-    # multipart on S3) — zero additional memory pressure.
+    # multipart on S3) - zero additional memory pressure.
     from app.core.upload_streaming import stream_upload_to_temp
 
     async with stream_upload_to_temp(file, suffix=ext) as upload:
@@ -1843,12 +1843,12 @@ async def upload_cad_file(
         # Preflight: when the required converter binary isn't installed on
         # this server, **persist** the upload and create a placeholder model
         # so the user doesn't have to re-upload after running the install.
-        # The response is HTTP 202 Accepted (the request is good — we'll
+        # The response is HTTP 202 Accepted (the request is good - we'll
         # finish processing later) rather than 201 Created (we haven't
         # created any geometry yet).  ``Retry-After`` and a ``Link`` header
         # point the client at the converter-install endpoint and the model
         # row that will be re-processed once the binary lands.  Frontend
-        # dispatches on the ``status`` field in the body — see
+        # dispatches on the ``status`` field in the body - see
         # ``BIMCadUploadResponse`` in ``frontend/src/features/bim/api.ts``.
         if ext in _NEEDS_CONVERTER_EXTS:
             from app.modules.boq.cad_import import find_converter
@@ -1866,9 +1866,9 @@ async def upload_cad_file(
                 from app.modules.bim_hub.schemas import BIMModelCreate
 
                 # NB: ``error_message`` is set via a follow-up update because
-                # ``BIMModelCreate`` doesn't expose that field — it lives on
+                # ``BIMModelCreate`` doesn't expose that field - it lives on
                 # ``BIMModelUpdate`` so freshly-created records start clean.
-                # The kwarg here MUST be ``user_id=`` (the service signature) —
+                # The kwarg here MUST be ``user_id=`` (the service signature) -
                 # passing ``created_by=`` raised a TypeError on every .rvt /
                 # .ifc upload that hit the missing-converter path.
                 pending_model = await service.create_model(
@@ -1886,7 +1886,7 @@ async def upload_cad_file(
                     pending_model.id,
                     BIMModelUpdate(
                         error_message=(
-                            f"{ext.upper().lstrip('.')} converter not installed — "
+                            f"{ext.upper().lstrip('.')} converter not installed - "
                             f"install it from the BIM converter banner, then "
                             f"click Re-process on this model."
                         ),
@@ -1894,7 +1894,7 @@ async def upload_cad_file(
                 )
 
                 logger.info(
-                    "Saved %s upload pending converter — model=%s, key=%s, %d bytes",
+                    "Saved %s upload pending converter - model=%s, key=%s, %d bytes",
                     ext,
                     new_model_id,
                     saved_cad_key,
@@ -1912,7 +1912,7 @@ async def upload_cad_file(
                             f"{ext.upper().lstrip('.')} files require the "
                             f"{ext.upper().lstrip('.')} converter, which is not "
                             f"installed on this server. Your file has been "
-                            f"saved — install the converter and click "
+                            f"saved - install the converter and click "
                             f"Re-process on the model card to finish the upload."
                         ),
                         "install_endpoint": install_endpoint,
@@ -1932,7 +1932,7 @@ async def upload_cad_file(
                     },
                 )
 
-        # Magic-byte validation — filename extensions are attacker-controlled
+        # Magic-byte validation - filename extensions are attacker-controlled
         # and we proceed to hand this file to a CAD converter that can be
         # exploited by unexpected formats. Reject anything that doesn't look
         # like one of our accepted CAD/BIM containers.  The streamed-upload
@@ -1976,7 +1976,7 @@ async def upload_cad_file(
         model = await service.create_model(model_data, user_id=user_id)
         model_id = model.id
 
-        # Save CAD file via the configured storage backend — returns the
+        # Save CAD file via the configured storage backend - returns the
         # storage key that the Documents hub cross-link and downstream
         # diagnostics use to refer back to the stored blob.  Streaming
         # variant: the backend renames the temp file into place rather
@@ -2002,7 +2002,7 @@ async def upload_cad_file(
         # Uses the ORM model directly (NOT raw SQL) so timestamps + defaults are
         # filled by SQLAlchemy / Base mixin and the row stays in sync with the
         # rest of the documents module if its schema evolves.  Failures are
-        # swallowed because the cross-link is convenience-only — the BIM model
+        # swallowed because the cross-link is convenience-only - the BIM model
         # itself is already saved by the time we get here.
         try:
             from app.modules.documents.models import Document
@@ -2034,7 +2034,7 @@ async def upload_cad_file(
     # conversion + element/geometry persistence happens in a background task.
     # This eliminates the multi-minute synchronous block that used to drop
     # the connection on slow conversions ("Cannot connect to server" in the
-    # frontend).  The frontend already polls GET /{model_id}/ — model.status
+    # frontend).  The frontend already polls GET /{model_id}/ - model.status
     # transitions from "processing" → "ready" / "error" / "needs_converter"
     # automatically once the worker finishes.
     final_status = "processing"
@@ -2063,7 +2063,7 @@ async def upload_cad_file(
             model_id,
         )
     else:
-        # Non-processable format (DWG, DGN, FBX, etc.) — needs converter
+        # Non-processable format (DWG, DGN, FBX, etc.) - needs converter
         model.status = "needs_converter"
         model.error_message = (
             f"{ext.upper().lstrip('.')} files require an external converter. Convert to IFC first, then re-upload."
@@ -2102,7 +2102,7 @@ async def generate_pdf_sheets(
 ) -> dict[str, Any]:
     """Schedule PDF-sheets export for an existing BIM model.
 
-    Runs the DDC converter once with a ``.pdf`` output target — no XLSX/DAE
+    Runs the DDC converter once with a ``.pdf`` output target - no XLSX/DAE
     re-export, only the sheets PDF.  The PDF is saved as a Document linked
     to the project once the worker finishes.
 
@@ -2117,7 +2117,7 @@ async def generate_pdf_sheets(
     if not model_format:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Model has no format recorded — cannot regenerate sheets.",
+            detail="Model has no format recorded - cannot regenerate sheets.",
         )
 
     ext = "." + model_format.lstrip(".")
@@ -2130,7 +2130,7 @@ async def generate_pdf_sheets(
     if not await backend_store.exists(cad_storage_key):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Original CAD file is no longer available — re-upload the model.",
+            detail="Original CAD file is no longer available - re-upload the model.",
         )
 
     background_tasks.add_task(
@@ -2150,7 +2150,7 @@ async def generate_pdf_sheets(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Retry conversion — re-runs the background CAD processor for a model that
+# Retry conversion - re-runs the background CAD processor for a model that
 # previously failed (status="error" / "needs_converter"). Useful when the
 # user installs a missing converter after upload, or the original failure
 # was transient (network blip, OOM during a parallel upload burst).
@@ -2169,7 +2169,7 @@ async def retry_model_processing(
 
     Resets ``status`` to ``processing``, clears ``error_message``, and re-
     invokes :func:`_process_cad_in_background` against the same original CAD
-    blob.  Returns 202 immediately — the frontend already polls
+    blob.  Returns 202 immediately - the frontend already polls
     ``GET /{model_id}/`` and will transition the UI when the worker finishes.
 
     Refuses to retry models that:
@@ -2185,7 +2185,7 @@ async def retry_model_processing(
         return {
             "status": "noop",
             "model_id": str(model_id),
-            "message": "Model is already ready — nothing to retry.",
+            "message": "Model is already ready - nothing to retry.",
         }
     if model.status == "processing":
         return {
@@ -2198,7 +2198,7 @@ async def retry_model_processing(
     if not model_format:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Model has no format recorded — cannot retry.",
+            detail="Model has no format recorded - cannot retry.",
         )
 
     ext = "." + model_format.lstrip(".")
@@ -2211,7 +2211,7 @@ async def retry_model_processing(
     if not await backend_store.exists(cad_storage_key):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=("Original CAD file is no longer available — re-upload the model to retry."),
+            detail=("Original CAD file is no longer available - re-upload the model to retry."),
         )
 
     # Clear previous error state before re-scheduling so the frontend's
@@ -2255,7 +2255,7 @@ async def get_parquet_status(
     """Return the last-known Parquet sidecar status for *model_id*.
 
     Surfaces the silent-failure state stamped onto ``model.metadata_`` by
-    the background ingester so the UI can show a "Parquet sidecar failed —
+    the background ingester so the UI can show a "Parquet sidecar failed -
     retry?" affordance instead of silently serving an empty dataframe.
     """
     model = await _verify_model_access(service, model_id, user_id or "")
@@ -2287,14 +2287,14 @@ async def retry_parquet_write(
 
     model = await _verify_model_access(service, model_id, user_id or "")
 
-    # Pull the rows back out of the DB — same projection the converter
+    # Pull the rows back out of the DB - same projection the converter
     # would have produced for the Parquet write (one dict per element).
     rows_q = await service.session.execute(select(BIMElement).where(BIMElement.model_id == model_id))
     elements = rows_q.scalars().all()
     if not elements:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=("Model has no elements in the database — cannot retry Parquet write. Re-upload the model instead."),
+            detail=("Model has no elements in the database - cannot retry Parquet write. Re-upload the model instead."),
         )
 
     rows: list[dict[str, Any]] = []
@@ -2376,14 +2376,14 @@ async def get_model_geometry(
 
     Auth: accepts either an Authorization header OR a ``?token=...`` query
     parameter. The query param exists because Three.js ColladaLoader cannot
-    set custom headers — without this fallback the viewer would 401.
+    set custom headers - without this fallback the viewer would 401.
 
     The geometry blob is resolved through :mod:`app.modules.bim_hub.file_storage`
     so both the local filesystem and S3 backends work transparently.  For S3
     we redirect to a short-lived presigned URL; for the local backend we
     stream the bytes directly through the route.
     """
-    # Per-request correlation ID — surfaced in the X-Request-Id response
+    # Per-request correlation ID - surfaced in the X-Request-Id response
     # header AND embedded in every structured-error payload so a user who
     # ships a screenshot to support can be located in server logs in one
     # grep. UUID4 keeps it non-PII (no info about the user, project, or
@@ -2434,7 +2434,7 @@ async def get_model_geometry(
                 "remediation": (
                     "Log out and log back in to obtain a fresh token. If "
                     "the problem persists, your account may have been "
-                    "deactivated — contact support."
+                    "deactivated - contact support."
                 ),
             },
             headers={"X-Request-Id": request_id},
@@ -2507,7 +2507,7 @@ async def get_model_geometry(
         key, ext = found
         media_type = bim_file_storage.GEOMETRY_MEDIA_TYPES.get(ext, "application/octet-stream")
         cache_headers = {
-            # No caching — geometry may be re-generated with patched node names.
+            # No caching - geometry may be re-generated with patched node names.
             "Cache-Control": "no-store, no-cache, must-revalidate",
         }
 
@@ -2523,7 +2523,7 @@ async def get_model_geometry(
 
         _geo_bytes = await get_storage_backend().get(key)
 
-        # Serve-time integrity check — closes the gap where geometry written
+        # Serve-time integrity check - closes the gap where geometry written
         # by an older converter (before _validate_geometry_file existed on
         # ingest) keeps streaming bad bytes to the viewer. The browser
         # surfaces this as an opaque "Cannot read properties of undefined
@@ -2534,7 +2534,7 @@ async def get_model_geometry(
         if not ok_serve:
             # Build a structured diagnostic payload. We deliberately limit
             # what we expose to: (a) the first 8 bytes of the file as hex
-            # + ASCII (universally safe — magic bytes don't carry PII),
+            # + ASCII (universally safe - magic bytes don't carry PII),
             # (b) total size in bytes, (c) the parser reason, (d) the
             # stored extension, (e) what we expected. NO actual user-data
             # bytes or filenames are leaked. Frontend renders this verbatim
@@ -2545,7 +2545,7 @@ async def get_model_geometry(
             head_ascii = "".join(chr(b) if 0x20 <= b < 0x7F else "." for b in head_bytes)
             # Surface the first identifiable XML root tag for the common
             # "stored DAE turned out to be IFC-XML / gbXML / HTML 404 page"
-            # failure mode — gives support a one-glance diagnosis.
+            # failure mode - gives support a one-glance diagnosis.
             first_tag: str | None = None
             if ext.lower() == ".dae":
                 import re as _re_diag
@@ -2555,7 +2555,7 @@ async def get_model_geometry(
                     _m = _re_diag.search(r"<([a-zA-Z_:][\w:.-]{0,40})", _head_text)
                     if _m:
                         first_tag = f"<{_m.group(1)}>"
-                except Exception:  # pragma: no cover — replace can't raise
+                except Exception:  # pragma: no cover - replace can't raise
                     first_tag = None
             expected_signature = {
                 ".glb": "b'glTF' magic + version 2",
@@ -2567,7 +2567,7 @@ async def get_model_geometry(
             # the single biggest lever for end-user understanding: instead
             # of "DAE has no <COLLADA> root in first 4 KB (first tag found:
             # <html>)" they see "The stored file is an HTML page, not a 3D
-            # model — the converter probably crashed and saved an error
+            # model - the converter probably crashed and saved an error
             # page by mistake."
             reason_lower = reason_serve.lower()
             if "empty buffer" in reason_lower:
@@ -2599,7 +2599,7 @@ async def get_model_geometry(
                 cause = (
                     f"The stored file is {first_tag} (XML data) instead of "
                     "a 3D mesh. The source format does not contain 3D "
-                    "geometry to display — e.g. an IFC schedule or a "
+                    "geometry to display - e.g. an IFC schedule or a "
                     "2D-only drawing."
                 )
             elif "magic mismatch" in reason_lower:
@@ -2649,7 +2649,7 @@ async def get_model_geometry(
                     "Delete this model and re-upload the source CAD/BIM "
                     "file. If the problem repeats with the same file, the "
                     "source itself may be unsupported (2D-only DWG, IFC "
-                    "schedule with no geometry, corrupted RVT) — try "
+                    "schedule with no geometry, corrupted RVT) - try "
                     "exporting from your CAD tool again, or contact "
                     "info@datadrivenconstruction.io and quote the "
                     "Request ID shown below."
@@ -2690,7 +2690,7 @@ async def get_model_geometry(
             },
         )
 
-    # ── No geometry blob on storage — disambiguate by model status ──────────
+    # ── No geometry blob on storage - disambiguate by model status ──────────
     #
     # A bare "geometry_missing" 404 used to fire here for FOUR very different
     # situations, which left the viewer unable to tell a transient "still
@@ -2708,7 +2708,7 @@ async def get_model_geometry(
     model_status = (model.status or "").lower()
 
     if model_status == "processing":
-        # Conversion is still queued/running — the blob will appear once the
+        # Conversion is still queued/running - the blob will appear once the
         # background worker finishes. Transient, the FE should keep polling.
         logger.info(
             "BIM geometry requested while conversion still running "
@@ -2729,7 +2729,7 @@ async def get_model_geometry(
                 "message": ("3D geometry is still being generated for this model."),
                 "remediation": (
                     "Conversion is in progress. The viewer will load "
-                    "automatically once the CAD converter finishes — this "
+                    "automatically once the CAD converter finishes - this "
                     "usually takes from a few seconds to a couple of minutes "
                     "depending on file size. No action is needed."
                 ),
@@ -2738,7 +2738,7 @@ async def get_model_geometry(
         )
 
     if model_status == "error":
-        # Conversion failed outright — no blob will ever appear without a
+        # Conversion failed outright - no blob will ever appear without a
         # successful retry. error_message carries the converter diagnosis.
         logger.info(
             "BIM geometry requested for a model whose conversion failed "
@@ -2761,7 +2761,7 @@ async def get_model_geometry(
                 "remediation": (
                     "Open the model in the BIM tab and click Retry to run the "
                     "conversion again. If it keeps failing the source file may "
-                    "be corrupt or unsupported — re-export it from your CAD "
+                    "be corrupt or unsupported - re-export it from your CAD "
                     "tool, or contact info@datadrivenconstruction.io and "
                     "quote the Request ID below."
                 ),
@@ -2804,11 +2804,11 @@ async def get_model_geometry(
         )
 
     if model_status == "ready":
-        # Status promises geometry but the blob is gone — a genuine,
+        # Status promises geometry but the blob is gone - a genuine,
         # unexpected data problem worth reporting. This is the ONLY case
         # that keeps the legacy "geometry_missing" code.
         logger.warning(
-            "BIM geometry MISSING for a ready model — blob gone from storage "
+            "BIM geometry MISSING for a ready model - blob gone from storage "
             "(request_id=%s, model_id=%s, project_id=%s, status=%s)",
             request_id,
             model_id,
@@ -2828,7 +2828,7 @@ async def get_model_geometry(
                     "The geometry was generated but the file appears to have "
                     "been deleted from storage. Re-upload the source CAD/BIM "
                     "file to regenerate it. If the file was not deleted "
-                    "manually this is a server-side data problem — contact "
+                    "manually this is a server-side data problem - contact "
                     "info@datadrivenconstruction.io and quote the Request ID "
                     "below."
                 ),
@@ -2839,7 +2839,7 @@ async def get_model_geometry(
     # Any other status (degraded, demo/seed rows, or an unknown future
     # value): the model never reliably carried a 3D mesh on this server.
     # `degraded` normally DOES ship geometry, so a missing blob there is
-    # surprising — but it is not a hard "ready" promise, so we report it as
+    # surprising - but it is not a hard "ready" promise, so we report it as
     # "absent" (no 3D to show) rather than the data-loss "missing" code,
     # keeping "geometry_missing" reserved for the ready-but-gone case above.
     logger.warning(
@@ -2859,7 +2859,7 @@ async def get_model_geometry(
             "model_status": model_status or "unknown",
             "message": ("No 3D geometry is available for this model."),
             "remediation": (
-                "This model does not currently have a 3D mesh on the server — "
+                "This model does not currently have a 3D mesh on the server - "
                 "it may be a non-3D row, a demo entry, or an import that "
                 "produced no geometry. Re-upload the source CAD/BIM file to "
                 "generate geometry. If the same source repeatedly produces no "
@@ -2888,8 +2888,8 @@ async def list_models(
     """List BIM models for a project.
 
     Always returns every persisted BIMModel row (sorted by ``created_at``
-    desc) — including ``ready``, ``processing``, ``needs_converter`` and
-    ``error`` rows — so the /bim page can surface already-converted models
+    desc) - including ``ready``, ``processing``, ``needs_converter`` and
+    ``error`` rows - so the /bim page can surface already-converted models
     *without* triggering re-conversion.  Each item is enriched with
     ``conversion_artifact_size_mb`` (sum of GLB/DAE/parquet/thumbnail
     bytes), ``has_original`` (True iff the raw upload is still on
@@ -2906,7 +2906,7 @@ async def list_models(
     # collects artifact/original/geometry info for every model in the
     # page. Replaces the previous asyncio.gather fan-out which issued
     # 3+ probes per model (50 models → 150+ HEAD/stat round-trips per
-    # list call — classic N+1 against storage).  When the backend
+    # list call - classic N+1 against storage).  When the backend
     # doesn't support list_prefix (community backends predating v4.6.1),
     # fall back to the per-model probe loop so behaviour is unchanged.
     storage_summary: dict[str, dict[str, object]] = {}
@@ -3044,7 +3044,7 @@ async def create_model(
 #     `/assets` is not interpreted as a UUID model_id and rejected with
 #     422 by the path validator). The handlers and the `_summarise_asset`
 #     helper live further down in the file under the "Asset Register
-#     (v2.3.0)" section header — only the route registrations move up. ───
+#     (v2.3.0)" section header - only the route registrations move up. ───
 
 
 @router.get("/assets", response_model=AssetListResponse)
@@ -3288,7 +3288,7 @@ async def list_elements(
     await _verify_model_access(service, model_id, user_id or "")
 
     # Skeleton path: plain BIMElement rows, no relation joins, no enrichment.
-    # Ten times faster than the enriched path — used by the 3D viewer, where
+    # Ten times faster than the enriched path - used by the 3D viewer, where
     # mesh matching only needs id/mesh_ref/name/element_type/bbox.
     if skeleton:
         if limit > 50000:
@@ -3321,7 +3321,7 @@ async def list_elements(
             limit=limit,
         )
 
-    # Enriched path is capped at 2000 — each extra row spawns six join lookups.
+    # Enriched path is capped at 2000 - each extra row spawns six join lookups.
     if limit > 2000:
         limit = 2000
     (
@@ -3576,7 +3576,7 @@ async def export_cobie_xlsx(
         io.BytesIO(xlsx_bytes),
         media_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
         headers={
-            # RFC 6266 — a model name with non-Latin-1 chars would otherwise make
+            # RFC 6266 - a model name with non-Latin-1 chars would otherwise make
             # the ASGI server 500 while encoding this header.
             "Content-Disposition": content_disposition_attachment(filename),
             "Content-Length": str(len(xlsx_bytes)),
@@ -3596,12 +3596,12 @@ async def _verify_boq_position_access(
 ) -> None:
     """Resolve a BOQ position → its BOQ → project and verify the caller owns it.
 
-    `Position` has no direct `project_id` column — the project lives on the
+    `Position` has no direct `project_id` column - the project lives on the
     parent `BOQ` row reached via `position.boq_id`.  We do a single-row
     SELECT joining position → boq so this stays one round-trip.
     """
     # ``BOQ`` is the class name exposed by ``boq.models`` and it refers to
-    # the Bill-of-Quantities aggregate, not a module-level constant — the
+    # the Bill-of-Quantities aggregate, not a module-level constant - the
     # ``N811`` noqa below suppresses ruff's all-caps-is-a-constant heuristic.
     from app.modules.boq.models import BOQ as BOQModel  # noqa: N811
     from app.modules.boq.models import Position
@@ -3927,7 +3927,7 @@ async def delete_element_group(
     await service.delete_element_group(group_id)
 
 
-# ── Smart Views — canonical-format rule builder ──────────────────────────
+# ── Smart Views - canonical-format rule builder ──────────────────────────
 #
 # These three endpoints power the new Smart View builder in the BIM page.
 # They are intentionally light wrappers over service methods so the bulk
@@ -3995,7 +3995,7 @@ async def preview_smart_view(
 #
 # These three routes plug the BIM Hub module into the cross-module
 # semantic memory layer (see ``app/core/vector_index.py``).  They are
-# intentionally uniform across every module that participates — only
+# intentionally uniform across every module that participates - only
 # the adapter and the row loader differ.
 
 
@@ -4028,9 +4028,9 @@ async def bim_vector_reindex(
     Optional filters narrow the scope so users can reindex one project
     or even one model at a time without re-embedding the entire
     tenant.  Set ``purge_first=true`` to wipe the matching subset
-    before re-encoding — useful when the embedding model has changed.
+    before re-encoding - useful when the embedding model has changed.
 
-    Audit B2 — was a critical IDOR. Before this fix any user with the
+    Audit B2 - was a critical IDOR. Before this fix any user with the
     ``bim.update`` permission could:
       • pass any other tenant's ``project_id`` and re-embed their model
       • pass any other tenant's ``model_id`` and with ``purge_first=true``
@@ -4038,7 +4038,7 @@ async def bim_vector_reindex(
         re-reindex.
     Now both filter parameters are validated through the project-
     access helpers before any DB / Qdrant work happens. Tenant-wide
-    reindex (both parameters omitted) is left to admins — the
+    reindex (both parameters omitted) is left to admins - the
     permission grant + the ``RequirePermission`` dependency already
     gate that.
     """
@@ -4048,7 +4048,7 @@ async def bim_vector_reindex(
     from app.modules.bim_hub.models import BIMElement, BIMModel
     from app.modules.bim_hub.vector_adapter import bim_element_vector_adapter
 
-    # Audit B2 — gate scoped reindex requests on project ownership.
+    # Audit B2 - gate scoped reindex requests on project ownership.
     if model_id is not None:
         # Resolve model → project_id then verify ownership.
         await _verify_model_access(
@@ -4085,7 +4085,7 @@ async def bim_element_similar(
     """Return BIM elements semantically similar to the given one.
 
     By default the search is scoped **to the source element's own
-    project** — typically users want to find sibling elements inside
+    project** - typically users want to find sibling elements inside
     the same model ("other exterior walls like this one") rather than
     fishing across the whole tenant.  Pass ``cross_project=true`` to
     broaden the search to every project the caller has access to.
@@ -4093,10 +4093,10 @@ async def bim_element_similar(
     Returns a list of :class:`VectorHit` dicts plus the original row
     id so the frontend can highlight the source.
 
-    Audit B3 — was a critical cross-tenant leak. Two issues:
+    Audit B3 - was a critical cross-tenant leak. Two issues:
 
       1. The source element itself was loaded without verifying
-         project access. ``element_id`` is a UUID — guess-resistant
+         project access. ``element_id`` is a UUID - guess-resistant
          in practice but the previous code returned 404 only when
          the id was missing; for a real foreign id the user got back
          the element's full payload + similarity hits.
@@ -4127,7 +4127,7 @@ async def bim_element_similar(
 
     project_id = str(row.model.project_id) if row.model is not None and row.model.project_id is not None else None
 
-    # Audit B3 — gate the source element on project access. Foreign
+    # Audit B3 - gate the source element on project access. Foreign
     # element ids now 404 the same way a missing one does.
     if project_id is not None:
         await _verify_project_access(
@@ -4144,7 +4144,7 @@ async def bim_element_similar(
     )
 
     if cross_project and hits:
-        # Audit B3 — post-filter hits the user has no access to.
+        # Audit B3 - post-filter hits the user has no access to.
         # We collect the unique project_ids surfaced by the candidate
         # hits and verify each against the access helper. The 4× over-
         # fetch above (capped at 80) gives the helper enough room to
@@ -4169,7 +4169,7 @@ async def bim_element_similar(
                     proj_by_model[mid] = pid
         # Build a set of allowed project_ids by probing the access
         # helper once per unique pid. _verify_project_access raises
-        # HTTPException(404) on denial — we catch and skip.
+        # HTTPException(404) on denial - we catch and skip.
         allowed: set[uuid.UUID] = set()
         for pid in set(proj_by_model.values()):
             try:
@@ -4217,13 +4217,13 @@ async def bim_coverage_summary(
     coverage card and the AI advisor's structured project state.
 
     Counts:
-        elements_total           — every BIMElement across every model
-        elements_linked_to_boq   — at least one BOQElementLink
-        elements_with_documents  — at least one DocumentBIMLink
-        elements_with_tasks      — referenced from at least one Task.bim_element_ids
-        elements_with_activities — at least one Activity.bim_element_ids
-        elements_validated       — at least one ValidationResult row
-        elements_costed          — linked to a BOQ position with non-zero unit_rate
+        elements_total           - every BIMElement across every model
+        elements_linked_to_boq   - at least one BOQElementLink
+        elements_with_documents  - at least one DocumentBIMLink
+        elements_with_tasks      - referenced from at least one Task.bim_element_ids
+        elements_with_activities - at least one Activity.bim_element_ids
+        elements_validated       - at least one ValidationResult row
+        elements_costed          - linked to a BOQ position with non-zero unit_rate
 
     Percentages are derived from ``elements_total`` and clipped to [0, 1].
 
@@ -4238,7 +4238,7 @@ async def bim_coverage_summary(
 
     from app.modules.bim_hub.models import BIMElement, BIMModel, BOQElementLink
 
-    # Total elements in the project — joined via BIMModel.
+    # Total elements in the project - joined via BIMModel.
     total_stmt = (
         _select(func.count(BIMElement.id))
         .join(BIMModel, BIMElement.model_id == BIMModel.id)
@@ -4255,7 +4255,7 @@ async def bim_coverage_summary(
     )
     elements_linked_to_boq = int((await session.execute(boq_linked_stmt)).scalar() or 0)
 
-    # Documents — uses DocumentBIMLink if the table exists.  Wrapped in
+    # Documents - uses DocumentBIMLink if the table exists.  Wrapped in
     # try/except so that a missing/optional module doesn't 500 the call.
     elements_with_documents = 0
     try:
@@ -4274,7 +4274,7 @@ async def bim_coverage_summary(
     except (ImportError, AttributeError, SQLAlchemyError):
         elements_with_documents = 0
 
-    # Tasks — Task.bim_element_ids is a JSON array, so the cleanest
+    # Tasks - Task.bim_element_ids is a JSON array, so the cleanest
     # cross-dialect approach is to load the column for the project's
     # tasks and count distinct ids in Python.  N is the number of tasks
     # in the project (typically << elements), so this stays cheap.
@@ -4294,7 +4294,7 @@ async def bim_coverage_summary(
     except (ImportError, AttributeError, SQLAlchemyError):
         elements_with_tasks = 0
 
-    # Schedule activities — same pattern as tasks.
+    # Schedule activities - same pattern as tasks.
     elements_with_activities = 0
     try:
         from app.modules.schedule.models import Activity, Schedule
@@ -4315,7 +4315,7 @@ async def bim_coverage_summary(
     except (ImportError, AttributeError, SQLAlchemyError):
         elements_with_activities = 0
 
-    # Validated elements — we count distinct rows in the validation
+    # Validated elements - we count distinct rows in the validation
     # results table whose target_type='bim_element' and project_id matches.
     elements_validated = 0
     try:
@@ -4396,7 +4396,7 @@ async def get_dataframe_schema(
     Used by the frontend to build dynamic filter dropdowns for the full
     DDC property set (1000+ columns).
 
-    Audit B1 — was a sweeping IDOR: previously called
+    Audit B1 - was a sweeping IDOR: previously called
     ``service.get_model(model_id)`` directly with NO project-access
     check, so any authenticated user could enumerate another tenant's
     BIM schemas. Now gated via ``_verify_model_access`` which both
@@ -4435,7 +4435,7 @@ async def query_dataframe(
             "limit": 500
         }
 
-    Audit B1 — see ``get_dataframe_schema``. This endpoint is the
+    Audit B1 - see ``get_dataframe_schema``. This endpoint is the
     highest-impact of the three: ``query_parquet`` returns up to
     50 000 rows of property data on a single call, so the cross-tenant
     leak would have exfiltrated entire BIM property sets in one POST.
@@ -4472,7 +4472,7 @@ async def get_column_values(
 
     Returns ``[{"value": "F90", "count": 42}, ...]`` sorted by count desc.
 
-    Audit B1 — same IDOR class as the two endpoints above. Gated here
+    Audit B1 - same IDOR class as the two endpoints above. Gated here
     via ``_verify_model_access``.
     """
     model = await _verify_model_access(service, model_id, _user)
@@ -4495,7 +4495,7 @@ async def get_column_values(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Endpoint convention aliases — register the canonical ``/models/{model_id}/...``
+# Endpoint convention aliases - register the canonical ``/models/{model_id}/...``
 # paths next to the older flat ``/{model_id}/...`` ones so both work. New
 # callers should use the canonical form (it matches docstrings + the
 # elements/geometry/dataframe endpoints) but back-compat is preserved.
@@ -4557,7 +4557,7 @@ router.add_api_route(
 # composes the models into a single scene is deferred to Slice 2.
 #
 # All endpoints reuse the project-ownership helper ``_verify_project_access``;
-# there is no separate federation ACL — owning the project owns its
+# there is no separate federation ACL - owning the project owns its
 # federations.
 # ═══════════════════════════════════════════════════════════════════════════════
 

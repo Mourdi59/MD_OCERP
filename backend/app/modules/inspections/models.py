@@ -1,7 +1,7 @@
 """‌⁠‍Inspections ORM models.
 
 Tables:
-    oe_inspections_inspection — quality inspections with checklists and pass/fail results
+    oe_inspections_inspection - quality inspections with checklists and pass/fail results
 """
 
 import uuid
@@ -54,7 +54,7 @@ class QualityInspection(Base):
     # ── Geo binding (cross-module) ────────────────────────────────────────
     # Capture-time WGS84 pin so an inspection raised in the field renders on the
     # project's Geo Hub map. Mirrors punchlist ``geo_lat``/``geo_lon`` exactly.
-    # Nullable + no server_default — absent means "no map pin", not "(0, 0)".
+    # Nullable + no server_default - absent means "no map pin", not "(0, 0)".
     geo_lat: Mapped[float | None] = mapped_column(Float, nullable=True)
     geo_lon: Mapped[float | None] = mapped_column(Float, nullable=True)
 

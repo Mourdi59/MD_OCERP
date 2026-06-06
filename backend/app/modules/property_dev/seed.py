@@ -2,7 +2,7 @@
 
 Public entry point: :func:`seed_property_dev_demo`.
 
-Idempotent — if a Development with the chosen code already exists for the
+Idempotent - if a Development with the chosen code already exists for the
 target project, the function returns it unchanged. Run again to top-up an
 empty DB.
 """
@@ -268,7 +268,7 @@ async def seed_property_dev_demo(session: AsyncSession, project_ids: Iterable[uu
             await session.flush()
             options_by_group[g.id].append(opt)
 
-    # 4. Plots — 48 plots, mostly planned, some reserved/sold/handed_over.
+    # 4. Plots - 48 plots, mostly planned, some reserved/sold/handed_over.
     plots: list[Plot] = []
     statuses = (
         ["planned"] * 20
@@ -311,7 +311,7 @@ async def seed_property_dev_demo(session: AsyncSession, project_ids: Iterable[uu
         await session.flush()
         plots.append(plot)
 
-    # 5. Buyers — 32 total. Mix of statuses.
+    # 5. Buyers - 32 total. Mix of statuses.
     buyer_statuses = ["lead"] * 10 + ["reserved"] * 8 + ["contracted"] * 10 + ["completed"] * 2 + ["cancelled"] * 2
     buyers: list[Buyer] = []
     sold_plots = [p for p in plots if p.status in {"reserved", "sold", "handed_over"}]
@@ -338,7 +338,7 @@ async def seed_property_dev_demo(session: AsyncSession, project_ids: Iterable[uu
         await session.flush()
         buyers.append(buyer)
 
-    # 6. Selections + selection items — 80 items across some buyers.
+    # 6. Selections + selection items - 80 items across some buyers.
     eligible_buyers = [b for b in buyers if b.status in {"reserved", "contracted"}]
     item_count = 0
     target_items = 80
@@ -412,7 +412,7 @@ async def seed_property_dev_demo(session: AsyncSession, project_ids: Iterable[uu
         await session.flush()
         snag_count += 1
 
-    # Warranty claims — link to handed-over plots + their buyers.
+    # Warranty claims - link to handed-over plots + their buyers.
     claim_count = 0
     contracted_buyers = [b for b in buyers if b.status in {"contracted", "completed"}]
     while claim_count < 4 and contracted_buyers and handed_over_plots:

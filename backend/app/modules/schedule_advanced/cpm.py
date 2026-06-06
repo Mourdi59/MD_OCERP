@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Pure-Python Critical Path Method (CPM) engine — Slice 1.
+"""‌⁠‍Pure-Python Critical Path Method (CPM) engine - Slice 1.
 
 This module is intentionally self-contained: no SQLAlchemy, no FastAPI,
 no third-party deps (no scipy / networkx). Everything is plain ``dataclass``
@@ -31,7 +31,7 @@ Scope:
       component finish).
     * Critical path marking (total_float <= 0).
     * Cycle detection via DFS (raises :class:`CycleError`).
-    * Disconnected sub-networks supported — every weakly-connected
+    * Disconnected sub-networks supported - every weakly-connected
       component is scheduled independently from t=0.
 
 The existing ``service.cpm_forward_backward_pass`` helper that powers the
@@ -45,7 +45,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-# Dependency type codes — all four PDM link types are honoured in both
+# Dependency type codes - all four PDM link types are honoured in both
 # the forward pass (ES/EF) and the backward pass (LS/LF).
 DepType = Literal["FS", "SS", "FF", "SF"]
 
@@ -74,10 +74,10 @@ class Activity:
     """One scheduled activity.
 
     Attributes:
-        id: Unique identifier (any hashable — typically a UUID string or
+        id: Unique identifier (any hashable - typically a UUID string or
             a short code like ``"A"``).
         duration: Working-day duration. Coerced to ``max(0, int(duration))``
-            at network-build time — negative durations behave like
+            at network-build time - negative durations behave like
             milestones.
         predecessors: List of ``(predecessor_id, dep_type, lag_days)``
             triples. ``dep_type`` is "FS" / "SS" / "FF" / "SF" (all four
@@ -184,7 +184,7 @@ class TaskNetwork:
         for root in self._order:
             if colour[root] != WHITE:
                 continue
-            # Iterative DFS — (node, iterator-over-children)
+            # Iterative DFS - (node, iterator-over-children)
             stack: list[tuple[Any, list[tuple[Any, DepType, int]]]] = [(root, list(self._succs[root]))]
             colour[root] = GREY
             while stack:
@@ -207,7 +207,7 @@ class TaskNetwork:
                     # out of the path (producing A → B → A instead of the
                     # correct A → B → C → A when A was the root). We now
                     # stop when we either reach `child_id` again OR exhaust
-                    # the parent chain — the closing ``child_id`` appended
+                    # the parent chain - the closing ``child_id`` appended
                     # below always completes the ring regardless.
                     cycle = [child_id]
                     cur = node
@@ -219,7 +219,7 @@ class TaskNetwork:
                     cycle.append(child_id)
                     cycle.reverse()
                     return cycle
-                # BLACK: already fully explored — skip.
+                # BLACK: already fully explored - skip.
         return None
 
 
@@ -227,7 +227,7 @@ class TaskNetwork:
 
 
 def _topological_order(network: TaskNetwork) -> list[Any]:
-    """Kahn's algorithm — assumes the network is acyclic (caller's job)."""
+    """Kahn's algorithm - assumes the network is acyclic (caller's job)."""
     indeg: dict[Any, int] = {aid: len(network.predecessors(aid)) for aid in network.ids()}
     # Use a list as a FIFO; the network is small so O(n) pop(0) is fine.
     queue: list[Any] = [aid for aid in network.ids() if indeg[aid] == 0]

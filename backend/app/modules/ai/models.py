@@ -1,8 +1,8 @@
 """‌⁠‍AI Estimation ORM models.
 
 Tables:
-    oe_ai_settings — per-user AI provider configuration (API keys, preferred model)
-    oe_ai_estimate_job — tracks AI estimation requests and results
+    oe_ai_settings - per-user AI provider configuration (API keys, preferred model)
+    oe_ai_estimate_job - tracks AI estimation requests and results
 """
 
 import uuid
@@ -14,7 +14,7 @@ from app.database import GUID, Base
 
 
 class AISettings(Base):
-    """‌⁠‍Per-user AI configuration — API keys and model preferences."""
+    """‌⁠‍Per-user AI configuration - API keys and model preferences."""
 
     __tablename__ = "oe_ai_settings"
 
@@ -56,7 +56,7 @@ class AISettings(Base):
 
 
 class AIEstimateJob(Base):
-    """‌⁠‍Tracks an AI estimation request — input, status, and result."""
+    """‌⁠‍Tracks an AI estimation request - input, status, and result."""
 
     __tablename__ = "oe_ai_estimate_job"
 
@@ -81,7 +81,7 @@ class AIEstimateJob(Base):
     model_used: Mapped[str | None] = mapped_column(String(100), nullable=True)
     tokens_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    # Estimated USD spend for this job — computed at persist time from
+    # Estimated USD spend for this job - computed at persist time from
     # ``tokens_used`` and the shared rate table in
     # :mod:`app.core.ai.pricing`. Float (not Numeric) for symmetry with
     # ``clash_ai_triage`` and so SQLite happily stores it as REAL.

@@ -1,5 +1,5 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""Field Diary event publishers — feed diary labour into cost / payroll.
+"""Field Diary event publishers - feed diary labour into cost / payroll.
 
 When a diary entry is submitted, the work activities it carries (each with
 an ``hours`` figure) are a labour signal just like a field report's

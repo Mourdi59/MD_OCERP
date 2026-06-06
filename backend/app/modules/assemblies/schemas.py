@@ -1,4 +1,4 @@
-"""‌⁠‍Assembly Pydantic schemas — request/response models.
+"""‌⁠‍Assembly Pydantic schemas - request/response models.
 
 Defines create, update, and response schemas for assemblies and components.
 Numeric values are stored as strings in the database for SQLite
@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_valid
 
 
 # ── v3 §10 money serialisation helper ─────────────────────────────────────
-# Mirrors backend/app/modules/boq/schemas.py::_serialise_money — money
+# Mirrors backend/app/modules/boq/schemas.py::_serialise_money - money
 # fields are stored / accepted as ``Decimal`` but emitted as plain decimal
 # *strings* in JSON so totals stay exact and locale-neutral.
 def _serialise_money(v: Decimal | None) -> str | None:
@@ -50,7 +50,7 @@ def _sanitise_regional_factors(raw: Any) -> dict[str, Any]:
 
     The column is JSON so the Pydantic ``dict[str, Any]`` shape itself
     cannot reject ``{"berlin": "Infinity"}`` / ``{"x": -5}`` / nested
-    dicts — but those values get multiplied straight into the BOQ
+    dicts - but those values get multiplied straight into the BOQ
     position's ``unit_rate`` at apply-to-boq time (NEW-ASM-105 /
     ASM-007). Drop any non-finite, negative, or non-numeric entry at
     the schema boundary rather than letting it persist and corrupt a
@@ -66,7 +66,7 @@ def _sanitise_regional_factors(raw: Any) -> dict[str, Any]:
         if not isinstance(key, str) or not key.strip():
             continue
         # Reject booleans (which are an int subclass) and nested
-        # containers — a factor must be a single number.
+        # containers - a factor must be a single number.
         if isinstance(val, bool) or isinstance(val, (dict, list)):
             continue
         try:
@@ -112,7 +112,7 @@ class ComponentCreate(BaseModel):
     # can never overflow to float ``inf`` (1e12 ** 3 = 1e36, finite in
     # both float and Decimal). ``allow_inf_nan=False`` makes Pydantic
     # reject the raw ``NaN`` / ``Infinity`` JSON literals Starlette's
-    # json.loads otherwise accepts — a clean 422 instead of a silently
+    # json.loads otherwise accepts - a clean 422 instead of a silently
     # null-serialised total (ASM-002 / ASM-003). ``ge=0.0`` enforces the
     # domain rule that a recipe factor / quantity cannot be negative
     # (ASM-004); 0 stays legal for a disabled / optional line.
@@ -123,7 +123,7 @@ class ComponentCreate(BaseModel):
     factor: float = Field(default=1.0, ge=0.0, le=_NUM_MAX, allow_inf_nan=False)
     quantity: float = Field(default=1.0, ge=0.0, le=_NUM_MAX, allow_inf_nan=False)
     unit: str = Field(..., min_length=1, max_length=20)
-    # v3 §10 — money is Decimal-in / Decimal-as-string out.
+    # v3 §10 - money is Decimal-in / Decimal-as-string out.
     unit_cost: Decimal = Field(default=Decimal("0"), ge=0, le=_NUM_MAX)
     unit_rate: Decimal | None = Field(default=None, ge=0, le=_NUM_MAX, exclude=True)
     resource_type: str | None = Field(default=None, max_length=20)
@@ -193,13 +193,13 @@ class ComponentResponse(BaseModel):
     unit: str
     unit_cost: Decimal = Decimal("0")
     # Decimal (not float) so JSON serialises an exact string like "90.0"
-    # rather than 89.9999... — money/quantity totals must never be float
+    # rather than 89.9999... - money/quantity totals must never be float
     # in the response payload (R7 deep-improve).
     total: Decimal = Decimal("0")
     sort_order: int
     # FastAPI defaults `response_model_by_alias=True`, so if we aliased
     # this to "metadata_" the wire payload would carry the trailing
-    # underscore — which we don't want. The ORM column is `metadata_`
+    # underscore - which we don't want. The ORM column is `metadata_`
     # (Python keyword conflict on Base), but it's renamed at the
     # response builder.
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -245,7 +245,7 @@ class AssemblyCreate(BaseModel):
     @field_validator("regional_factors", mode="before")
     @classmethod
     def _clean_regional_factors(cls, v: Any) -> dict[str, Any]:
-        # NEW-ASM-107 — strip non-finite / negative / non-numeric
+        # NEW-ASM-107 - strip non-finite / negative / non-numeric
         # entries so a poisoned factor can't reach apply-to-boq.
         return _sanitise_regional_factors(v)
 
@@ -262,7 +262,7 @@ class AssemblyUpdate(BaseModel):
     category: str | None = None
     classification: dict[str, Any] | None = None
     currency: str | None = Field(default=None, max_length=10)
-    # Same bounds as AssemblyCreate.bid_factor (ASM-002 / NEW-ASM-101) —
+    # Same bounds as AssemblyCreate.bid_factor (ASM-002 / NEW-ASM-101) -
     # an UPDATE must not be a back door for a non-finite / negative
     # markup that would poison the recalculated total_rate.
     bid_factor: float | None = Field(default=None, ge=0.0, le=_NUM_MAX, allow_inf_nan=False)
@@ -275,7 +275,7 @@ class AssemblyUpdate(BaseModel):
     @field_validator("regional_factors", mode="before")
     @classmethod
     def _clean_regional_factors(cls, v: Any) -> Any:
-        # NEW-ASM-107 — UPDATE must not be a back door for a poisoned
+        # NEW-ASM-107 - UPDATE must not be a back door for a poisoned
         # regional factor either. ``None`` is preserved so
         # ``exclude_unset=True`` semantics still work (i.e. an absent
         # field stays absent, not coerced to {}).
@@ -288,7 +288,7 @@ class AssemblyResponse(BaseModel):
     """Assembly returned from the API.
 
     Contract note (ASM-005): ``total_rate`` is the **unfactored base
-    rate** — ``sum(component totals) * bid_factor`` only. It deliberately
+    rate** - ``sum(component totals) * bid_factor`` only. It deliberately
     does NOT bake in any ``regional_factors`` entry, because an assembly
     holds many region coefficients at once and there is no single
     "current" region at the catalog level. The regional premium is
@@ -356,7 +356,7 @@ class ApplyToBOQRequest(BaseModel):
     applied un-converted and the created position carries a non-blocking
     ``currency_mismatch`` flag in its metadata (the value stays in the
     assembly's own currency, which is recorded alongside it). The apply
-    is never hard-refused — the old 409 trapped the user with no UI
+    is never hard-refused - the old 409 trapped the user with no UI
     escape hatch, so there is no opt-in flag to set.
     """
 
@@ -405,7 +405,7 @@ class AssemblyImportRequest(BaseModel):
     assembly: AssemblyExport
 
 
-# ── Assembly Library templates (v3.13.0 — Slice 1) ───────────────────────────
+# ── Assembly Library templates (v3.13.0 - Slice 1) ───────────────────────────
 
 
 class AssemblyTemplateComponent(BaseModel):
@@ -472,7 +472,7 @@ class ApplyTemplateRequest(BaseModel):
 class AppliedComponent(BaseModel):
     """A single component resolved against the project's cost catalogue.
 
-    v3 §10 — ``unit_rate`` is money; Decimal-as-string in JSON. ``total``
+    v3 §10 - ``unit_rate`` is money; Decimal-as-string in JSON. ``total``
     stays float here because the apply-template endpoint is a preview
     (the persisted line totals are written via the BOQ service which is
     already Decimal-correct).
@@ -500,7 +500,7 @@ class AppliedComponent(BaseModel):
 class ApplyTemplateResponse(BaseModel):
     """Draft assembly returned by the apply endpoint.
 
-    The draft is NOT persisted — the FE shows it for user review and a
+    The draft is NOT persisted - the FE shows it for user review and a
     later POST creates the actual Assembly (or a BOQ position). That
     "preview-then-confirm" contract matches the existing
     ``/assemblies/ai-generate`` endpoint and the platform's

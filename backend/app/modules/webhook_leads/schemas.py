@@ -1,4 +1,4 @@
-"""Webhook Leads Pydantic schemas — request/response models."""
+"""Webhook Leads Pydantic schemas - request/response models."""
 
 from __future__ import annotations
 
@@ -75,7 +75,7 @@ class WebhookSourceResponse(BaseModel):
 class WebhookSourceCreatedResponse(WebhookSourceResponse):
     """Returned only by POST /sources/ and the secret-rotation endpoint.
 
-    Carries the plaintext ``secret`` exactly once — it is never readable
+    Carries the plaintext ``secret`` exactly once - it is never readable
     again after this response (only the SHA-256 hash is persisted).
     """
 

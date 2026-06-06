@@ -1,11 +1,11 @@
-"""‌⁠‍Procurement event handlers — auto-create PO from awarded tender / bid.
+"""‌⁠‍Procurement event handlers - auto-create PO from awarded tender / bid.
 
 Subscribes to BOTH award events emitted by the two sister tendering
 modules and creates a draft Purchase Order pre-populated from the winner:
 
-* ``tendering.package.awarded`` (oe_tendering) — see
+* ``tendering.package.awarded`` (oe_tendering) - see
   :func:`_create_po_from_award`.
-* ``bid_management.package.awarded`` (oe_bid_management) — see
+* ``bid_management.package.awarded`` (oe_bid_management) - see
   :func:`_create_po_from_bid_award`.
 
 Both close the long-standing workflow gap where an award updated the BOQ
@@ -28,13 +28,13 @@ Before creating a PO each handler scans existing project POs and
 short-circuits if any of these keys already match. Because the two paths
 share the ``tender_package_id`` key whenever a bid package is linked to a
 tender, a project that runs BOTH modules for the same logical award never
-ends up with two purchase orders — whichever fires first wins, the second
+ends up with two purchase orders - whichever fires first wins, the second
 is an idempotent skip. Re-firing the same event (bus retry, manual
 replay) is likewise a no-op.
 
 Failure mode
 ------------
-Errors are logged and swallowed — the award itself must never be blocked
+Errors are logged and swallowed - the award itself must never be blocked
 because procurement wiring choked. The PO can always be created manually
 from the UI.
 """
@@ -231,7 +231,7 @@ async def _create_po_from_award(event: Event) -> None:
             subtotal = running_subtotal if running_subtotal > 0 else bid_total
 
             # Use the existing repository to assign a project-scoped
-            # auto-incremented PO number — keeps the format consistent
+            # auto-incremented PO number - keeps the format consistent
             # with manually-created POs.
             po_number = await po_repo.next_po_number(package.project_id)
 
@@ -248,7 +248,7 @@ async def _create_po_from_award(event: Event) -> None:
                 amount_total=str(subtotal),
                 status="draft",
                 payment_terms=None,
-                notes=(f"Auto-created from awarded tender: {package.name} — bid by {bid.company_name}")[:5000],
+                notes=(f"Auto-created from awarded tender: {package.name} - bid by {bid.company_name}")[:5000],
                 created_by=None,
                 metadata_={
                     "tender_package_id": str(package_id),
@@ -280,7 +280,7 @@ async def _create_po_from_award(event: Event) -> None:
             )
     except Exception:
         logger.exception(
-            "tender.awarded auto-PO failed for package=%s bid=%s — tender award itself was unaffected",
+            "tender.awarded auto-PO failed for package=%s bid=%s - tender award itself was unaffected",
             package_id,
             bid_id,
         )
@@ -379,7 +379,7 @@ async def _create_po_from_bid_award(event: Event) -> None:
             winning_submission = next((s for s in submissions if s.is_valid), None)
             if winning_submission is None and submissions:
                 # Fall back to the newest submission even if the validity
-                # flag was never set — the award itself already vetted it.
+                # flag was never set - the award itself already vetted it.
                 winning_submission = submissions[0]
 
             # Map the priced submission lines to PO items, joining each line
@@ -457,7 +457,7 @@ async def _create_po_from_bid_award(event: Event) -> None:
                 payment_terms=None,
                 notes=(
                     f"Auto-created from awarded bid package: {package.title or package.code} "
-                    f"— bid by {bidder.company_name}"
+                    f"- bid by {bidder.company_name}"
                 )[:5000],
                 created_by=None,
                 metadata_={
@@ -489,7 +489,7 @@ async def _create_po_from_bid_award(event: Event) -> None:
             )
     except Exception:
         logger.exception(
-            "bid_management.awarded auto-PO failed for package=%s bidder=%s — the award itself was unaffected",
+            "bid_management.awarded auto-PO failed for package=%s bidder=%s - the award itself was unaffected",
             package_id,
             bidder_id,
         )
@@ -620,18 +620,18 @@ async def _on_supplier_rating_update(event: Event) -> None:
 # ── Published events (declared for discoverability) ───────────────────────────
 #
 # Events this module PUBLISHES (see procurement/service.py):
-#   * procurement.po.created            — new PO row inserted
-#   * procurement.po.updated            — PO fields changed
-#   * procurement.po.approved           — PO transitioned to 'approved'
-#   * procurement.po.issued             — PO transitioned to 'issued'
-#   * procurement.gr.created            — new goods receipt inserted
-#   * procurement.gr.confirmed          — goods receipt confirmed
-#   * procurement.po.retainage_released — withheld retainage released (Gap F)
+#   * procurement.po.created            - new PO row inserted
+#   * procurement.po.updated            - PO fields changed
+#   * procurement.po.approved           - PO transitioned to 'approved'
+#   * procurement.po.issued             - PO transitioned to 'issued'
+#   * procurement.gr.created            - new goods receipt inserted
+#   * procurement.gr.confirmed          - goods receipt confirmed
+#   * procurement.po.retainage_released - withheld retainage released (Gap F)
 #
 # ``procurement.po.retainage_released`` payload:
 #   { po_id, project_id, po_number, release_amount, currency_code,
 #     released_by, release_reason, retainage_released_total }
-# No subscriber is wired yet — retainage release does not re-post to the cost
+# No subscriber is wired yet - retainage release does not re-post to the cost
 # spine (the actual cost already landed on the BudgetLine when the PO/GR was
 # posted; releasing retainage is a payment-timing event, not a new cost). A
 # future Wave 6 item may subscribe to feed a cash-flow / payment-schedule view.
@@ -646,7 +646,7 @@ PUBLISHED_EVENTS = (
 )
 
 
-# Register subscribers at module import — module_loader picks this up
+# Register subscribers at module import - module_loader picks this up
 # automatically when ``oe_procurement`` is loaded.
 event_bus.subscribe("tendering.package.awarded", _on_tender_awarded)
 event_bus.subscribe("bid_management.package.awarded", _on_bid_management_awarded)

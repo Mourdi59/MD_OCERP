@@ -1,4 +1,4 @@
-"""‌⁠‍Field Reports service — business logic for field report management.
+"""‌⁠‍Field Reports service - business logic for field report management.
 
 Stateless service layer. Handles:
 - Field report CRUD
@@ -60,7 +60,7 @@ class FieldReportService:
         workforce_data = [entry.model_dump() for entry in data.workforce]
 
         # Auto-fetch weather when coordinates are provided. Falls back to
-        # the owning project's ``address`` dict — sites typically have
+        # the owning project's ``address`` dict - sites typically have
         # fixed coordinates, so the user shouldn't need to repeat them on
         # every daily report. We accept several common key shapes the
         # frontend may emit (lat/lon, latitude/longitude, coordinates.lat).
@@ -157,7 +157,7 @@ class FieldReportService:
                 return None
             lat_f = float(raw_lat)
             lon_f = float(raw_lon)
-            # Sanity guard — match the schema's bounds so a junk address
+            # Sanity guard - match the schema's bounds so a junk address
             # doesn't poison the weather call with nonsense coords.
             if not (-90.0 <= lat_f <= 90.0):
                 return None
@@ -242,7 +242,7 @@ class FieldReportService:
         if report.status != "draft":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot edit a report with status '{report.status}' — only draft reports are editable",
+                detail=f"Cannot edit a report with status '{report.status}' - only draft reports are editable",
             )
 
         fields = data.model_dump(exclude_unset=True)
@@ -277,7 +277,7 @@ class FieldReportService:
         if report.status != "draft":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot delete a report with status '{report.status}' — only draft reports can be deleted",
+                detail=f"Cannot delete a report with status '{report.status}' - only draft reports can be deleted",
             )
         await self.repo.delete(report_id)
         logger.info("Field report deleted: %s", report_id)
@@ -290,7 +290,7 @@ class FieldReportService:
         If the report's ``metadata.schedule_progress`` carries one or more
         progress entries, fires ``fieldreports.report.submitted`` so the
         schedule module can append matching :class:`ScheduleProgressEntry`
-        rows. Wiring lives in ``schedule/events.py`` — the publisher does
+        rows. Wiring lives in ``schedule/events.py`` - the publisher does
         not import the schedule module to keep the dependency direction
         one-way (schedule subscribes to fieldreports, not vice versa).
         """
@@ -298,11 +298,11 @@ class FieldReportService:
         if report.status != "draft":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot submit report with status '{report.status}' — must be draft",
+                detail=f"Cannot submit report with status '{report.status}' - must be draft",
             )
 
         # Snapshot the progress payload before update_fields() expires the
-        # session — the inline metadata read might MissingGreenlet otherwise.
+        # session - the inline metadata read might MissingGreenlet otherwise.
         md = report.metadata_ if isinstance(report.metadata_, dict) else {}
         schedule_progress = md.get("schedule_progress") if isinstance(md, dict) else None
         project_id_s = str(report.project_id)
@@ -338,7 +338,7 @@ class FieldReportService:
         if report.status != "submitted":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot approve report with status '{report.status}' — must be submitted",
+                detail=f"Cannot approve report with status '{report.status}' - must be submitted",
             )
 
         prior_status = report.status
@@ -351,7 +351,7 @@ class FieldReportService:
         )
         await self.session.refresh(report)
 
-        # Epic H — universal audit trail.
+        # Epic H - universal audit trail.
         from app.core.audit_log import log_activity as _log_activity
 
         await _log_activity(
@@ -489,7 +489,7 @@ class FieldReportService:
             )
         except Exception:
             logger.exception(
-                "Labour-log publish failed for report=%s — status transition unaffected",
+                "Labour-log publish failed for report=%s - status transition unaffected",
                 report.id,
             )
 
@@ -707,7 +707,7 @@ class FieldReportTemplateService:
         if include_builtin:
             out.extend(self._builtin_to_dict())
         customs = await self.repo.list_for_project(project_id)
-        out.extend(customs)  # ORM objects — Pydantic from_attributes handles them
+        out.extend(customs)  # ORM objects - Pydantic from_attributes handles them
         return out
 
     async def get_template(self, template_id: str, project_id: uuid.UUID) -> Any:

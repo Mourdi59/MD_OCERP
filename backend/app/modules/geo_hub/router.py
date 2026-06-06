@@ -84,7 +84,7 @@ def _svc(session: SessionDep) -> GeoHubService:
 # attach an auth header, and basemap tiles are public imagery.
 _TILE_UPSTREAM = "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
 # Bounded LRU of ``(bytes, etag)`` keyed by ``z/x/y``. 4096 256px PNGs is a
-# few MB resident — small enough to keep in-process, big enough to cover a
+# few MB resident - small enough to keep in-process, big enough to cover a
 # project view plus several pan/zoom steps so repeat loads never re-fetch.
 _TILE_CACHE: OrderedDict[str, tuple[bytes, str]] = OrderedDict()
 _TILE_CACHE_MAX = 4096
@@ -109,7 +109,7 @@ _BLANK_TILE_HEADERS = {"Cache-Control": "no-store"}
 # Shared, pooled httpx client. The previous implementation opened a brand-new
 # ``AsyncClient`` (and therefore a fresh TLS handshake + connection) for EVERY
 # tile, which under Cesium's burst of ~20-60 simultaneous tile requests starved
-# the event loop and left many tiles to time out — the "loads slowly / only a
+# the event loop and left many tiles to time out - the "loads slowly / only a
 # fragment of the map" report. A single process-wide client with a sized
 # connection pool keeps the upstream connections warm and lets many tiles fly
 # in parallel over kept-alive sockets.
@@ -342,7 +342,7 @@ async def bulk_anchor_from_address(
     return BulkAnchorFromAddressResponse.model_validate(summary)
 
 
-# ── Geocode (Nominatim) — suggest + admin cache ────────────────────────
+# ── Geocode (Nominatim) - suggest + admin cache ────────────────────────
 
 
 @router.get("/geocode/suggest", response_model=GeocodeSuggestResponse)
@@ -355,7 +355,7 @@ async def geocode_suggest(
     """Free-text Nominatim search for the address autocomplete dropdown.
 
     Returns up to ``limit`` results (capped at 10). The endpoint never
-    raises on geocoder failure — it returns an empty ``suggestions``
+    raises on geocoder failure - it returns an empty ``suggestions``
     array so the frontend can render "no matches" without exception
     handling. Authentication is required (``geo_hub.read``) so an
     unauthenticated caller can't pin Nominatim through our IP.
@@ -366,7 +366,7 @@ async def geocode_suggest(
     even under heavy keystroke pressure (client-side debounce + cache
     cooperate to keep this well below the budget in practice).
     """
-    # ``payload`` is unused beyond the RBAC gate — kept on the signature
+    # ``payload`` is unused beyond the RBAC gate - kept on the signature
     # to match the convention used by every other read endpoint in this
     # module so security audits can grep for it uniformly.
     _ = payload
@@ -426,7 +426,7 @@ async def geocode_cache_purge(
     """Manually invalidate cache rows older than ``older_than_days``.
 
     Defaults to 30 days (matches ``CACHE_TTL``) so a default call only
-    sweeps already-expired rows — a no-op for healthy caches and a
+    sweeps already-expired rows - a no-op for healthy caches and a
     sanity-restore for caches that were never read often enough to age
     out via the normal TTL miss path. Pass ``older_than_days=0`` to
     flush everything.
@@ -1031,7 +1031,7 @@ async def get_raster_overlay_image(
     _perm: None = Depends(RequirePermission("geo_hub.read")),
 ) -> Response:
     blob = await service.get_raster_overlay_bytes(overlay_id, payload=payload)
-    # ``Cache-Control: private`` because the bytes are tenant-scoped —
+    # ``Cache-Control: private`` because the bytes are tenant-scoped -
     # public caches must not store them. ``max-age`` short so Cesium's
     # SingleTileImageryProvider doesn't pin a stale crop.
     return Response(
@@ -1200,7 +1200,7 @@ async def sweep_deleted_raster_overlays(
     Frees storage blobs (source + rasterised PNG) before removing the DB row
     so orphaned bytes are actually reclaimed. Defaults to 30 days matching
     the geocode-cache TTL. Pass ``older_than_days=0`` to flush everything
-    older than the current second (full purge — use with caution).
+    older than the current second (full purge - use with caution).
 
     Admin-only (``geo_hub.admin``). Safe to call repeatedly; each pass
     processes only rows whose ``deleted_at`` is before the cutoff.

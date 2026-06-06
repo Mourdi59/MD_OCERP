@@ -1,21 +1,21 @@
 """‌⁠‍5D Cost Model API routes.
 
 Endpoints:
-    GET    /projects/{project_id}/5d/dashboard          — aggregated KPIs
-    GET    /projects/{project_id}/5d/s-curve             — S-curve time series
-    GET    /projects/{project_id}/5d/cash-flow           — cash flow data
-    GET    /projects/{project_id}/5d/budget              — budget summary by category
-    GET    /projects/{project_id}/5d/budget-lines        — detailed budget lines
-    POST   /projects/{project_id}/5d/budget-lines        — create budget line
-    PATCH  /5d/budget-lines/{line_id}                    — update budget line
-    DELETE /5d/budget-lines/{line_id}                    — delete budget line
-    POST   /projects/{project_id}/5d/generate-budget     — auto-generate from BOQ
-    POST   /projects/{project_id}/5d/snapshots           — create EVM snapshot
-    GET    /projects/{project_id}/5d/snapshots           — list snapshots
-    PATCH  /5d/snapshots/{snapshot_id}                   — update snapshot (notes, values)
-    POST   /projects/{project_id}/5d/generate-cash-flow  — generate from schedule
-    GET    /projects/{project_id}/5d/evm                 — full EVM calculation
-    POST   /projects/{project_id}/5d/what-if             — create what-if scenario
+    GET    /projects/{project_id}/5d/dashboard          - aggregated KPIs
+    GET    /projects/{project_id}/5d/s-curve             - S-curve time series
+    GET    /projects/{project_id}/5d/cash-flow           - cash flow data
+    GET    /projects/{project_id}/5d/budget              - budget summary by category
+    GET    /projects/{project_id}/5d/budget-lines        - detailed budget lines
+    POST   /projects/{project_id}/5d/budget-lines        - create budget line
+    PATCH  /5d/budget-lines/{line_id}                    - update budget line
+    DELETE /5d/budget-lines/{line_id}                    - delete budget line
+    POST   /projects/{project_id}/5d/generate-budget     - auto-generate from BOQ
+    POST   /projects/{project_id}/5d/snapshots           - create EVM snapshot
+    GET    /projects/{project_id}/5d/snapshots           - list snapshots
+    PATCH  /5d/snapshots/{snapshot_id}                   - update snapshot (notes, values)
+    POST   /projects/{project_id}/5d/generate-cash-flow  - generate from schedule
+    GET    /projects/{project_id}/5d/evm                 - full EVM calculation
+    POST   /projects/{project_id}/5d/what-if             - create what-if scenario
 """
 
 import uuid
@@ -89,7 +89,7 @@ async def _distinct_budget_currencies(
     Currency-blending fix: callers use this to decide whether summing across
     lines is safe (one currency) or whether to surface a ``mixed_currency``
     flag (multiple currencies, which may have been blended across missing
-    fx_rates). Blank/None currencies are ignored — they are legacy rows
+    fx_rates). Blank/None currencies are ignored - they are legacy rows
     written before the multi-currency wave and are treated as project base.
     """
     stmt = select_fn(budget_line_model.currency).where(budget_line_model.project_id == project_id).distinct()
@@ -381,7 +381,7 @@ async def generate_budget(
         if picked is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No BOQ found for this project — create one first.",
+                detail="No BOQ found for this project - create one first.",
             )
         boq_id = picked
 
@@ -576,7 +576,7 @@ async def run_monte_carlo(
     # ── Money correctness (currency-blending fix) ────────────────────────────
     # Previously this aggregated planned_amount with a raw SQL
     # ``func.sum(cast(BudgetLine.planned_amount, Float))`` grouped by category
-    # only — it ignored each line's ``currency`` and never converted through
+    # only - it ignored each line's ``currency`` and never converted through
     # the project's fx_rates. For any multi-currency project that silently
     # summed e.g. USD + EUR + JPY into one scalar BAC, so every derived
     # percentile/mean/std_dev/histogram was computed on a meaningless mixed-
@@ -588,7 +588,7 @@ async def run_monte_carlo(
     categories = [{"category": r["category"], "planned": _str_to_float(r["planned"])} for r in rows]
 
     # Resolve the project base currency to LABEL the result. Falls back to ""
-    # (unknown) rather than hardcoding "EUR" — the UI renders a bare number
+    # (unknown) rather than hardcoding "EUR" - the UI renders a bare number
     # for a blank/invalid code instead of mislabelling foreign money as EUR.
     currency = await service._get_project_currency(project_id)
 
@@ -654,7 +654,7 @@ async def run_monte_carlo(
         "std_dev": round((sum((r - mean) ** 2 for r in results) / n) ** 0.5, 2),
         "histogram": histogram,
         # Currency-blending fix: label the simulation with the project's base
-        # ISO currency (blank when unknown — never hardcoded EUR) and flag when
+        # ISO currency (blank when unknown - never hardcoded EUR) and flag when
         # the underlying budget lines mixed currencies so the client can warn.
         "currency": currency,
         "mixed_currency": mixed_currency,

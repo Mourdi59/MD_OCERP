@@ -2,13 +2,13 @@
 
 Four jurisdictions are supported out of the box:
 
-* ``RERA``     — Dubai Land Department, Real Estate Regulatory Agency.
+* ``RERA``     - Dubai Land Department, Real Estate Regulatory Agency.
                  Quarterly developer disclosure for off-plan sales.
-* ``MAHARERA`` — Maharashtra Real Estate Regulatory Authority, India.
+* ``MAHARERA`` - Maharashtra Real Estate Regulatory Authority, India.
                  Form 5 quarterly progress + finances disclosure.
-* ``214FZ``    — Russia, Federal Law 214-ФЗ on shared construction.
+* ``214FZ``    - Russia, Federal Law 214-ФЗ on shared construction.
                  Квартальная отчётность застройщика, submitted to ЕИСЖС.
-* ``CMA``      — Saudi Arabia, Capital Market Authority + Wafi off-plan
+* ``CMA``      - Saudi Arabia, Capital Market Authority + Wafi off-plan
                  licence. Bilingual (Arabic + English) disclosure.
 
 Each generator returns a :class:`RegulatorReport` value object carrying both
@@ -16,7 +16,7 @@ the rendered PDF (bytes) and a structured payload (JSON for RERA/CMA, XML
 for MAHARERA and 214-FZ) so callers can save the artefact OR push the
 machine-readable payload straight to the regulator's portal API.
 
-The implementations DO NOT make outbound network calls — they only read
+The implementations DO NOT make outbound network calls - they only read
 from the property_dev tables and produce in-memory bytes. PDF rendering
 falls back gracefully to a marker-only document if reportlab is missing
 (matches :mod:`bi_dashboards.report_builder`).
@@ -73,7 +73,7 @@ class RegulatorReport:
         generated_at: Generation timestamp (UTC, ISO 8601).
         pdf_bytes: Rendered PDF artefact (always non-empty; ``b"%PDF-1.4..."``
             magic guaranteed).
-        payload_format: ``"json"`` or ``"xml"`` — content type of
+        payload_format: ``"json"`` or ``"xml"`` - content type of
             ``payload_bytes``.
         payload_bytes: Machine-readable submission payload.
         summary: Compact dict the API returns alongside the artefact bytes.
@@ -89,7 +89,7 @@ class RegulatorReport:
     summary: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        """Public dict view (no raw bytes — those are streamed separately)."""
+        """Public dict view (no raw bytes - those are streamed separately)."""
         d = asdict(self)
         d.pop("pdf_bytes", None)
         d.pop("payload_bytes", None)
@@ -102,7 +102,7 @@ class RegulatorReport:
 
 
 def _coerce_uuid(raw: Any) -> uuid.UUID:
-    """Strict UUID parse — raises ``ValueError`` (caller handles)."""
+    """Strict UUID parse - raises ``ValueError`` (caller handles)."""
     if isinstance(raw, uuid.UUID):
         return raw
     return uuid.UUID(str(raw))
@@ -166,8 +166,8 @@ async def _compute_escrow_snapshot(session: AsyncSession, dev_id: uuid.UUID) -> 
         snapshot.append(
             {
                 "account_id": str(acc.id),
-                "account_no": acc.regulator_account_number or "—",
-                "bank": acc.bank_name or "—",
+                "account_no": acc.regulator_account_number or "-",
+                "bank": acc.bank_name or "-",
                 "iban": acc.iban or "",
                 "regulator_ref": acc.regulator_ref or "",
                 "currency": (acc.currency or "").upper(),
@@ -191,7 +191,7 @@ async def _load_aggregates(
 ) -> dict[str, Any]:
     """Compute the metrics every regulator needs.
 
-    Pure function over the live tables — no caching, no I/O. All money is
+    Pure function over the live tables - no caching, no I/O. All money is
     Decimal-quantized to two places.
     """
     year, q = parse_quarter(quarter)
@@ -212,7 +212,7 @@ async def _load_aggregates(
     available = plot_counts.get("planned", 0) + plot_counts.get("ready", 0)
     handed_over = plot_counts.get("handed_over", 0)
 
-    # Average construction percent (weighted by plot — every plot one vote).
+    # Average construction percent (weighted by plot - every plot one vote).
     progress_stmt = select(func.coalesce(func.avg(Plot.construction_status_percent), 0)).where(
         Plot.development_id == dev_id
     )
@@ -343,8 +343,8 @@ def _render_pdf(
             Table,
             TableStyle,
         )
-    except ImportError:  # pragma: no cover — reportlab is a hard dep
-        logger.warning("reportlab unavailable — emitting marker PDF for %s", title)
+    except ImportError:  # pragma: no cover - reportlab is a hard dep
+        logger.warning("reportlab unavailable - emitting marker PDF for %s", title)
         marker = (
             "%PDF-1.4\n"
             f"% {title}\n"
@@ -442,7 +442,7 @@ def _render_pdf(
 
 
 def _xml_text(value: Any) -> str:
-    """Defensive XML body text — never ``None`` and never bare ``&``."""
+    """Defensive XML body text - never ``None`` and never bare ``&``."""
     if value is None:
         return ""
     return str(value)
@@ -470,10 +470,10 @@ async def generate_regulator_report_rera(
         (
             "Project identification",
             [
-                ("RERA registration number", dev_meta["rera_number"] or "—"),
+                ("RERA registration number", dev_meta["rera_number"] or "-"),
                 ("Project number", dev_meta["code"]),
                 ("Project name", dev_meta["name"]),
-                ("Location", dev_meta["location"] or "—"),
+                ("Location", dev_meta["location"] or "-"),
                 ("Sales phase", dev_meta["sales_phase"]),
                 ("Period", f"{period['quarter']} ({period['start']} -> {period['end']})"),
             ],
@@ -511,7 +511,7 @@ async def generate_regulator_report_rera(
                 )
                 for acc in agg["escrow"]["accounts"]
             ]
-            or [("(no escrow accounts declared)", "—")],
+            or [("(no escrow accounts declared)", "-")],
         ),
     ]
     qr_payload = f"RERA|{dev_meta['rera_number'] or dev_meta['code']}|{quarter}"
@@ -582,17 +582,17 @@ async def generate_regulator_report_maharera(
         try:
             carpet_total += Decimal(str(pmeta.get("carpet_area_m2", "0") or "0"))
             built_up_total += Decimal(str(pmeta.get("built_up_area_m2", "0") or plot.area_m2 or "0"))
-        except Exception:  # noqa: BLE001 — defensive parser
+        except Exception:  # noqa: BLE001 - defensive parser
             continue
 
     sections = [
         (
             "Project identification (Form 5)",
             [
-                ("MAHARERA registration", dev_meta["maharera_number"] or "—"),
+                ("MAHARERA registration", dev_meta["maharera_number"] or "-"),
                 ("Project code", dev_meta["code"]),
                 ("Project name", dev_meta["name"]),
-                ("Location", dev_meta["location"] or "—"),
+                ("Location", dev_meta["location"] or "-"),
                 ("Reporting period", f"{period['quarter']} ({period['start']} -> {period['end']})"),
             ],
         ),
@@ -624,7 +624,7 @@ async def generate_regulator_report_maharera(
             "Estimated cost to completion",
             [
                 ("Source", "Developer-declared (Form 5 Annexure C)"),
-                ("Value", dev_meta.get("estimated_cost_to_completion", "—") or "—"),
+                ("Value", dev_meta.get("estimated_cost_to_completion", "-") or "-"),
             ],
         ),
     ]
@@ -714,10 +714,10 @@ async def generate_regulator_report_214fz(
         (
             "Идентификация проекта",
             [
-                ("Идентификатор в ЕИСЖС", dev_meta["fz214_project_id"] or "—"),
+                ("Идентификатор в ЕИСЖС", dev_meta["fz214_project_id"] or "-"),
                 ("Код проекта", dev_meta["code"]),
                 ("Наименование", dev_meta["name"]),
-                ("Адрес", dev_meta["location"] or "—"),
+                ("Адрес", dev_meta["location"] or "-"),
                 ("Период", f"{period['quarter']} ({period['start']} -> {period['end']})"),
             ],
         ),
@@ -734,7 +734,7 @@ async def generate_regulator_report_214fz(
                 )
                 for acc in agg["escrow"]["accounts"]
             ]
-            or [("Эскроу-счета не объявлены", "—")],
+            or [("Эскроу-счета не объявлены", "-")],
         ),
         (
             "Договоры долевого участия (ДДУ) за период",
@@ -851,10 +851,10 @@ async def generate_regulator_report_cma(
         (
             "Project identification (English) / Project identification (Arabic)",
             [
-                ("Wafi licence", dev_meta["cma_licence_no"] or "—"),
+                ("Wafi licence", dev_meta["cma_licence_no"] or "-"),
                 ("Project code", dev_meta["code"]),
                 ("Project name", dev_meta["name"]),
-                ("Location", dev_meta["location"] or "—"),
+                ("Location", dev_meta["location"] or "-"),
                 ("Period", f"{period['quarter']} ({period['start']} -> {period['end']})"),
             ],
         ),
@@ -881,7 +881,7 @@ async def generate_regulator_report_cma(
                 )
                 for acc in agg["escrow"]["accounts"]
             ]
-            or [("(no escrow accounts declared)", "—")],
+            or [("(no escrow accounts declared)", "-")],
         ),
         (
             "Sales velocity",

@@ -1,10 +1,10 @@
-# OpenConstructionERP — DataDrivenConstruction (DDC)
+# OpenConstructionERP - DataDrivenConstruction (DDC)
 # DDC-CWICR-OE-2026
 """Progress tracking ORM models.
 
 Tables:
-    oe_progress_entry  — append-only percent-complete observations per BOQ position
-    oe_progress_plan   — planned S-curve data points per project / BOQ
+    oe_progress_entry  - append-only percent-complete observations per BOQ position
+    oe_progress_plan   - planned S-curve data points per project / BOQ
 """
 
 import uuid
@@ -37,7 +37,7 @@ class ProgressEntry(Base):
       The service layer always queries the *latest* entry for a position when
       computing current progress.
     * ``geo_lat`` / ``geo_lon`` capture the worker's location at record-time
-      (optional — phone may not provide GPS in all conditions).
+      (optional - phone may not provide GPS in all conditions).
     * ``rework_cost`` is stored as VARCHAR so money is never a float.
     """
 

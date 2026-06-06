@@ -2,33 +2,33 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """‌⁠‍Visible-pipeline runner for /match-elements.
 
-The match flow already runs end-to-end through :class:`MatchService` —
+The match flow already runs end-to-end through :class:`MatchService` -
 this module layers a *visible* seven-stage state machine on top of that
 flow so the estimator sees, tunes, and re-runs each step:
 
-    1. convert  — CAD/BIM/DWG → canonical element table (already done
+    1. convert  - CAD/BIM/DWG → canonical element table (already done
                   by the takeoff/bim-hub importer; this stage records
                   the source counts so the UI can verify them).
-    2. load     — Source adapter reads N elements into SourceElement[];
+    2. load     - Source adapter reads N elements into SourceElement[];
                   records the element_count + sample.
-    3. schema   — Detect attribute keys, classify each as SUM / MEAN /
+    3. schema   - Detect attribute keys, classify each as SUM / MEAN /
                   FIRST aggregation (LLM-augmented; falls back to
                   heuristic). Output becomes the ``properties_rollup``
                   policy for the Group stage.
-    4. filter   — Drop excluded categories (defaults) + run the
+    4. filter   - Drop excluded categories (defaults) + run the
                   building-classifier LLM on borderline elements to
                   exclude grids/voids/annotation that snuck in.
-    5. group    — Group by configured keys (per-format defaults via
+    5. group    - Group by configured keys (per-format defaults via
                   the group.key_picker prompt when no explicit
                   group_by is set on the session).
-    6. match    — Run the vector matcher + (optional) AI cost agent
+    6. match    - Run the vector matcher + (optional) AI cost agent
                   rerank; cache per-method candidates on each group.
-    7. rollup   — Aggregate group quantities + auto-confirm above
+    7. rollup   - Aggregate group quantities + auto-confirm above
                   threshold; ready for apply-to-BOQ.
 
 State is persisted in ``oe_match_elements_stage`` so the UI can render
 a vertical timeline with status pills + sample output + "Re-run from
-here" buttons. Each stage is idempotent — calling :func:`run_stage`
+here" buttons. Each stage is idempotent - calling :func:`run_stage`
 with a given name resets its row, executes the work, and writes the
 output back atomically.
 
@@ -61,7 +61,7 @@ from app.modules.match_elements.service import get_service
 logger = logging.getLogger(__name__)
 
 
-# ── Stage registry — the seven visible steps ─────────────────────────────
+# ── Stage registry - the seven visible steps ─────────────────────────────
 
 
 STAGE_NAMES: tuple[str, ...] = (
@@ -87,7 +87,7 @@ STAGE_META: dict[str, dict[str, Any]] = {
         "prompt_key": None,
         "explainer": (
             "The DDC cad2data converter normalises Revit, IFC, DWG and DGN "
-            "into one canonical element table. Nothing to tune here — this "
+            "into one canonical element table. Nothing to tune here - this "
             "stage is a verification: the count below must match what the "
             "viewer reports, otherwise the parse silently truncated."
         ),
@@ -121,8 +121,8 @@ STAGE_META: dict[str, dict[str, Any]] = {
         "uses_llm": True,
         "prompt_key": "filter.building_classifier",
         "explainer": (
-            "Strip drafting helpers — grids, reference planes, openings, "
-            "annotations — before grouping. Excluded categories run first "
+            "Strip drafting helpers - grids, reference planes, openings, "
+            "annotations - before grouping. Excluded categories run first "
             "(cheap); borderline rows are sent to the LLM classifier."
         ),
     },
@@ -168,7 +168,7 @@ STAGE_META: dict[str, dict[str, Any]] = {
 # Kept in sync with alembic v3034_match_pipeline_stages._SYSTEM_PROMPTS.
 # The migration seeds these for Postgres deploys; this runtime seeder is
 # the SQLite path (auto-migrate creates the table but not the rows) and
-# the self-heal for any deploy where the seed didn't take. Idempotent —
+# the self-heal for any deploy where the seed didn't take. Idempotent -
 # only inserts a (key, name, created_by IS NULL) row when it is absent.
 
 SYSTEM_PROMPT_SEEDS: list[dict[str, str]] = [
@@ -190,9 +190,9 @@ SYSTEM_PROMPT_SEEDS: list[dict[str, str]] = [
             "Columns detected in this CAD/BIM export:\n\n{columns}\n\n"
             "Sample row (first record):\n{sample}\n\n"
             "Classify each column as one of:\n"
-            "  - SUM   (quantitative — area, volume, count, length...)\n"
-            "  - MEAN  (continuous attribute — temperature, dimension...)\n"
-            "  - FIRST (discrete label — material name, family, level...)\n\n"
+            "  - SUM   (quantitative - area, volume, count, length...)\n"
+            "  - MEAN  (continuous attribute - temperature, dimension...)\n"
+            "  - FIRST (discrete label - material name, family, level...)\n\n"
             "Return JSON: "
             '[{{"column":"<name>","agg":"SUM|MEAN|FIRST",'
             '"why":"<one-sentence rationale>"}}]'
@@ -234,7 +234,7 @@ SYSTEM_PROMPT_SEEDS: list[dict[str, str]] = [
         "system_prompt": (
             "You are a construction estimation engineer. Recommend the "
             "group-by attribute keys to use when collapsing many BIM "
-            "elements into estimable BoQ rows. Fewer rows is better — but "
+            "elements into estimable BoQ rows. Fewer rows is better - but "
             "never collapse two distinct cost products into one group."
         ),
         "user_template": (
@@ -390,7 +390,7 @@ async def list_stages(
     """‌⁠‍Return the seven stage rows for a session in canonical order.
 
     Missing stages are returned with status ``pending`` and empty
-    inputs/output — the UI never has to deal with a hole in the
+    inputs/output - the UI never has to deal with a hole in the
     timeline.
     """
 
@@ -497,7 +497,7 @@ async def run_stage(
     if llm_provider is not None:
         stage.llm_provider = llm_provider
     # Commit the running state so a concurrent poll sees it and so the
-    # runner starts from a clean transaction boundary — if it raises,
+    # runner starts from a clean transaction boundary - if it raises,
     # the rollback below only discards the runner's work, not the
     # "running" stamp.
     await db.commit()
@@ -509,7 +509,7 @@ async def run_stage(
     try:
         runner = _STAGE_RUNNERS[stage_name]
         final_output = await runner(db, session_row, stage)
-    except Exception as exc:  # noqa: BLE001 — surface error to UI
+    except Exception as exc:  # noqa: BLE001 - surface error to UI
         logger.exception(
             "match_elements.pipeline: stage %s failed for session %s",
             stage_name,
@@ -517,7 +517,7 @@ async def run_stage(
         )
         final_status = "error"
         final_error = str(exc)
-        # The session may be in a failed-transaction state — roll back
+        # The session may be in a failed-transaction state - roll back
         # before we touch the DB again to write the error row.
         await db.rollback()
 
@@ -560,7 +560,7 @@ async def _run_convert(
     session: MatchSession,
     stage: MatchStageState,
 ) -> dict[str, Any]:
-    # Convert is verification-only — the canonical table already exists.
+    # Convert is verification-only - the canonical table already exists.
     # Report the BIM model(s) bound to the session (or all models in the
     # project when no model is pinned) plus their element counts so the
     # user can confirm the parse didn't silently truncate.
@@ -647,7 +647,7 @@ async def _run_schema(
     session: MatchSession,
     stage: MatchStageState,
 ) -> dict[str, Any]:
-    # Heuristic schema classifier (no LLM call) — counts how often each
+    # Heuristic schema classifier (no LLM call) - counts how often each
     # attribute key appears across the session's group quantities, then
     # tags it SUM / MEAN / FIRST by name pattern. The LLM-augmented path
     # kicks in only when the user explicitly hits "Re-run with prompt"
@@ -729,12 +729,12 @@ async def _run_group(
         # P1: validate the user's keys against the actual attribute set
         # exposed by the source adapter. Without this, a typo (or a key
         # that exists on a different model) silently produces a single
-        # ``__missing__`` bucket while the stage flips to ``done`` —
+        # ``__missing__`` bucket while the stage flips to ``done`` -
         # the user thinks the run worked and only spots the empty
         # groups in the Match stage two clicks later. Failing fast here
         # surfaces the error on the stage card instead.
         service = get_service()
-        adapter = service._adapter(  # noqa: SLF001 — pipeline lives next to the service
+        adapter = service._adapter(  # noqa: SLF001 - pipeline lives next to the service
             session.source,
             db,
             session,
@@ -747,7 +747,7 @@ async def _run_group(
         # ``list_attribute_keys`` returns the adapter's per-row keys.
         # Some sessions also legitimately group by structural fields
         # the adapter doesn't surface ("level", "ifc_class",
-        # "type_name") — those are stamped on every element and the
+        # "type_name") - those are stamped on every element and the
         # grouper handles them natively. Whitelist them so the
         # validator doesn't reject a known-good preset.
         structural_group_keys = {
@@ -760,7 +760,7 @@ async def _run_group(
         }
         bad = [k for k in new_group_by if str(k) not in available_set and str(k) not in structural_group_keys]
         if bad:
-            # Raise a structured error — ``run_stage`` catches Exception
+            # Raise a structured error - ``run_stage`` catches Exception
             # and stamps ``str(exc)`` into ``stage.error`` while flipping
             # status to "error", which is exactly the UX we want. The
             # str() of a multi-arg ValueError is a tuple-repr; that
@@ -825,7 +825,7 @@ async def _run_match(
             "ran": 0,
             "confirmed": 0,
             "suggested": 0,
-            "summary": "Nothing to match — all groups already resolved",
+            "summary": "Nothing to match - all groups already resolved",
         }
 
     # The user can cap this from the Adjust sheet (inputs.max_groups);

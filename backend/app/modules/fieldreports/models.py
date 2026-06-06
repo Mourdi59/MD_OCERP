@@ -1,10 +1,10 @@
 """‌⁠‍Field Reports ORM models.
 
 Tables:
-    oe_fieldreports_report     — daily/inspection/safety/concrete pour field reports
-    oe_fieldreports_workforce  — structured workforce log entries per report
-    oe_fieldreports_equipment  — structured equipment log entries per report
-    oe_fieldreports_template   — reusable, per-project report templates
+    oe_fieldreports_report     - daily/inspection/safety/concrete pour field reports
+    oe_fieldreports_workforce  - structured workforce log entries per report
+    oe_fieldreports_equipment  - structured equipment log entries per report
+    oe_fieldreports_template   - reusable, per-project report templates
 """
 
 import uuid
@@ -104,7 +104,7 @@ class FieldReport(Base):
 
     # Status & approval
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft", index=True)
-    # ``approved_by`` / ``created_by`` are user UUIDs — use GUID() to match
+    # ``approved_by`` / ``created_by`` are user UUIDs - use GUID() to match
     # daily_diary's convention so Python-side code reads UUID objects, not
     # raw strings. On SQLite GUID() impls as VARCHAR(36), so the storage
     # layout is identical to the prior String(36) declaration.
@@ -201,13 +201,13 @@ class SiteEquipmentLog(Base):
 
 
 class FieldReportTemplate(Base):
-    """‌⁠‍A reusable report template — a named, ordered set of custom fields.
+    """‌⁠‍A reusable report template - a named, ordered set of custom fields.
 
     Project-scoped: ``project_id`` is always set so the standard
     project-access / IDOR guard applies exactly like every other
     field-reports endpoint. Built-in templates (Daily Site Report,
     Safety Walk, Progress Report) are *code-defined* and merged in by
-    the service layer — they are never stored as rows, so a fresh
+    the service layer - they are never stored as rows, so a fresh
     install needs no seed migration.
 
     ``fields`` is an ordered list of field definitions, each::

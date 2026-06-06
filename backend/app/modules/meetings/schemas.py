@@ -1,4 +1,4 @@
-"""‌⁠‍Meetings Pydantic schemas — request/response models.
+"""‌⁠‍Meetings Pydantic schemas - request/response models.
 
 Defines create, update, and response schemas for meetings.
 """
@@ -201,7 +201,7 @@ class ImportPreviewResponse(BaseModel):
 # ── Recurring Series ──────────────────────────────────────────────────────
 
 
-# RFC 5545 RRULE pattern — we accept FREQ=DAILY|WEEKLY|MONTHLY, BYDAY tokens,
+# RFC 5545 RRULE pattern - we accept FREQ=DAILY|WEEKLY|MONTHLY, BYDAY tokens,
 # COUNT or UNTIL terminators. Validation is intentionally loose because
 # python-dateutil.rrule.rrulestr does the real parse downstream.
 _RRULE_PATTERN = r"^FREQ=(DAILY|WEEKLY|MONTHLY)(;[A-Z]+=[A-Z0-9,]+)*$"
@@ -237,7 +237,7 @@ class MeetingSeriesCreate(BaseModel):
     document_ids: list[UUID] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    # RFC 5545 RRULE — required for a series.
+    # RFC 5545 RRULE - required for a series.
     recurrence_rule: str = Field(..., min_length=5, max_length=200, pattern=_RRULE_PATTERN)
     # Optional ISO 8601 date; if provided, materialise occurrences up to it.
     materialize_until: str | None = Field(
@@ -275,7 +275,7 @@ class CheckInRequest(BaseModel):
 
 
 class ExternalAttendeeRequest(BaseModel):
-    """Walk-in / external attendee — name only, no system user_id."""
+    """Walk-in / external attendee - name only, no system user_id."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 

@@ -3,7 +3,7 @@
 Status / priority / frequency enums are enforced via regex patterns so
 validation works the same on Pydantic v2 and any downstream OpenAPI consumer.
 
-Status transitions are NOT validated here — they belong in the service layer
+Status transitions are NOT validated here - they belong in the service layer
 where we know the *current* state. Schemas only enforce that the requested
 status is one of the legal labels.
 """
@@ -26,7 +26,7 @@ ASSET_STATUS_PATTERN = r"^(active|decommissioned|maintenance)$"
 SCHEDULE_FREQ_PATTERN = r"^(weekly|monthly|quarterly|semiannual|annual)$"
 WO_ITEM_TYPE_PATTERN = r"^(labor|material|travel|fee)$"
 
-# Loose ISO 8601 datetime — full string, validated again at the service layer.
+# Loose ISO 8601 datetime - full string, validated again at the service layer.
 ISO_DATETIME_PATTERN = r"^\d{4}-\d{2}-\d{2}(T| )\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+\-]\d{2}:?\d{2})?$"
 ISO_DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
 
@@ -527,7 +527,7 @@ class NCRFromWorkOrderRequest(BaseModel):
 
 
 class NCRFromWorkOrderResponse(BaseModel):
-    """NCR creation response — minimal payload pointing at the new NCR."""
+    """NCR creation response - minimal payload pointing at the new NCR."""
 
     ncr_id: UUID
     ncr_number: str
@@ -551,7 +551,7 @@ class RecurringScheduleCreate(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=200)
     rrule: str = Field(..., pattern=RRULE_PATTERN)
-    # Project / contract scope — both optional so tenant-wide fleet schedules
+    # Project / contract scope - both optional so tenant-wide fleet schedules
     # work too. The materialiser requires ``contract_id`` either here OR in
     # ``template_ticket_data`` to create a ticket.
     project_id: UUID | None = None
@@ -615,7 +615,7 @@ class SLABreachCheckResponse(BaseModel):
     """Result of POST /service/tickets/check-breaches.
 
     Distinct from ``SLABreachScanResponse`` (the long-running scan that also
-    emits events) — this one is the simple admin trigger that flips
+    emits events) - this one is the simple admin trigger that flips
     ``sla_breached_at`` for every now-overdue ticket and returns the count.
     """
 

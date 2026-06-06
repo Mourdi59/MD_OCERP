@@ -1,4 +1,4 @@
-"""‌⁠‍Contracts Pydantic schemas — request / response models."""
+"""‌⁠‍Contracts Pydantic schemas - request / response models."""
 
 from __future__ import annotations
 
@@ -171,18 +171,18 @@ class ContractCloneRequest(BaseModel):
     signature on the new instrument.
 
     Body fields:
-        target_project_id: destination project — defaults to the source
+        target_project_id: destination project - defaults to the source
             contract's project. When supplied, the caller must have
             project-level access on the DESTINATION (else 404), in
             addition to read access on the SOURCE (also 404).
-        new_code: contract code for the clone — required and must be
+        new_code: contract code for the clone - required and must be
             unique (``oe_contracts_contract.code`` is a UNIQUE column).
         new_title: human title; defaults to ``"<source.title> (clone)"``.
         include_lines: copy all Schedule-of-Values lines (default True).
         copy_subconfigs: copy retention schedule / fee structure /
             gainshare config / LD clauses (default True). Progress
             claims, final accounts, lien waivers and retention-release
-            audit entries are NEVER cloned — those belong to the
+            audit entries are NEVER cloned - those belong to the
             original contract's payment history.
     """
 
@@ -502,7 +502,7 @@ class ProgressClaimPopulatePreviewResponse(BaseModel):
     ``items`` are the populatable lines (SoV lines that link to a BOQ position
     which has at least one progress observation). ``skipped_unlinked`` counts
     SoV lines with no BOQ-position link, ``skipped_no_progress`` counts linked
-    lines that have no observation yet — both surfaced so the UI can hint why a
+    lines that have no observation yet - both surfaced so the UI can hint why a
     line is absent. ``currency`` is the claim currency the values are expressed
     in (never a blend).
     """

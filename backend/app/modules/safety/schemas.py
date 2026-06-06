@@ -1,4 +1,4 @@
-"""‌⁠‍Safety Pydantic schemas — request/response models."""
+"""‌⁠‍Safety Pydantic schemas - request/response models."""
 
 from datetime import datetime
 from typing import Any
@@ -50,7 +50,7 @@ class IncidentCreate(BaseModel):
         pattern=r"^(reported|investigating|corrective_action|closed)$",
     )
     # WGS84 geo binding so the incident shows up as a pin on Geo Hub.
-    # Optional — incidents without a map pin still work end-to-end.
+    # Optional - incidents without a map pin still work end-to-end.
     geo_lat: float | None = Field(default=None, ge=-90, le=90)
     geo_lon: float | None = Field(default=None, ge=-180, le=180)
     metadata: dict[str, Any] = Field(default_factory=dict)

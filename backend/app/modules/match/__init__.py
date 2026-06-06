@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍``oe_match`` — element-to-CWICR matcher API surface.
+"""‌⁠‍``oe_match`` - element-to-CWICR matcher API surface.
 
 This module is a thin HTTP wrapper around :mod:`app.core.match_service`.
 The heavy lifting (translation, vector search, boost stack, reranker,

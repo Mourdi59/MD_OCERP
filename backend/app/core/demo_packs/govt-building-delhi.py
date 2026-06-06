@@ -3,14 +3,14 @@ from __future__ import annotations
 from app.core.demo_projects import DemoTemplate
 
 # ---------------------------------------------------------------------------
-# Flagship demo pack: India / CPWD — Government Institutional Building, New Delhi
+# Flagship demo pack: India / CPWD - Government Institutional Building, New Delhi
 # ---------------------------------------------------------------------------
 # Costing follows the CPWD Delhi Schedule of Rates (DSR) 2021 sub-head
 # structure with Delhi 2026 market rates. Item references carry CPWD DSR
 # clause numbers in the classification dict (key "cpwd"); a MasterFormat
 # division is supplied as the platform fallback standard. Rates are GST-
 # exclusive (GST 18% is carried as a separate markup line). Design intent
-# conforms to IS 456 (RCC), IS 1893:2016 (seismic — Zone IV), IS 13920
+# conforms to IS 456 (RCC), IS 1893:2016 (seismic - Zone IV), IS 13920
 # (ductile detailing), IS 875 (loads), IS 800 (structural steel),
 # NBC 2016 and the relevant CPWD General Specifications.
 # ---------------------------------------------------------------------------
@@ -464,7 +464,7 @@ TEMPLATE = DemoTemplate(
                 ),
             ],
         ),
-        # ── 7. Finishing — Plaster, Paint, Ceiling (CPWD Sub-head 13) ─
+        # ── 7. Finishing - Plaster, Paint, Ceiling (CPWD Sub-head 13) ─
         (
             "7",
             "Finishing - Plaster, Paint & Ceiling",

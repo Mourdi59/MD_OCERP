@@ -1,4 +1,4 @@
-"""‌⁠‍BIM Hub event handlers​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ — vector indexing for BIM elements.
+"""‌⁠‍BIM Hub event handlers​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ - vector indexing for BIM elements.
 
 Subscribes to ``bim_hub.element.*`` events and keeps the
 ``oe_bim_elements`` vector collection in sync with the underlying
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 # BIMElement rows.  Each handler opens its own short-lived session,
 # eager-loads the parent BIMModel so ``project_id_of`` resolves cleanly,
 # and forwards the row to the adapter.  Failures are logged and
-# swallowed — vector indexing is best-effort and must never break a
+# swallowed - vector indexing is best-effort and must never break a
 # normal CRUD path.
 
 
@@ -102,7 +102,7 @@ async def _on_element_deleted(event: Event) -> None:
 
 
 event_bus.subscribe("bim_hub.element.created", _on_element_created)
-# bim_hub.element.updated has no publisher today — BIM elements are
+# bim_hub.element.updated has no publisher today - BIM elements are
 # refreshed via the bulk import path which fires `created` for the new
 # rows.  The subscription is kept as a forward-compat hook so the day a
 # PATCH /elements/{id}/ endpoint lands (e.g. for manual classification

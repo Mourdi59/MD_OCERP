@@ -1,4 +1,4 @@
-"""‌⁠‍Workflow engine — ball-in-court tracking, approval steps, due dates.
+"""‌⁠‍Workflow engine - ball-in-court tracking, approval steps, due dates.
 
 Provides reusable workflow primitives for construction document management.
 Used by: RFI, Submittals, NCR, Transmittals, Enterprise Workflows.
@@ -49,7 +49,7 @@ class WorkflowStep:
 class WorkflowEngine:
     """‌⁠‍Linear workflow engine with ball-in-court tracking.
 
-    Steps are ordered — ``advance`` moves forward, ``retreat`` moves backward.
+    Steps are ordered - ``advance`` moves forward, ``retreat`` moves backward.
     The engine is **stateless**: it does not store the current step of any
     particular document.  Persistence is the caller's responsibility.
     """

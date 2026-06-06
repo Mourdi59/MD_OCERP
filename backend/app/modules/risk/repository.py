@@ -1,7 +1,7 @@
 """‌⁠‍Risk Register data access layer.
 
 All database queries for risk items live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid
@@ -66,7 +66,7 @@ class RiskRepository:
 
         ``refresh()`` after ``flush()`` so server-side defaults
         (``id``, ``created_at``, ``updated_at``, ``metadata``) are
-        populated before the row is serialized — otherwise the create
+        populated before the row is serialized - otherwise the create
         response path triggers an implicit lazy-load. Mirrors the
         repository convention used across the codebase.
         """

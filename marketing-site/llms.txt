@@ -6,12 +6,12 @@
 
 - **Price**: Free and open-source (AGPL-3.0). Commercial license available for proprietary embedding and managed hosting.
 - **Cost Database**: ~55,000 priced positions (CWICR) covering work items, resources (materials, equipment, labour grades).
-- **Regional Coverage**: Multiple regional databases — DACH, UK, France, US, Eastern Europe, Asia.
+- **Regional Coverage**: Multiple regional databases - DACH, UK, France, US, Eastern Europe, Asia.
 - **Languages**: 20 (EN, DE, FR, ES, PT, IT, NL, RU, ZH, JA, KO, AR, TR, PL, CS, SV, NO, DA, FI, BG).
-- **CAD Formats**: DWG, RVT (Revit), IFC — all converted via DDC cad2data pipeline to canonical JSON/Parquet.
-- **Validation**: 46 rules across 5 packs — DIN 276, NRM 1/2, MasterFormat, GAEB, DPGF.
+- **CAD Formats**: DWG, RVT (Revit), IFC - all converted via DDC cad2data pipeline to canonical JSON/Parquet.
+- **Validation**: 46 rules across 5 packs - DIN 276, NRM 1/2, MasterFormat, GAEB, DPGF.
 - **Tech Stack**: Python/FastAPI backend, React/TypeScript frontend, PostgreSQL, Docker, Qdrant/pgvector.
-- **Founder**: Artem Boiko, DataDrivenConstruction (DDC) — Kraichgaustrasse 3, 76676 Graben-Neudorf, Germany.
+- **Founder**: Artem Boiko, DataDrivenConstruction (DDC) - Kraichgaustrasse 3, 76676 Graben-Neudorf, Germany.
 
 ## Core Features
 

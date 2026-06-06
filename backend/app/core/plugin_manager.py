@@ -1,4 +1,4 @@
-"""‌⁠‍Module plugin manager — download, install, update, uninstall modules.
+"""‌⁠‍Module plugin manager - download, install, update, uninstall modules.
 
 Modules are distributed as zip archives with a standard structure:
     module-name/

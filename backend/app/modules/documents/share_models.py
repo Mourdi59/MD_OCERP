@@ -1,7 +1,7 @@
 """‌⁠‍Document share-link ORM models.
 
 Tables:
-    oe_documents_share_link — public, optionally password-protected
+    oe_documents_share_link - public, optionally password-protected
                               share tokens that grant a recipient
                               one-click download access to a single
                               :class:`Document`.
@@ -18,7 +18,7 @@ Workflow:
        ``POST /share-links/{token}/access/``. On success the server
        returns the authenticated ``download_url`` and bumps
        ``download_count``.
-    4. Owner can revoke a link any time via DELETE — once revoked
+    4. Owner can revoke a link any time via DELETE - once revoked
        the token returns 404 to keep enumeration costs symmetric.
 
 A dedicated file (rather than tacking onto ``models.py``) keeps the
@@ -47,17 +47,17 @@ class DocumentShareLink(Base):
     ``unique=True`` so the public lookup is a single index probe.
 
     ``password_hash`` is a bcrypt hash (cost 12) of the optional
-    password — ``None`` means the link is open. Storing a hash rather
+    password - ``None`` means the link is open. Storing a hash rather
     than the plaintext means a leaked DB still requires a brute-force
     crack per link.
 
     ``expires_at`` is optional. When set, the public-facing read /
     access endpoints treat ``now > expires_at`` as 404 (same surface
-    as revoke / unknown token, by design — leaking "expired vs
+    as revoke / unknown token, by design - leaking "expired vs
     revoked" lets attackers enumerate valid past tokens).
 
     ``download_count`` is incremented on every successful access. It
-    is informational only — the link is not single-use.
+    is informational only - the link is not single-use.
 
     ``revoked`` is set by the owner via DELETE. We never hard-delete
     so the audit row + count survive cleanup; the index covers the
@@ -116,5 +116,5 @@ class DocumentShareLink(Base):
         server_default="0",
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — debug helper
+    def __repr__(self) -> str:  # pragma: no cover - debug helper
         return f"<DocumentShareLink token={self.token[:8]}… doc={self.document_id} revoked={self.revoked}>"

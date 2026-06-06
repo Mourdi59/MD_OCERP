@@ -38,7 +38,7 @@ Unit: {unit}
 Classification: {classification}
 
 Rules:
-1. Keep the SAME scope of work — do not add new work items
+1. Keep the SAME scope of work - do not add new work items
 2. Add technical specifications (material grades, strength classes, exposure classes)
 3. Reference relevant standards (DIN EN, BS EN, ASTM, ISO as appropriate)
 4. Include key material/performance properties
@@ -157,9 +157,9 @@ Target year: {target_year}
 Region: {region}
 
 Consider:
-1. Construction cost index changes — pick the one that fits the region:
+1. Construction cost index changes - pick the one that fits the region:
    - BKI / Statistisches Bundesamt (DACH / Germany / Austria)
-   - BCIS (UK / Ireland / Australia / NZ — RICS heritage)
+   - BCIS (UK / Ireland / Australia / NZ - RICS heritage)
    - ENR / RSMeans (US / Canada)
    - SINAPI / FGV / IPCA-construção (Brazil)
    - INDEC ICC (Argentina) / DANE (Colombia) / INEGI (Mexico)

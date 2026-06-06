@@ -1,4 +1,4 @@
-"""‌⁠‍Punch List service — business logic for punch list management.
+"""‌⁠‍Punch List service - business logic for punch list management.
 
 Stateless service layer. Handles:
 - Punch item CRUD
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 _logger_ev = logging.getLogger(__name__ + ".events")
 
 # Hoist heavy optional imports to module top so we pay the import cost once.
-# openpyxl is a soft dependency — the Excel export falls back to CSV when
+# openpyxl is a soft dependency - the Excel export falls back to CSV when
 # it isn't available.
 try:  # pragma: no cover - exercised in production paths
     import openpyxl as _openpyxl  # type: ignore[import-not-found]
@@ -50,18 +50,18 @@ try:  # pragma: no cover - exercised in production paths
 except ImportError:  # pragma: no cover - fallback path
     _REPORTLAB_AVAILABLE = False
 
-# Terminal statuses — any transition FROM one of these back to an active
+# Terminal statuses - any transition FROM one of these back to an active
 # status counts as a "reopen" and is appended to ``reopen_history``.
 _TERMINAL_STATUSES: frozenset[str] = frozenset({"closed", "verified"})
 _ACTIVE_STATUSES: frozenset[str] = frozenset({"open", "in_progress"})
 
-# Where punchlist photos live on disk. Mirrors the path in router.py — we
+# Where punchlist photos live on disk. Mirrors the path in router.py - we
 # resolve photo_path entries against this base when embedding into PDFs.
 _PHOTOS_BASE = Path("uploads")
 
 
 async def _safe_publish(name: str, data: dict, source_module: str = "oe_punchlist") -> None:
-    """‌⁠‍Best-effort event publish — never blocks the caller on failure."""
+    """‌⁠‍Best-effort event publish - never blocks the caller on failure."""
     try:
         event_bus.publish_detached(name, data, source_module=source_module)
     except Exception:
@@ -240,8 +240,8 @@ class PunchListService:
         Rules:
         - open -> in_progress (anyone)
         - in_progress -> resolved (assigned user or admin)
-        - resolved -> verified (different user than resolver — enforced here)
-        - verified -> closed (admin/manager — enforced via permission in router)
+        - resolved -> verified (different user than resolver - enforced here)
+        - verified -> closed (admin/manager - enforced via permission in router)
         - Any -> open (reopen)
         """
         item = await self.get_item(item_id)
@@ -265,7 +265,7 @@ class PunchListService:
             await self.repo.update_fields(item_id, **update_fields)
             await self.session.refresh(item)
 
-            # Epic H — universal audit trail (reopen branch).
+            # Epic H - universal audit trail (reopen branch).
             from app.core.audit_log import log_activity as _log_activity
 
             await _log_activity(
@@ -362,7 +362,7 @@ class PunchListService:
         await self.repo.update_fields(item_id, **update_fields)
         await self.session.refresh(item)
 
-        # Epic H — universal audit trail.
+        # Epic H - universal audit trail.
         from app.core.audit_log import log_activity as _log_activity
 
         await _log_activity(
@@ -602,7 +602,7 @@ class PunchListService:
         overdue = await self.repo.count_overdue(project_id)
 
         # closed_timestamps is a list of (created_at, verified_at, resolved_at,
-        # updated_at) tuples for closed/verified items only — SQL diff isn't
+        # updated_at) tuples for closed/verified items only - SQL diff isn't
         # portable across SQLite/PostgreSQL so we still walk in Python.
         closed_durations: list[float] = []
         for created_at, verified_at, resolved_at, updated_at in agg["closed_timestamps"]:
@@ -660,7 +660,7 @@ class PunchListService:
 
         Returns raw xlsx bytes when ``openpyxl`` is available, otherwise
         falls back to UTF-8 CSV bytes. The ``openpyxl`` import is resolved
-        once at module load — :data:`_OPENPYXL_AVAILABLE` tells us which
+        once at module load - :data:`_OPENPYXL_AVAILABLE` tells us which
         branch to take without repeatedly catching ``ImportError``.
         """
         items = await self.repo.all_for_project(project_id)
@@ -820,7 +820,7 @@ def _build_minimal_pdf(text: str) -> bytes:
 
 
 def _render_punchlist_text(project_id: uuid.UUID, items: list[PunchItem]) -> str:
-    """Render a flat text view of the punch list — used by the minimal-PDF fallback."""
+    """Render a flat text view of the punch list - used by the minimal-PDF fallback."""
     lines: list[str] = []
     lines.append("PUNCH LIST REPORT")
     lines.append(f"Project: {project_id}")
@@ -872,15 +872,15 @@ def _build_reportlab_pdf(project_id: uuid.UUID, items: list[PunchItem]) -> bytes
     """Build a styled PDF using ReportLab.
 
     Layout:
-        * Cover page — title, project id, generated date, open / closed totals.
-        * One block per item — code, title, location, assignee, status,
+        * Cover page - title, project id, generated date, open / closed totals.
+        * One block per item - code, title, location, assignee, status,
           severity, due date.
         * If the item has a photo on disk, the first photo is embedded as
           an 80×80 px thumbnail.
         * If the item has sheet-pin coordinates (``document_id`` / ``page``
           / ``location_x``+ ``location_y``) a small caption is rendered.
     """
-    # Lazy-import — only paid when ReportLab is actually used.
+    # Lazy-import - only paid when ReportLab is actually used.
     import io
 
     from reportlab.lib import colors
@@ -956,9 +956,9 @@ def _build_reportlab_pdf(project_id: uuid.UUID, items: list[PunchItem]) -> bytes
 
     for idx, item in enumerate(items, 1):
         code = (item.metadata_ or {}).get("code") if hasattr(item, "metadata_") else None
-        heading = f"#{idx} — {item.title}"
+        heading = f"#{idx} - {item.title}"
         if code:
-            heading = f"#{idx} · {code} — {item.title}"
+            heading = f"#{idx} · {code} - {item.title}"
         story.append(Paragraph(heading, h2))
 
         meta_rows = [

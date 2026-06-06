@@ -1,7 +1,7 @@
 """‌⁠‍Teams data access layer.
 
 All database queries for teams, memberships, and visibility live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid

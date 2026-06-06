@@ -18,10 +18,10 @@ def register_transmittals_permissions() -> None:
     """Register RBAC permissions for the transmittals module.
 
     Permission layout:
-        transmittals.read   — list / get transmittals (VIEWER+)
-        transmittals.create — issue a new transmittal (EDITOR+)
-        transmittals.update — edit, lock/issue, recipient acknowledge/respond (EDITOR+)
-        transmittals.delete — delete a draft transmittal (MANAGER+)
+        transmittals.read   - list / get transmittals (VIEWER+)
+        transmittals.create - issue a new transmittal (EDITOR+)
+        transmittals.update - edit, lock/issue, recipient acknowledge/respond (EDITOR+)
+        transmittals.delete - delete a draft transmittal (MANAGER+)
     """
     permission_registry.register_module_permissions(
         "transmittals",

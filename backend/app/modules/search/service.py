@@ -1,19 +1,19 @@
-"""‌⁠‍Unified search service — fan-out + RRF over every vector collection.
+"""‌⁠‍Unified search service - fan-out + RRF over every vector collection.
 
 Architecture
 ------------
 
 The unified search is a two-track recall system:
 
-1. Vector track — :func:`search_collection` from :mod:`app.core.vector_index`
+1. Vector track - :func:`search_collection` from :mod:`app.core.vector_index`
    embeds the query once and runs ANN over every selected collection.
    Best at semantic recall ("reinforced concrete walls" matches "RC
    wall 240mm") but requires LanceDB / Qdrant to be installed AND for
    the collections to have been indexed.
 
-2. SQL track — :func:`_sql_search_collection` runs ILIKE substring
+2. SQL track - :func:`_sql_search_collection` runs ILIKE substring
    matches against the canonical text columns of each collection's
-   backing table. Lower recall but ALWAYS available — it's the
+   backing table. Lower recall but ALWAYS available - it's the
    fallback when LanceDB is missing (fresh ``pip install`` without
    ``[vector]`` extras) or when a collection has zero vectors.
 
@@ -114,7 +114,7 @@ def _normalize_types(raw: list[str] | None) -> list[str]:
 
 
 def _coerce_uuid(value: str | None) -> uuid.UUID | None:
-    """Best-effort UUID parse — returns ``None`` for malformed input.
+    """Best-effort UUID parse - returns ``None`` for malformed input.
 
     The unified search router already validates ``project_id`` via
     :func:`verify_project_access` upstream, but we still defensively
@@ -135,13 +135,13 @@ async def _accessible_project_ids(
 ) -> set[uuid.UUID] | None:
     """Resolve the set of project UUIDs the caller may read.
 
-    Returns ``None`` to mean *unrestricted* — admins (and an unknown /
+    Returns ``None`` to mean *unrestricted* - admins (and an unknown /
     malformed user, which can only happen if the auth dependency is
     bypassed) see everything, mirroring the admin bypass in
     :func:`app.dependencies.verify_project_access`.
 
     Otherwise returns the set of project IDs the user owns OR is a team
-    member of — exactly the scope used by
+    member of - exactly the scope used by
     :meth:`ProjectRepository.list_for_user`. This is what gates a
     cross-project (``project_id`` omitted) unified search so a user never
     receives hits from projects they cannot access (IDOR defence).
@@ -154,7 +154,7 @@ async def _accessible_project_ids(
     from app.modules.teams.access import member_project_ids_subquery
     from app.modules.users.repository import UserRepository
 
-    # Admin bypass — same policy as verify_project_access.
+    # Admin bypass - same policy as verify_project_access.
     try:
         user = await UserRepository(session).get_by_id(uid)
         if user is not None and getattr(user, "role", "") == "admin":
@@ -216,18 +216,18 @@ async def _sql_search_collection(
     Returns a ranked list of :class:`VectorHit` objects with the same
     shape as the vector path, so the fusion layer doesn't need to know
     which track produced each hit. Empty list if the collection has
-    no SQL fallback wired (validation, chat, bim_elements — those are
+    no SQL fallback wired (validation, chat, bim_elements - those are
     inherently vector-only or live outside core ORM tables).
 
     The match is a single OR'd ILIKE across the canonical text columns
     of each table. The ranking inside the SQL layer is "definition
-    order" — first match wins — because SQL has no semantic similarity
+    order" - first match wins - because SQL has no semantic similarity
     to lean on. Fusion via RRF mixes this rank with the vector rank.
 
     Access scoping: when ``project_id`` is given the query is pinned to
     that single project (the router already ran ``verify_project_access``).
     When it is omitted, ``allowed_project_ids`` restricts the search to the
-    projects the caller may read — ``None`` means unrestricted (admin),
+    projects the caller may read - ``None`` means unrestricted (admin),
     an empty set means "no accessible projects" so nothing is returned.
     Shared catalogs without a project column (costs) are exempt.
     """
@@ -236,7 +236,7 @@ async def _sql_search_collection(
         return []
 
     project_uuid = _coerce_uuid(project_id)
-    _ = _coerce_uuid(tenant_id)  # Reserved — most tables don't have tenant_id yet.
+    _ = _coerce_uuid(tenant_id)  # Reserved - most tables don't have tenant_id yet.
 
     def _scope(stmt: Any, project_col: Any) -> Any:
         """Apply per-project access scoping to a project-bearing query.
@@ -477,7 +477,7 @@ async def _sql_search_collection(
             _hit_from_row(
                 row_id=s.id,
                 title=(s.title or s.submittal_number or "")[:160],
-                snippet=(f"{s.submittal_number} — {s.title}" if s.submittal_number else (s.title or ""))[:220],
+                snippet=(f"{s.submittal_number} - {s.title}" if s.submittal_number else (s.title or ""))[:220],
                 collection=collection,
                 project_id=str(s.project_id) if s.project_id else "",
                 payload={
@@ -545,7 +545,7 @@ async def _sql_search_collection(
             _hit_from_row(
                 row_id=item.id,
                 title=(item.description or "")[:160],
-                snippet=f"{item.code} — {item.description}"[:220],
+                snippet=f"{item.code} - {item.description}"[:220],
                 collection=collection,
                 payload={
                     "title": (item.description or "")[:160],
@@ -561,7 +561,7 @@ async def _sql_search_collection(
     # Collections without a SQL fallback (chat, validation, bim_elements
     # via DDC canonical store, …) fall through to the empty list. The
     # vector track is still attempted, so the user-visible behaviour
-    # only degrades for these specific surfaces — the rest still work.
+    # only degrades for these specific surfaces - the rest still work.
     if collection in (COLLECTION_CHAT, COLLECTION_VALIDATION, COLLECTION_BIM_ELEMENTS):
         return []
     return []
@@ -575,7 +575,7 @@ def _filter_vector_hits_by_access(
 
     Mirrors the SQL-track scoping for the cross-project case: a hit is
     kept only when its ``project_id`` is in ``allowed_project_ids``.
-    Hits with no project (empty ``project_id`` — shared catalogs such as
+    Hits with no project (empty ``project_id`` - shared catalogs such as
     costs, and inherently cross-project collections) are kept because
     they carry no per-project access decision. ``None`` means unrestricted
     (admin), so nothing is filtered.
@@ -616,15 +616,15 @@ async def unified_search_service(
     caller's access to that single project.
 
     Cross-project queries (``project_id`` omitted) are fenced to the
-    projects ``user_id`` may read — owned or team-member, with an admin
-    bypass — so the unified search never leaks data from projects the
+    projects ``user_id`` may read - owned or team-member, with an admin
+    bypass - so the unified search never leaks data from projects the
     caller has no access to (IDOR defence).
     """
     import asyncio
 
     chosen = _normalize_types(types)
 
-    # Vector track — best-effort, always tried first. Returns [] when
+    # Vector track - best-effort, always tried first. Returns [] when
     # LanceDB is unavailable or the collection is empty (the helper
     # logs and swallows internally).
     vector_coros = [
@@ -639,7 +639,7 @@ async def unified_search_service(
     ]
     vector_rankings = await asyncio.gather(*vector_coros, return_exceptions=False)
 
-    # SQL track — always evaluated. Single shared session so all per-
+    # SQL track - always evaluated. Single shared session so all per-
     # collection queries share a single connection and roundtrip. The
     # same session resolves the caller's accessible projects for the
     # cross-project access fence.
@@ -711,7 +711,7 @@ async def unified_search_service(
 
 
 def search_status_snapshot() -> SearchStatusResponse:
-    """Aggregate status from every collection — used by the search status
+    """Aggregate status from every collection - used by the search status
     endpoint and the global health page."""
     raw: dict[str, Any] = all_collection_status()
     multi = raw.get("multi_collection") or {}

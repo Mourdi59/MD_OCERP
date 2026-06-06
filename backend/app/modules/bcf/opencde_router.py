@@ -1,4 +1,4 @@
-"""OpenCDE BCF-API 3.0 — minimum compliant profile (14 endpoints).
+"""OpenCDE BCF-API 3.0 - minimum compliant profile (14 endpoints).
 
 Reference: https://github.com/buildingSMART/BCF-API/tree/release_3_0
 
@@ -9,16 +9,16 @@ existing :class:`RequirePermission` dependency.
 
 Notes (security / protocol)
     * HTTPS enforcement is a deployment concern (reverse proxy / Nginx
-      / Traefik) — this module does not check the scheme of the request.
+      / Traefik) - this module does not check the scheme of the request.
     * The 14 endpoints below cover the conformance subset BCF Manager
       plugins (Revit / Archicad / Navisworks) probe; richer OpenCDE
       surfaces (related-topics, document-references, file-info,
       authentication discovery) are deliberately out of scope.
     * On mutation we set ``Cache-Control: no-store``; on single-resource
-      reads we return an ``ETag`` derived from ``modified_date`` —
+      reads we return an ``ETag`` derived from ``modified_date`` -
       stale-write detection on PUT/DELETE returns 412.
     * The minimum profile uses JSON for viewpoint create payloads, NOT
-      XML — XML is reserved for the file-based ``.bcfzip`` codec.
+      XML - XML is reserved for the file-based ``.bcfzip`` codec.
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ from app.modules.bcf.opencde_service import (
     OpenCDEService,
     OpenCDEServiceError,
     compute_topic_etag,
-    parse_odata_filter,  # noqa: F401  — re-exported for tests
+    parse_odata_filter,  # noqa: F401  - re-exported for tests
 )
 
 logger = logging.getLogger(__name__)
@@ -174,7 +174,7 @@ async def get_project_extensions(
     """OpenCDE ``extensions.xml`` data, served as JSON.
 
     Topic types / statuses / priorities / stages mirror the values
-    the file-based exporter emits — keeps the REST surface and the
+    the file-based exporter emits - keeps the REST surface and the
     .bcfzip codec consistent for round-trips through Revit / Archicad.
     """
     await _project_owned_by_caller(session, project_id, payload["sub"], payload.get("role", "viewer"))
@@ -284,7 +284,7 @@ async def get_topic(
     session: SessionDep,
     response: Response,
 ) -> BCFTopicResponse:
-    """Single topic — sets ``ETag`` for use with subsequent PUT/DELETE."""
+    """Single topic - sets ``ETag`` for use with subsequent PUT/DELETE."""
     topic_guid = _validate_guid(topic_guid)
     await _project_owned_by_caller(session, project_id, payload["sub"], payload.get("role", "viewer"))
     try:
@@ -314,7 +314,7 @@ async def update_topic(
     response: Response,
     if_match: Annotated[str | None, Header(alias="If-Match")] = None,
 ) -> BCFTopicResponse:
-    """PUT — full or partial update; supports If-Match for stale-write check."""
+    """PUT - full or partial update; supports If-Match for stale-write check."""
     topic_guid = _validate_guid(topic_guid)
     await _project_owned_by_caller(session, project_id, payload["sub"], payload.get("role", "viewer"))
     try:
@@ -350,7 +350,7 @@ async def delete_topic(
     response: Response,
     if_match: Annotated[str | None, Header(alias="If-Match")] = None,
 ) -> None:
-    """DELETE — If-Match supported."""
+    """DELETE - If-Match supported."""
     topic_guid = _validate_guid(topic_guid)
     await _project_owned_by_caller(session, project_id, payload["sub"], payload.get("role", "viewer"))
     try:

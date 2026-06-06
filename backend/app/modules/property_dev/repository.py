@@ -75,7 +75,7 @@ class _BaseRepo:
         )
         await self.session.execute(stmt)
         await self.session.flush()
-        # Expire ONLY the updated row in the identity map — earlier code
+        # Expire ONLY the updated row in the identity map - earlier code
         # used session.expire_all() which nuked every loaded ORM object and
         # left siblings (Plot, Buyer, Development) with deferred columns
         # that tripped MissingGreenlet on later attribute reads under
@@ -347,7 +347,7 @@ class HandoverRepository(_BaseRepo):
     async def count_progress_for_development(self, development_id: uuid.UUID) -> tuple[int, int]:
         """Return ``(completed, scheduled_not_completed)`` handover counts.
 
-        SQL aggregate — avoids materialising every handover row just to
+        SQL aggregate - avoids materialising every handover row just to
         derive two dashboard tallies (was an N-rows-in-Python scan).
         """
         completed_expr = func.count().filter(Handover.completed_at.isnot(None))
@@ -564,7 +564,7 @@ class BuyerPipelineQueries:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# R6 (task #137) — Lead / Reservation / SalesContract / PaymentSchedule / ContractParty
+# R6 (task #137) - Lead / Reservation / SalesContract / PaymentSchedule / ContractParty
 # ──────────────────────────────────────────────────────────────────────────
 
 
@@ -887,7 +887,7 @@ class ContractPartyRepository(_BaseRepo):
 
 
 # ════════════════════════════════════════════════════════════════════════
-# Task #138 — Broker / Commission / Escrow / PriceMatrix / Phase / Block
+# Task #138 - Broker / Commission / Escrow / PriceMatrix / Phase / Block
 # ════════════════════════════════════════════════════════════════════════
 
 
@@ -1010,7 +1010,7 @@ class CommissionAgreementRepository(_BaseRepo):
     ) -> list[CommissionAgreement]:
         """Agreements that are ``status='active'`` and effective on date.
 
-        ``on_date`` is an ISO ``YYYY-MM-DD`` string — strings compare in
+        ``on_date`` is an ISO ``YYYY-MM-DD`` string - strings compare in
         the right order across SQLite + Postgres for ISO dates.
         """
         stmt = (
@@ -1271,7 +1271,7 @@ class PriceMatrixRepository(_BaseRepo):
         return result.scalar_one_or_none()
 
 
-# ── Pricing engine — SalesPriceList / SalesPriceListEntry / SalesPricingRule ──
+# ── Pricing engine - SalesPriceList / SalesPriceListEntry / SalesPricingRule ──
 
 
 class PriceListRepository(_BaseRepo):

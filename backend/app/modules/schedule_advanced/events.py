@@ -1,10 +1,10 @@
-"""‌⁠‍Schedule Advanced event handlers — takt / line-of-balance.
+"""‌⁠‍Schedule Advanced event handlers - takt / line-of-balance.
 
 Subscribes to the ``schedule_advanced.takt.*`` event family published by
 :class:`~app.modules.schedule_advanced.service.TaktScheduleService` and
 keeps lightweight, side-effect-free bookkeeping in place (structured log
 lines for observability). These handlers are intentionally non-blocking
-and never open a second DB session — they run inside the detached event
+and never open a second DB session - they run inside the detached event
 task scheduled by ``event_bus.publish_detached``.
 
 This module is auto-imported by the module loader when ``oe_schedule_advanced``
@@ -60,7 +60,7 @@ async def _on_takt_cycle_updated(event: Event) -> None:
 def _register_handlers() -> None:
     """Wire takt handlers into the event bus.
 
-    Idempotent in practice — the bus dedups by callable identity, and the
+    Idempotent in practice - the bus dedups by callable identity, and the
     module loader imports this module exactly once per process.
     """
     event_bus.subscribe("schedule_advanced.takt.schedule.created", _on_takt_schedule_created)

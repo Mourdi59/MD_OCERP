@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Match module manifest — auto-mounted at ``/api/v1/match/``."""
+"""‌⁠‍Match module manifest - auto-mounted at ``/api/v1/match/``."""
 
 from app.core.module_loader import ModuleManifest
 

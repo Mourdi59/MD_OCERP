@@ -6,14 +6,14 @@ Single embedder inference is fast (~150 ms on a typical dev box) but
 under N concurrent match requests the inference path becomes a
 bottleneck. We mitigate it with two complementary fixes:
 
-1. **Pre-warm at startup** — load the model and compile the ONNX graph
+1. **Pre-warm at startup** - load the model and compile the ONNX graph
    on the FastAPI ``startup`` lifespan so the first user-facing request
    doesn't pay the 2-5 s cold compile cost.
-2. **Dedicated executor** — route ``encode_texts_async`` through a
+2. **Dedicated executor** - route ``encode_texts_async`` through a
    ``ThreadPoolExecutor`` with N workers (default ``min(4,
    cpu_count())``). PyTorch's CPU matmul releases the GIL during the
    actual computation, so threads do give us real parallelism on
-   multi-core boxes — at the cost of ~1-2 ms scheduling overhead per
+   multi-core boxes - at the cost of ~1-2 ms scheduling overhead per
    call instead of ~1 s pickle-IPC overhead with a process pool.
 
 Activation
@@ -21,12 +21,12 @@ Activation
 Both knobs are env-var-gated so dev startup stays fast unless the
 operator opts in:
 
-* ``OE_VECTOR_PRELOAD=1`` — pre-warm at startup.
-* ``OE_VECTOR_POOL_WORKERS=N`` — number of executor workers. Default =
+* ``OE_VECTOR_PRELOAD=1`` - pre-warm at startup.
+* ``OE_VECTOR_POOL_WORKERS=N`` - number of executor workers. Default =
   ``min(4, cpu_count())``. ``0`` disables the pool entirely (encode
-  runs on the default loop executor — same behaviour as before
+  runs on the default loop executor - same behaviour as before
   v2.7.5).
-* ``OE_VECTOR_POOL_KIND=thread|process`` — choose thread (default) or
+* ``OE_VECTOR_POOL_KIND=thread|process`` - choose thread (default) or
   process pool. Process is only useful on platforms where the matmul
   doesn't release the GIL or where you want hard isolation between
   inferences; it adds significant pickle/IPC overhead on Windows
@@ -36,12 +36,12 @@ operator opts in:
 Concurrency safety
 ==================
 * The pool is process-local. Multiple uvicorn workers each load their
-  own pool — there's no shared state between worker processes.
+  own pool - there's no shared state between worker processes.
 * On shutdown (FastAPI lifespan tear-down) we ``shutdown(wait=False,
   cancel_futures=True)`` so Ctrl-C doesn't leave orphan threads /
   processes alive.
 * If the pool fails to start, the module silently falls back to the
-  default asyncio thread executor — the app keeps working, only the
+  default asyncio thread executor - the app keeps working, only the
   parallelism degrades.
 """
 
@@ -54,7 +54,7 @@ from concurrent.futures import Executor, ProcessPoolExecutor, ThreadPoolExecutor
 
 logger = logging.getLogger(__name__)
 
-# Module-level state — initialised lazily in ``init_pool()`` and torn
+# Module-level state - initialised lazily in ``init_pool()`` and torn
 # down in ``shutdown_pool()``.
 _pool: Executor | None = None
 _pool_size: int = 0
@@ -63,7 +63,7 @@ _pool_kind: str = ""  # "thread" | "process" | ""
 # Counter of currently in-flight encode calls. Used by the smart-route
 # dispatcher: if no other call is pending we encode inline (no IPC
 # overhead), otherwise we offload to the pool so calls run in parallel.
-# Module-level int is fine — asyncio is single-threaded on the loop side
+# Module-level int is fine - asyncio is single-threaded on the loop side
 # and we increment/decrement under the same loop.
 _inflight: int = 0
 
@@ -112,7 +112,7 @@ def init_pool() -> int:
     """Initialise the worker pool. Idempotent. Returns the worker count.
 
     Returns 0 if the pool is disabled (env var = 0) or initialisation
-    failed — callers fall back to the default asyncio executor in
+    failed - callers fall back to the default asyncio executor in
     either case.
     """
     global _pool, _pool_size, _pool_kind
@@ -143,7 +143,7 @@ def init_pool() -> int:
         # request doesn't pay the cold-start cost. For the thread
         # pool the parent process has already loaded the model (via
         # ``maybe_preload_in_process``), so warmup is essentially
-        # free — we just exercise each worker once. For the process
+        # free - we just exercise each worker once. For the process
         # pool we need ``size * 2`` jobs because each worker has its
         # own model that must be loaded + ONNX-compiled.
         warmup_started = time.monotonic()
@@ -216,7 +216,7 @@ def get_pool() -> Executor | None:
 
 
 def _warm_worker() -> None:
-    """Initialiser run once per process worker — pre-loads the embedder.
+    """Initialiser run once per process worker - pre-loads the embedder.
 
     Only called for ``ProcessPoolExecutor`` workers. The thread pool
     shares the parent's already-warmed embedder.
@@ -268,7 +268,7 @@ def maybe_preload_in_process() -> bool:
 
         embedder = get_embedder()
         if embedder is None:
-            logger.info("OE_VECTOR_PRELOAD=1 but no embedder available — skipped")
+            logger.info("OE_VECTOR_PRELOAD=1 but no embedder available - skipped")
             return False
         if hasattr(embedder, "embed"):
             list(embedder.embed(["warm"]))
@@ -288,7 +288,7 @@ async def encode_texts_pooled(texts: list[str]) -> list[list[float]] | None:
     """If the pool is up, dispatch encode through it. Otherwise return ``None``.
 
     Returning ``None`` lets the caller fall through to the default
-    asyncio thread executor without raising — the caller is the only
+    asyncio thread executor without raising - the caller is the only
     place that knows whether to retry, log, or hand back an empty list.
     """
     pool = _pool

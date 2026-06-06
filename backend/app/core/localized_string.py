@@ -174,7 +174,7 @@ def resolve_localized(
     Args:
         data: One of:
             - ``dict`` mapping locale codes to strings.
-            - ``str`` (plain, non-localized value — returned as-is).
+            - ``str`` (plain, non-localized value - returned as-is).
             - ``None`` (returns ``""``).
         locale: Desired locale code.
         fallback: Fallback locale code.
@@ -186,7 +186,7 @@ def resolve_localized(
         return ""
     if isinstance(data, str):
         return data
-    # dict path — same resolution logic as LocalizedStr.resolve
+    # dict path - same resolution logic as LocalizedStr.resolve
     if locale in data:
         return data[locale]
     if fallback in data:

@@ -4,18 +4,18 @@
 
 Three tables, following the match-elements conventions (§3.4):
 
-    oe_pipeline             — the saved graph: ``{nodes, edges}`` JSON +
+    oe_pipeline             - the saved graph: ``{nodes, edges}`` JSON +
                               policy + version + publish flag. Versioned
                               like ``MatchPromptTemplate`` (system vs user,
                               fork-to-edit comes in a later phase).
-    oe_pipeline_run         — a thin pointer to the owning ``oe_job_run``
+    oe_pipeline_run         - a thin pointer to the owning ``oe_job_run``
                               plus a frozen graph snapshot + trigger
                               context, for fast project-scoped listing.
-    oe_pipeline_node_state  — a near-clone of ``MatchStageState``: one row
+    oe_pipeline_node_state  - a near-clone of ``MatchStageState``: one row
                               per (run, node), ``status`` advancing
                               pending → running → done | error, with small
                               ``inputs`` / ``output`` envelopes (never the
-                              big payload — §3.2 hard rule 1).
+                              big payload - §3.2 hard rule 1).
 """
 
 from __future__ import annotations
@@ -83,7 +83,7 @@ class Pipeline(Base):
 
 
 class PipelineRun(Base):
-    """‌⁠‍One execution of a pipeline — a thin pointer to an ``oe_job_run``.
+    """‌⁠‍One execution of a pipeline - a thin pointer to an ``oe_job_run``.
 
     The heavy lifecycle (submit / progress / retry / cancel / idempotency)
     lives on the ``JobRun`` row identified by ``job_run_id``. This table
@@ -106,7 +106,7 @@ class PipelineRun(Base):
         nullable=False,
         index=True,
     )
-    # Pointer into oe_job_run — the durable run lifecycle lives there.
+    # Pointer into oe_job_run - the durable run lifecycle lives there.
     job_run_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     # Frozen copy of pipeline.graph at submit time (immutable history).
     graph_snapshot: Mapped[dict] = mapped_column(  # type: ignore[assignment]
@@ -125,13 +125,13 @@ class PipelineRun(Base):
 
 
 class PipelineNodeState(Base):
-    """Per-run × per-node runtime state — a near-clone of ``MatchStageState``.
+    """Per-run × per-node runtime state - a near-clone of ``MatchStageState``.
 
     One row per ``(run_id, node_id)``. ``status`` advances
     pending → running → done | error (plus skipped / stale / paused for
     re-runs and Phase-2 approval gates). ``inputs`` captures the node's
     params + which upstream nodes fed it; ``output`` is a SMALL envelope
-    (counts, samples, IDs) — the full payload always stays in its owning
+    (counts, samples, IDs) - the full payload always stays in its owning
     table, which is what keeps the SQLite / 2 GB-RAM target healthy.
     """
 

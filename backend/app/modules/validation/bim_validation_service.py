@@ -7,7 +7,7 @@ model and writes the resulting per-element outcomes into a
 The service is deliberately separate from
 :class:`ValidationModuleService` because BIM element validation operates
 on ORM rows (not the flat positions dict consumed by the core
-``validation_engine``) and stores results with a different shape — each
+``validation_engine``) and stores results with a different shape - each
 result entry carries an ``element_id`` so the BIM element UI can paint
 traffic-light badges.
 """
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 # Hard cap on how many result rows we persist. Large models (100k elements
-# × 8 rules) could produce ~800k failures — JSON-column size, load times,
+# × 8 rules) could produce ~800k failures - JSON-column size, load times,
 # and UI legibility all collapse well before that. When the cap is hit we
 # truncate and append a single synthetic ``_truncated`` entry so the
 # caller can show a "… N more" indicator.
@@ -101,7 +101,7 @@ class BIMValidationService:
         info_count = 0
         total_checks = 0
         # Severity-weighted accumulators so the BIM-model score uses the
-        # SAME formula as the core BOQ ValidationReport.score — otherwise the
+        # SAME formula as the core BOQ ValidationReport.score - otherwise the
         # two "quality scores" are not comparable in the unified dashboard
         # (E-XMOD-015). A passing (rule, element) pair contributes the rule's
         # severity weight to both numerator and denominator (mirrors the core
@@ -165,7 +165,7 @@ class BIMValidationService:
                     "message": (
                         f"Result list truncated at {MAX_RESULTS_PER_REPORT} entries. "
                         f"The model produced more failures than can be stored in a "
-                        f"single report — narrow the rule_ids filter to see the rest."
+                        f"single report - narrow the rule_ids filter to see the rest."
                     ),
                     "element_id": None,
                     "element_name": None,

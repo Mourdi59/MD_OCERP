@@ -40,7 +40,7 @@ async def compile_plan(
     session: AsyncSession,
     tenant_id: uuid.UUID | None,
 ) -> CompiledPlan:
-    """‌⁠‍Validate + plan a rule definition. Read-only — no events."""
+    """‌⁠‍Validate + plan a rule definition. Read-only - no events."""
     return await engine_api.compile_plan(
         rule_definition,
         session=session,
@@ -65,7 +65,7 @@ async def get_run_status(
     *,
     tenant_id: uuid.UUID,
 ) -> RunStatus | None:
-    """Snapshot of a run's state — used by the run-detail header."""
+    """Snapshot of a run's state - used by the run-detail header."""
     return await engine_api.status(session, run_id, tenant_id=tenant_id)
 
 
@@ -124,7 +124,7 @@ async def cancel_run(
                 },
             )
         except Exception:  # noqa: BLE001
-            # Event publishing must never break the request — the cancel
+            # Event publishing must never break the request - the cancel
             # itself already succeeded. Log and move on.
             logger.exception("Failed to publish eac.run.cancelled")
     return accepted

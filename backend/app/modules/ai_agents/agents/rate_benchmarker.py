@@ -1,13 +1,13 @@
-"""Rate Benchmarker — sanity-checks a proposed unit rate against the catalogue.
+"""Rate Benchmarker - sanity-checks a proposed unit rate against the catalogue.
 
-Tools (declarative — wired into the global registry on import):
+Tools (declarative - wired into the global registry on import):
 
-* ``benchmark_rate(description, proposed_rate, currency, region)`` — looks up
+* ``benchmark_rate(description, proposed_rate, currency, region)`` - looks up
   real catalogue items via ``costs.matcher.match_cwicr_items`` and compares the
   user's proposed unit rate against the distribution of matches **within a
   single ISO currency**. Returns sample_size, min / median / max and a
   ``delta_pct`` plus a verdict (``under`` / ``in_range`` / ``over``).
-* ``search_costs(q, region)`` — the same cost-database proxy the BOQ drafter
+* ``search_costs(q, region)`` - the same cost-database proxy the BOQ drafter
   uses, so the agent can inspect the raw matches behind a benchmark.
 
 Money rule (CRITICAL): the benchmark is computed **strictly within one
@@ -104,7 +104,7 @@ async def _tool_search_costs(q: str, region: str | None = None) -> dict[str, Any
             "error": "unavailable",
             "detail": (
                 "Cost database is not reachable in this context. No rates "
-                "available — do not invent unit rates; report that the rate "
+                "available - do not invent unit rates; report that the rate "
                 "could not be benchmarked."
             ),
         }
@@ -125,7 +125,7 @@ async def _tool_benchmark_rate(
     the median.
 
     Money rule: comparison is strictly within one currency. Rates in any other
-    currency are discarded — never converted, never blended. If there are zero
+    currency are discarded - never converted, never blended. If there are zero
     same-currency matches the tool returns ``verdict="no_benchmark"`` with a
     note and does NOT fall back to a foreign currency.
 
@@ -134,7 +134,7 @@ async def _tool_benchmark_rate(
     desc = (description or "").strip()
     currency_code = (currency or "").strip().upper()
 
-    # Coerce the proposed rate defensively — the LLM may hand us a string.
+    # Coerce the proposed rate defensively - the LLM may hand us a string.
     try:
         proposed = float(proposed_rate)
     except (TypeError, ValueError):
@@ -183,7 +183,7 @@ async def _tool_benchmark_rate(
             "error": "unavailable",
             "detail": (
                 "Cost database is not reachable in this context. The rate "
-                "could not be benchmarked — do not invent a benchmark."
+                "could not be benchmarked - do not invent a benchmark."
             ),
         }
 
@@ -208,7 +208,7 @@ async def _tool_benchmark_rate(
             note += (
                 "Matches exist in other currencies "
                 f"({', '.join(other_currencies)}) but they are intentionally "
-                "NOT used — rates are never converted or compared across "
+                "NOT used - rates are never converted or compared across "
                 "currencies."
             )
         else:
@@ -230,7 +230,7 @@ async def _tool_benchmark_rate(
     median_rate = statistics.median(rates)
 
     # delta_pct of the proposal vs the catalogue median. Undefined when the
-    # median is zero (free / unparseable rows) — report it explicitly rather
+    # median is zero (free / unparseable rows) - report it explicitly rather
     # than dividing by zero.
     if median_rate == 0:
         delta_pct: float | None = None

@@ -1,4 +1,4 @@
-"""‌⁠‍Notification Pydantic schemas — request/response models.
+"""‌⁠‍Notification Pydantic schemas - request/response models.
 
 The response schema renders English fallback strings server-side so the
 bell always has readable text even when the frontend i18n layer hasn't
@@ -32,7 +32,7 @@ from app.modules.notifications.templates import (
 # title_key and body_key were the SAME string (e.g. both
 # ``notifications.rfi.assigned``). The active code now writes
 # ``.title`` / ``.body`` suffixes, but rows already in the DB still
-# have the old keys — without aliasing, those notifications would
+# have the old keys - without aliasing, those notifications would
 # render as the raw key string in the bell.
 #
 # Resolution: at serialise time, if the stored key has no template
@@ -109,7 +109,7 @@ class NotificationResponse(BaseModel):
         """Render server-side English fallbacks + map icon category.
 
         Runs after attribute hydration so the stored keys + context are
-        already on the model. Idempotent — re-running it produces the
+        already on the model. Idempotent - re-running it produces the
         same output, so it's safe inside FastAPI's response_model
         revalidation cycle.
         """
@@ -131,7 +131,7 @@ class NotificationResponse(BaseModel):
                 "body_default",
                 render_template(resolved_body_key, ctx),
             )
-        # Always compute icon_category — the stored notification_type is
+        # Always compute icon_category - the stored notification_type is
         # the source of truth and the model never persists icon_category.
         object.__setattr__(
             self,

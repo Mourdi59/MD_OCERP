@@ -7,7 +7,7 @@ and damage reports.
 
 
 async def on_startup() -> None:
-    """‌⁠‍Module startup hook — register permissions and event subscribers."""
+    """‌⁠‍Module startup hook - register permissions and event subscribers."""
     from app.modules.equipment.events import register_equipment_subscribers
     from app.modules.equipment.permissions import register_equipment_permissions
 

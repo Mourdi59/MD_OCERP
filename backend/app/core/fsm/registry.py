@@ -8,7 +8,7 @@ Conventions:
     * State names are lowercase snake_case strings.
     * Role gates use the names emitted by :mod:`app.core.permissions`
       (``admin``, ``manager``, ``estimator``, ``viewer``, …). The string
-      ``admin`` always passes — admin role bypasses every gate. Use
+      ``admin`` always passes - admin role bypasses every gate. Use
       ``required_roles=()`` to allow anyone with general write permission.
     * Side effects (event-bus notifications, finance recalculations, …)
       live in module-level functions below the FSM declarations so they
@@ -16,14 +16,14 @@ Conventions:
 
 Mapping table (audit findings WF1-WF6):
 
-    BOQ        — draft ↔ revision → final → archived
-    Project    — planning → active ↔ on_hold → completed → archived
-    Invoice    — draft → sent → paid → credit_note_issued  (paid is terminal
+    BOQ        - draft ↔ revision → final → archived
+    Project    - planning → active ↔ on_hold → completed → archived
+    Invoice    - draft → sent → paid → credit_note_issued  (paid is terminal
                  except via credit-note; no destructive cancel after pay)
-    NCR        — open → in_review → resolved → closed; rejected ← in_review
-    RFQ        — draft → published → bids_received → awarded → po_issued
+    NCR        - open → in_review → resolved → closed; rejected ← in_review
+    RFQ        - draft → published → bids_received → awarded → po_issued
                  → completed
-    Submittal  — open → under_review → revise_resubmit → approved |
+    Submittal  - open → under_review → revise_resubmit → approved |
                  rejected | approved_as_noted
 """
 
@@ -62,7 +62,7 @@ async def _publish_status_event(ctx: dict[str, Any], *, event_name: str) -> None
             "reason": ctx.get("reason"),
         }
         event_bus.publish_detached(event_name, payload, source_module="fsm")
-    except Exception:  # pragma: no cover — events must never block lifecycle
+    except Exception:  # pragma: no cover - events must never block lifecycle
         logger.debug("FSM event publish skipped: %s", event_name)
 
 
@@ -94,14 +94,14 @@ def _require_metadata_field(field: str, *, message: str | None = None):
 # Lifecycle:
 #     draft  →  final               (lock)
 #     final  →  draft               (unlock; admin/manager only)
-#     draft  →  revision            (create_revision — branches a new draft)
+#     draft  →  revision            (create_revision - branches a new draft)
 #     final  →  archived            (post-project archival; admin only)
 #     revision → draft              (alias: a revision IS a draft branch)
 #
 # We model "revision" as a distinct status node so the audit log can
 # distinguish "branched a new estimate" from "edited a fresh draft". The
 # create-revision endpoint inserts a NEW BOQ row in status=draft, and the
-# original BOQ stays in `final` — so this FSM also lets the cloned row
+# original BOQ stays in `final` - so this FSM also lets the cloned row
 # move revision→draft when the user starts editing it.
 
 BOQ_FSM = register_fsm(
@@ -313,8 +313,8 @@ INVOICE_FSM = register_fsm(
 #     in_review    →  rejected   (root cause does not justify NCR)
 #     resolved     →  closed     (verification passed; terminal)
 #     resolved     →  in_review  (verification failed; back to review)
-#     rejected     →  closed     (terminal — dismiss)
-#     open         →  closed     (admin only — emergency close)
+#     rejected     →  closed     (terminal - dismiss)
+#     open         →  closed     (admin only - emergency close)
 
 NCR_FSM = register_fsm(
     EntityFSM(
@@ -477,7 +477,7 @@ RFQ_FSM = register_fsm(
 #     rejected           →  open             (re-submit clean)
 #     approved           →  closed
 #     approved_as_noted  →  closed
-#     rejected           →  closed           (terminal — dismissed)
+#     rejected           →  closed           (terminal - dismissed)
 
 SUBMITTAL_FSM = register_fsm(
     EntityFSM(

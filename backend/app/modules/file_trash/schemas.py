@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""File Trash Pydantic schemas — request/response models."""
+"""File Trash Pydantic schemas - request/response models."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ class TrashSoftDeleteRequest(BaseModel):
 
 
 class TrashRestoreRequest(BaseModel):
-    """Restore a trashed row (token is optional — restore is auth-gated)."""
+    """Restore a trashed row (token is optional - restore is auth-gated)."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 

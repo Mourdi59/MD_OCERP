@@ -1,7 +1,7 @@
 """‌⁠‍Markups & Annotations data access layer.
 
 All database queries for markups, scale configs, and stamp templates live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid
@@ -61,7 +61,7 @@ class MarkupRepository:
 
         ``assignee_id`` filters to markups assigned to the given user.
         ``unassigned=True`` filters to markups with NULL ``assignee_id``;
-        the two flags are mutually exclusive — pass only one.
+        the two flags are mutually exclusive - pass only one.
         """
         base = select(Markup).where(Markup.project_id == project_id)
         if document_id is not None:

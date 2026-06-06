@@ -1,4 +1,4 @@
-"""‌⁠‍Project service — business logic for project management.
+"""‌⁠‍Project service - business logic for project management.
 
 Stateless service layer. Handles:
 - Project CRUD with ownership enforcement
@@ -28,7 +28,7 @@ from app.core.validation.messages import translate
 # uncommitted rows) and both mint ``PRJ-2026-0017``. The lock serialises
 # the *generation* critical section; the reservation set tracks codes
 # in-flight (inserted but not yet committed) so the same lock turn that
-# generates a code also marks it reserved — the next acquirer skips
+# generates a code also marks it reserved - the next acquirer skips
 # anything reserved, even if the DB hasn't committed it yet.
 _PROJECT_CODE_LOCK = asyncio.Lock()
 _PROJECT_CODE_RESERVED: set[str] = set()
@@ -59,7 +59,7 @@ async def _safe_audit(
     user_id: str | None = None,
     details: dict | None = None,
 ) -> None:
-    """‌⁠‍Best-effort audit log — never blocks the caller on failure."""
+    """‌⁠‍Best-effort audit log - never blocks the caller on failure."""
     try:
         from app.core.audit import audit_log
 
@@ -104,7 +104,7 @@ class ProjectService:
 
         Race-safe across concurrent ``create_project`` calls in the same
         process via ``_PROJECT_CODE_LOCK`` + ``_PROJECT_CODE_RESERVED``
-        (Project.project_code has no DB-level UniqueConstraint — see
+        (Project.project_code has no DB-level UniqueConstraint - see
         model). Within the critical section we both (a) check the DB for
         the highest committed sequence number and (b) skip any sequence
         currently reserved by another in-flight create that has not yet
@@ -118,7 +118,7 @@ class ProjectService:
             # Hard bulk-guard: refuse to proceed if the in-process
             # reservation set has grown past the cap. Pre-fix this loop
             # ran an unbounded N+1 ``project_code_exists`` call per
-            # reservation on every acquire — a pathological batch-import
+            # reservation on every acquire - a pathological batch-import
             # pattern (thousands of concurrent ``create_project``
             # coroutines without yielding) could turn a single create
             # into seconds of serial DB round-trips, or OOM the worker
@@ -137,7 +137,7 @@ class ProjectService:
                         "to bypass the generator."
                     ),
                 )
-            # Prune reservations that the DB has now confirmed — keeps
+            # Prune reservations that the DB has now confirmed - keeps
             # the set bounded and prevents stale entries from artificially
             # skipping slots in long-running processes. Batched into a
             # single ``WHERE project_code IN (...)`` query (was N point
@@ -169,7 +169,7 @@ class ProjectService:
                 if not await self.repo.project_code_exists(candidate):
                     _PROJECT_CODE_RESERVED.add(candidate)
                     return candidate
-            # Extremely unlikely — fall through with a UUID-shard suffix
+            # Extremely unlikely - fall through with a UUID-shard suffix
             # so we never block a create_project call.
             candidate = f"{prefix}{max_seq + 1:04d}-{uuid.uuid4().hex[:6]}"
             _PROJECT_CODE_RESERVED.add(candidate)
@@ -261,13 +261,13 @@ class ProjectService:
         try:
             project = await self.repo.create(project)
         except Exception:
-            # Insert failed before any commit — recycle the slot so a
+            # Insert failed before any commit - recycle the slot so a
             # retry doesn't unnecessarily skip it.
             if reserved_code is not None:
                 _PROJECT_CODE_RESERVED.discard(reserved_code)
             raise
         # NB: we intentionally keep ``reserved_code`` in the set until the
-        # caller commits — on SQLite the flushed row isn't visible to
+        # caller commits - on SQLite the flushed row isn't visible to
         # other sessions' ``max_project_code_seq`` until the outer
         # session commits, and the request lifecycle (``get_session``)
         # commits on success. The generator's pre-lock prune step below
@@ -379,7 +379,7 @@ class ProjectService:
 
         Best-effort: if the BOQ models can't be imported (test envs with
         a minimal module set) we return False so the currency guard
-        doesn't block a legitimate update — the guard is a safety net,
+        doesn't block a legitimate update - the guard is a safety net,
         not a hard schema invariant.
         """
         try:
@@ -449,7 +449,7 @@ class ProjectService:
                     status_code=status.HTTP_409_CONFLICT,
                     detail=(
                         "Project currency cannot be changed once BOQ "
-                        "positions exist — existing rollups would be "
+                        "positions exist - existing rollups would be "
                         "silently mis-converted. Either clear BOQs first "
                         "or set metadata.allow_currency_change=true to "
                         "acknowledge the impact."
@@ -471,7 +471,7 @@ class ProjectService:
         #   * the new value is a dict with a non-empty country;
         #   * the value differs from the pre-update snapshot.
         # The geo_hub subscriber will skip if an anchor already exists,
-        # so this is idempotent in practice — but we still guard against
+        # so this is idempotent in practice - but we still guard against
         # spamming the event bus on a no-op PATCH.
         if "address" in fields:
             new_address = dict(project.address) if isinstance(project.address, dict) else None
@@ -487,7 +487,7 @@ class ProjectService:
 
         # If the region changed, drop it from the match-service region
         # cache so the boost layer sees the new value on the very next
-        # match request — without this we'd carry stale region data for
+        # match request - without this we'd carry stale region data for
         # up to 60 s after the PATCH.
         if "region" in fields:
             try:
@@ -511,7 +511,7 @@ class ProjectService:
         # If the base currency actually moved, surface a dedicated event
         # so BOQ / costs / reporting subscribers can re-rollup or warn.
         # ``project`` has been refreshed by this point so its ``.currency``
-        # is the new value — compare against the pre-update snapshot.
+        # is the new value - compare against the pre-update snapshot.
         if currency_actually_changed:
             await _safe_publish(
                 "projects.project.currency_changed",
@@ -608,7 +608,7 @@ class ProjectService:
           2. Insert a new ``Project`` row with a fresh UUID, a freshly
              generated ``project_code``, ``name = f"{source.name} (Copy)"``
              and ``owner_id`` from the caller. Every other column is
-             copied verbatim — including JSON fields (``validation_rule_sets``,
+             copied verbatim - including JSON fields (``validation_rule_sets``,
              ``custom_fields``, ``address``, ``fx_rates``, ``custom_units``,
              ``metadata_``).
           3. Re-key each child collection onto the new project id with
@@ -620,7 +620,7 @@ class ProjectService:
              the cloned project keeps catalogue binding, classifier choice,
              auto-link thresholds, source toggles, etc.
 
-        The whole operation runs in the request's session — the request
+        The whole operation runs in the request's session - the request
         dependency (``get_session``) commits on success and rolls back on
         any raise, so a child insert failure cleanly aborts the parent
         insert too. Returns the new ``Project`` ORM row (caller wraps it
@@ -638,7 +638,7 @@ class ProjectService:
 
         # 2. Build the new Project row. Every persisted column is enumerated
         #    explicitly so adding a field later forces a conscious decision
-        #    about whether it should clone — much safer than a sweeping
+        #    about whether it should clone - much safer than a sweeping
         #    ``copy.deepcopy`` that could silently propagate IDs/timestamps.
         new_project_code = await self._generate_project_code()
         new_project = Project(
@@ -713,7 +713,7 @@ class ProjectService:
                 strict=True,
             ):
                 wbs_id_map[src_node.id] = new_node.id
-            # Pass 2 — rewire parent_id within the new tree.
+            # Pass 2 - rewire parent_id within the new tree.
             for new_node, src_parent_id in new_wbs_rows:
                 if src_parent_id is not None and src_parent_id in wbs_id_map:
                     new_node.parent_id = wbs_id_map[src_parent_id]
@@ -735,7 +735,7 @@ class ProjectService:
             )
 
         # 3c. Clone MatchProjectSettings (one-to-one, no relationship on
-        #     Project — fetched directly via the unique FK).
+        #     Project - fetched directly via the unique FK).
         from sqlalchemy import select as _sa_select
 
         src_match_stmt = _sa_select(MatchProjectSettings).where(
@@ -834,17 +834,17 @@ class ProjectService:
         the project so they don't remain accessible after the project is
         archived.  The DB FK constraints use ``ondelete=CASCADE`` for real
         deletes, but since the project row itself is kept (soft-delete) those
-        cascades never trigger — we do it explicitly here.
+        cascades never trigger - we do it explicitly here.
 
-        Raises 404 if not found. Idempotent — re-archiving an archived
+        Raises 404 if not found. Idempotent - re-archiving an archived
         project is a no-op (returns 204) so the user gets a clean delete UX.
         """
         from sqlalchemy import delete as sa_delete
 
         project = await self.get_project(project_id, include_archived=True)
         if project.status == "archived":
-            return  # Already archived — silently succeed
-        # Snapshot fields before update_fields() — that calls session.expire_all(),
+            return  # Already archived - silently succeed
+        # Snapshot fields before update_fields() - that calls session.expire_all(),
         # after which any attribute access on `project` would trigger lazy IO and
         # crash with greenlet_spawn / MissingGreenlet under the async session.
         owner_id = str(project.owner_id)
@@ -935,7 +935,7 @@ class ProjectService:
             details={"name": project_name},
         )
 
-        # FSM audit row — record the transition in oe_activity_log so the
+        # FSM audit row - record the transition in oe_activity_log so the
         # workflow lifecycle is queryable from a single audit table.
         try:
             from app.core.audit_log import log_activity
@@ -968,7 +968,7 @@ class ProjectService:
         if project.status != "archived":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Project is not archived — nothing to restore",
+                detail="Project is not archived - nothing to restore",
             )
         owner_id = str(project.owner_id)
 
@@ -983,7 +983,7 @@ class ProjectService:
             source_module="oe_projects",
         )
 
-        # FSM audit row — archived -> active. Lets compliance reports
+        # FSM audit row - archived -> active. Lets compliance reports
         # show that a project was un-archived (an audit-significant event).
         try:
             from app.core.audit_log import log_activity
@@ -1030,7 +1030,7 @@ async def auto_bind_dominant_catalogue(
     """Bind the project's match settings to the dominant loaded CWICR catalogue.
 
     Used to make /match-elements (and any other matcher consumer) Just Work
-    on a fresh project — without this, ``cost_database_id`` stays NULL and
+    on a fresh project - without this, ``cost_database_id`` stays NULL and
     the ranker short-circuits with ``status="no_catalog_selected"``.
 
     Selection rule (language-aware, since 2.9.34):
@@ -1061,18 +1061,18 @@ async def auto_bind_dominant_catalogue(
     from app.modules.projects.models import Project  # noqa: PLC0415
 
     row = await get_or_create_match_settings(db, project_id)
-    # Resolve the project's preferred catalogue language early — we need
+    # Resolve the project's preferred catalogue language early - we need
     # it both to decide whether to keep the current binding and to seed
     # Pass 1 below. Two signals, in order of trust:
-    #   1. ``match_settings.target_language`` — explicit user choice, the
+    #   1. ``match_settings.target_language`` - explicit user choice, the
     #      most direct signal of what language descriptions they want.
-    #   2. ``project.region`` → ``language_for()`` — geographic inference,
+    #   2. ``project.region`` → ``language_for()`` - geographic inference,
     #      used when the user hasn't picked a target language.
     # Without the target_language fallback, projects with an empty region
     # (E2E fixtures, freshly-created projects, or anything imported without
     # a country tag) get ``project_lang=None`` and skip Pass 1+1b entirely,
     # falling through to Pass 2 which binds whichever catalogue has the
-    # most SQL rows — typically Russian.
+    # most SQL rows - typically Russian.
     project_lang: str | None = None
     try:
         proj = await db.get(Project, project_id)
@@ -1110,13 +1110,13 @@ async def auto_bind_dominant_catalogue(
         except Exception:
             current_count = 1  # defensive: keep current binding on lookup error
 
-        # v3-snapshot-only installs carry ZERO SQL ``CostItem`` rows —
+        # v3-snapshot-only installs carry ZERO SQL ``CostItem`` rows -
         # the catalogue lives entirely in a ``cwicr_<lang>_v3`` Qdrant
         # collection (resolved, with cross-language fallback, by
         # ``country_to_collection``). Counting only SQL rows here made
         # this function unbind a perfectly valid binding (e.g.
         # ``PT_SAOPAULO`` backed by ``cwicr_en_v3``) and then return
-        # ``None`` because Pass 1/2 also only inspect SQL — which made
+        # ``None`` because Pass 1/2 also only inspect SQL - which made
         # ``run_match`` short-circuit with ``[]`` before the matcher ran
         # (the user-reported "/match-elements does nothing"). Treat a
         # populated CWICR collection as "the binding has data" so it is
@@ -1134,19 +1134,19 @@ async def auto_bind_dominant_catalogue(
                 coll = country_to_collection(row.cost_database_id)
                 if _qpoints(coll) > 0:
                     current_count = _qpoints(coll)
-            except Exception:  # noqa: BLE001 — degrade to SQL-only signal
+            except Exception:  # noqa: BLE001 - degrade to SQL-only signal
                 pass
 
         current_lang = language_for(row.cost_database_id) if row.cost_database_id else None
         # Language mismatch is only a reason to re-bind when we actually
-        # have a language target — otherwise we'd thrash on projects with
+        # have a language target - otherwise we'd thrash on projects with
         # no resolvable region.
         lang_mismatch = bool(project_lang and current_lang and project_lang != current_lang)
         if current_count > 0 and not lang_mismatch:
             return row.cost_database_id
         reason = "0 rows" if current_count == 0 else f"language {current_lang!r} != project {project_lang!r}"
         logger.info(
-            "auto_bind_dominant_catalogue: re-binding %s — current %r %s",
+            "auto_bind_dominant_catalogue: re-binding %s - current %r %s",
             project_id,
             row.cost_database_id,
             reason,
@@ -1169,14 +1169,14 @@ async def auto_bind_dominant_catalogue(
                 .limit(16)
             )
         ).all()
-    except Exception:  # pragma: no cover — defensive
+    except Exception:  # pragma: no cover - defensive
         return None
 
     def _bind(region: str) -> str:
         row.cost_database_id = region
         return region
 
-    # Pass 1 — prefer same-language catalogues from SQL.
+    # Pass 1 - prefer same-language catalogues from SQL.
     if project_lang:
         for region, _count in candidates:
             if not region:
@@ -1193,11 +1193,11 @@ async def auto_bind_dominant_catalogue(
                 await db.refresh(row)
                 return bound
 
-    # Pass 1b — SQL has no language match but the language-specific
+    # Pass 1b - SQL has no language match but the language-specific
     # Qdrant collection might still hold rates. Bind to a representative
     # country code for that language so the matcher reads from the
     # right collection. ``country_to_collection`` and
-    # ``country_filter_for`` understand bare two-letter codes — see
+    # ``country_filter_for`` understand bare two-letter codes - see
     # qdrant_adapter.py for the contract. Pinned to a representative
     # country per language so the country payload predicate doesn't
     # over-narrow (US is the most populous English country in CWICR,
@@ -1222,7 +1222,7 @@ async def auto_bind_dominant_catalogue(
         fallback_region = _LANG_TO_REGION.get(project_lang)
         if fallback_region:
             try:
-                # Qdrant scroll with country payload — quick check that
+                # Qdrant scroll with country payload - quick check that
                 # the language collection actually carries rows for this
                 # country. Cheap (single call) and only runs in this
                 # cold-bind path.
@@ -1243,7 +1243,7 @@ async def auto_bind_dominant_catalogue(
                 vec_present = bool(info and (getattr(info, "points_count", 0) or getattr(info, "vectors_count", 0)))
                 if vec_present:
                     logger.info(
-                        "auto_bind: SQL has no %s catalogue — binding language fallback %r so Qdrant %r is searched",
+                        "auto_bind: SQL has no %s catalogue - binding language fallback %r so Qdrant %r is searched",
                         project_lang,
                         fallback_region,
                         coll,
@@ -1255,10 +1255,10 @@ async def auto_bind_dominant_catalogue(
                 # cf reference keeps the helper imported even when
                 # the collection probe short-circuits.
                 _ = cf
-            except Exception as exc:  # pragma: no cover — defensive
+            except Exception as exc:  # pragma: no cover - defensive
                 logger.debug("auto_bind: language fallback probe failed: %s", exc)
 
-    # Pass 2 — fall back to dominant catalogue regardless of language.
+    # Pass 2 - fall back to dominant catalogue regardless of language.
     for region, _count in candidates:
         if not region:
             continue
@@ -1281,7 +1281,7 @@ async def get_or_create_match_settings(
     """Fetch the project's match settings, creating a default row on first read.
 
     Lazy initialisation keeps existing projects (created before v2.8.0)
-    backwards-compatible — they get a default row the first time the UI or
+    backwards-compatible - they get a default row the first time the UI or
     matcher service asks for it. Callers receive the ORM row so the router
     can ``model_validate`` it into a Pydantic response.
     """
@@ -1322,7 +1322,7 @@ async def get_or_create_match_settings(
 async def update_match_settings(
     db: AsyncSession,
     project_id: uuid.UUID,
-    patch,  # MatchProjectSettingsUpdate — typed lazily to avoid circular import
+    patch,  # MatchProjectSettingsUpdate - typed lazily to avoid circular import
     *,
     user_id: str | None = None,
 ):

@@ -1,7 +1,7 @@
 """‌⁠‍Finance data access layer.
 
 All database queries for finance entities live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 from __future__ import annotations
@@ -211,7 +211,7 @@ class InvoiceRepository:
             )
             overdue_count += cnt
 
-        # Dominant invoice currency — used as a dashboard fallback when no
+        # Dominant invoice currency - used as a dashboard fallback when no
         # budget line carries a currency yet.
         cur_stmt = (
             select(Invoice.currency_code, func.count().label("cnt"))
@@ -277,7 +277,7 @@ class PaymentRepository:
 
         ``project_id`` scopes payments to a single project by joining to the
         parent invoice (``Payment.invoice_id`` → ``Invoice.project_id``).
-        Without it (and without ``invoice_id``) the query is unscoped — the
+        Without it (and without ``invoice_id``) the query is unscoped - the
         router must therefore always supply one of the two so payments don't
         leak across tenants.
         """

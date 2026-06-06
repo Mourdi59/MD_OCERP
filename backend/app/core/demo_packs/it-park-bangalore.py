@@ -3,18 +3,18 @@ from __future__ import annotations
 from app.core.demo_projects import DemoTemplate
 
 # ---------------------------------------------------------------------------
-# Flagship demo pack: India / CPWD-style rates — IT Park / Software Campus,
+# Flagship demo pack: India / CPWD-style rates - IT Park / Software Campus,
 # Bengaluru (Whitefield, ORR tech corridor), Karnataka.
 # ---------------------------------------------------------------------------
 # A privately developed, multi-tower commercial Grade-A IT / software campus
-# (warm-shell office space for SEZ / IT-ITeS tenants) — distinct from the
+# (warm-shell office space for SEZ / IT-ITeS tenants) - distinct from the
 # Government Office Complex demo for New Delhi. Costing follows a CPWD DSR
 # 2021 sub-head structure adapted to Bengaluru 2026 market rates; item
 # references carry CPWD DSR clause numbers in the classification dict
 # (key "cpwd"), with a MasterFormat division supplied as the platform
 # fallback standard. Rates are GST-exclusive (GST 18% carried as a separate
 # markup line). Design intent conforms to IS 456 (RCC), IS 1893:2016
-# (seismic — Zone II), IS 13920 (ductile detailing), IS 875 (loads),
+# (seismic - Zone II), IS 13920 (ductile detailing), IS 875 (loads),
 # IS 800 (structural steel), NBC 2016 and the Karnataka (BBMP / KMBR)
 # building bye-laws. IGBC Green Rating (LEED v4 BD+C: Core & Shell aligned).
 # ---------------------------------------------------------------------------
@@ -172,7 +172,7 @@ TEMPLATE = DemoTemplate(
                 ),
             ],
         ),
-        # ── 2. RCC Substructure — Raft & Basement (CPWD Sub-head 4 & 5) ─────
+        # ── 2. RCC Substructure - Raft & Basement (CPWD Sub-head 4 & 5) ─────
         (
             "2",
             "RCC Substructure - Raft, Footings & Basement",
@@ -244,7 +244,7 @@ TEMPLATE = DemoTemplate(
                 ),
             ],
         ),
-        # ── 3. RCC Superstructure — Towers & Amenity (CPWD Sub-head 5) ──────
+        # ── 3. RCC Superstructure - Towers & Amenity (CPWD Sub-head 5) ──────
         (
             "3",
             "RCC Superstructure - Towers & Amenity Block",
@@ -508,7 +508,7 @@ TEMPLATE = DemoTemplate(
                 ),
             ],
         ),
-        # ── 7. Internal Finishes — Flooring, Plaster, Paint, Ceiling ───────
+        # ── 7. Internal Finishes - Flooring, Plaster, Paint, Ceiling ───────
         (
             "7",
             "Internal Finishes - Flooring, Plaster, Paint & Ceiling",
@@ -916,7 +916,7 @@ TEMPLATE = DemoTemplate(
                 ),
             ],
         ),
-        # ── 11. Vertical Transportation — Lifts & Escalators ───────────────
+        # ── 11. Vertical Transportation - Lifts & Escalators ───────────────
         (
             "11",
             "Vertical Transportation - Lifts & Escalators",

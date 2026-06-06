@@ -1,4 +1,4 @@
-"""‌⁠‍Variations API routes — mounted at /api/v1/variations/."""
+"""‌⁠‍Variations API routes - mounted at /api/v1/variations/."""
 
 from __future__ import annotations
 
@@ -322,7 +322,7 @@ async def approve_variation_request(
 ) -> VariationRequestResponse:
     existing = await service.get_request(vr_id)
     await verify_project_access(existing.project_id, str(user_id), session)
-    # RBAC: enforce the high-value approval tier — a Manager holding only
+    # RBAC: enforce the high-value approval tier - a Manager holding only
     # variations.approve_request must not wave through a variation whose cost
     # impact exceeds HIGH_VALUE_APPROVAL_THRESHOLD without the admin-only
     # variations.approve_high_value permission (closes the dead-gate finding).
@@ -369,7 +369,7 @@ async def convert_vr_to_vo(
     vr = await service.get_request(vr_id)
     await verify_project_access(vr.project_id, str(user_id), session)
     # RBAC: convert-to-VO commits the variation's money into a VariationOrder
-    # (and a mirrored ChangeOrder), so it is symmetric with approval — gate
+    # (and a mirrored ChangeOrder), so it is symmetric with approval - gate
     # high-value conversions behind variations.approve_high_value too. Use the
     # effective committed amount (body override else the source VR estimate).
     effective_amount = body.final_cost_impact or vr.estimated_cost_impact

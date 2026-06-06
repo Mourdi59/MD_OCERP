@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """‌⁠‍Pipeline Builder data-access layer.
 
-Pure CRUD over the three ORM tables. No business logic — the service
+Pure CRUD over the three ORM tables. No business logic - the service
 layer owns graph validation, JobRun submission and snapshotting.
 """
 

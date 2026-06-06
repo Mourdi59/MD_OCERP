@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Request Demo Access — OpenConstructionERP</title>
+<title>Request Demo Access - OpenConstructionERP</title>
 <meta name="description" content="Try OpenConstructionERP for free. Construction estimation with 55,000+ cost items, BOQ editor, CAD import, and PDF takeoff. No credit card required.">
 <meta name="keywords" content="OpenConstructionERP demo, construction ERP demo, BOQ editor demo, free construction estimation, CWICR cost database">
-<meta property="og:title" content="Request Demo Access — OpenConstructionERP">
+<meta property="og:title" content="Request Demo Access - OpenConstructionERP">
 <meta property="og:description" content="Try the full platform with sample projects, 55,000+ cost items, and AI-powered estimation. Free, no credit card.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://openconstructionerp.com/demo">
@@ -14,7 +14,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Request Demo Access — OpenConstructionERP">
+<meta name="twitter:title" content="Request Demo Access - OpenConstructionERP">
 <meta name="twitter:description" content="Construction estimation with real BOQ pipeline. 55,000+ cost items. Free demo.">
 <meta name="twitter:image" content="https://openconstructionerp.com/og-image.png">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -422,7 +422,7 @@ h1.display em{
         <span class="eyebrow" data-i18n="page.demo.eyebrow">Free demo access</span>
 
         <h1 class="display" data-i18n-html="page.demo.hero_title">Run the full platform <em>in your browser</em>, no setup.</h1>
-        <p class="hero-lede" data-i18n="page.demo.hero_lede">Explore a real construction workspace — sample projects, the CWICR cost database, BOQ editor, takeoff and validation pipeline. Bring your own data later, or just click around.</p>
+        <p class="hero-lede" data-i18n="page.demo.hero_lede">Explore a real construction workspace - sample projects, the CWICR cost database, BOQ editor, takeoff and validation pipeline. Bring your own data later, or just click around.</p>
 
         <span class="no-cc-pill" data-i18n-html="page.demo.no_cc_pill">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -470,7 +470,7 @@ h1.display em{
           <div id="errorMsg" class="error-msg" role="alert"></div>
 
           <form id="demoForm" novalidate>
-            <!-- Honeypot — bots fill it, real users never see it. Backend rejects non-empty submissions. -->
+            <!-- Honeypot - bots fill it, real users never see it. Backend rejects non-empty submissions. -->
             <input type="text" id="_honey" name="_honey" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
             <div class="form-row">
               <div class="form-group">
@@ -638,7 +638,7 @@ h1.display em{
     for(var i=0;i<DISPOSABLE_EMAIL_DOMAINS.length;i++){
       var bad = DISPOSABLE_EMAIL_DOMAINS[i];
       if(domain === bad || domain.endsWith('.' + bad)){
-        return 'Please use a real email address — disposable and throwaway addresses are not allowed for demo access.';
+        return 'Please use a real email address - disposable and throwaway addresses are not allowed for demo access.';
       }
     }
     var junkLocal = [
@@ -648,7 +648,7 @@ h1.display em{
     ];
     for(var j=0;j<junkLocal.length;j++){
       if(junkLocal[j].test(local)){
-        return 'Please use your real email address — placeholder addresses like "test@…" or "123@…" are not allowed.';
+        return 'Please use your real email address - placeholder addresses like "test@…" or "123@…" are not allowed.';
       }
     }
     var dparts = domain.split('.');
@@ -682,8 +682,8 @@ h1.display em{
       showErr('Please fill in all required fields.'); return;
     }
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showErr('Please enter a valid email address.', 'email'); return; }
-    if(isJunkName(firstName)){ showErr('Please enter your real first name — placeholder values like "test" or "123" are not allowed.', 'firstName'); return; }
-    if(isJunkName(lastName)){ showErr('Please enter your real last name — placeholder values like "test" or "123" are not allowed.', 'lastName'); return; }
+    if(isJunkName(firstName)){ showErr('Please enter your real first name - placeholder values like "test" or "123" are not allowed.', 'firstName'); return; }
+    if(isJunkName(lastName)){ showErr('Please enter your real last name - placeholder values like "test" or "123" are not allowed.', 'lastName'); return; }
     var emailErr = rejectEmail(email);
     if(emailErr){ showErr(emailErr, 'email'); return; }
 

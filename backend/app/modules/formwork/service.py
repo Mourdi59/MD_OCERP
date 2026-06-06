@@ -150,7 +150,7 @@ class FormworkService:
         # Apply patches in-memory so we can recompute against the merged state.
         for k, v in fields.items():
             setattr(obj, k, v)
-        # Recompute cost — resolve the (possibly swapped) system.
+        # Recompute cost - resolve the (possibly swapped) system.
         system = await self.system_repo.get_by_id(obj.formwork_system_id)
         if system is None:
             raise LookupError("formwork_system_not_found")

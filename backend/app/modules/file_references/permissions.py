@@ -5,9 +5,9 @@
 Three permissions cover both surfaces (ISO 19650 validation and
 cross-entity references):
 
-* ``file_references.read``  — list violations / list references
+* ``file_references.read``  - list violations / list references
                               (VIEWER tier).
-* ``file_references.write`` — create / delete references, run
+* ``file_references.write`` - create / delete references, run
                               project-wide name scans, acknowledge
                               violations (EDITOR tier).
 """

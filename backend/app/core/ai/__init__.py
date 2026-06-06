@@ -4,7 +4,7 @@
 
 Currently exposes:
 
-* :mod:`app.core.ai.pricing` — per-1k-token USD cost table + helper for
+* :mod:`app.core.ai.pricing` - per-1k-token USD cost table + helper for
   estimating spend from observed token counts. Used by both
   ``clash_ai_triage`` and ``ai`` (estimate jobs) so per-tenant cost
   rollups stay comparable across modules.

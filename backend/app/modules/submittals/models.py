@@ -1,7 +1,7 @@
 """‌⁠‍Submittals ORM models.
 
 Tables:
-    oe_submittals_submittal — construction submittals with review/approval workflow
+    oe_submittals_submittal - construction submittals with review/approval workflow
 """
 
 import uuid
@@ -16,7 +16,7 @@ class Submittal(Base):
     """‌⁠‍A construction submittal with multi-stage review and approval workflow."""
 
     __tablename__ = "oe_submittals_submittal"
-    # ``submittal_number`` must be unique per project — the auto-generator
+    # ``submittal_number`` must be unique per project - the auto-generator
     # uses ``MAX(suffix)+1`` which has a TOCTOU race under concurrent
     # creates; without this constraint two parallel POSTs would silently
     # persist ``SUB-005`` twice. With the constraint the second commit
@@ -67,4 +67,4 @@ class Submittal(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Submittal {self.submittal_number} — {self.title[:40]} ({self.status})>"
+        return f"<Submittal {self.submittal_number} - {self.title[:40]} ({self.status})>"

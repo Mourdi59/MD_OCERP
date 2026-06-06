@@ -121,7 +121,7 @@ class HookRegistry:
                     entry.handler.__qualname__,
                     entry.module,
                 )
-                raise  # Filters are critical — propagate errors
+                raise  # Filters are critical - propagate errors
 
         return result
 

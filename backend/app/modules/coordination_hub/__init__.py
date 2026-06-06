@@ -4,7 +4,7 @@
 A *thin, read-only* aggregator that surfaces every coordination signal
 already produced by the sibling BIM modules (federations, clashes, smart
 views, rule packs, BCF activity) on a single project-level dashboard.
-It owns NO new tables — every count, delta and event-stream entry is
+It owns NO new tables - every count, delta and event-stream entry is
 sourced live from the upstream module's own ORM.
 
 Industry term for the surface this module renders is **"Model
@@ -15,14 +15,14 @@ that ties coordination debt to live BOQ money via the
 
 The aggregator is defensive: each upstream module may or may not be
 loaded on a given deployment (the new modules ship in v4.2). If a count
-fails because its table is missing — or any other unexpected SELECT
-error — the dashboard logs a warning and returns ``0`` for that field
+fails because its table is missing - or any other unexpected SELECT
+error - the dashboard logs a warning and returns ``0`` for that field
 rather than failing the whole response. Honest empty state > 500.
 """
 
 
 async def on_startup() -> None:
-    """‌⁠‍Module startup hook — register RBAC permissions."""
+    """‌⁠‍Module startup hook - register RBAC permissions."""
     # Side-effect import so ``CoordinationThreshold`` registers with the
     # shared ``Base.metadata`` before ``create_all`` runs on a fresh
     # SQLite (the table never appears in any other module's import path).

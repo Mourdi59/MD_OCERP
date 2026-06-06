@@ -1,4 +1,4 @@
-"""‌⁠‍QMS Pydantic schemas — request / response models.
+"""‌⁠‍QMS Pydantic schemas - request / response models.
 
 All UUIDs are :class:`uuid.UUID`; cost amounts use :class:`Decimal`.
 Read schemas declare ``from_attributes=True`` so they hydrate directly
@@ -323,7 +323,7 @@ class HoldPointStatus(BaseModel):
     """Predecessor / hold-point gate status for an inspection.
 
     ``blocked`` is True when the linked ITP item declares a predecessor
-    whose own inspection has not yet passed — the dependent inspection must
+    whose own inspection has not yet passed - the dependent inspection must
     not be completed until then. ``released`` mirrors whether a manual
     hold-point release record exists.
     """

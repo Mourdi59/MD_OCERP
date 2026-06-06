@@ -3,14 +3,14 @@
 """Client-error sink API routes.
 
 Endpoints:
-    POST /                         — accept an anonymised client error report
+    POST /                         - accept an anonymised client error report
 
 The endpoint is intentionally write-only and unauthenticated so that
 anonymous landing-page or marketing-site errors can still be captured.
 A per-IP rate limit at 30 req/min (sliding window) keeps the surface
 safe from abuse without introducing a Redis dependency.
 
-Storage is a v4.3 follow-up — for now we forward the payload to the
+Storage is a v4.3 follow-up - for now we forward the payload to the
 standard ``logging`` pipeline at WARNING level so it shows up next to
 backend errors in journald / log aggregators.
 """
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 # Per-IP cap. 30 req/min handles a tab that throws inside a tight render
 # loop without dropping every report, while still rejecting a runaway
-# client / abusive scanner. Sliding window; in-memory only — no Redis.
+# client / abusive scanner. Sliding window; in-memory only - no Redis.
 _client_error_limiter = RateLimiter(max_requests=30, window_seconds=60)
 
 
@@ -40,7 +40,7 @@ async def submit_client_error(
 ) -> dict[str, str]:
     """Accept an anonymised client-error report.
 
-    Returns ``202 Accepted`` on success — the client is fire-and-forget
+    Returns ``202 Accepted`` on success - the client is fire-and-forget
     and never reads the response body, but the explicit status code
     documents that the report is queued/observed rather than persisted.
     """

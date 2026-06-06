@@ -1,4 +1,4 @@
-"""‌⁠‍Schedule event handlers — bridge field reports into the 4D progress log.
+"""‌⁠‍Schedule event handlers - bridge field reports into the 4D progress log.
 
 Subscribes to ``fieldreports.report.submitted`` and converts each
 ``schedule_progress`` payload entry into a :class:`ScheduleProgressEntry`
@@ -12,7 +12,7 @@ loaded (see ``module_loader._load_module`` → ``events.py``).
 
 Idempotency
 -----------
-``ScheduleProgressEntry`` is append-only — re-firing the event WILL
+``ScheduleProgressEntry`` is append-only - re-firing the event WILL
 record additional history rows. We de-duplicate at the application
 boundary by stamping each accepted entry's ``metadata.report_id`` on
 the activity itself; subsequent fires for the same (report, task) pair
@@ -21,7 +21,7 @@ duplicate-submit incidents.
 
 Failure mode
 ------------
-Errors are logged and swallowed — the field-report submission must not
+Errors are logged and swallowed - the field-report submission must not
 fail because the schedule integration choked. Foreman → progress is
 already best-effort once it leaves the truck.
 """
@@ -101,7 +101,7 @@ async def _record_schedule_progress(event: Event) -> None:
                     task_id = uuid.UUID(str(task_id_raw))
                 except (ValueError, AttributeError):
                     logger.warning(
-                        "fieldreports.report.submitted: invalid task_id %r — skipped",
+                        "fieldreports.report.submitted: invalid task_id %r - skipped",
                         task_id_raw,
                     )
                     continue
@@ -109,7 +109,7 @@ async def _record_schedule_progress(event: Event) -> None:
                 pct = _coerce_percent(raw.get("progress_percent"))
                 if pct is None:
                     logger.warning(
-                        "fieldreports.report.submitted: bad progress_percent %r for task=%s — skipped",
+                        "fieldreports.report.submitted: bad progress_percent %r for task=%s - skipped",
                         raw.get("progress_percent"),
                         task_id,
                     )
@@ -121,7 +121,7 @@ async def _record_schedule_progress(event: Event) -> None:
                 activity = await session.get(Activity, task_id)
                 if activity is None:
                     logger.warning(
-                        "fieldreports.report.submitted: activity %s not found — skipped",
+                        "fieldreports.report.submitted: activity %s not found - skipped",
                         task_id,
                     )
                     continue
@@ -169,7 +169,7 @@ async def _record_schedule_progress(event: Event) -> None:
     except Exception:
         logger.exception(
             "fieldreports.report.submitted handler failed for report=%s "
-            "— field report submission itself was unaffected",
+            "- field report submission itself was unaffected",
             report_id_raw,
         )
 

@@ -1,4 +1,4 @@
-"""‌⁠‍Variations service — business logic for the variations lifecycle.
+"""‌⁠‍Variations service - business logic for the variations lifecycle.
 
 Pure helpers (top-level functions) are unit-tested directly. The
 :class:`VariationsService` class wires repositories together and emits
@@ -77,15 +77,15 @@ logger = logging.getLogger(__name__)
 
 # ── R5 audit: variations-specific tunables ─────────────────────────────────
 
-# High-value approval threshold — VRs / VOs whose cost impact exceeds this
+# High-value approval threshold - VRs / VOs whose cost impact exceeds this
 # amount require ``variations.approve_high_value`` (admin-only) on top of
 # the standard ``variations.approve_request`` / ``variations.create``
-# (manager+) gate. Currency-agnostic by design — the row-level currency is
+# (manager+) gate. Currency-agnostic by design - the row-level currency is
 # the contractual unit, so FX-normalising here would let a "small approval"
 # silently authorise a large amount once FX drifted.
 HIGH_VALUE_APPROVAL_THRESHOLD: Decimal = Decimal("100000")
 
-# Bulk-endpoint cap — single POST cannot push more rows than this. Prevents
+# Bulk-endpoint cap - single POST cannot push more rows than this. Prevents
 # allowlist-gap DoS on ``bulk_cost_impacts`` / ``bulk_daywork_lines`` where
 # nothing else bounds the payload size.
 BULK_LINES_MAX: int = 500
@@ -500,8 +500,8 @@ _VARIATION_CLAUSES: dict[str, str] = {
     "FIDIC_SILVER_2017": "Sub-Clause 13",
     "JCT_SBC_2016": "Clause 5",
     "NEC4_ECC": "Clause 60-65",  # Compensation Events
-    "PPC2000": "Part 5 — Pricing & Payment",
-    "GENERIC": "—",
+    "PPC2000": "Part 5 - Pricing & Payment",
+    "GENERIC": "-",
 }
 
 
@@ -523,8 +523,8 @@ def compute_nec4_timers(
 ) -> dict[str, str]:
     """Return NEC4 quotation + assessment deadlines as ISO date strings.
 
-    NEC4 ECC Clause 62.3 — Contractor's quotation due 3 weeks after
-    instruction. Clause 62.5 — Project Manager's assessment due 4 weeks
+    NEC4 ECC Clause 62.3 - Contractor's quotation due 3 weeks after
+    instruction. Clause 62.5 - Project Manager's assessment due 4 weeks
     after quotation submission (combined SLA = 7 weeks).
 
     Args:
@@ -599,7 +599,7 @@ def apply_daywork_markup(
 ) -> Decimal:
     """Return ``subtotal × (1 + markup/100)`` quantized to 2 dp.
 
-    BS 6079-1:2019 §6.4.2 — markup covers overheads + profit on daywork
+    BS 6079-1:2019 §6.4.2 - markup covers overheads + profit on daywork
     rates. Pure: no I/O.
     """
     sub = _to_decimal(subtotal)
@@ -655,7 +655,7 @@ def check_fidic_time_bar(
 ) -> dict[str, Any]:
     """Check whether a contractor's notice was issued within the time-bar.
 
-    FIDIC 2017 Sub-Clause 20.2.1 — the Contractor shall give Notice within
+    FIDIC 2017 Sub-Clause 20.2.1 - the Contractor shall give Notice within
     28 days after they became aware (or should have become aware) of the
     event giving rise to a claim. Failure to issue notice in time bars
     the claim ("time-bar effect"), subject to Sub-Clause 20.2.4 exceptions.
@@ -727,7 +727,7 @@ def recommend_rerate(
     """Decide whether the re-rating of a BoQ item is justified.
 
     The 15% rule of thumb comes from JCT SBC Cl 5.6.1.3 and NEC4 Cl 60.4 /
-    60.6 — when the actual quantity differs from the BoQ quantity by more
+    60.6 - when the actual quantity differs from the BoQ quantity by more
     than ±threshold_pct, the rate may be re-negotiated to reflect a
     different unit-cost.
 
@@ -746,13 +746,13 @@ def recommend_rerate(
     aq = _to_decimal(actual_quantity)
     thr = _to_decimal(threshold_pct)
     if bq == 0:
-        # Division by zero — treat as 100% variance if actual > 0.
+        # Division by zero - treat as 100% variance if actual > 0.
         if aq > 0:
             return {
                 "variance_pct": Decimal("100.00"),
                 "rerate_required": True,
                 "direction": "increase",
-                "reason": "BoQ quantity was zero — rate must be agreed",
+                "reason": "BoQ quantity was zero - rate must be agreed",
             }
         return {
             "variance_pct": Decimal("0.00"),
@@ -770,9 +770,9 @@ def recommend_rerate(
     else:
         direction = "decrease"
     reason = (
-        f"Quantity variance {variance.quantize(Decimal('0.01'))}% exceeds ±{thr}% threshold — re-rating recommended"
+        f"Quantity variance {variance.quantize(Decimal('0.01'))}% exceeds ±{thr}% threshold - re-rating recommended"
         if rerate
-        else f"Quantity variance {variance.quantize(Decimal('0.01'))}% within ±{thr}% threshold — contract rate stands"
+        else f"Quantity variance {variance.quantize(Decimal('0.01'))}% within ±{thr}% threshold - contract rate stands"
     )
     return {
         "variance_pct": variance.quantize(Decimal("0.01")),
@@ -816,7 +816,7 @@ def ensure_high_value_authorised(
 
     ``payload`` is the JWT payload from ``get_current_user_payload``.
     Admins always pass. A None payload only appears in test paths where
-    the dependency is bypassed — treat that as "skip" so unit-level tests
+    the dependency is bypassed - treat that as "skip" so unit-level tests
     stay self-contained.
     """
     if not is_high_value(amount):
@@ -855,7 +855,7 @@ def _log_decision(
     """R5 audit: emit a structured log record for an approve/reject/decision.
 
     Sits alongside ``_safe_publish`` (which fans the event out to other
-    modules) — the log line goes to operator stdout / Splunk / Datadog so
+    modules) - the log line goes to operator stdout / Splunk / Datadog so
     the audit trail survives a missing subscriber. Money columns are
     serialised via ``str(Decimal)`` to avoid binary-float drift in
     JSON-encoded log shippers.
@@ -988,8 +988,8 @@ class VariationsService:
             default_clause_for_standard(standard) if standard else ""
         )
         # If a NEC4 contract is selected, auto-compute the SLA timers
-        # off the request date (Clause 62.3 — 3 weeks for quotation,
-        # Clause 62.5 — 4 weeks for assessment).
+        # off the request date (Clause 62.3 - 3 weeks for quotation,
+        # Clause 62.5 - 4 weeks for assessment).
         quotation_due = getattr(data, "quotation_due_at", None)
         assessment_due = getattr(data, "assessment_due_at", None)
         if standard.startswith("NEC4") and (quotation_due is None or assessment_due is None):
@@ -1043,7 +1043,7 @@ class VariationsService:
         data: VariationRequestUpdate,
     ) -> VariationRequest:
         vr = await self.get_request(vr_id)
-        # A decided / converted VR is a frozen commercial record — editing
+        # A decided / converted VR is a frozen commercial record - editing
         # its scope or cost after approval/rejection destroys the audit
         # trail (and silently moves money once it is a VO). Lifecycle
         # changes go through ``transition_variation_request``, not here.
@@ -1165,7 +1165,7 @@ class VariationsService:
                 standard = standard or (vr.contract_standard or "")
                 clause_ref = clause_ref or (vr.contract_clause_ref or "")
             except HTTPException:
-                # Upstream VR vanished — proceed without clause carry-over.
+                # Upstream VR vanished - proceed without clause carry-over.
                 pass
         affected_contract = getattr(data, "affected_contract_id", None)
         vo = VariationOrder(
@@ -1214,7 +1214,7 @@ class VariationsService:
         vo = await self.get_order(vo_id)
         # A completed VO has already adjusted the contract sum / final
         # account; a voided VO is a closed record. Either way its money
-        # must not be silently rewritten — that would desync the final
+        # must not be silently rewritten - that would desync the final
         # account on the next recompute. Status moves via
         # ``transition_variation_order`` only.
         if vo.status in {"completed", "voided"}:
@@ -1304,14 +1304,14 @@ class VariationsService:
         and stamp the cross-module soft link
         (``vo.reference_change_order_id``). All three writes (VO insert,
         VR.status flip, CO insert) share the calling AsyncSession so a
-        failure in any rolls back the entire promotion — previously the
+        failure in any rolls back the entire promotion - previously the
         only cross-module linkage was an event publish, which made the CO
         eventually-consistent at best and silently-dropped at worst when
         the subscriber wasn't wired up.
 
         Currency consistency: the CO inherits the VO's currency (which
         itself inherited from the project on create). Money figures
-        propagate as Decimal throughout — no float coercion.
+        propagate as Decimal throughout - no float coercion.
 
         Emits ``variations.vo.issued`` and ``variations.change_order.created``
         once the writes have flushed.
@@ -1326,7 +1326,7 @@ class VariationsService:
         # R8 race-safety: flip the VR status to ``converted_to_vo`` BEFORE
         # creating the VO. Without this, two concurrent calls both pass the
         # ``status == "approved"`` guard above and both reach ``create_order``,
-        # resulting in two VOs (and two COs) for one VR — a commercial ledger
+        # resulting in two VOs (and two COs) for one VR - a commercial ledger
         # integrity violation. The conditional UPDATE below is atomic at the
         # database level: only ONE caller's WHERE clause can match a row that is
         # still ``approved``; the loser sees rowcount == 0 and 409s cleanly.
@@ -1343,7 +1343,7 @@ class VariationsService:
         guard_result = await self.session.execute(guard_stmt)
         affected = getattr(guard_result, "rowcount", None)
         if affected == 0:
-            # A concurrent call already flipped the status — re-fetch for the
+            # A concurrent call already flipped the status - re-fetch for the
             # current status so the error message is accurate.
             refreshed = await self.vr_repo.get_by_id(vr_id)
             current_status = getattr(refreshed, "status", "unknown") if refreshed else "unknown"
@@ -1402,7 +1402,7 @@ class VariationsService:
         except HTTPException:
             raise
         except Exception:
-            # Mirror failure must roll back the whole promotion — the
+            # Mirror failure must roll back the whole promotion - the
             # whole point of doing it in the same txn is to avoid an
             # orphan VO with no CO. Re-raise as 500.
             logger.exception(
@@ -1448,7 +1448,7 @@ class VariationsService:
         # R5 audit: line-level currency MUST be normalised to the owning VO
         # when the line was created without one. A blank-currency line lets
         # the dashboard / final-account roll-up sum mixed currencies into a
-        # single number — a "100 EUR" line and a "100 USD" line become
+        # single number - a "100 EUR" line and a "100 USD" line become
         # "200" in the bag with no FX trail. Inheriting at write time is
         # the only place we still have the canonical currency.
         line_currency = (data.currency or "").strip() or (vo.currency or "")
@@ -1498,7 +1498,7 @@ class VariationsService:
         vo_id: uuid.UUID,
         lines: list[VariationCostImpactCreate],
     ) -> list[VariationCostImpact]:
-        # R5 audit: cap bulk payload — unbounded POST is a trivial DoS /
+        # R5 audit: cap bulk payload - unbounded POST is a trivial DoS /
         # disk-fill vector (the router has no other size gate beyond
         # uvicorn's body limit, which is generous).
         if len(lines) > BULK_LINES_MAX:
@@ -2202,11 +2202,11 @@ class VariationsService:
         """Add the VO total to ``variations_total`` and recompute ``final_value``.
 
         R5 audit:
-          * Cross-project IDOR — caller could supply a VO and a Final Account
+          * Cross-project IDOR - caller could supply a VO and a Final Account
             from two different projects and roll a sibling-project's VO into
             an unrelated final account. Verify both rows live in the same
             project before mutating anything.
-          * Currency drift — adding a VO denominated in USD to an EUR final
+          * Currency drift - adding a VO denominated in USD to an EUR final
             account silently overstates the number. Reject when the
             currencies disagree (operator must FX-normalise first).
         """
@@ -2218,7 +2218,7 @@ class VariationsService:
             )
         fa = await self.get_final_account(final_account_id)
         if fa.project_id != vo.project_id:
-            # IDOR guard — do not leak whether the FA exists; the caller
+            # IDOR guard - do not leak whether the FA exists; the caller
             # should never have asked.
             raise HTTPException(
                 status_code=http_status.HTTP_404_NOT_FOUND,
@@ -2257,7 +2257,7 @@ class VariationsService:
 
         R5 audit: currency-aware aggregation. A row whose currency does not
         match the final-account currency is **excluded** with a warning log
-        — silently summing 100 EUR + 100 USD into "200" corrupts the
+        - silently summing 100 EUR + 100 USD into "200" corrupts the
         forecast. Operator must FX-normalise the offending rows first.
         """
         fa = await self.final_account_repo.for_project(project_id)
@@ -2272,7 +2272,7 @@ class VariationsService:
                 return True
             row_cur = (getattr(row, "currency", "") or "").strip()
             if not row_cur:
-                # Best-effort: blank line-currency means "inherit" — accepted
+                # Best-effort: blank line-currency means "inherit" - accepted
                 # to keep legacy roll-ups stable; new writes are normalised.
                 return True
             if row_cur != fa_currency:
@@ -2289,7 +2289,7 @@ class VariationsService:
                 return False
             return True
 
-        # Voided VOs carry no commercial value — exclude them so the
+        # Voided VOs carry no commercial value - exclude them so the
         # revised contract sum is not overstated.
         vos = await self.vo_repo.list_valued_for_project(project_id)
         variations_total = sum(
@@ -2420,7 +2420,7 @@ class VariationsService:
         distinct_codes = {c for c in (*cost_by_cur.keys(), *dw_by_cur.keys()) if c}
         multi_currency = len(distinct_codes) > 1
 
-        # R5 audit: COUNT-only — previous code materialised the full claim
+        # R5 audit: COUNT-only - previous code materialised the full claim
         # rows just to read ``len(...)``. Fallback to ``len(pending_claims)``
         # so the unit-test in-memory stubs (which don't define
         # ``pending_count``) still work.

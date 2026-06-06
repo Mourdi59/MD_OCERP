@@ -254,7 +254,7 @@ class SnoozeForecastRequest(BaseModel):
 
 # ── Predictive forecast analytics (TOP-30 #19) ────────────────────────────
 #
-# These power GET /{project_id}/forecast — the live, read-only predictive
+# These power GET /{project_id}/forecast - the live, read-only predictive
 # cost + schedule + risk analytics. Distinct from the persisted-forecast
 # alert surface above (ForecastsResponse), which reads stored EVMForecast
 # rows. This one recomputes the canonical EVM math live, never writing.

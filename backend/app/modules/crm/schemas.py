@@ -1,4 +1,4 @@
-"""‌⁠‍CRM Pydantic schemas — request/response models."""
+"""‌⁠‍CRM Pydantic schemas - request/response models."""
 
 from __future__ import annotations
 

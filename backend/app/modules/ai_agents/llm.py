@@ -1,4 +1,4 @@
-"""LLM bridge — adapt the single-call ``ai`` module client to the agent loop.
+"""LLM bridge - adapt the single-call ``ai`` module client to the agent loop.
 
 The existing ``ai.ai_client.call_ai`` only returns free text. We layer two
 strategies on top:
@@ -9,7 +9,7 @@ strategies on top:
    block we treat it as a tool-call request; otherwise the whole text is a
    final answer.
 
-This is deliberately deterministic & lightweight — no provider-specific
+This is deliberately deterministic & lightweight - no provider-specific
 tool-use protocol (Anthropic/OpenAI both work the same way). Tests use
 :class:`ScriptedLLM` instead.
 """
@@ -97,7 +97,7 @@ def parse_llm_response(raw: str) -> LLMItem:
 
 @dataclass
 class CallAILLM(LLMBridge):
-    """Production bridge — talks to the existing ``ai.ai_client.call_ai``."""
+    """Production bridge - talks to the existing ``ai.ai_client.call_ai``."""
 
     provider: str
     api_key: str
@@ -148,7 +148,7 @@ class ScriptedLLM(LLMBridge):
     The runner can call :meth:`next_step` more times than the script
     provides; once exhausted, the script's last item is repeated. This
     behaviour is what makes
-    ``test_max_iterations_hits_cap`` straightforward — pass a single
+    ``test_max_iterations_hits_cap`` straightforward - pass a single
     tool_call and the runner keeps re-issuing it until the cap triggers.
     """
 
@@ -163,7 +163,7 @@ class ScriptedLLM(LLMBridge):
     async def next_step(
         self,
         *,
-        system_prompt: str,  # noqa: ARG002 — kept to match the protocol
+        system_prompt: str,  # noqa: ARG002 - kept to match the protocol
         messages: list[dict[str, Any]],  # noqa: ARG002
         tools: list[Tool],  # noqa: ARG002
     ) -> tuple[LLMItem, int]:

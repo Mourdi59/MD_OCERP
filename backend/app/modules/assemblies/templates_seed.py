@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""Canonical assembly templates — platform-wide library seed.
+"""Canonical assembly templates - platform-wide library seed.
 
 This module ships 25 pre-built, canonical assembly templates that cover
 the most common construction recipes (concrete walls, brick walls,
@@ -45,7 +45,7 @@ from __future__ import annotations
 from typing import Any
 
 # Canonical assembly templates. Order is meaningful only for
-# deterministic seed reads in tests — the upsert is keyed by name.
+# deterministic seed reads in tests - the upsert is keyed by name.
 ASSEMBLY_TEMPLATES: list[dict[str, Any]] = [
     # ── Concrete walls ──────────────────────────────────────────────────
     {

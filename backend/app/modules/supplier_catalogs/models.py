@@ -1,26 +1,26 @@
 """‌⁠‍Supplier Catalogs ORM models.
 
 Tables (prefix ``oe_supplier_catalogs_``):
-    vendor              — supplier master (with contacts in JSON)
-    item_category       — material/service hierarchy
-    catalog_item        — master catalog of items
-    price_list          — vendor price list version
-    catalog_entry       — vendor-specific price for an item
-    pr                  — purchase requisition
-    pr_line             — PR line
-    po                  — extended purchase order
-    po_line             — PO line
-    gr                  — goods receipt (extended with batch/photo)
-    gr_line             — GR line
-    invoice             — vendor invoice
-    match_record        — 3-way match audit trail
-    warehouse           — physical stock location
-    stock_balance       — current on-hand quantity
-    stock_movement      — IN/OUT/TRANSFER/ADJUST/RESERVATION/RELEASE
-    commodity_code      — UNSPSC / eClass classification dropdown source
-    tolerance_profile   — per-tenant configurable 3-way match tolerance bands
-    kyc_document        — region-aware vendor KYC docs with expiry
-    scorecard           — vendor performance scorecard (weighted multi-criteria)
+    vendor              - supplier master (with contacts in JSON)
+    item_category       - material/service hierarchy
+    catalog_item        - master catalog of items
+    price_list          - vendor price list version
+    catalog_entry       - vendor-specific price for an item
+    pr                  - purchase requisition
+    pr_line             - PR line
+    po                  - extended purchase order
+    po_line             - PO line
+    gr                  - goods receipt (extended with batch/photo)
+    gr_line             - GR line
+    invoice             - vendor invoice
+    match_record        - 3-way match audit trail
+    warehouse           - physical stock location
+    stock_balance       - current on-hand quantity
+    stock_movement      - IN/OUT/TRANSFER/ADJUST/RESERVATION/RELEASE
+    commodity_code      - UNSPSC / eClass classification dropdown source
+    tolerance_profile   - per-tenant configurable 3-way match tolerance bands
+    kyc_document        - region-aware vendor KYC docs with expiry
+    scorecard           - vendor performance scorecard (weighted multi-criteria)
 """
 
 from __future__ import annotations
@@ -161,7 +161,7 @@ class CatalogItem(Base):
         nullable=False,
         default=Decimal("0"),
     )
-    # GS1 GTIN (global trade item number); 8/12/13/14 digits — string for flexibility
+    # GS1 GTIN (global trade item number); 8/12/13/14 digits - string for flexibility
     gtin: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     # UNSPSC/eClass commodity code reference (e.g. "30161501" for portland cement)
     commodity_code: Mapped[str | None] = mapped_column(
@@ -335,7 +335,7 @@ class PRLine(Base):
 
 
 class SupplierPurchaseOrder(Base):
-    """Extended Purchase Order — adds vendor master FK + contract + PR link.
+    """Extended Purchase Order - adds vendor master FK + contract + PR link.
 
     NOTE: This is the supplier_catalogs PO, NOT the procurement.PurchaseOrder.
     The two coexist; the procurement table is kept for legacy v2 compatibility.
@@ -595,7 +595,7 @@ class VendorInvoice(Base):
 
 
 class VendorInvoiceLine(Base):
-    """A single line on a vendor invoice — required for line-level 3-way match.
+    """A single line on a vendor invoice - required for line-level 3-way match.
 
     PEPPOL UBL 2.1 ingest fills these from ``cac:InvoiceLine`` entries; manual
     invoices can be created header-only and lines added later (or omitted, in
@@ -873,7 +873,7 @@ class TolerianceProfile(Base):
         index=True,
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Price tolerance: absolute (currency) AND percentage — both checked
+    # Price tolerance: absolute (currency) AND percentage - both checked
     price_tolerance_pct: Mapped[Decimal] = mapped_column(
         Numeric(8, 4),
         nullable=False,
@@ -921,13 +921,13 @@ class KYCDocument(Base):
     """A KYC / tax-compliance document tied to a vendor.
 
     ``doc_type`` is region-aware:
-        * ``w9``        — US IRS form W-9 (Request for Taxpayer ID)
-        * ``vat_cert``  — EU VAT registration certificate
-        * ``gst``       — India GST registration
-        * ``trn``       — UAE Tax Registration Number
-        * ``coi``       — Certificate of Insurance
-        * ``iso``       — ISO 9001/14001/45001 certificate
-        * ``other``     — generic
+        * ``w9``        - US IRS form W-9 (Request for Taxpayer ID)
+        * ``vat_cert``  - EU VAT registration certificate
+        * ``gst``       - India GST registration
+        * ``trn``       - UAE Tax Registration Number
+        * ``coi``       - Certificate of Insurance
+        * ``iso``       - ISO 9001/14001/45001 certificate
+        * ``other``     - generic
     """
 
     __tablename__ = "oe_supplier_catalogs_kyc_document"
@@ -1051,7 +1051,7 @@ class VendorScorecard(Base):
 # avoid a SQLAlchemy registry collision with the legacy ``procurement`` module
 # (string-based relationship lookups across the shared declarative base would
 # otherwise fail with "Multiple classes found"). Callers inside the
-# supplier_catalogs module — service.py, router.py, seed.py, tests — keep
+# supplier_catalogs module - service.py, router.py, seed.py, tests - keep
 # using the unqualified names via these aliases.
 
 PurchaseOrder = SupplierPurchaseOrder

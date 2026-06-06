@@ -1,15 +1,15 @@
 """Webhook Leads ORM models.
 
 Tables:
-    oe_webhook_leads_source   — a configured external webhook source
-    oe_webhook_leads_log      — one row per ingestion attempt (audit)
-    oe_webhook_leads_mapping  — payload-path → CRM-lead-field mapping rules
+    oe_webhook_leads_source   - a configured external webhook source
+    oe_webhook_leads_log      - one row per ingestion attempt (audit)
+    oe_webhook_leads_mapping  - payload-path → CRM-lead-field mapping rules
 
 Notes:
     * ``project_id`` is a plain ``String(36)`` GUID with NO SQLAlchemy
-      ForeignKey — mirrors the CRM convention so unit fixtures that never
+      ForeignKey - mirrors the CRM convention so unit fixtures that never
       load the Projects module don't trip ``NoReferencedTableError``.
-    * Secrets are stored *hashed* (SHA-256) — the plaintext is shown to
+    * Secrets are stored *hashed* (SHA-256) - the plaintext is shown to
       the operator exactly once at creation/rotation time and never
       persisted in clear.
     * ``WebhookLog.payload`` is size-capped by the service layer before
@@ -44,7 +44,7 @@ class WebhookSource(Base):
     slug: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     # api_key | hmac | jwt
     auth_method: Mapped[str] = mapped_column(String(16), nullable=False, default="api_key", server_default="api_key")
-    # SHA-256 hex digest of the shared secret / api key — never the plaintext.
+    # SHA-256 hex digest of the shared secret / api key - never the plaintext.
     secret_hash: Mapped[str] = mapped_column(String(128), nullable=False, default="", server_default="")
     # JSON array of allowed client IPs / CIDR-less exact strings. Empty = any.
     ip_allowlist: Mapped[list] = mapped_column(  # type: ignore[assignment]
@@ -99,7 +99,7 @@ class WebhookLog(Base):
         nullable=True,
         index=True,
     )
-    # Slug as supplied on the URL — kept even when the source is unknown so
+    # Slug as supplied on the URL - kept even when the source is unknown so
     # probes against non-existent slugs are still auditable.
     source_slug: Mapped[str] = mapped_column(String(64), nullable=False, default="", server_default="", index=True)
     received_at: Mapped[str | None] = mapped_column(String(40), nullable=True)

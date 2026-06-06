@@ -106,8 +106,8 @@ def build_pdf_report(
             Table,
             TableStyle,
         )
-    except ImportError:  # pragma: no cover — reportlab is a hard dep
-        logger.warning("reportlab unavailable — emitting plain-text PDF")
+    except ImportError:  # pragma: no cover - reportlab is a hard dep
+        logger.warning("reportlab unavailable - emitting plain-text PDF")
         with open(path, "wb") as fh:
             fh.write(b"%PDF-1.4\n% reportlab missing - see logs\n")
         return path, os.path.getsize(path)
@@ -242,7 +242,7 @@ def build_report(
         return build_xlsx_report(report_name=report_name, rows=rows)
     if fmt == "csv":
         return build_csv_report(report_name=report_name, rows=rows)
-    # Unknown — default to CSV (safe + machine-readable)
+    # Unknown - default to CSV (safe + machine-readable)
     return build_csv_report(report_name=report_name, rows=rows)
 
 
@@ -290,7 +290,7 @@ def export_widget_svg(
 ) -> tuple[str, int]:
     """Render a minimal line-chart of widget history as inline SVG.
 
-    No external libs — handwritten SVG. Used by chart-export endpoint.
+    No external libs - handwritten SVG. Used by chart-export endpoint.
     """
     path = os.path.join(
         _reports_dir(),

@@ -1,13 +1,13 @@
 """‌⁠‍Catalog resource Pydantic schemas for request/response validation.
 
-The catalog stores **resources** — single material / labour / equipment /
+The catalog stores **resources** - single material / labour / equipment /
 operator items with one price per region. Each resource can be referenced
 by many cost positions (work compositions) in the ``oe_costs_item`` table
 (exposed at ``/api/v1/costs/``). The link is by ``resource_code``: a cost
 position's ``components[]`` array names the resources it consumes.
 
 The legacy field ``specifications.used_in_work_items`` is the *count* of
-distinct cost positions that reference this resource — equivalent to
+distinct cost positions that reference this resource - equivalent to
 ``usage_count``. The "work_items" name is misleading because there is no
 ``work_items`` entity in this codebase; cost positions are the work items.
 ``CatalogResourceResponse`` mirrors the value into ``used_in_cost_items``
@@ -24,7 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_valid
 
 
 # ── v3 §10 money serialisation helper ─────────────────────────────────────
-# Mirrors backend/app/modules/boq/schemas.py — money fields are stored /
+# Mirrors backend/app/modules/boq/schemas.py - money fields are stored /
 # accepted as Decimal but emitted as plain decimal strings in JSON.
 def _serialise_money(v: Decimal | None) -> str | None:
     if v is None:
@@ -50,7 +50,7 @@ class CatalogResourceCreate(BaseModel):
     resource_type: str = Field(..., min_length=1, max_length=20, description="material, equipment, labor, operator")
     category: str = Field(..., min_length=1, max_length=100)
     unit: str = Field(..., min_length=1, max_length=20)
-    # v3 §10 — money is Decimal-in / Decimal-as-string out.
+    # v3 §10 - money is Decimal-in / Decimal-as-string out.
     base_price: Decimal = Field(..., ge=0)
     min_price: Decimal = Field(default=Decimal("0"), ge=0)
     max_price: Decimal = Field(default=Decimal("0"), ge=0)
@@ -76,7 +76,7 @@ class CatalogResourceCreate(BaseModel):
 
         A band is only checked when it is *meaningful*: both ``min_price``
         and ``max_price`` must be > 0. The model defaults them to 0,
-        which is the documented "no band specified" sentinel — leaving
+        which is the documented "no band specified" sentinel - leaving
         them at 0 keeps single-price resources (the common case) valid.
         """
         has_band = self.min_price > 0 and self.max_price > 0
@@ -97,7 +97,7 @@ class CatalogResourceCreate(BaseModel):
 class CatalogResourceResponse(BaseModel):
     """‌⁠‍Catalog resource in API responses.
 
-    A *resource* is one leaf input — a single material, labour, equipment,
+    A *resource* is one leaf input - a single material, labour, equipment,
     or operator entry with one price per region. Each resource can be
     referenced by many cost positions (``/api/v1/costs/``); the inverse
     lookup is exposed at ``/api/v1/catalog/{resource_id}/used-by/``.
@@ -122,7 +122,7 @@ class CatalogResourceResponse(BaseModel):
     resource_type: str
     category: str
     unit: str
-    # v3 §10 — money is Decimal-as-string in JSON.
+    # v3 §10 - money is Decimal-as-string in JSON.
     base_price: Decimal = Decimal("0")
     min_price: Decimal = Decimal("0")
     max_price: Decimal = Decimal("0")
@@ -133,7 +133,7 @@ class CatalogResourceResponse(BaseModel):
         description=(
             "Number of cost positions that reference this resource. "
             "Synonym of `usage_count`. Replaces the misleading "
-            "`specifications.used_in_work_items` field — kept there for "
+            "`specifications.used_in_work_items` field - kept there for "
             "backwards compatibility."
         ),
     )
@@ -180,7 +180,7 @@ class CatalogSearchQuery(BaseModel):
     category: str | None = Field(default=None, description="Filter by category")
     region: str | None = Field(default=None, description="Filter by region")
     unit: str | None = Field(default=None, description="Filter by unit")
-    # v3 §10 — money is Decimal-in / Decimal-as-string out. Query params
+    # v3 §10 - money is Decimal-in / Decimal-as-string out. Query params
     # arrive as strings via FastAPI; Pydantic v2 coerces to Decimal.
     min_price: Decimal | None = Field(default=None, ge=0)
     max_price: Decimal | None = Field(default=None, ge=0)

@@ -1,5 +1,5 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""Field Diary — business logic.
+"""Field Diary - business logic.
 
 Encapsulates the diary FSM (draft → submitted → approved), the dedicated
 field-module grant check (BYPASSES the standard RBAC stack), and the
@@ -161,7 +161,7 @@ class FieldDiaryService:
     ) -> bool:
         """Return ``True`` iff a live non-expired grant row exists.
 
-        Independent from the standard RBAC stack — used to gate every
+        Independent from the standard RBAC stack - used to gate every
         field-diary endpoint via :class:`RequireFieldModuleGrant`.
         """
         grant = await self.grant_repo.get_active(user_id, project_id, module_key)
@@ -179,7 +179,7 @@ class FieldDiaryService:
         """Create a new grant.
 
         Raises 409 if a live grant for the same ``(user, project, module)``
-        already exists — caller should revoke the old one first if they
+        already exists - caller should revoke the old one first if they
         want to re-issue.
         """
         existing = await self.grant_repo.get_active(
@@ -273,7 +273,7 @@ class FieldDiaryService:
         if entry.status != "draft":
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=(f"Cannot edit a diary entry in status '{entry.status}' — only drafts are editable"),
+                detail=(f"Cannot edit a diary entry in status '{entry.status}' - only drafts are editable"),
             )
         fields = data.model_dump(exclude_unset=True)
         if fields:
@@ -288,11 +288,11 @@ class FieldDiaryService:
         """Transition draft → submitted (idempotent).
 
         Validates that the entry has at least one of: notes, activities,
-        attachments — i.e. is not empty.
+        attachments - i.e. is not empty.
         """
         entry = await self.get_diary_entry(entry_id)
         if entry.status == "submitted":
-            return entry  # idempotent — same status, no-op
+            return entry  # idempotent - same status, no-op
         if entry.status == "approved":
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -305,7 +305,7 @@ class FieldDiaryService:
         if not (has_notes or activities or attachments):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=("Diary entry is empty — add notes, activities, or attachments before submitting"),
+                detail=("Diary entry is empty - add notes, activities, or attachments before submitting"),
             )
         # Snapshot the labour-bearing activity rows BEFORE update_fields()
         # expires the ORM state. Each work/inspection activity with positive
@@ -348,7 +348,7 @@ class FieldDiaryService:
                 )
             except Exception:
                 logger.exception(
-                    "Diary labour publish failed for entry=%s — submission unaffected",
+                    "Diary labour publish failed for entry=%s - submission unaffected",
                     entry_id,
                 )
 
@@ -414,7 +414,7 @@ class FieldDiaryService:
         )
         await self.session.refresh(entry)
 
-        # Epic H — universal audit trail.
+        # Epic H - universal audit trail.
         from app.core.audit_log import log_activity as _log_activity
 
         await _log_activity(
@@ -624,7 +624,7 @@ class FieldDiaryService:
         """Mint a magic link + PIN, dispatch the (mocked) SMS.
 
         Returns ``(link, plain_token, plain_pin)``. Plaintext is shown
-        exactly once — only the SHA-256 hashes are persisted.
+        exactly once - only the SHA-256 hashes are persisted.
         """
         plain_token = generate_token()
         plain_pin = generate_pin()
@@ -641,7 +641,7 @@ class FieldDiaryService:
         )
         link = await self.magic_repo.create(link)
 
-        # Mock SMS dispatch — production wires Twilio here.
+        # Mock SMS dispatch - production wires Twilio here.
         sms_body = (
             f"OpenConstructionERP field link:\n"
             f"https://app.example.com/f/{plain_token}\n"
@@ -675,7 +675,7 @@ class FieldDiaryService:
                 detail="Invalid magic link",
             )
 
-        # Constant-time equality on the persisted hash — paranoia layer
+        # Constant-time equality on the persisted hash - paranoia layer
         # in case the lookup is ever loosened.
         if not constant_time_equals(link.token_hash, token_h):
             raise HTTPException(
@@ -714,7 +714,7 @@ class FieldDiaryService:
                 )
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=("Too many failed PIN attempts — magic link invalidated"),
+                    detail=("Too many failed PIN attempts - magic link invalidated"),
                 )
             await self.magic_repo.update_fields(
                 link_id,

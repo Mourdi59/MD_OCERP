@@ -1,4 +1,4 @@
-"""‌⁠‍SnapshotService — the orchestration seam for T01.
+"""‌⁠‍SnapshotService - the orchestration seam for T01.
 
 Composes the repository, the cad2data bridge, the snapshot-storage
 helper, the DuckDB pool, and the event bus. Other dashboards tasks
@@ -117,7 +117,7 @@ class CreateSnapshotArgs:
 class SnapshotService:
     """‌⁠‍Orchestrate create/list/get/delete for snapshots.
 
-    A fresh instance is constructed per request — it does not hold
+    A fresh instance is constructed per request - it does not hold
     state between calls. ``session`` and ``pool`` are injected so tests
     can pass in-memory stand-ins.
     """
@@ -139,15 +139,15 @@ class SnapshotService:
 
         Ordering is deliberate:
 
-        1. Validate label (cheap — fail fast).
+        1. Validate label (cheap - fail fast).
         2. Check unique-label in project.
-        3. Run conversion (expensive — would be wasted work if step 4 fails).
+        3. Run conversion (expensive - would be wasted work if step 4 fails).
         4. Write Parquet + manifest to storage.
         5. Insert DB row + source-file rows in one transaction.
         6. Publish ``snapshot.created`` event.
 
         If step 4 or 5 fails, we best-effort clean up the Parquet files
-        so the storage doesn't accumulate orphans. The DB side is fine —
+        so the storage doesn't accumulate orphans. The DB side is fine -
         the transaction is still open, so a failure rolls back cleanly.
         """
         # 1 + 2
@@ -159,7 +159,7 @@ class SnapshotService:
                 details={"project_id": str(args.project_id), "label": args.label},
             )
 
-        # 3 — convert.
+        # 3 - convert.
         try:
             build = convert_to_snapshot_frames(args.files)
         except UnsupportedFormatError as exc:
@@ -171,7 +171,7 @@ class SnapshotService:
 
         snapshot_id = uuid.uuid4()
 
-        # 4 — persist Parquet + manifest. If any write fails, clean up
+        # 4 - persist Parquet + manifest. If any write fails, clean up
         # best-effort before propagating.
         try:
             await self._persist_parquet(args.project_id, snapshot_id, build)
@@ -185,7 +185,7 @@ class SnapshotService:
             await self._cleanup_storage_on_failure(args.project_id, snapshot_id)
             raise
 
-        # 5 — persist DB rows. Session is flushed within the repo; the
+        # 5 - persist DB rows. Session is flushed within the repo; the
         # outer router-level Session dependency owns the final commit.
         try:
             row = Snapshot(
@@ -209,7 +209,7 @@ class SnapshotService:
             await self._cleanup_storage_on_failure(args.project_id, snapshot_id)
             raise
 
-        # 6 — publish. Wrap in a try so a buggy handler never blocks the
+        # 6 - publish. Wrap in a try so a buggy handler never blocks the
         # HTTP response.
         try:
             event_bus.publish_detached(
@@ -224,7 +224,7 @@ class SnapshotService:
                 },
                 source_module=event_taxonomy.SOURCE_MODULE,
             )
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.warning(
                 "dashboards.snapshot.publish event failed for snapshot_id=%s: %s",
                 snapshot_id,
@@ -282,13 +282,13 @@ class SnapshotService:
         row = await self.get(snapshot_id, tenant_id=tenant_id)
         project_id = row.project_id
 
-        # Invalidate the DuckDB warm connection (if any) first — if we
+        # Invalidate the DuckDB warm connection (if any) first - if we
         # delete Parquet under a live connection, a racing query can
         # read partial data.
         if self.pool is not None:
             try:
                 await self.pool.invalidate(snapshot_id)
-            except Exception as exc:  # pragma: no cover — defensive
+            except Exception as exc:  # pragma: no cover - defensive
                 logger.warning(
                     "dashboards.snapshot.pool_invalidate failed for snapshot_id=%s: %s",
                     snapshot_id,
@@ -322,7 +322,7 @@ class SnapshotService:
                 },
                 source_module=event_taxonomy.SOURCE_MODULE,
             )
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.warning(
                 "dashboards.snapshot.publish delete event failed for snapshot_id=%s: %s",
                 snapshot_id,
@@ -399,7 +399,7 @@ class SnapshotService:
     ) -> None:
         try:
             await delete_snapshot_files(project_id, snapshot_id)
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.warning(
                 "dashboards.snapshot.create rollback cleanup failed for snapshot_id=%s: %s",
                 snapshot_id,

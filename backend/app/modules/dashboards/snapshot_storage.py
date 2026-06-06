@@ -32,7 +32,7 @@ from uuid import UUID
 from app.core.storage import LocalStorageBackend, StorageBackend, get_storage_backend
 
 if TYPE_CHECKING:
-    import pandas as pd  # noqa: F401  — only for type hints
+    import pandas as pd  # noqa: F401  - only for type hints
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ def snapshot_prefix(project_id: str | UUID, snapshot_id: str | UUID) -> str:
 
     The two ids are coerced to ``str`` so callers can pass UUID instances
     without boilerplate. Validation of the UUID format itself happens at
-    the API boundary — here we only accept non-empty strings.
+    the API boundary - here we only accept non-empty strings.
     """
     pid = str(project_id)
     sid = str(snapshot_id)
@@ -165,7 +165,7 @@ class ParquetNotLocalError(RuntimeError):
     path and the DuckDB configuration lacks the fallback (httpfs
     extension for S3, presigned URL fetch, etc.).
 
-    T00 deliberately does not wire S3-over-httpfs — the feature ships
+    T00 deliberately does not wire S3-over-httpfs - the feature ships
     after local-filesystem snapshots work end-to-end. Callers catch this
     exception and return a structured 501 when the admin switched to S3
     without installing the DuckDB httpfs extension.
@@ -185,7 +185,7 @@ async def resolve_local_parquet_path(
     For :class:`LocalStorageBackend` this is zero-copy: we compose the
     path via ``base_dir / key`` and return its string form. For S3 /
     other non-local backends this will eventually return a presigned
-    URL and expect ``INSTALL httpfs`` at the DuckDB end — until that
+    URL and expect ``INSTALL httpfs`` at the DuckDB end - until that
     lands, non-local backends raise :class:`ParquetNotLocalError`.
     """
     store = backend or get_storage_backend()
@@ -194,7 +194,7 @@ async def resolve_local_parquet_path(
     if isinstance(store, LocalStorageBackend):
         # Exact same resolution rules the backend uses internally, so
         # any key rejected by the backend is rejected identically here.
-        path: Path = store._path_for(key)  # noqa: SLF001 — intentional reuse
+        path: Path = store._path_for(key)  # noqa: SLF001 - intentional reuse
         if not path.is_file():
             raise FileNotFoundError(f"No Parquet file at snapshot key: {key}")
         return str(path)
@@ -219,7 +219,7 @@ async def delete_snapshot_files(
 
     Returns the number of blobs removed (per the
     :class:`StorageBackend.delete_prefix` contract). A missing prefix
-    returns ``0`` rather than raising — the snapshot row in the DB is
+    returns ``0`` rather than raising - the snapshot row in the DB is
     already the source of truth for existence.
     """
     store = backend or get_storage_backend()

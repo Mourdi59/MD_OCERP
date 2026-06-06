@@ -1,4 +1,4 @@
-"""‌⁠‍ERP Chat Pydantic schemas — request/response models."""
+"""‌⁠‍ERP Chat Pydantic schemas - request/response models."""
 
 from datetime import datetime
 from typing import Literal
@@ -74,7 +74,7 @@ class FeedbackRequest(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    # +1 = thumbs up, -1 = thumbs down. We deliberately do *not* accept 0 —
+    # +1 = thumbs up, -1 = thumbs down. We deliberately do *not* accept 0 -
     # to clear feedback the frontend should DELETE (future) or just leave
     # the row in place; "no rating" is the absence of a row.
     rating: Literal[-1, 1]

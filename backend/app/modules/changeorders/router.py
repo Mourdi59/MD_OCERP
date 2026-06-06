@@ -1,18 +1,18 @@
 """‌⁠‍Change Orders API routes.
 
 Endpoints:
-    POST   /                       — Create change order
-    GET    /?project_id=X          — List for project
-    GET    /{id}                   — Get with items
-    PATCH  /{id}                   — Update
-    DELETE /{id}                   — Delete
-    POST   /{id}/items             — Add item
-    PATCH  /{id}/items/{item_id}   — Update item
-    DELETE /{id}/items/{item_id}   — Delete item
-    POST   /{id}/submit            — Change status to submitted
-    POST   /{id}/approve           — Change status to approved
-    POST   /{id}/reject            — Change status to rejected
-    GET    /summary?project_id=X   — Aggregated stats
+    POST   /                       - Create change order
+    GET    /?project_id=X          - List for project
+    GET    /{id}                   - Get with items
+    PATCH  /{id}                   - Update
+    DELETE /{id}                   - Delete
+    POST   /{id}/items             - Add item
+    PATCH  /{id}/items/{item_id}   - Update item
+    DELETE /{id}/items/{item_id}   - Delete item
+    POST   /{id}/submit            - Change status to submitted
+    POST   /{id}/approve           - Change status to approved
+    POST   /{id}/reject            - Change status to rejected
+    GET    /summary?project_id=X   - Aggregated stats
 """
 
 import logging
@@ -51,7 +51,7 @@ def _get_service(session: SessionDep) -> ChangeOrderService:
 
 def _order_to_response(order: object) -> ChangeOrderResponse:
     """‌⁠‍Build a ChangeOrderResponse from a ChangeOrder ORM object."""
-    # `items` may not be eager-loaded in async context — only attempt to access
+    # `items` may not be eager-loaded in async context - only attempt to access
     # if the relationship was populated upstream (via selectinload or similar).
     # Returning an empty list when unloaded is intentional: this response type
     # only uses `item_count`, not the items themselves.
@@ -196,7 +196,7 @@ async def create_change_order(
 
     R7 audit: the legacy POST trusted the ``project_id`` field on the
     payload and would happily create a change order on any project whose
-    UUID the caller could guess — silently leaking cost / schedule data
+    UUID the caller could guess - silently leaking cost / schedule data
     across tenants on subsequent reads. Now gated through
     ``verify_project_access`` which returns 404 on both "missing" and
     "not owned" so we don't leak existence either.
@@ -235,7 +235,7 @@ async def list_change_orders(
     """List change orders.
 
     If ``project_id`` is supplied we verify the caller owns/admins that project
-    before returning anything — earlier the route trusted the path parameter
+    before returning anything - earlier the route trusted the path parameter
     and silently leaked change-order data across tenants. When omitted we scope
     to every project the caller owns, matching the sibling-module convention
     and avoiding the 422 that fresh installs hit before any project exists.
@@ -266,7 +266,7 @@ async def get_change_order(
 ) -> ChangeOrderWithItems:
     """Get change order with all items.
 
-    R8 audit: the legacy GET /{order_id} lacked a RequirePermission gate —
+    R8 audit: the legacy GET /{order_id} lacked a RequirePermission gate -
     only verify_project_access ran, meaning any authenticated user could
     read a CO on a project they owned regardless of their CO-module role.
     Now gated on ``changeorders.read`` (viewer+) for consistency with the
@@ -427,7 +427,7 @@ async def execute_order(
     """Mark an approved change order as executed (work completed on site).
 
     R8 audit: the ``executed`` terminal state existed in the service FSM
-    (``approved`` → ``executed``) but had no router endpoint — leaving
+    (``approved`` → ``executed``) but had no router endpoint - leaving
     approved COs permanently stuck at that status and making the
     ``executed`` distinction invisible to project controllers. Callers
     need ``changeorders.update`` (editor-level) because execution is an
@@ -499,7 +499,7 @@ async def advance_approval(
     The caller is identified from the JWT and must be the approver
     assigned to the step pointed at by ``co.current_approval_step``;
     any other user gets 403. No additional ``changeorders.approve``
-    role check is applied — being named as an approver in a chain
+    role check is applied - being named as an approver in a chain
     is itself the authorisation.
     """
     existing = await service.get_order(order_id)

@@ -9,24 +9,24 @@ the new status, and emits an audit-log entry plus optional cross-module
 event-bus notifications.
 
 Design goals:
-    * **Declarative** — every legal move lives in one registry file, so an
+    * **Declarative** - every legal move lives in one registry file, so an
       auditor can read off the full lifecycle without grep-walking endpoints.
-    * **Backward compatible** — when a transition is rejected the helper
+    * **Backward compatible** - when a transition is rejected the helper
       raises an HTTPException carrying ``current_status``,
       ``target_status`` and the full set of ``allowed_transitions`` so the
       frontend can render the right action buttons.
-    * **Side-effect aware** — every successful transition writes a row to
+    * **Side-effect aware** - every successful transition writes a row to
       :class:`app.core.fsm.audit_log.ActivityLog` (via ``audit_log.log_activity``)
       so dispute timelines (FIDIC, ISO 9001, SCL Protocol) are reproducible.
-    * **Async-friendly** — guards and ``on_transition`` callbacks may be
+    * **Async-friendly** - guards and ``on_transition`` callbacks may be
       sync or async; both are awaited transparently.
 
 Public surface:
-    :class:`StateTransition`       — frozen dataclass describing one move.
-    :class:`EntityFSM`             — bundles transitions for one entity.
-    :class:`InvalidTransition`     — raised for illegal status moves.
-    :class:`TransitionNotPermitted`— raised when the actor lacks a required role.
-    :class:`GuardFailed`           — raised when a business-logic predicate vetoes.
+    :class:`StateTransition`       - frozen dataclass describing one move.
+    :class:`EntityFSM`             - bundles transitions for one entity.
+    :class:`InvalidTransition`     - raised for illegal status moves.
+    :class:`TransitionNotPermitted`- raised when the actor lacks a required role.
+    :class:`GuardFailed`           - raised when a business-logic predicate vetoes.
 """
 
 from __future__ import annotations
@@ -201,7 +201,7 @@ class EntityFSM:
         # Normalise: case-insensitive comparison; "" maps to None (no role).
         role_norm = (user_role or "").strip().lower()
         allowed_roles = {r.strip().lower() for r in transition.required_roles}
-        # ``admin`` always passes — admin role bypasses every gate so support
+        # ``admin`` always passes - admin role bypasses every gate so support
         # staff can recover stuck workflows without configuration churn.
         # Otherwise the actor's role must appear in ``required_roles``.
         if role_norm == "admin" or role_norm in allowed_roles:
@@ -234,7 +234,7 @@ class EntityFSM:
                     result = await result
             except GuardFailed:
                 raise
-            except Exception as exc:  # pragma: no cover — defensive
+            except Exception as exc:  # pragma: no cover - defensive
                 raise GuardFailed(
                     f"Guard {guard.__name__!r} raised {type(exc).__name__}: {exc}",
                     current_status=current,
@@ -260,7 +260,7 @@ class EntityFSM:
                 if inspect.isawaitable(outcome):
                     await outcome
             except Exception as exc:
-                # Side-effect errors don't roll back the status change — they
+                # Side-effect errors don't roll back the status change - they
                 # are logged and re-raised so the caller can decide. Audit
                 # log will still record the transition because side-effects
                 # run BEFORE the audit row is written.
@@ -388,7 +388,7 @@ class EntityFSM:
                     **dict(extra_metadata or {}),
                 },
             )
-        except Exception:  # pragma: no cover — audit must never block flow
+        except Exception:  # pragma: no cover - audit must never block flow
             logger.exception(
                 "FSM %s: audit log write failed for entity %r %s->%s",
                 self.name,

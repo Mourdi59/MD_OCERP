@@ -8,11 +8,11 @@ Tenant scoping
 Every read funnel accepts an explicit ``tenant_id`` argument. The
 service layer decides whether to pass the caller's tenant (normal
 path) or ``None`` (admin-only list-all path). The repo never defaults
-to "unscoped" — if the caller forgets to pass ``tenant_id`` they get a
+to "unscoped" - if the caller forgets to pass ``tenant_id`` they get a
 ``TypeError`` from the keyword-only argument.
 
 The current schema uses a plain ``tenant_id`` column (no ``created_by``
-fallback — snapshots are new in v2.5.0, there is no pre-migration
+fallback - snapshots are new in v2.5.0, there is no pre-migration
 legacy tier to accommodate).
 """
 
@@ -43,7 +43,7 @@ class SnapshotRepository:
     ) -> Snapshot | None:
         """‌⁠‍Return one snapshot by id, constrained to the caller's tenant.
 
-        ``tenant_id=None`` bypasses the scope filter — service layer
+        ``tenant_id=None`` bypasses the scope filter - service layer
         must only do that for admin-privileged callers.
         """
         stmt = select(Snapshot).where(Snapshot.id == _as_uuid(snapshot_id))
@@ -61,7 +61,7 @@ class SnapshotRepository:
 
         Used by ``SnapshotService.create`` to check the unique-label
         precondition *before* doing any expensive Parquet work. Not
-        tenant-scoped — label uniqueness is a DB-level invariant that
+        tenant-scoped - label uniqueness is a DB-level invariant that
         must hold across all callers.
         """
         stmt = select(Snapshot).where(
@@ -82,7 +82,7 @@ class SnapshotRepository:
         """List snapshots for a project, newest first. Returns ``(rows,
         total)`` so callers can emit total-count headers.
 
-        ``limit`` is hard-capped at 500 to avoid unbounded pulls —
+        ``limit`` is hard-capped at 500 to avoid unbounded pulls -
         matches the v2.4.0 pagination discipline. Callers wanting more
         should page.
         """
@@ -136,7 +136,7 @@ class SnapshotRepository:
         return rows
 
     async def delete(self, snapshot: Snapshot) -> None:
-        """Delete a snapshot row — cascades to source_file rows via the
+        """Delete a snapshot row - cascades to source_file rows via the
         DB FK. Storage-file cleanup is the service's responsibility.
         """
         await self.session.delete(snapshot)

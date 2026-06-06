@@ -54,7 +54,7 @@ async def main() -> None:
                     print(f"  {m.get('name', '?')}: {m.get('percentage', '?')}%")
             else:
                 print(f"\nMarkup endpoint not ready yet ({r.status_code})")
-                print("  This is expected — the backend agent is still working")
+                print("  This is expected - the backend agent is still working")
         except Exception as e:
             print(f"\nMarkup endpoint not available: {e}")
 

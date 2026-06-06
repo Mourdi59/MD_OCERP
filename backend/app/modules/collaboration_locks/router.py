@@ -3,11 +3,11 @@
 HTTP surface
 ------------
 
-* ``POST   /``                       — acquire a lock (201 on success, 409 on conflict)
-* ``POST   /{lock_id}/heartbeat/``   — extend an existing lock
-* ``DELETE /{lock_id}/``             — release a lock
-* ``GET    /entity/``                — current holder of an entity, or null
-* ``GET    /my/``                    — locks held by the calling user
+* ``POST   /``                       - acquire a lock (201 on success, 409 on conflict)
+* ``POST   /{lock_id}/heartbeat/``   - extend an existing lock
+* ``DELETE /{lock_id}/``             - release a lock
+* ``GET    /entity/``                - current holder of an entity, or null
+* ``GET    /my/``                    - locks held by the calling user
 
 WebSocket surface
 -----------------
@@ -23,14 +23,14 @@ WebSocket surface
 
   Supported event names:
 
-  * ``presence_snapshot``  — sent once, immediately after join, with
+  * ``presence_snapshot``  - sent once, immediately after join, with
     the full ``users`` roster.
-  * ``presence_join``      — another user opened the same entity.
-  * ``presence_leave``     — another user closed all their tabs on this entity.
-  * ``lock_acquired``      — someone (including you) claimed the lock.
-  * ``lock_heartbeat``     — the holder renewed their TTL.
-  * ``lock_released``      — the holder released voluntarily.
-  * ``lock_expired``       — the sweeper removed a stale lock.
+  * ``presence_join``      - another user opened the same entity.
+  * ``presence_leave``     - another user closed all their tabs on this entity.
+  * ``lock_acquired``      - someone (including you) claimed the lock.
+  * ``lock_heartbeat``     - the holder renewed their TTL.
+  * ``lock_released``      - the holder released voluntarily.
+  * ``lock_expired``       - the sweeper removed a stale lock.
 
   Clients authenticate by passing the JWT as the ``token`` query
   parameter, the same pattern used by the BIM geometry endpoint (the
@@ -210,7 +210,7 @@ async def list_my_locks(
 async def _authenticate_ws(token: str | None) -> dict[str, Any] | None:
     """‌⁠‍Decode a JWT passed as ``?token=`` on a WebSocket upgrade.
 
-    Returns the payload on success; returns ``None`` on any failure —
+    Returns the payload on success; returns ``None`` on any failure -
     the caller is responsible for closing the socket with 1008.
     BUG-323: payload is re-hydrated against the DB so a forged token
     with a fake UUID cannot open a socket.
@@ -221,7 +221,7 @@ async def _authenticate_ws(token: str | None) -> dict[str, Any] | None:
         payload = decode_access_token(token, get_settings())
     except HTTPException:
         return None
-    except Exception:  # noqa: BLE001 — never crash the WS on auth
+    except Exception:  # noqa: BLE001 - never crash the WS on auth
         logger.exception("WebSocket token decode failed")
         return None
 
@@ -320,7 +320,7 @@ async def presence_ws(
         )
 
         # Keep the socket open.  We accept incoming text frames as
-        # client-side "ping" opportunities but do nothing with them —
+        # client-side "ping" opportunities but do nothing with them -
         # all interesting traffic is server-push.
         while True:
             msg = await websocket.receive_text()

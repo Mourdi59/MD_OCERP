@@ -1,7 +1,7 @@
 """‌⁠‍Change Order data access layer.
 
 All database queries for change orders live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid
@@ -38,7 +38,7 @@ def _project_fx_map(project: object | None) -> dict[str, Decimal]:
     Mirrors ``boq/service.py::_project_fx_map`` (shape
     ``[{"code": "USD", "rate": "1.08", "label": "US Dollar"}]`` where
     ``rate`` is BASE units per 1 unit of the foreign currency). Defensive
-    against missing attribute / malformed entries — a bad row is skipped
+    against missing attribute / malformed entries - a bad row is skipped
     rather than blowing up the summary endpoint.
     """
     if project is None:
@@ -111,7 +111,7 @@ class ChangeOrderRepository:
 
         Used when the API caller omits ``project_id``: we scope to the
         caller's own projects rather than 422-ing. "Accessible" means the
-        user OWNS the project OR is a TeamMembership member — matching
+        user OWNS the project OR is a TeamMembership member - matching
         ``verify_project_access`` (the per-project list path), so the two
         list routes agree instead of silently returning zero rows to a
         non-owner team member.
@@ -196,7 +196,7 @@ class ChangeOrderRepository:
         by_type: dict[str, int] = {}
         # The summary total is always expressed in the project's BASE
         # currency. Foreign-currency change orders are converted via the
-        # project's ``fx_rates`` table before being summed — NEVER blended
+        # project's ``fx_rates`` table before being summed - NEVER blended
         # raw (money rule). A CO whose currency is foreign AND has no FX
         # rate is excluded from the scalar total and surfaced separately
         # under ``unconverted_by_currency`` so the figure is honest rather
@@ -225,7 +225,7 @@ class ChangeOrderRepository:
             elif order.status == "approved":
                 approved_count += 1
                 # Only approved orders count toward total cost/schedule impact.
-                # Decimal — never ``float`` — because a CO summary is the
+                # Decimal - never ``float`` - because a CO summary is the
                 # signed-off scope-change KPI that flows into the project
                 # budget and downstream reporting; a binary-float drift
                 # (e.g. 0.1 + 0.2 → 0.30000000000000004) here becomes a
@@ -243,7 +243,7 @@ class ChangeOrderRepository:
                         total_cost_impact += converted
                         total_approved_amount += converted
                     else:
-                        # Foreign currency with no FX rate — never fold it
+                        # Foreign currency with no FX rate - never fold it
                         # into the base total. Keep it visible per-currency
                         # so the user knows to add the rate in Project
                         # Settings rather than seeing a silently wrong sum.
@@ -262,11 +262,11 @@ class ChangeOrderRepository:
             elif order.status == "rejected":
                 rejected_count += 1
 
-        # The summary currency is the project BASE currency — not the last
+        # The summary currency is the project BASE currency - not the last
         # CO seen. This is the only currency the scalar total is expressed in.
         currency = base_currency
 
-        # Money values stay as exact Decimals — the schema layer formats
+        # Money values stay as exact Decimals - the schema layer formats
         # them as canonical decimal strings ("100.35"). Quantising to 2dp
         # at the persist/expose boundary mirrors finance / procurement
         # conventions and keeps the wire format stable.
@@ -275,7 +275,7 @@ class ChangeOrderRepository:
         _CENTS = Decimal("0.01")
         # Foreign approved amounts that couldn't be converted (no FX rate),
         # quantised + grouped by their own ISO code so the UI can show them
-        # alongside — never inside — the base-currency total.
+        # alongside - never inside - the base-currency total.
         unconverted_by_currency = {
             code: format(amount.quantize(_CENTS, rounding=ROUND_HALF_UP), "f")
             for code, amount in sorted(unconverted.items())

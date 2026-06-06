@@ -1,24 +1,24 @@
 """Property Development bulk-operations service.
 
-Sales-ops admin console — five batch endpoints that today require one-by-one
+Sales-ops admin console - five batch endpoints that today require one-by-one
 clicks across hundreds of items:
 
-  1. ``bulk_plot_status_change``       — flip N plots to target status
-  2. ``bulk_extend_reservation_expiry`` — push expiry on N reservations
-  3. ``bulk_regenerate_documents``      — re-render PDFs after template fix
-  4. ``bulk_import_leads_csv``          — bulk-create Leads from CSV upload
-  5. ``bulk_merge_buyers``              — fold N duplicate buyers into one
+  1. ``bulk_plot_status_change``       - flip N plots to target status
+  2. ``bulk_extend_reservation_expiry`` - push expiry on N reservations
+  3. ``bulk_regenerate_documents``      - re-render PDFs after template fix
+  4. ``bulk_import_leads_csv``          - bulk-create Leads from CSV upload
+  5. ``bulk_merge_buyers``              - fold N duplicate buyers into one
 
 Atomicity contract (load-bearing):
     Every endpoint runs inside ``session.begin_nested()`` (SAVEPOINT).
     On a successful classify-or-write loop the SAVEPOINT releases and the
     request commits as usual. On a top-level exception the SAVEPOINT
-    rolls back the entire batch — partial writes never escape. Mirrors
+    rolls back the entire batch - partial writes never escape. Mirrors
     the procurement R7 PO → invoice pattern.
 
     Per-item "soft" failures (illegal FSM transition on one plot in a
     batch of 40) are RECORDED in ``BulkResult.failed`` and the batch
-    continues — those rows are simply not written. The SAVEPOINT covers
+    continues - those rows are simply not written. The SAVEPOINT covers
     the rows we DID classify/write; the failed entries never invoked a
     write in the first place. The net effect: failed-items don't poison
     the batch, but a DB-level crash kills the whole transaction.
@@ -34,7 +34,7 @@ IDOR pattern (silent-skip variant):
     touch is silently skipped (recorded in ``BulkResult.skipped``) so the
     request as a whole succeeds. This matches sales-ops UX: picking 100
     plots from an inventory map and getting one 404 because one belongs
-    to a sister tenant would be confusing — the operator sees "skipped:
+    to a sister tenant would be confusing - the operator sees "skipped:
     1, succeeded: 99" instead.
 
 CSV magic-byte gate:
@@ -154,12 +154,12 @@ def _safe_publish(event_name: str, payload: dict[str, Any]) -> None:
       ``RuntimeError: await wasn't used with future`` on the NEXT request
       in the same test session. Bulk summary events have no specific
       named subscribers today, and the wildcard webhook bridge cannot
-      deliver useful data when no WebhookEndpoint rows exist anyway —
+      deliver useful data when no WebhookEndpoint rows exist anyway -
       so skipping the detached task entirely is both correct and safe.
     * Wrap ``publish_detached`` in try/except to keep unit tests without
       a running event loop happy.
     * Wildcard-only publish remains possible by deployments configuring
-      a named subscriber (e.g. an analytics module) — that explicit opt-in
+      a named subscriber (e.g. an analytics module) - that explicit opt-in
       proves the receiver expects bulk-ops fan-out.
     """
     has_named_handlers = bool(event_bus._handlers.get(event_name))  # noqa: SLF001
@@ -291,7 +291,7 @@ async def bulk_plot_status_change(
                         reason=data.reason or None,
                         metadata={"batch_size": len(data.plot_ids)},
                     )
-                except Exception:  # noqa: BLE001 — audit must not block bulk
+                except Exception:  # noqa: BLE001 - audit must not block bulk
                     logger.exception(
                         "bulk_plot_status_change: audit-log write failed for %s",
                         plot.id,
@@ -344,7 +344,7 @@ async def bulk_extend_reservation_expiry(
     if user_id is None:
         raise HTTPException(status_code=401, detail="Auth required for bulk operations.")
 
-    # Reject past dates up front — global validation, not per-item.
+    # Reject past dates up front - global validation, not per-item.
     try:
         new_expiry_date = date.fromisoformat(data.new_expiry)
     except ValueError as exc:
@@ -489,7 +489,7 @@ async def bulk_regenerate_documents(
     """Re-render PDF documents for a set of reservations or contracts.
 
     Stores re-rendered bytes in the entity's ``metadata.bulk_doc_regen``
-    JSON sub-key as ``{rendered_at, bytes_len, doc_type, locale}`` —
+    JSON sub-key as ``{rendered_at, bytes_len, doc_type, locale}`` -
     the actual bytes are NOT inlined (would blow up the JSON column).
     A real deployment ships the bytes to MinIO via the Documents module
     bridge; this lightweight stub keeps the test surface deterministic.
@@ -510,7 +510,7 @@ async def bulk_regenerate_documents(
 
     svc = PropertyDevService(session)
 
-    # Classification pass — existence + IDOR before any rendering.
+    # Classification pass - existence + IDOR before any rendering.
     for eid in target_ids:
         target_kind = "reservation" if data.reservation_ids else "sales_contract"
         if target_kind == "reservation":
@@ -807,7 +807,7 @@ async def bulk_import_leads_csv(
     _enforce_batch_cap(len(rows))
 
     # IDOR: if caller pinned a development, confirm they own it (silent
-    # 404 — bulk-import without a permitted dev is a config mistake worth
+    # 404 - bulk-import without a permitted dev is a config mistake worth
     # surfacing). When no dev is pinned, leads are tenant-loose by design.
     if development_id is not None and not is_admin:
         owner = await _project_owner_for_dev_id(session, development_id)
@@ -817,7 +817,7 @@ async def bulk_import_leads_csv(
     skipped: list[BulkSkipped] = []
     failed: list[BulkFailed] = []
     succeeded = 0
-    # Track which emails we've created in THIS batch — a CSV with the
+    # Track which emails we've created in THIS batch - a CSV with the
     # same email twice should fold the second into the first (same dedupe
     # rule as cross-batch).
     in_batch_emails: dict[str, uuid.UUID] = {}
@@ -858,7 +858,7 @@ async def bulk_import_leads_csv(
             # ── Dedupe within the same development ─────────────────
             existing = await _find_existing_lead_by_email(session, email, development_id=development_id)
             if existing is None and email in in_batch_emails:
-                # In-batch duplicate — fetch the freshly created Lead so
+                # In-batch duplicate - fetch the freshly created Lead so
                 # we can append to its notes.
                 existing = await session.get(Lead, in_batch_emails[email])
 
@@ -981,11 +981,11 @@ async def bulk_merge_buyers(
     property_dev schema):
         * oe_property_dev_reservation.buyer_id
         * oe_property_dev_sales_contract  (via ContractParty.buyer_id)
-        * oe_property_dev_contract_party.buyer_id (with dedupe — see below)
+        * oe_property_dev_contract_party.buyer_id (with dedupe - see below)
         * oe_property_dev_warranty_claim.buyer_id
-        * oe_property_dev_buyer_selection (via Buyer FK — no direct
+        * oe_property_dev_buyer_selection (via Buyer FK - no direct
           buyer_id rewrite needed because we cascade through Buyer)
-        * oe_property_dev_snag.buyer_id (SET NULL on buyer delete — we
+        * oe_property_dev_snag.buyer_id (SET NULL on buyer delete - we
           rewrite explicitly so portal-raised snags survive the merge)
 
     Soft delete: duplicates get ``status='cancelled'``,
@@ -1007,7 +1007,7 @@ async def bulk_merge_buyers(
 
     primary = await session.get(Buyer, data.primary_buyer_id)
     if primary is None:
-        # Fail the whole request — caller's primary anchor doesn't exist.
+        # Fail the whole request - caller's primary anchor doesn't exist.
         # Returning a single ``failed`` entry would mask the misclick.
         return BulkResult(
             requested=len(data.duplicate_buyer_ids),
@@ -1023,7 +1023,7 @@ async def bulk_merge_buyers(
             dry_run=dry_run,
         )
 
-    # IDOR on the primary — caller must own the destination tenant or
+    # IDOR on the primary - caller must own the destination tenant or
     # the merge is silently a no-op (returns 404-equivalent at the
     # request level via the same "not found" code).
     if not is_admin:
@@ -1109,7 +1109,7 @@ async def bulk_merge_buyers(
                 dup.metadata_ = md
                 session.add(dup)
 
-                # Audit-logged inside the same SAVEPOINT — if the audit
+                # Audit-logged inside the same SAVEPOINT - if the audit
                 # log write itself fails, we MUST roll back the merge.
                 # Stranded buyers without an audit trail are a P0
                 # compliance hazard.
@@ -1179,7 +1179,7 @@ async def _repoint_buyer_fks(
 ) -> None:
     """Update every property_dev FK that points at ``from_buyer_id``.
 
-    Called inside the merge SAVEPOINT — caller catches and re-raises so
+    Called inside the merge SAVEPOINT - caller catches and re-raises so
     a half-applied repoint never escapes.
     """
     # Reservations
@@ -1192,12 +1192,12 @@ async def _repoint_buyer_fks(
         sa_update(WarrantyClaim).where(WarrantyClaim.buyer_id == from_buyer_id).values(buyer_id=to_buyer_id)
     )
 
-    # Snag.buyer_id is nullable — repoint when set.
+    # Snag.buyer_id is nullable - repoint when set.
     from app.modules.property_dev.models import Snag as _Snag
 
     await session.execute(sa_update(_Snag).where(_Snag.buyer_id == from_buyer_id).values(buyer_id=to_buyer_id))
 
-    # ContractParty — UNIQUE(sales_contract_id, buyer_id) means a naive
+    # ContractParty - UNIQUE(sales_contract_id, buyer_id) means a naive
     # ``UPDATE … SET buyer_id = primary`` would unique-violate if the
     # primary already has a party row on the same contract. Strategy:
     # for each duplicate's party, either move it (when no conflict) or
@@ -1216,11 +1216,11 @@ async def _repoint_buyer_fks(
             party.buyer_id = to_buyer_id
             session.add(party)
         else:
-            # Primary already has a party on this contract — delete the
+            # Primary already has a party on this contract - delete the
             # duplicate's party to avoid the unique-constraint clash.
             await session.delete(party)
 
-    # Buyer selections, sales contracts via plot — buyer is referenced
+    # Buyer selections, sales contracts via plot - buyer is referenced
     # indirectly through ContractParty (the canonical multi-buyer junction),
     # so the above repoint is sufficient for SalesContract attribution.
     await session.flush()

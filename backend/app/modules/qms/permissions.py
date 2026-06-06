@@ -14,7 +14,7 @@ def register_qms_permissions() -> None:
             "qms.inspection.write": Role.EDITOR,
             "qms.inspection.sign": Role.EDITOR,
             # Item 12: releasing a passed hold point unblocks downstream work
-            # and must not be a routine editor action — gate it to MANAGER+,
+            # and must not be a routine editor action - gate it to MANAGER+,
             # matching the other gate-keeping QMS calls (escalate, audit).
             "qms.inspection.release_hold": Role.MANAGER,
             "qms.ncr.read": Role.VIEWER,
@@ -28,7 +28,7 @@ def register_qms_permissions() -> None:
             "qms.calibration.write": Role.EDITOR,
             # R7: tenant-wide (project_id=None) calibrations bypass per-project
             # ownership gates and are visible to every reader in the tenant.
-            # An editor must not be able to create one — promoting them is a
+            # An editor must not be able to create one - promoting them is a
             # manager-level call (matches `qms.template.write`, which is also
             # tenant-scoped and gated to MANAGER+).
             "qms.calibration.tenant_write": Role.MANAGER,

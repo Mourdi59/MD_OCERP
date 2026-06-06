@@ -1,14 +1,14 @@
 """‌⁠‍Daily Site Diary ORM models.
 
 Tables (all prefixed ``oe_daily_diary_``):
-    oe_daily_diary_diary               — daily diary header with status/sign-off
-    oe_daily_diary_weather             — granular weather records (Open-Meteo/manual/sensor)
-    oe_daily_diary_entry               — visitor/event/delivery/completion/etc. entries
-    oe_daily_diary_photo               — geo-tagged site photos and 360° captures
-    oe_daily_diary_video               — site videos
-    oe_daily_diary_drone_survey        — drone flights with ortho/DSM/point-cloud refs
-    oe_daily_diary_reality_capture     — laser scans / photogrammetry / mobile scans
-    oe_daily_diary_archive_signature   — immutable hash + signer payload
+    oe_daily_diary_diary               - daily diary header with status/sign-off
+    oe_daily_diary_weather             - granular weather records (Open-Meteo/manual/sensor)
+    oe_daily_diary_entry               - visitor/event/delivery/completion/etc. entries
+    oe_daily_diary_photo               - geo-tagged site photos and 360° captures
+    oe_daily_diary_video               - site videos
+    oe_daily_diary_drone_survey        - drone flights with ortho/DSM/point-cloud refs
+    oe_daily_diary_reality_capture     - laser scans / photogrammetry / mobile scans
+    oe_daily_diary_archive_signature   - immutable hash + signer payload
 
 The ``source_ref``, ``linked_bim_model_ref`` and ``pdf_export_ref`` columns
 are plain GUIDs **without** an SQLAlchemy ForeignKey: they reference rows
@@ -41,7 +41,7 @@ from app.database import GUID, Base
 
 
 class DailyDiary(Base):
-    """‌⁠‍Daily site diary header — one per project per calendar day."""
+    """‌⁠‍Daily site diary header - one per project per calendar day."""
 
     __tablename__ = "oe_daily_diary_diary"
     __table_args__ = (
@@ -87,7 +87,7 @@ class DailyDiary(Base):
     )
     owner_signature_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
     supervisor_signature_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    # pdf_export_ref is a plain GUID — points at a generated PDF artefact in
+    # pdf_export_ref is a plain GUID - points at a generated PDF artefact in
     # the documents module, but we don't enforce a hard FK here.
     pdf_export_ref: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
@@ -145,7 +145,7 @@ class WeatherRecord(Base):
 
 
 class DiaryEntry(Base):
-    """A single diary entry — visitor, event, delivery, completion, etc."""
+    """A single diary entry - visitor, event, delivery, completion, etc."""
 
     __tablename__ = "oe_daily_diary_entry"
     __table_args__ = (
@@ -173,7 +173,7 @@ class DiaryEntry(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_module: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # source_ref points at an upstream record (incident/inspection/PO/...);
-    # plain GUID — no FK because we don't depend on those modules.
+    # plain GUID - no FK because we don't depend on those modules.
     source_ref: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     author_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(),
@@ -344,7 +344,7 @@ class DroneSurvey(Base):
 
 
 class RealityCaptureDataset(Base):
-    """Reality-capture dataset — laser scan, photogrammetry, or mobile scan."""
+    """Reality-capture dataset - laser scan, photogrammetry, or mobile scan."""
 
     __tablename__ = "oe_daily_diary_reality_capture"
     __table_args__ = (

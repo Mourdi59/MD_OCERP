@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Resources catalogue matcher — fuzzy search over ``oe_catalog_resource``.
+"""‌⁠‍Resources catalogue matcher - fuzzy search over ``oe_catalog_resource``.
 
 This is the "raw materials" alternative to the CWICR composite-position
 matchers. When CWICR has no good composite match for a group, the user
@@ -72,7 +72,7 @@ class ResourcesMatcher:
         self,
         *,
         envelope: ElementEnvelope,
-        project_id: uuid.UUID,  # noqa: ARG002 — region scope deferred
+        project_id: uuid.UUID,  # noqa: ARG002 - region scope deferred
         catalogue_id: uuid.UUID | None = None,  # noqa: ARG002
         top_k: int = 10,
     ) -> list[MatchCandidate]:
@@ -91,7 +91,7 @@ class ResourcesMatcher:
             CatalogResource.region,
             CatalogResource.source,
         ).where(CatalogResource.is_active.is_(True))
-        # Currency-aware filter — same universality story as LexicalMatcher.
+        # Currency-aware filter - same universality story as LexicalMatcher.
         # A USD project shouldn't see EUR resources pretending to be USD
         # rates; restrict to project currency or unstamped legacy rows.
         project_currency = (envelope.project_currency or "").strip().upper()
@@ -111,10 +111,10 @@ class ResourcesMatcher:
         if not query:
             return []
 
-        # Match against name + category to broaden recall — "concrete"
+        # Match against name + category to broaden recall - "concrete"
         # in the query should hit resources whose name is "Beton C30/37"
         # via the category "Concrete & Cement".
-        choices: dict[int, str] = {idx: f"{row.name} — {row.category}" for idx, row in enumerate(rows)}
+        choices: dict[int, str] = {idx: f"{row.name} - {row.category}" for idx, row in enumerate(rows)}
         scored = process.extract(
             query,
             choices,
@@ -122,7 +122,7 @@ class ResourcesMatcher:
             limit=top_k,
         )
 
-        # Language hint for the lex-threshold profile — ``ElementEnvelope``
+        # Language hint for the lex-threshold profile - ``ElementEnvelope``
         # exposes the upstream extractor's detection as ``source_lang``;
         # ``project_region`` is the fallback when the source itself is
         # untagged (no extractor language available).

@@ -143,7 +143,7 @@ class ComplianceDocResponse(BaseModel):
     # Computed convenience field
     days_until_expiry: int = Field(
         default=0,
-        description=("Signed integer — negative when already expired, 0 on expiry day, positive when still valid."),
+        description=("Signed integer - negative when already expired, 0 on expiry day, positive when still valid."),
     )
 
 

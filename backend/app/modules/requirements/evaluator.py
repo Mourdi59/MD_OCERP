@@ -8,7 +8,7 @@ The evaluator is deliberately string-first: ``constraint_value`` is
 stored as text (Excel- and CSV-friendly), and the operator decides how
 to coerce. ``range`` accepts ``"a..b" | "a-b" | "a,b" | "a;b"``.
 
-Also exposes :func:`compute_deliverable_coverage` — a pure-function
+Also exposes :func:`compute_deliverable_coverage` - a pure-function
 roll-up of ISO 19650 EIR deliverable rows used by the matrix view.
 """
 
@@ -220,7 +220,7 @@ def compute_deliverable_coverage(
 ) -> dict[str, Any]:
     """Roll up a requirement's deliverable rows into a coverage summary.
 
-    The ``coverage_pct`` is ``accepted / total * 100`` — i.e. how much
+    The ``coverage_pct`` is ``accepted / total * 100`` - i.e. how much
     of the EIR has been *signed off*. Submitted-but-not-accepted rows
     surface separately so the UI can flag "in review" tiles.
 

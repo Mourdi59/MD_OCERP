@@ -3,7 +3,7 @@
 End-to-end demo seed:
   1. Delete every existing project (cascades into BOQs, BIM models, links, …).
   2. Remove orphaned DAE/GLB files from data/bim/.
-  3. Create 3 demo projects — German / English / Spanish — each with full
+  3. Create 3 demo projects - German / English / Spanish - each with full
      currency + classification metadata.
   4. Upload 2 CAD files per project (RVT / IFC / DWG mix) via the real
      /bim_hub/upload-cad/ endpoint so every code path (converter preflight,
@@ -53,7 +53,7 @@ CAD_SOURCE_DIR = pathlib.Path(os.environ.get("OE_CAD_SAMPLES_DIR", str(_default_
 BIM_DATA_DIR = REPO_ROOT / "backend" / "data" / "bim"
 
 # Upload poll settings
-MODEL_READY_TIMEOUT_S = 600  # 10 min per CAD file — RVT via DDC can be slow
+MODEL_READY_TIMEOUT_S = 600  # 10 min per CAD file - RVT via DDC can be slow
 MODEL_POLL_INTERVAL_S = 5
 
 # ── 3 demo project specs ───────────────────────────────────────────────────
@@ -62,7 +62,7 @@ DEMO_PROJECTS = [
     {
         "key": "de",
         "create": {
-            "name": "Wohnkomplex Duplex — Berlin-Mitte",
+            "name": "Wohnkomplex Duplex - Berlin-Mitte",
             "description": (
                 "Neubau: 2 Wohneinheiten + Erweiterung eines Bestandsgebäudes. "
                 "BGF ca. 480 m². Kostenrahmen ca. 1,8 Mio EUR netto. "
@@ -114,7 +114,7 @@ DEMO_PROJECTS = [
     {
         "key": "en",
         "create": {
-            "name": "Advanced Commercial Complex — Boston",
+            "name": "Advanced Commercial Complex - Boston",
             "description": (
                 "New-build commercial office + structural steel frame, "
                 "~1,200 m² gross floor area. Demo project reuses Autodesk "
@@ -134,17 +134,17 @@ DEMO_PROJECTS = [
         },
         "files": ["2022 rstadvancedsampleproject.rvt", "2023 racbasicsampleproject.rvt"],
         "boq": {
-            "name": "Bill of Quantities — Structural & Architectural",
+            "name": "Bill of Quantities - Structural & Architectural",
             "description": "MasterFormat-organised BOQ: Divisions 03, 04, 05, 06, 08, 09.",
             "estimate_type": "detailed",
         },
         "sections": [
-            ("03", "Division 03 — Concrete"),
-            ("04", "Division 04 — Masonry"),
-            ("05", "Division 05 — Metals"),
-            ("06", "Division 06 — Wood, Plastics & Composites"),
-            ("08", "Division 08 — Openings"),
-            ("09", "Division 09 — Finishes"),
+            ("03", "Division 03 - Concrete"),
+            ("04", "Division 04 - Masonry"),
+            ("05", "Division 05 - Metals"),
+            ("06", "Division 06 - Wood, Plastics & Composites"),
+            ("08", "Division 08 - Openings"),
+            ("09", "Division 09 - Finishes"),
         ],
         "positions": [
             (0, "03 30 00.01", 'Cast-in-place concrete slab, 6" thick, 4000 psi', "sf", 4200.0, 14.50),
@@ -166,7 +166,7 @@ DEMO_PROJECTS = [
     {
         "key": "es",
         "create": {
-            "name": "Proyecto Mixto Civil-Arquitectónico — Madrid",
+            "name": "Proyecto Mixto Civil-Arquitectónico - Madrid",
             "description": (
                 "Urbanización mixta: vial de acceso + edificio de servicios. "
                 "Proyecto demo construido a partir de dos DWG de referencia "
@@ -185,17 +185,17 @@ DEMO_PROJECTS = [
         },
         "files": ["architectural_example-imperial.dwg", "civil_example-imperial.dwg"],
         "boq": {
-            "name": "Presupuesto — Obra civil y edificación",
+            "name": "Presupuesto - Obra civil y edificación",
             "description": "Presupuesto por capítulos: movimiento de tierras, firmes, edificación y acabados.",
             "estimate_type": "detailed",
         },
         "sections": [
-            ("01", "Capítulo 01 — Movimiento de tierras"),
-            ("02", "Capítulo 02 — Firmes y pavimentos"),
-            ("03", "Capítulo 03 — Estructura"),
-            ("04", "Capítulo 04 — Cerramientos"),
-            ("05", "Capítulo 05 — Acabados interiores"),
-            ("06", "Capítulo 06 — Urbanización"),
+            ("01", "Capítulo 01 - Movimiento de tierras"),
+            ("02", "Capítulo 02 - Firmes y pavimentos"),
+            ("03", "Capítulo 03 - Estructura"),
+            ("04", "Capítulo 04 - Cerramientos"),
+            ("05", "Capítulo 05 - Acabados interiores"),
+            ("06", "Capítulo 06 - Urbanización"),
         ],
         "positions": [
             (0, "01.001", "Excavación a cielo abierto en terreno compacto", "m3", 620.0, 9.80),
@@ -374,7 +374,7 @@ async def wait_for_model_ready(
             last_status = st
         # Terminal statuses: ready (success) or any of the failure/skip states.
         # The backend uses 'needs_converter' for DWG/DGN when the converter
-        # binary is not on PATH — we record it and move on rather than wait
+        # binary is not on PATH - we record it and move on rather than wait
         # for a conversion that will never happen.
         if st in (
             "ready",
@@ -509,7 +509,7 @@ async def main() -> None:
 
     async with httpx.AsyncClient(base_url=BASE, timeout=120.0) as client:
         print("=" * 70)
-        print("  OpenEstimate — Demo Showcase Seeder (3 projects, 6 CAD files)")
+        print("  OpenEstimate - Demo Showcase Seeder (3 projects, 6 CAD files)")
         print("=" * 70)
 
         # ── Auth + promote to admin so ownership filters don't hide anything ──

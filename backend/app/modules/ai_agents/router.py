@@ -2,13 +2,13 @@
 
 Endpoints (mounted at ``/api/v1/ai-agents/`` by the module loader):
 
-* ``GET    /agents/``            — registered agents (with allowed_tools)
-* ``GET    /tools/``             — registered tools (debugging surface)
-* ``POST   /runs/``              — start a new run (returns id immediately;
+* ``GET    /agents/``            - registered agents (with allowed_tools)
+* ``GET    /tools/``             - registered tools (debugging surface)
+* ``POST   /runs/``              - start a new run (returns id immediately;
                                     loop runs in a background task)
-* ``GET    /runs/``              — list runs (newest first; optional
+* ``GET    /runs/``              - list runs (newest first; optional
                                     project_id filter)
-* ``GET    /runs/{id}``          — full run snapshot incl. steps timeline
+* ``GET    /runs/{id}``          - full run snapshot incl. steps timeline
 """
 
 from __future__ import annotations
@@ -56,13 +56,13 @@ router = APIRouter(tags=["ai_agents"])
 # ── Idempotency cache ────────────────────────────────────────────────────
 # In-memory map of ``(user_id, idempotency_key) -> (run_id, created_ts)``.
 # Purpose: protect agent runs from frontend retry storms / duplicate
-# submits — each agent run costs real LLM dollars, so re-running on a
+# submits - each agent run costs real LLM dollars, so re-running on a
 # transient network blip would burn cash silently. Entries expire after
 # IDEMPOTENCY_TTL_SECONDS.
 #
 # Single-process scope is acceptable for now (single-tenant VPS deploy);
 # multi-instance prod needs Redis/DB backing so the dedupe holds across
-# workers — see needs_shared_change. Until then the cache is bounded both
+# workers - see needs_shared_change. Until then the cache is bounded both
 # by TTL and a hard entry cap so a key recorded-but-never-looked-up again
 # can't accumulate for the process lifetime.
 IDEMPOTENCY_TTL_SECONDS = 600  # 10 minutes
@@ -92,7 +92,7 @@ def _idempotency_record(user_id: str, key: str, run_id: uuid.UUID) -> None:
     """Record a key→run mapping, bounding growth by TTL sweep + size cap.
 
     Without an eviction path on *write*, keys that are recorded but never
-    looked up again (the common case — a retry rarely arrives) would
+    looked up again (the common case - a retry rarely arrives) would
     accumulate for the whole process lifetime. We sweep expired entries
     first, then enforce a hard FIFO cap so the cache can never grow
     unbounded even under a flood of unique keys.
@@ -154,7 +154,7 @@ async def list_agents_endpoint(
     user_id: CurrentUserId,
     service: AgentService = Depends(_get_service),
 ) -> list[AgentDescriptor]:
-    """List every agent the caller can run — built-ins plus their own custom agents.
+    """List every agent the caller can run - built-ins plus their own custom agents.
 
     Custom agents are flagged ``is_custom`` (with their ``custom_id``) so the UI
     can show edit/delete affordances only on the caller's own creations.
@@ -604,7 +604,7 @@ async def _run_in_background(
     project_id: uuid.UUID | None,
     run_id: uuid.UUID,
 ) -> None:
-    """Background-task entry point — opens its own session.
+    """Background-task entry point - opens its own session.
 
     The FastAPI-supplied session is gone by the time the background
     task runs (the response has already been returned to the client),
@@ -716,7 +716,7 @@ async def create_run(
     Idempotency: clients may pass ``Idempotency-Key`` header to make
     retries safe. Submitting the same key within 10 minutes returns the
     original run instead of spawning a duplicate (agent runs cost real
-    LLM dollars — never let a retry storm double-spend).
+    LLM dollars - never let a retry storm double-spend).
     """
     uid = uuid.UUID(user_id)
 
@@ -809,7 +809,7 @@ async def list_automated_runs(
     """List the caller's automated runs (scheduler / event-fired), newest-first.
 
     Powers the monitoring panel so an operator can see when their scheduled or
-    event-triggered agents ran and whether any failed — automated runs have no
+    event-triggered agents ran and whether any failed - automated runs have no
     user watching the timeline live. Registered before ``/runs/{run_id}`` so the
     literal ``automated`` path is not captured by the UUID path parameter.
     """
@@ -886,5 +886,5 @@ def _serialise_run(run: Any, *, steps: list[Any]) -> AgentRunResponse:
     )
 
 
-# Silence "imported but unused" — kept for type imports used at runtime.
+# Silence "imported but unused" - kept for type imports used at runtime.
 _ = AsyncSession

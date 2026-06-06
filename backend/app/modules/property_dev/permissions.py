@@ -20,32 +20,32 @@ PROPERTY_DEV_PERMISSIONS: dict[str, Role] = {
     "property_dev.handover": Role.MANAGER,
     "property_dev.fix_snag": Role.EDITOR,
     "property_dev.process_warranty": Role.EDITOR,
-    # ── R6 (task #137) — Lead ───────────────────────────────────────
+    # ── R6 (task #137) - Lead ───────────────────────────────────────
     "property_dev.lead.create": Role.EDITOR,
     "property_dev.lead.read": Role.VIEWER,
     "property_dev.lead.update": Role.EDITOR,
     "property_dev.lead.delete": Role.MANAGER,
     "property_dev.lead.assign": Role.MANAGER,
     "property_dev.lead.convert": Role.MANAGER,
-    # ── R6 (task #137) — Reservation ────────────────────────────────
+    # ── R6 (task #137) - Reservation ────────────────────────────────
     "property_dev.reservation.create": Role.EDITOR,
     "property_dev.reservation.read": Role.VIEWER,
     "property_dev.reservation.update": Role.EDITOR,
     "property_dev.reservation.cancel": Role.MANAGER,
     "property_dev.reservation.expire": Role.MANAGER,
-    # ── R6 (task #137) — Sales Contract (SPA) ───────────────────────
+    # ── R6 (task #137) - Sales Contract (SPA) ───────────────────────
     "property_dev.spa.draft": Role.EDITOR,
     "property_dev.spa.send": Role.MANAGER,
     "property_dev.spa.sign": Role.MANAGER,
     "property_dev.spa.cancel": Role.MANAGER,
-    # ── R6 (task #137) — Payment Schedule ───────────────────────────
+    # ── R6 (task #137) - Payment Schedule ───────────────────────────
     "property_dev.payment_schedule.activate": Role.MANAGER,
     "property_dev.payment_schedule.suspend": Role.MANAGER,
-    # ── R6 (task #137) — Instalment ─────────────────────────────────
+    # ── R6 (task #137) - Instalment ─────────────────────────────────
     "property_dev.instalment.mark_paid": Role.EDITOR,
     "property_dev.instalment.issue_demand": Role.EDITOR,
     "property_dev.instalment.waive": Role.MANAGER,
-    # ── R6 (task #137) — Contract Party (multi-buyer junction) ──────
+    # ── R6 (task #137) - Contract Party (multi-buyer junction) ──────
     "property_dev.contract_party.add": Role.EDITOR,
     "property_dev.contract_party.remove": Role.MANAGER,
     "property_dev.contract_party.update_ownership": Role.MANAGER,

@@ -1,35 +1,35 @@
 """‌⁠‍Takeoff HTTP endpoints.
 
 Routes:
-    GET    /converters                          — list CAD/BIM converter status
-    POST   /converters/{converter_id}/install   — download & install a converter
-    POST   /converters/{converter_id}/uninstall — remove an installed converter
-    POST   /documents/upload                    — upload a PDF for takeoff
-    GET    /documents/                          — list uploaded documents
-    GET    /documents/{doc_id}                  — get single document
-    POST   /documents/{doc_id}/extract-tables   — extract tables from document
-    POST   /documents/{doc_id}/analyze          — AI analysis of extracted text
-    GET    /documents/{doc_id}/download          — download the stored PDF file
-    DELETE /documents/{doc_id}                  — delete a document
+    GET    /converters                          - list CAD/BIM converter status
+    POST   /converters/{converter_id}/install   - download & install a converter
+    POST   /converters/{converter_id}/uninstall - remove an installed converter
+    POST   /documents/upload                    - upload a PDF for takeoff
+    GET    /documents/                          - list uploaded documents
+    GET    /documents/{doc_id}                  - get single document
+    POST   /documents/{doc_id}/extract-tables   - extract tables from document
+    POST   /documents/{doc_id}/analyze          - AI analysis of extracted text
+    GET    /documents/{doc_id}/download          - download the stored PDF file
+    DELETE /documents/{doc_id}                  - delete a document
 
-    POST   /measurements                       — create measurement
-    GET    /measurements                        — list measurements (filtered)
-    GET    /measurements/summary                — stats by group/type
-    GET    /measurements/export                 — export measurements as CSV/JSON
-    POST   /measurements/bulk                   — bulk create measurements
-    GET    /measurements/{id}                   — get single measurement
-    PATCH  /measurements/{id}                   — update measurement
-    DELETE /measurements/{id}                   — delete measurement
-    POST   /measurements/{id}/link-to-boq       — link measurement to BOQ position
+    POST   /measurements                       - create measurement
+    GET    /measurements                        - list measurements (filtered)
+    GET    /measurements/summary                - stats by group/type
+    GET    /measurements/export                 - export measurements as CSV/JSON
+    POST   /measurements/bulk                   - bulk create measurements
+    GET    /measurements/{id}                   - get single measurement
+    PATCH  /measurements/{id}                   - update measurement
+    DELETE /measurements/{id}                   - delete measurement
+    POST   /measurements/{id}/link-to-boq       - link measurement to BOQ position
 
-    POST   /cad-group/create-boq               — create BOQ from grouped CAD QTO
-    GET    /cad-group/export                    — export grouped QTO as Excel
+    POST   /cad-group/create-boq               - create BOQ from grouped CAD QTO
+    GET    /cad-group/export                    - export grouped QTO as Excel
 
-    POST   /cad-data/describe                   — DataFrame-like describe of CAD session
-    POST   /cad-data/value-counts               — value counts for a single column
-    GET    /cad-data/elements                    — paginated element table with sort/filter
-    POST   /cad-data/aggregate                   — group-by aggregation on CAD elements
-    GET    /cad-data/missingness                 — per-column fill-rate + row completeness
+    POST   /cad-data/describe                   - DataFrame-like describe of CAD session
+    POST   /cad-data/value-counts               - value counts for a single column
+    GET    /cad-data/elements                    - paginated element table with sort/filter
+    POST   /cad-data/aggregate                   - group-by aggregation on CAD elements
+    GET    /cad-data/missingness                 - per-column fill-rate + row completeness
 """
 
 import logging
@@ -78,7 +78,7 @@ from app.modules.takeoff.service import TakeoffService
 logger = logging.getLogger(__name__)
 
 # Surface the manifest-bypass warning at import time so it shows up in
-# server logs alongside the rest of the boot banner — operators who
+# server logs alongside the rest of the boot banner - operators who
 # left the escape hatch on by accident notice it on the next restart.
 maybe_warn_disabled()
 
@@ -91,7 +91,7 @@ router = APIRouter(tags=["takeoff"])
 #
 # Converter metadata. Sizes reflect what is actually committed in the
 # `datadrivenconstruction/cad2data-Revit-IFC-DWG-DGN` repository under
-# `DDC_WINDOWS_Converters/DDC_CONVERTER_{FORMAT}/` — typically ~30-50 MB
+# `DDC_WINDOWS_Converters/DDC_CONVERTER_{FORMAT}/` - typically ~30-50 MB
 # per format (the small `*Exporter.exe` plus the bundled Qt6 DLLs).
 # These are NOT GitHub Releases; the binaries live directly on the
 # default branch and we install them by walking the directory tree
@@ -146,7 +146,7 @@ async def list_converters(verify: bool = False) -> dict[str, Any]:
     """‌⁠‍Return the status of all known CAD/BIM converters.
 
     Scans standard install paths and returns which converters are found.
-    No authentication required — this is a public status check.
+    No authentication required - this is a public status check.
 
     Args:
         verify: When ``true``, also runs a quick smoke test (~8 s timeout
@@ -161,14 +161,14 @@ async def list_converters(verify: bool = False) -> dict[str, Any]:
     from app.modules.boq.cad_import import find_converter, smoke_test_converter
 
     # Phase 1: cheap file-stat lookup for every converter (synchronous,
-    # bounded by ~4 disk reads — sub-millisecond on a warm cache).
+    # bounded by ~4 disk reads - sub-millisecond on a warm cache).
     paths: list[Path | None] = [find_converter(m["id"]) for m in _CONVERTER_META]
 
     # Phase 2: when ``verify=true``, run ALL installed-converter smoke
     # tests CONCURRENTLY with ``asyncio.gather`` so the wall-clock cost
     # is bounded by the slowest one (8 s timeout) instead of the sum of
     # all of them. Without this the request was up to 32 s for four
-    # installed converters — long enough that React Query stayed in
+    # installed converters - long enough that React Query stayed in
     # ``isFetching`` and the user saw a stale "0/4 verified" view with
     # no health pills.
     health_results: list[dict[str, Any] | None] = [None] * len(_CONVERTER_META)
@@ -276,7 +276,7 @@ async def verify_converter(converter_id: str) -> dict[str, Any]:
 
 #
 # Source repository for DDC Community converters. The binaries are NOT
-# published as GitHub Releases — they live committed on the default
+# published as GitHub Releases - they live committed on the default
 # branch under `DDC_WINDOWS_Converters/DDC_CONVERTER_{FORMAT}/`. Linux
 # users get separate `.deb` packages from the apt source maintained at
 # `pkg.datadrivenconstruction.io` (handled separately below).
@@ -318,7 +318,7 @@ _LINUX_APT_PACKAGES: dict[str, str] = {
 # repository. We do NOT shell out to `apt` (that needs root + a sources.list
 # rewrite). Instead we fetch the repo's `Packages` index ourselves, resolve the
 # converter's transitive `ddc-*` dependencies, download the `.deb` set, and
-# extract it with `dpkg-deb -x` into a per-arch, user-writable root — exactly
+# extract it with `dpkg-deb -x` into a per-arch, user-writable root - exactly
 # the zero-user-action flow the Windows installer provides. Validated
 # end-to-end against the live repo (amd64; arm64 is advertised in Release but
 # currently ships an empty index, so that arch falls back to a clear apt hint).
@@ -389,12 +389,12 @@ def _check_apt_url_allowed(url: str) -> None:
 
     parsed = urlparse(url)
     if parsed.scheme not in {"https", "http"}:
-        raise RuntimeError(f"Refused to download {url!r} — non-HTTP(S) scheme")
+        raise RuntimeError(f"Refused to download {url!r} - non-HTTP(S) scheme")
     host = (parsed.hostname or "").lower()
     allowed = _ddc_apt_hosts()
     if host not in allowed:
         raise RuntimeError(
-            f"Refused to download {url!r} — host {host!r} is not the configured DDC apt host {sorted(allowed)}"
+            f"Refused to download {url!r} - host {host!r} is not the configured DDC apt host {sorted(allowed)}"
         )
 
 
@@ -455,7 +455,7 @@ def _fetch_apt_index(arch: str) -> dict[str, dict[str, str]] | None:
         try:
             _check_apt_url_allowed(url)
             req = urllib.request.Request(url, headers={"User-Agent": "OpenConstructionERP-converter-installer"})
-            with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 — host allow-listed
+            with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 - host allow-listed
                 raw = resp.read(_MAX_DOWNLOAD_BYTES + 1)
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             logger.debug("apt index fetch failed for %s: %s", url, exc)
@@ -480,7 +480,7 @@ def _download_converter_files_linux(converter_id: str) -> Path:
     converter's transitive ``ddc-*`` `.deb` set from the signed apt repo, stream
     each package (host allow-listed, size-capped), then ``dpkg-deb -x`` it into
     a per-arch, user-writable root under
-    ``~/.openestimator/converters/_ddc_linux_<arch>`` — preserving the
+    ``~/.openestimator/converters/_ddc_linux_<arch>`` - preserving the
     ``usr/bin`` + ``usr/lib/datadrivenconstruction`` layout so the binary's
     ``$ORIGIN`` RUNPATH resolves (``LD_LIBRARY_PATH`` is also set at launch by
     :func:`app.modules.boq.cad_import._converter_subprocess_env` to cover the
@@ -579,7 +579,7 @@ def _download_converter_files_linux(converter_id: str) -> Path:
             )
             req = urllib.request.Request(deb_url, headers={"User-Agent": "OpenConstructionERP-converter-installer"})
             try:
-                with urllib.request.urlopen(req, timeout=120) as resp:  # noqa: S310 — allow-listed
+                with urllib.request.urlopen(req, timeout=120) as resp:  # noqa: S310 - allow-listed
                     size = 0
                     with open(dest, "wb") as fh:
                         while True:
@@ -601,7 +601,7 @@ def _download_converter_files_linux(converter_id: str) -> Path:
             except urllib.error.HTTPError as exc:
                 raise RuntimeError(
                     f"Download failed for {pkg} (HTTP {exc.code}) from {deb_url}. "
-                    f"This architecture ({arch}) may not be published — install via "
+                    f"This architecture ({arch}) may not be published - install via "
                     f"`sudo apt install -y {apt_pkg}` instead."
                 ) from exc
             except (urllib.error.URLError, TimeoutError, OSError) as exc:
@@ -617,7 +617,7 @@ def _download_converter_files_linux(converter_id: str) -> Path:
         )
         for i, (pkg, _rel) in enumerate(plan, 1):
             deb = tmpdir / f"{i:02d}_{pkg}.deb"
-            proc = subprocess.run(  # noqa: S603 — fixed argv, no shell
+            proc = subprocess.run(  # noqa: S603 - fixed argv, no shell
                 ["dpkg-deb", "-x", str(deb), str(root)],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -673,8 +673,8 @@ def _get_install_progress(converter_id: str) -> dict[str, Any] | None:
 
 # Allowed hosts for converter file downloads. We hard-code this against
 # GitHub's raw.githubusercontent.com (where the Contents API redirects
-# blob downloads) so an attacker who tampers with the API response —
-# substituting download_url with an attacker-controlled CDN — can't
+# blob downloads) so an attacker who tampers with the API response -
+# substituting download_url with an attacker-controlled CDN - can't
 # trick the installer into fetching a poisoned exe. The Contents API
 # itself returns absolute URLs but FastAPI never trusts user-supplied
 # URLs, so this matters only if GitHub itself is compromised OR if
@@ -692,7 +692,7 @@ _ALLOWED_DOWNLOAD_HOSTS = frozenset(
 # repo today is the ~140 MB IfcExporter.exe; we add ~3x headroom for
 # future versions and the bundled cad2data format readers. Anything above this
 # threshold is almost certainly a substitution attack or a pathological
-# upstream change — refuse rather than waste disk and download time.
+# upstream change - refuse rather than waste disk and download time.
 _MAX_DOWNLOAD_BYTES = 512 * 1024 * 1024  # 512 MB
 
 # Total cap per converter install. RVT today is ~600 MB; we set 1.5 GB
@@ -704,7 +704,7 @@ _MAX_INSTALL_BYTES = 1536 * 1024 * 1024  # 1.5 GB
 def _check_download_url_allowed(url: str) -> None:
     """Reject converter download URLs whose host isn't on the allow-list.
 
-    Audit A2 — without this check, a tampered GitHub Contents API
+    Audit A2 - without this check, a tampered GitHub Contents API
     response (or a future bug that lets a malicious value leak into
     ``download_url``) could redirect the installer to an attacker-
     controlled CDN. Allow-listing the three GitHub hosts that
@@ -714,11 +714,11 @@ def _check_download_url_allowed(url: str) -> None:
 
     parsed = urlparse(url)
     if parsed.scheme not in {"https", "http"}:
-        raise RuntimeError(f"Refused to download {url!r} — non-HTTP(S) scheme")
+        raise RuntimeError(f"Refused to download {url!r} - non-HTTP(S) scheme")
     host = (parsed.hostname or "").lower()
     if host not in _ALLOWED_DOWNLOAD_HOSTS:
         raise RuntimeError(
-            f"Refused to download {url!r} — host {host!r} is not on "
+            f"Refused to download {url!r} - host {host!r} is not on "
             f"the converter allow-list {sorted(_ALLOWED_DOWNLOAD_HOSTS)}"
         )
 
@@ -757,7 +757,7 @@ def _github_list_directory(repo_path: str) -> list[dict[str, Any]]:
         raise RuntimeError(f"Could not reach GitHub Contents API: {exc}") from exc
 
     if not isinstance(payload, list):
-        raise RuntimeError(f"GitHub Contents API returned a non-list for {repo_path} — is the path correct?")
+        raise RuntimeError(f"GitHub Contents API returned a non-list for {repo_path} - is the path correct?")
 
     files: list[dict[str, Any]] = []
     for item in payload:
@@ -767,7 +767,7 @@ def _github_list_directory(repo_path: str) -> list[dict[str, Any]]:
         elif item_type == "dir":
             # Recurse into subdirectories. The Qt-based converters keep
             # their plugins under platforms/ / styles/ / datadrivenlibs/
-            # so we MUST recurse — flat downloads would miss the DLLs
+            # so we MUST recurse - flat downloads would miss the DLLs
             # the .exe needs at runtime.
             files.extend(_github_list_directory(item["path"]))
     return files
@@ -799,14 +799,14 @@ def _resolve_target_path(
     try:
         target.relative_to(install_dir_resolved)
     except ValueError as exc:
-        raise RuntimeError(f"Refused to write {target} — escapes install directory") from exc
+        raise RuntimeError(f"Refused to write {target} - escapes install directory") from exc
     return target
 
 
 def _download_one_file(download_url: str, target: Path) -> int:
     """Download a single file. Returns bytes written. Used by the pool.
 
-    Audit A2 / A9 / A11 — three hardenings:
+    Audit A2 / A9 / A11 - three hardenings:
 
     1. **Host allow-list** (A2): refuse any URL whose hostname isn't
        in ``_ALLOWED_DOWNLOAD_HOSTS``. Closes a poisoned-redirect
@@ -814,7 +814,7 @@ def _download_one_file(download_url: str, target: Path) -> int:
        ``download_url`` for an attacker-controlled CDN.
 
     2. **Size cap during stream** (A11): we used to call
-       ``urlretrieve`` which has no size cap — a hostile (or
+       ``urlretrieve`` which has no size cap - a hostile (or
        runaway-grown) blob could fill the disk before failing. We
        now stream the body chunk-by-chunk and abort the moment we
        exceed ``_MAX_DOWNLOAD_BYTES``.
@@ -834,7 +834,7 @@ def _download_one_file(download_url: str, target: Path) -> int:
 
     target.parent.mkdir(parents=True, exist_ok=True)
 
-    # A9 — drop any pre-existing symlink at the target. ``is_symlink``
+    # A9 - drop any pre-existing symlink at the target. ``is_symlink``
     # uses lstat so we don't follow the link to check its target.
     if target.is_symlink():
         target.unlink()
@@ -859,7 +859,7 @@ def _download_one_file(download_url: str, target: Path) -> int:
     try:
         fd = os.open(str(target), open_flags, 0o644)
     except OSError as exc:
-        # ELOOP on Linux when O_NOFOLLOW hits a symlink — surface as
+        # ELOOP on Linux when O_NOFOLLOW hits a symlink - surface as
         # a clear refusal rather than a generic OSError.
         raise RuntimeError(f"Refused to open {target} for writing: {exc}") from exc
 
@@ -873,12 +873,12 @@ def _download_one_file(download_url: str, target: Path) -> int:
                     declared = int(content_length)
                     if declared > _MAX_DOWNLOAD_BYTES:
                         raise RuntimeError(
-                            f"Refused to download {download_url!r} — declared size "
+                            f"Refused to download {download_url!r} - declared size "
                             f"{declared} bytes exceeds the per-file cap of "
                             f"{_MAX_DOWNLOAD_BYTES} bytes"
                         )
                 except (ValueError, TypeError):
-                    pass  # Bogus header — fall through to streaming cap.
+                    pass  # Bogus header - fall through to streaming cap.
 
             while True:
                 chunk = resp.read(65536)
@@ -887,7 +887,7 @@ def _download_one_file(download_url: str, target: Path) -> int:
                 bytes_written += len(chunk)
                 if bytes_written > _MAX_DOWNLOAD_BYTES:
                     raise RuntimeError(
-                        f"Aborted download of {download_url!r} — body exceeded "
+                        f"Aborted download of {download_url!r} - body exceeded "
                         f"the per-file cap of {_MAX_DOWNLOAD_BYTES} bytes "
                         f"(possible substitution attack)"
                     )
@@ -903,7 +903,7 @@ def _verify_pe_executable(path: Path) -> str | None:
 
     The converter exes are always Windows PE binaries regardless of the
     host OS. A text-mode-corrupted download (every ``0x0A`` rewritten as
-    ``0x0D 0x0A`` — the WinError 216 root cause) keeps the leading ``MZ``
+    ``0x0D 0x0A`` - the WinError 216 root cause) keeps the leading ``MZ``
     but shifts ``e_lfanew``, so the ``PE\\0\\0`` signature is no longer
     where the DOS header points. Validating that chain catches exactly
     that corruption at install time instead of at launch time.
@@ -938,7 +938,7 @@ def _download_converter_files_windows(converter_id: str) -> Path:
     The RVT converter alone is ~600 MB across ~175 files (most of
     which are the bundled cad2data format readers for every Revit
     version 2011-2026), so we use a small ThreadPoolExecutor to
-    download files in parallel — sequential `urlretrieve` calls
+    download files in parallel - sequential `urlretrieve` calls
     against `raw.githubusercontent.com` would take 5+ minutes from
     a typical home connection. Eight workers gets RVT down to
     ~30-60 seconds without tripping any GitHub abuse detection.
@@ -963,7 +963,7 @@ def _download_converter_files_windows(converter_id: str) -> Path:
     if not files:
         _clear_install_progress(converter_id)
         raise RuntimeError(
-            f"GitHub directory {src_dir!r} contains no files — the DDC converter repo layout may have changed."
+            f"GitHub directory {src_dir!r} contains no files - the DDC converter repo layout may have changed."
         )
 
     # Per-format install root keeps Qt DLLs and cad2data format readers from
@@ -974,13 +974,13 @@ def _download_converter_files_windows(converter_id: str) -> Path:
     src_prefix = src_dir.rstrip("/") + "/"
 
     # Pre-resolve every target path so the security checks happen
-    # BEFORE any network IO — we want to fail fast on a hostile
+    # BEFORE any network IO - we want to fail fast on a hostile
     # listing rather than partway through a 600 MB download.
     download_jobs: list[tuple[str, Path]] = []
     for entry in files:
         download_url = entry.get("download_url")
         if not download_url:
-            continue  # submodules / symlinks — skip
+            continue  # submodules / symlinks - skip
         target = _resolve_target_path(
             entry["path"],
             src_prefix,
@@ -1004,12 +1004,12 @@ def _download_converter_files_windows(converter_id: str) -> Path:
         bytes_done=0,
     )
 
-    # Eight workers is a sweet spot — enough parallelism to saturate
+    # Eight workers is a sweet spot - enough parallelism to saturate
     # most home links without triggering GitHub's anti-abuse limiter
     # on raw.githubusercontent.com (we've measured no 429s up to 16
     # workers in practice but 8 leaves headroom).
     #
-    # Audit A11 — cumulative cap. Per-file caps don't help if the
+    # Audit A11 - cumulative cap. Per-file caps don't help if the
     # repo listing itself grows hostile (1000 files * 500 MB each).
     # We abort the install when the running total exceeds
     # ``_MAX_INSTALL_BYTES`` and clean up the partial download.
@@ -1032,7 +1032,7 @@ def _download_converter_files_windows(converter_id: str) -> Path:
             )
             if total_bytes > _MAX_INSTALL_BYTES:
                 failures.append(
-                    f"cumulative install size {total_bytes} bytes exceeded cap of {_MAX_INSTALL_BYTES} bytes — aborting"
+                    f"cumulative install size {total_bytes} bytes exceeded cap of {_MAX_INSTALL_BYTES} bytes - aborting"
                 )
                 # Cancel anything still in flight; the partial directory
                 # gets cleaned up by the failure-handler below.
@@ -1049,7 +1049,7 @@ def _download_converter_files_windows(converter_id: str) -> Path:
                 )
 
     if failures:
-        # Roll back the partial download — we don't want a half-
+        # Roll back the partial download - we don't want a half-
         # installed converter that find_converter() will then
         # discover and try to use.
         import shutil as _shutil
@@ -1088,7 +1088,7 @@ def _download_converter_files_windows(converter_id: str) -> Path:
         _clear_install_progress(converter_id)
         raise RuntimeError(
             f"{converter_id} install verification failed: {exe_name} "
-            f"{pe_problem}. The partial install was removed — please "
+            f"{pe_problem}. The partial install was removed - please "
             f"retry the download (the binary-mode write fix ensures a "
             f"clean retry)."
         )
@@ -1112,18 +1112,18 @@ async def get_install_progress(converter_id: str) -> dict[str, Any]:
 
     The Windows installer downloads 30-175 files (~600 MB for RVT) inside
     a thread pool. ``install_converter`` doesn't return until the smoke
-    test has finished — without this endpoint the frontend can only show
+    test has finished - without this endpoint the frontend can only show
     a spinner for the full 30-90 s. We poll every 500 ms while the install
     mutation is pending and render `<progress>` + microcopy.
 
     Response shape:
-      * ``{"active": False}`` — no install currently in flight (default,
+      * ``{"active": False}`` - no install currently in flight (default,
         and what every fresh page-load returns)
       * ``{"active": True, "stage": "downloading", "current": 12,
             "total": 175, "bytes_done": 41943040, "file": "Qt6Core.dll",
-            "started_at": 1715814723.49}`` — install in progress
+            "started_at": 1715814723.49}`` - install in progress
 
-    The dict is in-memory only — restarting the backend wipes it. That's
+    The dict is in-memory only - restarting the backend wipes it. That's
     fine because the install mutation will fail with a connection error
     on restart and the frontend will surface the error toast as the
     progress poll falls silent.
@@ -1173,7 +1173,7 @@ async def install_converter(
     Returns 200 with ``installed: true`` on success, or 200 with
     ``installed: false`` + ``platform_unsupported`` on Linux/Mac. Only
     truly unrecoverable failures (network down, repo layout changed)
-    raise HTTPException 502 — and even then, the response body carries
+    raise HTTPException 502 - and even then, the response body carries
     the real error message so the user can act on it.
 
     Hardening note (v2.6.22): the function body is wrapped in a top-
@@ -1182,7 +1182,7 @@ async def install_converter(
     error class + message in ``detail`` instead of leaking a generic
     "Internal server error" 500.  Without this guard the install banner
     showed a useless toast when GitHub rate-limited or returned an
-    unexpected payload — Hans's reproducible DWG/DGN failure case.
+    unexpected payload - Hans's reproducible DWG/DGN failure case.
     """
     import asyncio
     import sys
@@ -1240,13 +1240,13 @@ async def install_converter(
 
             # Post-install smoke test: launch the binary with a non-existent
             # input + output so it exits quickly. We're only checking that the
-            # OS can load the exe + its Qt6 DLLs — a "missing DLL" error here
+            # OS can load the exe + its Qt6 DLLs - a "missing DLL" error here
             # means the install is broken and would fail silently on the next
             # CAD upload, leaving the user staring at a "needs_converter"
             # banner with no clue why. Exit codes and stderr from valid CLI
             # error paths are fine; the only failure we care about is the
-            # Windows loader emitting WinError 3221225781 (0xc0000135) —
-            # "DLL not found" — which usually surfaces as a non-zero exit
+            # Windows loader emitting WinError 3221225781 (0xc0000135) -
+            # "DLL not found" - which usually surfaces as a non-zero exit
             # AND empty stdout/stderr on stderr=PIPE.
             smoke_ok = True
             smoke_message: str | None = None
@@ -1277,7 +1277,7 @@ async def install_converter(
                 if rc in (-1073741515, -1073741502, 3221225781, 3221225794):
                     smoke_ok = False
                     smoke_message = (
-                        f"Installed but the binary can't load — "
+                        f"Installed but the binary can't load - "
                         f"a required DLL is missing (Windows error 0x{rc & 0xFFFFFFFF:08x}). "
                         f"This usually means the Qt6 plugins didn't download correctly. "
                         f"Try uninstalling and reinstalling, or install manually from "
@@ -1291,12 +1291,12 @@ async def install_converter(
                 # the loader works.  Treat as healthy and log at INFO
                 # instead of WARNING so the line doesn't read as a
                 # contradiction next to the "smoke_test_passed: true"
-                # response — see BUG-RVT02.
+                # response - see BUG-RVT02.
                 logger.info(
-                    "Smoke test for %s converter timed out — binary loaded but waiting for stdin; treating as healthy.",
+                    "Smoke test for %s converter timed out - binary loaded but waiting for stdin; treating as healthy.",
                     converter_id,
                 )
-            except Exception as exc:  # noqa: BLE001 — smoke test is best-effort
+            except Exception as exc:  # noqa: BLE001 - smoke test is best-effort
                 # Any other exception (FileNotFoundError, PermissionError,
                 # OSError) genuinely means the binary couldn't run.  Don't
                 # claim ``smoke_test_passed: true`` in the response.
@@ -1317,7 +1317,7 @@ async def install_converter(
             invalidate_converter_health(converter_id)
 
             # Bust the 6-hour version-check cache so the "Update available"
-            # banner re-evaluates against the freshly written blob — without
+            # banner re-evaluates against the freshly written blob - without
             # this the badge stays "outdated" for up to 6 h after a Windows
             # install and the user thinks the Update button did nothing.
             try:
@@ -1341,14 +1341,14 @@ async def install_converter(
             # Linux: auto-download the `.deb` set from the signed apt repo and
             # extract it WITHOUT root (mirrors the Windows path) so the Install
             # button is genuinely one-click. The binaries are user-private under
-            # ~/.openestimator/converters/_ddc_linux_<arch>/ — we never touch
+            # ~/.openestimator/converters/_ddc_linux_<arch>/ - we never touch
             # /etc/apt or sudo. If the auto-download can't complete (unpublished
             # arch, no dpkg-deb, network failure) we fall back to surfacing the
             # one-time apt instructions so the user can install system-wide.
             apt_pkg = _LINUX_APT_PACKAGES.get(converter_id, f"ddc-{converter_id}converter")
             try:
                 exe_path = await asyncio.to_thread(_download_converter_files_linux, converter_id)
-            except Exception as exc:  # noqa: BLE001 — fall back to apt instructions
+            except Exception as exc:  # noqa: BLE001 - fall back to apt instructions
                 logger.warning("Linux converter auto-download failed for %s: %s", converter_id, exc)
                 _clear_install_progress(converter_id)
                 apt_source_path = Path("/etc/apt/sources.list.d/ddc.list")
@@ -1376,7 +1376,7 @@ async def install_converter(
                     ),
                 }
 
-            # Auto-download succeeded — smoke-test it (verifies the ELF loads its
+            # Auto-download succeeded - smoke-test it (verifies the ELF loads its
             # DDC cad2data SDK shared libs; LD_LIBRARY_PATH is set by _converter_subprocess_env).
             from app.modules.boq.cad_import import (
                 invalidate_converter_health,
@@ -1407,7 +1407,7 @@ async def install_converter(
                 ),
             }
 
-        # macOS / other — no native DDC build available.
+        # macOS / other - no native DDC build available.
         return {
             "converter_id": converter_id,
             "installed": False,
@@ -1415,22 +1415,22 @@ async def install_converter(
             "platform_unsupported": True,
             "message": (
                 f"{meta['name']} has no native build for {platform}. Run "
-                f"OpenConstructionERP in Docker (Linux container — the converter "
+                f"OpenConstructionERP in Docker (Linux container - the converter "
                 f"downloads automatically there) or on a Linux host, or convert the "
-                f"file to IFC first and upload the IFC — IFC has a built-in text "
+                f"file to IFC first and upload the IFC - IFC has a built-in text "
                 f"fallback parser that works on every platform."
             ),
         }
     except HTTPException:
-        # Already a structured response — let FastAPI translate it.
+        # Already a structured response - let FastAPI translate it.
         raise
-    except Exception as exc:  # noqa: BLE001 — last-ditch error envelope
+    except Exception as exc:  # noqa: BLE001 - last-ditch error envelope
         # Any uncaught exception (json.JSONDecodeError on a rate-limited
         # GitHub response, OSError on a permission-denied install dir,
         # etc.) used to leak as a generic 500 "Internal server error"
         # which gave the user no actionable signal.  Translate it to a
         # 502 with the real error class + message so the install banner
-        # shows something useful — Hans's DWG/DGN failure case (Linux
+        # shows something useful - Hans's DWG/DGN failure case (Linux
         # VPS hitting an edge case in find_converter / urlretrieve).
         _clear_install_progress(converter_id)
         logger.exception(
@@ -1464,7 +1464,7 @@ async def install_from_manifest(
     Closes the A1 gap by sourcing the download URL + expected SHA-256
     from a signed manifest instead of trusting whatever the GitHub
     Contents API returns at runtime. The signature is verified against
-    an Ed25519 public key embedded in ``manifest_verifier.py`` — see
+    an Ed25519 public key embedded in ``manifest_verifier.py`` - see
     that module's header comment for the threat model.
 
     Failure modes (all map to HTTP 502 with a clear ``detail`` so the
@@ -1487,7 +1487,7 @@ async def install_from_manifest(
         manifest = await asyncio.to_thread(fetch_manifest)
         resolved = resolve_install(manifest, component_name)
 
-        # Reuse the hardened download helper from A2/A9/A11 — it gives
+        # Reuse the hardened download helper from A2/A9/A11 - it gives
         # us host allow-listing, symlink guards, and the streaming
         # size cap for free.
         bytes_written = await asyncio.to_thread(
@@ -1496,7 +1496,7 @@ async def install_from_manifest(
             target,
         )
 
-        # SHA verification — this is the new A1 check. Mismatch deletes
+        # SHA verification - this is the new A1 check. Mismatch deletes
         # the partial file so a retry can't pick up a poisoned blob.
         await asyncio.to_thread(
             verify_downloaded_file,
@@ -1540,7 +1540,7 @@ async def install_from_manifest(
             status_code=502,
             detail=(
                 f"Downloaded file does not match the manifest hash. "
-                f"Refusing to install — the file at the manifest URL is "
+                f"Refusing to install - the file at the manifest URL is "
                 f"NOT the file the publisher signed for. Partial file "
                 f"has been deleted. Details: {exc}"
             ),
@@ -1614,7 +1614,7 @@ async def uninstall_converter(
             removed = True
             logger.info("Removed converter executable: %s", candidate)
 
-    # Also wipe the per-format folder entirely if we created one — no
+    # Also wipe the per-format folder entirely if we created one - no
     # point in keeping orphaned Qt DLLs around once the user opted out.
     if per_format_root.exists() and per_format_root.is_dir():
         import shutil as _shutil
@@ -1657,7 +1657,7 @@ async def cad_extract(
 
     Converts the file using a DDC Community converter, parses the resulting
     Excel output, and groups elements deterministically by category and type.
-    **No AI key required** — this is pure file conversion + grouping.
+    **No AI key required** - this is pure file conversion + grouping.
 
     Returns quantity tables with per-category and grand totals for:
     count, volume (m3), area (m2), and length (m).
@@ -1812,7 +1812,7 @@ async def _get_session_from_db(session: Any, session_id: str) -> dict | None:
 
     Returns a dict matching the old in-memory format, or None if not found / expired.
 
-    Audit B6 — the returned dict now carries ``user_id`` and ``project_id``
+    Audit B6 - the returned dict now carries ``user_id`` and ``project_id``
     so the ownership helper can gate access without re-querying the row.
     """
     now = datetime.now(UTC)
@@ -1831,7 +1831,7 @@ async def _get_session_from_db(session: Any, session_id: str) -> dict | None:
         "format": row.file_format,
         "created": row.created_at.timestamp() if row.created_at else _time.time(),
         "columns_metadata": row.columns_metadata or {},
-        # B6 — carry ownership fields for IDOR gate
+        # B6 - carry ownership fields for IDOR gate
         "user_id": row.user_id or "",
         "project_id": row.project_id or None,
     }
@@ -1854,16 +1854,16 @@ async def _verify_cad_session_access(
 ) -> None:
     """Gate access to a CAD extraction session by tenant.
 
-    Audit B6 — used by every endpoint that consumes a session_id
+    Audit B6 - used by every endpoint that consumes a session_id
     (``cad_data_elements`` / ``cad_data_aggregate`` /
     ``cad_data_save`` / ``cad_data_list_sessions`` /
     ``cad_data_delete_session``). Two cases mirror the document
     helper:
 
-    1. Session is bound to a project — reuse
+    1. Session is bound to a project - reuse
        ``verify_project_access`` so admin bypass + ownership work
        identically across the takeoff module.
-    2. Standalone session (no project) — only the original uploader
+    2. Standalone session (no project) - only the original uploader
        can touch it. We return 404 on access failure to avoid
        leaking session existence.
     """
@@ -1942,7 +1942,7 @@ async def cad_columns(
     conv_ext = _CONVERTER_FORMAT_ALIASES.get(ext, ext)
 
     # Resolve the converter, auto-downloading it on first use if missing
-    # (zero-user-action provisioning — see /cad-extract/ for rationale).
+    # (zero-user-action provisioning - see /cad-extract/ for rationale).
     try:
         await ensure_converter_async(conv_ext)
     except ConverterUnavailableError as exc:
@@ -2017,7 +2017,7 @@ async def cad_columns(
         "format": ext,
         "created": _time.time(),
         "columns_metadata": columns,
-        # B6 — carry owner so memory-fast-path access checks work too
+        # B6 - carry owner so memory-fast-path access checks work too
         "user_id": user_id or "",
         "project_id": None,
     }
@@ -2092,7 +2092,7 @@ async def cad_group(
     Sessions are stored in the database and expire after 24 hours.
     If expired, the user must re-upload the file.
 
-    Audit B6 — was IDOR. Same threat as ``cad_data_elements``.
+    Audit B6 - was IDOR. Same threat as ``cad_data_elements``.
     """
     from app.modules.boq.cad_import import group_cad_elements_dynamic
 
@@ -2165,7 +2165,7 @@ async def get_group_elements(
     Returns all raw elements matching the provided ``group_key`` filter,
     allowing users to inspect what makes up each grouped row.
 
-    Audit B6 — was IDOR. Same threat as ``cad_data_elements``.
+    Audit B6 - was IDOR. Same threat as ``cad_data_elements``.
     """
     _cleanup_memory_sessions()
 
@@ -2205,7 +2205,7 @@ async def get_group_elements(
 
     # Compute totals for numeric columns.
     #
-    # D-TKC-030 — the v1.9.0 code flagged a column numeric the moment
+    # D-TKC-030 - the v1.9.0 code flagged a column numeric the moment
     # ONE cell parsed as a float, then silently skipped every
     # non-parseable cell. A column like ``["200", "300mm", "250"]``
     # produced ``450`` presented as a quantity total (the "300mm" row
@@ -2274,7 +2274,7 @@ async def create_boq_from_cad_qto(
     (or stored) column selections, creates a new BOQ in the specified
     project, and adds positions for each group.
 
-    Audit B6 — was IDOR-on-write on both sides:
+    Audit B6 - was IDOR-on-write on both sides:
     1. Source CAD session ownership (data theft)
     2. Destination project ownership (planting BOQ in foreign project)
     """
@@ -2340,12 +2340,12 @@ async def create_boq_from_cad_qto(
     db_session.add(boq)
     await db_session.flush()
 
-    # D-TKC-012 — canonical UoM per measurable dimension.
+    # D-TKC-012 - canonical UoM per measurable dimension.
     #
     # The v1.9.0 code set ``unit`` to the literal column name
     # ("volume"/"area"/"length") when no ``unit_label`` was configured,
     # and only ever transferred the FIRST of volume/area/length to the
-    # BOQ — silently dropping the other two quantities (they survived
+    # BOQ - silently dropping the other two quantities (they survived
     # only inside ``metadata.cad_sums``). We now:
     #
     #   * map each measurable column to a real UoM (volume→m3,
@@ -2361,7 +2361,7 @@ async def create_boq_from_cad_qto(
 
         Honour an explicit ``unit_label`` if the operator configured
         one (e.g. "cuyd"), otherwise fall back to the canonical metric
-        token — NEVER the bare column name.
+        token - NEVER the bare column name.
         """
         label = str(unit_labels.get(col_name, "")).strip()
         if label:
@@ -2386,7 +2386,7 @@ async def create_boq_from_cad_qto(
                 cleaned = cleaned.replace("OST_", "")
             if cleaned:
                 parts.append(cleaned)
-        description = " — ".join(parts) if parts else group.get("key", f"Group {idx + 1}")
+        description = " - ".join(parts) if parts else group.get("key", f"Group {idx + 1}")
 
         # One position per measurable dimension with a non-zero sum.
         measurable: list[tuple[str, float]] = []
@@ -2426,7 +2426,7 @@ async def create_boq_from_cad_qto(
                 position_count += 1
                 sort_seq += 1
         else:
-            # No measurable geometry — a genuine count position.
+            # No measurable geometry - a genuine count position.
             position = Position(
                 boq_id=boq.id,
                 ordinal=f"{idx + 1:03d}",
@@ -2484,7 +2484,7 @@ async def export_cad_group(
     Retrieves the CAD session, runs grouping, and returns an xlsx file
     with headers, data rows, and a bold grand-total row.
 
-    Audit B6 — was IDOR. Anyone with ``takeoff.read`` could download
+    Audit B6 - was IDOR. Anyone with ``takeoff.read`` could download
     another tenant's CAD QTO as XLSX (a one-click data-exfil path).
     """
     import io
@@ -2542,7 +2542,7 @@ async def export_cad_group(
     all_sum_cols = [c for c in sum_columns_list if c != "count"]
     header = list(group_by_list) + all_sum_cols + ["Count"]
 
-    # Write header — column names are user-supplied via the API, so they
+    # Write header - column names are user-supplied via the API, so they
     # need formula-injection neutralisation too (BUG-CSV-INJECTION).
     bold_font = Font(bold=True)
     for col_idx, col_name in enumerate(header, 1):
@@ -2681,14 +2681,14 @@ async def cad_data_describe(
     For each column, reports dtype, non-null count, unique count, and
     summary statistics (min/max/mean/sum for numbers, top/top_freq for strings).
 
-    Audit B6 — was IDOR.
+    Audit B6 - was IDOR.
     """
     _cleanup_memory_sessions()
 
     cad_session = await _get_cad_session(db_session, body.session_id)
     if not cad_session:
         # 410 Gone is the correct HTTP semantic for an expired/discarded
-        # resource that the client previously held. 404 would be wrong —
+        # resource that the client previously held. 404 would be wrong -
         # the endpoint exists; only this specific session is no longer
         # available. Letting the frontend distinguish 410 lets it auto-
         # prompt re-upload instead of treating this as a routing error.
@@ -2731,7 +2731,7 @@ async def cad_data_describe(
             col_info["max"] = round(max(numeric_vals), 4)
             col_info["mean"] = round(_mean(numeric_vals), 4)
             col_info["sum"] = round(sum(numeric_vals), 4)
-            # D-TKC-025 — a column is treated as numeric at >50 %
+            # D-TKC-025 - a column is treated as numeric at >50 %
             # parseable, then min/max/mean/sum use ONLY the numeric
             # subset. Silently excluding the non-numeric rows makes the
             # reported sum/mean misrepresent the column. Surface how
@@ -2839,7 +2839,7 @@ async def cad_data_missingness(
     seed for determinism) so the frontend never has to render more than that.
     Per-column fill-rates are always computed on the full (filtered) set.
 
-    Audit B6 — was IDOR.
+    Audit B6 - was IDOR.
     """
     _cleanup_memory_sessions()
 
@@ -2878,7 +2878,7 @@ async def cad_data_missingness(
         non_null_values: list[Any] = []
         for el in elements:
             v = el.get(col)
-            # Treat empty strings as missing too — consistent with missingno.
+            # Treat empty strings as missing too - consistent with missingno.
             if v is None:
                 continue
             if isinstance(v, str) and v.strip() == "":
@@ -2929,7 +2929,7 @@ async def cad_data_missingness(
 
     # --- Matrix presence bitmap (ordered to match `columns_info`) ---------
     # 1 = present, 0 = missing. Keeping this compact (int list) keeps the
-    # response small — 1000 rows × ~50 columns ≈ 50k ints ≈ ~150kB JSON.
+    # response small - 1000 rows × ~50 columns ≈ 50k ints ≈ ~150kB JSON.
     ordered_col_names = [c["name"] for c in columns_info]
     presence_matrix: list[list[int]] = []
     for el in sample:
@@ -2964,7 +2964,7 @@ async def cad_data_value_counts(
 ) -> dict[str, Any]:
     """Return value counts for a single column, sorted by frequency descending.
 
-    Audit B6 — was IDOR.
+    Audit B6 - was IDOR.
     """
     _cleanup_memory_sessions()
 
@@ -3003,7 +3003,7 @@ async def cad_data_value_counts(
     non_null_total = total - null_count
     sorted_values = sorted(freq.items(), key=lambda kv: kv[1], reverse=True)
 
-    # D-TKC-026 — the percentage base is len(elements) (all rows incl.
+    # D-TKC-026 - the percentage base is len(elements) (all rows incl.
     # the "(null)" bucket), which differs from pandas
     # value_counts(dropna=True). Both bases are now reported per row:
     # ``percentage`` (over all rows, back-compat) and
@@ -3047,7 +3047,7 @@ async def cad_data_elements(
 ) -> dict[str, Any]:
     """Return a paginated, sortable, filterable table of CAD elements.
 
-    Audit B6 — was IDOR. Session IDs are UUIDs but anyone with
+    Audit B6 - was IDOR. Session IDs are UUIDs but anyone with
     ``takeoff.read`` could read another tenant's extracted CAD data
     (potentially confidential pricing or geometry) by guessing or
     scraping the id. We gate via the unified CAD-session helper.
@@ -3056,7 +3056,7 @@ async def cad_data_elements(
 
     cad_session = await _get_cad_session(db_session, session_id)
     if not cad_session:
-        # 410 Gone — see /cad-data/describe/ for the rationale. The
+        # 410 Gone - see /cad-data/describe/ for the rationale. The
         # endpoint is fine; this particular session is just gone.
         raise HTTPException(
             status_code=status.HTTP_410_GONE,
@@ -3076,10 +3076,10 @@ async def cad_data_elements(
                 detail=f"Unknown filter column: '{filter_column}'. Available: {sorted(all_columns)}",
             )
 
-        # D-TKC-018 — numeric-aware equality. The v1.9.0 code did
+        # D-TKC-018 - numeric-aware equality. The v1.9.0 code did
         # ``str(el.get(col, "")) == filter_value`` so a filter value of
         # "3" never matched a stored ``3.0`` and "3.1" never matched
-        # ``3.10`` — the user got an empty result with no hint. We try
+        # ``3.10`` - the user got an empty result with no hint. We try
         # a numeric comparison first (when BOTH the cell and the typed
         # value parse as numbers) and only fall back to the exact
         # string comparison otherwise.
@@ -3103,11 +3103,11 @@ async def cad_data_elements(
             )
         reverse = sort_order == "desc"
 
-        # D-TKC-009 — a column that mixes numbers and strings (very
+        # D-TKC-009 - a column that mixes numbers and strings (very
         # common in real CAD/IFC exports: ``[12, 'N/A', 7]``) used to
         # 500 with "TypeError: '<' not supported between float and
         # str" because the old key returned ``(0, float)`` for numbers
-        # and ``(0, str)`` for strings — Python then compared float vs
+        # and ``(0, str)`` for strings - Python then compared float vs
         # str on the tuple tie. We now bucket by type first so values
         # of different types never get compared to each other:
         #   bucket 0 = numbers (sorted numerically)
@@ -3152,7 +3152,7 @@ async def cad_data_aggregate(
     Supported aggregation functions: sum, avg (alias: mean), min, max, count.
     ``count`` ignores the column values and counts elements in each group.
 
-    Audit B6 — was IDOR. Same threat as ``cad_data_elements``: gate on
+    Audit B6 - was IDOR. Same threat as ``cad_data_elements``: gate on
     the session's owning project (or uploader for standalone sessions).
     """
     _cleanup_memory_sessions()
@@ -3235,7 +3235,7 @@ async def cad_data_aggregate(
     result_groups.sort(key=lambda g: tuple(g["key"].get(c, "") for c in body.group_by))
 
     # --- Compute totals across all elements ---
-    # D-TKC-011 — for ``sum``/``count`` the totals row IS the sum of
+    # D-TKC-011 - for ``sum``/``count`` the totals row IS the sum of
     # the per-group rows, but for ``avg``/``min``/``max`` it is a
     # GLOBAL statistic over every element and does NOT reconcile with
     # any combination of the group rows. Presenting it bare as "Total"
@@ -3280,11 +3280,11 @@ async def cad_data_save(
 ) -> dict[str, Any]:
     """Mark a CAD session as permanent and link it to a project.
 
-    Audit B6 — IDOR-on-write. Two attack vectors closed:
+    Audit B6 - IDOR-on-write. Two attack vectors closed:
 
-    1. Source side — caller could pass a foreign tenant's session id
+    1. Source side - caller could pass a foreign tenant's session id
        and rehome it under their own project (data theft).
-    2. Destination side — caller could pass another tenant's
+    2. Destination side - caller could pass another tenant's
        ``project_id`` and dump their session into it.
 
     We verify BOTH sides before the UPDATE.
@@ -3407,7 +3407,7 @@ async def cad_data_from_bim_model(
     if model is None:
         raise HTTPException(status_code=404, detail="BIM model not found.")
 
-    # Tenant gate — the caller must have access to the model's project.
+    # Tenant gate - the caller must have access to the model's project.
     await verify_project_access(
         model.project_id,
         str(user_id) if user_id else "",
@@ -3458,7 +3458,7 @@ async def cad_data_from_bim_model(
         )
 
     fmt = (model.model_format or "bim").lower()
-    display_name = f"{model.name} — Analysis"
+    display_name = f"{model.name} - Analysis"
 
     _cleanup_memory_sessions()
     session_id = str(_uuid.uuid4())
@@ -3515,7 +3515,7 @@ async def cad_data_list_sessions(
 ) -> list[dict[str, Any]]:
     """List CAD sessions. By default shows all non-expired. Use saved_only=true for permanent only.
 
-    Audit B6 — was a global enumeration vulnerability. The endpoint
+    Audit B6 - was a global enumeration vulnerability. The endpoint
     returned every tenant's sessions to any authenticated user with
     ``takeoff.read`` (a cross-tenant data leak: filenames, project ids,
     element counts, timestamps). We now scope the query to sessions
@@ -3553,7 +3553,7 @@ async def cad_data_list_sessions(
         logger.exception("Admin-role lookup failed in cad_data_list_sessions")
 
     if not is_admin:
-        # Collect owned project ids (as strings — session model stores
+        # Collect owned project ids (as strings - session model stores
         # project_id as String, not UUID).
         from app.modules.projects.models import Project as _Project
 
@@ -3571,7 +3571,7 @@ async def cad_data_list_sessions(
         stmt = stmt.where(ownership_filter)
 
     if project_id:
-        # Caller asked for one project — verify access first so the
+        # Caller asked for one project - verify access first so the
         # error is symmetric with single-resource endpoints (404 on
         # foreign projects rather than empty list).
         try:
@@ -3616,7 +3616,7 @@ async def cad_data_delete_session(
 ) -> None:
     """Delete a saved CAD session.
 
-    Audit B6 — was IDOR-on-write. Any user with ``takeoff.delete``
+    Audit B6 - was IDOR-on-write. Any user with ``takeoff.delete``
     could destroy another tenant's permanent extraction sessions
     by UUID. We resolve ownership through the standard helper
     before the DELETE.
@@ -3626,7 +3626,7 @@ async def cad_data_delete_session(
     # Look up first (memory + DB) so we can apply the same ownership
     # check as every other CAD-session endpoint. ``_get_cad_session``
     # is TTL-aware but ``DELETE`` may legitimately target permanent
-    # sessions that are still well within their lifetime — they will
+    # sessions that are still well within their lifetime - they will
     # be returned by the lookup.
     cad_session = await _get_cad_session(db_session, session_id)
     if not cad_session:
@@ -3684,7 +3684,7 @@ async def save_session_to_project(
             detail="CAD session not found or expired. Please re-upload the file.",
         )
 
-    # Audit B6 — IDOR-on-write on both sides:
+    # Audit B6 - IDOR-on-write on both sides:
     # - source: prevents stealing a foreign session into your project
     # - destination: prevents writing into a foreign project
     await _verify_cad_session_access(cad_session, str(user_id) if user_id else "", db_session)
@@ -3836,13 +3836,13 @@ async def upload_document(
 ) -> dict[str, Any]:
     """Upload a PDF document for quantity takeoff.
 
-    Audit B5 — was IDOR-on-write. ``project_id`` came in as a free-form
+    Audit B5 - was IDOR-on-write. ``project_id`` came in as a free-form
     query string and was persisted verbatim, so anyone with
     ``takeoff.create`` could attach a PDF to another tenant's project
     (and trigger the Documents-hub cross-link). We resolve and verify
     access *before* any disk write or DB insert.
     """
-    # Verify access first — fail fast, before reading the upload body
+    # Verify access first - fail fast, before reading the upload body
     # into memory or hitting disk. We tolerate ``None`` for legacy
     # standalone uploads but require a valid UUID when present.
     verified_pid: _uuid.UUID | None = None
@@ -3875,7 +3875,7 @@ async def upload_document(
 
     content = await file.read()
 
-    # Magic byte check — every legitimate PDF starts with "%PDF-".
+    # Magic byte check - every legitimate PDF starts with "%PDF-".
     # Block JPGs/HTML/other files that have been renamed to .pdf to bypass
     # the extension check (security finding from QA report).
     if not content.startswith(b"%PDF-"):
@@ -3896,7 +3896,7 @@ async def upload_document(
     # Documents hub.  Uses the ORM Document model directly so the row
     # picks up timestamps + defaults from the Base mixin and stays in
     # sync with any future schema migration.  Best-effort: failure
-    # here MUST NOT break the upload — the takeoff doc is already
+    # here MUST NOT break the upload - the takeoff doc is already
     # persisted via service.upload_document().
     if project_id:
         try:
@@ -3942,13 +3942,13 @@ async def _verify_takeoff_doc_access(
 ) -> None:
     """Gate access to a TakeoffDocument by tenant.
 
-    Audit B5 — used by ``get_document`` / ``extract_tables`` /
+    Audit B5 - used by ``get_document`` / ``extract_tables`` /
     ``download_document`` / ``analyze_document`` to enforce IDOR
     protection. Two cases:
 
-    1. Document is bound to a project (``project_id`` non-empty) —
+    1. Document is bound to a project (``project_id`` non-empty) -
        reuse ``verify_project_access`` which also handles admin bypass.
-    2. Standalone upload (no project) — only the original uploader
+    2. Standalone upload (no project) - only the original uploader
        can touch it. We compare by string to tolerate UUID-vs-str
        drift coming from older rows.
 
@@ -3965,7 +3965,7 @@ async def _verify_takeoff_doc_access(
             await verify_project_access(pid, str(user_id), session)
             return
 
-    # Standalone — owner-only. Admins still pass via the project-bound
+    # Standalone - owner-only. Admins still pass via the project-bound
     # path above; here we have no project, so we fall through to a
     # strict owner-match.
     #
@@ -3974,7 +3974,7 @@ async def _verify_takeoff_doc_access(
     # both names so a legacy row layout doesn't bypass the gate.
     owner = str(getattr(doc, "owner_id", None) or getattr(doc, "user_id", "") or "")
     # R7 deep-improve: a document with NO owner (NULL on both columns)
-    # must block everyone — otherwise the empty-owner branch silently
+    # must block everyone - otherwise the empty-owner branch silently
     # opens orphaned rows to any caller. Match by string after trimming
     # both sides so UUID-vs-str drift doesn't bypass the gate.
     if owner != str(user_id):
@@ -3999,7 +3999,7 @@ async def list_documents(
 ) -> list[dict[str, Any]]:
     """List uploaded takeoff documents.
 
-    Audit B5 — when filtered by ``project_id`` we additionally verify
+    Audit B5 - when filtered by ``project_id`` we additionally verify
     project access so the caller cannot enumerate another tenant's
     documents by guessing the project UUID. When unfiltered the
     underlying ``service.list_documents`` already scopes by
@@ -4043,7 +4043,7 @@ async def get_document(
 ) -> dict[str, Any]:
     """Get a single takeoff document with its data.
 
-    Audit B5 — was IDOR. The endpoint returned the document blindly
+    Audit B5 - was IDOR. The endpoint returned the document blindly
     by UUID, exposing extracted text, page data and AI analysis of a
     foreign tenant's PDF. We gate on the owning project (when bound)
     or fall back to the row's ``user_id`` for standalone uploads.
@@ -4082,7 +4082,7 @@ async def extract_tables(
 ) -> dict[str, Any]:
     """Extract tabular data from an uploaded document.
 
-    Audit B5 — was IDOR. Anyone with ``takeoff.read`` could trigger
+    Audit B5 - was IDOR. Anyone with ``takeoff.read`` could trigger
     table extraction on a foreign tenant's PDF and read the result.
     Gate access through the standard helper before any extraction
     work is dispatched.
@@ -4111,7 +4111,7 @@ async def download_document(
 ) -> FileResponse:
     """Download the stored PDF file for a takeoff document.
 
-    Audit B5 — was IDOR. Anyone with ``takeoff.read`` could fetch the
+    Audit B5 - was IDOR. Anyone with ``takeoff.read`` could fetch the
     raw PDF bytes of a foreign tenant's drawing by guessing the doc
     UUID. Gate access through the standard helper before serving the
     file (which would otherwise stream the whole PDF off disk).
@@ -4131,7 +4131,7 @@ async def download_document(
     # The CLI's default data dir is ``~/.openestimate`` (see cli.py:51,
     # ``DEFAULT_DATA_DIR = Path.home() / ".openestimate"``). The guard used
     # to whitelist the brand-namespace ``~/.openestimator`` (with an "r")
-    # which mismatched every actual file path on disk — every PDF download
+    # which mismatched every actual file path on disk - every PDF download
     # returned 403 "Access denied". Whitelist both spellings to also cover
     # any historical installs that landed under the brand namespace, plus
     # any operator-supplied custom data dir via OE_DATA_DIR.
@@ -4175,7 +4175,7 @@ def _derive_element_confidence(
     provides a usable number. Otherwise falls back to a data-quality
     heuristic mirroring :func:`TakeoffService.extract_tables`: the score is
     degraded when the quantity is missing/zero, the unit is missing, or the
-    description is short — so the estimator confirms weak rows before they
+    description is short - so the estimator confirms weak rows before they
     flow into the BOQ.
 
     Args:
@@ -4243,7 +4243,7 @@ async def analyze_document(
     if doc is None:
         raise HTTPException(status_code=404, detail=translate("errors.document_not_found", locale=get_locale()))
 
-    # Audit B5 — IDOR. AI analysis dispatches the PDF text to a third
+    # Audit B5 - IDOR. AI analysis dispatches the PDF text to a third
     # party LLM and bills tokens; without this check, any user could
     # exfiltrate (and rack up bills against) another tenant's PDFs.
     await _verify_takeoff_doc_access(doc, str(user_id) if user_id else "", session)
@@ -4270,7 +4270,7 @@ async def analyze_document(
 
     # 4. Build prompt
     filename = doc.filename or "document.pdf"
-    # Audit AI1 — fence the untrusted document text so prompt-injection
+    # Audit AI1 - fence the untrusted document text so prompt-injection
     # attempts embedded in the PDF can't override the system prompt.
     # ``fence_user_content`` also applies the length cap so we no longer
     # need a manual slice here.
@@ -4307,7 +4307,7 @@ async def analyze_document(
     elements: list[dict[str, Any]] = []
     categories: dict[str, dict[str, Any]] = {}
 
-    # Audit AI3 — validate numeric fields. The LLM occasionally hallucinates
+    # Audit AI3 - validate numeric fields. The LLM occasionally hallucinates
     # negative rates ("rebate items") or absurd values; we clamp to a
     # plausible band so a malicious / confused response can't pollute the
     # BOQ. Sane upper bounds: quantity 10_000_000 (1M m² building),
@@ -4331,7 +4331,7 @@ async def analyze_document(
         # almost certainly hallucinations.
         if quantity < 0 or quantity > _MAX_QUANTITY:
             logger.warning(
-                "AI returned out-of-band quantity %s for item %d — clamping to 0",
+                "AI returned out-of-band quantity %s for item %d - clamping to 0",
                 quantity,
                 idx,
             )
@@ -4347,7 +4347,7 @@ async def analyze_document(
             unit_rate = 0.0
         if unit_rate < 0 or unit_rate > _MAX_UNIT_RATE:
             logger.warning(
-                "AI returned out-of-band unit_rate %s for item %d — clamping to 0",
+                "AI returned out-of-band unit_rate %s for item %d - clamping to 0",
                 unit_rate,
                 idx,
             )
@@ -4355,7 +4355,7 @@ async def analyze_document(
 
         # Per-element confidence. Prefer the LLM's own score when it
         # supplied one (some prompts ask for it); otherwise derive a
-        # quality-based score mirroring service.extract_tables — degrade
+        # quality-based score mirroring service.extract_tables - degrade
         # for a missing/zero quantity, a missing unit, or a short
         # description so the estimator is steered to confirm weak rows.
         confidence = _derive_element_confidence(
@@ -4425,7 +4425,7 @@ async def delete_document(
 ) -> None:
     """Delete an uploaded takeoff document.
 
-    Audit B5 — IDOR. Reuses the unified takeoff-doc access helper so
+    Audit B5 - IDOR. Reuses the unified takeoff-doc access helper so
     standalone uploads are owner-locked too (previous code let any
     user with ``takeoff.delete`` blow away orphan rows).
     """
@@ -4517,7 +4517,7 @@ async def measurement_summary(
 ) -> TakeoffMeasurementSummary:
     """Aggregated measurement stats for a project.
 
-    Audit B4 — was IDOR. Any authenticated user with ``takeoff.read``
+    Audit B4 - was IDOR. Any authenticated user with ``takeoff.read``
     could request another tenant's ``project_id`` and read aggregated
     counts (which leaks both the project's existence and its volume of
     work). Gated by ``verify_project_access`` so foreign projects 404.
@@ -4546,7 +4546,7 @@ async def export_measurements(
     Supported formats: csv, json.
     CSV returns a downloadable text response; JSON returns a list of dicts.
 
-    Audit B4 — was IDOR. Without the access check, any authenticated user
+    Audit B4 - was IDOR. Without the access check, any authenticated user
     with ``takeoff.read`` could download another tenant's measurements as
     CSV/JSON. Gated by ``verify_project_access`` so foreign projects 404.
     """
@@ -4590,7 +4590,7 @@ async def bulk_create_measurements(
 ) -> list[TakeoffMeasurementResponse]:
     """Bulk create measurements (e.g. importing from localStorage).
 
-    Audit B4 — was IDOR-on-write. A user could pass arbitrary
+    Audit B4 - was IDOR-on-write. A user could pass arbitrary
     ``project_id`` values inside each payload and seed measurements
     into a foreign project. We verify access for every distinct
     ``project_id`` present in the batch up-front (one DB lookup per
@@ -4601,7 +4601,7 @@ async def bulk_create_measurements(
 
     # Collect the unique project IDs touched by this batch. A single
     # bulk import may cover one project (the common case) or several
-    # (cross-project paste from another window) — both must be gated.
+    # (cross-project paste from another window) - both must be gated.
     project_ids = {m.project_id for m in data.measurements}
     for pid in project_ids:
         await verify_project_access(pid, str(user_id), session)
@@ -4636,7 +4636,7 @@ async def create_measurement(
 ) -> TakeoffMeasurementResponse:
     """Create a new takeoff measurement.
 
-    Audit B4 — was IDOR-on-write. ``project_id`` in the body was trusted
+    Audit B4 - was IDOR-on-write. ``project_id`` in the body was trusted
     blindly, so any user with ``takeoff.create`` could pin a row to
     another tenant's project. We gate writes through
     ``verify_project_access`` first.
@@ -4677,7 +4677,7 @@ async def list_measurements(
 ) -> list[TakeoffMeasurementResponse]:
     """List measurements for a project with optional filters.
 
-    Audit B4 — was IDOR. Any authenticated user with ``takeoff.read``
+    Audit B4 - was IDOR. Any authenticated user with ``takeoff.read``
     could supply another tenant's ``project_id`` and exfiltrate their
     measurements. Gated here through ``verify_project_access`` so
     foreign project ids 404 the same way a missing one does.
@@ -4711,7 +4711,7 @@ async def get_measurement(
 ) -> TakeoffMeasurementResponse:
     """Get a single measurement by ID.
 
-    Audit B4 — was IDOR. Anyone with ``takeoff.read`` could guess a
+    Audit B4 - was IDOR. Anyone with ``takeoff.read`` could guess a
     measurement UUID (or scrape one from a leaked log line) and read
     a foreign tenant's row. We resolve the owning project from the
     measurement itself and gate via ``verify_project_access`` so the
@@ -4739,12 +4739,12 @@ async def update_measurement(
 ) -> TakeoffMeasurementResponse:
     """Update a measurement.
 
-    Audit B4 — was IDOR-on-write. Resolve the owning project from the
+    Audit B4 - was IDOR-on-write. Resolve the owning project from the
     target row and gate via ``verify_project_access`` before any
     mutation. We check ownership *before* calling the update service
     so we don't leak existence via different error codes.
 
-    Round-6 audit (2026-05-22) — pass the pre-fetched row into the
+    Round-6 audit (2026-05-22) - pass the pre-fetched row into the
     service to skip the redundant ``get_by_id`` query that used to
     happen inside ``update_measurement`` (one query per PATCH instead
     of two).
@@ -4771,12 +4771,12 @@ async def delete_measurement(
 ) -> None:
     """Delete a measurement.
 
-    Audit B4 — was IDOR-on-write. Without the owner check, any user with
+    Audit B4 - was IDOR-on-write. Without the owner check, any user with
     ``takeoff.delete`` could destroy another tenant's measurements by
     UUID. We resolve the owning project from the target row and gate
     via ``verify_project_access``.
 
-    Round-6 audit (2026-05-22) — pass the pre-fetched row into the
+    Round-6 audit (2026-05-22) - pass the pre-fetched row into the
     service to skip the redundant ``get_by_id`` query.
     """
     existing = await service.get_measurement(measurement_id)
@@ -4801,12 +4801,12 @@ async def link_measurement_to_boq(
 ) -> TakeoffMeasurementResponse:
     """Link a measurement to a BOQ position.
 
-    Audit B4 — was IDOR-on-write. A user could redirect a foreign
+    Audit B4 - was IDOR-on-write. A user could redirect a foreign
     tenant's measurement at their own BOQ position (or vice versa)
     without permission on the measurement side. Gate on the
     measurement's owning project before performing the link.
 
-    Round-6 audit (2026-05-22) — pass the pre-fetched row into the
+    Round-6 audit (2026-05-22) - pass the pre-fetched row into the
     service to skip the redundant ``get_by_id`` query.
     """
     existing = await service.get_measurement(measurement_id)

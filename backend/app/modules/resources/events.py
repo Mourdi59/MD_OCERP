@@ -7,16 +7,16 @@ names are declared so publishers and subscribers agree on one spelling.
 
 Published events (emitted by ``service.py``):
 
-* :data:`EVENT_ASSIGNMENT_PROPOSED` — a tentative assignment was created and
+* :data:`EVENT_ASSIGNMENT_PROPOSED` - a tentative assignment was created and
   awaits confirm/decline.
-* :data:`EVENT_ASSIGNMENT_CONFIRMED` — a proposed assignment was confirmed.
-* :data:`EVENT_REQUEST_OPENED` — a project opened a resource request.
-* :data:`EVENT_REQUEST_FULFILLED` — a resource request was fulfilled with an
+* :data:`EVENT_ASSIGNMENT_CONFIRMED` - a proposed assignment was confirmed.
+* :data:`EVENT_REQUEST_OPENED` - a project opened a resource request.
+* :data:`EVENT_REQUEST_FULFILLED` - a resource request was fulfilled with an
   assignment.
-* :data:`EVENT_CERT_EXPIRING` — a certification is approaching expiry.
-* :data:`EVENT_TIMECARDS_IMPORTED` — a batch of time-cards landed as
+* :data:`EVENT_CERT_EXPIRING` - a certification is approaching expiry.
+* :data:`EVENT_TIMECARDS_IMPORTED` - a batch of time-cards landed as
   completed assignments.
-* :data:`EVENT_PORTFOLIO_OVERLOAD_DETECTED` — the read-only portfolio leveling
+* :data:`EVENT_PORTFOLIO_OVERLOAD_DETECTED` - the read-only portfolio leveling
   pass found one or more resources booked beyond their declared capacity in the
   scanned window. Payload carries the window, the overloaded-resource count and
   the per-resource peak so a notification subscriber can alert a planner. This

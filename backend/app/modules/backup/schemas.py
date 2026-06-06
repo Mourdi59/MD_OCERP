@@ -2,7 +2,7 @@
 
 Schemas are kept here so they appear explicitly in the OpenAPI spec.
 Bug-018: ``POST /backup/export/`` had no documented request body, which
-made the OpenAPI surface empty for that endpoint — clients then guessed
+made the OpenAPI surface empty for that endpoint - clients then guessed
 field names that the server silently ignored.
 """
 
@@ -21,7 +21,7 @@ class ExportRequest(BaseModel):
     include_modules: list[str] | None = Field(
         default=None,
         description=(
-            "Subset of backup keys (table aliases) to include — for example "
+            "Subset of backup keys (table aliases) to include - for example "
             "``['projects', 'boqs', 'positions']``. ``None`` (the default) "
             "exports every known table. Unknown keys are silently dropped "
             "and surfaced as a warning entry in ``manifest.json``."

@@ -3,8 +3,8 @@
 Spreadsheet applications (Excel, Google Sheets, LibreOffice Calc) interpret
 any cell whose textual value begins with ``=``, ``+``, ``-``, ``@``, a tab
 (``\\t``) or a carriage return (``\\r``) as a *formula*. A malicious user
-who controls a string field that later flows into an export — a BOQ
-position description, a takeoff annotation, a project name — can store a
+who controls a string field that later flows into an export - a BOQ
+position description, a takeoff annotation, a project name - can store a
 value like::
 
     =cmd|'/c calc'!A0
@@ -19,7 +19,7 @@ cell value, if the string starts with one of the dangerous characters,
 prepend a single apostrophe (``'``). Excel hides that apostrophe in the
 rendered cell but treats the remaining content as literal text.
 
-We deliberately do *not* mutate the data at rest — sanitising on read /
+We deliberately do *not* mutate the data at rest - sanitising on read /
 write of the database would corrupt legitimate formula-prefixed text and
 break round-trips for CSVs that the user explicitly wants to re-import. The
 defence belongs at the export boundary.
@@ -32,7 +32,7 @@ Usage::
     ws.cell(row=r, column=c, value=neutralise_formula(pos.description))
 
 Numbers, ``Decimal``, ``None`` and other non-string types pass through
-unchanged — they cannot be misinterpreted as formulae by the spreadsheet
+unchanged - they cannot be misinterpreted as formulae by the spreadsheet
 software.
 """
 

@@ -31,7 +31,7 @@ async def fetch_weather(lat: float, lon: float, api_key: str | None = None) -> d
 
     # Build URL from a hard-coded base + structured query params so the host
     # is fixed at compile time. CodeQL's `py/partial-ssrf` flags any string
-    # interpolated URL even when inputs are typed `float` — passing values via
+    # interpolated URL even when inputs are typed `float` - passing values via
     # `params=` makes the trust boundary explicit and silences the false
     # positive without changing behaviour.
     base_url = "https://api.openweathermap.org/data/2.5/weather"

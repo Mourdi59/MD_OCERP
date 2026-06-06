@@ -4,8 +4,8 @@ Adds the standard set of defensive HTTP response headers:
   - X-Frame-Options: DENY            (clickjacking)
   - X-Content-Type-Options: nosniff  (MIME sniffing)
   - Referrer-Policy: same-origin     (referrer leakage)
-  - Strict-Transport-Security        (HSTS — production only)
-  - Content-Security-Policy          (XSS / injection — relaxed for SPA)
+  - Strict-Transport-Security        (HSTS - production only)
+  - Content-Security-Policy          (XSS / injection - relaxed for SPA)
   - Permissions-Policy               (feature gating)
 
 Also strips the `server: uvicorn` header that the ASGI server adds by default,
@@ -26,11 +26,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app, *, csp: str | None = None, hsts: bool = True) -> None:
         super().__init__(app)
-        # Default CSP — relaxed enough for the React SPA + inline styles, but
+        # Default CSP - relaxed enough for the React SPA + inline styles, but
         # blocks third-party script loading and frames. Override per-deployment
         # via the `csp` constructor argument when nginx/Caddy isn't already
         # injecting one.
-        # Default CSP — relaxed enough for the React SPA + the few external
+        # Default CSP - relaxed enough for the React SPA + the few external
         # services the marketing landing page uses (Google Analytics +
         # Google Fonts), but blocks everything else. Override per-deployment
         # via the `csp` constructor argument when nginx/Caddy isn't already
@@ -38,14 +38,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # The dashboard map uses MapLibre (`react-map-gl/maplibre`), which
         # spawns a Web Worker from a blob: URL and fetches vector tiles
         # from openfreemap + nominatim (geocoding). Both need explicit
-        # CSP allow-listing — without `worker-src blob:` MapLibre can't
+        # CSP allow-listing - without `worker-src blob:` MapLibre can't
         # boot at all, and without the connect-src hosts the map stays
         # blank with CSP violations in the console.
         #
         # The Geo Hub 3D globe uses CesiumJS, whose base imagery is
         # OpenStreetMap raster tiles served from ``tile.openstreetmap.org``.
         # Cesium fetches those tiles with ``fetch()`` (so the texture is not
-        # WebGL-tainted), which is governed by ``connect-src`` — NOT
+        # WebGL-tainted), which is governed by ``connect-src`` - NOT
         # ``img-src``. Without the host on ``connect-src`` every tile request
         # is blocked ("Connecting to ... violates ... connect-src") and the
         # globe renders solid black, i.e. "shows only space". The legacy
@@ -82,8 +82,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers.setdefault("Referrer-Policy", "same-origin")
         response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
 
-        # CSP — only set if not already set by an upstream proxy.
-        # IMPORTANT: don't apply to /api/docs or /api/redoc — they need
+        # CSP - only set if not already set by an upstream proxy.
+        # IMPORTANT: don't apply to /api/docs or /api/redoc - they need
         # inline scripts from CDN-hosted Swagger UI.
         path = request.url.path
         if not (
@@ -94,7 +94,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         ):
             response.headers.setdefault("Content-Security-Policy", self._csp)
 
-        # HSTS — only over HTTPS, to avoid pinning insecure local dev.
+        # HSTS - only over HTTPS, to avoid pinning insecure local dev.
         if self._hsts_enabled and request.url.scheme == "https":
             response.headers.setdefault(
                 "Strict-Transport-Security",
@@ -102,7 +102,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             )
 
         # Note about the `server: uvicorn` header:
-        # We can't strip it from middleware — uvicorn writes it at the HTTP
+        # We can't strip it from middleware - uvicorn writes it at the HTTP
         # protocol layer, AFTER the ASGI middleware chain has finished. Setting
         # it here just creates a duplicate header. The proper fix is to launch
         # uvicorn with `server_header=False` (programmatic) or `--no-server-header`

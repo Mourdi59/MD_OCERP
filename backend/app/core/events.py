@@ -2,7 +2,7 @@
 
 Modules publish events; other modules subscribe to them.
 Supports both sync and async handlers.
-Decouples modules from each other — no direct imports needed.
+Decouples modules from each other - no direct imports needed.
 
 Usage:
     # Publishing (in boq module):
@@ -35,7 +35,7 @@ def _log_failures(
     """‌⁠‍Schedule *coro* as a detached task that logs failures at WARNING.
 
     Without this wrapper, ``asyncio.create_task`` will swallow exceptions
-    silently if no one awaits the resulting task — leaving event-driven
+    silently if no one awaits the resulting task - leaving event-driven
     side-effects (auto-PO from tender award, schedule-progress roll-up
     from field reports, etc.) invisible when they crash.
 
@@ -70,7 +70,7 @@ def _log_failures(
     return task
 
 
-# Stable bus protocol revision tag — bumped only when the wire shape
+# Stable bus protocol revision tag - bumped only when the wire shape
 # of EventResult changes.  Persisted as a fixed string so subscribers
 # from older snapshots can detect a protocol skew at startup.
 _BUS_PROTOCOL_TAG: str = "76f7ae245a29ff3c"

@@ -1,4 +1,4 @@
-"""BOQ importers package — pluggable per-format parsers.
+"""BOQ importers package - pluggable per-format parsers.
 
 Epic I (Leistungsverzeichnis / international BOQ) splits the historical
 monolithic ``router.py`` import handlers into a discoverable registry of
@@ -11,9 +11,9 @@ BOQ.
 
 Concrete importers are added by successive commits in this wave:
 
-* :mod:`gaeb_xml` — DACH GAEB DA XML 3.3 (X81/X83/X84/X86)
-* :mod:`excel` — generic Excel/CSV with NRM + MasterFormat heuristics
-* :mod:`bc3` — FIEBDC-3 (Spain + LATAM)
+* :mod:`gaeb_xml` - DACH GAEB DA XML 3.3 (X81/X83/X84/X86)
+* :mod:`excel` - generic Excel/CSV with NRM + MasterFormat heuristics
+* :mod:`bc3` - FIEBDC-3 (Spain + LATAM)
 
 The dispatcher endpoint (``POST /boqs/{boq_id}/import/auto/``) iterates
 ``REGISTERED_IMPORTERS`` in order; for ambiguous files (e.g. a generic
@@ -30,7 +30,7 @@ from app.modules.boq.importers._base import (
     ImporterParseError,
 )
 
-# Ordered registry — first detect() match wins. Populated lazily as each
+# Ordered registry - first detect() match wins. Populated lazily as each
 # importer module is registered (see :func:`_register_default_importers`).
 REGISTERED_IMPORTERS: list[type[BOQImporter]] = []
 
@@ -45,21 +45,21 @@ def _register_default_importers() -> None:
     global REGISTERED_IMPORTERS
 
     importers: list[type[BOQImporter]] = []
-    # GAEB XML — DACH (precise: starts with ``<GAEB``).
+    # GAEB XML - DACH (precise: starts with ``<GAEB``).
     try:
         from app.modules.boq.importers.gaeb_xml import GAEBXMLImporter
 
         importers.append(GAEBXMLImporter)
     except ImportError:
         pass
-    # BC3 — Spain/LATAM (precise: starts with ``~V``).
+    # BC3 - Spain/LATAM (precise: starts with ``~V``).
     try:
         from app.modules.boq.importers.bc3 import BC3Importer
 
         importers.append(BC3Importer)
     except ImportError:
         pass
-    # Excel/CSV — generic catch-all before LLM fallback.
+    # Excel/CSV - generic catch-all before LLM fallback.
     try:
         from app.modules.boq.importers.excel import ExcelImporter
 

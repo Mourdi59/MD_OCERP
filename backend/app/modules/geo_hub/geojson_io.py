@@ -8,7 +8,7 @@ to think about one format.
 
 Security hardening (Round 7):
 
-* :func:`kml_looks_like_kml` checks the leading bytes of a KML upload —
+* :func:`kml_looks_like_kml` checks the leading bytes of a KML upload -
   ``<?xml`` or ``<kml`` (whitespace / UTF-8 BOM tolerant). Used by the
   import endpoint to short-circuit obviously-non-KML payloads with a
   precise 415 rather than letting them fall into the XML parser and
@@ -18,7 +18,7 @@ Security hardening (Round 7):
   column. Anything over the cap raises ``ValueError`` and the router
   translates that to 422.
 
-We deliberately do NOT pull ``fastkml`` or ``pykml`` as a dependency —
+We deliberately do NOT pull ``fastkml`` or ``pykml`` as a dependency -
 both are LGPL/MIT but neither is needed for the small subset we
 support:
 
@@ -176,14 +176,14 @@ def kml_to_geojson(kml_bytes: bytes | str) -> dict[str, Any]:
         kml_bytes = kml_bytes.encode("utf-8")
     try:
         root = DET.fromstring(kml_bytes)
-    except Exception as exc:  # noqa: BLE001 — surface any XML error uniformly
+    except Exception as exc:  # noqa: BLE001 - surface any XML error uniformly
         raise ValueError(f"invalid KML: {exc}") from exc
 
     features: list[dict[str, Any]] = []
     for placemark in root.iter():
         if _strip_ns(placemark.tag) != "Placemark":
             continue
-        # Best-effort geometry pick — KML allows multiple direct
+        # Best-effort geometry pick - KML allows multiple direct
         # geometry children. We take the first parseable one.
         geom: dict[str, Any] | None = None
         for child in placemark:
@@ -284,7 +284,7 @@ def validate_geojson(payload: Any) -> dict[str, Any]:
 def kml_looks_like_kml(payload: str | bytes) -> bool:
     """Return True iff *payload* looks like a KML / XML document.
 
-    A real KML document starts with either ``<?xml`` (the XML prolog —
+    A real KML document starts with either ``<?xml`` (the XML prolog -
     KML 2.x always emits one) or ``<kml`` (some hand-edited or
     application-emitted files skip the prolog). We strip the UTF-8 BOM
     and leading whitespace before checking so well-formed inputs from
@@ -294,7 +294,7 @@ def kml_looks_like_kml(payload: str | bytes) -> bool:
     through to :func:`kml_to_geojson` which then runs ``defusedxml``'s
     full parser and returns a precise error. The point here is to reject
     obvious non-KML bytes (PDF, PNG, raw JSON, binary garbage) at the
-    edge with HTTP 415 rather than 422 — the former tells the client
+    edge with HTTP 415 rather than 422 - the former tells the client
     "you sent the wrong content type", the latter would mean "I tried to
     parse it and it broke".
     """
@@ -310,7 +310,7 @@ def kml_looks_like_kml(payload: str | bytes) -> bool:
         return False
     if head.startswith(b"<?xml"):
         return True
-    # ``<kml`` or ``<Kml`` (case-insensitive) — handle the bare-root case.
+    # ``<kml`` or ``<Kml`` (case-insensitive) - handle the bare-root case.
     if head[:1] == b"<":
         # Use casefold of the next few bytes; cheaper than a full
         # ``lower()`` call on the whole payload.

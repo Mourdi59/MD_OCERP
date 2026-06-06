@@ -4,17 +4,17 @@
 
 The legacy ranker concatenates everything (description + unit + DIN 276
 + region) into a single string and embeds it as one passage. BGE-M3 is
-expressive enough that this dilutes the strong signals — the encoder
+expressive enough that this dilutes the strong signals - the encoder
 spreads its capacity across the noisy bits. The new pipeline splits
 the request into three explicit channels:
 
-* **CORE query** — short, high-signal text (category + type + material
+* **CORE query** - short, high-signal text (category + type + material
   + distinctive specs). Drives both the ``dense`` and ``sparse``
   prefetches in :func:`app.modules.costs.qdrant_adapter.search`.
-* **FILTERS** — native Qdrant predicates on the minimal payload
+* **FILTERS** - native Qdrant predicates on the minimal payload
   (``is_abstract``, ``department_code``, ``unit_dim``). Replaces the
   Python post-filter from the LanceDB era.
-* **RESOURCES query** — optional, only when the upstream extractor
+* **RESOURCES query** - optional, only when the upstream extractor
   attached resource hints (concrete grade, rebar grade, etc). Drives
   the ``resources`` named-vector prefetch.
 
@@ -53,7 +53,7 @@ from app.core.match_service.envelope import ElementEnvelope
 # path today, but published as part of the package).
 #
 # When the envelope has no explicit ``unit_hint`` we infer from
-# whichever quantity is present — same logic the legacy
+# whichever quantity is present - same logic the legacy
 # ``_pick_unit`` used, kept here so the query builder is
 # self-contained.
 
@@ -103,7 +103,7 @@ _UNIT_TYPE: dict[str, str] = {
     "hour": "Time",
     "d": "Time",
     "day": "Time",
-    # Lump sum — never filter, drop instead
+    # Lump sum - never filter, drop instead
     "ls": "",
     "psch": "",
     "lsum": "",
@@ -113,7 +113,7 @@ _UNIT_TYPE: dict[str, str] = {
 def unit_type_for(unit_hint: str | None) -> str | None:
     """‌⁠‍Capitalised ``unit_type`` bucket for a CWICR unit, or ``None`` to skip.
 
-    Matches the DDC v3 snapshot payload's ``unit_type`` field — one of
+    Matches the DDC v3 snapshot payload's ``unit_type`` field - one of
     ``Area`` / ``Volume`` / ``Linear`` / ``Mass`` / ``Count`` / ``Time``.
     Returns ``None`` when the unit is unknown or a lump-sum so the
     caller drops the predicate rather than over-narrowing the search.
@@ -125,7 +125,7 @@ def unit_type_for(unit_hint: str | None) -> str | None:
     return bucket or None
 
 
-# Legacy lowercase ``unit_dim`` table — kept verbatim for back-compat
+# Legacy lowercase ``unit_dim`` table - kept verbatim for back-compat
 # with pre-v3 code paths and tests that still consult the lowercase
 # bucket. NOT derived from ``_UNIT_TYPE`` because the bucket names
 # differ ("length" vs "Linear") and the set of aliases is intentionally
@@ -163,7 +163,7 @@ _UNIT_DIM: dict[str, str] = {
     "h": "time",
     "hr": "time",
     "d": "time",
-    # Lump sum — never filter, drop instead
+    # Lump sum - never filter, drop instead
     "ls": "",
     "psch": "",
     "lsum": "",
@@ -173,7 +173,7 @@ _UNIT_DIM: dict[str, str] = {
 def unit_dim_for(unit_hint: str | None) -> str | None:
     """‌⁠‍Legacy lowercase ``unit_dim`` for back-compat. Prefer :func:`unit_type_for`.
 
-    Returns ``None`` when the unit is unknown or a lump-sum — the caller
+    Returns ``None`` when the unit is unknown or a lump-sum - the caller
     should drop the ``unit_dim`` predicate so the search doesn't
     needlessly narrow.
     """
@@ -191,8 +191,8 @@ def unit_dim_for(unit_hint: str | None) -> str | None:
 # common case: IFC2X3 emits ``IfcWallStandardCase`` while the v3
 # snapshot indexes only ``IfcWall``. Pinning ``IfcWallStandardCase``
 # as a hard filter under that snapshot causes every relax tier to
-# return zero hits — because ``ifc_class`` is bedrock and never gets
-# dropped — so the matcher falls through to the metadata-only path
+# return zero hits - because ``ifc_class`` is bedrock and never gets
+# dropped - so the matcher falls through to the metadata-only path
 # and returns deterministic-but-wrong "Electrical equipment" rows.
 #
 # Collapsing the refinement onto the canonical parent class is
@@ -216,7 +216,7 @@ _IFC_CLASS_PARENT: dict[str, str] = {
     "IfcBeamStandardCase": "IfcBeam",
     "IfcMemberStandardCase": "IfcMember",
     "IfcPlateStandardCase": "IfcPlate",
-    "IfcStandardWallStandardCase": "IfcWall",  # noqa: E501 — synthetic from buggy exporters
+    "IfcStandardWallStandardCase": "IfcWall",  # noqa: E501 - synthetic from buggy exporters
     # Generic MEP base classes → CWICR's concrete subclass.
     # The catalogue indexes ``IfcPipeSegment`` / ``IfcDuctSegment`` /
     # ``IfcCableSegment``; the source IFC often emits the generic
@@ -239,7 +239,7 @@ def canonical_ifc_class(ifc_class: str | None) -> str | None:
     ``IfcWallStandardCase`` → ``IfcWall`` because the CWICR v3
     snapshot indexes the parent class only. The fold is a no-op
     for any class not in :data:`_IFC_CLASS_PARENT` (returns the
-    input verbatim) — that keeps the matcher honest when a
+    input verbatim) - that keeps the matcher honest when a
     catalogue actually does carry the refinement separately.
     """
     if not ifc_class:
@@ -271,13 +271,13 @@ def department_code_for(din276_hint: str | None) -> str | None:
 
 # ── Resource hint extraction ─────────────────────────────────────────────
 #
-# Concrete grade / rebar grade / pipe nominal — when the envelope
+# Concrete grade / rebar grade / pipe nominal - when the envelope
 # attributes name a specific resource the cost rate must consume, we
 # hand that off to the ``resources`` named vector. The encoder has been
 # trained on the rate's top-12 unique resources so a verbatim
 # concrete-grade hit lifts recall without polluting the dense channel.
 #
-# Patterns are intentionally narrow — anything that ends up in
+# Patterns are intentionally narrow - anything that ends up in
 # ``resources_query`` should be specific enough that a CWICR rate
 # either consumes that exact resource or doesn't.
 
@@ -320,11 +320,11 @@ def extract_resource_hints(envelope: ElementEnvelope) -> list[str]:
 # Per MAPPING_PROCESS.md §4.2, the v3 contract distinguishes two filter
 # tiers explicitly:
 #
-#   • ``hard_filters`` — Qdrant ``must`` predicates. A candidate that
+#   • ``hard_filters`` - Qdrant ``must`` predicates. A candidate that
 #     fails the predicate is dropped before scoring. Use only when the
 #     source is authoritative (BIM Pset, exact rate_code from BoQ).
 #
-#   • ``soft_boosts``  — multiplicative score modifiers applied AFTER
+#   • ``soft_boosts``  - multiplicative score modifiers applied AFTER
 #     the RRF fusion. A candidate matching all soft_boosts ranks higher,
 #     but the wrong-bucket candidates still surface so the user sees
 #     them when the source's classifier was wrong.
@@ -344,14 +344,14 @@ class SearchPlan:
             representations in one forward pass.
         sparse_query: Free-form text for the ``sparse`` channel.
             Currently identical to ``dense_query``.
-        hard_filters: Native Qdrant predicates — see
+        hard_filters: Native Qdrant predicates - see
             :func:`app.modules.costs.qdrant_adapter._build_filter`
             for the recognised keys.
         soft_boosts: List of ``(field, value, multiplier)`` triples
             applied to ``hit.score`` after the Qdrant RRF fusion.
             ``multiplier`` is 1.0..2.0 typically; >1.0 boosts, <1.0
             penalises (rarely used).
-        resources_query: Optional 3rd channel — only set when the
+        resources_query: Optional 3rd channel - only set when the
             extractor pulled rare tokens (concrete grades, rebar
             grades) that the ``resources`` named vector can match.
         top_k: Final result count after re-rank. Forwarded to the
@@ -374,7 +374,7 @@ class SearchPlan:
 
         Maps the v3 ``hard_filters`` onto the adapter's ``filters``
         contract (the adapter operates on the must-list directly).
-        ``soft_boosts`` are NOT forwarded — they're applied by the
+        ``soft_boosts`` are NOT forwarded - they're applied by the
         ranker after the search returns.
         """
         return {
@@ -402,7 +402,7 @@ class QueryPayload:
     def search_kwargs(self) -> dict[str, Any]:
         """Splat-friendly dict for ``qdrant_adapter.search(**kwargs)``.
 
-        ``country`` is intentionally NOT included — the caller passes it
+        ``country`` is intentionally NOT included - the caller passes it
         separately so the same envelope can be searched against multiple
         regional collections (e.g. cross-language recall checks).
         """
@@ -433,7 +433,7 @@ def _collection_carries(catalog_id: str | None, field: str) -> bool:
 
     Thin wrapper around
     :func:`qdrant_adapter.collection_has_payload_field` that fails
-    *open* (returns ``True``) when ``catalog_id`` is unknown — callers
+    *open* (returns ``True``) when ``catalog_id`` is unknown - callers
     use this only to *suppress* a hard filter, so an unknown catalogue
     keeps the historical pin-everything behaviour. It fails *closed*
     (returns ``False``) only when the probe positively determines the
@@ -453,11 +453,11 @@ def _collection_carries(catalog_id: str | None, field: str) -> bool:
         collection = country_to_collection(catalog_id)
         sampled = collection_payload_keys(collection)
         if not sampled:
-            # Schema indeterminate (Qdrant down / empty sample) — keep
+            # Schema indeterminate (Qdrant down / empty sample) - keep
             # legacy behaviour rather than guessing.
             return True
         return collection_has_payload_field(catalog_id, field)
-    except Exception:  # noqa: BLE001 — never break planning on a probe
+    except Exception:  # noqa: BLE001 - never break planning on a probe
         return True
 
 
@@ -476,15 +476,15 @@ def build_search_plan(
 
     * ``ifc_class`` / ``ifc_predefined_type`` / ``construction_stage_hint``
       / ``is_external`` / ``is_loadbearing`` / ``is_structural`` are
-      hard when present — these come from BIM Psets that the file
+      hard when present - these come from BIM Psets that the file
       authored explicitly.
     * ``ost_category`` / ``material_class`` / ``nominal_size_mm`` are
-      soft — Revit OST mapping and material parsing are heuristic
+      soft - Revit OST mapping and material parsing are heuristic
       enough that a wrong classification shouldn't drop the right
       answer entirely.
 
     The Phase-1 ``unit_dim`` / ``department_code`` / ``is_abstract``
-    filters from :func:`build_query` stay hard — they're already
+    filters from :func:`build_query` stay hard - they're already
     derived from the safe ``unit_hint`` / ``classifier_hint`` /
     catalogue convention paths.
 
@@ -493,7 +493,7 @@ def build_search_plan(
         plus a ``soft_boosts`` list the ranker applies post-search.
     """
 
-    # ── CORE query — already curated by _envelope_from_group ─────────
+    # ── CORE query - already curated by _envelope_from_group ─────────
     core_query = (envelope.description or envelope.category or "").strip()
     core_query = core_query[:512]
 
@@ -510,7 +510,7 @@ def build_search_plan(
 
     if include_unit_filter and _collection_carries(catalog_id, "unit_type"):
         unit = envelope.unit_hint or _infer_unit_from_quantities(envelope.quantities or {})
-        # DDC v3 snapshot uses ``unit_type`` (capitalised) — match the
+        # DDC v3 snapshot uses ``unit_type`` (capitalised) - match the
         # snapshot vocabulary exactly so the filter actually narrows.
         # Pre-v3 ``unit_dim`` (lowercase) is kept as a legacy alias by
         # ``_build_filter`` but not emitted here.
@@ -519,7 +519,7 @@ def build_search_plan(
             hard["unit_type"] = unit_type
 
     # v3 BIM-authoritative fields. Only attach when the envelope has
-    # the value — None means the upstream extractor didn't populate it
+    # the value - None means the upstream extractor didn't populate it
     # and we don't want to over-narrow. ``ifc_class`` is additionally
     # validated to start with the ``Ifc`` prefix so synthetic source
     # labels (``"BoQ"`` / ``"Text"``) that some adapters write onto
@@ -530,7 +530,7 @@ def build_search_plan(
     # fields is pinned ONLY when the bound CWICR collection actually
     # carries it. The DDC v3 snapshots that ship today
     # (``cwicr_en_v3`` / ``cwicr_mn_v3`` …) DO NOT have an ``ifc_class``
-    # (or ``ifc_predefined_type``) payload field — they classify rows by
+    # (or ``ifc_predefined_type``) payload field - they classify rows by
     # ``csi_division_2`` / ``category_type``. Pinning ``ifc_class`` as a
     # Qdrant ``must`` predicate against such a collection matched ZERO
     # points at every relax tier (``ifc_class`` is bedrock and never
@@ -555,7 +555,7 @@ def build_search_plan(
         hard["ifc_predefined_type"] = envelope.ifc_predefined_type
     if envelope.construction_stage_hint and _collection_carries(catalog_id, "construction_stage"):
         hard["construction_stage"] = envelope.construction_stage_hint
-    # Trinary booleans — only forward when the source explicitly said
+    # Trinary booleans - only forward when the source explicitly said
     # ``True``. ``False`` is rarely useful as a hard filter (most rates
     # don't carry a "definitely not external" flag), and ``None`` means
     # the source didn't say.

@@ -4,9 +4,9 @@ Limits requests per user per time window. Thread-safe via dict with timestamps.
 For production, replace with Redis-based implementation.
 
 Limits are configurable via environment variables:
-  AI_RATE_LIMIT   — max AI requests per minute per user (default 10)
-  API_RATE_LIMIT  — max API requests per minute per user/IP (default 100)
-  LOGIN_RATE_LIMIT — max login attempts per minute per IP (default 10)
+  AI_RATE_LIMIT   - max AI requests per minute per user (default 10)
+  API_RATE_LIMIT  - max API requests per minute per user/IP (default 100)
+  LOGIN_RATE_LIMIT - max login attempts per minute per IP (default 10)
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 def client_identifier(request: Request) -> str:
     """‌⁠‍Resolve the best available client identifier for rate-limiting buckets.
 
-    Prefers the ``X-Forwarded-For`` header when present (first entry — the
+    Prefers the ``X-Forwarded-For`` header when present (first entry - the
     original client) so that Uvicorn sitting behind a reverse proxy
     (nginx/Traefik/Caddy) doesn't lump every request under a single proxy IP
     and accidentally lock out legitimate users after one attacker hits the
@@ -31,7 +31,7 @@ def client_identifier(request: Request) -> str:
 
     Trust note: ``X-Forwarded-For`` is spoofable from the public internet.
     Production deployments MUST strip or overwrite it at the edge proxy
-    before requests reach the app — see deploy/docker/nginx.conf for the
+    before requests reach the app - see deploy/docker/nginx.conf for the
     standard template.
     """
     xff = request.headers.get("x-forwarded-for")
@@ -95,7 +95,7 @@ def _create_limiters() -> tuple[RateLimiter, RateLimiter, RateLimiter]:
     )
 
 
-# Global instances — configured from environment variables
+# Global instances - configured from environment variables
 ai_limiter, api_limiter, login_limiter = _create_limiters()
 
 # Rate limiter for approval / financial mutation endpoints.

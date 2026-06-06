@@ -1,6 +1,6 @@
 """Accommodation module permission definitions.
 
-Coarse RBAC tier — fine-grained gates can be split out later if a
+Coarse RBAC tier - fine-grained gates can be split out later if a
 customer needs to separate "front-desk operator" from "HR housing
 coordinator". For the MVP we keep one read tier (VIEWER) and one write
 tier (EDITOR) with MANAGER gating destructive actions (delete) and

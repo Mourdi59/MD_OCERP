@@ -1,27 +1,27 @@
-"""‌⁠‍Folder-permission service — grant / revoke / effective-permissions API.
+"""‌⁠‍Folder-permission service - grant / revoke / effective-permissions API.
 
 Stateless functions mirroring :mod:`app.modules.documents.share_service`.
 
 Public surface
 --------------
-* :func:`grant_permission` — owner mints a viewer/editor/owner grant.
+* :func:`grant_permission` - owner mints a viewer/editor/owner grant.
   Maps unique-constraint violations to HTTP 409 so the UI can show a
   meaningful "already granted" message instead of a generic 500.
-* :func:`revoke_permission` — owner hard-revokes by primary key
+* :func:`revoke_permission` - owner hard-revokes by primary key
   (soft-flips ``revoked``). The grant survives so a future audit
   endpoint can replay history.
-* :func:`list_permissions` — owner-only inventory for the modal.
-* :func:`effective_permissions_for` — what a non-owner user can see
+* :func:`list_permissions` - owner-only inventory for the modal.
+* :func:`effective_permissions_for` - what a non-owner user can see
   on a given project. Returns a dict keyed by ``(scope_kind,
   scope_path)`` → role string. Includes wildcard (``scope_path is None``)
   grants. The router uses this to filter ``list_documents`` and to
   enforce read/write on ``get_document`` / ``delete_document``.
-* :func:`restricted_scopes_for_project` — the set of
+* :func:`restricted_scopes_for_project` - the set of
   ``(scope_kind, scope_path)`` tuples that have **any** non-revoked
   grant on the project. Used by the router to decide whether an
   unscoped folder is still "open to all members" or has become
   restricted.
-* :func:`folder_access_for` — high-level convenience used by the
+* :func:`folder_access_for` - high-level convenience used by the
   document endpoints: given a user + project + ``(kind, path)`` it
   returns the effective role (or ``None`` for "no access"). Folds the
   "owner bypass", "unscoped folder is open" and "grant required"
@@ -31,7 +31,7 @@ Why a service module instead of a repository?
     The data shape is two queries deep (grants table joined to
     projects + users). Splitting into models / schemas / service keeps
     the router thin and the test surface small without adding a
-    dedicated repository class — the queries are short enough.
+    dedicated repository class - the queries are short enough.
 """
 
 from __future__ import annotations
@@ -77,7 +77,7 @@ async def is_project_member(
     user_id: uuid.UUID,
 ) -> bool:
     """‌⁠‍True when ``user_id`` is a member of the project's default team
-    (owner counts as a member by definition — convenient for callers
+    (owner counts as a member by definition - convenient for callers
     that just want a binary "can this user even see the project?")."""
     if await is_project_owner(session, project_id, user_id):
         return True
@@ -191,7 +191,7 @@ async def list_permissions(
         conditions.append(FolderPermission.revoked.is_(False))
     if scope_kind is not None:
         conditions.append(FolderPermission.scope_kind == scope_kind)
-        # Treat empty string as NULL — matches grant_permission().
+        # Treat empty string as NULL - matches grant_permission().
         normalised_path = scope_path or None
         if normalised_path is None:
             conditions.append(FolderPermission.scope_path.is_(None))
@@ -233,7 +233,7 @@ async def effective_permissions_for(
     for scope_kind, scope_path, role in rows:
         key = (scope_kind, scope_path)
         # Multiple grants on the same scope shouldn't exist (unique
-        # constraint), but if they do we prefer the strongest role —
+        # constraint), but if they do we prefer the strongest role -
         # keeps the contract safe under bugs / data import quirks.
         existing = out.get(key)
         if existing is None or FOLDER_ROLE_RANK.get(role, -1) > FOLDER_ROLE_RANK.get(existing, -1):
@@ -246,7 +246,7 @@ async def restricted_scopes_for_project(
     project_id: uuid.UUID,
 ) -> set[tuple[str, str | None]]:
     """Return every ``(scope_kind, scope_path)`` that has EVER had a
-    grant on the project — revoked rows included.
+    grant on the project - revoked rows included.
 
     Once a folder has been scoped by the owner it remains "managed":
     revoking the last grant doesn't silently open it back up to every
@@ -283,11 +283,11 @@ async def folder_access_for(
         * ``"editor"`` (default member capability) when the scope has
           NO grants at all AND the user is a project member. This
           keeps existing folders unrestricted by default.
-        * ``None`` when the user has no access — caller turns this
+        * ``None`` when the user has no access - caller turns this
           into 404.
 
     The "default member capability" for unscoped folders intentionally
-    grants editor — matches the pre-folder-permissions behaviour where
+    grants editor - matches the pre-folder-permissions behaviour where
     any member with ``documents.update`` could upload / delete.
     """
     user_id_norm = uuid.UUID(str(user_id))
@@ -329,7 +329,7 @@ async def folder_access_for(
     if normalised_path is None and any(sk == scope_kind for sk, _ in restricted):
         # A specific sub-path is restricted, but the user is asking
         # for the "all of kind" view. Treat the wildcard view as
-        # readable (so they see un-restricted siblings) — the
+        # readable (so they see un-restricted siblings) - the
         # per-document filter below removes the restricted rows.
         return "viewer"
 

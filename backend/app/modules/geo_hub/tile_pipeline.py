@@ -14,30 +14,30 @@ and the glTF 2.0 Khronos extensions ``EXT_structural_metadata`` /
 
 Stages (all unit-testable in isolation):
 
-1. ``load_canonical_elements(elements_or_loader)`` — accept either a
+1. ``load_canonical_elements(elements_or_loader)`` - accept either a
    list of canonical-element dicts, or a coroutine that produces them.
-2. ``compute_aabb(elements)`` — axis-aligned bounding box over the
+2. ``compute_aabb(elements)`` - axis-aligned bounding box over the
    element geometries.
-3. ``partition_by_aabb(elements, target_tile_count)`` — naive
+3. ``partition_by_aabb(elements, target_tile_count)`` - naive
    octree-style split (v1 keeps it to a single tile because the
    spec's hierarchical traversal is overkill for the early customers;
    ``partition_by_aabb`` is exposed and tested so v1.1 can flip on
    multi-tile LoD without touching the public API).
-4. ``build_gltf_for_tile(elements, tile_aabb)`` — vertex + index
+4. ``build_gltf_for_tile(elements, tile_aabb)`` - vertex + index
    buffers, mesh primitives, ``EXT_structural_metadata`` property
    table with one row per element. Returns a glTF dict + a packed
    binary buffer.
-5. ``write_b3dm(gltf_bytes, feature_table, batch_table)`` — Cesium's
+5. ``write_b3dm(gltf_bytes, feature_table, batch_table)`` - Cesium's
    binary 3D tile wrapper around a glTF blob.
 6. ``build_tileset_json(tile_aabb, content_uri, geometric_error,
-   anchor_lat, anchor_lon)`` — root ``tileset.json`` with a region or
+   anchor_lat, anchor_lon)`` - root ``tileset.json`` with a region or
    sphere bounding volume positioned at the project anchor.
-7. ``upload_to_minio(...)`` — writes ``tileset.json`` + one ``.b3dm``
+7. ``upload_to_minio(...)`` - writes ``tileset.json`` + one ``.b3dm``
    into the existing :class:`StorageBackend` under
    ``tilesets/{tileset_id}/``.
 
 Reduce complexity for v1: one tile per source. LoD selection lives in
-the spec but is not required for correctness — the viewer treats the
+the spec but is not required for correctness - the viewer treats the
 root tile as the only tile and renders it. v1.1 will partition.
 
 All public functions accept and return only Python primitives so the
@@ -76,7 +76,7 @@ _COMPONENT_TYPE_UNSIGNED_SHORT = 5123
 _ARRAY_BUFFER = 34962
 _ELEMENT_ARRAY_BUFFER = 34963
 
-# Default geometric error in metres — controls when Cesium swaps in a
+# Default geometric error in metres - controls when Cesium swaps in a
 # higher-detail child tile. Picked to match Cesium's "wow that's a
 # building"-scale threshold without forcing the user to set it.
 _DEFAULT_GEOMETRIC_ERROR = 200.0
@@ -180,14 +180,14 @@ def _element_geometry_aabb(element: dict[str, Any]) -> TileAABB | None:
 
     Canonical format gives us at least one of:
 
-    * ``geometry.aabb`` — six-number list [min_x, min_y, min_z, max_x,
+    * ``geometry.aabb`` - six-number list [min_x, min_y, min_z, max_x,
       max_y, max_z] (preferred when the converter wrote it).
     * ``geometry.length_m`` / ``height_m`` / ``thickness_m`` for
       extrusions.
     * ``geometry.area_m2`` / ``geometry.volume_m3`` as a crude fallback
       (we infer a unit cube of equivalent area / volume so the element
       contributes to the tile bounding box even when the converter
-      didn't emit per-element geometry — better than dropping it).
+      didn't emit per-element geometry - better than dropping it).
 
     Returns ``None`` only when the element has no usable spatial hint.
     """
@@ -259,7 +259,7 @@ def partition_by_aabb(
 
     v1 ships a degenerate single-tile partition (returns the elements
     as a single group) when ``target_tile_count == 1``. For >1 we do
-    a simple median-split along the longest axis — recursive doubling
+    a simple median-split along the longest axis - recursive doubling
     until we hit the target group count. The recursion is bounded by
     ``ceil(log2(target_tile_count))`` and works in O(n log n).
     """
@@ -301,7 +301,7 @@ def partition_by_aabb(
             cval = cx if axis == "x" else (cy if axis == "y" else cz)
             (left if cval < mid else right).append(elem)
         if not left or not right:
-            # Split made no progress — stop here.
+            # Split made no progress - stop here.
             return [group]
         return _split(left, depth - 1) + _split(right, depth - 1)
 
@@ -323,7 +323,7 @@ def _emit_box_mesh(
 
     Returns the (new_vertex_offset, new_index_offset) so the caller can
     keep stacking primitives. Each vertex carries a ``_FEATURE_ID_0``
-    attribute that ties back to the metadata property table — this is
+    attribute that ties back to the metadata property table - this is
     what enables ``EXT_mesh_features`` lookups in Cesium.
     """
     # 8 vertices of the AABB (xyz + featureId).
@@ -478,8 +478,8 @@ def build_gltf_for_tile(
     """Build a single-tile glTF 2.0 dict + binary blob.
 
     Each element gets a degenerate box mesh sized to its canonical
-    AABB. The intent here is not to ship visually-perfect geometry —
-    that's the converter's job — but to produce a *valid* glTF that:
+    AABB. The intent here is not to ship visually-perfect geometry -
+    that's the converter's job - but to produce a *valid* glTF that:
 
     * places the right number of features at roughly the right place
     * carries the structural metadata so a tile click lights up the
@@ -953,7 +953,7 @@ async def upload_artifacts(
 ) -> tuple[str, str]:
     """Persist tileset.json + content.b3dm into the storage backend.
 
-    Returns ``(tileset_json_uri, content_uri)`` — the URIs the API
+    Returns ``(tileset_json_uri, content_uri)`` - the URIs the API
     surfaces back to the frontend. When ``storage_backend`` is ``None``
     we use the application-default backend; tests pass in an in-memory
     backend to avoid touching disk.
@@ -990,7 +990,7 @@ def build_tile_artifacts(
 ) -> tuple[dict[str, Any], bytes, GLTFBuild]:
     """Run stages 2-6 end-to-end and return the artefacts.
 
-    Storage upload is intentionally NOT part of this helper — the
+    Storage upload is intentionally NOT part of this helper - the
     service layer drives it so a unit test can grab the bytes without
     a backend.
     """

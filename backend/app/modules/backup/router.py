@@ -9,7 +9,7 @@ BUG-018: ``POST /export/`` previously returned ``Content-Length: 0`` when
 the request had a JSON body. The handler did not declare a body
 parameter (so the OpenAPI surface was empty and the bug looked like
 "endpoint is a stub"), and it returned ``StreamingResponse`` over an
-``io.BytesIO`` — a combination that interacts badly with
+``io.BytesIO`` - a combination that interacts badly with
 ``BaseHTTPMiddleware`` when the request also carries a body. The fix
 moves the build-the-archive logic into ``service.build_backup`` (which
 streams into a ``tempfile.SpooledTemporaryFile``) and exposes a typed
@@ -63,13 +63,13 @@ async def export_backup(
 
     The archive contains:
 
-    * ``manifest.json`` — backup metadata: app id, app version, format
+    * ``manifest.json`` - backup metadata: app id, app version, format
       version, ISO-8601 timestamp, list of modules included, record
       counts per module, file count, SHA-256 checksum, warnings.
-    * ``<module>.json`` — one file per module containing the SQLAlchemy
+    * ``<module>.json`` - one file per module containing the SQLAlchemy
       rows for that module's tables (generic dump via
       :func:`sqlalchemy.inspect`).
-    * ``files/<module>/<storage-key>`` — only when
+    * ``files/<module>/<storage-key>`` - only when
       ``include_files=true``: binary blobs referenced by the module's
       ``file_path`` columns.
 
@@ -79,7 +79,7 @@ async def export_backup(
     the project's JSON-body sanitiser middleware emits an
     ``http.disconnect`` after replaying the request body, which
     Starlette interprets as a client hang-up and uses to cancel
-    streaming bodies — the original BUG-018 ``Content-Length: 0``.
+    streaming bodies - the original BUG-018 ``Content-Length: 0``.
     """
     spool, manifest, _size = await build_backup(
         user_id=str(user_id),
@@ -163,7 +163,7 @@ async def restore_backup(
             if mode == "replace":
                 # FK-safe ordering: delete children before parents (reverse
                 # of the import order). A failure to clear any table aborts
-                # the whole restore — a half-wiped DB must never be committed.
+                # the whole restore - a half-wiped DB must never be committed.
                 # Each delete is scoped to the requesting user's own rows via
                 # the SAME ownership graph the export used, so restore can
                 # never delete another user's data. Tables with no known
@@ -199,7 +199,7 @@ async def restore_backup(
                             # Resolve the PK value first. If a string id is not
                             # a valid UUID for a UUID-keyed table we cannot run
                             # the duplicate check, so we must NOT silently fall
-                            # through and insert it as a new row — that would
+                            # through and insert it as a new row - that would
                             # break merge semantics by importing a duplicate.
                             # Treat an un-checkable record as skipped instead.
                             try:

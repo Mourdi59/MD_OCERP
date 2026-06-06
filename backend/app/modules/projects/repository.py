@@ -1,7 +1,7 @@
 """‌⁠‍Project data access layer.
 
 All database queries for projects live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid
@@ -68,7 +68,7 @@ class ProjectRepository:
         count_stmt = select(func.count()).select_from(base.subquery())
         total = (await self.session.execute(count_stmt)).scalar_one()
 
-        # Fetch — skip eager loading of relationships for list queries
+        # Fetch - skip eager loading of relationships for list queries
         stmt = (
             base.options(
                 noload(Project.wbs_nodes),
@@ -115,7 +115,7 @@ class ProjectRepository:
 
         Used by ``ProjectService._generate_project_code`` to detect the
         rare race where two concurrent creates compute the same next
-        sequence number before either inserts. Cheap — single indexed
+        sequence number before either inserts. Cheap - single indexed
         scalar query.
         """
         stmt = select(func.count()).select_from(select(Project.id).where(Project.project_code == code).subquery())
@@ -127,7 +127,7 @@ class ProjectRepository:
 
         Returns the subset of ``codes`` that are already committed in
         ``Project.project_code``. Issues a single ``WHERE IN (...)``
-        query instead of N point queries — used by the stale-reservation
+        query instead of N point queries - used by the stale-reservation
         prune in ``ProjectService._generate_project_code`` which can
         otherwise spend O(N) round-trips checking reservations on every
         ``create_project`` call when the in-process reservation set has
@@ -135,7 +135,7 @@ class ProjectRepository:
 
         Empty input → empty set (no query issued).
 
-        Hard cap on input size — refuses to issue an unbounded ``IN``
+        Hard cap on input size - refuses to issue an unbounded ``IN``
         clause that could trip Postgres' parameter-limit (max 32k bind
         params on the wire). The caller (generator) keeps the
         reservation set small in practice, but guarding here protects
@@ -168,7 +168,7 @@ class ProjectRepository:
         Performance: pushes the scan into the database as a single
         ``SELECT MAX(CAST(SUBSTR(project_code, N) AS INTEGER))`` aggregate
         scoped by ``LIKE prefix || '%'``. Previously this method loaded
-        every matching row into the application and iterated in Python —
+        every matching row into the application and iterated in Python -
         an O(n) pull that became measurable past a few hundred projects.
         The aggregate runs in O(1) wall time on the indexed column with
         a single round-trip and zero rows transferred.
@@ -178,7 +178,7 @@ class ProjectRepository:
         Instead we feed the cast a substring that's already been
         prefix-matched, then defensively coalesce a ``NULL`` MAX (no
         rows) to ``None``. Rows whose suffix isn't a pure integer don't
-        produce a meaningful ``int(...)`` in the old code path either —
+        produce a meaningful ``int(...)`` in the old code path either -
         on SQLite the cast yields ``0`` for them (harmless: 0 < any real
         sequence), on Postgres the cast raises and we fall through to the
         Python scan as a safety net (preserves existing semantics for
@@ -188,7 +188,7 @@ class ProjectRepository:
         if prefix_len <= 0:
             return None
 
-        # SUBSTR is 1-indexed in SQL — pass prefix_len + 1 to start past
+        # SUBSTR is 1-indexed in SQL - pass prefix_len + 1 to start past
         # the prefix.
         suffix_expr = func.substr(Project.project_code, prefix_len + 1)
         max_expr = func.max(func.cast(suffix_expr, Integer))

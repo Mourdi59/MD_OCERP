@@ -1,10 +1,10 @@
-"""‌⁠‍Document activity log — write helpers and read helpers.
+"""‌⁠‍Document activity log - write helpers and read helpers.
 
-The audit log itself is intentionally trivial — there is one writer
+The audit log itself is intentionally trivial - there is one writer
 (``record_activity``) and one reader (``list_activity``). All callers go
 through the helper so the dedupe rule (skip if the same
 ``(document_id, user_id, action)`` triple fired within the last second)
-applies uniformly — duplicate handler invocations on retry must NOT
+applies uniformly - duplicate handler invocations on retry must NOT
 produce two rows in the timeline.
 """
 
@@ -42,20 +42,20 @@ async def record_activity(
     same ``(document_id, user_id, action)`` triple has been written
     inside the last :data:`_DEDUPE_WINDOW`).
 
-    The helper flushes — but does NOT commit — so the caller can decide
+    The helper flushes - but does NOT commit - so the caller can decide
     whether the surrounding transaction should fold the audit row in or
     roll the whole thing back together with the originating mutation.
     Existing service methods follow ``await session.flush()`` +
     ``await session.commit()`` outside the helper.
 
-    Failures are logged and swallowed — audit logging must NEVER break
+    Failures are logged and swallowed - audit logging must NEVER break
     the user's primary action.
     """
     try:
         # Dedupe: pull the most-recent row for this (doc, action) pair and
         # compare timestamps in Python. We can't compare ``created_at``
         # against a Python cutoff in SQL because the Base table populates
-        # ``created_at`` via ``server_default=CURRENT_TIMESTAMP`` — that's
+        # ``created_at`` via ``server_default=CURRENT_TIMESTAMP`` - that's
         # UTC on SQLite and TZ-naive on PostgreSQL, but ``datetime.now()``
         # in this process is local time, so any SQL-side ``>=`` comparison
         # is wrong by the host's UTC offset.  Pulling one row and doing
@@ -77,7 +77,7 @@ async def record_activity(
             # even on hosts whose local timezone isn't UTC. We normalise
             # tz-aware values (PostgreSQL ``DateTime(timezone=True)``) by
             # stripping the offset before subtracting.
-            now_utc = datetime.utcnow()  # noqa: DTZ003 — Base.created_at is naive UTC
+            now_utc = datetime.utcnow()  # noqa: DTZ003 - Base.created_at is naive UTC
             latest_ts = latest.created_at
             if latest_ts.tzinfo is not None:
                 latest_ts = latest_ts.replace(tzinfo=None)

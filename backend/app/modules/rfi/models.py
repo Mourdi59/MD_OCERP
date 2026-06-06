@@ -1,7 +1,7 @@
 """‌⁠‍RFI ORM models.
 
 Tables:
-    oe_rfi_rfi — requests for information with response tracking and impact assessment
+    oe_rfi_rfi - requests for information with response tracking and impact assessment
 """
 
 import uuid
@@ -85,4 +85,4 @@ class RFI(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<RFI {self.rfi_number} — {self.subject[:40]} ({self.status})>"
+        return f"<RFI {self.rfi_number} - {self.subject[:40]} ({self.status})>"

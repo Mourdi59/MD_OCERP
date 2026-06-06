@@ -1,4 +1,4 @@
-"""‌⁠‍Submittals Pydantic schemas — request/response models."""
+"""‌⁠‍Submittals Pydantic schemas - request/response models."""
 
 from datetime import datetime
 from typing import Any

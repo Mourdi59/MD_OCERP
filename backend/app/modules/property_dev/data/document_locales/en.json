@@ -118,8 +118,8 @@
       "scope": "Scope of Cover",
       "exclusions": "Exclusions"
     },
-    "structural_text": "The Developer warrants the structural integrity of the property — including the load-bearing structure, foundations, and waterproofing — for a period of {years} years from the date of handover.",
-    "finishing_text": "The Developer warrants the finishing works — including paint, fixtures, fittings, appliances installed by the Developer, and minor cosmetic items — for a period of {years} year(s) from the date of handover.",
+    "structural_text": "The Developer warrants the structural integrity of the property - including the load-bearing structure, foundations, and waterproofing - for a period of {years} years from the date of handover.",
+    "finishing_text": "The Developer warrants the finishing works - including paint, fixtures, fittings, appliances installed by the Developer, and minor cosmetic items - for a period of {years} year(s) from the date of handover.",
     "exclusions_text": "This warranty excludes damage caused by misuse, alterations performed by the Buyer or third parties, normal wear and tear, force majeure events, and items covered by separate manufacturer warranties.",
     "claim_procedure": "To file a claim, the Buyer must submit a written notice to the Developer within the warranty period, describing the defect and providing reasonable supporting evidence."
   },

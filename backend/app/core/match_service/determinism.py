@@ -7,24 +7,24 @@ Background
 
 The match pipeline mixes several stochastic surfaces:
 
-1. **BGE-M3 bi-encoder** — encodes the query text. ``FlagEmbedding`` runs
+1. **BGE-M3 bi-encoder** - encodes the query text. ``FlagEmbedding`` runs
    the forward pass in mini-batches; the batch composition is fixed for
    a single ``encode([text])`` call BUT torch op dispatch (specifically
    matmul kernel selection on x86 BLAS) is allowed to vary across
    process boots, producing 1e-5–1e-4 numeric drift in the dense vector.
-2. **BGE cross-encoder rerank** — ``FlagReranker.compute_score(pairs)``
+2. **BGE cross-encoder rerank** - ``FlagReranker.compute_score(pairs)``
    batches pairs together. Batch grouping changes which floating-point
    ops accumulate first, shifting per-pair scores by ε amounts that flip
    tie-breaks at the boundary of the top-k.
-3. **Qdrant HNSW** — the underlying ANN graph is deterministic within a
+3. **Qdrant HNSW** - the underlying ANN graph is deterministic within a
    collection BUT named-vector RRF fusion ties (where dense rank == sparse
    rank for two candidates) resolve by an internal insertion order that
    depends on parallel-fetch completion timing across the two prefetch
    queries.
-4. **Result sorts** — several internal sorts use ``key=lambda c: c.score``
+4. **Result sorts** - several internal sorts use ``key=lambda c: c.score``
    without a tie-break. When two candidates land on the same fused score
    (very common at the v3 cosine collapse band ≈ 0.001–0.04), Python's
-   stable sort preserves their input order — which is itself a function
+   stable sort preserves their input order - which is itself a function
    of (1)–(3).
 
 This module concentrates the fixes so a future maintainer reviewing
@@ -36,11 +36,11 @@ Activation
 ``OE_MATCH_DETERMINISTIC=1`` enables the full pin set at process boot.
 Without it the matcher behaves exactly as before. Set to:
 
-    * ``1`` / ``true``  — pin RNGs to ``OE_MATCH_SEED`` (default 42),
+    * ``1`` / ``true``  - pin RNGs to ``OE_MATCH_SEED`` (default 42),
                            force BGE batch_size=1, install stable post-sort.
-    * unset / ``0``     — production path. No pinning.
+    * unset / ``0``     - production path. No pinning.
 
-The mode is **OFF in production by default** — pinning batch_size=1
+The mode is **OFF in production by default** - pinning batch_size=1
 costs ~3× on the rerank stage and torch's deterministic kernel set is
 slower for the bi-encoder too. Bench runs flip it on for reproducibility.
 
@@ -51,7 +51,7 @@ Setting per-request seeds derived from ``(project_id, session_id)``
 would in theory let production traffic stay deterministic per-user
 while still getting reproducible bench runs. We don't do that because:
 
-1. BGE encoder forward passes share GPU/CPU state across calls — once
+1. BGE encoder forward passes share GPU/CPU state across calls - once
    one request taints the CUDA generator state mid-pass, the next
    request's "fresh seed" can't undo it without a full GPU sync.
 2. The cost is wrong anyway: production wants the natural variance of
@@ -80,7 +80,7 @@ _ACTIVE_SEED: int | None = None
 def is_enabled() -> bool:
     """‌⁠‍Return ``True`` when ``OE_MATCH_DETERMINISTIC`` is set truthy.
 
-    Cheap probe — read once per call. Callers that need the value many
+    Cheap probe - read once per call. Callers that need the value many
     times should cache it on the call stack.
     """
     raw = os.environ.get("OE_MATCH_DETERMINISTIC", "").strip().lower()
@@ -90,7 +90,7 @@ def is_enabled() -> bool:
 def _resolve_seed() -> int:
     """‌⁠‍Read ``OE_MATCH_SEED`` from env or fall back to 42.
 
-    A non-int value falls back silently — the goal is "always have a
+    A non-int value falls back silently - the goal is "always have a
     seed", not "shout at the operator".
     """
     raw = os.environ.get("OE_MATCH_SEED", "").strip()
@@ -106,7 +106,7 @@ def _resolve_seed() -> int:
 def enter_deterministic_mode() -> int | None:
     """Pin every RNG and force BGE batch_size=1.
 
-    Idempotent — first call seeds, subsequent calls return the active
+    Idempotent - first call seeds, subsequent calls return the active
     seed without re-seeding. Returns ``None`` when deterministic mode
     is not enabled by env var, so callers can use the return value as a
     cheap probe ("was anything pinned?").
@@ -117,16 +117,16 @@ def enter_deterministic_mode() -> int | None:
     2. ``numpy.random.seed(seed)`` (no-op when numpy isn't installed).
     3. ``torch.manual_seed(seed)`` (no-op when torch isn't installed).
     4. ``torch.cuda.manual_seed_all(seed)`` when CUDA is available.
-    5. ``torch.use_deterministic_algorithms(True, warn_only=True)`` —
+    5. ``torch.use_deterministic_algorithms(True, warn_only=True)`` -
        ``warn_only`` is important: some kernels (e.g. scaled_dot_product
        attention's flash-attn backend) raise without it, killing the
        request rather than degrading gracefully.
-    6. ``CUBLAS_WORKSPACE_CONFIG=:4096:8`` — required for deterministic
+    6. ``CUBLAS_WORKSPACE_CONFIG=:4096:8`` - required for deterministic
        cuBLAS matmul; harmless on CPU.
     7. Monkeypatch ``FlagReranker.compute_score`` and
        ``BGEM3FlagModel.encode`` to force ``batch_size=1`` so batch
        composition doesn't shift floating-point accumulation order.
-       Applied only when the modules are already loaded — we don't
+       Applied only when the modules are already loaded - we don't
        force-import them.
 
     Returns the seed used, or ``None`` if disabled.
@@ -145,7 +145,7 @@ def enter_deterministic_mode() -> int | None:
 
     random.seed(seed)
 
-    # 2. numpy — used by FlagEmbedding internals; only seed if installed.
+    # 2. numpy - used by FlagEmbedding internals; only seed if installed.
     try:
         import numpy as np
 
@@ -153,7 +153,7 @@ def enter_deterministic_mode() -> int | None:
     except ImportError:
         pass
 
-    # 3-6. torch — guarded so a CPU-only install with no torch (which
+    # 3-6. torch - guarded so a CPU-only install with no torch (which
     # would also have no encoder, but the code path runs anyway when
     # someone toggles the env var on a minimal install) just no-ops.
     try:
@@ -163,7 +163,7 @@ def enter_deterministic_mode() -> int | None:
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed)
             # cuBLAS deterministic matmul requires this env var BEFORE
-            # the first CUDA call. Setting it after isn't a no-op — it
+            # the first CUDA call. Setting it after isn't a no-op - it
             # just gets ignored for the rest of the process. We set it
             # eagerly so a future cuda-tested run picks it up; CPU-only
             # paths ignore it harmlessly.
@@ -172,7 +172,7 @@ def enter_deterministic_mode() -> int | None:
             # warn_only=True so kernels without a deterministic
             # implementation print a warning rather than raising. The
             # rerank path uses such kernels (interpolation, scatter)
-            # for nothing load-bearing — graceful degrade beats a 500.
+            # for nothing load-bearing - graceful degrade beats a 500.
             torch.use_deterministic_algorithms(True, warn_only=True)
         except TypeError:
             # Old torch (<1.11) doesn't have warn_only.
@@ -209,7 +209,7 @@ def _patch_flag_embedding_for_batch_size_1() -> None:
     flip rank-1 vs rank-2 on candidates with near-identical fused
     scores. Forcing 1 makes the vector deterministic for the same input.
 
-    The patch is idempotent — we stamp ``__deterministic__`` on the
+    The patch is idempotent - we stamp ``__deterministic__`` on the
     method so a second call doesn't re-wrap (which would recurse).
     """
     try:
@@ -236,7 +236,7 @@ def _patch_flag_reranker_for_batch_size_1() -> None:
     shifts per-pair logits by ε amounts. Forcing 1 collapses the
     rerank to one transformer forward per (query, candidate) pair.
     Latency cost on CPU: ~3× the batched path for top-10 reranking.
-    Acceptable for benchmark mode; not acceptable for production —
+    Acceptable for benchmark mode; not acceptable for production -
     which is why this only runs when ``OE_MATCH_DETERMINISTIC=1``.
     """
     try:
@@ -264,8 +264,8 @@ def stabilize_candidates(candidates: list[Any]) -> list[Any]:
     once at the end so a missed sort site (or a future regression) can't
     re-introduce non-determinism.
 
-    The sort is stable in Python — equal-keyed items keep their input
-    order — which means once we've sorted on ``(-score, code)``, two
+    The sort is stable in Python - equal-keyed items keep their input
+    order - which means once we've sorted on ``(-score, code)``, two
     candidates with identical score AND code (a pathological case the
     pipeline shouldn't produce but might if a duplicate slips the
     dedup pass) preserve insertion order.
@@ -276,7 +276,7 @@ def stabilize_candidates(candidates: list[Any]) -> list[Any]:
     if not candidates:
         return candidates
     # Sort key: ``-score`` for descending score, ``code`` for ascending
-    # lex tie-break. Score is cast to float defensively — Decimal /
+    # lex tie-break. Score is cast to float defensively - Decimal /
     # numpy scalar inputs would otherwise produce inconsistent sort
     # behaviour across numpy versions.
     candidates.sort(key=lambda c: (-float(getattr(c, "score", 0.0)), str(getattr(c, "code", ""))))

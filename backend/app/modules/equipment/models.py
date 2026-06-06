@@ -1,16 +1,16 @@
 """‌⁠‍Equipment & Fleet ORM models.
 
 Tables:
-    oe_equipment_type                   — Catalog of equipment types
-    oe_equipment_equipment              — Equipment units
-    oe_equipment_telemetry              — Time-series telemetry readings
-    oe_equipment_maintenance_schedule   — Maintenance intervals & triggers
-    oe_equipment_work_order             — Maintenance work orders
-    oe_equipment_inspection             — Periodic inspections & certificates
-    oe_equipment_rental                 — Internal project rentals
-    oe_equipment_fuel_log               — Fuel fills with cost
-    oe_equipment_parts_log              — Replaced parts records
-    oe_equipment_damage_report          — Damage reports with auto WO
+    oe_equipment_type                   - Catalog of equipment types
+    oe_equipment_equipment              - Equipment units
+    oe_equipment_telemetry              - Time-series telemetry readings
+    oe_equipment_maintenance_schedule   - Maintenance intervals & triggers
+    oe_equipment_work_order             - Maintenance work orders
+    oe_equipment_inspection             - Periodic inspections & certificates
+    oe_equipment_rental                 - Internal project rentals
+    oe_equipment_fuel_log               - Fuel fills with cost
+    oe_equipment_parts_log              - Replaced parts records
+    oe_equipment_damage_report          - Damage reports with auto WO
 """
 
 from __future__ import annotations

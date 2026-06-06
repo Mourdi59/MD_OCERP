@@ -10,7 +10,7 @@ Production-grade PDF generators for every sales-pipeline transition:
   * No Objection Certificate / NOC (for resale)
 
 Each generator is a pure function: input dicts/entities, output ``bytes``
-starting with ``%PDF``. Layout uses ``reportlab`` (already a hard dep —
+starting with ``%PDF``. Layout uses ``reportlab`` (already a hard dep -
 see ``regulatory.py`` and ``boq/pdf_export.py`` for prior usage).
 
 Design notes
@@ -39,7 +39,7 @@ Design notes
   thousands-separators per the locale's BCP-47 root (``de`` → ``1.234,56``,
   ``en`` → ``1,234.56``, ``ru`` → ``1 234,56``, ``fr`` → ``1 234,56``).
 
-The generators have no DB / I/O — they take SQLAlchemy ORM instances
+The generators have no DB / I/O - they take SQLAlchemy ORM instances
 (or anything duck-compatible) plus a few primitives, and return bytes.
 The service layer ``generate_document`` wires the right entities in.
 """
@@ -90,7 +90,7 @@ register_pdf_fonts()
 #: catalogue so every UI language has at least an English-content
 #: template option available rather than being silently dropped from
 #: the picker. Adding a new translation = drop a ``<code>.json`` file
-#: into ``data/document_locales/`` — no code change required.
+#: into ``data/document_locales/`` - no code change required.
 SUPPORTED_LOCALES: tuple[str, ...] = (
     "en",
     "de",
@@ -121,12 +121,12 @@ SUPPORTED_LOCALES: tuple[str, ...] = (
     "mn",
 )
 
-#: RTL locales — paragraph wordWrap set to ``RTL`` and alignment flipped.
+#: RTL locales - paragraph wordWrap set to ``RTL`` and alignment flipped.
 RTL_LOCALES: frozenset[str] = frozenset({"ar", "he", "fa", "ur"})
 
 #: Native + English display names for every supported locale. Used by
 #: the locale picker on the document-templates settings page so the
-#: dropdown shows "Deutsch (de)" instead of a bare "DE" — without this
+#: dropdown shows "Deutsch (de)" instead of a bare "DE" - without this
 #: the picker reads like an ISO code dump.
 LOCALE_DISPLAY_NAMES: dict[str, tuple[str, str]] = {
     "en": ("English", "English"),
@@ -165,14 +165,14 @@ def list_locale_status() -> list[dict[str, Any]]:
     Returns one entry per locale in ``SUPPORTED_LOCALES``:
         {code, native_name, english_name, rtl, is_translated, key_count}
 
-    ``is_translated`` is the honest signal — true iff the locale has a
+    ``is_translated`` is the honest signal - true iff the locale has a
     dedicated JSON file in ``data/document_locales/``. Untranslated
     locales are still listed (the renderer falls back to English so the
     PDF still renders), but the UI can mark them clearly so users don't
     pick a locale and get an English PDF without knowing why.
 
     ``key_count`` is the number of top-level + nested string leaves in
-    that locale's JSON — used by the UI to flag partial translations
+    that locale's JSON - used by the UI to flag partial translations
     (e.g. de.json with 12 keys when en.json has 80).
     """
     en_keys = _count_leaf_keys(_load_locale("en"))
@@ -247,7 +247,7 @@ _LOCALE_OVERRIDE_DIR = Path("uploads") / "property_dev" / "document_locales"
 def _override_locale_path(locale: str) -> Path:
     """Resolve the absolute path of an override locale JSON.
 
-    The directory is created lazily — calling this never auto-writes a
+    The directory is created lazily - calling this never auto-writes a
     file, only computes where one would live.
     """
     return (_LOCALE_OVERRIDE_DIR / f"{locale}.json").resolve()
@@ -510,7 +510,7 @@ def _build_page_handler(ctx: _PageContext):
     def _draw(canvas: Canvas, doc: BaseDocTemplate) -> None:
         canvas.saveState()
 
-        # Header — developer + unit code top-right.
+        # Header - developer + unit code top-right.
         canvas.setFont(BOLD_FONT, 14)
         canvas.setFillColor(colors.HexColor("#111827"))
         canvas.drawString(
@@ -538,7 +538,7 @@ def _build_page_handler(ctx: _PageContext):
             A4[1] - PAGE_MARGIN_MM * mm + 1 * mm,
         )
 
-        # Watermark — drawn behind content.
+        # Watermark - drawn behind content.
         if ctx.watermark:
             canvas.saveState()
             canvas.translate(A4[0] / 2, A4[1] / 2)
@@ -549,7 +549,7 @@ def _build_page_handler(ctx: _PageContext):
             canvas.drawCentredString(0, 0, text)
             canvas.restoreState()
 
-        # Footer — doc ref + page X (real count appended by NumberedCanvas)
+        # Footer - doc ref + page X (real count appended by NumberedCanvas)
         canvas.setFont(BODY_FONT, 8)
         canvas.setFillColor(colors.HexColor("#6b7280"))
         gen_str = _t(ctx.locale, "common.generated_at", "Generated {timestamp} UTC").replace(
@@ -568,7 +568,7 @@ def _build_page_handler(ctx: _PageContext):
             PAGE_MARGIN_MM * mm - 10 * mm,
             gen_str,
         )
-        # Right-side page label — final "X of Y" is injected on second pass.
+        # Right-side page label - final "X of Y" is injected on second pass.
         # We draw a placeholder that NumberedCanvas will overwrite.
         canvas.restoreState()
 
@@ -583,7 +583,7 @@ class _NumberedCanvas(Canvas):
         self._saved_pages: list[dict[str, Any]] = []
         self._locale = page_locale
 
-    def showPage(self) -> None:  # noqa: N802 — reportlab API
+    def showPage(self) -> None:  # noqa: N802 - reportlab API
         self._saved_pages.append(dict(self.__dict__))
         self._startPage()
 
@@ -613,7 +613,7 @@ class _NumberedCanvas(Canvas):
 
 
 def _attr(obj: Any, name: str, default: Any = None) -> Any:
-    """Safe getattr for ORM rows OR dicts — both shapes show up in tests."""
+    """Safe getattr for ORM rows OR dicts - both shapes show up in tests."""
     if obj is None:
         return default
     if isinstance(obj, dict):
@@ -782,7 +782,7 @@ def _grid_table_style() -> TableStyle:
 
 
 # ════════════════════════════════════════════════════════════════════════
-#  Generator 1 — Reservation Receipt
+#  Generator 1 - Reservation Receipt
 # ════════════════════════════════════════════════════════════════════════
 
 
@@ -813,7 +813,7 @@ def render_reservation_receipt_pdf(
         unit_code=_unit_code(plot, development),
         doc_ref=doc_ref,
         locale=locale,
-        watermark=False,  # Receipt itself is final — issued on payment
+        watermark=False,  # Receipt itself is final - issued on payment
     )
 
     story: list[Any] = [
@@ -831,7 +831,7 @@ def render_reservation_receipt_pdf(
         Paragraph(_t(locale, "reservation_receipt.headings.plot_details", "Plot Details"), styles["heading"]),
     ]
 
-    # KV table — buyer / property / amounts.
+    # KV table - buyer / property / amounts.
     buyer_lines = "<br/>".join(
         f"{_attr(b, 'full_name', '')} ({_attr(b, 'email', '')})"
         for b in (buyers or [])
@@ -849,16 +849,16 @@ def render_reservation_receipt_pdf(
             Paragraph(
                 _t(locale, "reservation_receipt.headings.reservation_number", "Reservation No."), styles["label"]
             ),
-            Paragraph(str(_attr(reservation, "reservation_number", "—")), styles["body"]),
+            Paragraph(str(_attr(reservation, "reservation_number", "-")), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "reservation_receipt.headings.buyer", "Buyer"), styles["label"]),
-            Paragraph(buyer_lines or "—", styles["body"]),
+            Paragraph(buyer_lines or "-", styles["body"]),
         ],
         [
             Paragraph(_t(locale, "reservation_receipt.headings.property", "Property"), styles["label"]),
             Paragraph(
-                f"{_development_name(development)} — "
+                f"{_development_name(development)} - "
                 f"{_attr(plot, 'plot_number', '')} "
                 f"({_attr(plot, 'area_m2', '')} m²)",
                 styles["body"],
@@ -880,7 +880,7 @@ def render_reservation_receipt_pdf(
         [
             Paragraph(_t(locale, "reservation_receipt.headings.valid_until", "Valid Until"), styles["label"]),
             Paragraph(
-                _format_date(expires_at or cooling_until, locale) or "—",
+                _format_date(expires_at or cooling_until, locale) or "-",
                 styles["body"],
             ),
         ],
@@ -913,7 +913,7 @@ def render_reservation_receipt_pdf(
 
 
 # ════════════════════════════════════════════════════════════════════════
-#  Generator 2 — Sales-Purchase Agreement (SPA)
+#  Generator 2 - Sales-Purchase Agreement (SPA)
 # ════════════════════════════════════════════════════════════════════════
 
 
@@ -1049,7 +1049,7 @@ def render_sales_contract_pdf(
     for p in parties or []:
         buyer_id = _attr(p, "buyer_id", None)
         buyer = (buyer_lookup or {}).get(buyer_id) if buyer_lookup else None
-        name = _attr(buyer, "full_name", "") or _attr(p, "full_name", "") or "—"
+        name = _attr(buyer, "full_name", "") or _attr(p, "full_name", "") or "-"
         email = _attr(buyer, "email", "") or _attr(p, "email", "") or ""
         role = _attr(p, "party_role", "primary") or "primary"
         pct = _attr(p, "ownership_pct", Decimal("0")) or Decimal("0")
@@ -1092,7 +1092,7 @@ def render_sales_contract_pdf(
     prop_rows = [
         [
             Paragraph(_t(locale, "sales_contract.property_columns.plot_number", "Plot Number"), styles["label"]),
-            Paragraph(str(_attr(plot, "plot_number", "—")), styles["body"]),
+            Paragraph(str(_attr(plot, "plot_number", "-")), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "sales_contract.property_columns.development", "Development"), styles["label"]),
@@ -1100,7 +1100,7 @@ def render_sales_contract_pdf(
         ],
         [
             Paragraph(_t(locale, "sales_contract.property_columns.area_m2", "Area (m²)"), styles["label"]),
-            Paragraph(str(_attr(plot, "area_m2", "—")), styles["body"]),
+            Paragraph(str(_attr(plot, "area_m2", "-")), styles["body"]),
         ],
     ]
     house_type_label = _attr(plot, "house_type_label", None)
@@ -1257,7 +1257,7 @@ def render_sales_contract_pdf(
 
 
 # ════════════════════════════════════════════════════════════════════════
-#  Generator 3 — Payment Receipt
+#  Generator 3 - Payment Receipt
 # ════════════════════════════════════════════════════════════════════════
 
 
@@ -1307,7 +1307,7 @@ def render_payment_receipt_pdf(
     rows = [
         [
             Paragraph(_t(locale, "payment_receipt.headings.spa_ref", "Agreement No."), styles["label"]),
-            Paragraph(str(_attr(sales_contract, "contract_number", "—")), styles["body"]),
+            Paragraph(str(_attr(sales_contract, "contract_number", "-")), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "payment_receipt.headings.instalment", "Instalment"), styles["label"]),
@@ -1329,16 +1329,16 @@ def render_payment_receipt_pdf(
         ],
         [
             Paragraph(_t(locale, "payment_receipt.headings.payment_method", "Payment Method"), styles["label"]),
-            Paragraph(str(payment_method or "—"), styles["body"]),
+            Paragraph(str(payment_method or "-"), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "payment_receipt.headings.payment_ref", "Payment Reference"), styles["label"]),
-            Paragraph(str(payment_ref or "—"), styles["body"]),
+            Paragraph(str(payment_ref or "-"), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "payment_receipt.headings.paid_at", "Paid On"), styles["label"]),
             Paragraph(
-                _format_date(_attr(instalment, "paid_at", None), locale) or "—",
+                _format_date(_attr(instalment, "paid_at", None), locale) or "-",
                 styles["body"],
             ),
         ],
@@ -1366,7 +1366,7 @@ def render_payment_receipt_pdf(
 
 
 # ════════════════════════════════════════════════════════════════════════
-#  Generator 4 — Handover Certificate
+#  Generator 4 - Handover Certificate
 # ════════════════════════════════════════════════════════════════════════
 
 
@@ -1378,7 +1378,7 @@ def render_handover_certificate_pdf(
     development: Any,
     locale: str = "en",
 ) -> bytes:
-    """Certificate of handover — buyer signs to accept the unit."""
+    """Certificate of handover - buyer signs to accept the unit."""
     if locale not in SUPPORTED_LOCALES:
         locale = "en"
     styles = _styles(locale)
@@ -1404,14 +1404,14 @@ def render_handover_certificate_pdf(
     rows = [
         [
             Paragraph(_t(locale, "handover_certificate.headings.spa_ref", "Agreement No."), styles["label"]),
-            Paragraph(str(_attr(sales_contract, "contract_number", "—")), styles["body"]),
+            Paragraph(str(_attr(sales_contract, "contract_number", "-")), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "handover_certificate.headings.completed_at", "Handover Date"), styles["label"]),
             Paragraph(
                 _format_date(_attr(handover, "completed_at", None), locale)
                 or _format_date(_attr(handover, "scheduled_at", None), locale)
-                or "—",
+                or "-",
                 styles["body"],
             ),
         ],
@@ -1424,7 +1424,7 @@ def render_handover_certificate_pdf(
                 _t(locale, "handover_certificate.headings.keys_handed_over", "Keys Handed Over"), styles["label"]
             ),
             Paragraph(
-                _format_date(_attr(handover, "keys_handed_over_at", None), locale) or "—",
+                _format_date(_attr(handover, "keys_handed_over_at", None), locale) or "-",
                 styles["body"],
             ),
         ],
@@ -1484,7 +1484,7 @@ def render_handover_certificate_pdf(
 
 
 # ════════════════════════════════════════════════════════════════════════
-#  Generator 5 — Warranty Certificate
+#  Generator 5 - Warranty Certificate
 # ════════════════════════════════════════════════════════════════════════
 
 
@@ -1498,7 +1498,7 @@ def render_warranty_certificate_pdf(
     plot: Any = None,
     development: Any = None,
 ) -> bytes:
-    """Warranty certificate — typically structural 10y, finishing 1y."""
+    """Warranty certificate - typically structural 10y, finishing 1y."""
     if locale not in SUPPORTED_LOCALES:
         locale = "en"
     styles = _styles(locale)
@@ -1533,11 +1533,11 @@ def render_warranty_certificate_pdf(
     rows = [
         [
             Paragraph(_t(locale, "warranty_certificate.headings.spa_ref", "Agreement No."), styles["label"]),
-            Paragraph(str(_attr(sales_contract, "contract_number", "—")), styles["body"]),
+            Paragraph(str(_attr(sales_contract, "contract_number", "-")), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "warranty_certificate.headings.handover_date", "Handover Date"), styles["label"]),
-            Paragraph(handover_iso or "—", styles["body"]),
+            Paragraph(handover_iso or "-", styles["body"]),
         ],
         [
             Paragraph(
@@ -1553,7 +1553,7 @@ def render_warranty_certificate_pdf(
         ],
         [
             Paragraph(_t(locale, "warranty_certificate.headings.warranty_expiry", "Warranty Expiry"), styles["label"]),
-            Paragraph(expiry_iso or "—", styles["body"]),
+            Paragraph(expiry_iso or "-", styles["body"]),
         ],
     ]
     tbl = Table(rows, colWidths=[60 * mm, 100 * mm])
@@ -1598,7 +1598,7 @@ def render_warranty_certificate_pdf(
 
 
 # ════════════════════════════════════════════════════════════════════════
-#  Generator 6 — NOC (No Objection Certificate)
+#  Generator 6 - NOC (No Objection Certificate)
 # ════════════════════════════════════════════════════════════════════════
 
 
@@ -1611,7 +1611,7 @@ def render_no_objection_certificate_pdf(
     *,
     validity_days: int = DEFAULT_NOC_VALIDITY_DAYS,
 ) -> bytes:
-    """NOC — developer's permission for the buyer to resell."""
+    """NOC - developer's permission for the buyer to resell."""
     if locale not in SUPPORTED_LOCALES:
         locale = "en"
     styles = _styles(locale)
@@ -1640,11 +1640,11 @@ def render_no_objection_certificate_pdf(
     rows = [
         [
             Paragraph(_t(locale, "noc.headings.spa_ref", "Agreement No."), styles["label"]),
-            Paragraph(str(_attr(sales_contract, "contract_number", "—")), styles["body"]),
+            Paragraph(str(_attr(sales_contract, "contract_number", "-")), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "noc.headings.requested_by", "Requested By"), styles["label"]),
-            Paragraph(str(requested_by or "—"), styles["body"]),
+            Paragraph(str(requested_by or "-"), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "common.date", "Date"), styles["label"]),
@@ -1690,7 +1690,7 @@ def render_no_objection_certificate_pdf(
 
 
 # ════════════════════════════════════════════════════════════════════════
-#  Generator 7 — Tenant Lease Agreement
+#  Generator 7 - Tenant Lease Agreement
 # ════════════════════════════════════════════════════════════════════════
 
 
@@ -1705,7 +1705,7 @@ def render_tenant_lease_agreement_pdf(
 
     Useful for build-to-rent and post-handover developer-owned inventory.
     Pulls term length / rent / deposit from the ``lease`` blob (free
-    duck-typed shape — works against ORM rows OR dicts) and emits a
+    duck-typed shape - works against ORM rows OR dicts) and emits a
     standard residential lease body with a signature block per tenant.
     """
     if locale not in SUPPORTED_LOCALES:
@@ -1733,8 +1733,8 @@ def render_tenant_lease_agreement_pdf(
     ccy = _attr(lease, "currency", "") or _attr(plot, "currency", "") or ""
     monthly_rent = _attr(lease, "monthly_rent", Decimal("0"))
     security_deposit = _attr(lease, "security_deposit", Decimal("0"))
-    start_date = _format_date(_attr(lease, "start_date", None), locale) or "—"
-    end_date = _format_date(_attr(lease, "end_date", None), locale) or "—"
+    start_date = _format_date(_attr(lease, "start_date", None), locale) or "-"
+    end_date = _format_date(_attr(lease, "end_date", None), locale) or "-"
     term_months = _attr(lease, "term_months", 12)
 
     tenant_lines = "<br/>".join(
@@ -1746,16 +1746,16 @@ def render_tenant_lease_agreement_pdf(
     rows = [
         [
             Paragraph(_t(locale, "tenant_lease_agreement.headings.lease_number", "Lease No."), styles["label"]),
-            Paragraph(str(_attr(lease, "lease_number", "—")), styles["body"]),
+            Paragraph(str(_attr(lease, "lease_number", "-")), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "tenant_lease_agreement.headings.tenant", "Tenant"), styles["label"]),
-            Paragraph(tenant_lines or "—", styles["body"]),
+            Paragraph(tenant_lines or "-", styles["body"]),
         ],
         [
             Paragraph(_t(locale, "tenant_lease_agreement.headings.property", "Property"), styles["label"]),
             Paragraph(
-                f"{_development_name(development)} — "
+                f"{_development_name(development)} - "
                 f"{_attr(plot, 'plot_number', '')} "
                 f"({_attr(plot, 'area_m2', '')} m²)",
                 styles["body"],
@@ -1764,7 +1764,7 @@ def render_tenant_lease_agreement_pdf(
         [
             Paragraph(_t(locale, "tenant_lease_agreement.headings.term", "Term"), styles["label"]),
             Paragraph(
-                f"{int(term_months or 0)} months — {start_date} → {end_date}",
+                f"{int(term_months or 0)} months - {start_date} → {end_date}",
                 styles["body"],
             ),
         ],
@@ -1824,7 +1824,7 @@ def render_tenant_lease_agreement_pdf(
 
 
 # ════════════════════════════════════════════════════════════════════════
-#  Generator 8 — Move-in Checklist (room-by-room condition report)
+#  Generator 8 - Move-in Checklist (room-by-room condition report)
 # ════════════════════════════════════════════════════════════════════════
 
 
@@ -1838,7 +1838,7 @@ def render_move_in_checklist_pdf(
 ) -> bytes:
     """Itemised property-condition report at handover.
 
-    Companion to the handover certificate — focuses on furnishings /
+    Companion to the handover certificate - focuses on furnishings /
     appliance state per room. Each row in ``rooms`` is treated as a
     dict-like with ``name``, ``items`` (list of dict ``{label,
     condition, notes}``).
@@ -1875,14 +1875,14 @@ def render_move_in_checklist_pdf(
     meta_rows = [
         [
             Paragraph(_t(locale, "move_in_checklist.headings.spa_ref", "Agreement No."), styles["label"]),
-            Paragraph(str(_attr(sales_contract, "contract_number", "—")), styles["body"]),
+            Paragraph(str(_attr(sales_contract, "contract_number", "-")), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "move_in_checklist.headings.inspection_date", "Inspection Date"), styles["label"]),
             Paragraph(
                 _format_date(_attr(handover, "completed_at", None), locale)
                 or _format_date(_attr(handover, "scheduled_at", None), locale)
-                or "—",
+                or "-",
                 styles["body"],
             ),
         ],
@@ -1894,7 +1894,7 @@ def render_move_in_checklist_pdf(
 
     if rooms:
         for room in rooms:
-            room_name = _attr(room, "name", "") or "—"
+            room_name = _attr(room, "name", "") or "-"
             items = _attr(room, "items", None) or []
             story.append(Paragraph(str(room_name), styles["heading"]))
             room_rows: list[list[Any]] = [
@@ -1907,8 +1907,8 @@ def render_move_in_checklist_pdf(
             for it in items:
                 room_rows.append(
                     [
-                        Paragraph(str(_attr(it, "label", "") or "—"), styles["body"]),
-                        Paragraph(str(_attr(it, "condition", "") or "—"), styles["body"]),
+                        Paragraph(str(_attr(it, "label", "") or "-"), styles["body"]),
+                        Paragraph(str(_attr(it, "condition", "") or "-"), styles["body"]),
                         Paragraph(str(_attr(it, "notes", "") or ""), styles["body"]),
                     ]
                 )
@@ -1951,7 +1951,7 @@ def render_move_in_checklist_pdf(
 
 
 # ════════════════════════════════════════════════════════════════════════
-#  Generator 9 — Mortgage Clearance Letter
+#  Generator 9 - Mortgage Clearance Letter
 # ════════════════════════════════════════════════════════════════════════
 
 
@@ -1992,16 +1992,16 @@ def render_mortgage_clearance_letter_pdf(
     rows = [
         [
             Paragraph(_t(locale, "mortgage_clearance_letter.headings.bank", "Issued To (Bank)"), styles["label"]),
-            Paragraph(str(bank_name or "—"), styles["body"]),
+            Paragraph(str(bank_name or "-"), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "mortgage_clearance_letter.headings.spa_ref", "Agreement No."), styles["label"]),
-            Paragraph(str(_attr(sales_contract, "contract_number", "—")), styles["body"]),
+            Paragraph(str(_attr(sales_contract, "contract_number", "-")), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "mortgage_clearance_letter.headings.unit", "Unit"), styles["label"]),
             Paragraph(
-                f"{_development_name(development)} — {_attr(plot, 'plot_number', '')}",
+                f"{_development_name(development)} - {_attr(plot, 'plot_number', '')}",
                 styles["body"],
             ),
         ],
@@ -2033,7 +2033,7 @@ def render_mortgage_clearance_letter_pdf(
 
 
 # ════════════════════════════════════════════════════════════════════════
-#  Generator 10 — Title Deed Transfer Request
+#  Generator 10 - Title Deed Transfer Request
 # ════════════════════════════════════════════════════════════════════════
 
 
@@ -2078,23 +2078,23 @@ def render_title_deed_transfer_request_pdf(
     for p in parties or []:
         buyer_id = _attr(p, "buyer_id", None)
         buyer = (buyer_lookup or {}).get(buyer_id) if buyer_lookup else None
-        name = _attr(buyer, "full_name", "") or _attr(p, "full_name", "") or "—"
+        name = _attr(buyer, "full_name", "") or _attr(p, "full_name", "") or "-"
         pct = _attr(p, "ownership_pct", "") or ""
         party_names.append(f"{name} ({pct}%)" if pct else str(name))
 
     rows = [
         [
             Paragraph(_t(locale, "title_deed_transfer_request.headings.registry", "Land Registry"), styles["label"]),
-            Paragraph(str(registry_name or "—"), styles["body"]),
+            Paragraph(str(registry_name or "-"), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "title_deed_transfer_request.headings.spa_ref", "Agreement No."), styles["label"]),
-            Paragraph(str(_attr(sales_contract, "contract_number", "—")), styles["body"]),
+            Paragraph(str(_attr(sales_contract, "contract_number", "-")), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "title_deed_transfer_request.headings.unit", "Unit"), styles["label"]),
             Paragraph(
-                f"{_development_name(development)} — "
+                f"{_development_name(development)} - "
                 f"{_attr(plot, 'plot_number', '')} "
                 f"({_attr(plot, 'area_m2', '')} m²)",
                 styles["body"],
@@ -2103,7 +2103,7 @@ def render_title_deed_transfer_request_pdf(
         [
             Paragraph(_t(locale, "title_deed_transfer_request.headings.new_owners", "New Owner(s)"), styles["label"]),
             Paragraph(
-                "<br/>".join(party_names) if party_names else "—",
+                "<br/>".join(party_names) if party_names else "-",
                 styles["body"],
             ),
         ],
@@ -2137,7 +2137,7 @@ def render_title_deed_transfer_request_pdf(
 
 
 # ════════════════════════════════════════════════════════════════════════
-#  Generator 11 — Escrow Release Authorization
+#  Generator 11 - Escrow Release Authorization
 # ════════════════════════════════════════════════════════════════════════
 
 
@@ -2181,16 +2181,16 @@ def render_escrow_release_authorization_pdf(
                 _t(locale, "escrow_release_authorization.headings.escrow_account", "Escrow Account No."),
                 styles["label"],
             ),
-            Paragraph(str(escrow_account_no or "—"), styles["body"]),
+            Paragraph(str(escrow_account_no or "-"), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "escrow_release_authorization.headings.spa_ref", "Agreement No."), styles["label"]),
-            Paragraph(str(_attr(sales_contract, "contract_number", "—")), styles["body"]),
+            Paragraph(str(_attr(sales_contract, "contract_number", "-")), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "escrow_release_authorization.headings.unit", "Unit"), styles["label"]),
             Paragraph(
-                f"{_development_name(development)} — {_attr(plot, 'plot_number', '')}",
+                f"{_development_name(development)} - {_attr(plot, 'plot_number', '')}",
                 styles["body"],
             ),
         ],
@@ -2208,7 +2208,7 @@ def render_escrow_release_authorization_pdf(
             Paragraph(
                 _t(locale, "escrow_release_authorization.headings.release_reason", "Release Reason"), styles["label"]
             ),
-            Paragraph(str(release_reason or "—"), styles["body"]),
+            Paragraph(str(release_reason or "-"), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "common.date", "Date"), styles["label"]),
@@ -2236,7 +2236,7 @@ def render_escrow_release_authorization_pdf(
 
 
 # ════════════════════════════════════════════════════════════════════════
-#  Generator 12 — Refund Authorization
+#  Generator 12 - Refund Authorization
 # ════════════════════════════════════════════════════════════════════════
 
 
@@ -2253,7 +2253,7 @@ def render_refund_authorization_pdf(
 ) -> bytes:
     """Formal refund instruction (reservation or contract cancelled).
 
-    Either ``sales_contract`` OR ``reservation`` may be the source — the
+    Either ``sales_contract`` OR ``reservation`` may be the source - the
     title bar shows whichever is non-empty.
     """
     if locale not in SUPPORTED_LOCALES:
@@ -2287,7 +2287,7 @@ def render_refund_authorization_pdf(
         _attr(sales_contract, "currency", "") or _attr(reservation, "currency", "") or _attr(plot, "currency", "") or ""
     )
 
-    ref_value = _attr(sales_contract, "contract_number", "") or _attr(reservation, "reservation_number", "") or "—"
+    ref_value = _attr(sales_contract, "contract_number", "") or _attr(reservation, "reservation_number", "") or "-"
 
     rows = [
         [
@@ -2297,7 +2297,7 @@ def render_refund_authorization_pdf(
         [
             Paragraph(_t(locale, "refund_authorization.headings.unit", "Unit"), styles["label"]),
             Paragraph(
-                f"{_development_name(development)} — {_attr(plot, 'plot_number', '')}",
+                f"{_development_name(development)} - {_attr(plot, 'plot_number', '')}",
                 styles["body"],
             ),
         ],
@@ -2310,11 +2310,11 @@ def render_refund_authorization_pdf(
         ],
         [
             Paragraph(_t(locale, "refund_authorization.headings.reason", "Reason"), styles["label"]),
-            Paragraph(str(refund_reason or "—"), styles["body"]),
+            Paragraph(str(refund_reason or "-"), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "refund_authorization.headings.payment_method", "Payment Method"), styles["label"]),
-            Paragraph(str(payment_method or "—"), styles["body"]),
+            Paragraph(str(payment_method or "-"), styles["body"]),
         ],
         [
             Paragraph(_t(locale, "common.date", "Date"), styles["label"]),

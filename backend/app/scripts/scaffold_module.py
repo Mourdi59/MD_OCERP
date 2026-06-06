@@ -19,7 +19,7 @@ The script:
    placeholders inside every file AND in filenames.
 4. Refuses to overwrite an existing module.
 
-Cross-platform — pure ``pathlib`` + ``shutil``, no shell tricks.
+Cross-platform - pure ``pathlib`` + ``shutil``, no shell tricks.
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ def _display_name_from(name: str) -> str:
 
 
 def _short_name(name: str) -> str:
-    """Package directory name — manifest ``oe_projects`` ⇄ pkg ``projects``."""
+    """Package directory name - manifest ``oe_projects`` ⇄ pkg ``projects``."""
     return name[len("oe_") :]
 
 
@@ -128,7 +128,7 @@ def scaffold(name: str, *, author: str = "Module Author") -> Path:
     )
 
     # 2. Substitute file contents AND filenames.
-    #    Walk twice — content first (so renamed files don't go untouched),
+    #    Walk twice - content first (so renamed files don't go untouched),
     #    then filenames bottom-up so parent renames don't invalidate paths.
     for path in target.rglob("*"):
         if path.is_file():
@@ -155,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
     target = scaffold(name, author=author)
 
     sys.stdout.write(
-        f"Done — module scaffolded at {target}\n"
+        f"Done - module scaffolded at {target}\n"
         f"  Next:\n"
         f"    1. Edit {target / 'manifest.py'} (description, depends).\n"
         f"    2. Move {target / 'migrations' / 'v0001_initial.py'} into\n"

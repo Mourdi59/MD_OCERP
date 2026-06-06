@@ -1,4 +1,4 @@
-"""‌⁠‍Full EVM service — advanced Earned Value Management with forecasting.
+"""‌⁠‍Full EVM service - advanced Earned Value Management with forecasting.
 
 Stateless service layer.  Extends the basic EVM in the finance module
 with ETC, EAC, VAC, TCPI calculations and S-curve data.
@@ -25,7 +25,7 @@ ZERO = Decimal("0")
 QUANTIZE = Decimal("0.01")
 
 # Event published when a freshly-computed forecast breaches a project
-# AlertRule. Item #24 (risk/task auto-escalation) subscribes to this — we
+# AlertRule. Item #24 (risk/task auto-escalation) subscribes to this - we
 # only emit it here; we never auto-escalate.
 FORECAST_ALERT_EVENT = "forecast.alert_triggered"
 
@@ -33,7 +33,7 @@ FORECAST_ALERT_EVENT = "forecast.alert_triggered"
 # resolves each to a comparable Decimal from the forecast + its source
 # snapshot metadata, then applies the rule's condition/threshold. Anything
 # outside this set is silently ignored (forecasts can only speak to EVM
-# metrics — other KPIs are bi_dashboards' job, not ours).
+# metrics - other KPIs are bi_dashboards' job, not ours).
 FORECAST_KPI_CODES = frozenset(
     {"cpi", "spi", "eac", "vac", "etc", "tcpi", "eac_over_bac"},
 )
@@ -52,7 +52,7 @@ class ForecastBreach:
     """‌⁠‍A single AlertRule that a forecast breached.
 
     Carries everything the event payload and the notification need without
-    re-querying the rule — stays decoupled from the bi_dashboards ORM.
+    re-querying the rule - stays decoupled from the bi_dashboards ORM.
     """
 
     rule_id: str
@@ -173,7 +173,7 @@ class EVMService:
         # TCPI = (BAC - EV) / (BAC - AC)
         # Denominator-zero edge case: BAC == AC means the project has already
         # consumed its entire budget. If any work remains (remaining > 0) the
-        # true TCPI is mathematically infinite — returning 0 (the previous
+        # true TCPI is mathematically infinite - returning 0 (the previous
         # behaviour) would falsely imply "no effort needed". We store the
         # sentinel "inf" so downstream consumers can render it as
         # "Not Achievable" / unbounded rather than treating it as a healthy 0.
@@ -346,7 +346,7 @@ class EVMService:
     ) -> list[ForecastBreach]:
         """‌⁠‍Return the AlertRules a forecast breaches (empty == healthy).
 
-        Deterministic threshold evaluation — no AI, no side effects. The
+        Deterministic threshold evaluation - no AI, no side effects. The
         batch job uses this; the unit tests call it directly.
         """
         rules = await self._load_alert_rules(project_id)
@@ -375,7 +375,7 @@ class EVMService:
         return breaches
 
     async def _project_owner_id(self, project_id: uuid.UUID) -> str | None:
-        """‌⁠‍Look up the project owner — the default alert recipient."""
+        """‌⁠‍Look up the project owner - the default alert recipient."""
         try:
             row = (
                 await self.session.execute(
@@ -471,7 +471,7 @@ class EVMService:
 
         Projects without a snapshot are skipped (no forecast possible yet).
         Returns a per-project result summary for the job runner / tests.
-        Caller owns the transaction — we ``flush`` but never ``commit`` so the
+        Caller owns the transaction - we ``flush`` but never ``commit`` so the
         batch is atomic with whatever drove it.
         """
         results: list[dict] = []
@@ -479,7 +479,7 @@ class EVMService:
             try:
                 forecast = await self.calculate_forecast(pid, forecast_method=forecast_method)
             except HTTPException:
-                # No snapshot for this project — nothing to forecast yet.
+                # No snapshot for this project - nothing to forecast yet.
                 results.append({"project_id": str(pid), "status": "no_snapshot"})
                 continue
 
@@ -590,7 +590,7 @@ class EVMService:
         return forecast
 
 
-# Severity ranking — higher number == louder. Used to pick the "worst"
+# Severity ranking - higher number == louder. Used to pick the "worst"
 # breach when several rules fire on one forecast.
 _SEVERITY_RANK: dict[str, int] = {
     "info": 0,

@@ -5,7 +5,7 @@ ContextVar so :func:`app.core.audit_log.log_activity` can persist the
 peer IP, User-Agent, and correlation ID without service-layer callers
 having to thread the values manually.
 
-Identity (``actor_id`` / ``tenant_id``) is **not** resolved here —
+Identity (``actor_id`` / ``tenant_id``) is **not** resolved here -
 authentication happens later in the request lifecycle via the
 ``get_current_user_id`` dependency. The dependency
 :func:`app.dependencies.audit_context_dep` enriches the same ContextVar
@@ -46,7 +46,7 @@ def _client_ip(request: Request) -> str | None:
     """Best-effort peer IP extraction.
 
     Honours ``X-Forwarded-For`` (first hop) and ``X-Real-IP`` when set by
-    a trusted proxy in front of the app — otherwise falls back to the
+    a trusted proxy in front of the app - otherwise falls back to the
     ASGI peer. Returns ``None`` when no value is available (TestClient
     scope has no peer).
     """
@@ -71,14 +71,14 @@ def _client_ip(request: Request) -> str | None:
 class ActorContextMiddleware(BaseHTTPMiddleware):
     """Populate the per-request AuditContext ContextVar.
 
-    Identity fields (``actor_id``, ``tenant_id``) stay ``None`` here —
+    Identity fields (``actor_id``, ``tenant_id``) stay ``None`` here -
     they are filled in by
     :func:`app.dependencies.audit_context_dep` once auth has resolved
     the user. Capture fields (``ip_address``, ``user_agent``,
     ``request_id``) are written up-front so even unauthenticated
     handlers (or 401-rejected requests) still leave a trail.
 
-    Failure to set the context never breaks the request — the
+    Failure to set the context never breaks the request - the
     ContextVar is best-effort capture, not part of the request contract.
     """
 
@@ -88,7 +88,7 @@ class ActorContextMiddleware(BaseHTTPMiddleware):
             ua_raw = request.headers.get("user-agent")
             ua = ua_raw[:_MAX_UA_LEN] if ua_raw else None
             rid = get_request_id()
-        except Exception:  # pragma: no cover — defensive
+        except Exception:  # pragma: no cover - defensive
             logger.exception("actor_context: capture failed; continuing without context")
             return await call_next(request)
 

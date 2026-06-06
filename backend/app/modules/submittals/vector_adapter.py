@@ -1,11 +1,11 @@
-"""‌⁠‍Submittals vector adapter — feeds the ``oe_submittals_submittals`` collection.
+"""‌⁠‍Submittals vector adapter - feeds the ``oe_submittals_submittals`` collection.
 
 Each :class:`~app.modules.submittals.models.Submittal` row is embedded as
 the submittal number, title, spec section and type so the AI advisor and
 the global Cmd+K modal can recall submittals by meaning ("concrete mix
 design", "fire-rated door shop drawings") rather than exact text match.
 
-The adapter is deliberately narrow — it knows nothing about the event bus
+The adapter is deliberately narrow - it knows nothing about the event bus
 or HTTP routing.  Wiring lives in :mod:`app.modules.submittals.events`.
 Implements the :class:`~app.core.vector_index.EmbeddingAdapter` protocol.
 """
@@ -66,5 +66,5 @@ class SubmittalVectorAdapter:
         return str(project_id)
 
 
-# Singleton instance — adapters are stateless so one shared object is fine.
+# Singleton instance - adapters are stateless so one shared object is fine.
 submittal_vector_adapter = SubmittalVectorAdapter()

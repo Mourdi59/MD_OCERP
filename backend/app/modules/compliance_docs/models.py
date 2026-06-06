@@ -2,7 +2,7 @@
 """‌⁠‍Compliance documents ORM models.
 
 Tables:
-    oe_compliance_docs_doc — project-scoped tracker for any document
+    oe_compliance_docs_doc - project-scoped tracker for any document
         (insurance / permit / bond / certification) that has an
         ``effective_date`` / ``expires_at`` window and a reminder
         threshold.
@@ -117,12 +117,12 @@ class ComplianceDoc(Base):
         index=True,
     )
     # ``updated_by`` is recorded on every PATCH inside ``metadata_``
-    # under the ``"updated_by"`` key — kept off the SQL schema so this
+    # under the ``"updated_by"`` key - kept off the SQL schema so this
     # bug-fix doesn't require an alembic migration. The local upload
     # (path / mime / size) lives in ``metadata_["attachment"]`` for the
     # same reason; see :mod:`service` for the read/write helpers.
 
-    def __repr__(self) -> str:  # pragma: no cover — debug only
+    def __repr__(self) -> str:  # pragma: no cover - debug only
         return f"<ComplianceDoc {self.doc_type} {self.name[:30]!r} expires={self.expires_at} status={self.status}>"
 
 

@@ -1,8 +1,8 @@
-# OpenConstructionERP — DataDrivenConstruction (DDC)
+# OpenConstructionERP - DataDrivenConstruction (DDC)
 # CWICR Cost Database Engine · BOQ Module
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 # AGPL-3.0 License · DDC-CWICR-OE-2026
-"""‌⁠‍BOQ service — business logic for Bill of Quantities management.
+"""‌⁠‍BOQ service - business logic for Bill of Quantities management.
 
 Stateless service layer. Handles:
 - BOQ CRUD with project scoping
@@ -40,8 +40,8 @@ from app.core.validation.messages import translate
 # When a BOQ position is applied from a CostItem that carries CWICR
 # abstract-resource variants (e.g. concrete C25 / C30 / C35), the position
 # stores either the picked variant under ``metadata.variant`` (with
-# ``{label, price, index}``) or — when the user accepted the auto-suggested
-# average — under ``metadata.variant_default = "mean" | "median"``.
+# ``{label, price, index}``) or - when the user accepted the auto-suggested
+# average - under ``metadata.variant_default = "mean" | "median"``.
 #
 # To make the relationship immutable from the position's side, we also write
 # ``metadata.variant_snapshot`` with a frozen copy at the moment of choice:
@@ -58,7 +58,7 @@ from app.core.validation.messages import translate
 # (``variant`` / ``variant_default`` / ``variant_stats`` / ``unit_rate``
 # / ``currency``) so any later import / cost-DB rate change cannot silently
 # rewrite the BOQ position's price.  Callers re-stamp the snapshot only when
-# ``variant`` or ``variant_default`` actually changes — a no-op patch leaves
+# ``variant`` or ``variant_default`` actually changes - a no-op patch leaves
 # the existing snapshot intact.
 
 
@@ -101,7 +101,7 @@ def _stamp_variant_snapshot(
     if not (has_user_pick or has_default):
         return metadata
 
-    # Numeric rate — quantise lightly so the snapshot never carries a
+    # Numeric rate - quantise lightly so the snapshot never carries a
     # full-precision Decimal that won't survive JSON round-trip.
     try:
         rate_val = float(unit_rate) if unit_rate is not None else 0.0
@@ -123,7 +123,7 @@ def _stamp_variant_snapshot(
         and existing.get("source") == source
         and abs(float(existing.get("rate", 0)) - rate_val) < 0.005
     ):
-        # No-op patch — preserve the original captured_at timestamp so the
+        # No-op patch - preserve the original captured_at timestamp so the
         # immutability marker doesn't drift on every unrelated metadata
         # update.
         return metadata
@@ -202,7 +202,7 @@ def _stamp_resource_variant_snapshots(
 
         resource_currency = resource.get("currency")
         # Resource currency wins; fall back to position currency; finally
-        # leave empty rather than stamping "USD" / "EUR" — both lie when
+        # leave empty rather than stamping "USD" / "EUR" - both lie when
         # the project is in another currency. The variant_snapshot reader
         # tolerates empty currency and renders the rate as a bare number.
         currency = (
@@ -225,7 +225,7 @@ _logger_audit = logging.getLogger(__name__ + ".audit")
 
 
 async def _safe_publish(name: str, data: dict[str, Any], source_module: str = "oe_boq") -> None:
-    """Publish event safely — ignores MissingGreenlet errors with SQLite async."""
+    """Publish event safely - ignores MissingGreenlet errors with SQLite async."""
     try:
         event_bus.publish_detached(name, data, source_module=source_module)
     except Exception:
@@ -241,7 +241,7 @@ async def _safe_audit(
     user_id: str | None = None,
     details: dict | None = None,
 ) -> None:
-    """Best-effort audit log — never blocks the caller on failure."""
+    """Best-effort audit log - never blocks the caller on failure."""
     try:
         from app.core.audit import audit_log
 
@@ -925,7 +925,7 @@ def _to_decimal(
     - Strings are parsed verbatim (so "12.345" stays exact).
     - Floats go through ``repr`` to preserve their true representation
       rather than the display-truncated ``str(float)`` that drops digits.
-    - NaN / ±Infinity are rejected — money never uses those — and the
+    - NaN / ±Infinity are rejected - money never uses those - and the
       default is returned instead so downstream arithmetic stays well-defined.
     """
     if value is None:
@@ -934,7 +934,7 @@ def _to_decimal(
         if isinstance(value, Decimal):
             d = value
         elif isinstance(value, bool):
-            # bool is a subclass of int — reject so we don't quietly
+            # bool is a subclass of int - reject so we don't quietly
             # accept True/False where a number is expected.
             return default
         elif isinstance(value, int):
@@ -968,7 +968,7 @@ _MONEY_QUANTUM = Decimal("0.0001")
 def _quantize_money(value: Decimal) -> Decimal:
     """Round a Decimal to 4 fractional digits using banker's rounding.
 
-    Returns the input unchanged when the value is non-finite — callers
+    Returns the input unchanged when the value is non-finite - callers
     upstream already guarded those.  ROUND_HALF_EVEN ("banker's rounding")
     is the regulated default for monetary aggregations and avoids the
     upward bias of HALF_UP over millions of line items.
@@ -1003,7 +1003,7 @@ _CURRENCY_QUANTUM = Decimal("0.01")
 def _round_currency(value: Decimal | float | int | str | None) -> Decimal:
     """Quantise an aggregate monetary value to 2dp, ROUND_HALF_UP.
 
-    v3 §10 — returns a ``Decimal`` so downstream Pydantic schemas
+    v3 §10 - returns a ``Decimal`` so downstream Pydantic schemas
     typed as ``Decimal`` don't round-trip through float and re-introduce
     precision drift. Non-finite / unparseable input collapses to
     ``Decimal('0.00')`` so a corrupt intermediate never serialises as
@@ -1061,7 +1061,7 @@ def _str_to_float(value: str | None) -> float:
         f = float(value)
     except (ValueError, TypeError):
         return 0.0
-    # Reject NaN/Infinity — section detection compares against 0.0 and a
+    # Reject NaN/Infinity - section detection compares against 0.0 and a
     # non-finite value there would make ``_is_section`` misbehave.
     if f != f or f in (float("inf"), float("-inf")):
         return 0.0
@@ -1089,7 +1089,7 @@ def _resource_total_in_base(
 ) -> float:
     """Sum resource subtotals in the project's BASE currency.
 
-    Issue #88 — each resource dict may carry an optional ``currency``. When
+    Issue #88 - each resource dict may carry an optional ``currency``. When
     present and different from ``base_currency``, the row's contribution is
     converted via ``fx_rates_map[currency]`` (units of base per 1 unit of
     foreign). Missing currency → treated as base. Missing rate for a
@@ -1098,7 +1098,7 @@ def _resource_total_in_base(
     time (this function silently skips the conversion to keep the rollup
     deterministic and never zero out a row).
 
-    Pure function — no DB I/O — so it's cheap to call from update_position
+    Pure function - no DB I/O - so it's cheap to call from update_position
     and reusable from snapshot/export paths.
     """
     if not resources:
@@ -1140,7 +1140,7 @@ def _detect_resource_fx_warnings(
     side effect is the bug skolodi recorded on video: changing a resource's
     currency from EUR to USD with no USD rate produces an identical sum
     (`sub = qty * rate * 1` == `sub = qty * rate * <missing>` because the
-    multiplication is skipped) — so the section total appears unchanged
+    multiplication is skipped) - so the section total appears unchanged
     even though the user just touched the row. ARS has a rate in his
     project, hence "ARS updates but USD doesn't."
 
@@ -1148,7 +1148,7 @@ def _detect_resource_fx_warnings(
     warning so the UI can prompt "Add USD to Project Settings" instead of
     silently producing a math-correct-but-user-confusing no-op.
 
-    Pure function — no DB I/O — safe to call from any write path.
+    Pure function - no DB I/O - safe to call from any write path.
     """
     if not isinstance(resources, list) or not resources:
         return []
@@ -1182,7 +1182,7 @@ def _detect_resource_fx_warnings(
 def _project_fx_map(project: object | None) -> dict[str, str]:
     """Project the ``Project.fx_rates`` JSON list into ``{code: rate}``.
 
-    Defensive against missing attribute / malformed entries — returns an
+    Defensive against missing attribute / malformed entries - returns an
     empty dict in any error path so callers can pass it through
     ``_resource_total_in_base`` without further guards.
     """
@@ -1227,7 +1227,7 @@ def _position_total_in_base(
 ) -> Decimal:
     """Convert one position's stored ``total`` into the project BASE currency.
 
-    Issue #111 — sibling of #131, which fixed this exact defect in the grid
+    Issue #111 - sibling of #131, which fixed this exact defect in the grid
     path (``groupPositionsIntoSections``). ``get_boq_structured`` powers the
     CSV / Excel / PDF exports and was summing foreign-currency ``total``
     strings straight into the base-currency Direct Cost / Grand Total.
@@ -1258,14 +1258,14 @@ def _leaf_total_base_with_resources(
 ) -> Decimal:
     """Convert a leaf position's total into the project BASE currency.
 
-    Issue #111 (skolodi follow-up) — ``_position_total_in_base`` only ever
+    Issue #111 (skolodi follow-up) - ``_position_total_in_base`` only ever
     converted a position whose ``metadata.currency`` was set.  The
     contributor's real data (``Prueba_2.csv``) is the shape that path can
     never catch: the position carries NO ``metadata.currency`` but its
     ``metadata.resources`` are priced in a foreign currency.  At write
     time ``update_position`` derives ``unit_rate = Σ(r.quantity ×
     r.unit_rate)`` with no FX conversion, so the stored position ``total``
-    silently mixes foreign-resource money into the base-currency rollup —
+    silently mixes foreign-resource money into the base-currency rollup -
     a USD 25 000 resource in an ARS project rolled up as 25 000 ARS.
 
     Resolution order:
@@ -1274,7 +1274,7 @@ def _leaf_total_base_with_resources(
       is the sum of each resource's ``quantity × unit_rate`` converted
       from its own currency (``_resource_total_in_base`` semantics).  The
       position total is then ``position.quantity × that converted
-      per-unit rate`` — exactly mirroring how ``update_position`` builds
+      per-unit rate`` - exactly mirroring how ``update_position`` builds
       ``total`` from ``unit_rate``, but now currency-correct.  This fixes
       BOTH places the contributor circled (the per-position resource
       subtotal AND the section subtotal that sums these leaves).
@@ -1283,7 +1283,7 @@ def _leaf_total_base_with_resources(
       ``_position_total_in_base`` / ``_position_currency`` path so legacy
       ``metadata.currency`` positions keep their verified #131 behaviour.
 
-    Pure function — no DB I/O.  Safe to call from the structured rollup,
+    Pure function - no DB I/O.  Safe to call from the structured rollup,
     compare, and export paths.
     """
     meta = getattr(pos, "metadata_", None)
@@ -1296,7 +1296,7 @@ def _leaf_total_base_with_resources(
     )
     if has_priced_resources:
         # If NONE of the resources carries a foreign currency the
-        # position total is already wholly in base — keep the stored
+        # position total is already wholly in base - keep the stored
         # decimal (preserves the exact 4 dp string the editor wrote and
         # avoids a float roundtrip through the resource sum).
         base = (base_currency or "").strip().upper()
@@ -1312,7 +1312,7 @@ def _leaf_total_base_with_resources(
             )
         # Per-unit rate, currency-converted across mixed resource
         # currencies, then scaled by the position quantity (resources
-        # are per-unit norms — same convention update_position uses to
+        # are per-unit norms - same convention update_position uses to
         # build unit_rate then total).
         per_unit_base = _to_decimal(str(_resource_total_in_base(resources, fx_rates_map, base_currency)))
         qty = _to_decimal(getattr(pos, "quantity", "0"))
@@ -1336,7 +1336,7 @@ def _build_position_response(pos: Position) -> PositionResponse:
         description=pos.description,
         unit=pos.unit,
         # BUG-B-011: pass the exact stored 4 dp decimal strings straight
-        # through — PositionResponse now types these as Decimal and
+        # through - PositionResponse now types these as Decimal and
         # serialises a plain string, so large totals round-trip exactly
         # instead of being truncated by a float coercion here.
         quantity=pos.quantity,
@@ -1503,9 +1503,9 @@ def _stamp_cost_item_compat(
     """Record the linked CostItem's unit/currency and flag a mismatch.
 
     BUG-B-013: applying a matched cost-database rate previously stored no
-    provenance and ran no compatibility check — a EUR / m³ catalogue rate
+    provenance and ran no compatibility check - a EUR / m³ catalogue rate
     could be silently applied to a GBP / m² position. We can't FX-convert
-    here (rates live in the finance module — cross-module), and a hard
+    here (rates live in the finance module - cross-module), and a hard
     block would over-restrict legitimate cross-unit assemblies. Instead we
     follow the architecture guide principle #7 (AI-augmented, human-confirmed): stamp
     ``cost_item_currency`` / ``cost_item_unit`` so the value is never lost
@@ -1527,17 +1527,17 @@ def _stamp_cost_item_compat(
     if ci_unit and pos_unit and ci_unit.lower() != pos_unit.lower():
         warnings.append(
             f"Cost item is priced per '{ci_unit}' but this position is "
-            f"measured in '{pos_unit}' — verify the rate applies to the "
+            f"measured in '{pos_unit}' - verify the rate applies to the "
             f"position's quantity basis.",
         )
-    # Currency mismatch. We never auto-convert (no FX in this module) —
+    # Currency mismatch. We never auto-convert (no FX in this module) -
     # we only flag. The position's home currency is resolved in priority
     # order: an explicit per-position/metadata currency first, then the
-    # caller-supplied project currency (BUG-B-013 — neither PositionCreate
+    # caller-supplied project currency (BUG-B-013 - neither PositionCreate
     # nor PositionUpdate populate metadata currency, so without the
     # project-currency fallback a EUR rate applied to a USD project was
     # never flagged). ``project_currency`` is NOT persisted into metadata
-    # — it is only used for the comparison.
+    # - it is only used for the comparison.
     pos_currency = ""
     for key in ("currency", "project_currency", "position_currency"):
         val = metadata.get(key)
@@ -1549,13 +1549,13 @@ def _stamp_cost_item_compat(
     if ci_currency and pos_currency and ci_currency.upper() != pos_currency.upper():
         warnings.append(
             f"Cost item rate is in {ci_currency} but this position is in "
-            f"{pos_currency} — no FX conversion was applied.",
+            f"{pos_currency} - no FX conversion was applied.",
         )
 
     if warnings:
         metadata["cost_apply_warnings"] = warnings
         return True
-    # No mismatch — drop any stale warning marker from a prior bad link.
+    # No mismatch - drop any stale warning marker from a prior bad link.
     metadata.pop("cost_apply_warnings", None)
     return False
 
@@ -1573,7 +1573,7 @@ def _content_fingerprint(
     always a copy-paste mistake (double-counted scope). Description is
     case-folded and whitespace-collapsed; unit is case-folded; numerics
     are compared at the stored 4 dp precision so "100" and "100.0000"
-    collide. This is a *warning* signal only — never a hard block.
+    collide. This is a *warning* signal only - never a hard block.
     """
     desc = " ".join((description or "").split()).casefold()
     u = (unit or "").strip().casefold()
@@ -1589,12 +1589,12 @@ def _apply_duplicate_warning(metadata: dict[str, Any], dup_ordinal: str) -> None
     """Attach a non-blocking boq_quality duplicate warning to metadata.
 
     Mirrors the ``cost_apply_warnings`` convention so the traffic-light
-    dashboard surfaces it. Idempotent — re-applying the same ordinal does
+    dashboard surfaces it. Idempotent - re-applying the same ordinal does
     not stack duplicate strings.
     """
     msg = (
         f"{_DUPLICATE_WARNING_PREFIX}description, unit, quantity and unit "
-        f"rate are identical to position '{dup_ordinal}' in this BOQ — "
+        f"rate are identical to position '{dup_ordinal}' in this BOQ - "
         f"verify this scope is not double-counted."
     )
     existing = metadata.get("boq_quality_warnings")
@@ -1629,7 +1629,7 @@ def _calculate_markup_amounts(
 
         # Determine the base for calculation.
         # BUG-B-005: ``subtotal`` must base the markup on
-        # direct_cost + Σ(preceding markups) — same as ``cumulative``.
+        # direct_cost + Σ(preceding markups) - same as ``cumulative``.
         # Treating it as ``direct_cost`` systematically under-states any
         # tax-on-subtotal line (VAT on contractor price incl. overhead &
         # profit), the exact use case the schema offers ``subtotal`` for.
@@ -1667,7 +1667,7 @@ def _calculate_markup_amounts(
 # ``link_role='instance'``; the definition-owner is ``link_role='master'``.
 
 # Definition fields a master propagates to every linked instance. NEVER
-# includes quantity / ordinal / sort_order / link_* — those are per-instance
+# includes quantity / ordinal / sort_order / link_* - those are per-instance
 # (the architecture guide: AI-augmented, human-confirmed; quantities never propagate).
 _LINK_DEFINITION_FIELDS: tuple[str, ...] = (
     "description",
@@ -1680,7 +1680,7 @@ _LINK_DEFINITION_FIELDS: tuple[str, ...] = (
 # A copy of the master's metadata (resources / assembly sub-structure) is
 # propagated too, but quantity-derived / per-instance keys are stripped.
 # ``_link_src`` (Issue #132) records the id of the MASTER node each linked
-# instance node was cloned from — it is the per-node correspondence key that
+# instance node was cloned from - it is the per-node correspondence key that
 # lets a master CHILD edit reach the matching instance children (the group
 # id alone is too coarse: every node in a subtree shares it). It is
 # per-instance and must never be carried by a master→instance metadata copy.
@@ -1707,15 +1707,15 @@ _AUTO_CODE_PREFIX = "R-"
 
 # ── Issue #133 (full): resource code dedup + master→instance propagation ──
 #
-# Resources are JSON leaves on ``Position.metadata.resources`` — there is
+# Resources are JSON leaves on ``Position.metadata.resources`` - there is
 # no resource row / link_role. The canonical (master) definition for a
 # resource ``code`` is the OLDEST position carrying that code (same rule
 # ``find_resource_by_code`` uses for the reuse prompt). When that master
 # resource's DEFINITION fields change, the change propagates to every
-# OTHER position whose resource carries the same code — EXCEPT a target
+# OTHER position whose resource carries the same code - EXCEPT a target
 # resource the user explicitly diverged (``_code_overridden`` marker).
 # Quantity is NEVER propagated (per-instance, mirrors #127). This extends
-# the existing reuse plumbing — it does not introduce a parallel model.
+# the existing reuse plumbing - it does not introduce a parallel model.
 _RESOURCE_DEFINITION_FIELDS: tuple[str, ...] = (
     "name",
     "description",
@@ -1728,7 +1728,7 @@ _RESOURCE_DEFINITION_FIELDS: tuple[str, ...] = (
 # ── Issue #136: multi-level section / partida hierarchy ──────────────────
 #
 # Historically a BOQ had exactly 3 fixed tiers: Section → Partida → Resource.
-# Real estimating practice nests far deeper — the issue reports up to ~8
+# Real estimating practice nests far deeper - the issue reports up to ~8
 # tiers ("a veces se utilizan hasta 8 niveles"). We therefore allow
 # generous deep nesting of Sections-within-Sections and Partidas-within-
 # Partidas, capped by a SINGLE configurable constant so the limit is easy
@@ -1824,14 +1824,14 @@ class BOQService:
         Guards three classes of corruption that would crash hierarchical
         traversal (total recompute, PDF/Excel/GAEB exports):
 
-        1. **Self-cycle** — ``parent_id == position_id``.
-        2. **Descendant cycle** — ``parent_id`` is a direct or transitive
+        1. **Self-cycle** - ``parent_id == position_id``.
+        2. **Descendant cycle** - ``parent_id`` is a direct or transitive
            descendant of ``position_id``. Walks the descendant chain by
            repeatedly fetching children until the candidate is found or the
            tree is exhausted. A visited-set guard prevents an infinite loop
            on already-corrupt data; if the guard ever trips we log a warning
-           — under normal operation it never should.
-        3. **Cross-BOQ parent** — ``parent_id`` belongs to a different BOQ.
+           - under normal operation it never should.
+        3. **Cross-BOQ parent** - ``parent_id`` belongs to a different BOQ.
 
         Args:
             boq_id: BOQ that the (current or candidate) position lives in.
@@ -1857,7 +1857,7 @@ class BOQService:
                 detail="Position cannot be its own parent (self-referencing parent_id).",
             )
 
-        # 3. Cross-BOQ parent — validated up front so we don't follow
+        # 3. Cross-BOQ parent - validated up front so we don't follow
         #    descendant chains across BOQ boundaries.
         parent = await self.position_repo.get_by_id(new_parent_id)
         if parent is None:
@@ -1884,7 +1884,7 @@ class BOQService:
             current = frontier.pop()
             if current in visited:
                 logger.warning(
-                    "Cycle guard: revisited position %s while walking descendants of %s — data may already be corrupt.",
+                    "Cycle guard: revisited position %s while walking descendants of %s - data may already be corrupt.",
                     current,
                     position_id,
                 )
@@ -1898,7 +1898,7 @@ class BOQService:
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail=(
                             "Cannot set parent_id to a descendant of this position "
-                            "— would create a cycle in the BOQ hierarchy."
+                            "- would create a cycle in the BOQ hierarchy."
                         ),
                     )
                 frontier.append(child.id)
@@ -1911,7 +1911,7 @@ class BOQService:
         parent returns 1 (so the child is tier 2), and so on. ``None``
         returns 0 (a row with no parent is tier 1, computed by the caller).
         A ``visited`` guard makes a pre-existing corrupt cycle terminate
-        instead of looping forever (defence-in-depth — ``_validate_parent_id``
+        instead of looping forever (defence-in-depth - ``_validate_parent_id``
         already blocks cycle *creation*).
         """
         if parent_id is None:
@@ -1933,7 +1933,7 @@ class BOQService:
             depth += 1
             current = getattr(node, "parent_id", None)
             if depth > MAX_NESTING_DEPTH + 4:
-                # Hard stop well past the cap — a chain this long is
+                # Hard stop well past the cap - a chain this long is
                 # already over-deep; the caller's cap check will reject it.
                 break
         return depth
@@ -1977,7 +1977,7 @@ class BOQService:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
                     f"Maximum nesting depth of {MAX_NESTING_DEPTH} tiers "
-                    f"reached — cannot place this item {deepest_tier} "
+                    f"reached - cannot place this item {deepest_tier} "
                     f"levels deep. Flatten the structure or use fewer "
                     f"sub-levels."
                 ),
@@ -1993,7 +1993,7 @@ class BOQService:
 
         v4.2.2 Round 2 Wave C: was O(nodes_in_subtree) DB roundtrips via
         ``list_children`` per node. Now one ``list_all_for_boq`` plus an
-        in-memory parent→children index — every walk is single-query.
+        in-memory parent→children index - every walk is single-query.
         The traversal cap (``MAX_NESTING_DEPTH + 4``) is preserved exactly
         so semantics are unchanged for a corrupt/over-deep branch.
         """
@@ -2041,7 +2041,7 @@ class BOQService:
         """Return the reference_code to stamp on a new position.
 
         * A non-empty supplied code is used verbatim (collision with an
-          existing code is the *intended* reuse trigger — handled by the
+          existing code is the *intended* reuse trigger - handled by the
           caller, not rejected here).
         * Empty / None → generate a stable internal ``R-XXXXXXXX`` code
           that is unique within the project so the position is always
@@ -2057,7 +2057,7 @@ class BOQService:
                 return candidate
             if not await self.position_repo.reference_code_exists_in_project(project_id, candidate):
                 return candidate
-        # Astronomically unlikely fallthrough — append more entropy.
+        # Astronomically unlikely fallthrough - append more entropy.
         return f"{_generate_internal_reference_code()}{uuid.uuid4().hex[:4].upper()}"[:64]
 
     async def _next_free_ordinal(self, boq_id: uuid.UUID, base: str) -> str:
@@ -2096,12 +2096,12 @@ class BOQService:
         ``quantity`` / link fields, descendants keep the source's own
         quantities and inherit the same link_group_id but
         ``link_role='instance'`` (children of an instance are themselves
-        instances of their source children — quantities are still
+        instances of their source children - quantities are still
         per-instance and never back-propagate).
 
         Returns the newly created ROOT position.
 
-        The caller MUST pass a live (non-expired) ``source`` — the async
+        The caller MUST pass a live (non-expired) ``source`` - the async
         engine cannot lazy-refresh expired ORM attributes on access
         (``MissingGreenlet``). The reuse path re-fetches the master after
         promoting it; ``duplicate_position`` fetches the source fresh.
@@ -2110,7 +2110,7 @@ class BOQService:
 
         # Issue #132: when this clone joins a link group, stamp the master
         # node it mirrors so a later master-CHILD edit can find exactly the
-        # matching instance children (group id alone can't — every node in
+        # matching instance children (group id alone can't - every node in
         # the subtree shares it). Standalone copies (no group) get no marker.
         _root_meta = _copy_definition_metadata(source.metadata_)
         if link_group_id is not None:
@@ -2234,7 +2234,7 @@ class BOQService:
         # starts with ZERO markups. Auto-stamping regional BGK/AGK/Wagnis/
         # Gewinn/MwSt (or any other) defaults silently inflated every
         # estimate's grand total before the estimator had reviewed a single
-        # line — a violation of the architecture guide principle #7 (AI-augmented,
+        # line - a violation of the architecture guide principle #7 (AI-augmented,
         # human-confirmed) and the global-copy policy. The explicit path is
         # ``POST /boqs/{boq_id}/markups/apply-defaults`` which still calls
         # ``apply_default_markups`` on demand.
@@ -2275,7 +2275,7 @@ class BOQService:
         resolving it here a foreign-currency cost-database rate was
         applied silently. We join BOQ → Project to obtain the
         authoritative currency. Best-effort: any failure returns an empty
-        string (no currency assumption — never stamp a wrong "EUR").
+        string (no currency assumption - never stamp a wrong "EUR").
         """
         try:
             from app.modules.projects.models import Project
@@ -2285,7 +2285,7 @@ class BOQService:
                     select(Project.currency).join(BOQ, BOQ.project_id == Project.id).where(BOQ.id == boq_id),
                 )
             ).first()
-        except Exception:  # noqa: BLE001 — never break a write on this lookup
+        except Exception:  # noqa: BLE001 - never break a write on this lookup
             logger.debug("Project currency lookup failed for BOQ %s", boq_id, exc_info=True)
             return ""
         if not row or not row[0]:
@@ -2298,7 +2298,7 @@ class BOQService:
     ) -> tuple[str, dict[str, str]]:
         """Resolve ``(base_currency, {code: rate})`` for a BOQ's project.
 
-        Issue #111 — the structured/export rollup needs the project's FX
+        Issue #111 - the structured/export rollup needs the project's FX
         table, not just its base currency, to convert foreign-currency
         position totals before summing. Best-effort: any failure returns
         ``("", {})`` so the export never breaks and degrades to raw sums
@@ -2314,7 +2314,7 @@ class BOQService:
                     .where(BOQ.id == boq_id),
                 )
             ).first()
-        except Exception:  # noqa: BLE001 — never break an export on this lookup
+        except Exception:  # noqa: BLE001 - never break an export on this lookup
             logger.debug("Project FX lookup failed for BOQ %s", boq_id, exc_info=True)
             return "", {}
         if not row:
@@ -2348,14 +2348,14 @@ class BOQService:
         description+unit+quantity+unit_rate under different ordinals are a
         likely double-count. We scan all positions in the BOQ (rollups
         already use ``list_all_for_boq`` so this is consistent) and return
-        the first colliding ordinal, or ``None``. Never raises — duplicate
+        the first colliding ordinal, or ``None``. Never raises - duplicate
         detection is advisory and must not break a write.
         """
-        # PERF: v4.2.2 Round 2 Wave C audit — already single-query
+        # PERF: v4.2.2 Round 2 Wave C audit - already single-query
         # (one ``list_all_for_boq`` then in-memory fingerprint scan;
         # ``_content_fingerprint`` reads scalar columns only). Replacing
         # the python scan with a DB-side hash filter would need a
-        # ``content_hash`` column + backfill — deferred (model refactor).
+        # ``content_hash`` column + backfill - deferred (model refactor).
         try:
             target = _content_fingerprint(description, unit, quantity, unit_rate)
             for pos in await self.position_repo.list_all_for_boq(boq_id):
@@ -2371,7 +2371,7 @@ class BOQService:
                     == target
                 ):
                     return pos.ordinal
-        except Exception:  # noqa: BLE001 — advisory only, never break the write
+        except Exception:  # noqa: BLE001 - advisory only, never break the write
             logger.debug("Duplicate-content scan failed for BOQ %s", boq_id, exc_info=True)
         return None
 
@@ -2501,7 +2501,7 @@ class BOQService:
 
         # Issue #79: validate and stamp ``metadata.cost_item_id`` so a position
         # created with ``source='cwicr'`` (or any source) can carry a typed
-        # link back to the cost database.  No DB migration — we piggyback
+        # link back to the cost database.  No DB migration - we piggyback
         # on the existing JSON metadata column.
         merged_metadata: dict[str, Any] = dict(data.metadata) if isinstance(data.metadata, dict) else {}
         if data.cost_item_id is not None:
@@ -2510,7 +2510,7 @@ class BOQService:
                 cost_item = await cost_repo.get_by_id(data.cost_item_id)
             except HTTPException:
                 raise
-            except Exception as exc:  # noqa: BLE001 — surface any DB failure as 422
+            except Exception as exc:  # noqa: BLE001 - surface any DB failure as 422
                 logger.exception("add_position cost_item lookup failed for %s", data.cost_item_id)
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -2558,7 +2558,7 @@ class BOQService:
         # immediately after that sibling instead of at the end of the
         # section: open a one-slot gap by bumping every later position down
         # by one, then take ``target.sort_order + 1``. The target must live
-        # in the SAME BOQ — a stale / cross-BOQ id silently falls back to
+        # in the SAME BOQ - a stale / cross-BOQ id silently falls back to
         # the append-at-end behaviour rather than scrambling order.
         new_sort_order = max_order + 1
         if data.after_position_id is not None:
@@ -2570,7 +2570,7 @@ class BOQService:
             # ── Issue #149: keep the partida INSIDE the clicked section ──────
             # A position added via a specific section's "Add position" button
             # (explicit ``parent_id``, no ``after_position_id``) must land
-            # inside *that* section — grouped with the section's own line
+            # inside *that* section - grouped with the section's own line
             # items and ahead of any sub-sections. Without this it inherits
             # the global-max ``sort_order`` and the grid (which walks
             # ``parent_id`` then orders siblings by ``sort_order``) renders it
@@ -2603,7 +2603,7 @@ class BOQService:
             _apply_duplicate_warning(merged_metadata, _dup_ordinal)
 
         # Issue #127: every position carries a reusable ``reference_code``.
-        # Supplied code used verbatim (no collision here — either none, or
+        # Supplied code used verbatim (no collision here - either none, or
         # link_mode='standalone' which intentionally re-uses the literal
         # code without linking); otherwise stamp a stable internal code so
         # the position is always referenceable.
@@ -2674,7 +2674,7 @@ class BOQService:
 
         Issue #127. Deep-copies the master's definition + child subtree
         (via the shared ``_clone_subtree`` helper), assigns a fresh
-        BOQ-unique ordinal (NEVER reuses the master's — the
+        BOQ-unique ordinal (NEVER reuses the master's - the
         ordinal-uniqueness invariant holds) and the client-supplied
         quantity (default 0). When ``as_copy`` is False (the default 'link'
         path) the new position joins the master's link group as an
@@ -2685,7 +2685,7 @@ class BOQService:
         target_boq = data.boq_id
 
         # ``PositionRepository.update_fields`` ends with
-        # ``session.expire_all()`` — that expires EVERY ORM instance in the
+        # ``session.expire_all()`` - that expires EVERY ORM instance in the
         # unit of work, including ``master``. The async engine cannot
         # lazy-refresh on attribute access (``MissingGreenlet``), so read
         # everything we need from ``master`` NOW, before the first promote,
@@ -2701,7 +2701,7 @@ class BOQService:
         if not as_copy:
             if master_link_group_id is not None:
                 link_group_id = master_link_group_id
-                # Master may currently be a bare 'master' (group existed) —
+                # Master may currently be a bare 'master' (group existed) -
                 # nothing to do. If it lost its role, restore it.
                 if master_link_role != "master":
                     await self.position_repo.update_fields(master_id, link_role="master")
@@ -2794,7 +2794,7 @@ class BOQService:
         * one ``get_max_sort_order`` query (was N)
         * one ordinal-uniqueness DB check (was N)
         * one ``session.add_all`` + flush (was N flushes)
-        * no per-row event publish — a single ``boq.positions.bulk_created``
+        * no per-row event publish - a single ``boq.positions.bulk_created``
           fires at the end with the count
         * audit log writes a single ``bulk_create`` entry; per-row audit
           would dominate insert time at 100+ rows
@@ -2805,7 +2805,7 @@ class BOQService:
         * Ordinals must be unique inside the supplied batch AND against
           existing rows
         * cost_item_id linkage validated per row (one CostItem lookup
-          each — could be batched further but rarely > 5/100 in practice)
+          each - could be batched further but rarely > 5/100 in practice)
         * Variant snapshots stamped per row
 
         Returns the inserted ``Position`` objects in input order.
@@ -2826,7 +2826,7 @@ class BOQService:
                     status_code=status.HTTP_409_CONFLICT,
                     detail=(
                         f"Duplicate ordinal '{it.ordinal}' inside the bulk "
-                        f"payload — every position must have a unique ordinal."
+                        f"payload - every position must have a unique ordinal."
                     ),
                 )
             seen_ordinals.add(it.ordinal)
@@ -2913,7 +2913,7 @@ class BOQService:
                 ),
             )
 
-        # Single flush — the perf win lives here.
+        # Single flush - the perf win lives here.
         inserted = await self.position_repo.bulk_create(new_positions)
 
         await _safe_publish(
@@ -3050,7 +3050,7 @@ class BOQService:
 
         fields = data.model_dump(exclude_unset=True)
 
-        # ``link_mode`` is a create-time decision only — never persisted on
+        # ``link_mode`` is a create-time decision only - never persisted on
         # update (PositionUpdate documents it as ignored). Drop it before it
         # reaches the column writer.
         fields.pop("link_mode", None)
@@ -3063,7 +3063,7 @@ class BOQService:
             _requested_def_fields.add("metadata_")
 
         # ── Issue #79: cost_item_id linkage ─────────────────────────────
-        # The client doesn't see ``metadata.cost_item_id`` directly — they
+        # The client doesn't see ``metadata.cost_item_id`` directly - they
         # send a top-level ``cost_item_id`` field.  Pop it out, validate
         # the target exists, then merge into ``metadata`` so the existing
         # JSON-column write path persists it without a schema migration.
@@ -3074,7 +3074,7 @@ class BOQService:
                 cost_item = await cost_repo.get_by_id(client_cost_item_id)
             except HTTPException:
                 raise
-            except Exception as exc:  # noqa: BLE001 — surface any DB failure as 422
+            except Exception as exc:  # noqa: BLE001 - surface any DB failure as 422
                 logger.exception(
                     "update_position cost_item lookup failed for %s",
                     client_cost_item_id,
@@ -3191,9 +3191,9 @@ class BOQService:
         # If metadata contains resources, derive unit_rate from resource totals.
         #
         # IMPORTANT: only re-derive when this update was *triggered by* a change
-        # to quantity or to the resources themselves. Otherwise — for example
+        # to quantity or to the resources themselves. Otherwise - for example
         # when the user edits an unrelated custom column and the frontend
-        # echoes back the existing metadata — we'd silently rewrite unit_rate
+        # echoes back the existing metadata - we'd silently rewrite unit_rate
         # and total even though nothing meaningful changed.
         meta = fields.get("metadata_", None)
         if meta is None and "metadata" in fields:
@@ -3202,7 +3202,7 @@ class BOQService:
         new_unit_rate = fields.get("unit_rate", position.unit_rate)
 
         # Resource model: each resource entry is a PER-UNIT norm
-        # (quantity per 1 unit of position) — same convention as CostX,
+        # (quantity per 1 unit of position) - same convention as CostX,
         # Candy, iTWO, ProEst. Therefore:
         #   unit_rate (of position) = Σ(r.quantity × r.unit_rate)   [no division by qty]
         #   total    (of position) = position.quantity × unit_rate
@@ -3240,7 +3240,7 @@ class BOQService:
             _fx_base_ccy, _fx_map = await self._resolve_project_fx(position.boq_id)
             # Sum of per-unit subtotals == position unit_rate (NO division by
             # qty). Each resource is converted from its own ``currency`` to the
-            # project base via the FX table before summing — never blend
+            # project base via the FX table before summing - never blend
             # currencies into the stored rate (Issue #88 / #157). Mirrors the
             # read-side ``_resource_total_in_base`` so the persisted value and
             # the FX-aware rollup agree.
@@ -3252,7 +3252,7 @@ class BOQService:
         # existing total intact.
         if "quantity" in fields or "unit_rate" in fields or triggered_by_resources:
             # Probe-A scenario 11: enforce the overflow cap on the
-            # post-merge values — covers the partial-update path where
+            # post-merge values - covers the partial-update path where
             # the schema validator only saw one side of (quantity,
             # unit_rate). Mirrors ``POSITION_TOTAL_CAP`` from
             # ``boq/schemas.py`` so the message is identical.
@@ -3264,14 +3264,14 @@ class BOQService:
                 raise ValueError(
                     "Position total exceeds reasonable limit. Check quantity and unit rate.",
                 )
-            # Pass raw string values straight through — ``_compute_total`` now
+            # Pass raw string values straight through - ``_compute_total`` now
             # uses Decimal and handles strings directly, so we avoid the
             # str → float → str roundtrip that was losing precision.
             fields["total"] = _compute_total(new_quantity, new_unit_rate)
 
         # Manual quantity override: drop BIM/PDF/DWG link artifacts and reset
         # validation. When the user hand-edits the quantity, any previously-
-        # linked source is no longer authoritative — unit-column badges
+        # linked source is no longer authoritative - unit-column badges
         # disappear and the red validation border clears until re-validation
         # runs.
         #
@@ -3305,7 +3305,7 @@ class BOQService:
         # When the incoming metadata sets ``variant`` or ``variant_default``,
         # stamp ``variant_snapshot`` so the position's unit_rate is frozen
         # against later cost-database changes.  We only mutate metadata when
-        # the snapshot is actually missing or stale — the helper is a no-op
+        # the snapshot is actually missing or stale - the helper is a no-op
         # for plain manual positions.
         #
         # Idempotency: a no-op metadata patch (same variant payload, no
@@ -3334,7 +3334,7 @@ class BOQService:
                 unit_rate=snapshot_rate,
                 currency=currency if isinstance(currency, str) else None,
             )
-            # Per-resource snapshots — preserve any existing snapshots on
+            # Per-resource snapshots - preserve any existing snapshots on
             # incoming resources that didn't include one, so the idempotency
             # check inside ``_stamp_resource_variant_snapshots`` can compare
             # against them. Without this seeding, every metadata patch would
@@ -3370,7 +3370,7 @@ class BOQService:
         # whenever the patch touches description / unit / quantity /
         # unit_rate. We compare the post-merge effective values against
         # the other positions in the same BOQ (excluding this row). The
-        # warning is non-blocking — it only flags the traffic-light.
+        # warning is non-blocking - it only flags the traffic-light.
         if any(k in fields for k in ("description", "unit", "quantity", "unit_rate")):
             eff_desc = fields.get("description", position.description)
             eff_unit = fields.get("unit", position.unit)
@@ -3406,7 +3406,7 @@ class BOQService:
                 if "validation_status" not in fields:
                     fields["validation_status"] = "warnings"
             elif _had_marker:
-                # The edit resolved a former duplicate — clear the stale
+                # The edit resolved a former duplicate - clear the stale
                 # marker so the traffic-light stops flagging it.
                 _remaining = [
                     w
@@ -3446,7 +3446,7 @@ class BOQService:
                 try:
                     _grp = await self.position_repo.list_link_group(_link_group_before)
                     _unlink_siblings_remaining = max(0, len([p for p in _grp if p.id != position_id]) - 0)
-                except Exception:  # noqa: BLE001 — advisory count only
+                except Exception:  # noqa: BLE001 - advisory count only
                     _unlink_siblings_remaining = 0
                 fields["link_group_id"] = None
                 fields["link_role"] = None
@@ -3492,7 +3492,7 @@ class BOQService:
                 await self.session.refresh(position)
             except HTTPException:
                 raise
-            except Exception as exc:  # noqa: BLE001 — surface any DB failure as 422
+            except Exception as exc:  # noqa: BLE001 - surface any DB failure as 422
                 logger.exception(
                     "update_position DB write failed for %s; fields=%s",
                     position_id,
@@ -3502,7 +3502,7 @@ class BOQService:
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=(
                         "Position update could not be applied. The row may have "
-                        "been deleted or modified concurrently — reload and retry. "
+                        "been deleted or modified concurrently - reload and retry. "
                         f"({type(exc).__name__})"
                     ),
                 ) from exc
@@ -3512,7 +3512,7 @@ class BOQService:
         # changed, propagate ONLY those definition fields to every linked
         # instance in the group across the WHOLE project, in this same
         # transaction. NEVER propagate quantity / ordinal / sort_order /
-        # link fields — those stay per-instance (the architecture guide: quantities
+        # link fields - those stay per-instance (the architecture guide: quantities
         # never propagate). Each affected position + its BOQ totals are
         # recomputed, the position-changed event fires per instance, and
         # ONE audit entry records the fan-out.
@@ -3530,7 +3530,7 @@ class BOQService:
             if _changed_def_payload or _propagate_meta:
                 try:
                     # ``repo.update_fields`` ends in ``session.expire_all()``,
-                    # which expires EVERY ORM instance — the master
+                    # which expires EVERY ORM instance - the master
                     # ``position`` AND every row in ``group``. The async
                     # engine can't lazy-refresh on attribute access
                     # (``MissingGreenlet``), so snapshot the master's
@@ -3563,7 +3563,7 @@ class BOQService:
                     # Issue #132: groups created with the per-node
                     # correspondence key (``_link_src``) propagate a ROOT
                     # edit ONLY to instance ROOTS (those whose ``_link_src``
-                    # points back at this master root) — never blanket-
+                    # points back at this master root) - never blanket-
                     # overwriting instance CHILDREN with the root's
                     # definition. Legacy groups predating #132 carry no
                     # ``_link_src`` anywhere; they keep the original
@@ -3664,12 +3664,12 @@ class BOQService:
                                     "link_group_id": str(_link_group_before),
                                 },
                             )
-                        except Exception:  # noqa: BLE001 — best-effort
+                        except Exception:  # noqa: BLE001 - best-effort
                             logger.debug(
                                 "Activity-log for linked propagation failed",
                                 exc_info=True,
                             )
-                except Exception:  # noqa: BLE001 — never break the master PATCH
+                except Exception:  # noqa: BLE001 - never break the master PATCH
                     logger.exception(
                         "Linked-position propagation failed for master %s (group=%s)",
                         position_id,
@@ -3680,14 +3680,14 @@ class BOQService:
         # The block above only fires when the edited row is the master
         # ROOT (``link_role='master'``). A master's CHILDREN carry no
         # link_role (they are originals, not instances), so editing one
-        # used to propagate to nothing — the customer's "reuse a whole
+        # used to propagate to nothing - the customer's "reuse a whole
         # partida, fix a sub-line on the master, instances stay stale"
         # bug. Here: if the edited row is a non-link node whose subtree
         # ROOT is a master, fan the changed DEFINITION fields out to the
         # instance nodes that were cloned from THIS exact node
         # (``metadata._link_src == position_id``). Quantities / ordinals
         # never propagate (the architecture guide). Instance-side direct edits still
-        # diverge+unlink via the block far above — unchanged.
+        # diverge+unlink via the block far above - unchanged.
         if _link_role_before is None and not _did_unlink_instance and fields and _requested_def_fields:
             try:
                 # Snapshot the edited node's post-write definition BEFORE any
@@ -3700,7 +3700,7 @@ class BOQService:
                 _mc_prop_meta = "metadata_" in _requested_def_fields and isinstance(position.metadata_, dict)
                 _mc_meta_snapshot = position.metadata_ if isinstance(position.metadata_, dict) else {}
                 if _mc_changed or _mc_prop_meta:
-                    # Walk parent chain to the subtree root (depth-capped —
+                    # Walk parent chain to the subtree root (depth-capped -
                     # a cycle would otherwise loop forever).
                     _walk_id = getattr(position, "parent_id", None)
                     _root_node: Position | None = None
@@ -3718,14 +3718,14 @@ class BOQService:
                         and _root_node.link_group_id is not None
                         and _root_node.id != position_id
                     ):
-                        # Snapshot the master root's link identity NOW —
+                        # Snapshot the master root's link identity NOW -
                         # per-instance update_fields() runs expire_all()
                         # and the async engine can't lazy-refresh these
                         # later for the activity-log (MissingGreenlet).
                         _mc_root_group_id = _root_node.link_group_id
                         _mc_root_code = _root_node.reference_code
                         _mc_group = await self.position_repo.list_link_group(_mc_root_group_id)
-                        # Pre-snapshot the whole group before any write —
+                        # Pre-snapshot the whole group before any write -
                         # update_fields() → expire_all() would otherwise make
                         # a later iteration's ORM read lazy-load on the async
                         # engine (MissingGreenlet) once >1 child matches.
@@ -3771,7 +3771,7 @@ class BOQService:
                             if _mc_prop_meta:
                                 _ci_new_meta = _copy_definition_metadata(_mc_meta_snapshot)
                                 # Preserve the instance child's own
-                                # per-instance keys — crucially ``_link_src``
+                                # per-instance keys - crucially ``_link_src``
                                 # so the correspondence survives the copy.
                                 for _k in _LINK_INSTANCE_ONLY_META_KEYS:
                                     if _k in _ci_meta:
@@ -3828,12 +3828,12 @@ class BOQService:
                                         "link_group_id": str(_mc_root_group_id),
                                     },
                                 )
-                            except Exception:  # noqa: BLE001 — best-effort
+                            except Exception:  # noqa: BLE001 - best-effort
                                 logger.debug(
                                     "Activity-log for master-child propagation failed",
                                     exc_info=True,
                                 )
-            except Exception:  # noqa: BLE001 — never break the child PATCH
+            except Exception:  # noqa: BLE001 - never break the child PATCH
                 logger.exception(
                     "Master-child linked propagation failed for %s",
                     position_id,
@@ -3888,7 +3888,7 @@ class BOQService:
                 try:
                     boq = await self.get_boq(position.boq_id)
                     project_id = boq.project_id
-                except Exception:  # noqa: BLE001 — best-effort
+                except Exception:  # noqa: BLE001 - best-effort
                     project_id = None
                 await self.log_activity(
                     user_id=actor_id,
@@ -3901,7 +3901,7 @@ class BOQService:
                     changes=changes_diff,
                     metadata_={"version": int(position.version or 0)},
                 )
-            except Exception:  # noqa: BLE001 — best-effort, never break PATCH
+            except Exception:  # noqa: BLE001 - best-effort, never break PATCH
                 logger.debug("Activity-log write for position.updated failed", exc_info=True)
 
         # ── Issue #133: master resource definition edit → propagate ──────
@@ -3920,7 +3920,7 @@ class BOQService:
         ):
             _res_after_raw = position.metadata_.get("resources")
             if isinstance(_res_after_raw, list):
-                # Snapshot the after-state into a plain list NOW — the
+                # Snapshot the after-state into a plain list NOW - the
                 # propagation helper runs per-instance ``update_fields``
                 # (expire_all) and the async engine cannot lazy-refresh
                 # ``position.metadata_`` afterwards (MissingGreenlet).
@@ -3939,7 +3939,7 @@ class BOQService:
                     if _resource_propagated:
                         try:
                             await self.session.refresh(position)
-                        except Exception:  # noqa: BLE001 — best-effort
+                        except Exception:  # noqa: BLE001 - best-effort
                             logger.debug(
                                 "Refresh after resource propagation failed",
                                 exc_info=True,
@@ -3957,7 +3957,7 @@ class BOQService:
                     "unlinked": _did_unlink_instance,
                     "resource_propagated_to": _resource_propagated,
                 }
-            except Exception:  # noqa: BLE001 — purely cosmetic
+            except Exception:  # noqa: BLE001 - purely cosmetic
                 pass
 
         # ── Issue #157 (skolodi): surface missing-FX warnings ────────────
@@ -3982,12 +3982,12 @@ class BOQService:
             )
             if fx_warnings:
                 position._fx_warnings = fx_warnings  # type: ignore[attr-defined]
-        except Exception:  # noqa: BLE001 — warning is best-effort
+        except Exception:  # noqa: BLE001 - warning is best-effort
             logger.debug("FX warning detection failed", exc_info=True)
 
         return position
 
-    # ── v3.12.0 Stream A — bulk update & per-field restore ───────────────────
+    # ── v3.12.0 Stream A - bulk update & per-field restore ───────────────────
 
     async def bulk_update_positions(
         self,
@@ -4044,7 +4044,7 @@ class BOQService:
                 elif payload.rate_factor is not None:
                     current = _to_decimal(row.unit_rate, default=Decimal("0"))
                     new_rate = current * Decimal(str(payload.rate_factor))
-                    # Pass Decimal directly — PositionUpdate.unit_rate is
+                    # Pass Decimal directly - PositionUpdate.unit_rate is
                     # typed Decimal, so converting through float() would
                     # re-introduce binary-floating-point rounding on large
                     # rates (BUG-B-bulk-float).
@@ -4062,7 +4062,7 @@ class BOQService:
             except HTTPException:
                 failed_ids.append(pid)
             except ValueError:
-                # Cap overflow / validation — skip the row but keep going.
+                # Cap overflow / validation - skip the row but keep going.
                 failed_ids.append(pid)
 
         log_id: uuid.UUID | None = None
@@ -4093,7 +4093,7 @@ class BOQService:
                     },
                 )
                 log_id = entry.id
-            except Exception:  # noqa: BLE001 — never break the bulk return
+            except Exception:  # noqa: BLE001 - never break the bulk return
                 logger.debug("Bulk-update umbrella log failed", exc_info=True)
 
         return BulkUpdateResult(
@@ -4182,7 +4182,7 @@ class BOQService:
 
         try:
             update_data = PositionUpdate(**payload_kwargs)
-        except Exception as exc:  # noqa: BLE001 — schema rejections → 422
+        except Exception as exc:  # noqa: BLE001 - schema rejections → 422
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(f"Cannot restore field '{field}': {exc!s}"),
@@ -4293,7 +4293,7 @@ class BOQService:
             )
 
         # Find the variant in the cached array by label (the human-readable
-        # marker the frontend already uses as the variant identifier — see
+        # marker the frontend already uses as the variant identifier - see
         # ``CostVariant.label`` in ``frontend/src/features/costs/api.ts``).
         chosen: dict[str, Any] | None = None
         for v in available:
@@ -4323,7 +4323,7 @@ class BOQService:
             chosen_index = 0
 
         # Apply the new variant to the target resource. Drop any
-        # ``variant_default`` marker — the user made an explicit pick.
+        # ``variant_default`` marker - the user made an explicit pick.
         target_resource["variant"] = {
             "label": str(chosen.get("label", variant_code)),
             "price": new_price,
@@ -4336,7 +4336,7 @@ class BOQService:
         # (``common_start + variable_part``) so the BOQ row + Resource Summary
         # reflect the concrete pick, not the abstract group description. Skip
         # the rewrite for pre-v2.6.30 cached variants that don't carry
-        # ``full_label`` — preserves whatever name was stamped at apply-time.
+        # ``full_label`` - preserves whatever name was stamped at apply-time.
         full_label = chosen.get("full_label")
         if isinstance(full_label, str) and full_label.strip():
             target_resource["name"] = full_label.strip()[:400]
@@ -4394,7 +4394,7 @@ class BOQService:
             await self.session.refresh(position)
         except HTTPException:
             raise
-        except Exception as exc:  # noqa: BLE001 — surface any DB failure as 422
+        except Exception as exc:  # noqa: BLE001 - surface any DB failure as 422
             logger.exception(
                 "repick_resource_variant DB write failed for %s[%s]",
                 position_id,
@@ -4404,7 +4404,7 @@ class BOQService:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
                     "Variant re-pick could not be applied. The position may have been "
-                    f"modified concurrently — reload and retry. ({type(exc).__name__})"
+                    f"modified concurrently - reload and retry. ({type(exc).__name__})"
                 ),
             ) from exc
 
@@ -4440,7 +4440,7 @@ class BOQService:
                 try:
                     boq = await self.get_boq(position.boq_id)
                     project_id = boq.project_id
-                except Exception:  # noqa: BLE001 — best-effort
+                except Exception:  # noqa: BLE001 - best-effort
                     project_id = None
                 await self.log_activity(
                     user_id=actor_id,
@@ -4459,7 +4459,7 @@ class BOQService:
                         "version": int(position.version or 0),
                     },
                 )
-            except Exception:  # noqa: BLE001 — best-effort, never break PATCH
+            except Exception:  # noqa: BLE001 - best-effort, never break PATCH
                 logger.debug("Activity-log write for resource_variant_repick failed", exc_info=True)
 
         return position
@@ -4469,7 +4469,7 @@ class BOQService:
 
         If the position is a section, children are orphaned via ``parent_id=NULL``
         by the database (``ondelete="SET NULL"``). Set ``cascade=True`` to also
-        delete all descendant positions recursively — mirrors the UX contract
+        delete all descendant positions recursively - mirrors the UX contract
         users expect when deleting a section header.
 
         Raises:
@@ -4519,7 +4519,7 @@ class BOQService:
         # still sees the soon-to-be-deleted row's group.
         _del_link_role = getattr(position, "link_role", None)
         _del_link_group = getattr(position, "link_group_id", None)
-        # Capture the master's boq_id while ``position`` is still live — the
+        # Capture the master's boq_id while ``position`` is still live - the
         # promotion below calls repo.update_fields() which runs
         # session.expire_all(); the async engine can't lazy-refresh expired
         # attributes (MissingGreenlet).
@@ -4538,7 +4538,7 @@ class BOQService:
                     _promote_id = survivors[0].id
                     await self.position_repo.update_fields(_promote_id, link_role="master")
                     if len(survivors) == 1:
-                        # Only one left — collapse to a standalone owner so
+                        # Only one left - collapse to a standalone owner so
                         # we don't keep a one-member group around.
                         await self.position_repo.update_fields(
                             _promote_id,
@@ -4551,7 +4551,7 @@ class BOQService:
                         _del_link_group,
                         position_id,
                     )
-            except Exception:  # noqa: BLE001 — never block the delete
+            except Exception:  # noqa: BLE001 - never block the delete
                 logger.exception(
                     "Master-promotion failed for group %s on delete of %s",
                     _del_link_group,
@@ -4625,7 +4625,7 @@ class BOQService:
                     updated_count,
                     boq_id,
                 )
-        except Exception as exc:  # best-effort cleanup — never fail the parent delete
+        except Exception as exc:  # best-effort cleanup - never fail the parent delete
             logger.warning(
                 "Failed to scrub activity position refs for boq=%s: %s",
                 boq_id,
@@ -4810,14 +4810,14 @@ class BOQService:
 
         Deletes existing markups and creates the standard set.
 
-        Issue #89 — when the owning Project has ``default_vat_rate`` set,
+        Issue #89 - when the owning Project has ``default_vat_rate`` set,
         the seeded VAT/tax markup row uses that percentage instead of the
         regional template's default. Other markup rows (overhead, profit,
         contingency) keep their regional defaults.
 
         Args:
             boq_id: Target BOQ identifier.
-            region: Region code — "DACH", "UK", "US", "RU", "GULF", or "DEFAULT".
+            region: Region code - "DACH", "UK", "US", "RU", "GULF", or "DEFAULT".
 
         Returns:
             List of newly created BOQMarkup objects.
@@ -4847,7 +4847,7 @@ class BOQService:
                     raw = getattr(project, "default_vat_rate", None)
                     if raw is not None and str(raw).strip() != "":
                         project_vat_override = str(raw).strip()
-        except Exception:  # noqa: BLE001 — best-effort, never break seeding
+        except Exception:  # noqa: BLE001 - best-effort, never break seeding
             logger.debug("default_vat_rate lookup failed for boq %s", boq_id, exc_info=True)
             project_vat_override = None
 
@@ -4897,10 +4897,10 @@ class BOQService:
         """Recalculate unit_rates for all positions from their resource breakdowns.
 
         For each position that has ``metadata_.resources``, the unit_rate is
-        recomputed as Σ(resource.quantity × resource.unit_rate) — the
+        recomputed as Σ(resource.quantity × resource.unit_rate) - the
         per-unit norm convention shared with :meth:`update_position`. The
         position total is then ``position.quantity × unit_rate`` (BUG-B-004:
-        the two paths previously disagreed by a factor of qty² — recalc used
+        the two paths previously disagreed by a factor of qty² - recalc used
         ``total = resource_sum × qty`` while ``unit_rate = resource_sum``, and
         also floored qty at 1.0).  Both now derive identical values for the
         same resources + quantity.
@@ -4993,7 +4993,7 @@ class BOQService:
         # Eagerly capture ID to avoid MissingGreenlet if session expires attributes
         new_boq_id = new_boq.id
 
-        # Copy positions — first pass: create all with old parent_id recorded
+        # Copy positions - first pass: create all with old parent_id recorded
         positions = await self.position_repo.list_all_for_boq(boq_id)
         old_to_new: dict[uuid.UUID, uuid.UUID] = {}
 
@@ -5016,8 +5016,8 @@ class BOQService:
             pos_cad_element_ids = list(pos.cad_element_ids) if pos.cad_element_ids else []
             pos_metadata = dict(pos.metadata_) if pos.metadata_ else {}
             pos_sort_order = pos.sort_order
-            # Preserve the reusable code (Issue #127) so a duplicated BOQ —
-            # the canonical baseline→revision path via create-revision —
+            # Preserve the reusable code (Issue #127) so a duplicated BOQ -
+            # the canonical baseline→revision path via create-revision -
             # keeps a STABLE per-line identity. compare_boqs pairs lines by
             # ``reference_code`` first; without this every revision line
             # would look "added/removed" instead of "changed". The new BOQ
@@ -5051,7 +5051,7 @@ class BOQService:
 
         created_positions = await self.position_repo.bulk_create(new_positions)
 
-        # Build old→new ID mapping — eagerly capture new IDs before they expire
+        # Build old→new ID mapping - eagerly capture new IDs before they expire
         new_ids: list[uuid.UUID] = [p.id for p in created_positions]
         for cap, new_id in zip(captured_positions, new_ids, strict=False):
             old_to_new[cap["id"]] = new_id
@@ -5119,7 +5119,7 @@ class BOQService:
                 detail=translate("errors.position_not_found", locale=get_locale()),
             )
 
-        # Issue #127: a duplicate is a one-time clone — UNLINKED, with its
+        # Issue #127: a duplicate is a one-time clone - UNLINKED, with its
         # own fresh internal reference_code (no future propagation). It now
         # also deep-copies the source's child subtree via the shared
         # helper, and every cloned node gets a BOQ-unique ordinal so the
@@ -5200,7 +5200,7 @@ class BOQService:
 
         # ``PositionRepository.update_fields`` ends with
         # ``session.expire_all()``, which expires EVERY ORM instance in this
-        # unit of work — including ``position``. On the async engine a later
+        # unit of work - including ``position``. On the async engine a later
         # attribute read on the expired instance triggers an implicit lazy
         # refresh → MissingGreenlet → HTTP 500. Capture everything we need
         # BEFORE the first expiring write, then re-fetch a live instance
@@ -5224,7 +5224,7 @@ class BOQService:
                         await self.position_repo.update_fields(new_master.id, link_role=None, link_group_id=None)
                     else:
                         await self.position_repo.update_fields(new_master.id, link_role="master")
-            except Exception:  # noqa: BLE001 — never block the unlink
+            except Exception:  # noqa: BLE001 - never block the unlink
                 logger.exception(
                     "Survivor-promotion failed unlinking master %s",
                     position_id,
@@ -5237,7 +5237,7 @@ class BOQService:
             version=_pos_version + 1,
         )
         await self.session.flush()
-        # ``position`` is expired/stale after the writes above — re-fetch a
+        # ``position`` is expired/stale after the writes above - re-fetch a
         # live instance so the return value + router serialization
         # (``_position_to_response``) don't lazy-load on a dead instance.
         live_position = await self.position_repo.get_by_id(position_id)
@@ -5273,7 +5273,7 @@ class BOQService:
                     target_id=position_id,
                     metadata_={"link_group_id": str(group_id)},
                 )
-            except Exception:  # noqa: BLE001 — best-effort
+            except Exception:  # noqa: BLE001 - best-effort
                 logger.debug("Activity-log for unlink failed", exc_info=True)
 
         return position
@@ -5314,7 +5314,7 @@ class BOQService:
                     break
         else:
             # Standalone: the code may still be reused elsewhere in the
-            # project under different (e.g. copy) rows — surface every row
+            # project under different (e.g. copy) rows - surface every row
             # in the project carrying the same code so the UI can show
             # "this code is used N times".
             project_id = await self.position_repo.project_id_for_boq(position.boq_id)
@@ -5364,11 +5364,11 @@ class BOQService:
         """Find the first existing resource in a project that uses ``code``.
 
         Issue #133. Resource codes live in
-        ``Position.metadata.resources[].code`` (JSON — no SQL column), so
+        ``Position.metadata.resources[].code`` (JSON - no SQL column), so
         we scan every position of the project oldest-first and return the
         first match's reusable *definition* (name / type / unit /
         unit_rate / currency) plus where it was found. The quantity is
-        deliberately excluded — it is always per-instance (same contract
+        deliberately excluded - it is always per-instance (same contract
         as #127 position reuse). Returns ``found=False`` when the code is
         unused anywhere in the project.
         """
@@ -5391,7 +5391,7 @@ class BOQService:
                 r_code = str(r.get("code") or "").strip()
                 if not r_code or r_code.casefold() != norm_cf:
                     continue
-                # Issue #133 — a coded resource imported from a catalogue /
+                # Issue #133 - a coded resource imported from a catalogue /
                 # variant / match flow often stores its human label under
                 # ``description`` (or a composed variant name) with a blank
                 # ``name``. Fall back through those, and finally to the code
@@ -5429,7 +5429,7 @@ class BOQService:
         DEFINITION fields changed between two ``metadata.resources`` lists.
 
         Issue #133. Only coded resources participate (a blank code is
-        un-shareable). Quantity / total are intentionally excluded — they
+        un-shareable). Quantity / total are intentionally excluded - they
         are per-instance and must never propagate. Matched positionally
         first (the common in-place edit), then by code so a re-order does
         not produce spurious diffs.
@@ -5476,12 +5476,12 @@ class BOQService:
         changed_by_code: dict[str, dict[str, Any]],
         actor_id: uuid.UUID | None,
     ) -> int:
-        """Issue #133 — fan a master resource's definition edit out to the
+        """Issue #133 - fan a master resource's definition edit out to the
         linked resource instances across the project.
 
         ``editor_position`` is the just-saved position. For each changed
         resource ``code`` it only propagates when ``editor_position`` holds
-        the MASTER definition (the OLDEST position carrying that code —
+        the MASTER definition (the OLDEST position carrying that code -
         same canonical rule as ``find_resource_by_code``). Other positions'
         resources with the same code receive the changed DEFINITION fields
         and have their ``total`` recomputed against THEIR OWN quantity
@@ -5489,7 +5489,7 @@ class BOQService:
         diverged (``_code_overridden`` truthy) is left untouched and not
         re-linked silently (the architecture guide: AI-augmented, human-confirmed).
 
-        Returns the number of resource instances updated. Best-effort —
+        Returns the number of resource instances updated. Best-effort -
         never raises (a propagation hiccup must not fail the user's PATCH).
         """
         if not changed_by_code:
@@ -5498,12 +5498,12 @@ class BOQService:
             project_id = await self.position_repo.project_id_for_boq(editor_position.boq_id)
             if project_id is None:
                 return 0
-            # Capture editor identity NOW — per-instance ``update_fields``
+            # Capture editor identity NOW - per-instance ``update_fields``
             # calls below run ``expire_all()`` and the async engine cannot
             # lazy-refresh ``editor_position`` afterwards (MissingGreenlet).
             editor_id = editor_position.id
             editor_boq_id = editor_position.boq_id
-            # Oldest-first — the FIRST carrier of a code is its master.
+            # Oldest-first - the FIRST carrier of a code is its master.
             positions = await self.position_repo.list_for_project(project_id)
 
             # ── Snapshot EVERY position into plain values BEFORE any write.
@@ -5511,7 +5511,7 @@ class BOQService:
             # which expires every ORM instance in this unit of work; a later
             # attribute read on a not-yet-processed row would lazy-load on
             # the async engine → MissingGreenlet. (Same footgun + fix the
-            # #127 propagation uses — see ``_grp_snap``.)
+            # #127 propagation uses - see ``_grp_snap``.)
             snap: list[dict[str, Any]] = [
                 {
                     "id": p.id,
@@ -5534,7 +5534,7 @@ class BOQService:
                 )
 
             # Resolve which of the changed codes this editor actually owns
-            # (it must be the OLDEST carrier — first in the snapshot order).
+            # (it must be the OLDEST carrier - first in the snapshot order).
             owned_codes: set[str] = set()
             for code in changed_by_code:
                 for s in snap:
@@ -5565,7 +5565,7 @@ class BOQService:
                     rc = str(r.get("code") or "").strip()
                     if not rc or rc.casefold() not in owned_cf:
                         continue
-                    # Honour an explicit user divergence — never silently
+                    # Honour an explicit user divergence - never silently
                     # overwrite an instance the user customised.
                     if r.get("_code_overridden"):
                         continue
@@ -5639,13 +5639,13 @@ class BOQService:
                                 "instance_count": updated,
                             },
                         )
-                    except Exception:  # noqa: BLE001 — best-effort
+                    except Exception:  # noqa: BLE001 - best-effort
                         logger.debug(
                             "Activity-log for resource propagation failed",
                             exc_info=True,
                         )
             return updated
-        except Exception:  # noqa: BLE001 — never break the user's PATCH
+        except Exception:  # noqa: BLE001 - never break the user's PATCH
             # ``editor_position`` may be expired here (a per-instance
             # ``update_fields`` ran ``expire_all()``); avoid touching it.
             logger.exception(
@@ -5660,7 +5660,7 @@ class BOQService:
         """Get a BOQ with all its positions and computed grand total.
 
         ``grand_total`` here matches the list-endpoint semantics: it includes
-        active markups (BUG-008 — list returned 25830, detail returned 20500
+        active markups (BUG-008 - list returned 25830, detail returned 20500
         for the same BOQ; clients flipped between the two cosmically and lost
         trust).  ``direct_cost_total`` exposes the position-sum-only figure
         for clients that need the breakdown.
@@ -5734,15 +5734,15 @@ class BOQService:
         boq = await self.get_boq(boq_id)
         all_positions = await self.position_repo.list_all_for_boq(boq_id)
 
-        # Issue #111 — resolve the project FX table once so foreign-currency
+        # Issue #111 - resolve the project FX table once so foreign-currency
         # position totals convert into the base currency before they roll up
         # into section subtotals / Direct Cost / Grand Total. Without this the
         # export path (CSV/Excel/PDF all read get_boq_structured) summed
-        # foreign totals as base — the exact defect #131 fixed in the grid.
+        # foreign totals as base - the exact defect #131 fixed in the grid.
         _fx_base, _fx_map = await self._resolve_project_fx(boq_id)
 
         def _leaf_total_base(pos: Position) -> Decimal:
-            # Issue #111 (skolodi follow-up) — resource-currency-aware. A
+            # Issue #111 (skolodi follow-up) - resource-currency-aware. A
             # position with USD-priced resources but no metadata.currency
             # must still convert into the base before it lands in the
             # section subtotal / direct cost / grand total.
@@ -5760,7 +5760,7 @@ class BOQService:
             elif pos.parent_id is not None and pos.parent_id in section_map:
                 children_map.setdefault(pos.parent_id, []).append(pos)
             elif pos.parent_id is not None:
-                # Parent exists but is not a section — still group under parent
+                # Parent exists but is not a section - still group under parent
                 # if parent is in section_map after full scan, handled below
                 ungrouped_items.append(pos)
             else:
@@ -5779,7 +5779,7 @@ class BOQService:
         # levels). A section nested under another section lands in
         # ``section_map`` as its own entry but its parent never aggregated
         # it, so the parent reported subtotal 0 while the child held the
-        # money — any UI summing top-level section subtotals understated
+        # money - any UI summing top-level section subtotals understated
         # the BOQ.
         child_sections: dict[uuid.UUID, list[uuid.UUID]] = {}
         for sid, spos in section_map.items():
@@ -5834,7 +5834,7 @@ class BOQService:
             )
             # direct_cost accumulates ONLY this section's own leaves so a
             # rolled parent subtotal does not double-count its children
-            # (BUG-B-010 — grand total stays leaf-exact).
+            # (BUG-B-010 - grand total stays leaf-exact).
             direct_cost += own_leaf_subtotal[section_id]
 
         # Ungrouped items
@@ -5898,7 +5898,7 @@ class BOQService:
     ) -> tuple[str, dict[str, str]]:
         """Public accessor for a BOQ project's ``(base_currency, fx_map)``.
 
-        Issue #111 — the CSV / Excel exporters embed these frozen rates as
+        Issue #111 - the CSV / Excel exporters embed these frozen rates as
         an audit appendix so a downloaded BOQ records exactly which FX
         rates produced its base-currency totals (a later rate edit can't
         retroactively change a delivered tender).
@@ -5968,7 +5968,7 @@ class BOQService:
                     resource_types[res_name] = cat
                     resource_positions.setdefault(res_name, set()).add(pos.id)
             else:
-                # Heuristic fallback — classify by description keywords (fast)
+                # Heuristic fallback - classify by description keywords (fast)
                 cat = self._classify_position_category(pos.description)
                 category_amounts[cat] = category_amounts.get(cat, 0.0) + pos_total
                 category_counts[cat] = category_counts.get(cat, 0) + 1
@@ -6587,7 +6587,7 @@ class BOQService:
         await self.get_boq(boq_id)
         all_positions = await self.position_repo.list_all_for_boq(boq_id)
 
-        # Filter out section headers — only count real line items
+        # Filter out section headers - only count real line items
         items = [p for p in all_positions if not _is_section(p)]
         total_positions = len(items)
 
@@ -6689,7 +6689,7 @@ class BOQService:
         """Restore a BOQ to a previous snapshot state.
 
         Deletes all current positions and markups, then recreates them from
-        the snapshot — including hierarchical parent_id relationships and
+        the snapshot - including hierarchical parent_id relationships and
         markup lines.
         """
         from sqlalchemy import delete as sa_delete
@@ -6836,7 +6836,7 @@ class BOQService:
 
         Takes plain primitives (NOT the ORM ``QuantityLink``) so callers
         can snapshot a link's scalar fields up front and stay correct
-        across ``session.expire_all()`` boundaries — the same
+        across ``session.expire_all()`` boundaries - the same
         MissingGreenlet-avoidance pattern ``duplicate_boq`` uses.
 
         Args:
@@ -6866,7 +6866,7 @@ class BOQService:
                 continue
             quantities = elem.quantities if isinstance(elem.quantities, dict) else {}
             if aggregation == "count":
-                # ``count`` does not need the field present — it counts
+                # ``count`` does not need the field present - it counts
                 # resolvable elements. Still record the contribution.
                 contributing.append(sid)
                 continue
@@ -6879,7 +6879,7 @@ class BOQService:
 
         if aggregation == "count":
             # ``count`` is the number of RESOLVED elements (the classic
-            # "number of doors" takeoff) — independent of any field value.
+            # "number of doors" takeoff) - independent of any field value.
             aggregated = Decimal(len(contributing))
         else:
             aggregated = self._aggregate_quantities(values, aggregation)
@@ -6894,7 +6894,7 @@ class BOQService:
     ) -> QuantityLinkResponse:
         """Bind a position numeric field to a set of BIM model elements.
 
-        Creating the link does NOT change the position quantity — it only
+        Creating the link does NOT change the position quantity - it only
         records the extraction rule + provenance. Validates that the
         position and model exist and live in the same project so a link
         can never cross a tenancy boundary.
@@ -6952,7 +6952,7 @@ class BOQService:
         return [QuantityLinkResponse.model_validate(link) for link in links]
 
     async def delete_quantity_link(self, link_id: uuid.UUID) -> None:
-        """Delete a quantity link. Idempotent — 404s an unknown id.
+        """Delete a quantity link. Idempotent - 404s an unknown id.
 
         Deleting a link never touches the position quantity: the value
         the link last applied stays put, it just stops being tracked.
@@ -6969,7 +6969,7 @@ class BOQService:
         bound quantity via the extraction rule, and compare against the
         position's current stored value. Links whose computed value
         differs are flipped to ``stale`` (persisted) and surfaced in the
-        review payload. NOTHING is written to the position here — applying
+        review payload. NOTHING is written to the position here - applying
         the pull is an explicit, human-confirmed second step (the architecture guide
         §7).
 
@@ -6983,7 +6983,7 @@ class BOQService:
         # Snapshot every link's scalar fields BEFORE the loop so the
         # subsequent ``update_fields`` (which calls ``session.expire_all``)
         # can never make a still-referenced ORM ``link`` lazy-load and
-        # raise MissingGreenlet — the same pattern ``duplicate_boq`` uses.
+        # raise MissingGreenlet - the same pattern ``duplicate_boq`` uses.
         snapshots = [
             {
                 "id": link.id,
@@ -7005,7 +7005,7 @@ class BOQService:
         for snap in snapshots:
             position = await self.position_repo.get_by_id(snap["position_id"])
             if position is None:
-                # Position deleted out from under the link — drop the link
+                # Position deleted out from under the link - drop the link
                 # so a refresh self-heals (CASCADE normally handles this;
                 # belt-and-braces for any orphan).
                 await self.quantity_link_repo.delete(snap["id"])
@@ -7084,7 +7084,7 @@ class BOQService:
     ) -> QuantityLinkApplyResponse:
         """Apply re-pulled quantities to the chosen positions (human gate).
 
-        Only the links explicitly listed in ``link_ids`` are applied —
+        Only the links explicitly listed in ``link_ids`` are applied -
         this is the confirm step of the propose→review→apply contract.
         For each, the latest-model quantity is recomputed, written to the
         position's ``target_field`` (with ``total`` recomputed exactly via
@@ -7117,7 +7117,7 @@ class BOQService:
         # v4.2.2 Round 2 Wave C: snapshot every bound position's scalar
         # state in ONE bulk query up front so the per-link loop doesn't
         # fan out into N ``get_by_id`` round-trips. We don't keep the ORM
-        # instances live — the *first* ``update_fields`` call (either on
+        # instances live - the *first* ``update_fields`` call (either on
         # a position or its link) triggers ``session.expire_all()``,
         # which would render every cached instance lazy-load-prone. So
         # we copy the scalar fields the loop actually reads into plain
@@ -7146,7 +7146,7 @@ class BOQService:
             }
             for p in await self.position_repo.list_by_ids(position_ids_to_load)
         }
-        # Tracks positions this batch already mutated — a later
+        # Tracks positions this batch already mutated - a later
         # iteration that touches the same position must re-read from DB
         # (the snapshot's ``quantity`` / ``metadata_`` are stale).
         mutated_position_ids: set[uuid.UUID] = set()
@@ -7184,7 +7184,7 @@ class BOQService:
                 # SimpleNamespace gives ``position.ordinal`` / ``.quantity``
                 # / ``.unit_rate`` / ``.metadata_`` attribute access that's
                 # drop-in compatible with the ORM ``Position`` reads the
-                # downstream code performs — no lazy loads possible.
+                # downstream code performs - no lazy loads possible.
                 position = SimpleNamespace(**pos_snap_by_id[position_id])
             if position is None:
                 skipped += 1
@@ -7219,7 +7219,7 @@ class BOQService:
                         applied=False,
                         old_quantity=_quantize_money_str(position.quantity),
                         new_quantity=_quantize_money_str(new_qty),
-                        message="No bound elements resolve — not applied",
+                        message="No bound elements resolve - not applied",
                     )
                 )
                 continue
@@ -7311,7 +7311,7 @@ class BOQService:
         FX table (the same ``_resolve_project_fx`` /
         ``_position_total_in_base`` path the structured view + exports use)
         so a multi-currency estimate compares consistently. Section
-        headers (no unit) are skipped — they carry no money.
+        headers (no unit) are skipped - they carry no money.
 
         Raises:
             HTTPException 404: either BOQ not found.
@@ -7322,7 +7322,7 @@ class BOQService:
         base_positions = await self.position_repo.list_all_for_boq(base_boq_id)
         other_positions = await self.position_repo.list_all_for_boq(other_boq_id)
 
-        # FX context for each side resolved independently — the two BOQs
+        # FX context for each side resolved independently - the two BOQs
         # may even sit in different projects (a baseline imported as a
         # standalone). Rebase each side with its own project's table.
         base_fx_ccy, base_fx_map = await self._resolve_project_fx(base_boq_id)
@@ -7344,7 +7344,7 @@ class BOQService:
                     continue
                 key = _match_key(p)
                 # First occurrence wins; a duplicate key is a data issue
-                # (boq_quality flags it) — comparing the first is stable.
+                # (boq_quality flags it) - comparing the first is stable.
                 out.setdefault(key, p)
             return out
 
@@ -7363,7 +7363,7 @@ class BOQService:
             o = other_idx.get(key)
 
             if b is not None:
-                # Issue #111 (skolodi) — resource-currency-aware so a
+                # Issue #111 (skolodi) - resource-currency-aware so a
                 # base-budget diff converts USD-resource positions too.
                 b_total_base = _leaf_total_base_with_resources(b, base_fx_map, base_fx_ccy)
                 old_dc_base += b_total_base
@@ -7415,7 +7415,7 @@ class BOQService:
                 )
                 continue
 
-            # Both present — classify what moved using exact Decimal.
+            # Both present - classify what moved using exact Decimal.
             # (the add/remove branches above already ``continue``d, so
             # reaching here means both sides resolved a position).
             qty_changed = _to_decimal(b.quantity) != _to_decimal(o.quantity)
@@ -7484,7 +7484,7 @@ class BOQService:
         Args:
             description: Position description text.
             unit: Unit of measurement (used to build a richer query).
-            project_standard: Target standard — "din276", "nrm", or "masterformat".
+            project_standard: Target standard - "din276", "nrm", or "masterformat".
 
         Returns:
             List of suggestion dicts with keys: standard, code, label, confidence.
@@ -7781,7 +7781,7 @@ class BOQService:
 
             # BUG-B-011: ``pos.unit_rate`` is now an exact Decimal. This
             # anomaly heuristic mixes it with float market percentiles, so
-            # cast to float locally — heuristic comparison does not need
+            # cast to float locally - heuristic comparison does not need
             # sub-cent exactness (the exact value is preserved in storage
             # and in the JSON response).
             current_rate = float(pos.unit_rate)
@@ -7950,7 +7950,7 @@ class BOQService:
         Returns:
             Tuple of (provider, api_key, model_override_or_none). The model
             override (Settings > AI) is honored so a provider like OpenRouter
-            uses the model the user picked rather than a hardcoded default —
+            uses the model the user picked rather than a hardcoded default -
             issue #138.
 
         Raises:
@@ -8150,7 +8150,7 @@ class BOQService:
             return {
                 "completeness_score": 0.0,
                 "missing_items": [],
-                "warnings": ["BOQ is empty — no positions to analyze."],
+                "warnings": ["BOQ is empty - no positions to analyze."],
                 "summary": "Empty BOQ.",
                 "model_used": "",
                 "tokens_used": 0,

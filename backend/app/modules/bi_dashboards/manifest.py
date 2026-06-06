@@ -23,7 +23,7 @@ manifest = ModuleManifest(
     description=(
         "Role-based dashboards, KPI library, custom report builder, "
         "alerts, scheduled digests. Module 20 of the 18-module extension "
-        "wave — pure consumer of cross-module data."
+        "wave - pure consumer of cross-module data."
     ),
     author="OpenConstructionERP",
     category="extension",

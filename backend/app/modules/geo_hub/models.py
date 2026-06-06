@@ -3,19 +3,19 @@
 
 Tables (all prefixed ``oe_geo_hub_``):
 
-    anchor               — WGS84 anchor (lat / lon / alt / EPSG) for a project
-    tileset              — 3D Tiles 1.1 tileset metadata + storage uri
-    imagery_layer        — base / overlay imagery provider per project
-    terrain_source       — global terrain catalogue (ellipsoid / CWT / quantized mesh)
-    viewpoint            — saved camera pose per project
-    overlay              — GeoJSON / KML feature collections (boundaries, drone scans, ...)
-    tile_job             — async tile-generation job with FSM state
+    anchor               - WGS84 anchor (lat / lon / alt / EPSG) for a project
+    tileset              - 3D Tiles 1.1 tileset metadata + storage uri
+    imagery_layer        - base / overlay imagery provider per project
+    terrain_source       - global terrain catalogue (ellipsoid / CWT / quantized mesh)
+    viewpoint            - saved camera pose per project
+    overlay              - GeoJSON / KML feature collections (boundaries, drone scans, ...)
+    tile_job             - async tile-generation job with FSM state
 
 External references kept as plain UUID columns (no FK):
-    source_id            — points at bim_hub.BIMModel.id, federations,
+    source_id            - points at bim_hub.BIMModel.id, federations,
                            property_dev.Development.id, an upload key, etc.
                            polymorphic on ``source_kind``
-    created_by           — oe_users_user.id
+    created_by           - oe_users_user.id
 
 Multi-tenant model
 ------------------
@@ -34,7 +34,7 @@ use ``Decimal`` for stable serialisation across SQLite + Postgres.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime  # noqa: F401 — used in Mapped[datetime] annotations
+from datetime import datetime  # noqa: F401 - used in Mapped[datetime] annotations
 from decimal import Decimal
 
 from sqlalchemy import (
@@ -57,7 +57,7 @@ from app.database import GUID, Base
 
 
 class GeoAnchor(Base):
-    """WGS84 anchor for a project — exactly one per project."""
+    """WGS84 anchor for a project - exactly one per project."""
 
     __tablename__ = "oe_geo_hub_anchor"
     __table_args__ = (UniqueConstraint("project_id", name="uq_oe_geo_hub_anchor_project"),)
@@ -69,7 +69,7 @@ class GeoAnchor(Base):
         index=True,
     )
     # WGS84 latitude / longitude in decimal degrees. ``Decimal(10, 7)``
-    # holds 1.1 cm precision at the equator — more than enough for
+    # holds 1.1 cm precision at the equator - more than enough for
     # construction-scale anchoring without burning storage on float64
     # rounding bugs.
     lat: Mapped[Decimal] = mapped_column(
@@ -92,7 +92,7 @@ class GeoAnchor(Base):
     # EPSG code of the *source* coordinate reference system. 4326 =
     # WGS84 geographic. 3857 = Web Mercator. 25832 = ETRS89 / UTM 32N
     # (DACH default). 32633 = WGS84 / UTM 33N. Anything else is fine
-    # too — we only validate the integer-positive range; the actual
+    # too - we only validate the integer-positive range; the actual
     # transform is done at view time via pyproj if installed.
     epsg_code: Mapped[int] = mapped_column(
         Integer,
@@ -100,7 +100,7 @@ class GeoAnchor(Base):
         default=4326,
     )
     # ISO 3166-2 region code, e.g. ``DE-BE`` (Berlin), ``GB-LND``
-    # (London), ``US-CA``. Optional — drives imagery defaults.
+    # (London), ``US-CA``. Optional - drives imagery defaults.
     region_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
     address: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # Horizontal accuracy in metres, when surveyed. ``None`` for "this
@@ -118,7 +118,7 @@ class GeoAnchor(Base):
         server_default="{}",
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — display only
+    def __repr__(self) -> str:  # pragma: no cover - display only
         return f"<GeoAnchor project={self.project_id} ({self.lat},{self.lon})>"
 
 
@@ -136,7 +136,7 @@ class Tileset(Base):
     ``bim_model``         oe_bim_model.id
     ``federation``        oe_bim_federation.id
     ``development``       oe_property_dev_development.id
-    ``upload``            opaque upload key — caller-side ownership
+    ``upload``            opaque upload key - caller-side ownership
     ``point_cloud``       opaque upload key
     ``photogrammetry``    opaque upload key
     ====================  ====================================================
@@ -298,7 +298,7 @@ class ImageryLayer(Base):
 class TerrainSource(Base):
     """System-wide terrain catalogue (no per-project rows).
 
-    The default terrain is the WGS84 ellipsoid — free, no third-party
+    The default terrain is the WGS84 ellipsoid - free, no third-party
     keys, ships out of the box. Cesium World Terrain (CWT) is offered
     as an opt-in source: the admin sets the ion access token here and
     the frontend stops sending it back to the server (browser talks
@@ -321,7 +321,7 @@ class TerrainSource(Base):
     )
     # ion access token, when ``provider == "cesium_world"``. Stored
     # encrypted-at-rest by the storage backend, never returned in API
-    # responses — the frontend constructs the Cesium ion URL itself
+    # responses - the frontend constructs the Cesium ion URL itself
     # using a short-lived token endpoint (out of scope of v1).
     ion_token: Mapped[str | None] = mapped_column(
         String(500),
@@ -349,7 +349,7 @@ class GeoViewpoint(Base):
     """Saved camera pose per project.
 
     Named ``GeoViewpoint`` (not ``Viewpoint``) to avoid the registry
-    clash with :class:`app.modules.collaboration.models.Viewpoint` —
+    clash with :class:`app.modules.collaboration.models.Viewpoint` -
     SQLAlchemy unifies all DeclarativeBase descendants into one
     registry so unqualified class names must be unique across modules.
     """
@@ -562,7 +562,7 @@ class GeoRasterOverlay(Base):
     ``crop_polygon_geojson``, when present, is a full GeoJSON Polygon
     that the frontend applies as a ``ClippingPolygonCollection`` on the
     imagery layer so users can crop irrelevant edges away. We deliberately
-    do not enforce GeoJSON schema at the column level — Pydantic
+    do not enforce GeoJSON schema at the column level - Pydantic
     validates on the way in; the JSON column is the storage primitive.
     """
 
@@ -575,7 +575,7 @@ class GeoRasterOverlay(Base):
         index=True,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
-    # One of ``pdf``, ``dwg``, ``image`` — Pydantic enforces the enum.
+    # One of ``pdf``, ``dwg``, ``image`` - Pydantic enforces the enum.
     source_kind: Mapped[str] = mapped_column(
         String(16),
         nullable=False,
@@ -769,7 +769,7 @@ class GeocodeCache(Base):
         server_default="0",
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — display only
+    def __repr__(self) -> str:  # pragma: no cover - display only
         return f"<GeocodeCache {self.query_hash[:8]}… ({self.lat},{self.lon}) {self.precision}>"
 
 

@@ -1,20 +1,20 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍DSL parser — YAML/JSON document → typed AST.
+"""‌⁠‍DSL parser - YAML/JSON document → typed AST.
 
 The parser is the *only* entry point that touches user-supplied text
 (see ``compile_rule`` in :mod:`.evaluator`). It is responsible for:
 
-1. Safely loading YAML — :func:`yaml.safe_load` so ``!!python/object``
+1. Safely loading YAML - :func:`yaml.safe_load` so ``!!python/object``
    tags raise ``ConstructorError`` instead of importing arbitrary
    modules.
-2. Validating the document shape — every top-level key has a fixed
+2. Validating the document shape - every top-level key has a fixed
    type, every expression node is one of a handful of known kinds, and
    anything else is rejected.
 3. Producing a typed :class:`RuleDefinition` AST that the evaluator can
    walk without re-parsing.
 
-The grammar is deliberately tiny — see the module docstring of
+The grammar is deliberately tiny - see the module docstring of
 :mod:`app.core.validation.dsl` for the rationale.
 """
 
@@ -69,7 +69,7 @@ class DSLTypeError(DSLError):
 
 @dataclass(frozen=True)
 class FieldRef:
-    """A dotted path expression — ``position.quantity``, ``boq.total``."""
+    """A dotted path expression - ``position.quantity``, ``boq.total``."""
 
     path: tuple[str, ...]
 
@@ -88,19 +88,19 @@ class Comparison:
     ``op`` is one of: ``==`` ``!=`` ``<`` ``<=`` ``>`` ``>=``.
     Also includes ``in`` for membership checks against a literal list.
 
-    ``left`` / ``right`` are :class:`Expression` values — quoted because
+    ``left`` / ``right`` are :class:`Expression` values - quoted because
     :class:`Expression` is a forward-referenced type alias declared
     further down.
     """
 
     op: str
-    left: Any  # Expression — see comment above.
+    left: Any  # Expression - see comment above.
     right: Any  # Expression
 
 
 @dataclass(frozen=True)
 class Logical:
-    """Logical combinator — ``and`` / ``or`` / ``not``.
+    """Logical combinator - ``and`` / ``or`` / ``not``.
 
     For ``not``, ``operands`` has length 1; otherwise length >= 2.
     ``operands`` holds :class:`Expression` values (forward-referenced).
@@ -118,7 +118,7 @@ class Aggregation:
     field: FieldRef | None  # None for ``count`` of all items.
 
 
-# An ``Expression`` is any of the following — modelled as a union via
+# An ``Expression`` is any of the following - modelled as a union via
 # ``isinstance`` checks rather than a sum type for evaluator simplicity.
 Expression = Comparison | Logical | Aggregation | FieldRef | Literal
 
@@ -142,13 +142,13 @@ class SingleAssert:
     predicate: Expression
 
 
-# Body union — what ``expression`` resolves to.
+# Body union - what ``expression`` resolves to.
 RuleBody = ForEachAssert | SingleAssert
 
 
 @dataclass(frozen=True)
 class RuleDefinition:
-    """Top-level parsed rule — the AST root.
+    """Top-level parsed rule - the AST root.
 
     All fields are validated by :func:`parse_definition`; constructing
     one directly bypasses those checks (don't).
@@ -196,7 +196,7 @@ _MAX_LITERAL_LIST_LEN = 256
 _MAX_FIELD_PATH_DEPTH = 8
 
 # Identifier-name policy: lowercase letters, digits, underscore. Keeps
-# evaluator field-access defenses simple — no dunders, no ``__class__``.
+# evaluator field-access defenses simple - no dunders, no ``__class__``.
 _IDENT_CHARS = set("abcdefghijklmnopqrstuvwxyz0123456789_")
 
 
@@ -305,7 +305,7 @@ def _load_document(source: str | dict[str, Any]) -> Any:
     if not text:
         raise DSLSyntaxError("DSL source is empty.", path="$")
 
-    # Try JSON first — strict, fast, and unambiguous. Fall back to YAML
+    # Try JSON first - strict, fast, and unambiguous. Fall back to YAML
     # (safe_load only) for the user-friendly path.
     try:
         return json.loads(text)
@@ -456,7 +456,7 @@ def _parse_expression(node: Any, *, path: str, depth: int) -> Expression:
             path=path,
         )
 
-    # Literal scalars — numbers, bools, None.
+    # Literal scalars - numbers, bools, None.
     if isinstance(node, bool) or node is None:
         return Literal(value=node)
     if isinstance(node, (int, float)):
@@ -471,11 +471,11 @@ def _parse_expression(node: Any, *, path: str, depth: int) -> Expression:
 
     if isinstance(node, list):
         # Lists at expression position are only legal as the right-hand
-        # side of an ``in`` comparison — but at this point we don't know
+        # side of an ``in`` comparison - but at this point we don't know
         # the parent. Reject here; ``_parse_compare`` will accept lists
         # via ``_parse_literal_list``.
         raise DSLTypeError(
-            "Bare list is not a valid expression — wrap with 'in: <field>: [...]'.",
+            "Bare list is not a valid expression - wrap with 'in: <field>: [...]'.",
             path=path,
         )
 
@@ -510,7 +510,7 @@ def _parse_expression(node: Any, *, path: str, depth: int) -> Expression:
 
 
 def _parse_string_expression(node: str, *, path: str) -> Expression:
-    """Parse a string at expression position — literal, ref, or shorthand."""
+    """Parse a string at expression position - literal, ref, or shorthand."""
     text = node.strip()
     if not text:
         raise DSLTypeError("Empty string is not a valid expression.", path=path)
@@ -521,7 +521,7 @@ def _parse_string_expression(node: str, *, path: str) -> Expression:
     ):
         return Literal(value=text[1:-1])
 
-    # Inline binary comparison — ``position.quantity > 0``. Allows users
+    # Inline binary comparison - ``position.quantity > 0``. Allows users
     # to write naturally: ``assert: position.quantity > 0``.
     for op in ("<=", ">=", "==", "!=", "<", ">"):
         if f" {op} " in text:
@@ -535,7 +535,7 @@ def _parse_string_expression(node: str, *, path: str) -> Expression:
 
 
 def _parse_atom(text: str, *, path: str) -> Expression:
-    """Parse a single token — number / bool / null / string / field-ref."""
+    """Parse a single token - number / bool / null / string / field-ref."""
     if text in {"true", "false"}:
         return Literal(value=(text == "true"))
     if text in {"null", "none", "None"}:
@@ -573,7 +573,7 @@ def _parse_logical(
     depth: int,
 ) -> Logical:
     if op == "not":
-        # Single operand — accept either a list-of-1 or a bare expression.
+        # Single operand - accept either a list-of-1 or a bare expression.
         if isinstance(operands, list):
             if len(operands) != 1:
                 raise DSLSyntaxError(
@@ -586,7 +586,7 @@ def _parse_logical(
         parsed = _parse_expression(inner, path=f"{path}.not", depth=depth + 1)
         return Logical(op=op, operands=(parsed,))
 
-    # ``and`` / ``or`` — list of operands.
+    # ``and`` / ``or`` - list of operands.
     if not isinstance(operands, list) or len(operands) < 2:
         raise DSLSyntaxError(
             f"'{op}' requires a list of at least two operands.",
@@ -610,7 +610,7 @@ def _parse_compare(
     path: str,
     depth: int,
 ) -> Comparison:
-    """Parse a structured comparison node — ``{">=": [a, b]}`` or
+    """Parse a structured comparison node - ``{">=": [a, b]}`` or
     ``{"in": {"value": x, "list": [...]}}``."""
     if op == "in":
         if not isinstance(inner, dict):
@@ -635,7 +635,7 @@ def _parse_compare(
         )
         return Comparison(op=op, left=value_node, right=list_node)
 
-    # Standard binary comparison — list of two.
+    # Standard binary comparison - list of two.
     if not isinstance(inner, list) or len(inner) != 2:
         raise DSLSyntaxError(
             f"'{op}' requires a list of exactly two operands.",
@@ -670,7 +670,7 @@ def _parse_aggregation(op: str, inner: Any, *, path: str) -> Aggregation:
     if op == "count":
         # ``count`` may target the iterating scope (no field) or a
         # boolean-yielding sub-clause. We currently support only the
-        # ``count of items`` form — a future iteration can extend.
+        # ``count of items`` form - a future iteration can extend.
         if inner in (None, "", "*"):
             return Aggregation(kind=op, field=None)
         if isinstance(inner, str) and _is_safe_path(inner):
@@ -680,7 +680,7 @@ def _parse_aggregation(op: str, inner: Any, *, path: str) -> Aggregation:
             path=f"{path}.count",
         )
 
-    # sum / avg / min / max — require a field reference.
+    # sum / avg / min / max - require a field reference.
     if not isinstance(inner, str) or not _is_safe_path(inner):
         raise DSLTypeError(
             f"'{op}' requires a field reference (e.g. 'position.quantity').",

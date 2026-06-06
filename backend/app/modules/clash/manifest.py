@@ -10,7 +10,7 @@ manifest = ModuleManifest(
     description=(
         "Geometric AABB interference / clearance detection over canonical "
         "BIM elements, with a discipline×discipline clash matrix, a review "
-        "workflow and one-click BCF export — no IfcOpenShell."
+        "workflow and one-click BCF export - no IfcOpenShell."
     ),
     author="OpenEstimate Core Team",
     category="core",

@@ -1,9 +1,9 @@
 """‌⁠‍BCF (BIM Collaboration Format) ORM models.
 
 Tables:
-    oe_bcf_topic      — a BCF Topic (issue) scoped to a project
-    oe_bcf_comment    — a comment on a topic
-    oe_bcf_viewpoint  — a viewpoint (camera + selection/visibility) on a topic
+    oe_bcf_topic      - a BCF Topic (issue) scoped to a project
+    oe_bcf_comment    - a comment on a topic
+    oe_bcf_viewpoint  - a viewpoint (camera + selection/visibility) on a topic
 
 These tables are the *source of truth* for BCF issues. The legacy
 ``opencde_api`` service maps the generic ``collaboration`` comment table to
@@ -11,7 +11,7 @@ the BCF API 3.0 REST surface; this module instead persists BCF natively so
 that the ``.bcfzip`` import/export roundtrip is lossless (TopicGuid /
 CommentGuid / ViewpointGuid are stored verbatim, not regenerated).
 
-The viewpoint ``snapshot`` (PNG) is **not** stored inline — only its
+The viewpoint ``snapshot`` (PNG) is **not** stored inline - only its
 storage key is. The binary lives behind :func:`app.core.storage.
 get_storage_backend` under the ``bcf/<project_id>/...`` prefix, the same
 abstraction BIM geometry and takeoff PDFs already use.
@@ -48,7 +48,7 @@ class BCFTopic(Base):
     __tablename__ = "oe_bcf_topic"
     __table_args__ = (
         Index("ix_bcf_topic_project", "project_id"),
-        # A BCF Topic GUID is unique *within a project*, not globally —
+        # A BCF Topic GUID is unique *within a project*, not globally -
         # exporting from one project and importing into another must
         # preserve the GUID, so two projects can carry the same GUID.
         UniqueConstraint("project_id", "guid", name="uq_bcf_topic_project_guid"),
@@ -62,7 +62,7 @@ class BCFTopic(Base):
         nullable=False,
         index=True,
     )
-    # Optional link to a BIM model (no hard FK — bim_hub may be disabled).
+    # Optional link to a BIM model (no hard FK - bim_hub may be disabled).
     bim_model_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -192,7 +192,7 @@ class BCFViewpoint(Base):
     clipping_planes: Mapped[list] = mapped_column(  # type: ignore[assignment]
         JSON, nullable=False, default=list, server_default="[]"
     )
-    # Stable canonical-format element ids this viewpoint highlights — a
+    # Stable canonical-format element ids this viewpoint highlights - a
     # platform extension carried in metadata so an IFC GUID can be mapped
     # back to a DDC canonical element without re-parsing the model.
     element_stable_ids: Mapped[list] = mapped_column(  # type: ignore[assignment]

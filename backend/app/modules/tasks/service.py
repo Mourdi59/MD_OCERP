@@ -1,4 +1,4 @@
-"""‌⁠‍Tasks service — business logic for task management.
+"""‌⁠‍Tasks service - business logic for task management.
 
 - Event publishing on create/update/delete
 """
@@ -39,7 +39,7 @@ async def _safe_audit(
     user_id: str | None = None,
     details: dict | None = None,
 ) -> None:
-    """‌⁠‍Best-effort audit log — never blocks the caller on failure."""
+    """‌⁠‍Best-effort audit log - never blocks the caller on failure."""
     try:
         from app.core.audit import audit_log
 
@@ -96,7 +96,7 @@ class TaskService:
                     detail="Dependency task must belong to the same project",
                 )
             # A task cannot be born already-completed while its predecessor
-            # is still open — that would silently bypass the dependency
+            # is still open - that would silently bypass the dependency
             # guard that complete_task() enforces on the normal path.
             if data.status == "completed" and predecessor.status != "completed":
                 raise HTTPException(
@@ -197,7 +197,7 @@ class TaskService:
     ) -> dict[str, str]:
         """Map ``responsible_id`` → user display name for a batch of tasks.
 
-        One ``IN (...)`` query over the distinct assignee ids — avoids the
+        One ``IN (...)`` query over the distinct assignee ids - avoids the
         N+1 the per-row name lookup would otherwise cause. Ids that don't
         resolve (deleted users, free-text-only assignees) are simply
         absent from the returned mapping so the caller can fall back to
@@ -259,7 +259,7 @@ class TaskService:
     ) -> Task:
         """Replace the full set of BIM element ids linked to a task.
 
-        Idempotent set semantics — the incoming list overwrites whatever
+        Idempotent set semantics - the incoming list overwrites whatever
         was previously stored. De-duplication is applied while preserving
         first-seen order so the viewer sees a stable list on re-render.
         """
@@ -328,7 +328,7 @@ class TaskService:
             result = await self.session.execute(stmt)
             tasks = list(result.scalars().all())
         else:
-            # SQLite (and anything else) — filter in Python. The query is
+            # SQLite (and anything else) - filter in Python. The query is
             # project-scoped when possible so we don't pull the entire table.
             result = await self.session.execute(stmt)
             all_tasks = list(result.scalars().all())
@@ -547,7 +547,7 @@ class TaskService:
             },
         )
 
-        # Completion is a status change — keep the vector index and any
+        # Completion is a status change - keep the vector index and any
         # other subscribers in sync, exactly like update_task does. Without
         # this the task stays indexed with its pre-completion status.
         await _safe_publish(
@@ -580,7 +580,7 @@ class TaskService:
         come from SQL aggregates so the table never gets fully hydrated.
         Average checklist progress still needs a Python pass over the
         JSON column because portable JSON-array math isn't free in
-        SQLite + PostgreSQL — but we project only `(status, checklist)`
+        SQLite + PostgreSQL - but we project only `(status, checklist)`
         for that pass.
         """
         from datetime import UTC, datetime
@@ -674,7 +674,7 @@ class TaskService:
         Args:
             project_id: Scope to this project.
             days_ahead: Window in days (default 7).
-            responsible_id: Optional — filter to a specific assignee.
+            responsible_id: Optional - filter to a specific assignee.
         """
         from datetime import UTC, datetime, timedelta
 

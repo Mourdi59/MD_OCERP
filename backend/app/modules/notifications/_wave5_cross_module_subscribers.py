@@ -1,4 +1,4 @@
-"""‌⁠‍Wave-5 cross-module subscribers — Resources / Contracts / CRM / Carbon.
+"""‌⁠‍Wave-5 cross-module subscribers - Resources / Contracts / CRM / Carbon.
 
 Wires real cross-module side-effects emitted by the wave-5 deep-dive:
 
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 async def _can_open_isolated_session() -> bool:
-    """‌⁠‍Always True post-Epic-B — see :mod:`app.modules.notifications.events`."""
+    """‌⁠‍Always True post-Epic-B - see :mod:`app.modules.notifications.events`."""
     return True
 
 
@@ -248,7 +248,7 @@ async def _on_opportunity_won(event: Event) -> None:
             if opp is None:
                 return
             # We don't have a project_id at this layer (the project may not
-            # exist yet — projects auto-create on a separate subscriber).
+            # exist yet - projects auto-create on a separate subscriber).
             # When project_payload carries a project_id, use it; otherwise
             # skip creating the bid package and just emit a follow-up event.
             project_id_raw = project_payload.get("project_id")
@@ -257,7 +257,7 @@ async def _on_opportunity_won(event: Event) -> None:
                 # notes; a downstream Projects-subscriber re-fires this
                 # event after Project creation if needed.
                 logger.info(
-                    "crm.opportunity.won: project not yet materialised — skipping auto bid package creation for opp %s",
+                    "crm.opportunity.won: project not yet materialised - skipping auto bid package creation for opp %s",
                     opportunity_id,
                 )
                 return
@@ -477,7 +477,7 @@ async def _on_bid_package_awarded(event: Event) -> None:
 
             contract = Contract(
                 code=code,
-                title=package.title or f"Contract — {package.code}",
+                title=package.title or f"Contract - {package.code}",
                 contract_type="lump_sum",
                 counterparty_type="subcontractor",
                 counterparty_id=awarded_bidder_id,
@@ -603,7 +603,7 @@ async def _on_variation_completed(event: Event) -> None:
             md = dict(contract.metadata_ or {})
             applied = list(md.get("variation_ids") or [])
             if str(vo_id_raw) in {str(v) for v in applied}:
-                # Already applied — idempotent skip.
+                # Already applied - idempotent skip.
                 return
             applied.append(str(vo_id_raw))
             md["variation_ids"] = applied

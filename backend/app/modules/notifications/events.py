@@ -1,7 +1,7 @@
-"""‌⁠‍Notifications event subscribers — turn cross-module mutation events
+"""‌⁠‍Notifications event subscribers - turn cross-module mutation events
 into in-app notifications.
 
-Until v1.4.6 the notifications module was a "ghost component" — the
+Until v1.4.6 the notifications module was a "ghost component" - the
 service had ``create()`` and ``notify_users()`` methods but nothing
 in the rest of the platform actually called them.  Mutating actions
 in contacts, collaboration, cde, transmittals, meetings, etc. fired
@@ -42,7 +42,7 @@ async def _can_open_isolated_session() -> bool:
 
     History: pre-Epic-B this returned False on SQLite because notification
     subscribers were invoked inside the upstream service's transaction,
-    and SQLite is single-writer per file — opening a second write session
+    and SQLite is single-writer per file - opening a second write session
     blocked on the file lock and turned 50ms requests into 60s ones.
 
     Epic B / B9: upstream callers now publish via
@@ -50,7 +50,7 @@ async def _can_open_isolated_session() -> bool:
     an asyncio task that fires *after* the request has committed.  The
     writer lock is released before the subscriber tries to take it, so
     SQLite no longer deadlocks.  This helper therefore returns True on
-    every dialect — the legacy skip is gone.
+    every dialect - the legacy skip is gone.
 
     Kept as a function so the existing call sites remain a no-op
     boundary; deleting them entirely would create a large unrelated
@@ -64,7 +64,7 @@ async def _can_open_isolated_session() -> bool:
 #
 # Each handler:
 #   1. Pulls the user-id target out of event.data (or skips silently if
-#      missing — the subscriber must never break a successful upstream
+#      missing - the subscriber must never break a successful upstream
 #      mutation)
 #   2. Opens its own short-lived session via async_session_factory()
 #   3. Calls NotificationService.create() with i18n keys
@@ -154,7 +154,7 @@ async def _on_bim_element_deleted(event: Event) -> None:
     The bim_hub service publishes ``project_id`` and ``element_id``
     but not the deleting user.  We don't have enough context to
     target a specific user without a project-membership lookup, so
-    this handler is intentionally a no-op skeleton — kept here as a
+    this handler is intentionally a no-op skeleton - kept here as a
     documented hook so adding the user-id payload to the upstream
     event is enough to enable the notification without router
     changes.
@@ -718,7 +718,7 @@ async def _on_clash_high_severity(event: Event) -> None:
 
 
 # Declarative subscription map.  Adding a new event to this list
-# is the ONE place to wire a new notification trigger — keeps the
+# is the ONE place to wire a new notification trigger - keeps the
 # event topology auditable from a single grep.
 _SUBSCRIPTIONS: list[tuple[str, callable]] = [  # type: ignore[type-arg]
     ("boq.boq.created", _on_boq_created),
@@ -753,7 +753,7 @@ def register_notification_subscribers() -> None:
     finished mounting routers.
 
     Also activates the wave-N subscription bundles introduced by the
-    18-Modules Wave — each bundle owns its own list of upstream events
+    18-Modules Wave - each bundle owns its own list of upstream events
     and lives in its own file to keep PR-sized diffs reviewable.
     """
     for event_name, handler in _SUBSCRIPTIONS:
@@ -763,7 +763,7 @@ def register_notification_subscribers() -> None:
         len(_SUBSCRIPTIONS),
     )
 
-    # Wave bundles — defer-import so unit tests that exercise only the
+    # Wave bundles - defer-import so unit tests that exercise only the
     # core list don't pay the cost of every module's event registration.
     from app.modules.notifications._wave1_subscribers import (
         register_wave1_notification_subscribers,

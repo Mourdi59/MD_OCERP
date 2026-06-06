@@ -1,4 +1,4 @@
-"""‌⁠‍Cascade orchestrator — runs the four translation tiers in order.
+"""‌⁠‍Cascade orchestrator - runs the four translation tiers in order.
 
 Each tier returns either a ``TranslationResult`` (with a confidence score)
 or ``None`` (meaning "I can't help, try the next tier"). The cascade
@@ -8,11 +8,11 @@ configured threshold for that tier.
 Thresholds are *per tier* because the tiers report confidence on different
 scales:
 
-* lookup_muse  — 0.8+ (exact phrase) or rapidfuzz score / 100
-* lookup_iate  — 0.85+ (curated termbase, treat near-matches conservatively)
-* cache        — 1.0 always (the cache only stores past hits)
-* llm          — 0.7 default (LLMs sometimes confabulate)
-* fallback     — 0.0 (definitionally no translation happened)
+* lookup_muse  - 0.8+ (exact phrase) or rapidfuzz score / 100
+* lookup_iate  - 0.85+ (curated termbase, treat near-matches conservatively)
+* cache        - 1.0 always (the cache only stores past hits)
+* llm          - 0.7 default (LLMs sometimes confabulate)
+* fallback     - 0.0 (definitionally no translation happened)
 
 The fallback tier is special: it always succeeds, so it never short-circuits
 and is always reached on cascade exhaustion.
@@ -27,7 +27,7 @@ from typing import Any
 
 # Module-level imports so the cascade orchestrator is patchable from tests
 # (``unittest.mock.patch`` looks up the attribute on the cascade module,
-# not on the source module — re-binding here makes the wiring explicit).
+# not on the source module - re-binding here makes the wiring explicit).
 from app.core.translation.cache import TranslationCache
 from app.core.translation.llm_translator import llm_translate
 from app.core.translation.lookup import lookup_phrase
@@ -74,7 +74,7 @@ class TranslationResult:
 # Cache threshold is intentionally low (0.5): the cache stores hits from
 # every higher tier, including LLM hits at 0.7 confidence. A 1.0 cache
 # threshold would reject every LLM-sourced cache row and force the LLM
-# to be re-called every request — defeating the cache.
+# to be re-called every request - defeating the cache.
 DEFAULT_THRESHOLDS: dict[TierUsed, float] = {
     TierUsed.LOOKUP_MUSE: 0.80,
     TierUsed.LOOKUP_IATE: 0.85,
@@ -104,7 +104,7 @@ async def translate(
         domain:         Domain hint for the LLM prompt and cache key.
                         "construction" by default.
         user_settings:  Optional ``AISettings`` ORM row for the LLM tier.
-                        ``None`` is fine — the LLM tier just degrades to a
+                        ``None`` is fine - the LLM tier just degrades to a
                         miss and the cascade falls through to fallback.
         thresholds:     Optional per-tier override map; missing keys keep
                         their default values.
@@ -116,12 +116,12 @@ async def translate(
                         ``~/.openestimate/translations/``.
 
     Returns:
-        ``TranslationResult`` — never raises for normal input. Network /
+        ``TranslationResult`` - never raises for normal input. Network /
         filesystem errors are logged at debug level and treated as misses.
 
     Same-language short-circuit: if ``source_lang == target_lang`` the
     cascade returns immediately with ``tier_used=fallback`` and the
-    original text — no I/O, no LLM call.
+    original text - no I/O, no LLM call.
     """
     src = (source_lang or "").lower().strip()
     tgt = (target_lang or "").lower().strip()
@@ -157,7 +157,7 @@ async def translate(
     ):
         try:
             hit = await lookup_phrase(text_in, src, tgt, dictionary=dictionary, root=lookup_root)
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.debug("Lookup tier %s failed: %s", tier, exc)
             hit = None
         if hit is not None and hit[1] >= th[tier]:
@@ -184,14 +184,14 @@ async def translate(
     cache = TranslationCache()
     try:
         cached = await cache.get(text_in, src, tgt, domain)
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug("Cache get failed: %s", exc)
         cached = None
     if cached is not None and cached["confidence"] >= th[TierUsed.CACHE]:
         # Best-effort usage stats. Never fatal.
         try:
             await cache.mark_used(cached["id"])
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.debug("Cache mark_used failed: %s", exc)
         # Tier reported back to caller is the original tier that
         # produced the row, but with a CACHE marker so observability
@@ -208,7 +208,7 @@ async def translate(
     try:
         llm_hit = await llm_translate(text_in, src, tgt, domain=domain, user_settings=user_settings)
     except Exception as exc:
-        # Network / API errors must never bubble up — the fallback tier
+        # Network / API errors must never bubble up - the fallback tier
         # is the safety net.
         logger.debug("LLM translate failed: %s", exc)
         llm_hit = None
@@ -252,7 +252,7 @@ async def _maybe_cache(
     domain: str,
     tier: TierUsed,
     confidence: float,
-    cache_db_path: str | None,  # noqa: ARG001 — kept for back-compat; cache is PostgreSQL now
+    cache_db_path: str | None,  # noqa: ARG001 - kept for back-compat; cache is PostgreSQL now
 ) -> None:
     """Persist a successful translation. Errors are logged & swallowed."""
     try:
@@ -266,5 +266,5 @@ async def _maybe_cache(
             tier_used=tier.value,
             confidence=confidence,
         )
-    except Exception as exc:  # pragma: no cover — defensive
+    except Exception as exc:  # pragma: no cover - defensive
         logger.debug("Cache upsert failed: %s", exc)

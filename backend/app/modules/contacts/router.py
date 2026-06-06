@@ -1,20 +1,20 @@
 """‌⁠‍Contacts API routes.
 
 Endpoints:
-    GET    /                — List contacts with filters
-    POST   /                — Create contact (auth required)
-    GET    /search          — Text search across name, company, email
-    POST   /import/file     — Import contacts from Excel/CSV file (auth required)
-    GET    /export          — Export contacts as Excel file
-    GET    /template        — Download import template Excel file
-    GET    /{contact_id}    — Get single contact
-    PATCH  /{contact_id}    — Update contact (auth required)
-    DELETE /{contact_id}    — Soft-delete contact (auth required)
+    GET    /                - List contacts with filters
+    POST   /                - Create contact (auth required)
+    GET    /search          - Text search across name, company, email
+    POST   /import/file     - Import contacts from Excel/CSV file (auth required)
+    GET    /export          - Export contacts as Excel file
+    GET    /template        - Download import template Excel file
+    GET    /{contact_id}    - Get single contact
+    PATCH  /{contact_id}    - Update contact (auth required)
+    DELETE /{contact_id}    - Soft-delete contact (auth required)
 
 Module-bridge endpoints (see app.modules.contacts.bridge):
-    POST   /{contact_id}/convert-to-lead   — Create a PropDev Lead linked
-    POST   /{contact_id}/convert-to-buyer  — Create a PropDev Buyer linked
-    GET    /{contact_id}/module-rows       — List all module rows linked
+    POST   /{contact_id}/convert-to-lead   - Create a PropDev Lead linked
+    POST   /{contact_id}/convert-to-buyer  - Create a PropDev Buyer linked
+    GET    /{contact_id}/module-rows       - List all module rows linked
 """
 
 import csv
@@ -72,7 +72,7 @@ async def _is_admin(session: AsyncSession, user_id: str | None) -> bool:
             return False
         user = await user_repo.get_by_id(user_uuid)
         return user is not None and getattr(user, "role", "") == "admin"
-    except Exception:  # noqa: BLE001 — best-effort admin check
+    except Exception:  # noqa: BLE001 - best-effort admin check
         return False
 
 
@@ -587,7 +587,7 @@ async def import_contacts_file(
             detail="Uploaded file is empty.",
         )
 
-    # Magic-byte sniff — the extension is hostile-supplied, so verify the
+    # Magic-byte sniff - the extension is hostile-supplied, so verify the
     # declared format before we hand the bytes to openpyxl / csv.reader.
     kind = _sniff_upload_content(filename, content)
 
@@ -606,7 +606,7 @@ async def import_contacts_file(
             detail=f"Failed to parse file: {exc}",
         )
     except Exception:
-        # Don't echo the original exception text — it can include cell
+        # Don't echo the original exception text - it can include cell
         # contents (including PII) from openpyxl / csv parser errors.
         logger.exception("Unexpected error parsing contact import file")
         raise HTTPException(
@@ -644,7 +644,7 @@ async def import_contacts_file(
             # Validate email
             primary_email = str(row.get("primary_email", "")).strip() or None
             if primary_email and not _EMAIL_RE.match(primary_email):
-                # Caller already knows the email they uploaded — echoing
+                # Caller already knows the email they uploaded - echoing
                 # it back to *their own* error response is fine. Don't
                 # widen ``data`` to the full row though: that broadcasts
                 # phone / notes / other PII alongside.
@@ -698,7 +698,7 @@ async def import_contacts_file(
 
         except Exception as exc:
             # ``str(exc)`` on Pydantic ValidationError embeds the *input*
-            # value — for primary_email / primary_phone rows that means
+            # value - for primary_email / primary_phone rows that means
             # PII lands in both the JSON response and the log line.
             # Replace the message with the exception class name and log a
             # PII-stripped row dict instead.
@@ -749,7 +749,7 @@ async def export_contacts(
     """Export the caller's active contacts as an Excel file.
 
     Mirrors the tenant-scope filter used by ``list_contacts`` /
-    ``search_contacts`` / ``get_stats`` — admins see every row, everyone
+    ``search_contacts`` / ``get_stats`` - admins see every row, everyone
     else only sees contacts whose ``tenant_id`` matches their user id (with
     a ``created_by`` fallback for pre-v2.3.1 rows). The earlier
     implementation ran a plain ``select(Contact).where(is_active)`` with no
@@ -1094,14 +1094,14 @@ async def convert_contact_to_lead(
     try:
         from app.modules.contacts import bridge as _contacts_bridge
         from app.modules.property_dev.models import Development, Lead
-    except ImportError as exc:  # pragma: no cover — install guard
+    except ImportError as exc:  # pragma: no cover - install guard
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Property Development module not installed.",
         ) from exc
 
     # development_id is optional on a Lead, but when supplied PostgreSQL
-    # enforces the FK — validate it exists rather than letting the INSERT
+    # enforces the FK - validate it exists rather than letting the INSERT
     # fail with an uncaught IntegrityError (500). SQLite silently accepted
     # the dangling ref; this guard makes both dialects return a 404.
     if payload.development_id is not None and await session.get(Development, payload.development_id) is None:
@@ -1267,6 +1267,6 @@ async def list_contact_module_rows(
 
         rows = await _contacts_bridge.list_module_rows_for_contact(session, contact_id)
     except ImportError:
-        # PropDev not installed — return empty buckets.
+        # PropDev not installed - return empty buckets.
         rows = {"property_dev_leads": [], "property_dev_buyers": []}
     return rows

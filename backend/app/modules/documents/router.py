@@ -1,22 +1,22 @@
 """‌⁠‍Document Management API routes.
 
 Endpoints:
-    POST   /upload                  — Upload a document
-    GET    /?project_id=X           — List for project (with filters)
-    GET    /{id}                    — Get document metadata
-    GET    /{id}/download           — Download file
-    PATCH  /{id}                    — Update metadata
-    DELETE /{id}                    — Delete document + file
-    GET    /summary?project_id=X    — Aggregated stats
+    POST   /upload                  - Upload a document
+    GET    /?project_id=X           - List for project (with filters)
+    GET    /{id}                    - Get document metadata
+    GET    /{id}/download           - Download file
+    PATCH  /{id}                    - Update metadata
+    DELETE /{id}                    - Delete document + file
+    GET    /summary?project_id=X    - Aggregated stats
 
-    POST   /photos/upload           — Upload a photo
-    GET    /photos?project_id=X     — List photos with filters
-    GET    /photos/gallery          — Gallery data
-    GET    /photos/timeline         — Photos grouped by date
-    GET    /photos/{id}             — Get photo metadata
-    GET    /photos/{id}/file        — Serve photo file
-    PATCH  /photos/{id}             — Update photo metadata
-    DELETE /photos/{id}             — Delete photo + file
+    POST   /photos/upload           - Upload a photo
+    GET    /photos?project_id=X     - List photos with filters
+    GET    /photos/gallery          - Gallery data
+    GET    /photos/timeline         - Photos grouped by date
+    GET    /photos/{id}             - Get photo metadata
+    GET    /photos/{id}/file        - Serve photo file
+    PATCH  /photos/{id}             - Update photo metadata
+    DELETE /photos/{id}             - Delete photo + file
 """
 
 import logging
@@ -87,7 +87,7 @@ def _get_service(session: SessionDep) -> DocumentService:
 # extends the contract: project members can list / read / delete /
 # upload files within the scope of any grant they have.
 #
-# We do NOT change ``verify_project_access`` itself — it's used by
+# We do NOT change ``verify_project_access`` itself - it's used by
 # dozens of unrelated routers and tightening it touches risk we don't
 # want here. Instead the document-list / get / delete endpoints use a
 # more permissive helper that allows project members through, and then
@@ -120,7 +120,7 @@ async def _verify_project_membership_or_404(
         user = None
 
     if user is not None and getattr(user, "role", "") == "admin":
-        # Make sure the project actually exists for admins too — leaking
+        # Make sure the project actually exists for admins too - leaking
         # "yes this id exists" on a non-existent project is undesirable.
         from app.modules.projects.repository import ProjectRepository
 
@@ -232,7 +232,7 @@ async def upload_document(
             detail="Too many uploads. Please wait a moment and try again.",
             headers={"Retry-After": "60"},
         )
-    # No upload size cap — per product policy.
+    # No upload size cap - per product policy.
     try:
         doc = await service.upload_document(project_id, file, category, user_id)
         return _doc_to_response(doc)
@@ -273,7 +273,7 @@ async def list_documents(
 
     Documents the caller cannot see are filtered out server-side. We
     deliberately do not 404 here even when the filtered list is empty
-    — knowing the project exists and being told "no files" is the
+    - knowing the project exists and being told "no files" is the
     expected surface for a member who hasn't been granted a folder
     yet.
     """
@@ -300,7 +300,7 @@ async def list_documents(
     if await is_project_owner(session, project_id, user_uuid):
         return [_doc_to_response(d) for d in docs]
 
-    # Admin bypass — _verify_project_membership_or_404 already let them
+    # Admin bypass - _verify_project_membership_or_404 already let them
     # through, but we still need to skip filtering for them.
     from app.modules.users.repository import UserRepository
 
@@ -571,7 +571,7 @@ async def get_photo(
     """Get a single photo's metadata.
 
     IDOR-guarded via the parent project (A-DOC-04): a non-member is
-    404'd before any photo metadata is disclosed — same contract as
+    404'd before any photo metadata is disclosed - same contract as
     ``serve_photo_file`` / ``get_sheet``.
     """
     photo = await service.get_photo(photo_id)
@@ -672,7 +672,7 @@ async def serve_photo_thumbnail(
     if thumb_path_str:
         thumb_path = Path(thumb_path_str).resolve()
         try:
-            # Only allow paths that sit under the thumb-root — defence against
+            # Only allow paths that sit under the thumb-root - defence against
             # symlink escape + stored-path tampering.
             thumb_path.relative_to(thumb_base)
             if thumb_path.exists() and thumb_path.is_file() and not thumb_path.is_symlink():
@@ -683,7 +683,7 @@ async def serve_photo_thumbnail(
                 )
         except ValueError:
             logger.warning(
-                "Photo %s has thumbnail_path outside thumb base — ignoring",
+                "Photo %s has thumbnail_path outside thumb base - ignoring",
                 photo_id,
             )
 
@@ -735,7 +735,7 @@ async def update_photo(
     """Update photo metadata (caption, tags, category).
 
     R7 audit: the caller must have access to the photo's parent project
-    — without this guard any user with the ``documents.update``
+    - without this guard any user with the ``documents.update``
     permission could edit a photo belonging to another tenant by
     guessing its UUID. ``verify_project_access`` collapses missing /
     cross-tenant into the same 404 surface so the response cannot be
@@ -760,7 +760,7 @@ async def delete_photo(
 ) -> None:
     """Delete a photo and its file.
 
-    R7 audit: cross-tenant IDOR guard. Mirrors ``update_photo`` —
+    R7 audit: cross-tenant IDOR guard. Mirrors ``update_photo`` -
     without it, knowledge of a UUID was enough to wipe another tenant's
     site documentation.
     """
@@ -867,7 +867,7 @@ async def split_pdf(
     Generates thumbnails for each page.
     """
     await verify_project_access(project_id, user_id, session)
-    # No upload size cap — per product policy.
+    # No upload size cap - per product policy.
     try:
         sheets = await service.split_pdf_to_sheets(project_id, file, user_id)
         return [_sheet_to_response(s) for s in sheets]
@@ -998,12 +998,12 @@ async def list_bim_links(
     """List Document ↔ BIM element links.
 
     Exactly one of ``element_id`` or ``document_id`` must be supplied:
-    - ``element_id=X`` — every document linked to BIM element X
-    - ``document_id=Y`` — every BIM element linked from document Y
+    - ``element_id=X`` - every document linked to BIM element X
+    - ``document_id=Y`` - every BIM element linked from document Y
 
     R7 audit: the caller must have access to the project the lookup
     keys into. Without this guard, ``documents.read`` was enough to
-    enumerate every BIM ↔ document link in the database — a sizable
+    enumerate every BIM ↔ document link in the database - a sizable
     cross-tenant data leak. 404 keeps the surface symmetric with the
     rest of the documents IDOR contract.
     """
@@ -1066,7 +1066,7 @@ async def create_bim_link(
     R7 audit: enforce project access on BOTH ends of the link before
     creating it. A caller with only ``documents.create`` previously
     could splice arbitrary BIM elements to arbitrary documents (no
-    project check) — a clean cross-tenant linkage attack used to
+    project check) - a clean cross-tenant linkage attack used to
     surface "phantom" drawings in another tenant's viewer.
     """
     from app.modules.bim_hub.models import BIMElement, BIMModel
@@ -1199,7 +1199,7 @@ async def batch_delete_documents(
 # Public share-link endpoints
 # NOTE: These MUST come BEFORE /{document_id} parametric routes to avoid
 #       FastAPI matching "share-links" as a document_id (route shadowing).
-#       Endpoints are intentionally public — they DO NOT require auth.
+#       Endpoints are intentionally public - they DO NOT require auth.
 # ══════════════════════════════════════════════════════════════════════════
 
 
@@ -1211,7 +1211,7 @@ async def get_share_link_info(
     token: str,
     session: SessionDep,
 ) -> ShareLinkPublicInfo:
-    """Public probe — what the recipient sees BEFORE entering a password.
+    """Public probe - what the recipient sees BEFORE entering a password.
 
     Returns the filename so the share page can display a meaningful
     title, plus two flags so the frontend knows whether to prompt for a
@@ -1240,7 +1240,7 @@ async def access_share_link_endpoint(
     body: ShareLinkAccessRequest,
     session: SessionDep,
 ) -> ShareLinkAccessResponse:
-    """Public unlock — verify password, bump count, return download URL.
+    """Public unlock - verify password, bump count, return download URL.
 
     Returns 401 when a password is required and missing/wrong;
     404 when the link is unknown, revoked, or expired.
@@ -1284,7 +1284,7 @@ async def serve_share_link_file(
     raw = Path(doc.file_path) if doc.file_path else None
     if raw is None:
         # Share links cannot be issued for documents without a stored
-        # path — fall through to 404 rather than re-materialise demo
+        # path - fall through to 404 rather than re-materialise demo
         # placeholders (which is auth-side behaviour).
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1333,7 +1333,7 @@ def _link_to_response(link: object, public_url: str) -> ShareLinkResponse:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# Document CRUD by ID (parametric routes — MUST be after /photos/* and /sheets/* routes)
+# Document CRUD by ID (parametric routes - MUST be after /photos/* and /sheets/* routes)
 # ══════════════════════════════════════════════════════════════════════════
 
 
@@ -1462,7 +1462,7 @@ async def download_document(
         if is_demo_pdf:
             try:
                 _materialize_demo_pdf_placeholder(file_path, doc.name, meta.get("demo_id"))
-            except Exception:  # pragma: no cover — degrade to 404 if reportlab missing
+            except Exception:  # pragma: no cover - degrade to 404 if reportlab missing
                 logger.warning("Failed to materialize demo placeholder for %s", doc.id, exc_info=True)
         if not file_path.exists() or not file_path.is_file():
             raise HTTPException(
@@ -1506,7 +1506,7 @@ def _materialize_demo_pdf_placeholder(target: Path, name: str, demo_id: str | No
     c.drawString(72, height - 200, "This file is auto-generated for the demo project.")
     c.drawString(72, height - 215, "Upload your own document to replace it.")
     c.setFont(BODY_FONT, 9)
-    c.drawString(72, 60, "OpenConstructionERP — open-source construction cost platform")
+    c.drawString(72, 60, "OpenConstructionERP - open-source construction cost platform")
     c.showPage()
     c.save()
 
@@ -1541,7 +1541,7 @@ async def update_document(
     return _doc_to_response(doc)
 
 
-# ── Revisions (Epic C — Document Versioning Unification) ────────────────
+# ── Revisions (Epic C - Document Versioning Unification) ────────────────
 
 
 @router.post("/{document_id}/revisions/", response_model=DocumentResponse, status_code=201)
@@ -1609,7 +1609,7 @@ async def delete_document(
         * the folder is restricted and they have no grant, OR
         * they only have a ``viewer`` grant (no write capability).
 
-    Editors can only delete their OWN uploads — a defence in depth so
+    Editors can only delete their OWN uploads - a defence in depth so
     a single member can't accidentally nuke another member's work
     just because they share an "editor" grant.
     """
@@ -1835,7 +1835,7 @@ async def documents_similar(
             status_code=status.HTTP_404_NOT_FOUND, detail=translate("errors.document_not_found", locale=get_locale())
         )
 
-    # Cross-tenant IDOR gate — mirror ``get_document`` so a caller with no
+    # Cross-tenant IDOR gate - mirror ``get_document`` so a caller with no
     # access to the document's project gets a 404 (not a 200 leaking a
     # populated vector index). Was previously missing here while every
     # sibling /{id}/* endpoint enforces it.

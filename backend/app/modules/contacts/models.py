@@ -1,7 +1,7 @@
 """‌⁠‍Contacts ORM models.
 
 Tables:
-    oe_contacts_contact — unified contacts directory
+    oe_contacts_contact - unified contacts directory
 """
 
 import uuid
@@ -109,7 +109,7 @@ class Contact(Base):
         server_default="{}",
     )
     # Tenant scoping. In single-tenant installs this equals the creator's
-    # user id — contacts are siloed per user. Introduced in v2.3.1 to
+    # user id - contacts are siloed per user. Introduced in v2.3.1 to
     # replace the ``created_by`` IDOR proxy: ``created_by`` remains as an
     # audit field (who inserted the row), ``tenant_id`` is the access
     # gate. Indexed so the list endpoint stays O(log n) at scale.

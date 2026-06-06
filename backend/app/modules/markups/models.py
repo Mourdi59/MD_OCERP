@@ -1,10 +1,10 @@
 """‌⁠‍Markups & Annotations ORM models.
 
 Tables:
-    oe_markups_markup          — drawing markups (cloud, arrow, text, etc.)
-    oe_markups_scale_config    — scale calibration per document page
-    oe_markups_stamp_template  — reusable stamp templates (Approved, Rejected, etc.)
-    oe_markups_comment         — threaded comments attached to a markup
+    oe_markups_markup          - drawing markups (cloud, arrow, text, etc.)
+    oe_markups_scale_config    - scale calibration per document page
+    oe_markups_stamp_template  - reusable stamp templates (Approved, Rejected, etc.)
+    oe_markups_comment         - threaded comments attached to a markup
 """
 
 import uuid
@@ -37,7 +37,7 @@ class Markup(Base):
     # NOT the current version so users see at a glance that the markup
     # was drawn on an older revision. NULL = legacy markup (treat as
     # current; the viewer renders at full opacity). Set on create from
-    # the chain head — see ``MarkupsService.create_markup``.
+    # the chain head - see ``MarkupsService.create_markup``.
     file_version_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(),
         ForeignKey("oe_file_version.id", ondelete="SET NULL"),
@@ -56,7 +56,7 @@ class Markup(Base):
     opacity: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
     author_id: Mapped[str] = mapped_column(String(255), nullable=False)
     # M3: optional assignee for follow-up. Nullable because most markups
-    # are anonymous review notes — only the ones that need owner-style
+    # are anonymous review notes - only the ones that need owner-style
     # tracking get an assignee. ON DELETE SET NULL so deleting a user
     # does not destroy their pending markup queue.
     assignee_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -147,7 +147,7 @@ class MarkupComment(Base):
     """‌⁠‍Threaded comment attached to a markup.
 
     Comments are flat per markup (no nested replies in v1). Authorisation
-    is delegated to the parent markup's project — anyone with project
+    is delegated to the parent markup's project - anyone with project
     read access can list/post; deletion is restricted to the author or
     project owner via the router layer.
     """

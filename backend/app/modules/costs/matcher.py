@@ -17,13 +17,13 @@ Modes
     :mod:`sentence_transformers` lazily. If either dependency is missing
     (the ``[semantic]`` extra is not installed) we log once at WARNING
     and fall back to lexical without raising. The matcher must always
-    return *something* — the BOQ editor depends on it.
+    return *something* - the BOQ editor depends on it.
 * ``hybrid``
     Both lexical and semantic scores are computed, blended as
     ``0.6 * lexical + 0.4 * semantic`` (the lexical channel is more
     reliable in pure-lexical fallback scenarios).
 
-Pure-lexical mode is the documented contract — every test in this
+Pure-lexical mode is the documented contract - every test in this
 module's unit suite exercises it without any optional deps installed.
 """
 
@@ -57,7 +57,7 @@ _SEMANTIC_WEIGHT_HYBRID = 0.4
 
 _UNIT_BONUS = 0.10
 """‌⁠‍Score boost when the candidate's ``unit`` exactly matches the request
-unit. Capped well below 1.0 so it can only nudge ordering — not flip a
+unit. Capped well below 1.0 so it can only nudge ordering - not flip a
 clearly-irrelevant row to the top."""
 
 _LANG_BONUS = 0.05
@@ -105,7 +105,7 @@ class _SemanticDepsMissing(RuntimeError):
     """Raised internally when qdrant / sentence-transformers cannot be imported."""
 
 
-# Sentinel — log the missing-deps warning at most once per process.
+# Sentinel - log the missing-deps warning at most once per process.
 _warned_missing_semantic_deps = False
 
 
@@ -132,7 +132,7 @@ async def match_cwicr_items(
         Live :class:`AsyncSession` used to load candidates.
     query
         Free-form description text. Empty / whitespace-only → empty list
-        (no point scoring nothing — saves a DB hit).
+        (no point scoring nothing - saves a DB hit).
     unit
         Optional unit hint (``m3``, ``kg``, ...). Exact matches get a
         small additive bonus.
@@ -142,7 +142,7 @@ async def match_cwicr_items(
     top_k
         Maximum rows to return. Clamped to ``[1, 50]``.
     semantic
-        Compatibility flag — if True and ``mode='lexical'`` we promote
+        Compatibility flag - if True and ``mode='lexical'`` we promote
         to ``hybrid`` (the legacy router uses ``semantic=True``).
     mode
         ``lexical`` (default), ``semantic``, or ``hybrid``.
@@ -219,7 +219,7 @@ async def match_cwicr_for_position(
     """Look up a :class:`Position` and run the matcher on its description.
 
     Returns an empty list if the position exists but has no description.
-    Raises :class:`LookupError` if the position is not found — the router
+    Raises :class:`LookupError` if the position is not found - the router
     converts that into a 404.
     """
     # Local import to avoid a hard circular dep between costs ↔ boq.
@@ -270,7 +270,7 @@ async def _load_candidates(
     if conditions:
         base = base.where(or_(*conditions))
     # If no usable tokens (single-char query, etc.) we still do a bounded
-    # scan rather than returning empty — caller may still want a unit-only
+    # scan rather than returning empty - caller may still want a unit-only
     # filter to surface something.
 
     stmt = base.limit(cap)
@@ -308,12 +308,12 @@ def _score_lexical(
     Uses :func:`rapidfuzz.fuzz.token_set_ratio` against the candidate's
     description (and any localized description in the request lang). The
     raw 0..100 ratio is normalized to 0..1, then we apply small additive
-    bonuses for unit-of-measure match and lang-key presence — both
+    bonuses for unit-of-measure match and lang-key presence - both
     capped so the final score never exceeds 1.0.
     """
     try:
         from rapidfuzz import fuzz
-    except ImportError:  # pragma: no cover — rapidfuzz is a base dep
+    except ImportError:  # pragma: no cover - rapidfuzz is a base dep
         # Without rapidfuzz we have no lexical signal at all. Be honest
         # about it: return zero scores rather than fabricating values.
         for c in candidates:
@@ -333,7 +333,7 @@ def _score_lexical(
                 if isinstance(v, str) and v:
                     descs.append(v)
         # Token-set-ratio is order-insensitive and tolerant of extra
-        # words on either side — exactly the right shape for matching
+        # words on either side - exactly the right shape for matching
         # short BOQ descriptions against verbose CWICR rate descriptions.
         best = 0.0
         for d in descs:
@@ -366,7 +366,7 @@ def _score_semantic(candidates: list[_Candidate], *, query: str) -> bool:
 
     Returns ``True`` if semantic scoring succeeded, ``False`` if any
     optional dependency is missing or the call fails. On failure, we
-    leave ``cand.semantic`` at 0.0 — callers in lexical/hybrid mode
+    leave ``cand.semantic`` at 0.0 - callers in lexical/hybrid mode
     will simply use the lexical channel.
     """
     global _warned_missing_semantic_deps
@@ -377,7 +377,7 @@ def _score_semantic(candidates: list[_Candidate], *, query: str) -> bool:
         if not _warned_missing_semantic_deps:
             logger.warning(
                 "CWICR matcher: semantic mode requested but optional deps "
-                "missing (%s) — falling back to lexical. Install the "
+                "missing (%s) - falling back to lexical. Install the "
                 "[semantic] extra to enable.",
                 exc,
             )
@@ -411,15 +411,15 @@ def _load_sentence_encoder() -> Any:
 
     Tries (in order):
       1. The shared :func:`app.core.vector.encode_texts` helper if it's
-         available — that's the production path because it reuses the
+         available - that's the production path because it reuses the
          already-warmed model and respects deployment-side configuration.
-      2. ``sentence_transformers.SentenceTransformer`` directly — only
+      2. ``sentence_transformers.SentenceTransformer`` directly - only
          used when ``app.core.vector`` doesn't expose the helper, e.g.
          in an isolated unit test.
 
     Raises :class:`_SemanticDepsMissing` when neither path is reachable.
     """
-    # Path 1 — production helper.
+    # Path 1 - production helper.
     try:
         from app.core.vector import encode_texts
     except Exception:
@@ -428,7 +428,7 @@ def _load_sentence_encoder() -> Any:
     if callable(encode_texts):
         return encode_texts
 
-    # Path 2 — direct sentence-transformers.
+    # Path 2 - direct sentence-transformers.
     try:
         from sentence_transformers import SentenceTransformer  # noqa: F401
     except ImportError as exc:
@@ -454,7 +454,7 @@ def _load_sentence_encoder() -> Any:
 
 def _cosine(a: list[float] | Any, b: list[float] | Any) -> float:
     """Cosine similarity between two equal-length vectors. NumPy-free."""
-    # Allow ndarray / list — cast both sides to list-of-floats.
+    # Allow ndarray / list - cast both sides to list-of-floats.
     av = list(a) if not hasattr(a, "tolist") else a.tolist()
     bv = list(b) if not hasattr(b, "tolist") else b.tolist()
     if len(av) != len(bv) or not av:
@@ -484,7 +484,7 @@ def _to_match_result(item: CostItem, *, score: float, channel: str) -> MatchResu
         rate_val = 0.0
     # CWICR rows historically persisted ``currency = ''`` (the parquet has no
     # currency column). Resolve it from the row's region so match results carry
-    # the catalogue's true currency — without this, callers like
+    # the catalogue's true currency - without this, callers like
     # assemblies.apply_template received an empty currency for every CWICR
     # match. Lazy import avoids a circular dependency (router imports matcher).
     from app.modules.costs.router import _resolve_currency

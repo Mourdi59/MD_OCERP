@@ -5,10 +5,10 @@ from app.core.module_loader import ModuleManifest
 manifest = ModuleManifest(
     name="oe_india_pack",
     version="1.0.0",
-    display_name="Regional Pack — India",
+    display_name="Regional Pack - India",
     display_name_i18n={
-        "de": "Regionalpaket — Indien",
-        "ru": "Региональный пакет — Индия",
+        "de": "Regionalpaket - Indien",
+        "ru": "Региональный пакет - Индия",
     },
     description=(
         "Indian construction standards: IS codes, CPWD/MES rate references, "

@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Pipeline Builder core — node capability registry + graph DAG executor.
+"""‌⁠‍Pipeline Builder core - node capability registry + graph DAG executor.
 
 This package is the thin orchestration spine for the ``oe_pipelines``
 module. It wraps EXISTING infrastructure (``JobRun``, the validation

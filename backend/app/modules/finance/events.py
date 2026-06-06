@@ -1,4 +1,4 @@
-"""‌⁠‍Finance event subscribers — turn procurement mutation events into
+"""‌⁠‍Finance event subscribers - turn procurement mutation events into
 ProjectBudget.committed / actual updates.
 
 Until v2.9.17 ``procurement.po.issued`` and ``procurement.gr.confirmed``
@@ -57,7 +57,7 @@ EVENT_RECEIVABLE_FROM_CLAIM = "finance.invoice.created_from_claim"
 
 
 def _to_decimal(value: object, default: Decimal = Decimal("0")) -> Decimal:
-    """‌⁠‍Best-effort string/Decimal coercion — never raises."""
+    """‌⁠‍Best-effort string/Decimal coercion - never raises."""
     if value is None:
         return default
     try:
@@ -83,7 +83,7 @@ async def _resolve_po_wbs(session: AsyncSession, po_id_raw: object) -> str | Non
     commitment to the matching ProjectBudget row.
 
     Returns None if the PO has no items, no wbs_id on its first item, or
-    if anything goes wrong — callers must tolerate a None and fall back
+    if anything goes wrong - callers must tolerate a None and fall back
     to the project-level "first budget by created_at" rule.
     """
     po_id = _coerce_uuid(po_id_raw)
@@ -115,7 +115,7 @@ async def _select_budget_row(
         1. Exact ``(project_id, wbs_id)`` match if a wbs hint is supplied.
         2. Oldest budget for the project (``ORDER BY created_at LIMIT 1``).
 
-    Returns None when the project has no budget rows at all — handlers
+    Returns None when the project has no budget rows at all - handlers
     treat this as a no-op (we can't update what doesn't exist).
     """
     if wbs_id:
@@ -156,7 +156,7 @@ async def _on_po_approved(event: Event) -> None:
             budget = await _select_budget_row(session, project_id, wbs_hint)
             if budget is None:
                 logger.info(
-                    "finance: po.approved for project %s — no budget rows, commitment skipped (po_id=%s, amount=%s)",
+                    "finance: po.approved for project %s - no budget rows, commitment skipped (po_id=%s, amount=%s)",
                     project_id,
                     data.get("po_id"),
                     amount,
@@ -189,7 +189,7 @@ async def _on_gr_confirmed(event: Event) -> None:
             budget = await _select_budget_row(session, project_id, wbs_hint)
             if budget is None:
                 logger.info(
-                    "finance: gr.confirmed for project %s — no budget rows, actuals skipped (gr_id=%s, amount=%s)",
+                    "finance: gr.confirmed for project %s - no budget rows, actuals skipped (gr_id=%s, amount=%s)",
                     project_id,
                     data.get("gr_id"),
                     amount,
@@ -198,7 +198,7 @@ async def _on_gr_confirmed(event: Event) -> None:
             current_committed = _to_decimal(budget.committed)
             current_actual = _to_decimal(budget.actual)
             new_committed = current_committed - amount
-            # Don't let the committed slot go negative — if a GR exceeds the
+            # Don't let the committed slot go negative - if a GR exceeds the
             # outstanding commitment (because the PO was never issued, or the
             # commitment was already drained by a parallel write), zero it
             # out rather than recording a phantom credit.
@@ -225,7 +225,7 @@ async def _on_claim_certified(event: Event) -> None:
     certified an accounts-receivable invoice should exist for it. This handler
     turns the certified claim into a draft receivable invoice (with retainage
     withheld from the gross) via ``FinanceService.create_receivable_from_claim``,
-    which is idempotent on the claim id — so an event replay, a double
+    which is idempotent on the claim id - so an event replay, a double
     certification, or two concurrent calls all converge on a single AR invoice.
 
     Runs in its own short-lived session (mirrors ``_on_po_approved``) so a write

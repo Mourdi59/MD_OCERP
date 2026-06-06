@@ -1,4 +1,4 @@
-"""‌⁠‍5D Cost Model service — business logic for EVM, budgets, and cash flow.
+"""‌⁠‍5D Cost Model service - business logic for EVM, budgets, and cash flow.
 
 Stateless service layer.  Handles:
 - EVM snapshot creation and S-curve data
@@ -182,7 +182,7 @@ def is_budget_line_overrun(planned: object, actual: object, threshold_pct: objec
 
     The breach condition is ``actual >= planned * (1 + threshold_pct / 100)``.
     Returns ``False`` when:
-        * the threshold is ``<= 0`` (alerting disabled — '0' is the sentinel);
+        * the threshold is ``<= 0`` (alerting disabled - '0' is the sentinel);
         * ``planned`` is ``<= 0`` (no baseline to measure an overrun against);
         * any input fails to parse as a finite number.
 
@@ -224,7 +224,7 @@ class CostModelService:
     async def _get_project_currency(self, project_id: uuid.UUID) -> str:
         """Return the project's configured currency.
 
-        Currency is strictly data-driven — it comes from the project record
+        Currency is strictly data-driven - it comes from the project record
         and nowhere else. When the project has no currency set (or the lookup
         fails) we return an empty string rather than fabricating a default;
         the UI is responsible for rendering a currency-less number instead of
@@ -248,7 +248,7 @@ class CostModelService:
         if they are not explicitly set.
 
         R5 audit (May 2026): ``(project_id, period)`` must be unique.
-        Pre-audit two snapshots for the same period silently coexisted —
+        Pre-audit two snapshots for the same period silently coexisted -
         ``get_latest_for_project`` then picked one arbitrarily and EVM
         rollups flapped between them. The DB-level unique index added in
         migration v3108 is the belt to this in-process suspenders.
@@ -279,7 +279,7 @@ class CostModelService:
         cpi = data.cpi
 
         # Auto-compute indices if not provided (left at default 0).
-        # v3 §10 — money fields are Decimal; cast to float at this
+        # v3 §10 - money fields are Decimal; cast to float at this
         # boundary because SPI/CPI are unitless ratios stored as float.
         if spi == 0.0 and float(data.planned_cost) > 0.0:
             spi = round(
@@ -489,7 +489,7 @@ class CostModelService:
         (planned_cost / earned_value / actual_cost). By definition these are
         *cumulative-to-date* values, and every other consumer in this module
         (dashboard, EVM, what-if) treats them as absolute totals. The S-curve
-        therefore plots the snapshot values directly — re-summing them across
+        therefore plots the snapshot values directly - re-summing them across
         periods (the previous behaviour) double-counted and produced curves
         that climbed far past BAC.
 
@@ -855,7 +855,7 @@ class CostModelService:
             1. The line's linked schedule ``Activity`` planned window
                (``activity_window[str(line.activity_id)]``).
             2. The line's own ``period_start`` .. ``period_end``.
-            3. ``project_period`` — the primary schedule's start..end.
+            3. ``project_period`` - the primary schedule's start..end.
             4. Last resort: the legacy approximation
                ``amount × time_elapsed_pct / 100``. Used only when no usable
                window of any kind exists for that line (e.g. a budget line with
@@ -925,7 +925,7 @@ class CostModelService:
             1. The line's linked schedule Activity planned window
                (``Activity.start_date`` .. ``Activity.end_date``).
             2. The line's own ``period_start`` .. ``period_end``.
-            3. The project/budget period — the primary schedule's
+            3. The project/budget period - the primary schedule's
                ``start_date`` .. ``end_date``.
             4. Last resort: the legacy approximation ``amount * time_elapsed%``
                (only when no window of any kind is available).
@@ -969,13 +969,13 @@ class CostModelService:
         schedule_progress_pct = 0.0
         # Tracks whether we actually have a usable schedule signal. When False,
         # we surface this to the caller via evm_status="schedule_unknown"
-        # instead of silently falling back to a 50 % placeholder — the legacy
+        # instead of silently falling back to a 50 % placeholder - the legacy
         # fallback skewed portfolio-level reports by pretending half-elapsed
         # progress on projects that had no schedule at all.
         schedule_known = False
-        # Planned window of the project as a whole — PV fallback level 3.
+        # Planned window of the project as a whole - PV fallback level 3.
         project_period: tuple[date, date] | None = None
-        # Per-activity planned window keyed by activity id — PV fallback level 1.
+        # Per-activity planned window keyed by activity id - PV fallback level 1.
         activity_window: dict[str, tuple[date, date]] = {}
 
         if schedules:
@@ -1001,7 +1001,7 @@ class CostModelService:
                     )
             elif primary_schedule.start_date or primary_schedule.end_date:
                 # Log explicitly instead of swallowing silently. Bad schedule
-                # dates are a data-quality issue worth surfacing to ops —
+                # dates are a data-quality issue worth surfacing to ops -
                 # previously this bug masqueraded as "on track" projects.
                 logger.warning(
                     "Unparseable schedule dates on schedule_id=%s (start=%r, end=%r)",
@@ -1016,7 +1016,7 @@ class CostModelService:
             total_weight = 0.0
 
             # Build lookup: budget lines keyed by activity_id (hoisted out of the
-            # per-schedule loop — these lines are project-scoped, not schedule-scoped,
+            # per-schedule loop - these lines are project-scoped, not schedule-scoped,
             # so fetching once avoids an N+1 query).
             activity_budget: dict[str, float] = {}
             for bl in budget_lines:
@@ -1051,7 +1051,7 @@ class CostModelService:
             if total_weight > 0.0:
                 schedule_progress_pct = total_weighted_progress / total_weight
         else:
-            # No schedule at all — try the latest snapshot as a weak signal,
+            # No schedule at all - try the latest snapshot as a weak signal,
             # but do NOT fake a 50 % time_elapsed. The old 50 % placeholder
             # silently labelled unscheduled projects as "half-elapsed",
             # which skewed portfolio roll-ups and made at-risk projects look
@@ -1080,7 +1080,7 @@ class CostModelService:
                 time_elapsed_pct=time_elapsed_pct,
             )
         )
-        pv_floor = bac * 0.01  # 1% of BAC — prevents divide-by-near-zero
+        pv_floor = bac * 0.01  # 1% of BAC - prevents divide-by-near-zero
         pv = max(raw_pv, pv_floor)
         ev = bac * (schedule_progress_pct / 100.0)
 
@@ -1303,7 +1303,7 @@ class CostModelService:
         boqs, _ = await boq_repo.list_for_project(project_id, limit=100)
         if not boqs:
             return None
-        # Pick the most recently updated BOQ — that's the one the user is
+        # Pick the most recently updated BOQ - that's the one the user is
         # actively working on. position_count is computed lazily so don't
         # rely on it here.
         sorted_boqs = sorted(boqs, key=lambda b: b.updated_at, reverse=True)
@@ -1313,7 +1313,7 @@ class CostModelService:
         """Auto-generate budget lines from BOQ positions.
 
         Each BOQ position becomes a budget line with planned_amount = position total.
-        Existing budget lines for the project are NOT deleted — new lines are appended.
+        Existing budget lines for the project are NOT deleted - new lines are appended.
 
         Idempotency (R5 audit, May 2026):
             Positions already wired to a budget line for this project are
@@ -1357,7 +1357,7 @@ class CostModelService:
                 project_id=project_id,
                 boq_position_id=pos.id,
                 category="material",  # Default; user can reclassify later
-                description=f"{pos.ordinal} — {pos.description[:200]}",
+                description=f"{pos.ordinal} - {pos.description[:200]}",
                 planned_amount=str(total),
                 committed_amount="0",
                 actual_amount="0",
@@ -1405,7 +1405,7 @@ class CostModelService:
         the project base currency via ``fx_rates`` before being added to
         the period bucket. Pre-audit cash flow totals silently mixed USD,
         EUR, JPY values into one ``Decimal`` and the S-curve plotted the
-        result as if they were all base — a 100 % bug for any multi-
+        result as if they were all base - a 100 % bug for any multi-
         currency project.
 
         Args:
@@ -1451,7 +1451,7 @@ class CostModelService:
                     p = start[:7]
                     period_outflows[p] = period_outflows.get(p, Decimal("0")) + amount
             else:
-                # No schedule — use a generic unscheduled bucket.
+                # No schedule - use a generic unscheduled bucket.
                 # Keep the sentinel <= 10 chars to fit the period column (varchar(10)).
                 period_outflows["unsched"] = period_outflows.get("unsched", Decimal("0")) + amount
 
@@ -1500,7 +1500,7 @@ class CostModelService:
         """Compute the budget-variance KPI for the Estimation Dashboard.
 
         Budget is ``sum(unit_rate * quantity)`` across all positions of the
-        largest BOQ for the project — there is no dedicated ``baseline_total``
+        largest BOQ for the project - there is no dedicated ``baseline_total``
         column in the Position model today, so the current rate is used as
         the baseline. ``current`` is the live ``sum(total)``; any manual
         overrides (totals that diverge from quantity * rate) therefore
@@ -1528,7 +1528,7 @@ class CostModelService:
         if not boqs:
             return VarianceResponse(currency=currency)
 
-        # Aggregate across every BOQ for the project — estimators usually
+        # Aggregate across every BOQ for the project - estimators usually
         # work in one BOQ, but summing protects us when multiple revisions
         # exist and all contribute to the live cost signal.
         budget = 0.0
@@ -2586,7 +2586,7 @@ class CostSpineService:
         await self.session.flush()
         self.session.expire_all()
 
-    # ── Actual-cost posting (Gap B — shared spine method) ─────────────────────
+    # ── Actual-cost posting (Gap B - shared spine method) ─────────────────────
 
     async def post_actual_to_budget_line(
         self,
@@ -2614,7 +2614,7 @@ class CostSpineService:
               ``None`` is stored as ``""`` (the NOT-NULL column sentinel for
               "uncategorised") so a headerless posting lands on one stable row.
             * Increments ``actual_amount`` by ``amount_base`` (Decimal end to
-              end; ``amount_base`` is already in the project base currency —
+              end; ``amount_base`` is already in the project base currency -
               the caller is responsible for FX conversion and must NEVER zero a
               foreign value when a rate is missing).
             * Idempotent on ``(source_kind, source_ref)``: the posting is
@@ -2652,7 +2652,7 @@ class CostSpineService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
-                    "Project has no base currency configured — cannot post an "
+                    "Project has no base currency configured - cannot post an "
                     "actual cost without a currency to denominate it in."
                 ),
             )
@@ -2727,7 +2727,7 @@ class CostSpineService:
                 metadata_={"kind": _ACTUAL_POSTING_MARKER, "postings": [posting_entry]},
             )
             line = await self.budget_repo.create(line)
-            # Capture identity/linkage NOW — a later session.expire_all (none
+            # Capture identity/linkage NOW - a later session.expire_all (none
             # here, but kept for symmetry) must never force a sync lazy-load.
             await self._publish_actual_posted(
                 budget_line_id=line.id,
@@ -2764,7 +2764,7 @@ class CostSpineService:
             for p in postings
         )
         if already:
-            # Replay — return the row unchanged (no event, no double count).
+            # Replay - return the row unchanged (no event, no double count).
             logger.info(
                 "Actual posting skipped (already applied): project=%s line=%s kind=%s ref=%s",
                 project_id,
@@ -2835,7 +2835,7 @@ class CostSpineService:
 
         Takes only primitives (never an ORM row) so the publish never reads an
         attribute the surrounding ``update_fields`` / ``expire_all`` may have
-        expired — that would re-issue a sync SELECT and raise MissingGreenlet
+        expired - that would re-issue a sync SELECT and raise MissingGreenlet
         under the async session. Gap D (cost-overrun alerts) and reporting
         subscribe here.
         """
@@ -3049,7 +3049,7 @@ async def _on_labour_logged(event: object) -> None:
             await session.commit()
     except Exception:
         logger.exception(
-            "Labour actuals rollup failed for report=%s — source submission unaffected",
+            "Labour actuals rollup failed for report=%s - source submission unaffected",
             report_id,
         )
 
@@ -3062,7 +3062,7 @@ if _on_labour_logged not in event_bus._handlers.get("fieldreports.labour.logged"
     event_bus.subscribe("fieldreports.labour.logged", _on_labour_logged)
 
 
-# ── Cost-overrun alerts (Gap D — actual breaches planned + threshold) ─────────
+# ── Cost-overrun alerts (Gap D - actual breaches planned + threshold) ─────────
 
 
 class CostOverrunAlertService:
@@ -3141,7 +3141,7 @@ class CostOverrunAlertService:
 
         owner_id = await self._resolve_owner_id(project_id)
         if owner_id is None:
-            # No recipient — do NOT stamp the cooldown so a later owner
+            # No recipient - do NOT stamp the cooldown so a later owner
             # assignment still gets the first alert.
             return False
 

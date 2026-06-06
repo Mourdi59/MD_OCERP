@@ -1,8 +1,8 @@
-"""‌⁠‍DDC adapter extras — canonical-format helpers for the EAC engine (RFC 35).
+"""‌⁠‍DDC adapter extras - canonical-format helpers for the EAC engine (RFC 35).
 
 Pure-Python helpers operating on the canonical BIM element dict produced by
 the DDC ``cad2data`` pipeline (the ONLY supported BIM ingestion path per
-ADR 002 — no IfcOpenShell, no native IFC). The EAC change-detection engine
+ADR 002 - no IfcOpenShell, no native IFC). The EAC change-detection engine
 calls these helpers on every re-conversion to detect what *actually*
 changed between two snapshots of the same model.
 
@@ -41,7 +41,7 @@ SIGNATURE_VERSION: str = "1.0"
 ROUNDING_TOLERANCE_MM: float = 0.1
 
 # Number of decimal places used when rounding metre-valued vertices.
-# 4 decimals = 0.0001 m = 0.1 mm — matches ROUNDING_TOLERANCE_MM.
+# 4 decimals = 0.0001 m = 0.1 mm - matches ROUNDING_TOLERANCE_MM.
 _VERTEX_DECIMALS: int = 4
 
 
@@ -204,12 +204,12 @@ def geometry_signature(element: dict[str, Any]) -> SignatureV1:
     unique_sorted = sorted(set(rounded))
 
     if unique_sorted:
-        # Hash the textual representation — explicit, deterministic, and
+        # Hash the textual representation - explicit, deterministic, and
         # avoids float-binary-format surprises across platforms.
         vertex_blob = "\n".join(f"{x:.4f},{y:.4f},{z:.4f}" for x, y, z in unique_sorted)
         mesh_hash = hashlib.sha256(vertex_blob.encode("utf-8")).hexdigest()
     else:
-        # No mesh vertices available — anchor the hash on the element id
+        # No mesh vertices available - anchor the hash on the element id
         # so different geometry-less elements still hash distinctly.
         mesh_hash = hashlib.sha256(element_id.encode("utf-8")).hexdigest()
 
@@ -290,7 +290,7 @@ def _normalise_properties(props: dict[str, Any] | None) -> dict[tuple[str, str],
             for sub_name, sub_value in value.items():
                 out[(str(key), str(sub_name))] = sub_value
         else:
-            # Flat property — synthetic pset name.
+            # Flat property - synthetic pset name.
             out[("", str(key))] = value
     return out
 
@@ -302,7 +302,7 @@ def property_set_diff(
     """Diff two canonical-format ``properties`` dicts.
 
     Both inputs may use either the nested ``{Pset: {Prop: Value}}`` shape
-    or a flat ``{Prop: Value}`` shape — they are normalised before
+    or a flat ``{Prop: Value}`` shape - they are normalised before
     comparison. A property present on one side and absent on the other
     produces an ``"added"`` or ``"removed"`` change; a property present on
     both sides with different values produces a ``"modified"`` change.
@@ -425,7 +425,7 @@ def material_signature(element: dict[str, Any]) -> str:
     For a layered element (typically a wall, slab, or roof), the hash
     incorporates the ordered layer build-up: ``(name, thickness)`` pairs
     in their declared order. Reordering layers therefore yields a
-    different signature — physically, a 24 cm concrete + 12 cm insulation
+    different signature - physically, a 24 cm concrete + 12 cm insulation
     wall is *not* the same as 12 cm insulation + 24 cm concrete.
 
     For a non-layered element (door, window, fixture, ...), the hash is
@@ -440,7 +440,7 @@ def material_signature(element: dict[str, Any]) -> str:
     """
     layers = _extract_material_layers(element)
     if layers:
-        # Format: name|thickness\nname|thickness ... — newline-delimited
+        # Format: name|thickness\nname|thickness ... - newline-delimited
         # so adjacent layers cannot collide via concatenation.
         blob_parts = [f"{name}|{thickness:.6f}" for name, thickness in layers]
         # Include the primary/wrapper material name when present so a

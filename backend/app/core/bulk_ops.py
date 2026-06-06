@@ -109,7 +109,7 @@ async def bulk_update_fields(
 ) -> int:
     """Set ``fields`` on the given rows. Returns the number of rows affected.
 
-    The caller is responsible for whitelisting which fields are safe to update —
+    The caller is responsible for whitelisting which fields are safe to update -
     this helper trusts the dict it receives.
     """
     if not ids or not fields:

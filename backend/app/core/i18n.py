@@ -86,7 +86,7 @@ def load_translations(locales_dir: Path | None = None) -> None:
     scan_dir = locales_dir or LOCALES_DIR
 
     if not scan_dir.exists():
-        logger.warning("Locales directory not found: %s — creating with defaults", scan_dir)
+        logger.warning("Locales directory not found: %s - creating with defaults", scan_dir)
         scan_dir.mkdir(parents=True, exist_ok=True)
         _generate_default_locales(scan_dir)
 
@@ -171,7 +171,7 @@ def get_available_locales() -> list[dict[str, object]]:
 def _generate_default_locales(locales_dir: Path) -> None:
     """Generate complete locale files for all 20 supported languages."""
     # -------------------------------------------------------------------------
-    # English — master locale. All keys defined here.
+    # English - master locale. All keys defined here.
     # -------------------------------------------------------------------------
     en: dict[str, dict[str, str]] = {
         "app": {
@@ -256,7 +256,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
         },
         "assemblies": {
             "title": "Assemblies",
-            "description": "Reusable cost recipes — combine materials, labor, and equipment into ready-to-use templates",
+            "description": "Reusable cost recipes - combine materials, labor, and equipment into ready-to-use templates",
             "new_assembly": "New Assembly",
             "from_database": "From Database",
             "apply_to_boq": "Apply to BOQ",
@@ -358,7 +358,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # German (Deutsch) — Baukalkulation / HOAI / VOB terminology
+    # German (Deutsch) - Baukalkulation / HOAI / VOB terminology
     # -------------------------------------------------------------------------
     de: dict[str, dict[str, str]] = {
         "app": {
@@ -505,7 +505,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Russian (\u0420\u0443\u0441\u0441\u043a\u0438\u0439) — \u0421\u043c\u0435\u0442\u043d\u043e\u0435 \u0434\u0435\u043b\u043e / \u0413\u042d\u0421\u041d / \u0424\u0415\u0420 terminology
+    # Russian (\u0420\u0443\u0441\u0441\u043a\u0438\u0439) - \u0421\u043c\u0435\u0442\u043d\u043e\u0435 \u0434\u0435\u043b\u043e / \u0413\u042d\u0421\u041d / \u0424\u0415\u0420 terminology
     # -------------------------------------------------------------------------
     ru: dict[str, dict[str, str]] = {
         "app": {
@@ -692,7 +692,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # French (Fran\u00e7ais) — M\u00e9tr\u00e9 / DPGF / CCAG terminology
+    # French (Fran\u00e7ais) - M\u00e9tr\u00e9 / DPGF / CCAG terminology
     # -------------------------------------------------------------------------
     fr: dict[str, dict[str, str]] = {
         "app": {
@@ -838,7 +838,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Spanish (Espa\u00f1ol) — Presupuesto de construcci\u00f3n terminology
+    # Spanish (Espa\u00f1ol) - Presupuesto de construcci\u00f3n terminology
     # -------------------------------------------------------------------------
     es: dict[str, dict[str, str]] = {
         "app": {
@@ -984,7 +984,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Portuguese (Portugu\u00eas) — Or\u00e7amento de obra terminology
+    # Portuguese (Portugu\u00eas) - Or\u00e7amento de obra terminology
     # -------------------------------------------------------------------------
     pt: dict[str, dict[str, str]] = {
         "app": {
@@ -1130,7 +1130,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Italian (Italiano) — Computo metrico / Capitolato terminology
+    # Italian (Italiano) - Computo metrico / Capitolato terminology
     # -------------------------------------------------------------------------
     it: dict[str, dict[str, str]] = {
         "app": {
@@ -1276,7 +1276,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Dutch (Nederlands) — Begroting / RAW / STABU terminology
+    # Dutch (Nederlands) - Begroting / RAW / STABU terminology
     # -------------------------------------------------------------------------
     nl: dict[str, dict[str, str]] = {
         "app": {
@@ -1422,7 +1422,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Polish (Polski) — Kosztorys budowlany / KNR terminology
+    # Polish (Polski) - Kosztorys budowlany / KNR terminology
     # -------------------------------------------------------------------------
     pl: dict[str, dict[str, str]] = {
         "app": {
@@ -1568,7 +1568,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Czech (\u010ce\u0161tina) — Rozpo\u010det stavby terminology
+    # Czech (\u010ce\u0161tina) - Rozpo\u010det stavby terminology
     # -------------------------------------------------------------------------
     cs: dict[str, dict[str, str]] = {
         "app": {
@@ -1714,7 +1714,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Turkish (T\u00fcrk\u00e7e) — Ke\u015fif / Metraj / \u0130hale terminology
+    # Turkish (T\u00fcrk\u00e7e) - Ke\u015fif / Metraj / \u0130hale terminology
     # -------------------------------------------------------------------------
     tr: dict[str, dict[str, str]] = {
         "app": {
@@ -1860,7 +1860,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Swedish (Svenska) — Kalkyl / M\u00e4ngdf\u00f6rteckning terminology
+    # Swedish (Svenska) - Kalkyl / M\u00e4ngdf\u00f6rteckning terminology
     # -------------------------------------------------------------------------
     sv: dict[str, dict[str, str]] = {
         "app": {
@@ -2006,7 +2006,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Norwegian (Norsk) — Kalkyle / Mengdefortegnelse / NS 3420 terminology
+    # Norwegian (Norsk) - Kalkyle / Mengdefortegnelse / NS 3420 terminology
     # -------------------------------------------------------------------------
     no: dict[str, dict[str, str]] = {
         "app": {
@@ -2152,7 +2152,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Danish (Dansk) — Tilbudsliste / Byggekalkulation terminology
+    # Danish (Dansk) - Tilbudsliste / Byggekalkulation terminology
     # -------------------------------------------------------------------------
     da: dict[str, dict[str, str]] = {
         "app": {
@@ -2298,7 +2298,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Finnish (Suomi) — Kustannuslaskenta / Talo 2000 terminology
+    # Finnish (Suomi) - Kustannuslaskenta / Talo 2000 terminology
     # -------------------------------------------------------------------------
     fi: dict[str, dict[str, str]] = {
         "app": {
@@ -2444,7 +2444,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Arabic (\u0627\u0644\u0639\u0631\u0628\u064a\u0629) — \u062a\u0642\u062f\u064a\u0631 \u0627\u0644\u062a\u0643\u0627\u0644\u064a\u0641 / \u062c\u062f\u0648\u0644 \u0627\u0644\u0643\u0645\u064a\u0627\u062a terminology
+    # Arabic (\u0627\u0644\u0639\u0631\u0628\u064a\u0629) - \u062a\u0642\u062f\u064a\u0631 \u0627\u0644\u062a\u0643\u0627\u0644\u064a\u0641 / \u062c\u062f\u0648\u0644 \u0627\u0644\u0643\u0645\u064a\u0627\u062a terminology
     # -------------------------------------------------------------------------
     ar: dict[str, dict[str, str]] = {
         "app": {
@@ -2612,7 +2612,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Chinese Simplified (\u7b80\u4f53\u4e2d\u6587) — \u5de5\u7a0b\u9020\u4ef7 / \u5de5\u7a0b\u91cf\u6e05\u5355 terminology
+    # Chinese Simplified (\u7b80\u4f53\u4e2d\u6587) - \u5de5\u7a0b\u9020\u4ef7 / \u5de5\u7a0b\u91cf\u6e05\u5355 terminology
     # -------------------------------------------------------------------------
     zh: dict[str, dict[str, str]] = {
         "app": {
@@ -2758,7 +2758,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Japanese (\u65e5\u672c\u8a9e) — \u7a4d\u7b97 / \u898b\u7a4d / \u6570\u91cf\u8abf\u66f8 terminology
+    # Japanese (\u65e5\u672c\u8a9e) - \u7a4d\u7b97 / \u898b\u7a4d / \u6570\u91cf\u8abf\u66f8 terminology
     # -------------------------------------------------------------------------
     ja: dict[str, dict[str, str]] = {
         "app": {
@@ -2904,7 +2904,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Korean (\ud55c\uad6d\uc5b4) — \uac74\uc124 \uc801\uc0b0 / \ubb3c\ub7c9\uc0b0\ucd9c\uc11c terminology
+    # Korean (\ud55c\uad6d\uc5b4) - \uac74\uc124 \uc801\uc0b0 / \ubb3c\ub7c9\uc0b0\ucd9c\uc11c terminology
     # -------------------------------------------------------------------------
     ko: dict[str, dict[str, str]] = {
         "app": {
@@ -3050,7 +3050,7 @@ def _generate_default_locales(locales_dir: Path) -> None:
     }
 
     # -------------------------------------------------------------------------
-    # Hindi (\u0939\u093f\u0928\u094d\u0926\u0940) — \u0928\u093f\u0930\u094d\u092e\u093e\u0923 \u0932\u093e\u0917\u0924 \u0905\u0928\u0941\u092e\u093e\u0928 terminology
+    # Hindi (\u0939\u093f\u0928\u094d\u0926\u0940) - \u0928\u093f\u0930\u094d\u092e\u093e\u0923 \u0932\u093e\u0917\u0924 \u0905\u0928\u0941\u092e\u093e\u0928 terminology
     # -------------------------------------------------------------------------
     hi: dict[str, dict[str, str]] = {
         "app": {

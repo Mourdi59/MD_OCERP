@@ -1,14 +1,14 @@
 """AI Agents ORM models.
 
 Tables:
-    oe_ai_agents_run    — one row per agent invocation (status, totals, output).
-    oe_ai_agents_step   — chronological steps within a run
+    oe_ai_agents_run    - one row per agent invocation (status, totals, output).
+    oe_ai_agents_step   - chronological steps within a run
                           (thought / tool_call / observation / answer / error).
-    oe_ai_agents_custom — user-authored agents (name, prompt, icon, category).
+    oe_ai_agents_custom - user-authored agents (name, prompt, icon, category).
 
 The run/step tables are append-only from a user's perspective (the runner
 writes incrementally as the loop progresses; the API only ever lets you
-create a new run or fetch existing ones — no in-place edits). Custom agents
+create a new run or fetch existing ones - no in-place edits). Custom agents
 ARE editable/deletable by their creator through the dedicated endpoints.
 """
 
@@ -21,7 +21,7 @@ from app.database import GUID, Base
 
 
 class AgentRun(Base):
-    """A single agent invocation — the ReAct loop bookkeeping row."""
+    """A single agent invocation - the ReAct loop bookkeeping row."""
 
     __tablename__ = "oe_ai_agents_run"
 
@@ -31,9 +31,9 @@ class AgentRun(Base):
     # running | completed | failed
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="running")
     # How the run was initiated (Item 29). One of:
-    #   "manual"       — a user clicked Run (default; the existing path).
-    #   "schedule"     — the cron scheduler fired it.
-    #   "event:<name>" — a platform event fired it (e.g. "event:rfi_created").
+    #   "manual"       - a user clicked Run (default; the existing path).
+    #   "schedule"     - the cron scheduler fired it.
+    #   "event:<name>" - a platform event fired it (e.g. "event:rfi_created").
     # Lets the monitoring panel list automated runs and the audit trail show
     # who/what initiated each automated action.
     trigger_source: Mapped[str] = mapped_column(
@@ -61,9 +61,9 @@ class AgentStep(Base):
     """One entry in a run's ReAct timeline.
 
     ``role`` values: ``thought`` (LLM reasoning text), ``tool_call``
-    (LLM asked to invoke a tool — ``content`` is ``{name, args}``),
-    ``observation`` (tool returned — ``content`` is the result or error),
-    ``answer`` (LLM emitted final text — ``content`` is ``{text}``),
+    (LLM asked to invoke a tool - ``content`` is ``{name, args}``),
+    ``observation`` (tool returned - ``content`` is the result or error),
+    ``answer`` (LLM emitted final text - ``content`` is ``{text}``),
     ``error`` (out-of-band failure: unknown tool, parse error, ...).
     """
 
@@ -145,7 +145,7 @@ class CustomAgent(Base):
     #     "triggers": ["rfi_created", ...],   # event names (wiring deferred)
     #     "allowed_tools": ["search_costs"],  # tool slugs the agent may call
     #   }
-    # The Python attribute is deliberately NOT named ``metadata`` — that name is
+    # The Python attribute is deliberately NOT named ``metadata`` - that name is
     # reserved by SQLAlchemy's declarative ``Base`` (the MetaData object).
     automation: Mapped[dict] = mapped_column(  # type: ignore[type-arg]
         JSON,

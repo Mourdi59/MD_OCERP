@@ -13,7 +13,7 @@ The snag bridge:
 
 * Walks snag -> handover -> plot -> development -> project to find the
   ``project_id`` punchlist needs (punchlist is project-scoped, snag is
-  handover-scoped — same data, different anchor).
+  handover-scoped - same data, different anchor).
 * Maps snag.severity -> punch.priority:
     cosmetic/minor -> low
     major          -> high
@@ -115,7 +115,7 @@ async def _resolve_project_id(
 async def _on_snag_created(event: Event) -> None:
     """Subscriber for ``property_dev.snag.created``.
 
-    Payload (best-effort — missing fields skip cleanly):
+    Payload (best-effort - missing fields skip cleanly):
         snag_id        UUID
         handover_id    UUID
         buyer_id       UUID | None
@@ -153,7 +153,7 @@ async def _on_snag_created(event: Event) -> None:
                 )
                 return
 
-            # Build the punch item directly — we deliberately do NOT go
+            # Build the punch item directly - we deliberately do NOT go
             # through PunchListService.create_item() because it runs an
             # additional event publish that could fan out indefinitely
             # if a future subscriber writes back to snag.
@@ -231,7 +231,7 @@ async def _on_clash_high_severity(event: Event) -> None:
     Idempotent: guarded on ``PunchItem.clash_result_id`` so a re-published
     or confirmed event for the same clash never creates a duplicate.
 
-    Fail-soft — any error is logged and swallowed.
+    Fail-soft - any error is logged and swallowed.
     """
     try:
         data = event.data or {}
@@ -259,7 +259,7 @@ async def _on_clash_high_severity(event: Event) -> None:
         async with async_session_factory() as session:
             from app.modules.punchlist.models import PunchItem
 
-            # Idempotency — bail if a punch item already links this clash.
+            # Idempotency - bail if a punch item already links this clash.
             existing = (
                 await session.execute(
                     select(PunchItem.id).where(
@@ -335,7 +335,7 @@ async def _on_inspection_completed_failed(event: Event) -> None:
     recorded in ``metadata_`` so re-completing the same inspection does not
     create duplicates.
 
-    Fail-soft — any error is logged and swallowed.
+    Fail-soft - any error is logged and swallowed.
     """
     try:
         data = event.data or {}

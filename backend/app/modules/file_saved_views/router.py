@@ -5,13 +5,13 @@
 Mounted by the module loader at ``/api/v1/file-saved-views``.
 
 Endpoints:
-    GET    /                   — list views for ``project_id`` (or
+    GET    /                   - list views for ``project_id`` (or
                                  NULL = global) visible to the caller
-    POST   /                   — create a view from the current filter
-    PATCH  /{id}/              — rename / repin / reorder / re-snap
-    DELETE /{id}/              — delete (owner only)
-    POST   /{id}/use/          — bump use_count + last_used_at
-    POST   /{id}/duplicate/    — clone into the caller's own list
+    POST   /                   - create a view from the current filter
+    PATCH  /{id}/              - rename / repin / reorder / re-snap
+    DELETE /{id}/              - delete (owner only)
+    POST   /{id}/use/          - bump use_count + last_used_at
+    POST   /{id}/duplicate/    - clone into the caller's own list
 """
 
 from __future__ import annotations

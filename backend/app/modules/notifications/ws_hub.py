@@ -9,7 +9,7 @@ this hub fans the message out to every open socket for that user.
 
 Design choices mirror :mod:`app.modules.collaboration_locks.presence_hub`:
 
-* **Pure asyncio / stdlib.**  No Redis fan-out — multi-worker
+* **Pure asyncio / stdlib.**  No Redis fan-out - multi-worker
   deployments only push to the worker that holds the socket.  The v2
   plan upgrades this to Postgres LISTEN/NOTIFY without touching
   callers.

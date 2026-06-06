@@ -1,9 +1,9 @@
 """‌⁠‍ERP Chat tool definitions and handlers.
 
 Each tool maps to a real ERP service call. Handlers return a dict with:
-    renderer  — frontend component hint (e.g. "projects_grid", "boq_table")
-    data      — structured payload for the renderer
-    summary   — one-line human-readable summary for the AI
+    renderer  - frontend component hint (e.g. "projects_grid", "boq_table")
+    data      - structured payload for the renderer
+    summary   - one-line human-readable summary for the AI
 
 SECURITY: all project-scoped tools MUST call ``_require_project_access``
 before touching data, otherwise any user could pass an arbitrary project_id
@@ -79,7 +79,7 @@ async def _require_project_access(
     """Verify the user owns or is an admin on the referenced project.
 
     Raises ToolAuthError if the project doesn't exist or the user has no
-    access. Central choke-point for tool authorization — every project-scoped
+    access. Central choke-point for tool authorization - every project-scoped
     tool must call this before querying data.
     """
     try:
@@ -121,7 +121,7 @@ def _auth_error(msg: str) -> dict[str, Any]:
 # ── Write-tool RBAC: gate destructive tools behind manager+ ────────────────
 #
 # Reads (any authenticated user) vs. writes (manager+) follow the same
-# convention as the rest of the platform — the global ``User.role`` enum
+# convention as the rest of the platform - the global ``User.role`` enum
 # (admin > manager > editor > viewer) determines what each user can do, and
 # elevated project-team roles (``owner``, ``project_manager``) count as
 # manager+ for *that specific project*. Anything else, the tool returns a
@@ -160,7 +160,7 @@ async def _user_is_manager_or_above(
     except (TypeError, ValueError):
         return False
 
-    # 1. Global role check — admin / manager bypass project scope.
+    # 1. Global role check - admin / manager bypass project scope.
     try:
         user_repo = UserRepository(session)
         user = await user_repo.get_by_id(uid)
@@ -210,7 +210,7 @@ async def _user_is_manager_or_above(
 def _extract_project_id(tool_name: str, args: dict[str, Any]) -> uuid.UUID | None:
     """Best-effort: find the project this tool call targets, or None.
 
-    ``compare_projects`` passes a list — we take the first parsable one so
+    ``compare_projects`` passes a list - we take the first parsable one so
     the manager check gates on at least one referenced project (matches the
     handler's "any accessible project" semantics).
     """
@@ -241,7 +241,7 @@ async def check_tool_permission(
             converts this into a friendly chat-message error card and an
             HTTP 403 on the SSE wire.
 
-    Reads pass through unchanged — every read tool still gates IDOR via its
+    Reads pass through unchanged - every read tool still gates IDOR via its
     handler's own ``_require_project_access`` call, which is what enforces
     the 404-over-403 IDOR posture for cross-tenant access. This function
     intentionally does NOT pre-check project existence: that's the
@@ -258,7 +258,7 @@ async def check_tool_permission(
 
 
 def manager_permission_error_result() -> dict[str, Any]:
-    """Build the standard 'write tool denied — manager+ required' card.
+    """Build the standard 'write tool denied - manager+ required' card.
 
     Carries a machine-readable ``i18n_key`` so the frontend can swap the
     English fallback for the user's locale.
@@ -330,7 +330,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "get_validation_results",
-        "description": "Get validation reports for a project — compliance scores, passed/warning/error rule results.",
+        "description": "Get validation reports for a project - compliance scores, passed/warning/error rule results.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -344,7 +344,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "get_risk_register",
-        "description": "Get risk register for a project — risk items with probability, impact, score, mitigation, and summary stats.",
+        "description": "Get risk register for a project - risk items with probability, impact, score, mitigation, and summary stats.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -376,7 +376,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "get_cost_model",
-        "description": "Get cost model/summary for a project — direct cost, markups, grand total from the first BOQ.",
+        "description": "Get cost model/summary for a project - direct cost, markups, grand total from the first BOQ.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -456,7 +456,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "name": "search_boq_positions",
         "description": (
-            "Semantic search across BOQ positions — finds positions by meaning, "
+            "Semantic search across BOQ positions - finds positions by meaning, "
             "not exact match.  Use for queries like 'concrete walls 240mm', "
             "'reinforcement Ø12 in slabs', 'waterproofing membrane'.  Optionally "
             "scope to a single project."
@@ -508,7 +508,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "name": "search_risks",
         "description": (
-            "Semantic search across the risk register — including mitigation "
+            "Semantic search across the risk register - including mitigation "
             "strategies and contingency plans.  KEY USE CASE: lessons-learned "
             "reuse across projects.  Query examples: 'soil instability south "
             "retaining wall', 'supplier bankruptcy concrete delivery'."
@@ -521,7 +521,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "type": "string",
                     "description": (
                         "Optional project UUID filter.  Omit to search ACROSS all "
-                        "projects — usually what you want for lessons learned."
+                        "projects - usually what you want for lessons learned."
                     ),
                 },
                 "limit": {"type": "integer", "description": "Max hits (1..20)", "default": 10},
@@ -550,7 +550,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "name": "search_rfis",
         "description": (
-            "Semantic search across RFIs (Requests for Information) — finds "
+            "Semantic search across RFIs (Requests for Information) - finds "
             "RFIs by meaning across subject, question and official response.  "
             "Use for 'structural rebar clash on level 2', 'delivery delay for "
             "curtain wall', 'fire rating query for partition'."
@@ -603,7 +603,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "name": "search_anything",
         "description": (
-            "Cross-collection semantic search — fans out to BOQ, documents, "
+            "Cross-collection semantic search - fans out to BOQ, documents, "
             "tasks, risks, BIM elements, RFIs, submittals and correspondence "
             "at once and merges the results.  Use this when the user asks an "
             "open-ended question and you don't know which module the answer "
@@ -964,7 +964,7 @@ async def handle_get_cost_model(session: AsyncSession, args: dict[str, Any], use
             return {
                 "renderer": "cost_model",
                 "data": {},
-                "summary": "No BOQs found — cannot compute cost model",
+                "summary": "No BOQs found - cannot compute cost model",
             }
 
         boq = boqs[0]
@@ -1135,7 +1135,7 @@ async def handle_create_boq_item(session: AsyncSession, args: dict[str, Any], us
             return {
                 "renderer": "error",
                 "data": {"error": "No BOQs found for this project"},
-                "summary": "Error: No BOQs found — create a BOQ first",
+                "summary": "Error: No BOQs found - create a BOQ first",
             }
 
         boq = boqs[0]
@@ -1197,7 +1197,7 @@ async def _generic_collection_search(
     * When the AI supplies a ``project_id`` we run ``_require_project_access``
       first, so a caller cannot enumerate a project they do not own by
       guessing its UUID (the unified service trusts a supplied project_id
-      and skips its own fence — that trust only holds once we have verified
+      and skips its own fence - that trust only holds once we have verified
       access here).
     * When no ``project_id`` is given we thread ``user_id`` through so the
       service fences the cross-project search to the projects the caller may
@@ -1221,7 +1221,7 @@ async def _generic_collection_search(
         try:
             await _require_project_access(session, _parse_uuid(project_filter, "project_id"), user_id)
         except ToolAuthError as exc:
-            # 404 posture — never confirm the project exists to a caller
+            # 404 posture - never confirm the project exists to a caller
             # who cannot see it; just return an empty, denied result.
             return _auth_error(str(exc))
 
@@ -1382,13 +1382,13 @@ async def handle_search_anything(session: AsyncSession, args: dict[str, Any], us
 # ── Tool handler dispatch map ────────────────────────────────────────────────
 
 
-# Permission classifier — keep in sync with TOOL_HANDLER_MAP below.
+# Permission classifier - keep in sync with TOOL_HANDLER_MAP below.
 # Reads (any authenticated user): all ``get_*`` / ``search_*`` /
 #   ``compare_projects`` / ``run_validation`` (the latter returns a report
-#   from the persisted ValidationReport table — no mutation, no side
+#   from the persisted ValidationReport table - no mutation, no side
 #   effects).
 # Writes (manager+): anything that creates / updates / deletes data.
-# When you add a new tool, add it here too — otherwise it defaults to
+# When you add a new tool, add it here too - otherwise it defaults to
 # ``read`` which is wrong for any mutating handler.
 TOOL_PERMISSIONS: dict[str, ToolPermission] = {
     "get_all_projects": "read",

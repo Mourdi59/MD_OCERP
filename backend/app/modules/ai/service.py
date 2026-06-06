@@ -1,4 +1,4 @@
-"""‌⁠‍AI Estimation service — business logic for AI-powered BOQ generation.
+"""‌⁠‍AI Estimation service - business logic for AI-powered BOQ generation.
 
 Stateless service layer. Handles:
 - Per-user AI settings (get, create, update)
@@ -64,7 +64,7 @@ async def _resolve_project_currency(
     """Look up the project's default currency.
 
     Returns empty string when no project_id is supplied or the project is
-    missing — callers fall back to a literal default for prompt rendering.
+    missing - callers fall back to a literal default for prompt rendering.
     Inline import keeps the AI module decoupled from projects at module level.
     """
     if project_id is None:
@@ -103,14 +103,14 @@ def _coerce_confidence(value: Any) -> float | None:
 # ── Photo defect-category suggestion (Lane 7) ────────────────────────────
 #
 # The set of categories the photo gallery understands. Kept in sync with
-# ``VALID_PHOTO_CATEGORIES`` in documents/service.py — duplicated here on
+# ``VALID_PHOTO_CATEGORIES`` in documents/service.py - duplicated here on
 # purpose so the AI module stays import-decoupled from documents.
 PHOTO_CATEGORIES: tuple[str, ...] = ("site", "progress", "defect", "delivery", "safety", "other")
 
 # Deterministic keyword → category map used when no AI provider is
 # configured. Ordered most-specific first; the first category whose keyword
 # matches the combined text (filename + caption + tags) wins. This is a
-# transparent, explainable heuristic — never a fabricated AI score.
+# transparent, explainable heuristic - never a fabricated AI score.
 _CATEGORY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         "defect",
@@ -208,7 +208,7 @@ _CATEGORY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
 
 # Defect keywords ranked by how serious the visible problem usually is, so a
 # text-only heuristic can still offer an ADVISORY severity (low/medium/high)
-# when no vision model is configured. This is intentionally conservative — it
+# when no vision model is configured. This is intentionally conservative - it
 # is a hint the user confirms, never an auto-applied rating.
 _DEFECT_SEVERITY_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
@@ -246,8 +246,8 @@ def heuristic_photo_category(
     """Deterministically guess a photo category from textual signals.
 
     Returns ``(category, confidence)`` or ``None`` when nothing matches.
-    The confidence is a fixed, honest "this is a keyword match" score —
-    NOT an AI probability — so the UI can clearly label it as a heuristic.
+    The confidence is a fixed, honest "this is a keyword match" score -
+    NOT an AI probability - so the UI can clearly label it as a heuristic.
     """
     parts = [filename or "", caption or ""]
     parts.extend(tags or [])
@@ -270,7 +270,7 @@ def heuristic_photo_suggestion(
 
     Builds on :func:`heuristic_photo_category` and, for a ``defect`` match,
     additionally derives an advisory ``defect_severity`` and the matched
-    keywords as ``suggested_tags`` from the same textual signal — so the
+    keywords as ``suggested_tags`` from the same textual signal - so the
     severity and auto-tag chips work even with no vision model configured.
     Everything here is a hint the user confirms; nothing is auto-applied.
 
@@ -331,7 +331,7 @@ def _coerce_suggested_tags(value: Any, *, limit: int = 6) -> list[str]:
 
     Tags are lower-cased, stripped, capped at ``limit`` items and 40 chars
     each. Non-list / empty input yields ``[]`` so the caller can store it
-    unconditionally. The tags are advisory only — never auto-applied.
+    unconditionally. The tags are advisory only - never auto-applied.
     """
     if not isinstance(value, list):
         return []
@@ -423,7 +423,7 @@ def _validate_items(raw_items: Any, currency: str = "") -> list[dict[str, Any]]:
             "currency": currency,
         }
         # Carry a real per-item confidence only when the model supplied a
-        # usable one — never fabricate a placeholder score.
+        # usable one - never fabricate a placeholder score.
         confidence = _coerce_confidence(item.get("confidence"))
         if confidence is not None:
             item_out["confidence"] = confidence
@@ -437,7 +437,7 @@ def _build_settings_response(settings: AISettings) -> AISettingsResponse:
 
     A key is only reported as "set" when it is both present *and* decryptable
     with the current backend encryption key. If the ciphertext was written
-    under a rotated JWT_SECRET the key is functionally useless — surfacing it
+    under a rotated JWT_SECRET the key is functionally useless - surfacing it
     as "configured" would make the Settings UI show "Key configured" while
     every chat/estimate call fails with a decrypt error.
     """
@@ -766,7 +766,7 @@ class AIService:
         # Currency precedence: explicit request → project default →
         # empty string (LLM prompts tolerate a blank currency token).
         currency = request.currency or await _resolve_project_currency(self.session, request.project_id) or ""
-        # No standard fallback — empty token signals "no preferred classification"
+        # No standard fallback - empty token signals "no preferred classification"
         # so the LLM is steered by the project's explicit setting (or absence).
         standard_val = request.standard or ""
 
@@ -844,7 +844,7 @@ class AIService:
             )
             # Forward the precise, already-sanitized message from call_ai (e.g.
             # "invalid key", "model rejected", "rate limit") instead of masking
-            # it — call_ai never echoes secrets, so this is safe to show and
+            # it - call_ai never echoes secrets, so this is safe to show and
             # tells the user exactly what to fix.
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -946,9 +946,9 @@ class AIService:
         job = await self.job_repo.create(job)
         job_id = job.id  # Save before expire_all() in update_fields
 
-        # Build prompt — currency: explicit arg → project default → blank.
+        # Build prompt - currency: explicit arg → project default → blank.
         currency_val = currency or await _resolve_project_currency(self.session, project_id) or ""
-        # No standard / location fallback — explicit-only avoids steering
+        # No standard / location fallback - explicit-only avoids steering
         # the LLM toward DIN 276 / Europe on non-DACH projects.
         standard_val = standard or ""
         location_val = location or ""
@@ -1101,7 +1101,7 @@ class AIService:
 
         Returns a dict ``{suggested_category, confidence, source}`` where
         ``source`` is ``"ai"`` or ``"heuristic"`` so the UI can label it
-        honestly. NEVER raises — a classification failure degrades to the
+        honestly. NEVER raises - a classification failure degrades to the
         heuristic (and then to ``None``); it must not block the upload.
         """
         uid = uuid.UUID(user_id)
@@ -1127,7 +1127,7 @@ class AIService:
                 if ai_result is not None:
                     return ai_result
 
-        # 2. Deterministic fallback — clearly labelled as a heuristic. For a
+        # 2. Deterministic fallback - clearly labelled as a heuristic. For a
         #    defect match this also carries an advisory severity + matched
         #    keyword tags so those chips work without a vision model.
         heuristic = heuristic_photo_suggestion(filename=filename, caption=caption, tags=tags)
@@ -1198,7 +1198,7 @@ class AIService:
         tags = _coerce_suggested_tags(parsed.get("tags"))
         if tags:
             result["suggested_tags"] = tags
-        # Severity is only meaningful for defect photos — discard it otherwise
+        # Severity is only meaningful for defect photos - discard it otherwise
         # so a stray model value can't mislabel a non-defect photo.
         if category == "defect":
             severity = _coerce_defect_severity(parsed.get("severity"))
@@ -1264,7 +1264,7 @@ class AIService:
 
         # Currency: explicit arg → project default → blank token.
         currency_val = currency or await _resolve_project_currency(self.session, project_id) or ""
-        # No region/standard steering — empty tokens let the LLM rely on
+        # No region/standard steering - empty tokens let the LLM rely on
         # the file's content rather than defaulting to DACH / DIN 276.
         standard_val = standard or ""
         location_val = location or ""
@@ -1333,7 +1333,7 @@ class AIService:
                 cad_format = result.get("cad_format", ext)
 
                 if result.get("cad_no_converter"):
-                    # No converter installed — return helpful error
+                    # No converter installed - return helpful error
                     await self.job_repo.update_fields(
                         job_id,
                         status="failed",
@@ -1395,7 +1395,7 @@ class AIService:
                     model=model_override,
                 )
             elif image_b64:
-                # Audit AI1: filename is user-controlled — sanitize before
+                # Audit AI1: filename is user-controlled - sanitize before
                 # interpolation.
                 prompt = SMART_IMPORT_VISION_PROMPT.format(
                     filename=sanitize_user_text(filename, max_len=255),
@@ -1571,7 +1571,7 @@ class AIService:
         # without this guard a non-owner could land an AI-generated BOQ
         # inside a project they don't own (silent BOQ injection that
         # bypasses the projects-module RBAC). The shared helper returns
-        # 404 on "missing" OR "no access" — identical surface.
+        # 404 on "missing" OR "no access" - identical surface.
         from app.dependencies import verify_project_access
 
         await verify_project_access(request.project_id, user_id, self.session)

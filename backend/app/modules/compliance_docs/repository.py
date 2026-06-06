@@ -35,7 +35,7 @@ class ComplianceDocRepository:
             stmt = stmt.where(ComplianceDoc.status == status)
         if doc_type is not None:
             stmt = stmt.where(ComplianceDoc.doc_type == doc_type)
-        # Sort by expiry ascending so the most-urgent rows are first —
+        # Sort by expiry ascending so the most-urgent rows are first -
         # the same default the UI uses, so the table renders without
         # client-side resorting.
         stmt = stmt.order_by(ComplianceDoc.expires_at.asc())

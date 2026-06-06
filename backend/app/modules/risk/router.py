@@ -1,13 +1,13 @@
 """‌⁠‍Risk Register API routes.
 
 Endpoints:
-    POST   /                       — Create risk item
-    GET    /?project_id=X          — List for project (with filters)
-    GET    /{id}                   — Get single risk
-    PATCH  /{id}                   — Update risk
-    DELETE /{id}                   — Delete risk
-    GET    /matrix?project_id=X    — Risk matrix data (5x5 grid)
-    GET    /summary?project_id=X   — Aggregated stats
+    POST   /                       - Create risk item
+    GET    /?project_id=X          - List for project (with filters)
+    GET    /{id}                   - Get single risk
+    PATCH  /{id}                   - Update risk
+    DELETE /{id}                   - Delete risk
+    GET    /matrix?project_id=X    - Risk matrix data (5x5 grid)
+    GET    /summary?project_id=X   - Aggregated stats
 """
 
 import logging
@@ -205,11 +205,11 @@ async def list_risks(
     return [_risk_to_response(i) for i in items]
 
 
-# ── Monte Carlo simulation (v3.11 — T1) ──────────────────────────────────
+# ── Monte Carlo simulation (v3.11 - T1) ──────────────────────────────────
 #
 # Mounted under ``/projects/{project_id}/simulate`` (not the bare
 # ``/{risk_id}`` parametric) so the parametric-collision rule does not
-# apply — FastAPI/Starlette's path router has no ambiguity between
+# apply - FastAPI/Starlette's path router has no ambiguity between
 # ``/projects/.../simulate`` and ``/{risk_id}``.
 
 
@@ -251,7 +251,7 @@ async def simulate_risks(
 # runs. Mounted under ``/projects/{project_id}/escalate`` (non-parametric
 # prefix) so it does not collide with ``/{risk_id}``. Gated at
 # ``risk.escalate`` (MANAGER) because escalation drives notifications and
-# auto-creates action items — a supervisory action, not a routine edit.
+# auto-creates action items - a supervisory action, not a routine edit.
 
 
 @router.post(
@@ -268,7 +268,7 @@ async def escalate_project_risks(
     """Run an auto-escalation sweep over one project's risks.
 
     Escalates every not-yet-escalated risk whose severity product crosses
-    the threshold or whose next-review date has lapsed. Idempotent — risks
+    the threshold or whose next-review date has lapsed. Idempotent - risks
     already escalated for their current trigger are skipped. Each escalation
     flips the flag, stamps ``escalated_at``, appends a mitigation action and
     emits ``risk.escalated``.
@@ -297,7 +297,7 @@ async def _authorized_risk_ids(
 ) -> list[uuid.UUID]:
     """Return the subset of ``requested_ids`` the caller may act on.
 
-    Authorization mirrors every other risk route — ``verify_project_access``
+    Authorization mirrors every other risk route - ``verify_project_access``
     (owner **or** admin **or** project team member), not the bare
     owner-only filter the batch handlers previously used. We resolve each
     distinct project once, skip rows in projects the caller can't reach
@@ -369,7 +369,7 @@ async def batch_update_risk_status(
     from app.modules.risk.models import RiskItem
     from app.modules.risk.schemas import STATUS_VALUES
 
-    # Canonical set lives in schemas.STATUS_VALUES — the previous hardcoded
+    # Canonical set lives in schemas.STATUS_VALUES - the previous hardcoded
     # subset silently rejected the "monitoring" and "mitigated" tiers that
     # seeded risks already use, leaving bulk-update broken for them.
     allowed_statuses = set(STATUS_VALUES)
@@ -445,8 +445,8 @@ async def delete_risk(
 # ``/vector/status/`` + ``/vector/reindex/`` wired via the shared factory
 # (see the ``include_router`` call at the bottom of this file).  Risks
 # are the single highest-value collection for cross-project semantic
-# search — lessons learned reuse is why this infrastructure exists in
-# the first place — so the ``similar`` endpoint below defaults to
+# search - lessons learned reuse is why this infrastructure exists in
+# the first place - so the ``similar`` endpoint below defaults to
 # ``cross_project=true``.
 
 
@@ -463,7 +463,7 @@ async def risk_similar(
 ) -> dict[str, Any]:
     """Return risks semantically similar to the given one.
 
-    Defaults to **cross-project** search — this is the whole point of
+    Defaults to **cross-project** search - this is the whole point of
     the risk vector collection.  Estimators starting a new project want
     to instantly surface "risks like this one that we already faced on
     past jobs" so they can reuse the mitigation strategy, contingency

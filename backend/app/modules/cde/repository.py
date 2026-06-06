@@ -1,7 +1,7 @@
 """‌⁠‍CDE data access layer.
 
 All database queries for document containers and revisions live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid

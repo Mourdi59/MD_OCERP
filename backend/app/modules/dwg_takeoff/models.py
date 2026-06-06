@@ -1,10 +1,10 @@
 """‌⁠‍DWG Takeoff ORM models.
 
 Tables:
-    oe_dwg_takeoff_drawing          — uploaded DWG/DXF drawing files
-    oe_dwg_takeoff_drawing_version  — parsed versions with layer/entity data
-    oe_dwg_takeoff_annotation       — user annotations on drawings
-    oe_dwg_entity_group             — saved multi-entity selections (RFC 11)
+    oe_dwg_takeoff_drawing          - uploaded DWG/DXF drawing files
+    oe_dwg_takeoff_drawing_version  - parsed versions with layer/entity data
+    oe_dwg_takeoff_annotation       - user annotations on drawings
+    oe_dwg_entity_group             - saved multi-entity selections (RFC 11)
 """
 
 import uuid
@@ -19,7 +19,7 @@ from app.database import GUID, Base
 # measurements survive the round-trip into BOQ totals without accumulating
 # binary float drift (flagged in the Round-3 Wave-A audit, 2026-05-21).
 # Numeric(18, 6) covers every realistic takeoff measurement (km of pipe,
-# m² of slab, kg of rebar) with 6 fractional digits — well past the
+# m² of slab, kg of rebar) with 6 fractional digits - well past the
 # precision DXF itself stores. Scales/thickness use Numeric(10, 6).
 _MEASURE_NUMERIC = Numeric(18, 6)
 _SCALE_NUMERIC = Numeric(10, 6)
@@ -165,7 +165,7 @@ class DwgAnnotation(Base):
     measurement_unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # Optional scale override for this annotation. When set, the frontend
     # divides raw measurements by this instead of the drawing-level scale
-    # — used when one legend/detail view on the same sheet has a different
+    # - used when one legend/detail view on the same sheet has a different
     # scale than the rest of the drawing (e.g. 1:100 plan + 1:20 detail).
     scale_override: Mapped[Decimal | None] = mapped_column(_SCALE_NUMERIC, nullable=True)
     linked_boq_position_id: Mapped[str | None] = mapped_column(String(255), nullable=True)

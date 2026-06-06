@@ -1,20 +1,20 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍High-level helpers around the JobRun row — RFC 34 §4 W0.1.
+"""‌⁠‍High-level helpers around the JobRun row - RFC 34 §4 W0.1.
 
 This module is the API surface every other Wave (CDE upload pipeline,
 BIM diff engine, EAC validator, QTO export, …) talks to:
 
-* ``register_handler(kind, handler)`` — module bootstrap registers its
+* ``register_handler(kind, handler)`` - module bootstrap registers its
   background work by ``kind`` here.
-* ``submit_job(kind, payload, idempotency_key=...)`` — endpoint code
+* ``submit_job(kind, payload, idempotency_key=...)`` - endpoint code
   enqueues a background task and gets back a JobRun row whose ``id``
   the client can poll.
-* ``update_progress(job_run_id, percent, message)`` — handlers report
+* ``update_progress(job_run_id, percent, message)`` - handlers report
   progress as they run.
 
 The split keeps the Celery transport (``app.core.jobs``,
-``app.core.jobs_tasks``) decoupled from business code — handlers never
+``app.core.jobs_tasks``) decoupled from business code - handlers never
 import Celery directly.
 
 Idempotency contract
@@ -49,7 +49,7 @@ from app.core.job_run import JobRun
 logger = logging.getLogger(__name__)
 
 
-# Handlers may be either sync or async — we await whichever they are.
+# Handlers may be either sync or async - we await whichever they are.
 type JobHandler = Callable[[JobRun, dict[str, Any]], Any]
 
 
@@ -62,7 +62,7 @@ _HANDLERS: dict[str, JobHandler] = {}
 def register_handler(kind: str, handler: JobHandler) -> None:
     """‌⁠‍Register a handler for a JobRun ``kind``.
 
-    Re-registering the same kind silently overrides — useful in tests,
+    Re-registering the same kind silently overrides - useful in tests,
     matches the Pythonic "last write wins" convention, and avoids
     surprising registration ordering bugs at module-load time.
     """
@@ -142,7 +142,7 @@ def _dispatch_to_celery(job_run_id: uuid.UUID) -> str:
     try:
         async_result = dispatch_job.apply_async(args=[str(job_run_id)])
     except (OperationalError, ConnectionError, OSError) as exc:
-        # Broker / backend unreachable — surface as a typed error so
+        # Broker / backend unreachable - surface as a typed error so
         # submit_job can fall back to an in-process run.
         raise BrokerUnavailableError(str(exc)) from exc
     return str(async_result.id)
@@ -157,12 +157,12 @@ async def _run_in_process(
     Fallback path for the no-Docker dev env where no Celery worker /
     Redis broker exists. Drives the same async lifecycle the worker would
     (``_dispatch_job_sync``) but inside the running event loop, so it must
-    be scheduled as a background task — never awaited inline — to keep the
+    be scheduled as a background task - never awaited inline - to keep the
     request handler responsive.
     """
     try:
         await _dispatch_job_sync(job_run_id, session_factory=factory)
-    except Exception:  # noqa: BLE001 — background task; never propagate.
+    except Exception:  # noqa: BLE001 - background task; never propagate.
         logger.exception("In-process job dispatch failed for job_run_id=%s", job_run_id)
 
 
@@ -182,10 +182,10 @@ async def submit_job(
     Args:
         kind: Handler key registered via :func:`register_handler`.
         payload: JSON-serialisable input for the handler.
-        idempotency_key: Optional UNIQUE token — if present and matches
+        idempotency_key: Optional UNIQUE token - if present and matches
             an existing row, that row is returned and no new Celery
             dispatch is queued.
-        tenant_id: Optional tenant scope (RLS placeholder for now —
+        tenant_id: Optional tenant scope (RLS placeholder for now -
             indexed but not enforced).
         session_factory: Override for testing. Defaults to the global
             async session factory.
@@ -245,14 +245,14 @@ async def submit_job(
         # in-process as a fire-and-forget background task and return the
         # pending row promptly so the request stays responsive.
         logger.warning(
-            "Celery broker unavailable (%s) — running job_run_id=%s in-process",
+            "Celery broker unavailable (%s) - running job_run_id=%s in-process",
             exc,
             row.id,
         )
         asyncio.create_task(_run_in_process(row.id, factory))  # noqa: RUF006
         return row
     except Exception as exc:  # noqa: BLE001
-        # Dispatch failed for a non-transport reason — mark the row failed
+        # Dispatch failed for a non-transport reason - mark the row failed
         # so the UI doesn't spin waiting for a worker that will never run.
         # Keep the original exception for the caller; this is a real error.
         logger.exception("Celery dispatch failed for job_run_id=%s", row.id)
@@ -329,12 +329,12 @@ async def update_progress(
 
     Behaviour:
         * percent is clamped into [0, 100].
-        * Updates that would *decrease* progress are silently dropped —
+        * Updates that would *decrease* progress are silently dropped -
           stale progress events from retried tasks must not roll back
           the UI's progress bar.
         * ``message=None`` keeps the previous progress message intact;
           pass an empty string explicitly if you want to clear it.
-        * Unknown ``job_run_id`` is a no-op (best-effort semantics —
+        * Unknown ``job_run_id`` is a no-op (best-effort semantics -
           the handler must not crash if its row was deleted by tests).
     """
     factory = session_factory or _default_session_factory()
@@ -345,7 +345,7 @@ async def update_progress(
         if row is None:
             return
 
-        # Monotonic — never regress.
+        # Monotonic - never regress.
         if clamped > row.progress_percent:
             row.progress_percent = clamped
 
@@ -392,7 +392,7 @@ async def _dispatch_job_sync(
         await session.refresh(row)
         kind = row.kind
         payload = dict(row.payload_jsonb or {})
-        # Snapshot for the handler — we don't want to hold the session
+        # Snapshot for the handler - we don't want to hold the session
         # open while the handler runs (which may take minutes).
         snapshot = row
         session.expunge(snapshot)
@@ -411,7 +411,7 @@ async def _dispatch_job_sync(
         if isinstance(result, Awaitable):
             result = await result
         result_dict: dict[str, Any] = result if isinstance(result, dict) else {"result": result}
-    except Exception as exc:  # noqa: BLE001 — record + return; do not raise.
+    except Exception as exc:  # noqa: BLE001 - record + return; do not raise.
         logger.exception("Job handler raised: kind=%s job_run_id=%s", kind, job_run_id)
         await _record_failure(job_run_id, exc, factory)
         return

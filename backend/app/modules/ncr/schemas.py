@@ -1,4 +1,4 @@
-"""‌⁠‍NCR Pydantic schemas — request/response models."""
+"""‌⁠‍NCR Pydantic schemas - request/response models."""
 
 from datetime import datetime
 from typing import Any

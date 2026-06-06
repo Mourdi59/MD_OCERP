@@ -11,7 +11,7 @@ Grammar:
 
     Compare    = "lt" | "lte" | "gt" | "gte" | "eq" | "neq"
 
-Example — fire when CPI<0.95 AND the project is in execution phase:
+Example - fire when CPI<0.95 AND the project is in execution phase:
 
     {
       "op": "and",
@@ -22,7 +22,7 @@ Example — fire when CPI<0.95 AND the project is in execution phase:
       ]
     }
 
-The evaluator is sandboxed — it can only:
+The evaluator is sandboxed - it can only:
     * call registered KPI formulas via :mod:`.kpis.compute`
     * read attributes off a small allow-list of source models
       (``project`` only at v1)
@@ -63,7 +63,7 @@ def _coerce_decimal(v: Any) -> Decimal:
 
 
 def _compare(lhs: Any, op: str, rhs: Any) -> bool:
-    """‌⁠‍Comparison primitive — works on numeric + string types."""
+    """‌⁠‍Comparison primitive - works on numeric + string types."""
     # If both look numeric, coerce to Decimal for fair comparison
     if isinstance(lhs, (int, float, Decimal)) or (isinstance(rhs, (int, float, Decimal))):
         try:
@@ -97,7 +97,7 @@ async def _read_field(
 ) -> Any:
     """Read a single attribute from an allow-listed source row.
 
-    Currently only ``project`` is allowed — extending this is intentional
+    Currently only ``project`` is allowed - extending this is intentional
     cross-module coupling and should be done via a new branch here.
     """
     if source == "project":
@@ -127,7 +127,7 @@ async def evaluate_alert_expression(
     """Evaluate an alert expression tree.
 
     Returns ``(fired, trace)`` where ``trace`` records every leaf
-    evaluation for audit/debug — embedded in the ``bi.alert.triggered``
+    evaluation for audit/debug - embedded in the ``bi.alert.triggered``
     event payload so subscribers can show *why* the alert fired.
     """
     trace: dict[str, Any] = {}

@@ -1,12 +1,12 @@
-"""‌⁠‍Schedule Advanced service — Last Planner System (LPS) business logic.
+"""‌⁠‍Schedule Advanced service - Last Planner System (LPS) business logic.
 
 This module is organised as:
 
 1. **Pure helpers** at module scope (``compute_ppc``, ``compute_rnc_pareto``,
    ``compute_baseline_delta``, ``is_constraint_blocking_task``,
-   ``weeks_from_lookahead``, ``validate_commitment``) — easily unit-tested.
-2. **State machines** — pure transition tables for each entity.
-3. **Service class** (:class:`ScheduleAdvancedService`) — orchestrator
+   ``weeks_from_lookahead``, ``validate_commitment``) - easily unit-tested.
+2. **State machines** - pure transition tables for each entity.
+3. **Service class** (:class:`ScheduleAdvancedService`) - orchestrator
    that wires repositories + event bus + database session.
 
 State machines mirror :pep:`8` and the safety/* / schedule/* patterns:
@@ -115,7 +115,7 @@ def compute_ppc(commitments: list[Commitment] | list[Any]) -> Decimal:
 
     PPC = completed / committed × 100. "Completed" means status == "completed".
     "Committed" means status in (committed, in_progress, completed, missed,
-    at_risk) — i.e. anything that actually entered the week's commitment
+    at_risk) - i.e. anything that actually entered the week's commitment
     pool. Plain "planned" commitments don't count as denominators because
     they were never promised on the floor.
 
@@ -137,7 +137,7 @@ def compute_rnc_pareto(
     """‌⁠‍Return a category -> count mapping for the supplied RNC records.
 
     ``period_start`` / ``period_end`` are reported in the response but
-    not enforced here — callers are expected to filter beforehand. The
+    not enforced here - callers are expected to filter beforehand. The
     full canonical category set is always present in the output (zero
     counts for missing categories) so the front-end chart never needs
     to re-fill blanks.
@@ -221,7 +221,7 @@ def compute_baseline_delta(
 
 
 def _parse_date(value: Any) -> date | None:
-    """Tolerant date parser — accepts date, datetime, or ISO string."""
+    """Tolerant date parser - accepts date, datetime, or ISO string."""
     if value is None:
         return None
     if isinstance(value, date) and not isinstance(value, datetime):
@@ -237,7 +237,7 @@ def _parse_date(value: Any) -> date | None:
 
 
 def _to_decimal(value: Any) -> Decimal:
-    """Tolerant Decimal parser — empty / unparseable → Decimal("0")."""
+    """Tolerant Decimal parser - empty / unparseable → Decimal("0")."""
     if value is None or value == "":
         return Decimal("0")
     if isinstance(value, Decimal):
@@ -318,7 +318,7 @@ def cpm_forward_backward_pass(
             if indeg[s] == 0:
                 queue.append(s)
 
-    # Forward pass — compute ES, EF
+    # Forward pass - compute ES, EF
     es: dict[Any, int] = {}
     ef: dict[Any, int] = {}
     for aid in topo:
@@ -334,13 +334,13 @@ def cpm_forward_backward_pass(
         return {}
     project_finish = max(ef.values())
 
-    # Backward pass — compute LF, LS
+    # Backward pass - compute LF, LS
     lf: dict[Any, int] = {}
     ls: dict[Any, int] = {}
     for aid in reversed(topo):
         dur = max(0, int(by_id[aid].get("duration", 0) or 0))
         # Symmetric to the forward pass: a successor in a cycle never gets
-        # an ``ls`` — fall back to ``project_finish`` instead of raising.
+        # an ``ls`` - fall back to ``project_finish`` instead of raising.
         ready_succs = [ls[s] for s in succs[aid] if s in ls]
         lf[aid] = min(ready_succs) if ready_succs else project_finish
         ls[aid] = lf[aid] - dur
@@ -445,7 +445,7 @@ def compute_line_of_balance_geometry(
 ) -> dict[str, Any]:
     """Compute line-of-balance bar geometry for a takt schedule.
 
-    Pure, deterministic, DB-free — easily unit-tested. The model is the
+    Pure, deterministic, DB-free - easily unit-tested. The model is the
     classic takt rhythm: every activity repeats once per location and the
     crew cycles top-to-bottom. The *takt time* is the maximum per-location
     activity duration (plus its buffer); each location's work starts one
@@ -459,7 +459,7 @@ def compute_line_of_balance_geometry(
             "planned_cycle_duration_days": int, "buffer_days_before": int,
             "crew_size": int, "actual_cycle_duration_days": float | None}, ...]``.
             ``sequence_order`` is the trade hand-off order within a location.
-        tolerance_days: rhythm-break threshold — an activity whose observed
+        tolerance_days: rhythm-break threshold - an activity whose observed
             cycle deviates from plan by more than this is flagged.
 
     Returns a dict with ``bars``, ``violations``, ``critical_path``
@@ -618,7 +618,7 @@ def compute_evm(
         ev_total += bac * (pct / Decimal("100"))
         # Linear-ramp PV between planned_start_workday and planned_finish_workday.
         if pf <= ps:
-            # Zero-duration / point activity — full PV at start.
+            # Zero-duration / point activity - full PV at start.
             pv_pct = Decimal("100") if today_workday >= ps else Decimal("0")
         elif today_workday <= ps:
             pv_pct = Decimal("0")
@@ -775,7 +775,7 @@ def is_constraint_blocking_task(
 
     Open = status not in (cleared, cannot_clear). Constraints with no
     target_clear_date OR a target in the future are not considered
-    blocking (yet) — they're make-ready work in progress.
+    blocking (yet) - they're make-ready work in progress.
     """
     ref = str(task_ref)
     for c in constraints:
@@ -1073,7 +1073,7 @@ class ScheduleAdvancedService:
         await self.phase_repo.update_fields(phase_id, pulled_status="completed")
         await self.session.refresh(p)
 
-        # Epic H — universal audit trail.
+        # Epic H - universal audit trail.
         from app.core.audit_log import log_activity as _log_activity
 
         await _log_activity(
@@ -1327,7 +1327,7 @@ class ScheduleAdvancedService:
         await self.weekly_repo.update_fields(wp_id, status="closed", ppc_percent=ppc)
         await self.session.refresh(w)
 
-        # Epic H — universal audit trail.
+        # Epic H - universal audit trail.
         from app.core.audit_log import log_activity as _log_activity
 
         await _log_activity(
@@ -1667,7 +1667,7 @@ class ScheduleAdvancedService:
         delta_records = compute_baseline_delta(b.snapshot, current_tasks)
 
         # Persist deltas (idempotency note: this is a re-computation entry
-        # point — we wipe prior deltas for this (baseline, current_master)
+        # point - we wipe prior deltas for this (baseline, current_master)
         # pair before re-inserting).
         prior = await self.baseline_delta_repo.list_for_baseline(baseline_id)
         for old in prior:
@@ -1859,7 +1859,7 @@ class ScheduleAdvancedService:
 class TaktScheduleService:
     """Orchestrator for takt / line-of-balance scheduling.
 
-    Parallel to :class:`ScheduleAdvancedService` — it owns only the three
+    Parallel to :class:`ScheduleAdvancedService` - it owns only the three
     takt tables and never perturbs the CPM / LPS hierarchy. A takt schedule
     always hangs off an existing :class:`MasterSchedule`.
     """

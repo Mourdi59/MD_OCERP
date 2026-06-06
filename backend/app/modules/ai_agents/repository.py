@@ -172,7 +172,7 @@ class CustomAgentRepository:
         ``next_run_at`` is at or before ``as_of``. ``next_run_at`` is an
         ISO-8601 string, so the lexical ``<=`` comparison is chronological.
 
-        Scoped across all users by design — the scheduler fires on behalf of
+        Scoped across all users by design - the scheduler fires on behalf of
         each agent's own creator (``agent.user_id``), so it must see every
         user's scheduled agents, unlike the per-user read paths.
         """

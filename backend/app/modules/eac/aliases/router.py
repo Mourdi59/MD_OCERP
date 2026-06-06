@@ -113,7 +113,7 @@ from app.modules.eac.models import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["EAC v2 — Aliases"])
+router = APIRouter(tags=["EAC v2 - Aliases"])
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
@@ -199,7 +199,7 @@ async def list_aliases_route(
 ) -> list[EacParameterAliasRead]:
     """‌⁠‍List aliases visible to the caller, optionally filtered by scope/text.
 
-    R7 audit (Wave 3): tenant scope is now enforced by the service —
+    R7 audit (Wave 3): tenant scope is now enforced by the service -
     the result set is the caller's own aliases plus the
     ``tenant_id IS NULL`` system built-ins.
     """
@@ -264,7 +264,7 @@ async def get_alias_route(
 ) -> EacParameterAliasRead:
     """Fetch a single alias by id.
 
-    R7 audit (Wave 3): IDOR-404 — cross-tenant ``alias_id`` returns
+    R7 audit (Wave 3): IDOR-404 - cross-tenant ``alias_id`` returns
     the same 404 as a true miss so existence is not leaked.
     Built-in aliases (``tenant_id IS NULL``) remain visible to all.
     """
@@ -431,7 +431,7 @@ async def resolve_aliases_bulk_route(
 
     R7 audit (Wave 3): every queried alias must belong to the caller's
     tenant (or be a built-in). Cross-tenant ids are silently dropped
-    from the result set — same shape as a true miss so existence is
+    from the result set - same shape as a true miss so existence is
     not leaked.
     """
     from sqlalchemy import or_ as _or
@@ -512,7 +512,7 @@ async def export_aliases_route(
     payload: EacAliasExportRequest,
     user_id: CurrentUserId,
     session: SessionDep,
-    format: str = Query(default="json", description="json | csv"),  # noqa: A002 — FastAPI param
+    format: str = Query(default="json", description="json | csv"),  # noqa: A002 - FastAPI param
 ) -> dict | str:
     """Export aliases (filtered) as JSON or CSV.
 
@@ -527,7 +527,7 @@ async def export_aliases_route(
         )
     _check_scope(payload.scope)
     tenant_id = await _resolve_tenant_id(session, user_id)
-    # R7 audit (Wave 3): export is tenant-scoped — own rows + built-ins only.
+    # R7 audit (Wave 3): export is tenant-scoped - own rows + built-ins only.
     aliases = await list_aliases(
         session,
         tenant_id=tenant_id,
@@ -584,7 +584,7 @@ async def export_aliases_route(
 async def import_aliases_route(
     user_id: CurrentUserId,
     session: SessionDep,
-    file: UploadFile = File(...),  # noqa: B008 — FastAPI dependency
+    file: UploadFile = File(...),  # noqa: B008 - FastAPI dependency
     scope: str = Query(default="org"),
     scope_id: uuid.UUID | None = Query(default=None),
 ) -> EacAliasImportSummary:

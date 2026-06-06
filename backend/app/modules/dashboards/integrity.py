@@ -8,30 +8,30 @@ domain-level validation: nulls, dtype confusion, outliers, sparsity.
 
 Per-column metrics
 ------------------
-* ``null_count`` / ``null_pct`` — how many rows are missing this field.
-* ``unique_count`` — distinct non-null values.
-* ``dtype`` — pandas-inferred dtype name ("object", "int64", ...).
-* ``inferred_type`` — best-guess "real" type ("numeric", "datetime",
+* ``null_count`` / ``null_pct`` - how many rows are missing this field.
+* ``unique_count`` - distinct non-null values.
+* ``dtype`` - pandas-inferred dtype name ("object", "int64", ...).
+* ``inferred_type`` - best-guess "real" type ("numeric", "datetime",
   "boolean", "string"). When pandas says ``object`` but ≥80% of values
   parse as numbers, ``inferred_type = "numeric"`` and we flag a
   ``dtype_mismatch`` issue.
-* ``sample_values`` — top-5 values by frequency (for the click-to-expand
+* ``sample_values`` - top-5 values by frequency (for the click-to-expand
   drawer in the UI).
-* ``zero_pct`` — fraction of zero values (numeric only). Useful for
+* ``zero_pct`` - fraction of zero values (numeric only). Useful for
   spotting "everything-is-zero" pricing columns.
-* ``outlier_count`` — IQR-based outliers (1.5·IQR fence). ``None`` for
+* ``outlier_count`` - IQR-based outliers (1.5·IQR fence). ``None`` for
   non-numeric columns.
-* ``issues`` — short list of issue codes (machine-readable, used by the
+* ``issues`` - short list of issue codes (machine-readable, used by the
   frontend to render coloured badges).
 
 Overall report
 --------------
 * ``row_count`` / ``column_count``
-* ``completeness_score`` — ``1 - mean(null_pct)``, clamped to ``[0, 1]``.
-* ``schema_hash`` — stable digest of ``(name, dtype)`` pairs in column
+* ``completeness_score`` - ``1 - mean(null_pct)``, clamped to ``[0, 1]``.
+* ``schema_hash`` - stable digest of ``(name, dtype)`` pairs in column
   order. Lets the frontend cache column-detail views across reloads.
 
-The function is pure — the router glue passes a DataFrame and gets a
+The function is pure - the router glue passes a DataFrame and gets a
 report back. For the production endpoint we read the same Parquet file
 that quick-insights / cascade already use; for unit tests we feed
 hand-crafted DataFrames.
@@ -64,7 +64,7 @@ IssueCode = Literal[
 """‌⁠‍Machine-readable issue codes surfaced per column.
 
 The frontend maps each code to a localised label + colour. New codes
-land here when a new heuristic is added — keep them lowercase and
+land here when a new heuristic is added - keep them lowercase and
 snake_case.
 """
 
@@ -154,7 +154,7 @@ dates / bools, we record ``dtype_mismatch`` and override
 
 _LOW_STRING_CARDINALITY_MAX = 5
 """String columns with ≤5 distinct values across ≥10 rows become
-``low_cardinality_string`` candidates — they're usually enums in
+``low_cardinality_string`` candidates - they're usually enums in
 disguise that should be Categorical."""
 
 _TOP_K_SAMPLE = 5
@@ -177,8 +177,8 @@ def compute_integrity_report(
     """Build an :class:`IntegrityReport` for a wide-form snapshot DataFrame.
 
     The DataFrame must already be exploded (no ``attributes`` dict
-    column). Empty DataFrames yield a degenerate report — zero rows,
-    zero columns, completeness score 1.0 — rather than raising.
+    column). Empty DataFrames yield a degenerate report - zero rows,
+    zero columns, completeness score 1.0 - rather than raising.
     """
     if df is None or len(df.columns) == 0:
         return IntegrityReport(
@@ -241,7 +241,7 @@ def _analyse_column(
 
     issues: list[IssueCode] = []
 
-    # All-null short-circuit — most other checks are meaningless here.
+    # All-null short-circuit - most other checks are meaningless here.
     if row_count > 0 and null_count == row_count:
         issues.append("all_null")
         return ColumnIntegrity(
@@ -333,7 +333,7 @@ def _analyse_column(
 def _infer_type(series: pd.Series, non_null: pd.Series) -> InferredType:
     """Best-guess "real" type for a column.
 
-    Pandas' dtype is a starting point — for object columns we sniff the
+    Pandas' dtype is a starting point - for object columns we sniff the
     actual values to catch the common upload-from-CSV failure where
     everything came back as strings.
     """
@@ -345,7 +345,7 @@ def _infer_type(series: pd.Series, non_null: pd.Series) -> InferredType:
         return "numeric"
     if pd.api.types.is_datetime64_any_dtype(series):
         return "datetime"
-    # Object dtype — sniff values.
+    # Object dtype - sniff values.
     if pd.api.types.is_object_dtype(series):
         # Bool-like first: {"true", "false"} or {True, False}.
         if _ratio_passes(non_null, _is_bool_like) >= _DTYPE_MISMATCH_RATIO:
@@ -353,7 +353,7 @@ def _infer_type(series: pd.Series, non_null: pd.Series) -> InferredType:
         # Numeric next.
         if _ratio_passes(non_null, _is_numeric_like) >= _DTYPE_MISMATCH_RATIO:
             return "numeric"
-        # Datetime — only attempt parse if values are strings.
+        # Datetime - only attempt parse if values are strings.
         if _ratio_passes(non_null, _is_datetime_like) >= _DTYPE_MISMATCH_RATIO:
             return "datetime"
     return "string"
@@ -428,7 +428,7 @@ def _iqr_outlier_count(numeric: pd.Series) -> int:
     """Count outliers under the 1.5·IQR fence rule.
 
     For very small samples (<5 values) the IQR is too noisy to be
-    meaningful — return 0 in that case to avoid false-positive badges.
+    meaningful - return 0 in that case to avoid false-positive badges.
     """
     if len(numeric) < 5:
         return 0
@@ -463,7 +463,7 @@ def _top_k_sample(non_null: pd.Series) -> list[dict[str, Any]]:
     try:
         counts = non_null.astype("string").value_counts().head(_TOP_K_SAMPLE)
     except (TypeError, ValueError):
-        # Mixed types we can't cast cleanly — fall back to str().
+        # Mixed types we can't cast cleanly - fall back to str().
         counts = non_null.map(lambda v: str(v)).value_counts().head(_TOP_K_SAMPLE)
     out: list[dict[str, Any]] = []
     for value, count in counts.items():

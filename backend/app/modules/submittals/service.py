@@ -1,4 +1,4 @@
-"""‌⁠‍Submittals service — business logic for submittal management."""
+"""‌⁠‍Submittals service - business logic for submittal management."""
 
 import logging
 import uuid
@@ -53,7 +53,7 @@ def _log_state_change(
     The log payload is JSON-friendly (flat key/value pairs) so the prod
     log shipper can index ``from_status`` / ``to_status`` / ``actor`` for
     submittal-cycle dashboards. Calling this in addition to
-    :func:`audit_log.log_activity` is intentional — the audit row lands
+    :func:`audit_log.log_activity` is intentional - the audit row lands
     in a DB table the customer can wipe, the log line lands on the
     immutable log-shipper sink.
     """
@@ -179,7 +179,7 @@ class SubmittalService:
             )
             return submittal
 
-        # All retries exhausted — translate to 409 so the caller can retry
+        # All retries exhausted - translate to 409 so the caller can retry
         # at the HTTP layer with a clear contract.
         logger.error(
             "Submittal-number collision still unresolved after %d retries for project %s",
@@ -263,7 +263,7 @@ class SubmittalService:
                     ),
                 )
             # Approval / rejection / closure must go through the role-
-            # gated handlers — a plain editor with ``submittals.update``
+            # gated handlers - a plain editor with ``submittals.update``
             # would otherwise be able to PATCH ``status=approved`` and
             # bypass the MANAGER gate on ``/approve`` + the rate limiter.
             if new_status not in _PATCH_ALLOWED_STATUSES:
@@ -280,7 +280,7 @@ class SubmittalService:
 
         prior_status = submittal.status
         await self.repo.update_fields(submittal_id, **fields)
-        # ``update_fields`` expires the row — any subsequent lazy attribute
+        # ``update_fields`` expires the row - any subsequent lazy attribute
         # access on the stale ORM object triggers MissingGreenlet under
         # async context. Re-fetch a fresh row instead of calling
         # ``session.refresh`` so downstream callers see loaded columns.
@@ -297,7 +297,7 @@ class SubmittalService:
                 extra={"source": "patch"},
             )
         # Publish submittal.updated so the vector indexer re-embeds the
-        # edited row (title / spec section may have changed) — item 16.
+        # edited row (title / spec section may have changed) - item 16.
         await _safe_publish(
             "submittal.updated",
             {
@@ -370,11 +370,11 @@ class SubmittalService:
         await self.repo.update_fields(submittal_id, **fields)
         fresh = await self.repo.get_by_id(submittal_id)
 
-        # Epic H — universal audit trail. The try/except: pass wrapper
+        # Epic H - universal audit trail. The try/except: pass wrapper
         # has been removed: the helper now raises only for real DB
         # failures, and silently swallowing those would lose the
         # compliance trail right when we need it most. If the audit
-        # write actually fails the business write rolls back too — that
+        # write actually fails the business write rolls back too - that
         # is the documented atomicity contract.
         from app.core.audit_log import log_activity as _log_activity
 
@@ -496,7 +496,7 @@ class SubmittalService:
         await self.repo.update_fields(submittal_id, **fields)
         fresh = await self.repo.get_by_id(submittal_id)
 
-        # Epic H — universal audit trail (drop the try/except: pass
+        # Epic H - universal audit trail (drop the try/except: pass
         # wrapper; the helper raises only for real DB failures).
         from app.core.audit_log import log_activity as _log_activity
 
@@ -508,7 +508,7 @@ class SubmittalService:
             action="status_changed",
             from_status=prior_status,
             to_status=new_status,
-            reason=(f"Submittal reviewed: decision={new_status}" + (f" — {review_notes}" if review_notes else "")),
+            reason=(f"Submittal reviewed: decision={new_status}" + (f" - {review_notes}" if review_notes else "")),
             metadata={"reviewer_id": reviewer_id, "review_notes": review_notes or None},
             module="submittals",
             parent_entity_type="project",
@@ -594,7 +594,7 @@ class SubmittalService:
         # timeout should see success instead of a confusing error.
         if submittal.status == "approved":
             logger.info(
-                "Submittal %s already approved — returning existing state (idempotent)",
+                "Submittal %s already approved - returning existing state (idempotent)",
                 submittal_id,
             )
             return submittal
@@ -646,12 +646,12 @@ class SubmittalService:
             .values(**fields)
         )
         if result.rowcount == 0:  # type: ignore[union-attr]
-            # Concurrent writer already transitioned this row — re-read and
+            # Concurrent writer already transitioned this row - re-read and
             # return idempotently if it's now "approved", else 409.
             fresh_check = await self.repo.get_by_id(submittal_id)
             if fresh_check and fresh_check.status == "approved":
                 logger.info(
-                    "Submittal %s concurrently approved — returning existing state (idempotent)",
+                    "Submittal %s concurrently approved - returning existing state (idempotent)",
                     submittal_id,
                 )
                 return fresh_check
@@ -662,7 +662,7 @@ class SubmittalService:
 
         fresh = await self.repo.get_by_id(submittal_id)
 
-        # Epic H — universal audit trail (drop the try/except: pass wrapper).
+        # Epic H - universal audit trail (drop the try/except: pass wrapper).
         from app.core.audit_log import log_activity as _log_activity
 
         await _log_activity(
@@ -673,7 +673,7 @@ class SubmittalService:
             action="status_changed",
             from_status=prior_status,
             to_status="approved",
-            reason=("Submittal approved via approve_submittal()" + (f" — {approve_notes}" if approve_notes else "")),
+            reason=("Submittal approved via approve_submittal()" + (f" - {approve_notes}" if approve_notes else "")),
             metadata={"approver_id": approver_id, "review_notes": approve_notes or None},
             module="submittals",
             parent_entity_type="project",

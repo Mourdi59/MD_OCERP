@@ -1,4 +1,4 @@
-"""‌⁠‍Continuation script — finish seeding BOQs + BIM links for the 3 demo
+"""‌⁠‍Continuation script - finish seeding BOQs + BIM links for the 3 demo
 projects that the main seeder already created.
 
 Run this after the main seeder created the projects + started uploads.
@@ -13,7 +13,7 @@ import sys
 
 import httpx
 
-# Reuse the specs from the main seeder — same 3 projects, same BOQ structure.
+# Reuse the specs from the main seeder - same 3 projects, same BOQ structure.
 from app.scripts.seed_demo_showcase import (
     BASE,
     DEMO_PROJECTS,
@@ -77,7 +77,7 @@ async def main() -> None:
             items = items if isinstance(items, list) else items.get("items", [])
             ready = [m for m in items if m.get("status") == "ready" and m.get("element_count", 0) > 0]
             if not ready:
-                print("   (no ready BIM model with elements — skipping links)", flush=True)
+                print("   (no ready BIM model with elements - skipping links)", flush=True)
                 continue
 
             # Prefer the model with the most elements

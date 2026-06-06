@@ -61,7 +61,7 @@ class FormulaEvaluator:
         params = parameters or {}
         lookups = lookup_tables or {}
 
-        # Reject pathological structure cheaply, up front — never let a
+        # Reject pathological structure cheaply, up front - never let a
         # caller drive the recursive-descent parser to a RecursionError.
         if not isinstance(formula, str):
             raise FormulaError("Formula must be a string")
@@ -97,7 +97,7 @@ class FormulaEvaluator:
 
             result_f = float(result)
             # A non-finite result (overflow to inf, or 0*inf → nan) must
-            # NOT be returned silently — it would propagate as a corrupt
+            # NOT be returned silently - it would propagate as a corrupt
             # null total downstream (same class as ASM-002).
             if not math.isfinite(result_f):
                 raise FormulaError("Formula produced a non-finite result (overflow / NaN)")
@@ -137,7 +137,7 @@ class FormulaEvaluator:
                 raise FormulaError(f"Key '{key}' not found in table '{table_name}'")
             val = table[key]
             if isinstance(val, dict):
-                raise FormulaError(f"Lookup '{table_name}[{key}]' returned a dict — use specific field")
+                raise FormulaError(f"Lookup '{table_name}[{key}]' returned a dict - use specific field")
             return str(val)
 
         return re.sub(pattern, replace_lookup, formula)
@@ -146,7 +146,7 @@ class FormulaEvaluator:
         """Replace if(cond, true_val, false_val) with the evaluated branch.
 
         The previous implementation used a flat ``[^,]`` regex that
-        could not represent a comma inside a branch — so any nested
+        could not represent a comma inside a branch - so any nested
         ``if(...)`` (whose own commas live inside the parent's branch)
         was sliced apart into a malformed expression. This resolves the
         *innermost* ``if(...)`` first using brace-aware argument
@@ -174,8 +174,8 @@ class FormulaEvaluator:
     def _find_innermost_if(self, formula: str) -> tuple[int, int] | None:
         """Locate an ``if(...)`` whose argument list contains no nested ``if(``.
 
-        Returns the ``(start, end)`` slice — ``start`` at the ``i`` of
-        ``if``, ``end`` one past its matching ``)`` — or ``None`` when
+        Returns the ``(start, end)`` slice - ``start`` at the ``i`` of
+        ``if``, ``end`` one past its matching ``)`` - or ``None`` when
         there is no ``if(`` left to expand. Resolving an *innermost*
         ``if`` first guarantees its branches are plain expressions, so
         the brace-aware arg split is unambiguous.
@@ -234,7 +234,7 @@ class FormulaEvaluator:
                     left = self._safe_eval(parts[0].strip())
                     right = self._safe_eval(parts[1].strip())
                 except FormulaError:
-                    # Wrong split — try the next operator. Programmer
+                    # Wrong split - try the next operator. Programmer
                     # errors (TypeError etc.) propagate so they don't
                     # silently corrupt cost numbers.
                     continue

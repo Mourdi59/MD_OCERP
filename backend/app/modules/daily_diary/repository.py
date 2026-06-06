@@ -1,7 +1,7 @@
 """‌⁠‍Daily Site Diary data-access layer.
 
 One repository class per entity. Repositories are pure SQLAlchemy
-adapters — no business logic — and exposed to service.py.
+adapters - no business logic - and exposed to service.py.
 """
 
 from __future__ import annotations
@@ -221,7 +221,7 @@ class DiaryPhotoRepository(_BaseRepository):
 
         Used by the sign / immutable-payload-hash paths. Previously these
         callers loaded every photo in the entire project (limit=10 000)
-        and filtered in Python — wasteful and a P2 latency hit on large
+        and filtered in Python - wasteful and a P2 latency hit on large
         projects. A single indexed ``WHERE diary_id = ?`` is enough.
         """
         stmt = select(DiaryPhoto).where(DiaryPhoto.diary_id == diary_id).order_by(DiaryPhoto.taken_at.asc())

@@ -1,4 +1,4 @@
-"""‌⁠‍Bid Management Pydantic schemas — request/response models."""
+"""‌⁠‍Bid Management Pydantic schemas - request/response models."""
 
 from __future__ import annotations
 
@@ -187,7 +187,7 @@ class BidInvitationResponse(BaseModel):
     declined_at: str | None = None
     decline_reason: str | None = None
     status: str = "pending"
-    # token_hash is intentionally excluded — it is a server-side secret
+    # token_hash is intentionally excluded - it is a server-side secret
     # used to authenticate magic-link bidder access and must never be
     # returned to API callers (including owner roles).
     created_at: datetime
@@ -464,7 +464,7 @@ class BidComparisonUpdate(BaseModel):
 
     @model_validator(mode="after")
     def _weights_sum_to_100(self) -> BidComparisonUpdate:
-        # Only validate when BOTH weights are supplied — a partial update of
+        # Only validate when BOTH weights are supplied - a partial update of
         # one weight alone cannot know the persisted value of the other, so
         # the sum is enforced in the service layer after merging.
         if self.commercial_weight_pct is not None and self.technical_weight_pct is not None:
@@ -721,7 +721,7 @@ class InvitationEmailTemplate(BaseModel):
 
 
 class InvitationEmailPreview(BaseModel):
-    """Rendered email — subject + body — for one invitee."""
+    """Rendered email - subject + body - for one invitee."""
 
     invitee_email: str
     invitee_company_name: str

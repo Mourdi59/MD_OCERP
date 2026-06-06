@@ -1,4 +1,4 @@
-"""‌⁠‍Correspondence Pydantic schemas — request/response models."""
+"""‌⁠‍Correspondence Pydantic schemas - request/response models."""
 
 from datetime import datetime
 from typing import Any
@@ -23,7 +23,7 @@ def _sanitize_email_header_value(value: str) -> str:
         return value
     # Remove CR, LF, NUL and the rest of the C0 range except TAB (\x09).
     cleaned = "".join(ch for ch in value if ch == "\t" or ord(ch) >= 0x20)
-    # Collapse any internal whitespace runs left by the strip — email
+    # Collapse any internal whitespace runs left by the strip - email
     # subjects with embedded ``\r\n`` would otherwise become double-space.
     return " ".join(cleaned.split())
 

@@ -5,15 +5,15 @@
 OCR-extracted content index over every file kind in the file manager
 (documents, sheets, markups, takeoffs, reports). Wraps two extractors:
 
-* PyMuPDF (``fitz``) — pulls embedded vector text out of PDFs at zero
+* PyMuPDF (``fitz``) - pulls embedded vector text out of PDFs at zero
   pixel-rendering cost. Used as the primary extractor for ``.pdf``.
-* pytesseract — falls back to OCR for image-only pages (scanned PDFs,
+* pytesseract - falls back to OCR for image-only pages (scanned PDFs,
   photos, markup raster overlays). Slow; only invoked when PyMuPDF
   reports zero embedded text.
 
 Both extractors are optional dependencies. If neither library is
 installed, ``extract_text`` returns ``""`` and the row carries
-``ocr_engine = 'none'``. The endpoint never crashes — the file is still
+``ocr_engine = 'none'``. The endpoint never crashes - the file is still
 indexed by canonical name (``mode=filename`` still works).
 
 Search itself uses ``tsvector`` on PostgreSQL (generated column over
@@ -24,7 +24,7 @@ endpoint surface.
 
 
 async def on_startup() -> None:
-    """Module startup hook — register RBAC permissions."""
+    """Module startup hook - register RBAC permissions."""
     from app.modules.file_search.permissions import register_file_search_permissions
 
     register_file_search_permissions()

@@ -449,7 +449,7 @@ _DUE_DATE_PATTERN = re.compile(
 # ``ActionItemEntry.due_date`` is locked to a strict ISO ^\d{4}-\d{2}-\d{2}$
 # regex by pydantic.  The heuristic extractor however captures human
 # phrases ("Friday", "next week", "end of month") and stuffs them into
-# the same slot — which would 500 the endpoint on validation if we
+# the same slot - which would 500 the endpoint on validation if we
 # handed it through unfiltered.  This sentinel strips anything that
 # isn't an ISO date; the original hint is parked on the action item's
 # free-form description so reviewers can still see the speaker's
@@ -630,7 +630,7 @@ async def _extract_text_from_file(file_content: bytes, filename: str) -> str:
             logger.warning("Failed to extract text from PDF: %s", exc)
             return ""
 
-    # Unknown format — try as plain text
+    # Unknown format - try as plain text
     try:
         return file_content.decode("utf-8")
     except UnicodeDecodeError:
@@ -791,7 +791,7 @@ async def _extract_with_ai(
         return True
 
     except Exception as exc:
-        # AI is optional — log and continue with heuristic results
+        # AI is optional - log and continue with heuristic results
         logger.debug("AI-enhanced transcript parsing skipped: %s", exc)
         return False
 
@@ -879,7 +879,7 @@ async def import_meeting_summary(
             The caller can then present the data for user review and call
             this endpoint again with preview=false to create the meeting.
     """
-    # Project-ownership gate — pre-fix this endpoint accepted project_id
+    # Project-ownership gate - pre-fix this endpoint accepted project_id
     # from the query string and went straight to file parsing / meeting
     # create with no cross-tenant verification, letting any user with the
     # meetings.create role inject meetings + documents into a foreign
@@ -904,7 +904,7 @@ async def import_meeting_summary(
     if not content:
         raise HTTPException(status_code=400, detail="File is empty")
 
-    # Magic-byte sniff — filename is hostile-supplied. Reject any payload
+    # Magic-byte sniff - filename is hostile-supplied. Reject any payload
     # whose first bytes don't match the declared format before we hand
     # the buffer to python-docx / PyMuPDF / VTT/SRT parsers. Plain-text
     # transcripts (txt/vtt/srt) have no canonical signature, so we use a
@@ -924,7 +924,7 @@ async def import_meeting_summary(
                 status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
                 detail="File does not look like a valid .docx (missing ZIP signature).",
             )
-    else:  # txt / vtt / srt — text-only formats
+    else:  # txt / vtt / srt - text-only formats
         for sig in (b"MZ", b"\x7fELF", b"\xca\xfe\xba\xbe", b"PK\x03\x04", b"\xd0\xcf\x11\xe0", b"%PDF-"):
             if head.startswith(sig):
                 raise HTTPException(
@@ -1072,7 +1072,7 @@ async def import_meeting_summary(
     # Documents hub.  Uses the ORM Document model directly so the row
     # picks up timestamps + defaults from the Base mixin and stays in
     # sync with any future schema migration.  Best-effort: a failure
-    # here MUST NOT break the meeting create — the transcript file is
+    # here MUST NOT break the meeting create - the transcript file is
     # already on disk and the meeting itself is persisted.
     try:
         from pathlib import Path as _Path
@@ -1245,7 +1245,7 @@ async def materialize_meeting_series(
 ) -> MeetingSeriesResponse:
     """Materialise series occurrences up to the ``until`` date.
 
-    Idempotent — already-existing occurrences are not duplicated.
+    Idempotent - already-existing occurrences are not duplicated.
     """
     master = await service.get_meeting(master_id)
     await verify_project_access(master.project_id, str(user_id), session)
@@ -1267,7 +1267,7 @@ async def materialize_meeting_series(
     )
 
 
-# Underscore mirror — module convention is to expose hyphen + underscore.
+# Underscore mirror - module convention is to expose hyphen + underscore.
 @router.post("/series/{master_id}/materialize", include_in_schema=False)
 async def materialize_meeting_series_no_slash(
     master_id: uuid.UUID,
@@ -1592,7 +1592,7 @@ async def export_meeting_pdf(
         canvas_obj.saveState()
         canvas_obj.setFont(BODY_FONT, 7)
         canvas_obj.setFillColor(colors.HexColor("#999999"))
-        canvas_obj.drawString(MARGIN, PAGE_HEIGHT - 12 * mm, f"{project_name} — {meeting.title}")
+        canvas_obj.drawString(MARGIN, PAGE_HEIGHT - 12 * mm, f"{project_name} - {meeting.title}")
         canvas_obj.drawRightString(
             PAGE_WIDTH - MARGIN,
             10 * mm,

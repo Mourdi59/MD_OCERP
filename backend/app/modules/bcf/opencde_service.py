@@ -1,4 +1,4 @@
-"""OpenCDE BCF-API 3.0 — service layer.
+"""OpenCDE BCF-API 3.0 - service layer.
 
 Bridges incoming OpenCDE REST requests onto our native :mod:`bcf` ORM
 (``BCFTopic`` / ``BCFComment`` / ``BCFViewpoint``). The wire payload
@@ -6,7 +6,7 @@ shapes live in :mod:`opencde_schemas`; this module owns translation,
 RBAC-driven authorization sub-objects, ETag derivation and the OData
 ``$filter`` / ``$orderby`` / ``$top`` / ``$skip`` parser.
 
-OData $filter — the conformance subset we accept:
+OData $filter - the conformance subset we accept:
 
     topic_status eq 'Open'
     priority in ('high','critical')
@@ -15,10 +15,10 @@ OData $filter — the conformance subset we accept:
     labels/any(l: l eq 'MEP')
 
 Anything else returns ``400`` from the router. The parser is a small
-hand-rolled tokenizer — NO ``eval``, NO string-concatenated SQL.
+hand-rolled tokenizer - NO ``eval``, NO string-concatenated SQL.
 
 Defensive: every read path probes ClashIssue ABSENT at first use and
-returns the structured 503 the router knows about — mirroring the
+returns the structured 503 the router knows about - mirroring the
 sibling import_service's degradation contract.
 """
 
@@ -72,14 +72,14 @@ class OpenCDEServiceError(Exception):
 
 
 class StaleResourceError(OpenCDEServiceError):
-    """Raised on If-Match mismatch — router maps to 412."""
+    """Raised on If-Match mismatch - router maps to 412."""
 
     def __init__(self, message: str = "Resource has been modified") -> None:
         super().__init__("if_match_failed", message, http_status=412)
 
 
 class FeatureUnavailableError(OpenCDEServiceError):
-    """Raised when a dependent migration hasn't run — maps to 503."""
+    """Raised when a dependent migration hasn't run - maps to 503."""
 
     def __init__(self, message: str) -> None:
         super().__init__("feature_unavailable", message, http_status=503)
@@ -89,7 +89,7 @@ class FeatureUnavailableError(OpenCDEServiceError):
 
 
 def compute_topic_etag(topic: BCFTopic) -> str:
-    """ETag for a topic — sha1 of its last-modified instant.
+    """ETag for a topic - sha1 of its last-modified instant.
 
     Two reads sharing the same modified_date share the same ETag.
     PUT/DELETE require an If-Match equal to this value or 412.
@@ -101,7 +101,7 @@ def compute_topic_etag(topic: BCFTopic) -> str:
 
 
 def compute_comment_etag(comment: BCFComment) -> str:
-    """ETag for a comment — sha1 of its last-modified instant."""
+    """ETag for a comment - sha1 of its last-modified instant."""
     md = comment.modified_date or comment.date or datetime.now(UTC)
     if md.tzinfo is None:
         md = md.replace(tzinfo=UTC)
@@ -209,7 +209,7 @@ def parse_odata_filter(expr: str) -> list[_Clause]:
     if len(expr) > _FILTER_MAX_LEN:
         raise ODataParseError(f"$filter exceeds {_FILTER_MAX_LEN} characters")
 
-    # Split on `and` only — we deliberately reject `or` for the minimum
+    # Split on `and` only - we deliberately reject `or` for the minimum
     # compliance profile (the spec says the server MAY accept any subset
     # of OData and 400 the rest).
     if " or " in expr.lower():
@@ -298,7 +298,7 @@ def _parse_clause(clause: str) -> _Clause:
         idx = lower.find(needle, pos)
         if idx == -1:
             break
-        # ensure not inside quotes — for simplicity reject any quote before
+        # ensure not inside quotes - for simplicity reject any quote before
         # the `in` token in clause to avoid edge cases.
         if "'" not in clause[:idx] and '"' not in clause[:idx]:
             in_idx = idx
@@ -331,15 +331,15 @@ def _clauses_to_sqla(clauses: list[_Clause]):
     for c in clauses:
         if c.field == "labels":
             # SQLite JSON: use ``LIKE`` on the JSON-encoded representation
-            # — labels are scalar tokens stored as ``["a","b"]`` so we can
+            # - labels are scalar tokens stored as ``["a","b"]`` so we can
             # match ``"<value>"`` safely (lexical equality after quoting).
-            # Bound parameter — no interpolation.
+            # Bound parameter - no interpolation.
             from sqlalchemy import String, cast
             from sqlalchemy import literal as sl
 
             # Escape SQL LIKE wildcards in the user-supplied label value
             # so a label like ``50%_off`` cannot match unintended rows.
-            # Also strip embedded double-quotes — a label is a scalar token,
+            # Also strip embedded double-quotes - a label is a scalar token,
             # never a JSON fragment, so a ``"`` in it would only ever be a
             # poisoning attempt against the LIKE pattern below.
             safe = str(c.value).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_").replace('"', "")
@@ -372,7 +372,7 @@ def _clauses_to_sqla(clauses: list[_Clause]):
     return sqla_clauses
 
 
-# Fields allowed on $orderby. Restricted to scalar columns — relationships
+# Fields allowed on $orderby. Restricted to scalar columns - relationships
 # / hybrid attributes / dunder attrs are explicitly rejected to prevent a
 # malformed query from leaking through ``getattr`` and exploding deep in
 # the SQLA compile step.
@@ -561,7 +561,7 @@ class OpenCDEService:
         now = datetime.now(UTC)
         author = user_email or str(user_id)
         # Best-effort server_assigned_id: monotonic count + 1. Use COUNT(*)
-        # rather than loading every BCFTopic row for the project — a project
+        # rather than loading every BCFTopic row for the project - a project
         # with thousands of topics would otherwise pull every row into memory
         # just to count them.
         from sqlalchemy import func as _func

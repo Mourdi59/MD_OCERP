@@ -1,12 +1,12 @@
-# OpenConstructionERP — DataDrivenConstruction (DDC)
+# OpenConstructionERP - DataDrivenConstruction (DDC)
 # CWICR Cost Database Engine · CAD2DATA Pipeline
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 # AGPL-3.0 License · DDC-CWICR-OE-2026
-"""‌⁠‍OpenEstimate​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ — FastAPI application factory.
+"""‌⁠‍OpenEstimate​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ - FastAPI application factory.
 
 Usage:
     uvicorn app.main:create_app --factory --reload --port 8000
-    openestimate serve  (CLI mode — also serves frontend)
+    openestimate serve  (CLI mode - also serves frontend)
 """
 
 # ── Runtime compatibility shims ─────────────────────────────────────────────
@@ -19,7 +19,7 @@ Usage:
 #                   already initialized.
 #
 # On Linux/macOS this is a warning; on Windows it is a fatal native abort
-# that kills the process silently — no Python traceback, the shell just
+# that kills the process silently - no Python traceback, the shell just
 # returns to the prompt. ``KMP_DUPLICATE_LIB_OK=TRUE`` tells the OpenMP
 # runtime to accept the duplicate library instead of terminating, which
 # is safe for inference workloads where we do not rely on deterministic
@@ -39,7 +39,7 @@ import uuid
 import uuid as _instance_uuid
 from typing import Any
 
-# Unique instance fingerprint — proves this specific deployment origin
+# Unique instance fingerprint - proves this specific deployment origin
 _INSTANCE_ID = str(_instance_uuid.uuid4())
 # Build-pepper. Looks like opaque crypto material; the bytes XOR-decode to
 # the project authorship marker so removing it changes the published health
@@ -103,18 +103,18 @@ def configure_logging(settings: Settings) -> None:
 def _init_vector_db() -> None:
     """‌⁠‍Initialize vector database on startup (non-blocking, never fatal).
 
-    Vector search is an important feature of OpenConstructionERP —
+    Vector search is an important feature of OpenConstructionERP -
     it powers semantic cost-item matching, BOQ auto-classification,
     and assembly suggestions. We support two backends:
 
-    * **Qdrant** (recommended for production) — dedicated server, scales
+    * **Qdrant** (recommended for production) - dedicated server, scales
       to millions of vectors, supports snapshots. Run it locally with:
       ``docker run -p 6333:6333 qdrant/qdrant``
-    * **LanceDB** (embedded, default) — zero-config, stores vectors on
+    * **LanceDB** (embedded, default) - zero-config, stores vectors on
       the local filesystem. Good enough for single-node deployments.
 
     Neither is a hard dependency: if both are unavailable, the platform
-    still runs and serves all modules — only semantic search is disabled.
+    still runs and serves all modules - only semantic search is disabled.
     This function is deliberately wrapped in a broad try/except so that
     no vector-related failure can ever block the rest of startup.
     """
@@ -129,7 +129,7 @@ def _init_vector_db() -> None:
             logger.info("Vector DB ready: %s (%d vectors indexed)", engine, count)
             return
 
-        # Not connected — log a clear, actionable hint so users know how
+        # Not connected - log a clear, actionable hint so users know how
         # to enable semantic search if they need it.
         error = status.get("error", "unknown")
         if engine == "qdrant":
@@ -144,7 +144,7 @@ def _init_vector_db() -> None:
                 "Install the embedded vector backend with: pip install openconstructionerp[vector]",
                 error,
             )
-    except Exception as exc:  # noqa: BLE001 — intentional: never fatal
+    except Exception as exc:  # noqa: BLE001 - intentional: never fatal
         # Includes ImportError (missing optional extras), native crashes
         # surfaced as OSError, etc. Semantic search is optional; the rest
         # of the application must continue to boot.
@@ -170,7 +170,7 @@ async def _auto_backfill_vector_collections() -> None:
     3. If the vector store is short, runs ``reindex_collection`` for the
        missing rows (capped by ``vector_backfill_max_rows`` per pass)
 
-    Designed to be **non-blocking** — it runs in a detached background
+    Designed to be **non-blocking** - it runs in a detached background
     task so startup completes immediately even if the model loader has
     to download a fresh embedding checkpoint.
 
@@ -218,14 +218,14 @@ async def _auto_backfill_vector_collections() -> None:
 
             Steps:
                 1. Read the indexed-row count from the vector store (cheap).
-                2. Issue a ``SELECT COUNT(*)`` against the model — also cheap.
+                2. Issue a ``SELECT COUNT(*)`` against the model - also cheap.
                 3. Skip if the index already has at least as many rows.
                 4. Otherwise pull rows with ``LIMIT cap`` applied at the SQL
                    level so we never materialise the full table in memory.
 
             The previous implementation called ``loader(session)`` which
             executed an unbounded ``SELECT *`` and then sliced ``rows[:cap]``
-            in Python — fine on a 100-row dev DB, catastrophic on a 2M-row
+            in Python - fine on a 100-row dev DB, catastrophic on a 2M-row
             production deployment because it allocates the entire result set
             before applying the cap.  Now the cap is enforced before the
             scan reaches the network.
@@ -237,7 +237,7 @@ async def _auto_backfill_vector_collections() -> None:
 
             try:
                 async with async_session_factory() as session:
-                    # Step 1: cheap COUNT(*) — never materialises rows.
+                    # Step 1: cheap COUNT(*) - never materialises rows.
                     live_total = (await session.execute(select(func.count()).select_from(model))).scalar_one() or 0
 
                     if not live_total:
@@ -424,7 +424,7 @@ async def _auto_backfill_vector_collections() -> None:
         except Exception as exc:
             logger.debug("Backfill Cost catalog skipped: %s", exc)
 
-        # Sentinel — keeps imports above flagged as used by ruff F401 even
+        # Sentinel - keeps imports above flagged as used by ruff F401 even
         # if a future refactor drops one of the targeted collections.
         _ = COLLECTION_COSTS
 
@@ -440,7 +440,7 @@ def _resolve_demo_password(env_var: str) -> tuple[str, bool]:
     env var to a non-empty string we honour it as-is. Otherwise we generate
     a fresh ``secrets.token_urlsafe(16)`` (22 url-safe chars). Generated
     passwords are persisted by ``_persist_demo_credentials`` so the CLI
-    banner can read them back after the seeder runs — see BUG-D01 for why
+    banner can read them back after the seeder runs - see BUG-D01 for why
     no hardcoded fallback is acceptable here.
     """
     env_value = os.environ.get(env_var)
@@ -454,7 +454,7 @@ def _persist_demo_credentials(creds: dict[str, str]) -> Path | None:
 
     Falls back to ``~/.openestimator/.demo_credentials.json`` when the CLI
     didn't expose a data directory. Returns the path written, or ``None``
-    if the write failed (best-effort — never let credential persistence
+    if the write failed (best-effort - never let credential persistence
     block startup).
     """
     import json as _json
@@ -484,7 +484,7 @@ def _persist_demo_credentials(creds: dict[str, str]) -> Path | None:
         try:
             path.chmod(_stat.S_IRUSR | _stat.S_IWUSR)
         except OSError:
-            # Best-effort on Windows — chmod is a no-op there
+            # Best-effort on Windows - chmod is a no-op there
             pass
         return path
     except OSError as exc:
@@ -495,9 +495,9 @@ def _persist_demo_credentials(creds: dict[str, str]) -> Path | None:
 async def _seed_demo_account() -> None:
     """Create demo user + showcase projects if they don't exist yet.
 
-    Idempotent — safe to call on every startup. Creates:
+    Idempotent - safe to call on every startup. Creates:
 
-    * demo@openconstructionerp.com        (role=admin — full walkthrough)
+    * demo@openconstructionerp.com        (role=admin - full walkthrough)
     * estimator@openconstructionerp.com   (role=estimator)
     * manager@openconstructionerp.com     (role=manager)
 
@@ -613,7 +613,7 @@ async def _seed_demo_account() -> None:
                 logger.warning(
                     "[seed] %d demo credential(s) also saved to %s",
                     len(generated_creds),
-                    creds_path or "(persistence failed — check logs)",
+                    creds_path or "(persistence failed - check logs)",
                 )
 
             # 2. Capture the demo user ids while the session is open.
@@ -670,7 +670,7 @@ async def _seed_demo_account() -> None:
             # The flagship "Residential House" project (installed below) is now
             # the single, deeply-worked reference showcase: real DDC-converted
             # IFC/RVT/DWG models, geometry, and a CWICR-priced BIM-linked BOQ.
-            # The 5 ORM demo projects are OPT-IN only now — set SEED_SHOWCASE=1
+            # The 5 ORM demo projects are OPT-IN only now - set SEED_SHOWCASE=1
             # to restore them. A clean install therefore shows the flagship
             # (plus a partner-pack project when a pack is active).
             showcase_enabled = os.environ.get("SEED_SHOWCASE", "false").lower() in (
@@ -686,7 +686,7 @@ async def _seed_demo_account() -> None:
 
                 if len(DEFAULT_DEMO_IDS) > 5:
                     logger.error(
-                        "DEFAULT_DEMO_IDS has %d entries — fresh-install seed is capped at 5. Aborting auto-seed.",
+                        "DEFAULT_DEMO_IDS has %d entries - fresh-install seed is capped at 5. Aborting auto-seed.",
                         len(DEFAULT_DEMO_IDS),
                     )
                     return
@@ -739,7 +739,7 @@ async def _seed_demo_account() -> None:
             except Exception:
                 logger.debug("Partner-pack demo auto-install skipped", exc_info=True)
 
-        # Flagship "Residential House" reference project — an ORM installer
+        # Flagship "Residential House" reference project - an ORM installer
         # running on PostgreSQL so the full CAD-to-BOQ showcase (real
         # DDC-converted IFC/RVT geometry + a CWICR-priced, BIM-linked Bill of
         # Quantities) is present out of the box. Idempotent, so it also
@@ -832,7 +832,7 @@ def create_app() -> FastAPI:
         },
         docs_url="/api/docs" if not settings.is_production else None,
         redoc_url="/api/redoc" if not settings.is_production else None,
-        # BUG-394: don't expose the full OpenAPI schema in production — it
+        # BUG-394: don't expose the full OpenAPI schema in production - it
         # hands attackers a route/parameter enumeration map of every endpoint,
         # including rarely-exercised admin surfaces. Dev still gets it for
         # the Swagger/ReDoc UI and for openapi-typescript client generation.
@@ -844,7 +844,7 @@ def create_app() -> FastAPI:
         # serializes data directly to JSON bytes via Pydantic when a
         # return type or response model is set, which is faster and
         # doesn't need a custom response class." More importantly,
-        # orjson rejects NaN/Infinity floats by default — DDC cad2data
+        # orjson rejects NaN/Infinity floats by default - DDC cad2data
         # BIM elements occasionally emit NaN bbox coordinates for
         # degenerate geometry, which would 500 the response. Stick with
         # FastAPI's default Pydantic-direct path; orjson is still used
@@ -980,7 +980,7 @@ def create_app() -> FastAPI:
 
             async def replay() -> Message:
                 # First call: hand the app the fully buffered body. Every
-                # subsequent call must delegate to the *real* receive() — it
+                # subsequent call must delegate to the *real* receive() - it
                 # MUST NOT synthesize ``http.disconnect`` here. Streaming
                 # responses (SSE: /erp_chat/stream/, AI chat) run
                 # ``listen_for_disconnect`` concurrently with the body
@@ -1016,7 +1016,7 @@ def create_app() -> FastAPI:
     # Sets the per-request AuditContext ContextVar so :func:`log_activity`
     # can persist the peer IP, User-Agent, and correlation ID without
     # service-layer callers having to thread the values manually.
-    # Starlette runs middleware in REVERSE registration order — the
+    # Starlette runs middleware in REVERSE registration order - the
     # ``add_middleware(RequestIDMiddleware)`` call below must come AFTER
     # this one so the request-id ContextVar is set BEFORE
     # ActorContextMiddleware reads it via ``get_request_id()``.
@@ -1037,7 +1037,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(AcceptLanguageMiddleware)
 
-    # ── Global exception handler — return JSON for unhandled errors ────
+    # ── Global exception handler - return JSON for unhandled errors ────
     from fastapi import Request
     from fastapi.exceptions import RequestValidationError
     from fastapi.responses import JSONResponse
@@ -1056,8 +1056,8 @@ def create_app() -> FastAPI:
     # parameter name and its expected Pydantic type, e.g.
     #   {"detail":[{"type":"uuid_parsing","loc":["path","user_id"],"input":"abc"}]}
     # An unauthenticated probe can read those bodies to enumerate the route
-    # surface (param names + types). For path-param validation failures —
-    # which mostly mean "the URL was malformed" — we collapse the response
+    # surface (param names + types). For path-param validation failures -
+    # which mostly mean "the URL was malformed" - we collapse the response
     # to a generic 400 with no schema details.
     #
     # Body / query-param validation errors keep the legacy 422 + detail
@@ -1072,7 +1072,7 @@ def create_app() -> FastAPI:
         path_only = bool(errors) and all((err.get("loc") or [None])[0] == "path" for err in errors)
 
         if path_only and not settings.app_debug:
-            # No detail leak — just acknowledge the URL is malformed.
+            # No detail leak - just acknowledge the URL is malformed.
             return JSONResponse(
                 status_code=400,
                 content={"error": "Invalid request"},
@@ -1083,7 +1083,7 @@ def create_app() -> FastAPI:
         # strip the raw input echo (Pydantic includes the offending value
         # in ``input`` which can echo PII / tokens).
         # ``ctx.error`` is a raw ``ValueError`` instance for ``value_error``
-        # entries — not JSON-serialisable — so always coerce to ``str``
+        # entries - not JSON-serialisable - so always coerce to ``str``
         # before emitting (regression seen with custom ``field_validator``
         # raises in BUG-MATH03 unit-catalogue checks).
         def _json_safe(v: object) -> object:
@@ -1142,7 +1142,7 @@ def create_app() -> FastAPI:
 
     app.include_router(translation_router, prefix="/api/v1")
 
-    # Partner-pack system — discovers pip-installed packs via entry_points
+    # Partner-pack system - discovers pip-installed packs via entry_points
     # and exposes the active manifest + branded resources.
     from app.core.partner_pack.discovery import get_active_pack
     from app.core.partner_pack.router import router as partner_pack_router
@@ -1189,12 +1189,12 @@ def create_app() -> FastAPI:
             result["database"] = "error"
             result["status"] = "degraded"
 
-        # Alembic head match — does the DB's current revision equal the
+        # Alembic head match - does the DB's current revision equal the
         # latest script head on disk? A mismatch usually means somebody
         # forgot ``alembic upgrade head`` after a deploy and stale models
         # will start raising OperationalError as soon as a request hits a
         # new column. ``None`` if the check itself blew up (no alembic.ini
-        # nearby, broken script tree, etc.) — visible but non-fatal.
+        # nearby, broken script tree, etc.) - visible but non-fatal.
         try:
             from alembic.config import Config as _AlembicConfig
             from alembic.runtime.migration import MigrationContext as _MigCtx
@@ -1222,7 +1222,7 @@ def create_app() -> FastAPI:
             logger.warning("Alembic head check failed: %s", _exc)
             result["alembic_head_matches"] = None
 
-        # Frontend dist presence — the wheel ships ``app/_frontend_dist/``;
+        # Frontend dist presence - the wheel ships ``app/_frontend_dist/``;
         # a missing ``index.html`` means the SPA shell will 404 and users
         # see a blank page even though /api endpoints work.
         try:
@@ -1234,7 +1234,7 @@ def create_app() -> FastAPI:
             result["frontend_dist_present"] = False
             result["status"] = "degraded"
 
-        # Process memory (RSS) in MB — available on all platforms
+        # Process memory (RSS) in MB - available on all platforms
         try:
             import resource
 
@@ -1254,7 +1254,7 @@ def create_app() -> FastAPI:
             except Exception:
                 pass  # Memory reporting is best-effort
 
-        # Active thread count — best-effort
+        # Active thread count - best-effort
         try:
             import threading as _threading
 
@@ -1292,7 +1292,7 @@ def create_app() -> FastAPI:
     @app.get("/api/system/status", tags=["System"])
     async def system_status() -> dict[str, Any]:
         """Full system status: database, vector DB, AI providers."""
-        # Public hosted demo flag — set OE_DEMO_MODE=true on the VPS
+        # Public hosted demo flag - set OE_DEMO_MODE=true on the VPS
         # systemd unit so the frontend can show the "demo only" warning
         # banner and the /users page can strip personal data from the
         # demo registration list. Defaults to false on every fresh
@@ -1352,7 +1352,7 @@ def create_app() -> FastAPI:
                 from app.core.vector import vector_status as vs
 
                 # Bound the probe so a wedged backend can never hang the
-                # request beyond a few seconds — the offloaded thread keeps
+                # request beyond a few seconds - the offloaded thread keeps
                 # running but the coroutine returns "offline" promptly.
                 vstat = await asyncio.wait_for(asyncio.to_thread(vs), timeout=8.0)
                 if vstat.get("connected"):
@@ -1375,7 +1375,7 @@ def create_app() -> FastAPI:
                 "checked_at": time.time(),
             }
 
-        # AI providers check — env vars first, then database
+        # AI providers check - env vars first, then database
         providers = []
         if settings.openai_api_key:
             providers.append({"name": "OpenAI", "configured": True})
@@ -1421,7 +1421,7 @@ def create_app() -> FastAPI:
         ``5.2.10 > 5.2.9`` evaluates correctly (string compare returns the
         opposite because ``"1" < "9"``). Non-numeric trailing segments
         (``"5.3.0rc1"`` etc.) coerce to 0 so they sort below the same
-        ``5.3.0`` release — pre-releases stay invisible to the
+        ``5.3.0`` release - pre-releases stay invisible to the
         "update available" pill until the real release lands.
         """
         out: list[int] = []
@@ -1439,7 +1439,7 @@ def create_app() -> FastAPI:
     async def check_version() -> dict:
         """Return current vs latest published version.
 
-        Source of truth is **PyPI** (more reliable than GitHub releases —
+        Source of truth is **PyPI** (more reliable than GitHub releases -
         Trusted-Publisher OIDC always produces a wheel, GitHub release
         creation is sometimes skipped on hotfixes). Falls back to GitHub
         releases if PyPI is unreachable. Both lookups are cached on
@@ -1468,7 +1468,7 @@ def create_app() -> FastAPI:
                 )
                 if pypi.status_code == 200:
                     latest = pypi.json().get("info", {}).get("version") or None
-        except Exception:  # noqa: BLE001 — graceful degradation
+        except Exception:  # noqa: BLE001 - graceful degradation
             pass
 
         try:
@@ -1513,12 +1513,12 @@ def create_app() -> FastAPI:
 
         Best-effort one-click upgrade. We shell out to the **same**
         interpreter that's serving the API so the upgrade lands in the
-        right venv (Issue #96 — Windows launcher uses
+        right venv (Issue #96 - Windows launcher uses
         ``%LOCALAPPDATA%/OpenConstructionERP/venv``, not the user's
         global Python). Captures stdout+stderr so the UI can show the
         installer log.
 
-        **Important — the running process keeps the OLD wheel in memory.**
+        **Important - the running process keeps the OLD wheel in memory.**
         Python caches imports; pip can replace files on disk but cannot
         swap modules already loaded. The response includes
         ``restart_required=true`` and the new version pulled from
@@ -1527,7 +1527,7 @@ def create_app() -> FastAPI:
         installs, the host's systemd unit.
 
         Gated by ``ALLOW_RUNTIME_UPGRADE=true`` (default off in
-        production) — VPS / staging installs use a deploy pipeline, not
+        production) - VPS / staging installs use a deploy pipeline, not
         in-app upgrades. Localhost dev / Windows-installer installs ship
         with the flag on so the Settings panel works out of the box.
         """
@@ -1557,7 +1557,7 @@ def create_app() -> FastAPI:
         if force:
             cmd.insert(-1, "--force-reinstall")
 
-        proc = subprocess.run(  # noqa: S603 — args are sanitised above
+        proc = subprocess.run(  # noqa: S603 - args are sanitised above
             cmd,
             capture_output=True,
             text=True,
@@ -1601,7 +1601,7 @@ def create_app() -> FastAPI:
 
         Cached on `app.state` for 6 h so the dashboard banner can poll
         cheaply without burning the unauthenticated GitHub rate limit
-        (60 req/h). Network failures degrade gracefully — `network_ok=false`
+        (60 req/h). Network failures degrade gracefully - `network_ok=false`
         and `any_outdated=false` so the UI suppresses the banner.
         """
         import asyncio
@@ -1615,7 +1615,7 @@ def create_app() -> FastAPI:
         # The git-blob SHA comparison below only applies to the Windows `.exe`
         # builds fetched from the GitHub repo. On Linux/macOS the converters come
         # from the signed apt repo (or aren't natively available), so there is no
-        # per-file SHA to compare — return a benign, non-alarming result so the
+        # per-file SHA to compare - return a benign, non-alarming result so the
         # dashboard never shows a false "update available" banner off-Windows.
         if sys.platform != "win32":
             return {
@@ -1630,7 +1630,7 @@ def create_app() -> FastAPI:
             }
 
         # Per-format directory inside the repo. Mirrors `_WINDOWS_CONVERTER_DIRS`
-        # in takeoff/router.py — duplicated here so the system endpoint
+        # in takeoff/router.py - duplicated here so the system endpoint
         # works even when the takeoff module is not loaded (it ships
         # disabled by default in some configurations).
         DDC_REPO = "datadrivenconstruction/cad2data-Revit-IFC-DWG-DGN"
@@ -1666,7 +1666,7 @@ def create_app() -> FastAPI:
                         "download_url": p.get("download_url"),
                         "html_url": p.get("html_url"),
                     }
-            except Exception:  # noqa: BLE001 — degrade gracefully
+            except Exception:  # noqa: BLE001 - degrade gracefully
                 return None
 
         remote_calls = [fetch_remote(ext, gh_dir, exe) for ext, (gh_dir, exe, _) in WIN_DIRS.items()]
@@ -1889,7 +1889,7 @@ def create_app() -> FastAPI:
     async def submit_feedback(payload: dict[str, Any], request: Request) -> dict[str, Any]:
         """Store user feedback (bug reports, ideas, general comments).
 
-        Public endpoint (no auth) with per-IP rate limit and body-size cap —
+        Public endpoint (no auth) with per-IP rate limit and body-size cap -
         same posture as ``POST /api/v1/users/register`` so the shared
         ``oe_feedback`` table cannot be flooded by anonymous clients.
         """
@@ -1909,7 +1909,7 @@ def create_app() -> FastAPI:
                 headers={"Retry-After": "60"},
             )
 
-        # Sanitise first — anonymous endpoint, must strip XSS payloads
+        # Sanitise first - anonymous endpoint, must strip XSS payloads
         # before they reach the DB (BUG-330/389). Keep plain angle brackets
         # ("beam <200mm") by using the targeted sanitizer, not blanket
         # HTML-escape.
@@ -1921,7 +1921,7 @@ def create_app() -> FastAPI:
         email = str(payload.get("email") or "")[:100] or None
         page_path = _strip_xss(str(payload.get("page_path", "")))[:200]
 
-        # Reject empty submissions — prior behaviour wrote blank rows to the
+        # Reject empty submissions - prior behaviour wrote blank rows to the
         # feedback table, which made it useful for nothing except spamming.
         # Rate-limit (above) gates volume; this gates content (BUG-159).
         if not subject or not description:
@@ -1936,7 +1936,7 @@ def create_app() -> FastAPI:
             )
 
         # Auto-create the table if needed. The INSERT below binds
-        # ``created_at`` explicitly with an aware datetime — asyncpg's
+        # ``created_at`` explicitly with an aware datetime - asyncpg's
         # TIMESTAMPTZ column rejects an ISO *string*.
         async with engine.begin() as conn:
             create_sql = """
@@ -1994,7 +1994,7 @@ def create_app() -> FastAPI:
         _jwt_too_short = len(settings.jwt_secret.encode("utf-8")) < 32
         _jwt_is_default = settings.jwt_secret in _insecure_secrets
         # Any non-development environment must have a real secret. We treat
-        # ``staging`` exactly like ``production`` here — not blocking it
+        # ``staging`` exactly like ``production`` here - not blocking it
         # would defeat the point of staging being a real deployment.
         if settings.app_env != "development":
             if _jwt_is_default:
@@ -2010,7 +2010,7 @@ def create_app() -> FastAPI:
                 )
         elif _jwt_is_default or _jwt_too_short:
             # BUG-320: even in development, the hardcoded default secret is
-            # published in the AGPL repo — any attacker with network access
+            # published in the AGPL repo - any attacker with network access
             # to a dev box could forge tokens. Rotate to a strong random
             # secret so forged "open-source-secret" tokens stop working.
             #
@@ -2054,14 +2054,14 @@ def create_app() -> FastAPI:
                     except OSError:
                         pass
                     logger.info(
-                        "JWT_SECRET was default/short — generated a fresh dev secret "
+                        "JWT_SECRET was default/short - generated a fresh dev secret "
                         "and persisted it to %s. Sessions now survive restarts. "
                         "Set JWT_SECRET env var for a stable team-wide secret.",
                         secret_path,
                     )
                 except OSError as _persist_err:
                     logger.warning(
-                        "JWT_SECRET persistence to %s failed (%s) — falling back "
+                        "JWT_SECRET persistence to %s failed (%s) - falling back "
                         "to a per-process random secret. Sessions WILL be invalidated "
                         "on every restart. Set JWT_SECRET env var (>=32 bytes) "
                         "to keep sessions alive.",
@@ -2070,7 +2070,7 @@ def create_app() -> FastAPI:
                     )
             else:
                 logger.info(
-                    "JWT_SECRET was default/short — loaded persisted dev secret from %s. "
+                    "JWT_SECRET was default/short - loaded persisted dev secret from %s. "
                     "Existing sessions remain valid. Set JWT_SECRET env var for a "
                     "stable team-wide secret.",
                     secret_path,
@@ -2110,7 +2110,7 @@ def create_app() -> FastAPI:
         # volume: schema never created, login fails with
         # `relation "oe_users_user" does not exist` (issue #42).
         # SQLAlchemy create_all is idempotent on PG and harmless on existing
-        # databases — it only creates tables that do not yet exist.
+        # databases - it only creates tables that do not yet exist.
         _section("Database")
         if "postgresql" in settings.database_url:
             import importlib
@@ -2141,7 +2141,7 @@ def create_app() -> FastAPI:
             # install, so every list endpoint 500'd with "no such table".
             # Discovering models dynamically makes that whole class of bug
             # impossible: any module package with a models.py is registered
-            # automatically — adding a new module needs no edit here.
+            # automatically - adding a new module needs no edit here.
             for _m in pkgutil.iter_modules(_modules_pkg.__path__):
                 if not _m.ispkg:
                     continue
@@ -2149,7 +2149,7 @@ def create_app() -> FastAPI:
                 try:
                     importlib.import_module(_models_mod)
                 except ModuleNotFoundError as exc:
-                    # No models.py in this module — fine, skip it. Re-raise
+                    # No models.py in this module - fine, skip it. Re-raise
                     # if the failure is a *different* missing import inside
                     # the models module (that is a real bug, not absence).
                     if exc.name != _models_mod:
@@ -2197,7 +2197,7 @@ def create_app() -> FastAPI:
         except Exception:
             logger.debug("OpenCDE API router not available (non-fatal)")
 
-        # Variations alias (plan §3.3) — mount changeorders also at /api/v1/variations
+        # Variations alias (plan §3.3) - mount changeorders also at /api/v1/variations
         try:
             from app.modules.changeorders.router import router as co_router
 
@@ -2225,7 +2225,7 @@ def create_app() -> FastAPI:
         except Exception:
             logger.debug("Procurement Tenders alias not available (non-fatal)")
 
-        # Coordination Hub — module directory is ``coordination_hub`` (the
+        # Coordination Hub - module directory is ``coordination_hub`` (the
         # full name keeps the package self-describing) but the canonical
         # public URL is ``/api/v1/coordination/...`` so the surface matches
         # the industry term ("Model Coordination") rather than our internal
@@ -2244,7 +2244,7 @@ def create_app() -> FastAPI:
         except Exception:
             logger.debug("Coordination Hub alias not available (non-fatal)")
 
-        # 4D module (Section 6) — mount schedules + EAC schedule links at /api/v2
+        # 4D module (Section 6) - mount schedules + EAC schedule links at /api/v2
         try:
             from app.modules.schedule.router_4d import (
                 eac_schedule_links_router,
@@ -2282,11 +2282,11 @@ def create_app() -> FastAPI:
                 await seed_i18n_data(_seed_session)
                 await _seed_session.commit()
         except Exception:
-            logger.exception("i18n seed failed — countries/taxes/calendars may be empty")
+            logger.exception("i18n seed failed - countries/taxes/calendars may be empty")
 
         # Starter seed: small baseline of cost items + assemblies so a fresh
         # install never shows an empty /costs or /catalog before the user
-        # imports a regional CWICR catalogue. Idempotent — only runs when
+        # imports a regional CWICR catalogue. Idempotent - only runs when
         # the tables are empty. Disable via OE_SKIP_STARTER_SEED=1.
         try:
             from app.database import async_session_factory as _starter_session_factory
@@ -2302,13 +2302,13 @@ def create_app() -> FastAPI:
                         counts["assemblies"],
                     )
         except Exception:
-            logger.exception("Starter seed failed — /costs and /catalog may be empty")
+            logger.exception("Starter seed failed - /costs and /catalog may be empty")
 
-        # Regional indices seed (v3.12.0 — Stream B). Idempotent: the
+        # Regional indices seed (v3.12.0 - Stream B). Idempotent: the
         # script honours the UNIQUE(region, category, subcategory,
         # effective_date) constraint on ``oe_regional_indices``, so it
         # only inserts the OE_v3.12 baseline rows once. Failure is
-        # non-fatal — the regional-adjust endpoint falls back to a 1:1
+        # non-fatal - the regional-adjust endpoint falls back to a 1:1
         # passthrough when no rows are on file.
         try:
             from app.scripts.seed_regional_indices import main as _seed_regional_main
@@ -2321,7 +2321,7 @@ def create_app() -> FastAPI:
                 )
         except Exception:
             logger.exception(
-                "Regional indices seed failed — /v1/costs/regional-adjust will "
+                "Regional indices seed failed - /v1/costs/regional-adjust will "
                 "passthrough until an operator imports a feed"
             )
 
@@ -2329,7 +2329,7 @@ def create_app() -> FastAPI:
         # v3114_propdev_house_type_catalogue's bulk_insert so fresh-blank-DB
         # installs (which take the env.py create_all+stamp shortcut and
         # never run the migration's upgrade()) still end up with the ~60
-        # country presets populated. Idempotent — skips when any preset
+        # country presets populated. Idempotent - skips when any preset
         # row exists.
         try:
             from app.database import async_session_factory as _ht_session_factory
@@ -2347,7 +2347,7 @@ def create_app() -> FastAPI:
                     )
         except Exception:
             logger.exception(
-                "Property-dev house-type catalogue preset seed failed — "
+                "Property-dev house-type catalogue preset seed failed - "
                 "/property-dev/house-type-catalogue will return an empty list "
                 "until an operator re-runs alembic or restarts the app"
             )
@@ -2380,7 +2380,7 @@ def create_app() -> FastAPI:
             # vector matcher both call ``encode_texts_async`` from worker
             # threads. On Windows + Anaconda the first SentenceTransformer
             # load from a worker thread can race with concurrent torch
-            # imports and silently leave the singleton at None — every
+            # imports and silently leave the singleton at None - every
             # subsequent encode then raises "No embedding model available".
             # Loading on the main thread once primes the singleton so
             # later calls just hit the cache.
@@ -2388,7 +2388,7 @@ def create_app() -> FastAPI:
                 from app.core.vector import get_embedder as _ge
 
                 _ge()
-            except Exception as exc:  # noqa: BLE001 — never fatal for startup
+            except Exception as exc:  # noqa: BLE001 - never fatal for startup
                 logger.info("Embedder main-thread prime skipped: %s", exc)
 
             try:
@@ -2402,12 +2402,12 @@ def create_app() -> FastAPI:
                         preloaded,
                         workers,
                     )
-            except Exception as exc:  # noqa: BLE001 — never fatal for startup
+            except Exception as exc:  # noqa: BLE001 - never fatal for startup
                 logger.warning("Embedding pool init skipped: %s", exc)
 
             # Auto-backfill the multi-collection vector store from existing
             # rows.  Detached as a background task so a slow embedding model
-            # download or a large dataset doesn't delay startup — semantic
+            # download or a large dataset doesn't delay startup - semantic
             # search remains available the moment the model finishes loading.
             try:
                 import asyncio as _asyncio_bf
@@ -2461,7 +2461,7 @@ def create_app() -> FastAPI:
         # (SELECT DISTINCT region, GROUP BY 4 JSON paths) that can be slow
         # on a cold database when the active catalog holds 100 k+ rows. The
         # user reported the modal
-        # "loading forever" — this prewarm pays the aggregation cost
+        # "loading forever" - this prewarm pays the aggregation cost
         # once at boot so every subsequent click is a cache hit.
         async def _prewarm_cost_caches() -> None:
             await asyncio.sleep(2)  # let other startup tasks settle
@@ -2481,7 +2481,7 @@ def create_app() -> FastAPI:
                 from app.modules.costs.service import CostItemService
 
                 async with _cost_sf() as cost_session:
-                    # 1) Distinct region list — drives the tab bar on /costs
+                    # 1) Distinct region list - drives the tab bar on /costs
                     #    and the modal's region picker.
                     r = await cost_session.execute(
                         select(distinct(CostItem.region))
@@ -2492,7 +2492,7 @@ def create_app() -> FastAPI:
                     regions = sorted(row[0] for row in r.all())
                     _region_cache["regions"] = regions
 
-                    # 2) Per-region item-count stats — drives the count badge
+                    # 2) Per-region item-count stats - drives the count badge
                     #    on each region tab.
                     s = await cost_session.execute(
                         select(
@@ -2507,7 +2507,7 @@ def create_app() -> FastAPI:
                     )
                     _region_cache["stats"] = [{"region": row[0], "count": row[1]} for row in s.all()]
 
-                    # 3) Distinct top-level categories — drives the category
+                    # 3) Distinct top-level categories - drives the category
                     #    filter dropdown. Warm the all-regions list (the
                     #    page's default before any region tab is clicked).
                     coll_expr = CostItem.classification["collection"].as_string()
@@ -2551,7 +2551,7 @@ def create_app() -> FastAPI:
         # due, renders each one via the existing generate_report path,
         # then advances ``next_run_at`` using the stored cron expression.
         # Deliberately uses the same asyncio-based loop as the KPI
-        # scheduler (not Celery) to keep the single-process footprint —
+        # scheduler (not Celery) to keep the single-process footprint -
         # the architecture guide "LIGHTWEIGHT & SIMPLE".
         async def _reports_scheduler() -> None:
             from datetime import UTC
@@ -2576,7 +2576,7 @@ def create_app() -> FastAPI:
                         for template in due:
                             if template.project_id_scope is None:
                                 # Portfolio reports need cross-project
-                                # context we don't have yet — pause so
+                                # context we don't have yet - pause so
                                 # the worker doesn't busy-loop.
                                 template.is_scheduled = False
                                 template.next_run_at = None
@@ -2679,7 +2679,7 @@ def create_app() -> FastAPI:
 
         # NOTE: frontend static mounting moved to create_app() (below, before
         # the startup event runs). Registering the SPA 404 exception handler
-        # here (inside the startup lifespan) is TOO LATE — Starlette has
+        # here (inside the startup lifespan) is TOO LATE - Starlette has
         # already built the ExceptionMiddleware by the time lifespan.startup
         # fires, and the middleware captures a COPY of app.exception_handlers
         # at build time.  Subsequent modifications to app.exception_handlers
@@ -2734,7 +2734,7 @@ def create_app() -> FastAPI:
     # SPA 404 exception handler is already in app.exception_handlers when
     # Starlette builds the ExceptionMiddleware on the first lifespan message.
     # (If this runs inside on_event("startup"), the handler is never wired up
-    # and the SPA 404 fallback silently does nothing — see comment above.)
+    # and the SPA 404 fallback silently does nothing - see comment above.)
     #
     # Exception handlers are independent of routes, so it is safe to register
     # this before module routers are mounted: the handler only fires for
@@ -2744,7 +2744,7 @@ def create_app() -> FastAPI:
             from app.cli_static import mount_frontend
 
             mount_frontend(app)
-        except Exception as exc:  # noqa: BLE001 — frontend is optional
+        except Exception as exc:  # noqa: BLE001 - frontend is optional
             logger.warning("Frontend mount skipped: %s", exc)
 
     return app

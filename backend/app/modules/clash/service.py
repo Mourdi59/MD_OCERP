@@ -5,17 +5,17 @@ Three-phase, mathematically-exact narrow phase over **real triangle
 meshes** (faces → vertices) supplied by
 :class:`app.modules.clash.geometry.ClashGeometryProvider`:
 
-1. **Broad phase** — uniform spatial hash (grid) over per-element world
+1. **Broad phase** - uniform spatial hash (grid) over per-element world
    AABBs so only elements sharing a cell are pair-tested: O(n) buckets
    instead of O(n²). When real GLB geometry is available the AABBs come
    from the actual mesh extents; otherwise we fall back to the canonical
    ``oe_bim_element.bounding_box`` (DDC cad2data) so a model with no GLB
    still produces a (coarser, bbox-grade) result.
-2. **Mid phase** — Oriented-Bounding-Box Separating Axis Theorem
+2. **Mid phase** - Oriented-Bounding-Box Separating Axis Theorem
    (15 candidate axes: 3+3 face normals + 9 edge cross products). A pure
    quick reject that culls the vast majority of AABB candidates before
    the expensive triangle test, with zero false negatives.
-3. **Narrow phase** — pure-numpy, fully-vectorised **Möller (1997)
+3. **Narrow phase** - pure-numpy, fully-vectorised **Möller (1997)
    triangle–triangle intersection** between the two elements' real
    triangles. A pair is a HARD clash iff at least one triangle pair
    actually intersects *and* the geometry-derived penetration estimate
@@ -30,7 +30,7 @@ Reference for the triangle test:
     is used; coplanar pairs fall back to the 2-D edge/containment test
     of the same paper.
 
-No IfcOpenShell, no native IFC — geometry is GLB triangles produced by
+No IfcOpenShell, no native IFC - geometry is GLB triangles produced by
 the DDC pipeline, or the canonical bbox fallback (the architecture guide §3).
 """
 
@@ -84,7 +84,7 @@ from app.modules.clash.schemas import (
 
 try:  # The geometry loader is a sibling module; tolerate its absence.
     from app.modules.clash.geometry import ClashGeometryProvider, ElementGeom
-except Exception:  # noqa: BLE001 — fall back to a structural stub for tests
+except Exception:  # noqa: BLE001 - fall back to a structural stub for tests
     ClashGeometryProvider = None  # type: ignore[assignment,misc]
     ElementGeom = None  # type: ignore[assignment,misc]
 
@@ -104,7 +104,7 @@ _MAX_TRIS_PER_ELEMENT = 4000
 # Numeric epsilon for the Möller plane / interval tests (metres scale).
 _EPS = 1e-9
 
-# Sentinel for "caller did not pass a precomputed value" — distinct from
+# Sentinel for "caller did not pass a precomputed value" - distinct from
 # ``None`` which legitimately means "this element has no usable mesh".
 _UNSET: object = object()
 
@@ -211,7 +211,7 @@ def _signature(a_stable_id: str, b_stable_id: str, clash_type: str) -> str:
     ``sha1(min(a,b)|max(a,b)|clash_type)[:16]`` over the two stable ids.
     Order-independent (the pair {A,B} hashes the same regardless of which
     element the engine put first), so the same physical interference gets
-    the same signature across re-runs — that is the join key the
+    the same signature across re-runs - that is the join key the
     run-to-run comparison and triage carry-forward rely on.
     """
     a = a_stable_id or ""
@@ -223,7 +223,7 @@ def _signature(a_stable_id: str, b_stable_id: str, clash_type: str) -> str:
 
 # ── Smart-issue signature (v41) ─────────────────────────────────────────
 
-# Default spatial grid in millimetres for ``ClashRun.spatial_grid_mm`` —
+# Default spatial grid in millimetres for ``ClashRun.spatial_grid_mm`` -
 # coarse enough to absorb sub-mm geometry drift on re-runs but fine
 # enough that a real geometry change (moving a pipe by half a metre)
 # hashes to a fresh issue. Tweakable per-run on the model.
@@ -334,14 +334,14 @@ _SEVERITY_BUMP_NEXT: dict[str, str] = {
 }
 
 
-# ── Wave A4 — rules / clusters / FP feedback ─────────────────────────────
+# ── Wave A4 - rules / clusters / FP feedback ─────────────────────────────
 
 # Minimum false-positive count on a single discipline pair before the
 # rule-suggestion endpoint will recommend an automatic tolerance bump.
 # Tuned conservatively: a one-off FP is noise, but three on the same
 # pair is a coordination signal worth surfacing.
 _FP_SUGGESTION_THRESHOLD = 3
-# Cluster pass safety cap — DBSCAN is O(n²) in the worst case (no
+# Cluster pass safety cap - DBSCAN is O(n²) in the worst case (no
 # spatial index), and a coordination run can produce tens of thousands
 # of clashes. Above this point we no-op the clustering and leave every
 # row at ``cluster_id=NULL`` rather than spending unbounded CPU.
@@ -358,14 +358,14 @@ def _apply_rules(run: object, pair: tuple[str, str]) -> dict | None:
     """Find the matching rule for a discipline pair, or ``None``.
 
     ``pair`` is ``(discipline_a, discipline_b)`` from a candidate clash
-    pair — symmetric, so ``(A, B)`` and ``(B, A)`` both match a rule
+    pair - symmetric, so ``(A, B)`` and ``(B, A)`` both match a rule
     declared for ``(A, B)``. Disabled rules are skipped. The *first*
     enabled match in the run's ``rules`` list wins (the rule editor
     preserves user order, so "more specific" rows naturally sort to
     the top by author convention).
 
     Returns the raw rule dict (or ``None``) so callers don't depend on
-    the Pydantic schema — keeps this fully testable without instantiating
+    the Pydantic schema - keeps this fully testable without instantiating
     :class:`ClashRule`. Defensive: any malformed rule entry is skipped,
     never crashes.
     """
@@ -396,11 +396,11 @@ def _label_for_cluster(members: list[object], cluster_id: int) -> str:
     Picks the most common discipline pair across the cluster's members
     and appends the most common storey (when known). Examples:
 
-        "MEP × Structural — Level 3"
+        "MEP × Structural - Level 3"
         "Architectural × Architectural"   (intra-discipline cluster)
         "Cluster 7"                       (no usable members)
 
-    Pure function over the member rows — used both at write time
+    Pure function over the member rows - used both at write time
     (engine path) and as the fallback for ad-hoc relabelling.
     """
     if not members:
@@ -431,7 +431,7 @@ def _label_for_cluster(members: list[object], cluster_id: int) -> str:
     label = f"{top_pair[0]} × {top_pair[1]}"
     if storey_counts:
         top_storey = max(storey_counts, key=lambda s: (storey_counts[s], -s))
-        label += f" — Level {top_storey}"
+        label += f" - Level {top_storey}"
     return label[:255]
 
 
@@ -443,7 +443,7 @@ def _dbscan_cluster(
     """Hand-rolled DBSCAN over 3-D centroids → cluster id per point.
 
     Returns a parallel list of ``cluster_id``s (1-based) or ``None`` for
-    DBSCAN noise. Pure Python, no sklearn — uses O(n²) neighbourhood
+    DBSCAN noise. Pure Python, no sklearn - uses O(n²) neighbourhood
     scans capped by :data:`_MAX_CLUSTER_RESULTS`. Above the cap every
     point becomes ``None`` (graceful no-op): the cluster column simply
     stays unset and the chip group renders empty.
@@ -466,7 +466,7 @@ def _dbscan_cluster(
         min_samples = 1
     eps_sq = float(eps_m) * float(eps_m)
 
-    # O(n²) neighbourhood scan — explicit upper-bound by the cap above.
+    # O(n²) neighbourhood scan - explicit upper-bound by the cap above.
     # Each entry is a list of neighbour indices (inclusive of self).
     neighbours: list[list[int]] = [[] for _ in range(n)]
     for i in range(n):
@@ -490,7 +490,7 @@ def _dbscan_cluster(
         visited[i] = True
         nbrs = neighbours[i]
         if len(nbrs) < min_samples:
-            # Not core — leave as noise; may still get absorbed later by
+            # Not core - leave as noise; may still get absorbed later by
             # a neighbouring core point's BFS.
             continue
         cluster_id += 1
@@ -505,7 +505,7 @@ def _dbscan_cluster(
                 visited[k] = True
                 k_nbrs = neighbours[k]
                 if len(k_nbrs) >= min_samples:
-                    # k is also core — extend the frontier.
+                    # k is also core - extend the frontier.
                     for kn in k_nbrs:
                         if labels[kn] is None and kn not in queue:
                             queue.append(kn)
@@ -527,7 +527,7 @@ def _suggest_rule_from_fps(
     pair's tolerance just past the largest observed FP penetration (so
     the same geometric near-misses no longer trip the engine), with a
     safe floor and ceiling. ``fp_count = 0`` and ``rule = None`` when no
-    pair has enough signal — the UI then hides the suggestion banner.
+    pair has enough signal - the UI then hides the suggestion banner.
     """
     if not fp_pairs:
         return None, "", 0
@@ -554,12 +554,12 @@ def _suggest_rule_from_fps(
         "severity_override": None,
         "enabled": True,
     }
-    reason = f"{top_count} false positives on {top_pair[0]} × {top_pair[1]} — widen tolerance to {proposed_tol:g} m"
+    reason = f"{top_count} false positives on {top_pair[0]} × {top_pair[1]} - widen tolerance to {proposed_tol:g} m"
     return rule, reason, top_count
 
 
 def _coerce_rules(rules: object) -> list[dict]:
-    """Defensive normaliser — return only dict rule entries.
+    """Defensive normaliser - return only dict rule entries.
 
     The ``rules`` column is plain JSON, so a misbehaving caller could
     insert non-dict noise. The router exposes whatever this returns, so
@@ -703,7 +703,7 @@ def _compute_kpi(rows: list[ClashResult]) -> dict:
 
     One pass over the row list. ``top_clashing_pairs`` is the top five
     discipline pairs by ``count`` (open_count desc, then pair alphabetic
-    on ties — deterministic).
+    on ties - deterministic).
     """
     total = len(rows)
     by_status: dict[str, int] = {}
@@ -738,7 +738,7 @@ def _compute_kpi(rows: list[ClashResult]) -> dict:
                 "open_share": round(share, 4),
             }
         )
-    # Top five by count desc, open_count desc, pair alphabetic — stable.
+    # Top five by count desc, open_count desc, pair alphabetic - stable.
     top_pairs = sorted(
         by_pair_full,
         key=lambda p: (-p["count"], -p["open_count"], p["a"], p["b"]),
@@ -757,7 +757,7 @@ def _compute_kpi(rows: list[ClashResult]) -> dict:
 def _severity_suggestion(clash_type: str, penetration_m: float, base: str) -> str | None:
     """Wave A2 advisory bump for deep hard clashes (pure annotation).
 
-    The engine-assigned ``severity`` stays the source of truth — this is
+    The engine-assigned ``severity`` stays the source of truth - this is
     a non-authoritative ``meta['severity_suggestion']`` the UI surfaces
     as a "Suggested: …" chip the user can act on. Triggers when a hard
     clash interpenetrates more than 0.10 m AND the base severity has
@@ -775,9 +775,9 @@ def _severity_suggestion(clash_type: str, penetration_m: float, base: str) -> st
 def _severity_for(clash_type: str, penetration_m: float, distance_m: float, clearance_m: float) -> str:
     """Geometry-derived triage urgency.
 
-    Hard clash — keyed off interpenetration depth (deeper = worse):
+    Hard clash - keyed off interpenetration depth (deeper = worse):
     ``>= 0.10 m`` critical, ``>= 0.03 m`` high, ``>= 0.005 m`` medium,
-    else low. Clearance clash — keyed off the gap-to-threshold ratio
+    else low. Clearance clash - keyed off the gap-to-threshold ratio
     ``g/c`` (a clearance violation is never *critical*): ``<= 0.25``
     high, ``<= 0.50`` medium, else low. ``clearance_m <= 0`` is guarded
     (degrades to ``medium``) so a bad config never raises here.
@@ -791,7 +791,7 @@ def _severity_for(clash_type: str, penetration_m: float, distance_m: float, clea
         if p >= 0.005:
             return "medium"
         return "low"
-    # clearance — proximity violation, never critical.
+    # clearance - proximity violation, never critical.
     c = clearance_m
     if c <= 0:
         return "medium"
@@ -847,7 +847,7 @@ def _discipline_of(element: object) -> str:
         from app.modules.bim_hub.ifc_processor import _classify_discipline
 
         return _classify_discipline(getattr(element, "element_type", "") or "").capitalize()
-    except Exception:  # noqa: BLE001 — classification is best-effort
+    except Exception:  # noqa: BLE001 - classification is best-effort
         return "Unassigned"
 
 
@@ -872,7 +872,7 @@ def _category_of(element: object) -> str:
 
 
 def _ifc_entity_of(element: object) -> str:
-    """Raw IFC entity (``IfcWall``…) — empty for non-IFC elements."""
+    """Raw IFC entity (``IfcWall``…) - empty for non-IFC elements."""
     props = getattr(element, "properties", None) or {}
     for key in ("ifc_type", "ifc_entity", "IfcEntity"):
         v = props.get(key)
@@ -887,9 +887,9 @@ def _system_of(element: object) -> str:
     Prefers an explicit MEP system property (``system`` / ``System`` /
     ``system_name`` / IFC ``Pset_*System``), then falls back to the
     family / type name a Revit / DDC element carries. Returns ``""`` when
-    the element has no usable system metadata — the grouping selector
+    the element has no usable system metadata - the grouping selector
     then hides the ``discipline_system`` dimension (graceful degradation).
-    Item #23 — snapshotted onto :class:`ClashResult.a_element_system`.
+    Item #23 - snapshotted onto :class:`ClashResult.a_element_system`.
     """
     props = getattr(element, "properties", None) or {}
     if not isinstance(props, dict):
@@ -918,7 +918,7 @@ def _system_of(element: object) -> str:
 def _property_value_of(element: object, key: str) -> str | None:
     """An element's scalar ``properties[key]`` as a trimmed string.
 
-    Returns ``None`` when the element has no usable value for ``key`` —
+    Returns ``None`` when the element has no usable value for ``key`` -
     missing/None ``properties``, key absent, or a non-scalar
     (dict/list) value. Never raises.
     """
@@ -939,7 +939,7 @@ def _in_set(element: object, etype: str, disc: str, spec: dict | None) -> bool:
     {key: [...]}}``. Every list (and every per-property value list) is a
     *union*: every chip the user adds widens the set, so an element
     matches when its ``element_type``, ``discipline``, source-native
-    category, IFC entity **or** — for ANY key in ``properties`` — its
+    category, IFC entity **or** - for ANY key in ``properties`` - its
     string-coerced/trimmed ``properties[key]`` is listed. The extra
     lists/maps let the picker facet by any grouping parameter while the
     engine still resolves membership to real elements. An empty /
@@ -1001,7 +1001,7 @@ def _triangles(geom: object) -> np.ndarray | None:
         return None
     tris = v[f]  # (T,3,3)
 
-    # Discard zero-area (degenerate / collinear) triangles — they cannot
+    # Discard zero-area (degenerate / collinear) triangles - they cannot
     # bound a volume and break the Möller plane test.
     e1 = tris[:, 1] - tris[:, 0]
     e2 = tris[:, 2] - tris[:, 0]
@@ -1041,12 +1041,12 @@ def _obb_sat_overlap(
     a: tuple[np.ndarray, np.ndarray, np.ndarray],
     b: tuple[np.ndarray, np.ndarray, np.ndarray],
 ) -> bool:
-    """OBB–OBB Separating Axis Theorem (15 axes) — True iff *not* separated.
+    """OBB–OBB Separating Axis Theorem (15 axes) - True iff *not* separated.
 
     Classic Gottschalk SAT: 3 A-face axes, 3 B-face axes, 9 edge×edge
     cross products. A small epsilon is added to the cross-product test to
     absorb the near-parallel-edge degeneracy. This is a conservative
-    quick *reject* — a False guarantees disjoint OBBs (and therefore
+    quick *reject* - a False guarantees disjoint OBBs (and therefore
     disjoint meshes); a True only means "cannot rule out".
     """
     ca, ax_a, ha = a
@@ -1057,20 +1057,20 @@ def _obb_sat_overlap(
     abs_r = np.abs(r) + 1e-12
     t_a = ax_a @ t
 
-    # 3 axes — faces of A.
+    # 3 axes - faces of A.
     for i in range(3):
         ra = ha[i]
         rb = hb[0] * abs_r[i, 0] + hb[1] * abs_r[i, 1] + hb[2] * abs_r[i, 2]
         if abs(t_a[i]) > ra + rb:
             return False
-    # 3 axes — faces of B.
+    # 3 axes - faces of B.
     t_b = ax_b @ t
     for j in range(3):
         ra = ha[0] * abs_r[0, j] + ha[1] * abs_r[1, j] + ha[2] * abs_r[2, j]
         rb = hb[j]
         if abs(t_b[j]) > ra + rb:
             return False
-    # 9 axes — edge cross products A_i × B_j.
+    # 9 axes - edge cross products A_i × B_j.
     for i in range(3):
         i1, i2 = (i + 1) % 3, (i + 2) % 3
         for j in range(3):
@@ -1150,14 +1150,14 @@ def _tri_tri_intersect_mask(A: np.ndarray, B: np.ndarray) -> np.ndarray:
     scale and of floating-point summation order (deterministic across
     numpy builds / platforms). ``_interval_overlap`` consumes only
     per-triangle distance *ratios*, so this per-triangle rescale leaves
-    the interval test bit-identical — it changes only the (now correct)
+    the interval test bit-identical - it changes only the (now correct)
     sign / coplanar / reject decision.
 
     An exact per-triangle AABB prefilter runs first: two triangles whose
     axis-aligned boxes are disjoint provably cannot intersect, so the
     (normalised) Möller test would reject them anyway. Only the
     AABB-overlapping candidate pairs therefore have their signed
-    distances / interval test computed — this avoids materialising the
+    distances / interval test computed - this avoids materialising the
     dense ``(na, nb, 3)`` distance tensors for the (usually vast)
     majority of non-overlapping pairs, cutting the dominant cost and
     bounding peak memory, while remaining consistent with the normalised
@@ -1374,7 +1374,7 @@ def _min_mesh_distance(A: np.ndarray, B: np.ndarray) -> tuple[float, np.ndarray,
     Symmetric: every vertex of A is tested against every triangle of B
     and vice-versa, returning the smallest distance plus the closest
     point pair (for the clash centroid). This is a *measured* surface
-    gap — not a bounding-box gap — so a clearance result reflects the
+    gap - not a bounding-box gap - so a clearance result reflects the
     true free space between the two solids.
     """
     vA = A.reshape(-1, 3)
@@ -1445,7 +1445,7 @@ def _penetration_depth(A: np.ndarray, B: np.ndarray, mask: np.ndarray) -> tuple[
     Collect the vertices of every triangle pair flagged intersecting,
     take the overlap extent of the two intersecting-vertex point sets
     along each world axis, and return the **minimum** axis overlap (the
-    shallowest direction you'd have to separate the solids — the same
+    shallowest direction you'd have to separate the solids - the same
     "tightest axis" semantics the bbox engine used, but now derived from
     real intersecting geometry rather than whole-element AABBs). The
     second value is the centroid of those intersecting vertices.
@@ -1462,7 +1462,7 @@ def _penetration_depth(A: np.ndarray, B: np.ndarray, mask: np.ndarray) -> tuple[
     lo = np.maximum(pa.min(axis=0), pb.min(axis=0))
     hi = np.minimum(pa.max(axis=0), pb.max(axis=0))
     # Per-axis overlap of the two intersecting-vertex point sets, clamped
-    # at 0 (a negative means the sets are disjoint on that axis — no
+    # at 0 (a negative means the sets are disjoint on that axis - no
     # penetration contribution there). The penetration depth is the
     # *minimum* axis overlap: the shallowest direction along which the
     # solids would have to be separated. For a coincident-face touch the
@@ -1529,7 +1529,7 @@ class ClashService:
             set_b = data.set_b.model_dump()
 
         name = (data.name or "").strip() or (f"Clash run {_now():%Y-%m-%d %H:%M}")
-        # Wave A4 — initial rule set carried straight from the request.
+        # Wave A4 - initial rule set carried straight from the request.
         # The engine consults the (possibly empty) list during the broad
         # phase; the rule editor endpoints (PATCH /rules) can mutate it
         # post-hoc without re-running the engine.
@@ -1566,14 +1566,14 @@ class ClashService:
             run.element_count = len(elements)
             run.total_clashes = len(results)
             run.summary = _build_summary(results)
-            # Wave A4 — spatial cluster pass over centroids. Pure
+            # Wave A4 - spatial cluster pass over centroids. Pure
             # write-only: failures degrade to "no clusters" rather than
             # failing the whole run.
             try:
                 await self._persist_clusters(run, results)
-            except Exception:  # noqa: BLE001 — clustering is best-effort
+            except Exception:  # noqa: BLE001 - clustering is best-effort
                 logger.exception("Clash run %s cluster pass failed", run.id)
-            # v41 — smart-issue upsert + finalize. Best-effort: failures
+            # v41 - smart-issue upsert + finalize. Best-effort: failures
             # leave the run rows in place but skip the smart-issue write.
             try:
                 await self.session.flush()
@@ -1583,11 +1583,11 @@ class ClashService:
                 run.status = "completed"
                 run.completed_at = _now()
                 await self.finalize_run(run)
-            except Exception:  # noqa: BLE001 — smart issues are best-effort
+            except Exception:  # noqa: BLE001 - smart issues are best-effort
                 logger.exception("Clash run %s smart-issue upsert failed", run.id)
                 run.status = "completed"
                 run.completed_at = _now()
-        except Exception as exc:  # noqa: BLE001 — surface, don't 500 the run
+        except Exception as exc:  # noqa: BLE001 - surface, don't 500 the run
             logger.exception("Clash run %s failed", run.id)
             run.status = "failed"
             run.error = f"{type(exc).__name__}: {exc}"[:2000]
@@ -1623,7 +1623,7 @@ class ClashService:
         for mid in model_ids:
             try:
                 part = await provider.load(self.session, mid)
-            except Exception:  # noqa: BLE001 — degrade to bbox for this model
+            except Exception:  # noqa: BLE001 - degrade to bbox for this model
                 logger.exception("Geometry load failed for model %s", mid)
                 continue
             if part:
@@ -1636,11 +1636,11 @@ class ClashService:
         Find the most recent *completed* run of this project that shares
         a model with the new run; for every new result whose
         ``signature`` matches a prior result's, copy forward the human
-        triage state — ``status`` (unless the prior was still ``new``),
+        triage state - ``status`` (unless the prior was still ``new``),
         ``assigned_to``, ``due_date`` and ``comments`` (prior comments
         are *prepended*, oldest-context-first). Fully defensive: any
         missing prior run / result / malformed payload simply skips
-        carry-forward for that row — it never breaks the new run.
+        carry-forward for that row - it never breaks the new run.
         """
         try:
             prior_run = await self.repo.latest_prior_completed_run(
@@ -1651,12 +1651,12 @@ class ClashService:
             if prior_run is None:
                 return
             prior_rows = await self.repo.all_results(prior_run.id)
-        except Exception:  # noqa: BLE001 — carry-forward is best-effort
+        except Exception:  # noqa: BLE001 - carry-forward is best-effort
             logger.exception("Clash carry-forward lookup failed for run %s", run.id)
             return
 
         # Index prior rows by signature. On the (rare) signature collision
-        # within one run keep the first — deterministic, order is the
+        # within one run keep the first - deterministic, order is the
         # repository's stable query order.
         by_sig: dict[str, ClashResult] = {}
         for pr in prior_rows:
@@ -1682,7 +1682,7 @@ class ClashService:
                 prior_comments = list(getattr(prior, "comments", None) or [])
                 if prior_comments:
                     r.comments = prior_comments + list(r.comments or [])
-                # Wave A3 — carry watchers + audit log across re-runs so
+                # Wave A3 - carry watchers + audit log across re-runs so
                 # subscriptions and history survive the engine rerun.
                 prior_watchers = list(getattr(prior, "watchers", None) or [])
                 if prior_watchers:
@@ -1690,7 +1690,7 @@ class ClashService:
                 prior_history = list(getattr(prior, "history", None) or [])
                 if prior_history:
                     r.history = prior_history
-            except Exception:  # noqa: BLE001 — skip just this row
+            except Exception:  # noqa: BLE001 - skip just this row
                 logger.exception("Clash carry-forward failed for signature %s", sig)
                 continue
 
@@ -1773,7 +1773,7 @@ class ClashService:
         grid_mm: int = _DEFAULT_SPATIAL_GRID_MM,
         weak_fallback: tuple[str, str, list[str]] | None = None,
     ) -> tuple[str, str]:
-        """Public, stateless signature computation — see :func:`_compute_signature_hash`.
+        """Public, stateless signature computation - see :func:`_compute_signature_hash`.
 
         Exposed on the service so callers and tests don't reach into the
         private helper. Returns ``(signature_hash, quality)``.
@@ -1818,7 +1818,7 @@ class ClashService:
         if not sig:
             raise ValueError("ClashResult.signature_hash must be set before upsert")
         # Suppressed signatures resolve to an ignored issue and never
-        # surface as new — but we still link the row so the UI can
+        # surface as new - but we still link the row so the UI can
         # explain why the clash is suppressed.
         suppressed = await self.repo.get_suppression(run.project_id, sig)
         existing = await self.repo.get_issue_by_signature(run.project_id, sig)
@@ -1839,7 +1839,7 @@ class ClashService:
             await self.session.flush()
             clash.issue_id = issue.id
             return issue
-        # Hit — bump last_seen + reset missing count + transition status.
+        # Hit - bump last_seen + reset missing count + transition status.
         existing.last_seen_run_id = run.id
         existing.missing_run_count = 0
         if suppressed is not None:
@@ -1848,14 +1848,14 @@ class ClashService:
         else:
             prior_status = existing.status or "new"
             if prior_status in ("resolved", "archived"):
-                # Reopen — the signature came back.
+                # Reopen - the signature came back.
                 existing.status = "persisted"
                 existing.resolved_run_id = None
             elif prior_status == "new":
                 # Second-or-later sighting → persisted.
                 existing.status = "persisted"
             elif prior_status == "ignored":
-                # Suppression must have been lifted between runs — flip
+                # Suppression must have been lifted between runs - flip
                 # back to persisted so coordination can see it again.
                 existing.status = "persisted"
             # ``persisted`` stays ``persisted``.
@@ -1876,7 +1876,7 @@ class ClashService:
         consecutive runs flip ``resolved`` → ``archived``. Suppressed
         issues are untouched (they stay ``ignored``).
 
-        Idempotent on the same run — calling twice produces the same
+        Idempotent on the same run - calling twice produces the same
         terminal state.
         """
         current_sigs = await self.repo.signatures_present_in_run(run.id)
@@ -1890,7 +1890,7 @@ class ClashService:
                 issue.status = "ignored"
                 continue
             if sig in current_sigs:
-                # Present this run — the upsert path already moved the
+                # Present this run - the upsert path already moved the
                 # status forward, nothing else to do here.
                 continue
             # Absent this run.
@@ -1913,7 +1913,7 @@ class ClashService:
     ) -> ClashSuppression:
         """Suppress a signature for a project + flip matching issues to ``ignored``.
 
-        Idempotent — repeating the call updates the existing suppression's
+        Idempotent - repeating the call updates the existing suppression's
         reason / user but does not create a duplicate row.
         """
         sig = (signature_hash or "").strip()
@@ -1958,7 +1958,7 @@ class ClashService:
         self,
         project_id: uuid.UUID,
         signature_hash: str,
-        user_id: uuid.UUID | str | None,  # noqa: ARG002 — kept for audit symmetry
+        user_id: uuid.UUID | str | None,  # noqa: ARG002 - kept for audit symmetry
     ) -> bool:
         """Remove a suppression + flip matching ``ignored`` issues back to ``persisted``.
 
@@ -1975,7 +1975,7 @@ class ClashService:
         if existing is None:
             return False
         await self.repo.delete_suppression(existing)
-        # Flip the matching issue (if any) back to ``persisted`` — the
+        # Flip the matching issue (if any) back to ``persisted`` - the
         # signature is once again "live" coordination work.
         matching = await self.repo.get_issue_by_signature(project_id, sig)
         if matching is not None and matching.status == "ignored":
@@ -2016,7 +2016,7 @@ class ClashService:
         await self.unsuppress(project_id, issue.signature_hash, user_id)
         return issue
 
-    # TODO: expose via bulk endpoint — router.py is in flight with
+    # TODO: expose via bulk endpoint - router.py is in flight with
     # another agent, so the service method is shipped on its own and
     # wired up in a follow-up patch.
     async def bulk_suppress(
@@ -2028,7 +2028,7 @@ class ClashService:
     ) -> dict:
         """Suppress many :class:`ClashIssue` rows in a single transaction.
 
-        Atomic — either every authorized issue flips to ``ignored`` and
+        Atomic - either every authorized issue flips to ``ignored`` and
         gains a :class:`ClashSuppression` row, or nothing does (the
         caller's request-scoped session is rolled back on any error).
 
@@ -2036,7 +2036,7 @@ class ClashService:
         dropped (the same defensive pattern as the single-issue path);
         the result's ``skipped_ids`` lists them so the caller can surface
         a structured warning. Idempotent: an issue already covered by a
-        suppression row gets its ``reason`` updated in place — no duplicate
+        suppression row gets its ``reason`` updated in place - no duplicate
         rows and the audit trail still records the re-suppression.
 
         Empty ``issue_ids`` → returns the zero-counts envelope, never raises.
@@ -2061,7 +2061,7 @@ class ClashService:
                 detail="reason is required",
             )
 
-        # Empty input is a legal no-op — the UI can wire an "Apply to
+        # Empty input is a legal no-op - the UI can wire an "Apply to
         # selected" button without first checking the selection length.
         if not issue_ids:
             return {
@@ -2071,7 +2071,7 @@ class ClashService:
                 "skipped_count": 0,
             }
 
-        # De-duplicate while preserving order — the audit trail entries
+        # De-duplicate while preserving order - the audit trail entries
         # below are emitted once per issue, never twice for a repeat id.
         seen: set[uuid.UUID] = set()
         unique_ids: list[uuid.UUID] = []
@@ -2081,7 +2081,7 @@ class ClashService:
             seen.add(iid)
             unique_ids.append(iid)
 
-        # Coerce user_id once — re-used on every audit + suppression row.
+        # Coerce user_id once - re-used on every audit + suppression row.
         uid: uuid.UUID | None = None
         if user_id is not None:
             try:
@@ -2090,7 +2090,7 @@ class ClashService:
                 uid = None
 
         # IDOR gate: load only project-scoped rows. Anything missing is
-        # an unauthorized / vanished id — reported back in ``skipped_ids``
+        # an unauthorized / vanished id - reported back in ``skipped_ids``
         # so the UI never silently swallows a typo'd selection.
         authorized = await self.repo.get_issues_by_ids(project_id, unique_ids)
         authorized_by_id: dict[uuid.UUID, ClashIssue] = {i.id: i for i in authorized}
@@ -2108,7 +2108,7 @@ class ClashService:
             sig = (issue.signature_hash or "").strip()
             if not sig:
                 # Defensive: an issue without a signature hash can't be
-                # suppressed (the suppression key IS the signature) — skip
+                # suppressed (the suppression key IS the signature) - skip
                 # it as if it had been unauthorized so the count is honest.
                 skipped.append(issue.id)
                 continue
@@ -2134,7 +2134,7 @@ class ClashService:
 
             # Audit trail: fan out to every result row attached to this
             # issue so the per-clash Activity tab reflects the bulk op.
-            from sqlalchemy import select as _select  # local import — see note
+            from sqlalchemy import select as _select  # local import - see note
 
             res_stmt = _select(ClashResult).where(ClashResult.issue_id == issue.id)
             for r in (await self.session.execute(res_stmt)).scalars().all():
@@ -2217,11 +2217,11 @@ class ClashService:
                 # Reopened: issue resurfaced after a resolved/archived spell
                 # and is now persisted. We detect this via resolved_run_id
                 # being non-null (set on the resolution diff, cleared on
-                # next reopen) — but the upsert clears it on the reopen, so
+                # next reopen) - but the upsert clears it on the reopen, so
                 # we approximate via ``missing_run_count``: any issue
                 # whose missing count was > 0 just before this run is a
                 # reopen. The upsert resets it to 0, so we infer via the
-                # history of the previous run: simpler heuristic — count
+                # history of the previous run: simpler heuristic - count
                 # an issue as reopened when its first_seen_run_id is older
                 # than the previous run but it was *not* present in that
                 # previous run.
@@ -2229,7 +2229,7 @@ class ClashService:
                     reopened += 1
             else:
                 # Present this run, not present in prev_sigs, but not
-                # first-seen this run — that's a reopen.
+                # first-seen this run - that's a reopen.
                 if prev_run is not None and str(issue.first_seen_run_id) != str(run_id):
                     reopened += 1
         # Resolved: count of issues whose resolved_run_id == run_id (the
@@ -2461,7 +2461,7 @@ class ClashService:
         Pure side-effect over the result rows + the ``oe_clash_cluster``
         table. Skipped when there are fewer than two results (a single
         clash is never a "cluster"). The cluster pass is wrapped in a
-        broad ``except`` by the caller — every failure mode here
+        broad ``except`` by the caller - every failure mode here
         (degenerate centroids, DBSCAN cap, write error) leaves
         ``cluster_id`` columns at ``NULL`` and the chip group simply
         renders empty.
@@ -2474,7 +2474,7 @@ class ClashService:
         points = [(float(r.cx or 0.0), float(r.cy or 0.0), float(r.cz or 0.0)) for r in results]
         labels = _dbscan_cluster(points)
         # Group members by label so we can persist one ClashCluster per
-        # bucket. ``None`` is DBSCAN noise — no row, no chip.
+        # bucket. ``None`` is DBSCAN noise - no row, no chip.
         buckets: dict[int, list[ClashResult]] = {}
         for r, cid in zip(results, labels, strict=False):
             r.cluster_id = cid
@@ -2500,7 +2500,7 @@ class ClashService:
         """Return ``[{cluster_id, label, size, dominant_disciplines, storey}]``.
 
         ``dominant_disciplines`` and ``storey`` are derived from the
-        cluster's member rows (a single pass — no per-cluster DB query).
+        cluster's member rows (a single pass - no per-cluster DB query).
         IDOR-guarded via :meth:`get_run`.
         """
         await self.get_run(project_id, run_id)
@@ -2545,7 +2545,7 @@ class ClashService:
         """Replace the rule set on a run (capped at 500). Returns the saved list.
 
         Capped server-side as a defence-in-depth complement to the
-        schema's ``max_length=500`` — a misbehaving client cannot stuff
+        schema's ``max_length=500`` - a misbehaving client cannot stuff
         the run with thousands of inert rows. Reassigns the JSON column
         so SQLAlchemy detects the change across backends.
         """
@@ -2590,7 +2590,7 @@ class ClashService:
         """Append a new rule + re-evaluate existing results.
 
         Adds a fresh :class:`ClashRule` row to ``run.rules`` (symmetric on
-        the pair — duplicates against any existing pair are skipped with
+        the pair - duplicates against any existing pair are skipped with
         ``rule_added=False``). Any hard clash on the pair whose
         ``penetration_m`` now falls at or below ``tolerance_m`` is
         flipped to ``status='ignored'``, with a history entry.
@@ -2661,7 +2661,7 @@ class ClashService:
     async def compute_kpi(self, project_id: uuid.UUID, run_id: uuid.UUID) -> dict:
         """Aggregate a dashboard-ready KPI payload for a run.
 
-        Single in-memory pass over every result row — no extra DB calls
+        Single in-memory pass over every result row - no extra DB calls
         beyond the existing list-by-run query. MTTR is derived from the
         history audit trail (status→resolved transitions); ``None`` when
         no row has a qualifying transition yet (the UI hides the tile).
@@ -2718,10 +2718,10 @@ class ClashService:
         # One-time per-run mesh extraction. ``_triangles`` / ``_obb`` are
         # pure deterministic functions of an element's mesh, but in a
         # dense single-model run one element participates in dozens of
-        # candidate pairs — extracting per pair re-ran the whole triangle
+        # candidate pairs - extracting per pair re-ran the whole triangle
         # soup (index, cross-product, area filter, stable-sort decimation)
         # O(pairs) times. Doing it once per element here makes it O(n)
-        # with byte-identical output (pure memoisation — the narrow-phase
+        # with byte-identical output (pure memoisation - the narrow-phase
         # maths is untouched), which is the bulk of the runtime win.
         tri_by_idx: list[object] = [(_triangles(g) if g is not None else None) for _, _, _, g in boxes]
         obb_by_idx: list[object] = [(_obb(g) if g is not None else None) for _, _, _, g in boxes]
@@ -2758,7 +2758,7 @@ class ClashService:
         # Navisworks-style "Type" selector. ``getattr`` default keeps the
         # legacy semantics for callers (and the test fakes) that never
         # set the field: ``both`` = hard, then clearance for the non-hard
-        # pairs — exactly the historical behaviour.
+        # pairs - exactly the historical behaviour.
         ctype = str(getattr(run, "clash_type", "both") or "both")
         if ctype not in CLASH_TYPES:
             ctype = "both"
@@ -2778,7 +2778,7 @@ class ClashService:
         # ``hard`` → never run the soft proximity pass (clr forced to 0).
         # ``clearance`` → suppress the hard classification; only proximity
         # within ``clearance_m`` is reported (so clearance MUST be > 0 to
-        # find anything — same contract the UI enforces).
+        # find anything - same contract the UI enforces).
         # ``both`` → unchanged legacy pipeline.
         hard_enabled = ctype != "clearance"
         if ctype == "hard":
@@ -2810,7 +2810,7 @@ class ClashService:
                     continue
                 if dfilter is not None and frozenset((da, db)) not in dfilter:
                     continue
-                # Selection-set gating — keep iff one element is in Set A
+                # Selection-set gating - keep iff one element is in Set A
                 # and the other is in Set B (strictly cross, e.g.
                 # walls × pipes; never wall × wall).
                 if sel_a is not None:
@@ -2822,7 +2822,7 @@ class ClashService:
                     ):
                         continue
 
-                # Wave A4 — per-discipline-pair tolerance override. The
+                # Wave A4 - per-discipline-pair tolerance override. The
                 # first matching enabled rule (symmetric on the pair)
                 # swaps in its ``tolerance_m`` for the run-wide value and
                 # the result will pick up its ``severity_override``.
@@ -2904,7 +2904,7 @@ class ClashService:
         """Mid + narrow phase: classify one element pair, or ``None``.
 
         Falls back to the legacy exact-AABB classification when *either*
-        element lacks a real mesh (bbox-only model) — preserving the old
+        element lacks a real mesh (bbox-only model) - preserving the old
         behaviour for un-tessellated data while giving mesh-grade
         precision wherever GLB geometry exists.
 
@@ -2920,7 +2920,7 @@ class ClashService:
         in many candidate pairs, so :meth:`_detect` extracts each once and
         threads the cached value here. When a value is left ``_UNSET``
         (e.g. the unit tests that call this method directly) it is
-        extracted here exactly as before — the result is byte-identical
+        extracted here exactly as before - the result is byte-identical
         either way; only redundant recomputation is removed.
         """
         if triA is _UNSET:
@@ -3024,7 +3024,7 @@ class ClashService:
 
         ``hard_enabled`` mirrors :meth:`_test_pair`: when ``False``
         (a ``clash_type='clearance'`` run) an interpenetrating box pair
-        is dropped — only a true non-overlapping proximity within ``clr``
+        is dropped - only a true non-overlapping proximity within ``clr``
         is reported. Defaults ``True`` so direct callers keep the legacy
         behaviour.
         """
@@ -3038,7 +3038,7 @@ class ClashService:
         if ox > 0 and oy > 0 and oz > 0:
             # Overlapping boxes: a hard candidate. With the hard pass
             # suppressed (clearance-only run) this pair is simply not
-            # reported — an interpenetration is never a clearance hit.
+            # reported - an interpenetration is never a clearance hit.
             if not hard_enabled:
                 return None
             penetration = min(ox, oy, oz)
@@ -3124,7 +3124,7 @@ class ClashService:
         # + clash type → SHA-1. Per-run ``spatial_grid_mm`` lets a project
         # dial the precision; defaults to 500 mm.
         grid_mm = int(getattr(run, "spatial_grid_mm", None) or _DEFAULT_SPATIAL_GRID_MM)
-        # Weak-fallback inputs — only consulted when one stable_id is empty.
+        # Weak-fallback inputs - only consulted when one stable_id is empty.
         a_props = getattr(ea, "properties", None) or {}
         b_props = getattr(eb, "properties", None) or {}
         ifc_a = str(a_props.get("ifc_class") or a_props.get("category") or getattr(ea, "element_type", "") or "")
@@ -3133,7 +3133,7 @@ class ClashService:
         mat_b = str(b_props.get("material") or "")
         ifc_class_combined = f"{ifc_a}|{ifc_b}" if ifc_a or ifc_b else ""
         material_combined = f"{mat_a}|{mat_b}" if mat_a or mat_b else ""
-        # Quantity keys (deterministic) — from either props.quantities or
+        # Quantity keys (deterministic) - from either props.quantities or
         # the geometric properties keys themselves; sorted for stability.
         qty_keys: list[str] = []
         for src in (a_props, b_props):
@@ -3231,7 +3231,7 @@ class ClashService:
 
         The frontend serialises an @mention as the literal token
         ``<at>{userId}</at>`` inside the text; this is the matching
-        parser. Defensive — duplicates are de-duplicated preserving
+        parser. Defensive - duplicates are de-duplicated preserving
         first-seen order, and obvious junk (empty / whitespace) skipped.
         Never raises.
         """
@@ -3306,7 +3306,7 @@ class ClashService:
     ) -> None:
         """Fan a clash event out to recipients via the notifications module.
 
-        Best-effort — any failure (missing module, bad user id, db error)
+        Best-effort - any failure (missing module, bad user id, db error)
         is logged and swallowed; collaboration never blocks triage.
         ``actor`` is filtered out so the caller never notifies themselves.
         Duplicates are de-duplicated preserving order.
@@ -3335,7 +3335,7 @@ class ClashService:
                 action_url=f"/clash?run={run_id}&result={result_id}",
                 metadata={"project_id": str(project_id), "run_id": str(run_id)},
             )
-        except Exception:  # noqa: BLE001 — never block triage on notify
+        except Exception:  # noqa: BLE001 - never block triage on notify
             logger.info(
                 "Clash notification skipped (type=%s, result=%s)",
                 notification_type,
@@ -3518,7 +3518,7 @@ class ClashService:
         run = await self.get_run(project_id, run_id)  # IDOR + 404 guard
         actor_id = str(actor or "system")
 
-        # Validate once — a bad value fails the whole batch before any write.
+        # Validate once - a bad value fails the whole batch before any write.
         if new_status is not None and new_status not in CLASH_STATUSES:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -3648,7 +3648,7 @@ class ClashService:
         BCF guid (BCF status maps onto our ``CLASH_STATUSES`` enum, with
         unknown values left as-is so a third-party round-trip never
         corrupts our review state). Topics with no signature hit are
-        logged + counted as ``unmatched`` — they are never created here,
+        logged + counted as ``unmatched`` - they are never created here,
         because a clash is an engine-derived artefact, not a user issue.
 
         Returns ``(matched, unmatched, parse_errors)``.
@@ -3662,7 +3662,7 @@ class ClashService:
                 detail=f"Invalid BCF archive: {exc}",
             ) from exc
 
-        # Index this run's results by signature once — a federated run
+        # Index this run's results by signature once - a federated run
         # can carry tens of thousands of rows. O(N + T) instead of O(N×T).
         all_rows = await self.repo.all_results(run_id)
         by_sig: dict[str, ClashResult] = {}
@@ -3732,12 +3732,12 @@ class ClashService:
         if due is not None:
             try:
                 iso_day = due.strftime("%Y-%m-%d")
-            except Exception:  # noqa: BLE001 — never block import on date format
+            except Exception:  # noqa: BLE001 - never block import on date format
                 iso_day = None
             if iso_day and (row.due_date or None) != iso_day:
                 self._append_history(row, actor, "due_date", row.due_date, iso_day)
                 row.due_date = iso_day
-        # Append any BCF comments we haven't yet — keyed on (author|text)
+        # Append any BCF comments we haven't yet - keyed on (author|text)
         # so a re-import doesn't double up.
         existing_keys = {
             f"{(c.get('author') or '').strip()}|{(c.get('text') or '').strip()}"
@@ -3786,7 +3786,7 @@ class ClashService:
         """Best-effort human label for a comment author.
 
         Prefer the user's ``full_name``, fall back to ``email``, then to
-        the raw id, and finally ``"system"`` — never raises (mirrors the
+        the raw id, and finally ``"system"`` - never raises (mirrors the
         best-effort user lookup in the IDOR guard).
         """
         try:
@@ -3800,7 +3800,7 @@ class ClashService:
                 email = (getattr(user, "email", "") or "").strip()
                 if email:
                     return email
-        except Exception:  # noqa: BLE001 — author label is best-effort
+        except Exception:  # noqa: BLE001 - author label is best-effort
             logger.exception("Comment author lookup failed for %s", user_id)
         return str(user_id) or "system"
 
@@ -3881,9 +3881,9 @@ def _build_summary(results: list[ClashResult]) -> dict:
     Produces two coordination grids with the *identical* cell shape so
     the frontend renders them with one component:
 
-    * ``matrix`` — discipline×discipline (string keys). Correct for true
+    * ``matrix`` - discipline×discipline (string keys). Correct for true
       multi-discipline federated uploads. Untouched by the storey work.
-    * ``level_matrix`` — storey×storey (integer keys). The meaningful
+    * ``level_matrix`` - storey×storey (integer keys). The meaningful
       view for the common single-discipline intra-model run, where the
       discipline matrix collapses to a useless 1×1. Built only from
       result rows whose *both* storeys are known (non-NULL); a clash with
@@ -3966,14 +3966,14 @@ def _build_grouped_summary(results: list[ClashResult], dimension: str) -> dict:
     whether ANY clash resolved a building system, so the UI can hide the
     ``discipline_system`` option when there is nothing to show.
 
-    * ``discipline_pair`` — the flat discipline×discipline matrix (same
+    * ``discipline_pair`` - the flat discipline×discipline matrix (same
       cell shape as :func:`_build_summary`).
-    * ``level`` — one ``{key, count, open_count}`` bucket per storey
+    * ``level`` - one ``{key, count, open_count}`` bucket per storey
       index; clashes whose level is unknown fall into the ``"(no level)"``
       bucket so the totals always add up.
-    * ``level_discipline`` — a discipline×discipline matrix per storey
+    * ``level_discipline`` - a discipline×discipline matrix per storey
       (only rows whose level resolved); rendered as level tabs.
-    * ``discipline_system`` — discipline·system × discipline·system grid.
+    * ``discipline_system`` - discipline·system × discipline·system grid.
     """
     has_system_data = any(
         (getattr(r, "a_element_system", "") or "").strip() or (getattr(r, "b_element_system", "") or "").strip()

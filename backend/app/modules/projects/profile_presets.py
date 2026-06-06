@@ -1,13 +1,13 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Project-creation wizard — preset library + core/region maps.
+"""‌⁠‍Project-creation wizard - preset library + core/region maps.
 
 This is the *deterministic* layer of the profile→modules mapping. A
 preset is a named set of module folder names (the real
 ``app/modules/<name>`` ids). The scoring engine (:mod:`profile_scoring`)
 layers *recommended/optional* suggestions on top, but the preset's
 explicit set is always ``must``-tier so the result is predictable and
-testable — the Jira-template model the design doc settled on
+testable - the Jira-template model the design doc settled on
 ("preset = a set of feature flags you can change later").
 
 Module-name mapping note: the concept doc uses friendly names
@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from typing import TypedDict
 
-# ── Always-on core (doc §2.6) — infrastructure every project gets ────────
+# ── Always-on core (doc §2.6) - infrastructure every project gets ────────
 ALWAYS_ON: tuple[str, ...] = (
     "projects",
     "users",
@@ -48,7 +48,7 @@ ALWAYS_ON: tuple[str, ...] = (
     "reporting",
 )
 
-# ── Cross-cutting (doc §3.3) — shown in the "Сквозные ∞" section, no
+# ── Cross-cutting (doc §3.3) - shown in the "Сквозные ∞" section, no
 # numbered position. Included when the profile/preset selects them.
 CROSS_CUTTING: frozenset[str] = frozenset({"finance", "risk", "safety", "carbon"})
 
@@ -75,7 +75,7 @@ class PresetMeta(TypedDict):
 
 
 # ── The 8 presets (doc §2.7), mapped to real module folder ids ───────────
-# ``modules`` lists only the *extra* modules — ALWAYS_ON is unioned in by
+# ``modules`` lists only the *extra* modules - ALWAYS_ON is unioned in by
 # the service so a preset author never has to repeat the 15 core ids.
 PRESETS: dict[str, PresetMeta] = {
     "bim_quality_check": {

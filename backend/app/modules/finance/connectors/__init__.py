@@ -11,11 +11,11 @@ module.
 
 Public surface:
 
-* :class:`~app.modules.finance.connectors.base.Connector` — abstract base.
-* :data:`~app.modules.finance.connectors.registry.connector_registry` —
+* :class:`~app.modules.finance.connectors.base.Connector` - abstract base.
+* :data:`~app.modules.finance.connectors.registry.connector_registry` -
   the process-wide registry endpoints and the service talk to.
 * :func:`~app.modules.finance.connectors.registry.register_builtin_connectors`
-  — called from the finance module ``on_startup`` hook.
+  - called from the finance module ``on_startup`` hook.
 """
 
 from app.modules.finance.connectors.base import (

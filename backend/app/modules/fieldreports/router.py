@@ -88,7 +88,7 @@ def _report_to_response(report: object) -> FieldReportResponse:
         signature_by=report.signature_by,  # type: ignore[attr-defined]
         signature_data=report.signature_data,  # type: ignore[attr-defined]
         status=report.status,  # type: ignore[attr-defined]
-        # approved_by / created_by are now GUID() columns — read as
+        # approved_by / created_by are now GUID() columns - read as
         # uuid.UUID; stringify for the str-typed response schema. (v40
         # typing fix: matches daily_diary's convention while keeping the
         # API shape unchanged.)
@@ -166,7 +166,7 @@ async def get_current_weather(
     silent-200 made the dashboard's "weather widget healthy" indicator
     impossible to drive from HTTP status alone).
 
-    ``lat`` / ``lon`` are bound to the valid WGS-84 range — out-of-range
+    ``lat`` / ``lon`` are bound to the valid WGS-84 range - out-of-range
     or non-finite (``nan`` / ``inf``) coordinates yield a 422 from
     FastAPI's query-param validator before any upstream call is made.
     """
@@ -176,7 +176,7 @@ async def get_current_weather(
     from app.modules.fieldreports.weather import fetch_weather
 
     # FastAPI's float coercion accepts ``nan`` / ``inf`` literals from
-    # the query string even with ``ge`` / ``le`` set — those comparisons
+    # the query string even with ``ge`` / ``le`` set - those comparisons
     # silently evaluate to ``False`` for NaN, so the bounds gate alone
     # is not enough. Reject explicitly to keep upstream params safe.
     if not (math.isfinite(lat) and math.isfinite(lon)):
@@ -532,7 +532,7 @@ async def import_field_reports_file(
             detail="Uploaded file is empty.",
         )
 
-    # Hard cap on body size — the entire upload is read into memory and
+    # Hard cap on body size - the entire upload is read into memory and
     # then again by openpyxl. 25 MB is well above any legitimate field-
     # report import (a 10K-row sheet is ~2 MB) and keeps a malicious
     # caller from forcing arbitrarily large allocations.
@@ -547,8 +547,8 @@ async def import_field_reports_file(
     # controlled (any client can rename a ``.exe`` to ``.xlsx``).
     # ``.xlsx`` / ``.xls`` are matched against their respective container
     # signatures so an executable / archive / nested zip-bomb is rejected
-    # before it ever reaches openpyxl. CSV stays best-effort — it has no
-    # magic bytes — but the size cap above still applies.
+    # before it ever reaches openpyxl. CSV stays best-effort - it has no
+    # magic bytes - but the size cap above still applies.
     is_excel = filename.endswith((".xlsx", ".xls"))
     if is_excel:
         detected = detect_signature(content[:16])
@@ -899,7 +899,7 @@ async def approve_report(
 
     IDOR guard: load the report first and verify the caller owns the parent
     project before mutating the status.  Previously ``session`` was not
-    injected so ``verify_project_access`` could never be called — any
+    injected so ``verify_project_access`` could never be called - any
     authenticated user with the ``fieldreports.approve`` permission could
     approve reports belonging to other tenants.
     """
@@ -1154,7 +1154,7 @@ async def _verify_report_access(
 ) -> "object":
     """Load the parent report and run ``verify_project_access`` on it.
 
-    Used by the workforce / equipment log endpoints — those route off an
+    Used by the workforce / equipment log endpoints - those route off an
     unscoped row id and (pre-fix) skipped the project-ownership gate
     that every report endpoint applies. The function intentionally
     raises through ``service.get_report`` (HTTP 404 when the report

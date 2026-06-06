@@ -1,6 +1,6 @@
-# OpenConstructionERP — DataDrivenConstruction (DDC)
+# OpenConstructionERP - DataDrivenConstruction (DDC)
 # DDC-CWICR-OE-2026
-"""Progress tracking service — business logic.
+"""Progress tracking service - business logic.
 
 Handles:
 - Percent-complete recording (append-only entries)
@@ -59,7 +59,7 @@ def _compute_deltas(period_rows: list[tuple[str, float]]) -> list[PeriodProgress
     delta_pct = cumulative_pct[i] - cumulative_pct[i-1]
 
     Deltas are clamped to 0 when cumulative_pct decreases (correction entries
-    can lower the recorded value — we don't want negative deltas on the
+    can lower the recorded value - we don't want negative deltas on the
     S-curve chart).
     """
     results: list[PeriodProgress] = []
@@ -252,7 +252,7 @@ class ProgressService:
             return list(rows)
         except Exception:
             logger.debug(
-                "Could not fetch BOQ children for position %s — treating as leaf",
+                "Could not fetch BOQ children for position %s - treating as leaf",
                 parent_id,
             )
             return []

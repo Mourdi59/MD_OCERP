@@ -23,7 +23,7 @@ class UnifiedSearchHit(BaseModel):
 
     @property
     def source_type(self) -> str:
-        """‌⁠‍Alias for ``module`` — the canonical key the frontend uses to
+        """‌⁠‍Alias for ``module`` - the canonical key the frontend uses to
         decide which native page to navigate to on click."""
         return self.module
 

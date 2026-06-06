@@ -1,4 +1,4 @@
-"""‌⁠‍Inspections service — business logic for quality inspection management."""
+"""‌⁠‍Inspections service - business logic for quality inspection management."""
 
 import logging
 import uuid
@@ -215,7 +215,7 @@ class InspectionService:
         # FSM gate: ``complete`` is the scheduled → in_progress → completed
         # capstone transition. We accept it from ``in_progress`` (normal
         # path) and from ``scheduled`` (one-step shortcut for short
-        # inspections — auto-walks through in_progress). Anything else
+        # inspections - auto-walks through in_progress). Anything else
         # (completed / cancelled / failed) is a 400.
         if inspection.status == "completed":
             raise HTTPException(
@@ -231,7 +231,7 @@ class InspectionService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
-                    "Inspection is in 'failed' state — reschedule it first "
+                    "Inspection is in 'failed' state - reschedule it first "
                     "(failed → scheduled) before completing again."
                 ),
             )

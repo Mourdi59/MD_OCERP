@@ -1,24 +1,24 @@
-"""‌⁠‍BIMElementRule — per-element validation rule for BIM models.
+"""‌⁠‍BIMElementRule - per-element validation rule for BIM models.
 
 A :class:`BIMElementRule` is a plain Python class (not a database row) that
 describes a single validation check to run against every
 ``BIMElement`` in a model. The rule consists of three pieces:
 
-* ``element_filter`` — cheap dict-based filter that decides whether an
+* ``element_filter`` - cheap dict-based filter that decides whether an
   element is in scope for this rule (by element_type prefix, discipline,
   storey, category, ...).
-* ``property_checks`` — list of checks against ``BIMElement.properties``
+* ``property_checks`` - list of checks against ``BIMElement.properties``
   (the free-form JSON blob of IFC/Revit attributes).
-* ``quantity_checks`` — list of checks against ``BIMElement.quantities``
+* ``quantity_checks`` - list of checks against ``BIMElement.quantities``
   (area_m2, volume_m3, thickness_m, ...).
 
 The rule is stateless and deterministic. Running it against an element
-returns a list of per-element :class:`BIMElementRuleResult` entries — one
+returns a list of per-element :class:`BIMElementRuleResult` entries - one
 per failing check (passing checks contribute to the pass count but do not
 emit result rows, so large clean models stay cheap).
 
 This module intentionally does NOT touch the engine's global
-``rule_registry`` — BIM element rules are a separate rule shape (operate
+``rule_registry`` - BIM element rules are a separate rule shape (operate
 over individual ORM rows rather than a flat data dict) and are driven by
 :class:`app.modules.validation.bim_validation_service.BIMValidationService`
 directly.
@@ -65,32 +65,32 @@ class BIMElementRule:
         element_filter: Dict describing which elements this rule applies to.
             Supported keys (all optional, all ANDed together):
 
-            * ``element_type`` — exact match (case-insensitive)
-            * ``element_type_startswith`` — prefix match (case-insensitive),
+            * ``element_type`` - exact match (case-insensitive)
+            * ``element_type_startswith`` - prefix match (case-insensitive),
               may be a single string or list of prefixes
-            * ``element_type_in`` — list of exact matches (case-insensitive)
-            * ``discipline`` — exact match (case-insensitive)
-            * ``storey`` — exact match
-            * ``category`` — match against ``properties["category"]``
+            * ``element_type_in`` - list of exact matches (case-insensitive)
+            * ``discipline`` - exact match (case-insensitive)
+            * ``storey`` - exact match
+            * ``category`` - match against ``properties["category"]``
 
         property_checks: List of property-level checks. Each entry is a dict
             with at least ``property``. Supported keys:
 
-            * ``property`` — dotted path inside ``element.properties``
-            * ``must_exist`` — property must be present and non-empty
-            * ``must_equal`` — property must equal this value
-            * ``must_be_in`` — property must be in this list
-            * ``must_match`` — property must match this regex (str)
+            * ``property`` - dotted path inside ``element.properties``
+            * ``must_exist`` - property must be present and non-empty
+            * ``must_equal`` - property must equal this value
+            * ``must_be_in`` - property must be in this list
+            * ``must_match`` - property must match this regex (str)
 
         quantity_checks: List of quantity-level checks. Each entry is a dict
             with at least ``quantity``. Supported keys:
 
-            * ``quantity`` — dotted path inside ``element.quantities``
-            * ``must_exist`` — quantity key must be present and non-null
-            * ``must_be_gt`` — numeric value must be > threshold
-            * ``must_be_gte`` — numeric value must be >= threshold
-            * ``must_be_lt`` — numeric value must be < threshold
-            * ``must_be_lte`` — numeric value must be <= threshold
+            * ``quantity`` - dotted path inside ``element.quantities``
+            * ``must_exist`` - quantity key must be present and non-null
+            * ``must_be_gt`` - numeric value must be > threshold
+            * ``must_be_gte`` - numeric value must be >= threshold
+            * ``must_be_lt`` - numeric value must be < threshold
+            * ``must_be_lte`` - numeric value must be <= threshold
 
         require_any_of_properties: Optional list of property paths where at
             least ONE must exist (e.g. door width may live in either
@@ -99,7 +99,7 @@ class BIMElementRule:
         require_any_positive_quantity: Optional list of quantity paths where
             at least ONE must be present AND a number strictly greater than
             zero. Use this (not ``require_any_of_quantities``) when the rule
-            name/contract promises a *positive* value — e.g. "wall thickness
+            name/contract promises a *positive* value - e.g. "wall thickness
             > 0". Presence-only checks let a ``thickness_m = 0`` (or the
             non-numeric string ``"0,24"``) silently PASS (E-BIM-010).
         require_storey: If True, the element must have a non-empty ``storey``.
@@ -169,7 +169,7 @@ class BIMElementRule:
         """Run all checks against ``element`` and return failing results.
 
         Only failing checks emit result rows. A fully passing element
-        produces zero entries — callers track the pass count externally.
+        produces zero entries - callers track the pass count externally.
         """
         results: list[BIMElementRuleResult] = []
         props: dict[str, Any] = getattr(element, "properties", None) or {}
@@ -250,7 +250,7 @@ class BIMElementRule:
                     {"any_of": self.require_any_of_quantities, "scope": "quantities"},
                 )
 
-        # any-positive-quantity — at least one path must be a number > 0
+        # any-positive-quantity - at least one path must be a number > 0
         # (E-BIM-010). A 0 / "" / non-numeric value does NOT satisfy this.
         if self.require_any_positive_quantity:
             satisfied = False
@@ -309,7 +309,7 @@ def _coerce_number(value: Any) -> float | None:
     properties as strings with comma decimals or trailing units
     (``"0,24"``, ``"1.234,56"``, ``"3.0 m"``). The old ``float(value)``
     rejected all of those and the caller reported a *false* "is not a
-    number" ERROR — non-deterministic compliance by locale (E-I18N-017).
+    number" ERROR - non-deterministic compliance by locale (E-I18N-017).
     This mirrors the canonical coercion used by the core BOQ rules.
 
     Returns ``None`` only when the value genuinely is not a number.
@@ -372,7 +372,7 @@ def _coerce_number(value: Any) -> float | None:
 # catastrophic-backtracking pattern like ``(a+)+$`` peg a CPU core and hang
 # the request worker indefinitely.
 #
-# A single flat heuristic is provably insufficient — every one of the classic
+# A single flat heuristic is provably insufficient - every one of the classic
 # bypass shapes ( ``((a)+)+$`` nested groups, ``(a+){10,}$`` bounded repeat of
 # a quantified group, ``(a|a)*$`` overlapping-alternation group, ``(.*a){30}$``
 # bounded repeat of a wildcard group, ``(([a-z])+.)+...`` deeply nested ) slips
@@ -380,7 +380,7 @@ def _coerce_number(value: Any) -> float | None:
 # control: it walks the group/quantifier tree and rejects any construct that
 # can yield exponential or super-linear backtracking. As defense-in-depth we
 # additionally run the match itself under the third-party ``regex`` engine's
-# hard ``timeout=`` wall-clock bound *when that module is importable* — but the
+# hard ``timeout=`` wall-clock bound *when that module is importable* - but the
 # static gate alone is sufficient, so an environment without ``regex``
 # installed is still safe (no hard dependency).
 
@@ -450,7 +450,7 @@ def _group_has_overlapping_alternation(body: str) -> bool:
 
     We conservatively flag *any* top-level alternation inside a repeated group
     (excluding fully-anchored single-char-class branches is not worth the
-    complexity — realistic IDS patterns don't repeat an alternation group).
+    complexity - realistic IDS patterns don't repeat an alternation group).
     """
     depth = 0
     for i, ch in enumerate(body):
@@ -472,9 +472,9 @@ def _is_pattern_safe(pattern: str) -> bool:
 
     * length over ``_MAX_PATTERN_LEN``;
     * a group that is itself repeated (outer ``+ * {n,} {n} {n,m}``) AND whose
-      body contains an inner unbounded/bounded quantifier — covers ``(a+)+``,
+      body contains an inner unbounded/bounded quantifier - covers ``(a+)+``,
       ``((a)+)+``, ``(a+){10,}``, ``(.*a){30}``, ``(([a-z])+.)+…`` ;
-    * a *repeated group* that contains a top-level alternation — covers
+    * a *repeated group* that contains a top-level alternation - covers
       ``(a|a)*``, ``(a|ab)+`` ;
     * an un-compilable pattern.
     """
@@ -509,7 +509,7 @@ def _safe_search(pattern: str, value: str) -> bool | None:
 
     if not _is_pattern_safe(pattern):
         return None
-    # Bound the input too — backtracking cost is a function of input length
+    # Bound the input too - backtracking cost is a function of input length
     # as well as pattern shape.
     bounded = value[:_MAX_MATCH_INPUT_LEN]
 
@@ -527,7 +527,7 @@ def _safe_search(pattern: str, value: str) -> bool | None:
             return compiled.search(bounded, timeout=_MATCH_TIMEOUT_S) is not None
         except TimeoutError:
             # A pathological pattern that slipped the static gate hit the
-            # hard wall-clock bound — treat as unsafe / non-match.
+            # hard wall-clock bound - treat as unsafe / non-match.
             return None
 
     try:

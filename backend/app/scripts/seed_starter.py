@@ -6,7 +6,7 @@ Catalog. We ship ~50 universal baseline cost items and ~10 universal
 assembly templates so the UI is never empty before the user picks a
 regional CWICR catalogue.
 
-The actual CWICR data set is 166k rows — these starter rows are a
+The actual CWICR data set is 166k rows - these starter rows are a
 seed-of-last-resort, intentionally small and region-tagged ``Universal``
 so they never collide with regional imports.
 
@@ -161,7 +161,7 @@ async def seed_starter_data(session: AsyncSession) -> dict[str, int]:
     """‌⁠‍Idempotently seed baseline cost items + assemblies if the tables are empty.
 
     Returns counts of newly inserted rows (zero when the tables already had
-    data — meaning a regional CWICR catalogue or prior seed run won).
+    data - meaning a regional CWICR catalogue or prior seed run won).
     """
     if os.environ.get("OE_SKIP_STARTER_SEED", "").strip().lower() in {"1", "true", "yes", "on"}:
         logger.info("Starter seed skipped via OE_SKIP_STARTER_SEED.")

@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""File Transmittals (W7) Pydantic schemas — request/response models."""
+"""File Transmittals (W7) Pydantic schemas - request/response models."""
 
 from __future__ import annotations
 
@@ -86,7 +86,7 @@ class TransmittalRecipientResponse(BaseModel):
     display_name: str | None
     role: str | None
     acknowledged_at: datetime | None
-    # Token is exposed only on the response from the send endpoint —
+    # Token is exposed only on the response from the send endpoint -
     # listing transmittals returns ``None`` so a viewer cannot harvest
     # tokens server-side. Service is responsible for masking.
     acknowledge_token: str | None

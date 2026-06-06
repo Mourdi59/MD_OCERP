@@ -6,7 +6,7 @@ the geo dashboard whenever other modules emit domain events. Each
 subscriber:
 
 * validates the event payload shape (best-effort, never raises)
-* is idempotent — replays do not double-create rows
+* is idempotent - replays do not double-create rows
 * opens its own session because the event bus carries no caller-session
   context
 * emits ``geo_hub.subscriber.failed`` on error instead of raising,
@@ -81,7 +81,7 @@ async def _fan_out_failure(
     event_name: str,
     exc: BaseException,
 ) -> None:
-    """Best-effort error fanout — never raises itself."""
+    """Best-effort error fanout - never raises itself."""
     try:
         await event_bus.publish(
             "geo_hub.subscriber.failed",
@@ -92,7 +92,7 @@ async def _fan_out_failure(
             },
             source_module="geo_hub",
         )
-    except Exception:  # noqa: BLE001 — never let the recovery path crash
+    except Exception:  # noqa: BLE001 - never let the recovery path crash
         logger.exception("geo_hub failure-fanout itself failed")
 
 
@@ -148,13 +148,13 @@ async def _on_project_address_set(event: Event) -> dict[str, Any]:
     JSONB carries at least a country. Runs the Nominatim geocoder, then:
 
     * Skips silently when the project already has a non-placeholder
-      anchor (lat / lon != 0,0) — manual anchors win over auto ones.
+      anchor (lat / lon != 0,0) - manual anchors win over auto ones.
     * Overwrites the placeholder anchor that ``_on_project_created``
       seeds with lat=0 / lon=0 (so the user's first proper address fill
       flips the globe pin to the right spot without UI ceremony).
     * Creates a fresh anchor when none exists.
 
-    All failures land in the failure-fanout — the producing module's
+    All failures land in the failure-fanout - the producing module's
     transaction is already committed by this point so we never raise.
     """
     import asyncio as _asyncio
@@ -174,7 +174,7 @@ async def _on_project_address_set(event: Event) -> dict[str, Any]:
     # SQLite single-writer lock when ``publish_detached`` scheduled us)
     # has a chance to commit + close before we open a fresh one. Without
     # this, aiosqlite races on the same connection pool slot and surfaces
-    # as ``RuntimeError: await wasn't used with future`` — caught below
+    # as ``RuntimeError: await wasn't used with future`` - caught below
     # and retried with an exponential backoff.
     await _asyncio.sleep(0)
 
@@ -213,7 +213,7 @@ async def _do_geocode_and_persist(
     typed_address: Any,
     event: Event,
 ) -> dict[str, Any]:
-    """Inner body of ``_on_project_address_set`` — opens a session, geocodes,
+    """Inner body of ``_on_project_address_set`` - opens a session, geocodes,
     persists. Pulled out so the caller can wrap it in retry-on-aiosqlite."""
     from app.modules.geo_hub.geocoder import geocode_address
     from app.modules.geo_hub.models import GeoAnchor
@@ -225,7 +225,7 @@ async def _do_geocode_and_persist(
         if existing is not None and (existing.lat != Decimal("0") or existing.lon != Decimal("0")):
             meta = existing.metadata_ or {}
             if meta.get("geocoded_from") != "project_address":
-                # Manual anchor present — don't clobber.
+                # Manual anchor present - don't clobber.
                 return {
                     "status": "ignored",
                     "reason": "manual anchor wins over auto",
@@ -462,7 +462,7 @@ async def _on_carbon_footprint_computed(event: Event) -> dict[str, Any]:
 
     The frontend reads ``Tileset.metadata.carbon_tint`` to colour the
     rendered tile by per-element carbon intensity. We don't materialise
-    a new texture — just persist the per-element rgba so the Cesium
+    a new texture - just persist the per-element rgba so the Cesium
     viewer can drive ``Cesium3DTileStyle``.
     """
     from app.modules.geo_hub.repository import TilesetRepository

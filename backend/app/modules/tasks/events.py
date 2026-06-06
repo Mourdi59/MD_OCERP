@@ -1,4 +1,4 @@
-"""‌⁠‍Tasks event handlers — vector indexing subscribers.
+"""‌⁠‍Tasks event handlers - vector indexing subscribers.
 
 Subscribes to ``tasks.task.*`` lifecycle events and keeps the
 ``oe_tasks`` vector collection in sync with the underlying Task rows so
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 #
 # Keep the ``oe_tasks`` collection in sync with the live Task rows.  Each
 # handler opens its own short-lived session, loads the row and forwards
-# it to the adapter.  Failures are logged and swallowed — vector indexing
+# it to the adapter.  Failures are logged and swallowed - vector indexing
 # is best-effort and must never break a normal CRUD path.
 
 

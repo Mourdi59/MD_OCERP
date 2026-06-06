@@ -14,11 +14,11 @@ PACK_CONFIG: dict[str, Any] = {
     "paper_size": "A4",
     "date_format": "DD/MM/YYYY",
     "number_format": "1.234,56",
-    # ── Standards — Brazil ───────────────────────────────────────────────────
+    # ── Standards - Brazil ───────────────────────────────────────────────────
     "standards": [
         {
             "code": "SINAPI",
-            "name": "SINAPI — Sistema Nacional de Pesquisa de Custos e Índices",
+            "name": "SINAPI - Sistema Nacional de Pesquisa de Custos e Índices",
             "country": "BR",
             "description": (
                 "National system of construction cost research and indices, "
@@ -33,7 +33,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "TCPO",
-            "name": "TCPO — Tabelas de Composições de Preços para Orçamentos",
+            "name": "TCPO - Tabelas de Composições de Preços para Orçamentos",
             "country": "BR",
             "description": "PINI cost composition tables for private-sector estimating",
         },
@@ -49,42 +49,42 @@ PACK_CONFIG: dict[str, Any] = {
                 {"code": "NBR 15575", "title": "Desempenho de edificações habitacionais"},
             ],
         },
-        # ── Standards — Mexico ───────────────────────────────────────────────
+        # ── Standards - Mexico ───────────────────────────────────────────────
         {
             "code": "NTDIF",
-            "name": "NTDIF — Normas Técnicas de Diseño e Instalación de Facilidades",
+            "name": "NTDIF - Normas Técnicas de Diseño e Instalación de Facilidades",
             "country": "MX",
             "description": "Technical standards for facility design and installation",
         },
         {
             "code": "NMX",
-            "name": "NMX — Normas Mexicanas",
+            "name": "NMX - Normas Mexicanas",
             "country": "MX",
             "description": "Mexican voluntary technical standards for construction",
         },
         {
             "code": "BIMSA",
-            "name": "BIMSA Reports — Cost Data Mexico",
+            "name": "BIMSA Reports - Cost Data Mexico",
             "country": "MX",
             "description": "Construction cost indices and data for Mexico",
         },
-        # ── Standards — Argentina ────────────────────────────────────────────
+        # ── Standards - Argentina ────────────────────────────────────────────
         {
             "code": "IRAM",
-            "name": "IRAM — Instituto Argentino de Normalización y Certificación",
+            "name": "IRAM - Instituto Argentino de Normalización y Certificación",
             "country": "AR",
             "description": "Argentine standards body for construction and engineering",
         },
         {
             "code": "CAC",
-            "name": "CAC — Cámara Argentina de la Construcción",
+            "name": "CAC - Cámara Argentina de la Construcción",
             "country": "AR",
             "description": "Argentine construction chamber cost indices",
         },
-        # ── Standards — Chile ────────────────────────────────────────────────
+        # ── Standards - Chile ────────────────────────────────────────────────
         {
             "code": "NCH",
-            "name": "NCh — Normas Chilenas",
+            "name": "NCh - Normas Chilenas",
             "country": "CL",
             "description": "Chilean national standards for construction",
         },
@@ -144,7 +144,7 @@ PACK_CONFIG: dict[str, Any] = {
     "tax_rules": [
         {
             "code": "BR_ISS",
-            "name": "ISS — Imposto Sobre Serviços",
+            "name": "ISS - Imposto Sobre Serviços",
             "type": "service_tax",
             "country": "BR",
             "rate_pct": "2–5",
@@ -152,7 +152,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "BR_PIS_COFINS",
-            "name": "PIS/COFINS — Federal Contributions",
+            "name": "PIS/COFINS - Federal Contributions",
             "type": "federal_contribution",
             "country": "BR",
             "rate_pct": "3.65",
@@ -161,7 +161,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "BR_ICMS",
-            "name": "ICMS — State VAT on Materials",
+            "name": "ICMS - State VAT on Materials",
             "type": "state_vat",
             "country": "BR",
             "rate_pct": "7–18",
@@ -169,7 +169,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "MX_IVA",
-            "name": "IVA — Impuesto al Valor Agregado",
+            "name": "IVA - Impuesto al Valor Agregado",
             "type": "vat",
             "country": "MX",
             "rate_pct": "16",
@@ -177,7 +177,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "MX_IVA_FRONTERA",
-            "name": "IVA — Border Zone Rate",
+            "name": "IVA - Border Zone Rate",
             "type": "vat",
             "country": "MX",
             "rate_pct": "8",
@@ -185,7 +185,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "AR_IVA",
-            "name": "IVA — Impuesto al Valor Agregado",
+            "name": "IVA - Impuesto al Valor Agregado",
             "type": "vat",
             "country": "AR",
             "rate_pct": "21",
@@ -193,7 +193,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "AR_IVA_REDUCED",
-            "name": "IVA — Reduced Rate",
+            "name": "IVA - Reduced Rate",
             "type": "vat",
             "country": "AR",
             "rate_pct": "10.5",
@@ -201,7 +201,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "CL_IVA",
-            "name": "IVA — Impuesto al Valor Agregado",
+            "name": "IVA - Impuesto al Valor Agregado",
             "type": "vat",
             "country": "CL",
             "rate_pct": "19",
@@ -209,7 +209,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "CO_IVA",
-            "name": "IVA — Impuesto al Valor Agregado",
+            "name": "IVA - Impuesto al Valor Agregado",
             "type": "vat",
             "country": "CO",
             "rate_pct": "19",
@@ -217,7 +217,7 @@ PACK_CONFIG: dict[str, Any] = {
         },
         {
             "code": "PE_IGV",
-            "name": "IGV — Impuesto General a las Ventas",
+            "name": "IGV - Impuesto General a las Ventas",
             "type": "vat",
             "country": "PE",
             "rate_pct": "18",
@@ -226,7 +226,7 @@ PACK_CONFIG: dict[str, Any] = {
     ],
     # ── Brazil BDI reference ─────────────────────────────────────────────────
     "brazil_bdi": {
-        "name": "BDI — Bonificações e Despesas Indiretas",
+        "name": "BDI - Bonificações e Despesas Indiretas",
         "description": (
             "Overhead and profit markup applied to direct costs in Brazilian public works. "
             "TCU Acordão 2622/2013 reference ranges."
@@ -245,7 +245,7 @@ PACK_CONFIG: dict[str, Any] = {
         "weight": "kg",
         "temperature": "°C",
     },
-    # ── VAT / IVA rates (Wave 25 — BR uses fragmented ISS/ICMS, omitted) ─────
+    # ── VAT / IVA rates (Wave 25 - BR uses fragmented ISS/ICMS, omitted) ─────
     "vat_rates": {
         "MX": {
             "standard": Decimal("0.16"),

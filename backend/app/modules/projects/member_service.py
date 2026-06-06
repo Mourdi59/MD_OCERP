@@ -1,7 +1,7 @@
 """‌⁠‍Project-member service.
 
 The Team Strip surfaces "who is on this project" at the project level. We
-implement it as a thin wrapper over the existing team-membership tables —
+implement it as a thin wrapper over the existing team-membership tables -
 each project gets a "Default Team" on creation (see
 ``ProjectService.create_project``), so project-membership = membership in that
 default team. If for some reason no default team exists yet (legacy projects
@@ -146,7 +146,7 @@ async def add_project_member(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     # Inactive (deactivated / soft-deleted) users must never be re-added
-    # to a project — they can't log in anyway, and silently adding them
+    # to a project - they can't log in anyway, and silently adding them
     # creates dangling membership rows the admin UI then has to clean up.
     if not getattr(user, "is_active", True):
         raise HTTPException(
@@ -172,7 +172,7 @@ async def add_project_member(
 async def remove_project_member(session: AsyncSession, project_id: uuid.UUID, user_id: uuid.UUID) -> None:
     """Remove a user from the project's default team.
 
-    Refuses to remove the project owner — that has to go through the
+    Refuses to remove the project owner - that has to go through the
     project-transfer flow (out of scope for the Team Strip).
     """
     project = await _load_project(session, project_id)

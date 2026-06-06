@@ -1,17 +1,17 @@
 """‌⁠‍Reporting & Dashboards API routes.
 
 Endpoints:
-    GET    /kpi?project_id=X                     — Latest KPI snapshot
-    GET    /kpi/history?project_id=X             — KPI snapshots over time
-    POST   /kpi/snapshot                         — Create KPI snapshot
-    GET    /templates                             — List report templates
-    POST   /templates                             — Create custom template
-    POST   /templates/{id}/schedule               — Attach/replace/clear cron schedule
-    POST   /templates/{id}/run-now                — Trigger an immediate render
-    GET    /templates/scheduled                   — List all scheduled templates
-    POST   /generate                              — Generate a report
-    GET    /reports?project_id=X                  — List generated reports
-    GET    /reports/{report_id}                   — Get a generated report
+    GET    /kpi?project_id=X                     - Latest KPI snapshot
+    GET    /kpi/history?project_id=X             - KPI snapshots over time
+    POST   /kpi/snapshot                         - Create KPI snapshot
+    GET    /templates                             - List report templates
+    POST   /templates                             - Create custom template
+    POST   /templates/{id}/schedule               - Attach/replace/clear cron schedule
+    POST   /templates/{id}/run-now                - Trigger an immediate render
+    GET    /templates/scheduled                   - List all scheduled templates
+    POST   /generate                              - Generate a report
+    GET    /reports?project_id=X                  - List generated reports
+    GET    /reports/{report_id}                   - Get a generated report
 """
 
 import logging
@@ -180,7 +180,7 @@ async def list_scheduled_templates(
     """List every template that has a cron schedule attached.
 
     IDOR-guarded: templates whose ``project_id_scope`` points at a
-    project the caller cannot access are filtered out — otherwise the
+    project the caller cannot access are filtered out - otherwise the
     response would leak project UUIDs (and recipient email lists) for
     every other tenant on the platform. Portfolio-wide templates
     (``project_id_scope is None``) remain visible to all authenticated
@@ -194,7 +194,7 @@ async def list_scheduled_templates(
 
     templates = await service.list_scheduled_templates()
 
-    # Admin bypass — admins can see every scheduled template.
+    # Admin bypass - admins can see every scheduled template.
     try:
         user_repo = UserRepository(session)
         user = await user_repo.get_by_id(uuid.UUID(user_id))
@@ -360,7 +360,7 @@ async def get_report_content(
     """Return the rendered HTML body of a generated report.
 
     The matching metadata row must exist (404 otherwise) and have a
-    populated ``storage_key`` (410 Gone otherwise — the metadata exists
+    populated ``storage_key`` (410 Gone otherwise - the metadata exists
     but the renderer never produced or persisted a body). IDOR-guarded
     via ``verify_project_access`` on the report's parent project.
 
@@ -391,7 +391,7 @@ async def get_report(
 
     The caller must have access to the report's parent project. Reports
     owned by another tenant return 404 (not 403) to avoid leaking the
-    existence of report UUIDs — same convention as
+    existence of report UUIDs - same convention as
     ``verify_project_access``.
     """
     # Resolve the report first so we know which project to gate on.

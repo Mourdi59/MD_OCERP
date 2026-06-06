@@ -1,4 +1,4 @@
-"""‌⁠‍Activity feed — aggregates recent actions from the audit log.
+"""‌⁠‍Activity feed - aggregates recent actions from the audit log.
 
 Usage:
     GET /api/v1/activity?project_id=X&limit=20

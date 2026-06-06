@@ -1,5 +1,5 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""‌⁠‍KPI formula registry — every system KPI as a registered Python function.
+"""‌⁠‍KPI formula registry - every system KPI as a registered Python function.
 
 Each KPI:
     * Is registered with :func:`register_kpi(code)`
@@ -10,7 +10,7 @@ Each KPI:
       and must never crash because an upstream module was uninstalled.
 
 The registry is process-local. Custom KPIs registered by community
-modules survive a hot reload of this file but not a worker restart —
+modules survive a hot reload of this file but not a worker restart -
 modules should register inside their own ``on_startup`` hook.
 """
 
@@ -42,10 +42,10 @@ class KPIComputation:
 
 KPIFormula = Callable[..., Awaitable[KPIComputation]]
 
-# Global registry — populated by @register_kpi decorators below.
+# Global registry - populated by @register_kpi decorators below.
 KPI_FORMULAS: dict[str, KPIFormula] = {}
 
-# Metadata for system KPIs — drives the seed step that writes KPIDefinition
+# Metadata for system KPIs - drives the seed step that writes KPIDefinition
 # rows. Order must match @register_kpi declarations or seeding is wrong.
 SYSTEM_KPI_META: dict[str, dict[str, Any]] = {}
 
@@ -125,14 +125,14 @@ def _safe_div(numerator: Decimal, denominator: Decimal) -> Decimal:
 # ``_position_total_in_base``). The ``rate`` is BASE units per 1 unit of
 # foreign, so a foreign amount contributes ``amount * rate``. Across the
 # whole portfolio (``project_id is None``) we deliberately do NOT collapse
-# everything into one scalar — the breakdown carries a per-currency map so
+# everything into one scalar - the breakdown carries a per-currency map so
 # the UI can group by ISO code instead of presenting a meaningless sum.
 
 
 def _fx_map(project: Any) -> dict[str, str]:
     """Project ``Project.fx_rates`` JSON list into ``{CODE: rate}``.
 
-    Defensive against missing attribute / malformed rows — returns an
+    Defensive against missing attribute / malformed rows - returns an
     empty dict on any error so callers can pass it through unguarded.
     """
     if project is None:
@@ -161,7 +161,7 @@ def _amount_in_base(
 
     Missing / matching currency → treated as base. A foreign currency with
     no FX rate is summed in its own units anyway (never zeroed) so a
-    forgotten rate degrades visibly rather than silently dropping money —
+    forgotten rate degrades visibly rather than silently dropping money -
     the caller surfaces the unconverted codes via :func:`_missing_fx_codes`.
     """
     base = (base_currency or "").strip().upper()
@@ -230,7 +230,7 @@ def _portfolio_money_breakdown(
     """Reduce a per-currency bucket map into a headline value + breakdown.
 
     Portfolio (``project_id is None``) money KPIs must never collapse mixed
-    currencies into one blended scalar — there is no single base currency
+    currencies into one blended scalar - there is no single base currency
     to convert into. Mirrors the cross-project rollup in
     ``projects.router.analytics_overview``:
 
@@ -350,7 +350,7 @@ async def _evm_snapshot_for_project(
         * EV:  Σ Task.earned_value (calculated upstream as % complete × BAC)
         * AC:  Σ finance.Payment.amount + Σ procurement.PurchaseOrder.amount_total
                (every foreign-currency row converted into the project's base
-               currency via ``Project.fx_rates`` before summing — no mixed-
+               currency via ``Project.fx_rates`` before summing - no mixed-
                currency blending).
 
     Note: there is no ``finance.Expense`` model on this platform; actual
@@ -398,7 +398,7 @@ async def _evm_snapshot_for_project(
     try:
         from app.modules.finance.models import Invoice, Payment  # type: ignore
 
-        # Payment has no project_id — it hangs off the Invoice, so scope
+        # Payment has no project_id - it hangs off the Invoice, so scope
         # via the parent invoice's project_id.
         stmt = (
             select(Payment)
@@ -457,11 +457,11 @@ async def _evm_snapshot_portfolio(session: AsyncSession) -> EVMSnapshot:
     Each project's money primitives are computed in its OWN base currency
     (so within-project FX conversion still applies via
     ``_evm_snapshot_for_project``), then bucketed by that project's ISO
-    currency — mixed currencies are NEVER summed into one scalar.
+    currency - mixed currencies are NEVER summed into one scalar.
 
     The scalar primitives (``bac/pv/ev/ac``) still carry the raw
     cross-project sums so the currency-neutral ratio KPIs (CPI = EV/AC,
-    SPI = EV/PV, TCPI) stay meaningful — a ratio of two same-shaped sums
+    SPI = EV/PV, TCPI) stay meaningful - a ratio of two same-shaped sums
     is dimensionless even across currencies (it is a blended performance
     index, the standard portfolio EVM reading). The currency-denominated
     KPIs (CV/SV/EAC/ETC/VAC) instead read the ``*_by_currency`` maps and
@@ -471,7 +471,7 @@ async def _evm_snapshot_portfolio(session: AsyncSession) -> EVMSnapshot:
     try:
         from app.modules.projects.models import Project  # type: ignore
 
-        # Select only the PK column — a full ``select(Project)`` would
+        # Select only the PK column - a full ``select(Project)`` would
         # eager-load ``Project``'s ``lazy="selectin"`` relationships (WBS,
         # team, …), which is both wasteful here and brittle under partial
         # test schemas. We only need each project's id to fan out.
@@ -524,11 +524,11 @@ async def _evm_snapshot(
     """Build EVM primitives for one project, or aggregate the portfolio.
 
     Single-project (``project_id`` set): every money row is converted into
-    that project's base currency via its ``fx_rates`` table — see
+    that project's base currency via its ``fx_rates`` table - see
     :func:`_evm_snapshot_for_project`.
 
     Portfolio (``project_id is None``): per-project snapshots are bucketed
-    by each project's own ISO currency, never blended — see
+    by each project's own ISO currency, never blended - see
     :func:`_evm_snapshot_portfolio`.
     """
     if project_id is None:
@@ -682,7 +682,7 @@ async def sv_kpi(
     unit="currency",
     category="financial",
     source_modules=["finance", "tasks", "projects"],
-    description=("AC + (BAC - EV) / (CPI * SPI) — assumes both perf indices persist (common in construction)."),
+    description=("AC + (BAC - EV) / (CPI * SPI) - assumes both perf indices persist (common in construction)."),
 )
 def _eac_from_primitives(bac: Decimal, pv: Decimal, ev: Decimal, ac: Decimal) -> Decimal:
     """EAC = AC + (BAC - EV) / (CPI * SPI). Falls back to BAC when a
@@ -847,7 +847,7 @@ async def procurement_savings_kpi(
 
     Actual is the committed PO value (``PurchaseOrder.amount_total``).
     Budgeted is the pre-order estimate carried on the linked material
-    requisition lines (``MaterialRequisitionItem.extended_cost``) — the
+    requisition lines (``MaterialRequisitionItem.extended_cost``) - the
     requisition is the baseline a PO is raised against. All amounts are
     converted into the project base currency via ``Project.fx_rates``
     before the savings ratio is taken so mixed-currency POs never blend.
@@ -1039,7 +1039,7 @@ async def cash_in_30d_kpi(
 
     Portfolio mode (``project_id is None``): there is no single base
     currency, so amounts are grouped by each invoice's own ``currency_code``
-    and the headline ``value`` is the dominant currency's subtotal — never a
+    and the headline ``value`` is the dominant currency's subtotal - never a
     blended cross-currency scalar. The full per-currency map and the
     ``multi_currency`` flag are returned in ``breakdown``.
     """
@@ -1124,7 +1124,7 @@ async def cash_out_30d_kpi(
 
     Portfolio mode (``project_id is None``): amounts are grouped by each
     row's own ``currency_code`` and the headline ``value`` is the dominant
-    currency's subtotal — never a blended cross-currency scalar. The full
+    currency's subtotal - never a blended cross-currency scalar. The full
     per-currency map and the ``multi_currency`` flag are returned in
     ``breakdown``.
     """
@@ -1234,7 +1234,7 @@ async def dso_kpi(
 ) -> KPIComputation:
     """Average days from a receivable invoice date to its last payment.
 
-    The Invoice model has no ``issue_date``/``paid_at`` columns — issue is
+    The Invoice model has no ``issue_date``/``paid_at`` columns - issue is
     ``invoice_date`` and settlement dates live on the ``Payment`` relation.
     Only ``receivable`` invoices that have at least one payment contribute.
     """
@@ -1547,7 +1547,7 @@ async def safety_trir_kpi(
                 "medical_treatment",
             ):
                 incidents += 1
-        # Try to find actual hours-worked records — gracefully fall back
+        # Try to find actual hours-worked records - gracefully fall back
         try:
             from app.modules.safety.models import WorkHours  # type: ignore
 
@@ -1749,7 +1749,7 @@ async def bid_win_rate_kpi(
 
     Sourced from ``tendering.TenderBid`` (its ``status`` distinguishes
     won/awarded/accepted from pending/rejected). TenderBid has no direct
-    ``project_id`` — it hangs off ``TenderPackage`` — so a project scope is
+    ``project_id`` - it hangs off ``TenderPackage`` - so a project scope is
     applied by joining the package. When the tendering module is absent we
     fall back to ``bid_management``: a win is a ``BidAward`` (one per
     package) and total is the number of ``BidSubmission`` envelopes.
@@ -1835,7 +1835,7 @@ async def bid_win_rate_kpi(
 )
 async def project_count_active_kpi(
     session: AsyncSession,
-    project_id: uuid.UUID | None = None,  # noqa: ARG001 — global only
+    project_id: uuid.UUID | None = None,  # noqa: ARG001 - global only
     **_: Any,
 ) -> KPIComputation:
     count = 0
@@ -2036,7 +2036,7 @@ async def ncr_open_count_kpi(
     project_id: uuid.UUID | None = None,
     **_: Any,
 ) -> KPIComputation:
-    """Open Non-Conformance Reports — the live quality-defect backlog."""
+    """Open Non-Conformance Reports - the live quality-defect backlog."""
     count = 0
     total = 0
     try:
@@ -2273,7 +2273,7 @@ async def milestone_slippage_days_kpi(
         from app.modules.schedule.models import Activity, Schedule  # type: ignore
 
         # Resolve which project owns each schedule (Activity has no
-        # project_id — it hangs off Schedule).
+        # project_id - it hangs off Schedule).
         sched_stmt = select(Schedule.id, Schedule.project_id)
         sched_rows = (await session.execute(sched_stmt)).all()
         sched_to_project = {sid: pid for sid, pid in sched_rows}
@@ -2330,7 +2330,7 @@ def list_system_kpis() -> list[dict[str, Any]]:
 
 
 # ── Drill-down record providers ─────────────────────────────────────────
-# A KPI's "drill-down" returns the underlying rows that fed the aggregate —
+# A KPI's "drill-down" returns the underlying rows that fed the aggregate -
 # e.g. for ``cpi`` we return task earned-value rows plus the finance
 # payments / purchase orders that make up actual cost. Each provider is
 # registered against a KPI code and returns a list of dicts, capped at
@@ -2358,7 +2358,7 @@ async def _evm_drilldown_records(
     """Shared drill-down implementation for every EVM KPI.
 
     Returns one row per task with its PV/EV plus the matching finance
-    expenses (joined logically via project_id only — strict task-expense
+    expenses (joined logically via project_id only - strict task-expense
     linking is upstream).
     """
     records: list[dict[str, Any]] = []
@@ -2385,7 +2385,7 @@ async def _evm_drilldown_records(
     except Exception:
         logger.debug("evm drilldown: tasks probe failed", exc_info=True)
     # Actual cost rows: settled payments (joined to the invoice for project
-    # scope) — there is no finance.Expense model on this platform.
+    # scope) - there is no finance.Expense model on this platform.
     try:
         from app.modules.finance.models import Invoice, Payment  # type: ignore
 
@@ -2797,7 +2797,7 @@ async def compute(
     """Invoke a registered KPI safely.
 
     Returns a zero-value :class:`KPIComputation` when the code is unknown
-    or when the formula raises — never bubble up to API callers, this
+    or when the formula raises - never bubble up to API callers, this
     module is purely consumer code.
     """
     fn = KPI_FORMULAS.get(code)

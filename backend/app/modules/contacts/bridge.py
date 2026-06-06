@@ -1,4 +1,4 @@
-"""Contacts ↔ Modules bridge — single-source-of-truth person directory.
+"""Contacts ↔ Modules bridge - single-source-of-truth person directory.
 
 The Contact table is the canonical store for person data
 (``first_name`` / ``last_name`` / ``primary_email`` / ``primary_phone`` /
@@ -10,7 +10,7 @@ FK back to the canonical row.
 
 Tagging
 -------
-A single contact may participate in multiple modules at once — a
+A single contact may participate in multiple modules at once - a
 person can be a ``property_dev_lead`` who converted to a
 ``property_dev_buyer`` and later signed up as a ``broker``. We keep a
 JSON list ``Contact.module_tags`` and append (idempotently) on every
@@ -19,7 +19,7 @@ sync.
 The values are opaque short identifiers. We document the canonical set
 in :data:`KNOWN_MODULE_TAGS` so callers can use a constant rather than a
 string literal, but third-party modules adding their own tag value just
-work — there is no registry check.
+work - there is no registry check.
 
 Workflow
 --------
@@ -42,13 +42,13 @@ Workflow
      already present.
    * Returns the (possibly fresh) :class:`Contact`.
 
-2. **Lead/Buyer update flow** (``service.update_lead`` etc.) — when the
+2. **Lead/Buyer update flow** (``service.update_lead`` etc.) - when the
    user edits canonical fields on the Lead/Buyer form, the bridge
    mirrors them back to the linked Contact so the directory stays
    authoritative.
 
 3. **Contact ↔ Lead/Buyer conversion** (``router.convert_to_lead`` /
-   ``router.convert_to_buyer``) — explicit user action from the
+   ``router.convert_to_buyer``) - explicit user action from the
    Contacts UI: "Convert this contact to a PropDev Lead". The bridge
    creates the Lead/Buyer row and links it.
 
@@ -66,7 +66,7 @@ Modules import from this file via::
 
     from app.modules.contacts import bridge
 
-The functions are stateless — they take an ``AsyncSession`` plus the
+The functions are stateless - they take an ``AsyncSession`` plus the
 input row and return a Contact / nothing. No globals, no singletons.
 """
 
@@ -110,7 +110,7 @@ KNOWN_MODULE_TAGS: tuple[str, ...] = (
 def _split_full_name(full_name: str | None) -> tuple[str | None, str | None]:
     """Split ``full_name`` into ``(first_name, last_name)``.
 
-    The split is best-effort — single-token names go into ``first_name``;
+    The split is best-effort - single-token names go into ``first_name``;
     multi-token names put everything before the last whitespace into
     ``first_name`` and the rest into ``last_name``. Handles unicode
     correctly (we only split on whitespace, not on ASCII space).
@@ -126,7 +126,7 @@ def _split_full_name(full_name: str | None) -> tuple[str | None, str | None]:
 
 
 def _join_name(first: str | None, last: str | None) -> str:
-    """Inverse of :func:`_split_full_name` — used when mirroring back."""
+    """Inverse of :func:`_split_full_name` - used when mirroring back."""
     return " ".join(p for p in (first or "", last or "") if p).strip()
 
 
@@ -135,7 +135,7 @@ def _add_tag(contact: Contact, tag: str) -> bool:
 
     Returns True if the tag was actually added (i.e. the column needs
     a write). SQLAlchemy can't track in-place mutations of a JSON list
-    so we reassign the attribute when we add — that ensures the dirty
+    so we reassign the attribute when we add - that ensures the dirty
     flag fires and the row is UPDATEd on the next flush.
     """
     existing = list(contact.module_tags or [])
@@ -154,7 +154,7 @@ async def _find_contact_by_email(
 ) -> Contact | None:
     """Look up an active contact by primary email within ``tenant_id``.
 
-    Tenant scoping mirrors ``ContactRepository._tenant_scope`` — matches
+    Tenant scoping mirrors ``ContactRepository._tenant_scope`` - matches
     by ``Contact.tenant_id`` OR by ``Contact.created_by`` (the v2.3.1
     fallback for legacy rows). If ``tenant_id`` is None we are running
     in an admin / system context and search globally.
@@ -200,7 +200,7 @@ async def ensure_contact_for_person(
       ``session.flush()`` is issued for fresh rows so the caller can
       assign ``lead.contact_id = contact.id`` immediately).
 
-    The caller is responsible for the actual commit — this function
+    The caller is responsible for the actual commit - this function
     never commits.
     """
     normalised_email = (email or "").strip().lower() or None
@@ -226,7 +226,7 @@ async def ensure_contact_for_person(
         logger.info("Contact bridge: created contact %s for %s tag", contact.id, module_tag)
         return contact
 
-    # Existing contact — append the tag idempotently and update phone/
+    # Existing contact - append the tag idempotently and update phone/
     # name when the contact's slot is empty (don't clobber a richer
     # canonical row with a sparse Lead/Buyer form). The Contact stays
     # the source of truth for fields it already owns.
@@ -317,7 +317,7 @@ async def mirror_lead_fields_to_contact(
 
     Called from ``PropertyDevService.update_lead`` after the Lead row is
     persisted. The Contact remains the canonical store, but we keep it
-    in sync with the latest Lead form input — otherwise the user edits
+    in sync with the latest Lead form input - otherwise the user edits
     the Lead's name on the PropDev tab and the Contacts module still
     shows the old one.
 
@@ -400,13 +400,13 @@ async def list_module_rows_for_contact(
 
     Used by the contact-detail drawer to render the "Linked records"
     section. Future modules (broker, vendor, subcontractor) extend this
-    dict — keep the keys stable so the frontend can switch on them.
+    dict - keep the keys stable so the frontend can switch on them.
 
     Cross-module imports live inside the function so the contacts
     module stays importable without property_dev loaded.
     """
     # Local import: contacts is a more foundational module than
-    # property_dev — keep the dependency arrow pointing the right way.
+    # property_dev - keep the dependency arrow pointing the right way.
     from app.modules.property_dev.models import Buyer as PdBuyer
     from app.modules.property_dev.models import Lead as PdLead
 

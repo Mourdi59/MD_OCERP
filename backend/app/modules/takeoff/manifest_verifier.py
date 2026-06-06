@@ -19,14 +19,14 @@ A2/A9/A11 (already shipped in v2.x) hardened the *transport*:
     * Symlink/TOCTOU guard (A9): can't trick a privileged write
     * Streaming size caps (A11): can't fill the disk
 
-This file closes the remaining gap — *integrity*. The attacks A1 is
+This file closes the remaining gap - *integrity*. The attacks A1 is
 designed to defeat are:
 
     1. **DNS hijack of a GitHub release.** An attacker who controls
        upstream DNS (or a rogue resolver in a corporate network) can
        point ``raw.githubusercontent.com`` at their own server. TLS
        proves the IP you connected to served a certificate for that
-       host — it does NOT prove the content is the file the upstream
+       host - it does NOT prove the content is the file the upstream
        maintainer published. A valid TLS handshake to a hostile origin
        is exactly what a DNS hijack delivers.
 
@@ -46,8 +46,8 @@ designed to defeat are:
        ``datadrivenconstruction`` GitHub credentials can replace
        ``*Exporter.exe`` in the repo, and the host allow-list will
        happily download the new (poisoned) file. The signing key is
-       held *separately* from the GitHub credentials — see "Signing
-       ceremony" below — so an account takeover is not enough to land
+       held *separately* from the GitHub credentials - see "Signing
+       ceremony" below - so an account takeover is not enough to land
        a hostile converter on user machines.
 
 TLS alone is insufficient because it authenticates the *connection*,
@@ -88,7 +88,7 @@ set it to ``0`` (or unset).
 
 For air-gapped sites: ``OE_MANIFEST_URL`` overrides the canonical URL
 so operators can host a signed manifest on an internal mirror. The
-signature requirement is unchanged — the internal mirror must serve
+signature requirement is unchanged - the internal mirror must serve
 the upstream-signed bundle as-is.
 
 ================================================================================
@@ -157,7 +157,7 @@ logger = logging.getLogger(__name__)
 #       encoding=s.Encoding.Raw, \
 #       format=s.PublicFormat.Raw).hex())'
 #
-# ROTATION_SENTINEL_BEGIN — do not edit by hand; script writes here
+# ROTATION_SENTINEL_BEGIN - do not edit by hand; script writes here
 CURRENT_PUBKEY_HEX: str = "0000000000000000000000000000000000000000000000000000000000000000"
 # ROTATION_SENTINEL_END
 
@@ -167,7 +167,7 @@ CURRENT_PUBKEY_HEX: str = "00000000000000000000000000000000000000000000000000000
 DEFAULT_MANIFEST_URL: str = "https://pkg.datadrivenconstruction.io/oe/manifest.json"
 FALLBACK_MANIFEST_URL: str = "https://openconstructionerp.com/manifest.json"
 
-# Signature is fetched from <manifest_url>.sig — the same convention
+# Signature is fetched from <manifest_url>.sig - the same convention
 # Debian uses for InRelease/Release.gpg. Keeping it as a sibling URL
 # lets operators serve both via plain static hosting.
 _SIGNATURE_SUFFIX: str = ".sig"
@@ -225,7 +225,7 @@ class ManifestParseError(ManifestError):
 class InstallNotSupported(ManifestError):
     """The current platform / component combination isn't in the manifest.
 
-    Not a security failure — just "we don't ship a converter for that
+    Not a security failure - just "we don't ship a converter for that
     platform yet". Callers should surface this as a 502 with a link
     to file an issue.
     """
@@ -245,7 +245,7 @@ class InstallSHAMismatch(ManifestError):
 # ── Manifest dataclasses ──────────────────────────────────────────────────
 #
 # We keep the manifest model deliberately small and tolerant of unknown
-# fields — future versions may add fields and we don't want old clients
+# fields - future versions may add fields and we don't want old clients
 # to refuse to install just because a new optional key appeared.
 
 
@@ -332,7 +332,7 @@ def _resolve_manifest_url() -> str:
     The env var takes precedence over the canonical URL so operators
     can point at an internal mirror without code changes. The mirror
     is still required to serve the original upstream-signed manifest
-    + signature — the verification check is unchanged.
+    + signature - the verification check is unchanged.
     """
     override = os.environ.get("OE_MANIFEST_URL", "").strip()
     if override:
@@ -358,7 +358,7 @@ def current_platform_key() -> str:
     if sys.platform.startswith("linux"):
         arch = "x86_64" if machine in {"amd64", "x86_64"} else machine
         return f"linux_{arch}"
-    # Unrecognised platform — emit the raw values so the user sees what
+    # Unrecognised platform - emit the raw values so the user sees what
     # to put in their issue report when they hit InstallNotSupported.
     return f"{sys.platform}_{machine or 'unknown'}"
 
@@ -386,7 +386,7 @@ def _fetch_bytes(url: str, max_bytes: int) -> bytes:
                 else:
                     if declared > max_bytes:
                         raise ManifestFetchError(
-                            f"Refused to fetch {url!r} — declared size {declared} bytes exceeds cap of {max_bytes}"
+                            f"Refused to fetch {url!r} - declared size {declared} bytes exceeds cap of {max_bytes}"
                         )
             buf = bytearray()
             while True:
@@ -395,7 +395,7 @@ def _fetch_bytes(url: str, max_bytes: int) -> bytes:
                     break
                 buf.extend(chunk)
                 if len(buf) > max_bytes:
-                    raise ManifestFetchError(f"Aborted fetch of {url!r} — body exceeded cap of {max_bytes} bytes")
+                    raise ManifestFetchError(f"Aborted fetch of {url!r} - body exceeded cap of {max_bytes} bytes")
             return bytes(buf)
     except urllib.error.HTTPError as exc:
         raise ManifestFetchError(f"HTTP {exc.code} fetching {url!r}: {exc.reason}") from exc
@@ -424,7 +424,7 @@ def verify_signature(manifest_bytes: bytes, signature_bytes: bytes, pubkey_hex: 
     if len(pubkey_raw) != 32:
         raise ManifestSignatureInvalid(f"Embedded pubkey must be 32 bytes (got {len(pubkey_raw)})")
     if len(signature_bytes) != 64:
-        # Ed25519 signatures are always 64 bytes — anything else is
+        # Ed25519 signatures are always 64 bytes - anything else is
         # either truncated or a different algorithm.
         raise ManifestSignatureInvalid(f"Signature must be 64 bytes (got {len(signature_bytes)})")
     try:
@@ -435,7 +435,7 @@ def verify_signature(manifest_bytes: bytes, signature_bytes: bytes, pubkey_hex: 
     except InvalidSignature as exc:
         raise ManifestSignatureInvalid(
             "Manifest signature did not verify against the embedded "
-            "public key. Refusing to install — this means the manifest "
+            "public key. Refusing to install - this means the manifest "
             "was tampered with in transit, the signing key was rotated "
             "and your client is stale, or there is an active MITM "
             "between you and the package CDN."
@@ -560,7 +560,7 @@ def verify_downloaded_file(
     """Verify a downloaded blob matches the manifest entry.
 
     Raises ``InstallSHAMismatch`` and *deletes* the partial file on
-    mismatch — the caller's "uninstall on failure" path then has
+    mismatch - the caller's "uninstall on failure" path then has
     nothing left to roll back. We don't keep the corrupt file around
     because some installers retry on failure, and we don't want a
     poisoned blob lying in the cache dir to be picked up by the
@@ -576,7 +576,7 @@ def verify_downloaded_file(
             raise InstallSHAMismatch(
                 f"Downloaded file {path} has size {actual_size} bytes, "
                 f"manifest expected {expected_size}. Deleted partial file. "
-                f"Refusing to install — possible substitution attack."
+                f"Refusing to install - possible substitution attack."
             )
 
     actual = sha256_of_file(path)
@@ -589,7 +589,7 @@ def verify_downloaded_file(
         raise InstallSHAMismatch(
             f"Downloaded file {path} SHA-256 is {actual}, manifest "
             f"expected {expected_norm}. Deleted partial file. "
-            f"Refusing to install — possible substitution attack or "
+            f"Refusing to install - possible substitution attack or "
             f"upstream tampering."
         )
 
@@ -603,7 +603,7 @@ def is_version_in_range(
 
     We do simple tuple comparison on dotted-int prefixes so this
     handles ``3.0.2`` and ``2026-05-13`` styles. Suffixes (``-rc1``,
-    ``+build``) are stripped — a 3.0.0-rc1 is treated as 3.0.0 for
+    ``+build``) are stripped - a 3.0.0-rc1 is treated as 3.0.0 for
     range checks. That matches the spirit of "the user is on a
     pre-release, allow them through".
     """
@@ -615,7 +615,7 @@ def is_version_in_range(
             try:
                 parts.append(int(piece))
             except ValueError:
-                # Calendar versions like 2026-05-13 — split on '-' too.
+                # Calendar versions like 2026-05-13 - split on '-' too.
                 parts.append(0)
         return tuple(parts) if parts else (0,)
 
@@ -681,7 +681,7 @@ def maybe_warn_disabled() -> None:
     """
     if _is_verification_disabled():
         logger.warning(
-            "OE_DISABLE_MANIFEST_VERIFY is set — converter installs "
+            "OE_DISABLE_MANIFEST_VERIFY is set - converter installs "
             "will NOT verify SHA-256 against a signed manifest. This "
             "is acceptable for local development but MUST NOT be set "
             "in production. See manifest_verifier.py for the threat "

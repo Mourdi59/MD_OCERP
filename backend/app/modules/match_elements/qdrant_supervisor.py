@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Qdrant vector-DB supervisor — no Docker, no daemon.
+"""‌⁠‍Qdrant vector-DB supervisor - no Docker, no daemon.
 
 Mirrors the existing converter-installer pattern from
 :mod:`app.modules.takeoff.router` and :mod:`app.modules.boq.cad_import`:
@@ -16,7 +16,7 @@ to a local-only path: PostgreSQL → SQLite, Redis → in-memory cache,
 MinIO → local filesystem. Qdrant used to require a docker-compose
 profile (``--profile ai up -d qdrant``) which made it the only thing
 keeping Docker on the critical path. Qdrant ships a single self-contained
-binary on every platform — using that directly removes the last Docker
+binary on every platform - using that directly removes the last Docker
 dependency for a one-machine install.
 
 Layout
@@ -33,20 +33,20 @@ Layout
 
 The binary is fetched from GitHub Releases on demand by
 :func:`install_qdrant_native`. The asset name pattern is
-``qdrant-{triple}.{archive}`` — see :data:`_PLATFORM_ASSET` for the
+``qdrant-{triple}.{archive}`` - see :data:`_PLATFORM_ASSET` for the
 mapping.
 
 Lifecycle
 ---------
 
-* :func:`find_qdrant_binary` — fast path-stat lookup, no network.
-* :func:`probe_qdrant` — 1.5 s ``GET /readyz`` health probe.
-* :func:`spawn_qdrant` — ``subprocess.Popen`` detached from the parent
+* :func:`find_qdrant_binary` - fast path-stat lookup, no network.
+* :func:`probe_qdrant` - 1.5 s ``GET /readyz`` health probe.
+* :func:`spawn_qdrant` - ``subprocess.Popen`` detached from the parent
   process so the server keeps running across uvicorn reloads.
-* :func:`install_qdrant_native` — downloads + extracts the latest
+* :func:`install_qdrant_native` - downloads + extracts the latest
   release for the current platform.
 
-We do NOT track child PIDs across requests — re-spawning when the port
+We do NOT track child PIDs across requests - re-spawning when the port
 is already bound is harmless (Qdrant refuses to start and exits, the
 existing instance keeps serving). For the same reason we do not try to
 kill an existing instance on uninstall; the operator does that via Task
@@ -83,13 +83,13 @@ QDRANT_CONFIG_DIR: Path = QDRANT_HOME / "config"
 # GitHub Releases API for the official Qdrant repository. We pin to a
 # specific tag rather than `/releases/latest` because Qdrant 1.17+
 # introduced WAL clock replication (`newest_clocks.json`) which trips
-# Windows Defender on fsync during snapshot restore — every install
+# Windows Defender on fsync during snapshot restore - every install
 # of a CWICR catalogue on native Windows fails with `os error 5`. The
 # pinned tag is the newest version that:
 #   1. Reads DDC's current BGE-M3 v3 snapshot format (post-RocksDB
 #      removal, so 1.13–1.15 are out).
 #   2. Does not write `newest_clocks.json`, so Defender never blocks
-#      the fsync — the install just works with no exclusion needed.
+#      the fsync - the install just works with no exclusion needed.
 # Verified empirically on 2026-05-13: 1.13.6 fails (RocksDB legacy),
 # 1.16.3 succeeds end-to-end (HTTP 200, 55719 points loaded), 1.17.x
 # and 1.18.0 fail with the Defender lock. Bump this with care: re-test
@@ -100,7 +100,7 @@ _PINNED_RELEASE_URL = f"https://api.github.com/repos/{_QDRANT_REPO}/releases/tag
 
 # Map (system, machine) → release asset filename pattern. Qdrant
 # publishes static binaries for the three desktop triples we care
-# about — Windows MSVC, Linux musl, macOS universal. The ``{tag}``
+# about - Windows MSVC, Linux musl, macOS universal. The ``{tag}``
 # placeholder is filled from the resolved release name (e.g. ``v1.12.5``).
 _PLATFORM_ASSET: dict[tuple[str, str], str] = {
     ("windows", "amd64"): "qdrant-x86_64-pc-windows-msvc.zip",
@@ -158,7 +158,7 @@ def find_qdrant_binary() -> Path | None:
 def probe_qdrant(url: str, *, timeout_s: float = 1.5) -> bool:
     """‌⁠‍Return ``True`` if Qdrant answers ``GET /readyz`` quickly.
 
-    ``readyz`` is the official liveness endpoint — it returns 200 with
+    ``readyz`` is the official liveness endpoint - it returns 200 with
     the string ``all shards are ready`` once the storage layer has
     finished mounting collections. We accept any 2xx response so the
     probe stays compatible with older Qdrant builds that only expose
@@ -190,7 +190,7 @@ def _write_default_config() -> Path:
     Qdrant works fine without a config (defaults to ``./storage`` /
     ``./snapshots`` relative to the binary's CWD) but we want absolute
     paths under ``QDRANT_HOME`` so a different CWD on respawn doesn't
-    create a second storage tree. Minimal YAML — Qdrant fills in the
+    create a second storage tree. Minimal YAML - Qdrant fills in the
     rest of the schema from its compiled-in defaults.
     """
 
@@ -229,11 +229,11 @@ def spawn_qdrant(binary_path: Path) -> int | None:
     * ``stdin`` / ``stdout`` / ``stderr`` detached from the parent (file
       handles redirected to ``qdrant.log`` for post-mortem triage) so a
       uvicorn reload doesn't drag the server down.
-    * platform-specific detachment flags — on Windows we set
+    * platform-specific detachment flags - on Windows we set
       ``CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS``; on POSIX we
       ``setsid`` via ``start_new_session=True``.
 
-    Returns ``None`` if the spawn fails (rare — usually means the binary
+    Returns ``None`` if the spawn fails (rare - usually means the binary
     is missing executable bits on POSIX).
     """
 
@@ -247,7 +247,7 @@ def spawn_qdrant(binary_path: Path) -> int | None:
     # POSIX needs the binary executable; the unzip step we use for
     # tar.gz preserves permissions but ``shutil.unpack_archive`` on a
     # zip dropped to a NFS share can drop the executable bit. Add it
-    # back idempotently — it's a no-op when already set.
+    # back idempotently - it's a no-op when already set.
     if not sys.platform.startswith("win"):
         try:
             mode = binary_path.stat().st_mode
@@ -281,7 +281,7 @@ def spawn_qdrant(binary_path: Path) -> int | None:
         kwargs["start_new_session"] = True
 
     try:
-        proc = subprocess.Popen(cmd, **kwargs)  # noqa: S603 — trusted binary path
+        proc = subprocess.Popen(cmd, **kwargs)  # noqa: S603 - trusted binary path
     except (OSError, ValueError) as exc:
         logger.error("spawn_qdrant: Popen failed: %s", exc)
         return None
@@ -296,7 +296,7 @@ def _resolve_release_asset() -> tuple[str, str]:
     Hits the pinned-tag Releases API (see ``_QDRANT_PINNED_TAG`` for
     why we don't use ``/latest``) and walks the asset list. Raises
     ``RuntimeError`` if the platform is unsupported (e.g. 32-bit
-    Windows, FreeBSD) or GitHub is unreachable — the install endpoint
+    Windows, FreeBSD) or GitHub is unreachable - the install endpoint
     surfaces this as a clear 503 to the UI. We fall back to the
     well-known ``releases/download/<tag>/<asset>`` URL pattern if the
     Releases API itself is rate-limited; the asset URL is stable per
@@ -323,7 +323,7 @@ def _resolve_release_asset() -> tuple[str, str]:
         with urllib.request.urlopen(req, timeout=30) as resp:
             payload = json.loads(resp.read())
     except urllib.error.HTTPError as exc:
-        # Rate-limited or transient GitHub error — fall back to the
+        # Rate-limited or transient GitHub error - fall back to the
         # well-known download URL for the pinned tag. The asset URL
         # pattern is stable, so this stays correct as long as Qdrant
         # doesn't rename the asset (we'd notice in CI on the first
@@ -331,7 +331,7 @@ def _resolve_release_asset() -> tuple[str, str]:
         if exc.code in (403, 404, 429):
             fallback = f"https://github.com/{_QDRANT_REPO}/releases/download/{_QDRANT_PINNED_TAG}/{asset_key}"
             logger.warning(
-                "GitHub API rate-limited (%s) — falling back to direct URL %s",
+                "GitHub API rate-limited (%s) - falling back to direct URL %s",
                 exc.code,
                 fallback,
             )
@@ -364,7 +364,7 @@ def install_qdrant_native(*, force: bool = False) -> Path:
 
     Raises ``RuntimeError`` with a user-readable message on any failure
     so the caller can pass it straight to ``HTTPException(detail=...)``.
-    The partial download is cleaned up on failure — we don't want a
+    The partial download is cleaned up on failure - we don't want a
     stale .zip lingering after a network hiccup.
     """
 
@@ -398,7 +398,7 @@ def install_qdrant_native(*, force: bool = False) -> Path:
                         break
                 else:
                     raise RuntimeError(
-                        f"Archive {asset_name} did not contain qdrant.exe — release layout may have changed."
+                        f"Archive {asset_name} did not contain qdrant.exe - release layout may have changed."
                     )
         elif asset_name.endswith((".tar.gz", ".tgz")):
             with tarfile.open(archive_path, "r:gz") as tf:
@@ -422,7 +422,7 @@ def install_qdrant_native(*, force: bool = False) -> Path:
         archive_path.unlink(missing_ok=True)
 
     if not target.is_file() or target.stat().st_size < 1_000_000:
-        raise RuntimeError(f"Extraction left no valid binary at {target} — treat this as install failure.")
+        raise RuntimeError(f"Extraction left no valid binary at {target} - treat this as install failure.")
 
     _ = target_dir  # explicit
     logger.info("Installed Qdrant at %s (asset=%s)", target, asset_name)
@@ -430,7 +430,7 @@ def install_qdrant_native(*, force: bool = False) -> Path:
 
 
 def ensure_qdrant_running(url: str | None, *, spawn_if_installed: bool = True) -> QdrantHealth:
-    """One-shot health probe + optional auto-spawn. Pure function — no router deps.
+    """One-shot health probe + optional auto-spawn. Pure function - no router deps.
 
     Behaviour:
 
@@ -442,7 +442,7 @@ def ensure_qdrant_running(url: str | None, *, spawn_if_installed: bool = True) -
       the new state.
     * Else → return ``installed=False`` with a clear ``install_hint``.
 
-    The 8 s wait is a budget, not a sleep — we poll every 400 ms so a
+    The 8 s wait is a budget, not a sleep - we poll every 400 ms so a
     fast-booting Qdrant (<1 s on SSD) returns almost immediately. The
     upper bound is short enough that a UI ``"Refresh status"`` button
     feels snappy.
@@ -465,7 +465,7 @@ def ensure_qdrant_running(url: str | None, *, spawn_if_installed: bool = True) -
             download_url=None,
         )
 
-    # Unreachable — try to auto-spawn if we have the binary on disk.
+    # Unreachable - try to auto-spawn if we have the binary on disk.
     if url and binary and spawn_if_installed:
         spawn_attempted = True
         spawn_qdrant(binary)
@@ -485,7 +485,7 @@ def ensure_qdrant_running(url: str | None, *, spawn_if_installed: bool = True) -
                 )
             time.sleep(0.4)
 
-    # Still down. Build a hint that does NOT mention Docker — the
+    # Still down. Build a hint that does NOT mention Docker - the
     # native binary is the only recommended path here.
     if not installed:
         try:
@@ -529,7 +529,7 @@ def ensure_qdrant_running(url: str | None, *, spawn_if_installed: bool = True) -
         message=(
             "Vector database binary is installed but did not respond on "
             f"{url}. Another process may be holding the port, or the binary "
-            "is still booting — wait 10 seconds and click Refresh."
+            "is still booting - wait 10 seconds and click Refresh."
         ),
         install_hint=(f"Binary found at {binary}. Check ~/.openestimator/qdrant/qdrant.log for startup errors."),
         download_url=None,

@@ -1,18 +1,18 @@
-"""Estimate Reviewer — audits an EXISTING BOQ for pricing gaps and quality issues.
+"""Estimate Reviewer - audits an EXISTING BOQ for pricing gaps and quality issues.
 
 The user supplies a ``boq_id`` in the prompt; the agent reviews that BOQ and
-reports concrete quality problems. It NEVER writes or mutates anything — it is a
+reports concrete quality problems. It NEVER writes or mutates anything - it is a
 read-only auditor over real project data.
 
-Tools (declarative — wired into the global registry on import):
+Tools (declarative - wired into the global registry on import):
 
-* ``read_boq(boq_id)``          — loads the BOQ and its positions via the real
+* ``read_boq(boq_id)``          - loads the BOQ and its positions via the real
                                   ``boq.service.BOQService.get_boq_with_positions``
                                   (the same canonical totals the BOQ detail
                                   endpoint serves, markups included). Returns a
                                   compact, token-bounded summary with the
                                   per-currency grand total.
-* ``check_boq_quality(boq_id)`` — runs the platform's real
+* ``check_boq_quality(boq_id)`` - runs the platform's real
                                   :data:`validation_engine` over the
                                   ``boq_quality`` rule set (the exact rules the
                                   ``POST /boq/{id}/validate`` endpoint fires:
@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 # Cap the number of line items echoed back into the LLM context so a large BOQ
 # (thousands of positions) cannot blow up the next-step prompt cost. The quality
-# tool still analyses EVERY position — only the human-readable line dump is
+# tool still analyses EVERY position - only the human-readable line dump is
 # truncated, with an explicit note when rows are dropped.
 _MAX_LINE_ITEMS = 60
 
@@ -220,7 +220,7 @@ async def _tool_check_boq_quality(boq_id: str) -> dict[str, Any]:
     """Run the real ``boq_quality`` validation rules over a BOQ's positions.
 
     Reuses the platform's :data:`app.core.validation.engine.validation_engine`
-    and its registered ``boq_quality`` rule set — the exact rules the
+    and its registered ``boq_quality`` rule set - the exact rules the
     ``POST /boq/{id}/validate`` endpoint fires (missing/zero quantity & rate,
     duplicate ordinals, total mismatch, unrealistic and outlier rates, empty
     unit, negative values, section-without-items, cost concentration …). The
@@ -284,7 +284,7 @@ async def _tool_check_boq_quality(boq_id: str) -> dict[str, Any]:
                 for pos in boq.positions
             ]
 
-            # Universal quality rule set only — no DIN/NRM/region bias. These
+            # Universal quality rule set only - no DIN/NRM/region bias. These
             # are the platform's own boq_quality rules, executed by the shared
             # engine (single source of truth).
             report = await validation_engine.validate(
@@ -300,7 +300,7 @@ async def _tool_check_boq_quality(boq_id: str) -> dict[str, Any]:
             return {
                 "boq_id": raw_id,
                 "error": "not_found",
-                "detail": "No BOQ with that id exists — nothing to check.",
+                "detail": "No BOQ with that id exists - nothing to check.",
             }
         logger.debug("check_boq_quality unavailable for %s: %s", raw_id, exc)
         return {
@@ -364,7 +364,7 @@ def register_estimate_reviewer() -> None:
                 "the ISO currency code and up to ~60 line items (ordinal, "
                 "description, unit, quantity, unit_rate, total, currency). Call "
                 "this FIRST. Returns an error object if the id is invalid, the "
-                "BOQ is missing, or the database is unreachable — never invent "
+                "BOQ is missing, or the database is unreachable - never invent "
                 "positions or rates."
             ),
             input_schema={
@@ -390,7 +390,7 @@ def register_estimate_reviewer() -> None:
                 "units, negative values, and more). Returns a count summary plus "
                 "a list of failing issues, each with issue_type, "
                 "position_ordinal, message and severity. Returns an error object "
-                "if the BOQ cannot be read — never fabricate findings."
+                "if the BOQ cannot be read - never fabricate findings."
             ),
             input_schema={
                 "type": "object",

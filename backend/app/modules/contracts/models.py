@@ -1,22 +1,22 @@
 """‌⁠‍Contracts ORM models.
 
 Tables:
-    oe_contracts_contract                  — contract header with type-specific terms
-    oe_contracts_contract_line             — schedule of values (SoV) line items
-    oe_contracts_type_configuration        — type-specific allowed-field catalog
-    oe_contracts_retention_schedule        — retention accrual/release rules
-    oe_contracts_fee_structure             — fee-structure config (cost-plus / T&M)
-    oe_contracts_gainshare_configuration   — GMP gainshare / savings-split config
-    oe_contracts_ld_clause                 — liquidated-damages clauses
-    oe_contracts_progress_claim            — periodic payment / progress claims
-    oe_contracts_progress_claim_line       — line-level claim breakdown
-    oe_contracts_final_account             — final account / close-out summary
+    oe_contracts_contract                  - contract header with type-specific terms
+    oe_contracts_contract_line             - schedule of values (SoV) line items
+    oe_contracts_type_configuration        - type-specific allowed-field catalog
+    oe_contracts_retention_schedule        - retention accrual/release rules
+    oe_contracts_fee_structure             - fee-structure config (cost-plus / T&M)
+    oe_contracts_gainshare_configuration   - GMP gainshare / savings-split config
+    oe_contracts_ld_clause                 - liquidated-damages clauses
+    oe_contracts_progress_claim            - periodic payment / progress claims
+    oe_contracts_progress_claim_line       - line-level claim breakdown
+    oe_contracts_final_account             - final account / close-out summary
 
 Notes:
     * counterparty_id is a plain UUID column (no SQLAlchemy ForeignKey) since
       a counterparty may live in oe_contacts_contact OR in a subcontractor table
       and the resolution is done at the service layer.
-    * milestone_id on LDClause is also a plain UUID — milestones may live in
+    * milestone_id on LDClause is also a plain UUID - milestones may live in
       planning/tasks/schedule modules and are resolved at runtime.
     * All monetary values use Numeric(18, 4) for accountancy precision.
 """
@@ -49,7 +49,7 @@ class Contract(Base):
         nullable=False,
         default="client",
     )
-    # Plain UUID — could reference oe_contacts_contact OR a subcontractor row.
+    # Plain UUID - could reference oe_contacts_contact OR a subcontractor row.
     # Resolution is service-layer concern; deliberately NOT a ForeignKey.
     counterparty_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(),
@@ -320,7 +320,7 @@ class LDClause(Base):
         Numeric(18, 4),
         nullable=True,
     )
-    # Plain UUID — milestone may live in planning/tasks/schedule modules.
+    # Plain UUID - milestone may live in planning/tasks/schedule modules.
     milestone_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     enforcement_status: Mapped[str] = mapped_column(
         String(40),

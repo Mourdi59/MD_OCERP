@@ -31,7 +31,7 @@ def _id() -> uuid.UUID:
 
 async def main() -> None:
     print("=" * 70)
-    print("  OpenConstructionERP  —  4D / 5D / Tendering Demo Seeder")
+    print("  OpenConstructionERP  -  4D / 5D / Tendering Demo Seeder")
     print("=" * 70)
 
     async with engine.begin() as conn:
@@ -48,9 +48,9 @@ async def main() -> None:
             return
 
         for project in projects:
-            print(f"\n{'—' * 70}")
+            print(f"\n{'-' * 70}")
             print(f"  {project.name} ({project.currency})")
-            print(f"{'—' * 70}")
+            print(f"{'-' * 70}")
 
             # Get BOQ
             boq_r = await session.execute(select(BOQ).where(BOQ.project_id == project.id))
@@ -79,7 +79,7 @@ async def main() -> None:
             start = datetime(2026, 4, 1)
 
             # ── 4D SCHEDULE ────────────────────────────────────────────
-            print(f"\n  4D Schedule — {len(sections)} activities, {total_months} months")
+            print(f"\n  4D Schedule - {len(sections)} activities, {total_months} months")
 
             schedule = Schedule(
                 id=_id(),
@@ -135,7 +135,7 @@ async def main() -> None:
                 print(f"    {(sec.description or '')[:42]:<42s} {dur:>3d}d  {sec_total:>12,.0f}{p_str}")
 
             # ── 5D BUDGET LINES ────────────────────────────────────────
-            print(f"\n  5D Budget — {len(sections)} lines")
+            print(f"\n  5D Budget - {len(sections)} lines")
 
             for i, sec in enumerate(sections):
                 sec_items = [p for p in items if str(p.parent_id) == str(sec.id)]
@@ -167,7 +167,7 @@ async def main() -> None:
                 )
 
             # ── 5D CASH FLOW ───────────────────────────────────────────
-            print(f"\n  5D Cash Flow — {total_months} periods")
+            print(f"\n  5D Cash Flow - {total_months} periods")
             cum_p, cum_a = 0.0, 0.0
             for m in range(total_months):
                 mid = total_months / 2
@@ -258,7 +258,7 @@ async def main() -> None:
                     currency=project.currency,
                     submitted_at=datetime.now(UTC).isoformat(),
                     status="submitted",
-                    notes=f"Tender — {co}",
+                    notes=f"Tender - {co}",
                     line_items=[],
                     metadata_={},
                 )
@@ -269,7 +269,7 @@ async def main() -> None:
         await session.commit()
 
     print(f"\n{'=' * 70}")
-    print("  DONE — 4D Schedule + 5D Budget + Tendering seeded")
+    print("  DONE - 4D Schedule + 5D Budget + Tendering seeded")
     print(f"{'=' * 70}")
 
 

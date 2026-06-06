@@ -11,7 +11,7 @@ manifest = ModuleManifest(
         "Rule-based, re-evaluating BIM viewer presets. Selectors run "
         "against canonical element properties at view-load time so a "
         "view authored on one model revision keeps working after the "
-        "geometry has been re-imported — and the same view can be "
+        "geometry has been re-imported - and the same view can be "
         "applied to any model that exposes the right properties."
     ),
     author="OpenEstimate Core Team",

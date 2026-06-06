@@ -97,7 +97,7 @@ async def validate_name(
     payload: Iso19650ValidateRequest,
     _: None = Depends(RequirePermission("file_references.read")),
 ) -> Iso19650Result:
-    """Validate a single filename. Stateless — no project access check."""
+    """Validate a single filename. Stateless - no project access check."""
     if payload.rule_set != "iso19650":
         # Future rule sets land here. The validator currently only
         # implements ISO 19650; "none" trivially passes.
@@ -167,7 +167,7 @@ async def acknowledge_violation_route(
     result = await acknowledge_violation(session, violation_id, actor)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Violation not found")
-    # IDOR guard — verify project access against the row we just loaded.
+    # IDOR guard - verify project access against the row we just loaded.
     await verify_project_access(result.project_id, user_id, session)
     return result
 

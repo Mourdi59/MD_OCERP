@@ -1,4 +1,4 @@
-"""‌⁠‍RFI service — business logic for RFI management.
+"""‌⁠‍RFI service - business logic for RFI management.
 
 - Event publishing on create/update/delete
 - Structured state-change logs (R5: keys = rfi_id / project_id /
@@ -66,7 +66,7 @@ _ESCALATION_ROLES = frozenset({"admin", "manager", "owner"})
 # (status answered → open). The generic FSM table allows it as a
 # free transition because the workflow has to support "the answer was
 # wrong, let's re-open", but doing that invalidates the prior response
-# and should never be a silent EDITOR action — it's the same
+# and should never be a silent EDITOR action - it's the same
 # escalation chain as (re)assigning ball-in-court.
 _REOPEN_ROLES = frozenset({"admin", "manager", "owner"})
 
@@ -116,7 +116,7 @@ class RFIService:
         same suffix. We catch the resulting :class:`IntegrityError`, roll
         back, and retry up to ``_RFI_CREATE_MAX_RETRIES`` times. If every
         retry collides (high contention) we surface HTTP 409 so the
-        client retries — never silently writing a duplicate.
+        client retries - never silently writing a duplicate.
         """
         # Auto-set ball_in_court to assigned_to on creation
         ball_in_court = data.ball_in_court
@@ -125,10 +125,10 @@ class RFIService:
 
         # BUG-RFI-RAISED-SPOOF: ``raised_by`` is part of the audit log
         # (who filed this RFI) and must always be the authenticated
-        # caller. The Pydantic schema still exposes the field — older
+        # caller. The Pydantic schema still exposes the field - older
         # clients populate it as a convenience and some internal
         # background paths supply it explicitly when no JWT is in
-        # scope — but when a real ``user_id`` is in scope it wins
+        # scope - but when a real ``user_id`` is in scope it wins
         # unconditionally, so the wire payload cannot impersonate
         # another user. Mirrors the changeorders / variations pattern
         # (created_by is always JWT-derived).
@@ -219,7 +219,7 @@ class RFIService:
 
             return rfi
 
-        # Exhausted the retry budget — surface as 409 so the client can
+        # Exhausted the retry budget - surface as 409 so the client can
         # back off and retry rather than silently failing.
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -267,12 +267,12 @@ class RFIService:
 
         R5 / BUG-RFI-ROLE: only ``admin`` / ``manager`` / ``owner`` may
         change ``assigned_to``. An editor that attempts to reassign gets
-        a clean 403 — the rest of the payload is still rejected wholesale
+        a clean 403 - the rest of the payload is still rejected wholesale
         (atomicity) so the caller never gets a partial update.
 
         ``actor_role`` is plumbed through from the router so the service
         can enforce the gate without re-reading the JWT. ``None`` means
-        the caller is internal (no router-supplied role) — internal
+        the caller is internal (no router-supplied role) - internal
         callers bypass the role check; in practice only background
         subscribers like event handlers reach this path.
         """
@@ -323,7 +323,7 @@ class RFIService:
             # mechanical transition; the role gate keeps it scoped to
             # MANAGER+ so a junior estimator can't quietly invalidate a
             # vetted answer. ``actor_role=None`` means an internal
-            # caller (no JWT in scope) — those bypass the check, same
+            # caller (no JWT in scope) - those bypass the check, same
             # convention as the assigner gate above.
             if (
                 rfi.status == "answered"
@@ -377,7 +377,7 @@ class RFIService:
             logger.info("rfi.updated", extra=log_extra)
 
         # Publish rfi.updated so the vector indexer re-embeds the edited
-        # row (subject / question / response may have changed) — item 16.
+        # row (subject / question / response may have changed) - item 16.
         await _safe_publish(
             "rfi.updated",
             {
@@ -449,7 +449,7 @@ class RFIService:
         2. an ``admin`` / ``manager`` / ``owner`` (escalation chain).
 
         Unassigned RFIs (``assigned_to IS NULL``) can be answered by any
-        caller with ``rfi.respond`` — the router permission already
+        caller with ``rfi.respond`` - the router permission already
         covers the coarse gate there. Refusing with 403 (not 404) so the
         assignee knows the RFI exists; the IDOR concern is already
         neutralised by ``verify_project_access`` at the router boundary.
@@ -457,7 +457,7 @@ class RFIService:
         rfi = await self.get_rfi(rfi_id)
         # BUG-RFI-FSM-RESPOND: ``respond_to_rfi`` used to block only
         # ``closed`` / ``void``, which silently let a ``draft`` (or
-        # already-``answered``) RFI leap straight to ``answered`` —
+        # already-``answered``) RFI leap straight to ``answered`` -
         # bypassing the documented ``draft → open → answered`` flow
         # and overwriting any prior response without a state-change
         # log entry. We now constrain the transition to the single
@@ -501,7 +501,7 @@ class RFIService:
         )
         fresh = await self.repo.get_by_id(rfi_id)
 
-        # Epic H — universal audit trail. Service-layer log so the row
+        # Epic H - universal audit trail. Service-layer log so the row
         # lands in the same transaction as the business write; on
         # rollback the audit row goes with it.
         from app.core.audit_log import log_activity as _log_activity
@@ -727,10 +727,10 @@ class RFIService:
                     rfi_id,
                     rfi.official_response,
                     responded_by=decided_by or (str(rfi.assigned_to) if rfi.assigned_to else ""),
-                    actor_role=None,  # internal caller — bypasses the assignee gate
+                    actor_role=None,  # internal caller - bypasses the assignee gate
                 )
             logger.info(
-                "RFI %s approval completed but status=%s / response=%s — no FSM transition applied",
+                "RFI %s approval completed but status=%s / response=%s - no FSM transition applied",
                 rfi_id,
                 rfi.status,
                 bool(rfi.official_response),
@@ -746,10 +746,10 @@ class RFIService:
                     rfi_id,
                     RFIUpdate(status="open", metadata=meta),
                     actor_id=decided_by,
-                    actor_role=None,  # internal caller — bypasses the reopen role gate
+                    actor_role=None,  # internal caller - bypasses the reopen role gate
                 )
             logger.info(
-                "RFI %s approval rejected but status=%s — no FSM transition applied",
+                "RFI %s approval rejected but status=%s - no FSM transition applied",
                 rfi_id,
                 rfi.status,
             )
@@ -824,7 +824,7 @@ class RFIService:
             # Overdue = open/draft + past due date. Use the same
             # ``now > midnight(due)`` rule the row/detail view applies
             # (router._compute_rfi_fields) so the stat tile and the list never
-            # disagree for an RFI due *today* — a naive ``due_str < today_str``
+            # disagree for an RFI due *today* - a naive ``due_str < today_str``
             # string compare treated "due today" as not-overdue while the list
             # treated it as overdue.
             if rfi.status in ("draft", "open") and rfi.response_due_date:

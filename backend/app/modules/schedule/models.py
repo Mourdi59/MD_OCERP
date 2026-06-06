@@ -1,14 +1,14 @@
 """‌⁠‍Schedule ORM models.
 
 Tables:
-    oe_schedule_schedule        — project schedule (container for activities)
-    oe_schedule_activity        — individual activities / tasks in the schedule (WBS hierarchy)
-    oe_schedule_work_order      — work orders linked to activities
-    oe_schedule_relationship    — CPM dependency relationships between activities
-    oe_schedule_baseline        — schedule baseline snapshots for planned-vs-actual comparison
-    oe_schedule_progress        — progress update records for activities
-    oe_schedule_eac_link        — link between an activity and an EAC rule / inline predicate (4D)
-    oe_schedule_progress_entry  — append-only progress entries from prograssively the field (4D)
+    oe_schedule_schedule        - project schedule (container for activities)
+    oe_schedule_activity        - individual activities / tasks in the schedule (WBS hierarchy)
+    oe_schedule_work_order      - work orders linked to activities
+    oe_schedule_relationship    - CPM dependency relationships between activities
+    oe_schedule_baseline        - schedule baseline snapshots for planned-vs-actual comparison
+    oe_schedule_progress        - progress update records for activities
+    oe_schedule_eac_link        - link between an activity and an EAC rule / inline predicate (4D)
+    oe_schedule_progress_entry  - append-only progress entries from prograssively the field (4D)
 """
 
 import uuid
@@ -35,7 +35,7 @@ from app.database import GUID, Base
 
 
 class Schedule(Base):
-    """‌⁠‍Project schedule — groups activities for 4D planning."""
+    """‌⁠‍Project schedule - groups activities for 4D planning."""
 
     __tablename__ = "oe_schedule_schedule"
 
@@ -146,13 +146,13 @@ class Activity(Base):
         JSON,
         nullable=True,
         default=None,
-    )  # list of BIM element UUIDs (strings) — populated for 4D linking.
+    )  # list of BIM element UUIDs (strings) - populated for 4D linking.
     # NOTE: the underlying JSON column has existed since v1.x with a ``dict``
     # Python annotation, but no production code ever wrote a dict into it.
     # We now treat the value as ``list[str] | None``; any legacy dict-shaped
     # payload found on read should be treated as an empty list (callers use
     # ``list(activity.bim_element_ids or [])`` so a dict simply yields its
-    # keys — we do not rely on that, we normalise in service code).
+    # keys - we do not rely on that, we normalise in service code).
 
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
@@ -162,17 +162,17 @@ class Activity(Base):
         server_default="{}",
     )
 
-    # ── 4D / EVM cost columns (Section 6 — 4D module) ────────────────────
+    # ── 4D / EVM cost columns (Section 6 - 4D module) ────────────────────
     # Optional: only populated when the schedule track also drives cost.
     cost_planned: Mapped[Decimal | None] = mapped_column(
         Numeric(20, 4),
         nullable=True,
-        doc="Planned cost (PV). Optional — None when the schedule isn't cost-loaded.",
+        doc="Planned cost (PV). Optional - None when the schedule isn't cost-loaded.",
     )
     cost_actual: Mapped[Decimal | None] = mapped_column(
         Numeric(20, 4),
         nullable=True,
-        doc="Actual cost-to-date (AC). Optional — None when no actuals captured.",
+        doc="Actual cost-to-date (AC). Optional - None when no actuals captured.",
     )
 
     # Relationships
@@ -194,7 +194,7 @@ class Activity(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Activity {self.wbs_code} — {self.name[:40]}>"
+        return f"<Activity {self.wbs_code} - {self.name[:40]}>"
 
 
 class WorkOrder(Base):
@@ -378,7 +378,7 @@ class ProgressUpdate(Base):
 # ── 4D module (Section 6) ────────────────────────────────────────────────
 
 
-# Mode values for an EacScheduleLink — kept as plain strings so the schema
+# Mode values for an EacScheduleLink - kept as plain strings so the schema
 # stays portable across SQLite and PostgreSQL without ALTER TYPE migrations.
 EAC_LINK_MODES: tuple[str, ...] = ("exact_match", "partial_match", "excluded")
 PROGRESS_ENTRY_DEVICES: tuple[str, ...] = ("mobile", "desktop", "api")
@@ -420,7 +420,7 @@ class EacScheduleLink(Base):
     )
     rule_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(),
-        # No FK — EAC rules live in the eac module and may belong to any
+        # No FK - EAC rules live in the eac module and may belong to any
         # tenant. Service layer enforces tenant scope at lookup time.
         nullable=True,
     )
@@ -514,12 +514,12 @@ class ScheduleProgressEntry(Base):
     actual_start_date: Mapped[str | None] = mapped_column(
         String(40),
         nullable=True,
-        doc="ISO date — only set when the entry transitions task to in_progress.",
+        doc="ISO date - only set when the entry transitions task to in_progress.",
     )
     actual_finish_date: Mapped[str | None] = mapped_column(
         String(40),
         nullable=True,
-        doc="ISO date — only set when the entry brings progress to 100%.",
+        doc="ISO date - only set when the entry brings progress to 100%.",
     )
 
     def __repr__(self) -> str:  # pragma: no cover - debug repr

@@ -12,14 +12,14 @@ Supported fields (5-field POSIX cron):
     day-of-wk   0-6     or ``*``  (0 = Sunday)
 
 Each field supports:
-    - ``*``         — any value
-    - ``N``         — single value (e.g. ``9``)
-    - ``N,M,...``   — list of values (e.g. ``1,15``)
-    - ``N-M``       — inclusive range (e.g. ``1-5``)
-    - ``*/N``       — every N (e.g. ``*/15`` for every 15 minutes)
+    - ``*``         - any value
+    - ``N``         - single value (e.g. ``9``)
+    - ``N,M,...``   - list of values (e.g. ``1,15``)
+    - ``N-M``       - inclusive range (e.g. ``1-5``)
+    - ``*/N``       - every N (e.g. ``*/15`` for every 15 minutes)
 
 We explicitly don't support nicknames (``@daily``), alternative day
-names (``MON``), step within a range, or overflow correction — users
+names (``MON``), step within a range, or overflow correction - users
 who need that can file an issue and we upgrade to croniter.
 
 ``next_occurrence(expr, after)`` returns the next UTC datetime that
@@ -109,7 +109,7 @@ def _field_is_wildcard(raw: str) -> bool:
     POSIX/Vixie cron treats day-of-month and day-of-week specially: when
     BOTH are restricted (neither is ``*``) a timestamp matches if EITHER
     field matches (logical OR), not both (AND). We need to know whether
-    each field was the literal wildcard to make that choice — the parsed
+    each field was the literal wildcard to make that choice - the parsed
     integer set alone can't tell ``*`` apart from an explicit ``0-6`` /
     ``1-31`` range.
     """
@@ -151,17 +151,17 @@ def next_occurrence(expr: str, after: datetime) -> datetime:
 
     # Start from the next minute boundary so we never return ``after`` itself.
     probe = (after_utc + timedelta(minutes=1)).replace(second=0, microsecond=0)
-    # Upper bound: 1 year of minutes — covers any realistic cron expr.
+    # Upper bound: 1 year of minutes - covers any realistic cron expr.
     # Worst case: "0 0 29 2 *" (only Feb 29) lands within ~4 years,
     # so we bump to 5 years for paranoia. Still fast (tens of ms).
     deadline = probe + timedelta(days=5 * 366)
 
     # Common case: daily / weekly / monthly hit within ~31 days. We
-    # advance one minute at a time — trivially correct, negligible cost.
+    # advance one minute at a time - trivially correct, negligible cost.
     while probe <= deadline:
         if probe.minute in minutes and probe.hour in hours and probe.month in months and _day_matches(probe):
             return probe
-        # Skip ahead by hours / days when coarser fields don't match —
+        # Skip ahead by hours / days when coarser fields don't match -
         # keeps the worst-case (year-long search) bounded in ms, not s.
         if probe.hour not in hours:
             probe = (probe + timedelta(hours=1)).replace(minute=0)

@@ -1,14 +1,14 @@
 """Formwork ORM models.
 
 Tables:
-    oe_formwork_system            — catalogue row (Doka, PERI, generic plywood, ...)
-    oe_formwork_assignment        — links a project / BOQ position to a system
-    oe_formwork_schedule_line     — optional pour-by-pour cycle under an assignment
+    oe_formwork_system            - catalogue row (Doka, PERI, generic plywood, ...)
+    oe_formwork_assignment        - links a project / BOQ position to a system
+    oe_formwork_schedule_line     - optional pour-by-pour cycle under an assignment
 
 Money columns use ``Numeric(18, 2)`` (the project's "money as Decimal" rule)
 and serialise as strings via Pydantic in :mod:`app.modules.formwork.schemas`.
 
-All NOT NULL columns carry an explicit ``server_default`` — without this the
+All NOT NULL columns carry an explicit ``server_default`` - without this the
 v3119 fresh-install cascade reappears when ``Base.metadata.create_all`` runs
 ahead of the migration (Python defaults are ignored by ``create_all``).
 """
@@ -89,7 +89,7 @@ class FormworkAssignment(Base):
         index=True,
     )
     # Nullable: early-design estimates may not yet have a BOQ position
-    # wired up. No FK to ``oe_boq_position`` — we keep it loose so the
+    # wired up. No FK to ``oe_boq_position`` - we keep it loose so the
     # row survives a re-import / re-numbering of the BOQ (resolution is
     # service-layer, mirroring contracts.counterparty_id pattern).
     boq_position_id: Mapped[uuid.UUID | None] = mapped_column(

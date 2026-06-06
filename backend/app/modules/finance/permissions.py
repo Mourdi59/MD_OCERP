@@ -10,12 +10,12 @@ def register_finance_permissions() -> None:
         Three new permission keys split off from the generic
         ``finance.update`` so financial commitments require MANAGER:
 
-        * ``finance.approve`` — invoice approval (draft → sent). The
+        * ``finance.approve`` - invoice approval (draft → sent). The
           legacy route used ``finance.update`` (EDITOR), which let any
           estimator move an invoice to a payable state.
-        * ``finance.pay`` — mark invoice paid. Same rationale: paying
+        * ``finance.pay`` - mark invoice paid. Same rationale: paying
           an invoice is a binding financial action, not a CRUD edit.
-        * ``finance.record_payment`` — recording a payment row against
+        * ``finance.record_payment`` - recording a payment row against
           an invoice. EDITOR can no longer fabricate ledger entries.
     """
     permission_registry.register_module_permissions(

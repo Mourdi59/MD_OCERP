@@ -56,7 +56,7 @@ async def seed_equipment_demo(session: AsyncSession) -> dict[str, int]:
     """
     existing = await session.execute(select(Equipment).where(Equipment.code == "EQ-0001"))
     if existing.scalar_one_or_none() is not None:
-        logger.info("Equipment demo already seeded — skipping")
+        logger.info("Equipment demo already seeded - skipping")
         return {
             "types": 0,
             "equipment": 0,
@@ -93,7 +93,7 @@ async def seed_equipment_demo(session: AsyncSession) -> dict[str, int]:
             default_service_interval_hours=Decimal(svc_h) if svc_h else None,
             default_service_interval_km=Decimal(svc_km) if svc_km else None,
             default_inspection_interval_days=insp_d,
-            description=f"{name} — default service every {svc_h or svc_km} h/km",
+            description=f"{name} - default service every {svc_h or svc_km} h/km",
         )
         session.add(t)
         counts["types"] += 1
@@ -196,7 +196,7 @@ async def seed_equipment_demo(session: AsyncSession) -> dict[str, int]:
             counts["telemetry"] += 1
     await session.flush()
 
-    # 4. Maintenance schedules — 60 (2 per equipment for the first 30)
+    # 4. Maintenance schedules - 60 (2 per equipment for the first 30)
     for e in equipment_units[:30]:
         for trigger_type, threshold in (("hours", 500), ("date", 365)):
             s = MaintenanceSchedule(
@@ -218,7 +218,7 @@ async def seed_equipment_demo(session: AsyncSession) -> dict[str, int]:
             counts["schedules"] += 1
     await session.flush()
 
-    # 5. Due work orders — 20
+    # 5. Due work orders - 20
     for e in equipment_units[:20]:
         wo = MaintenanceWorkOrder(
             equipment_id=e.id,
@@ -232,7 +232,7 @@ async def seed_equipment_demo(session: AsyncSession) -> dict[str, int]:
         counts["work_orders"] += 1
     await session.flush()
 
-    # 6. Inspections — 30 (mix of expired/valid/expiring)
+    # 6. Inspections - 30 (mix of expired/valid/expiring)
     insp_types = ("annual", "quarterly", "pre_use")
     for e in equipment_units[:30]:
         offset = rng.randint(-180, 365)
@@ -250,7 +250,7 @@ async def seed_equipment_demo(session: AsyncSession) -> dict[str, int]:
         counts["inspections"] += 1
     await session.flush()
 
-    # 7. Active rentals — 8 (only created if at least one project exists)
+    # 7. Active rentals - 8 (only created if at least one project exists)
     from app.modules.projects.models import Project
 
     proj_rows = (await session.execute(select(Project).limit(8))).scalars().all()
@@ -272,7 +272,7 @@ async def seed_equipment_demo(session: AsyncSession) -> dict[str, int]:
             counts["rentals"] += 1
         await session.flush()
 
-    # 8. Fuel logs — 200 distributed
+    # 8. Fuel logs - 200 distributed
     for _ in range(200):
         e = rng.choice(equipment_units)
         log_date = today - timedelta(days=rng.randint(0, 89))
@@ -292,7 +292,7 @@ async def seed_equipment_demo(session: AsyncSession) -> dict[str, int]:
         counts["fuel_logs"] += 1
     await session.flush()
 
-    # 9. Parts logs — 60
+    # 9. Parts logs - 60
     for _ in range(60):
         e = rng.choice(equipment_units)
         p = PartsLog(
@@ -317,7 +317,7 @@ async def seed_equipment_demo(session: AsyncSession) -> dict[str, int]:
         counts["parts_logs"] += 1
     await session.flush()
 
-    # 10. Damage reports — 12
+    # 10. Damage reports - 12
     for _ in range(12):
         e = rng.choice(equipment_units)
         dr = DamageReport(

@@ -102,7 +102,7 @@ async def create_alias(
 
     Raises :class:`AliasConflictError` when an alias with the same
     ``(scope, scope_id, name)`` already exists *within the same tenant*
-    — the ``uq_eac_parameter_alias_scope_name`` unique constraint
+    - the ``uq_eac_parameter_alias_scope_name`` unique constraint
     would otherwise surface as an opaque 500.
 
     R7 audit (Wave 3): the dup-check is scoped to ``tenant_id`` so
@@ -166,7 +166,7 @@ async def update_alias(
     if alias is None:
         raise LookupError(f"Alias {alias_id} not found")
     if tenant_id is not None and alias.tenant_id != tenant_id:
-        # Hide existence — same 404 surface as a true miss.
+        # Hide existence - same 404 surface as a true miss.
         raise LookupError(f"Alias {alias_id} not found")
 
     data = payload.model_dump(exclude_unset=True)
@@ -236,11 +236,11 @@ async def list_aliases(
     R7 audit (Wave 3): when ``tenant_id`` is supplied, the query is
     scoped to that tenant so a list call from tenant A never leaks
     tenant B's rows. Built-in (system) aliases (``tenant_id IS NULL``)
-    remain visible to every tenant — they ship with the platform.
+    remain visible to every tenant - they ship with the platform.
 
     The free-text query matches against the alias name OR any of its
     synonym patterns. We do the synonym filter in Python rather than
-    write a portable JSON containment expression — the result set per
+    write a portable JSON containment expression - the result set per
     org/project is bounded (RFC 35 §6 ships with 40 built-ins; user
     sets rarely exceed a few hundred).
     """
@@ -374,7 +374,7 @@ async def take_snapshot(
     """Capture every alias for the given scope into an immutable row.
 
     Used by :class:`EacRun` so a replay sees the exact alias set the
-    original execution worked with — even if the user renames or
+    original execution worked with - even if the user renames or
     deletes aliases later.
 
     R7 audit (Wave 3): when ``tenant_id`` is supplied, the snapshot

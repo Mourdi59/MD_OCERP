@@ -1,6 +1,6 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""File search service — index + query business logic.
+"""File search service - index + query business logic.
 
 Stateless service. The indexer pulls the on-disk bytes for the file
 (documents / sheets / markups; other kinds use the embedded ``file_path``
@@ -10,14 +10,14 @@ column on their canonical model), runs the appropriate extractor from
 
 Query side picks the dialect-correct full-text strategy:
 
-* PostgreSQL — ``to_tsvector('simple', content_text) @@ plainto_tsquery``
+* PostgreSQL - ``to_tsvector('simple', content_text) @@ plainto_tsquery``
   with ``ts_rank`` for ordering; the migration also adds a generated
   ``tsv_vector`` column + GIN index for hot-path performance.
-* SQLite      — case-insensitive ``LIKE %q%`` ranked by the position of
+* SQLite      - case-insensitive ``LIKE %q%`` ranked by the position of
   the first match (earlier match → higher score). No regex, no FTS5,
   so this works against the same SQLite file the test suite uses.
 
-Both code paths produce the SAME ``SearchHit`` shape — the dialect
+Both code paths produce the SAME ``SearchHit`` shape - the dialect
 choice is invisible to the router.
 """
 
@@ -77,7 +77,7 @@ async def _fetch_file_payload(
     Returns ``(payload, mime, canonical_name)``. Returns
     ``(b"", "", "")`` when the file isn't a kind we can index, when the
     record is missing, or when the path resolves to nothing on disk
-    (e.g. stale demo seed). Never raises — the caller decides how to
+    (e.g. stale demo seed). Never raises - the caller decides how to
     treat the empty payload (the indexer simply persists a blank row
     with engine="none").
     """
@@ -238,7 +238,7 @@ def _build_snippet(text: str, q: str) -> str:
 
     Case-insensitive partial match. If the term is not found (e.g.
     Postgres stem matched but our naive ``find`` didn't), returns the
-    leading window of the text — still useful context.
+    leading window of the text - still useful context.
     """
     if not text:
         return ""
@@ -268,7 +268,7 @@ async def _resolve_canonical_name(
     """Best-effort lookup of the human-facing name for a file row.
 
     Falls back to ``f"{kind}/{file_id}"`` if the underlying record is
-    gone — search results stay legible even if the source row was
+    gone - search results stay legible even if the source row was
     deleted between indexing and the next search.
     """
     spec = _KIND_LOADERS.get(kind)

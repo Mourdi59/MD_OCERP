@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """‌⁠‍Source-specific element-to-envelope extractors.
 
-Use :func:`build_envelope` to dispatch by source name — that's the
+Use :func:`build_envelope` to dispatch by source name - that's the
 boundary the router and the eval harness both go through. New sources
 register here so the dispatch surface stays one symbol wide.
 """

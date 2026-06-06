@@ -33,13 +33,13 @@ class ApprovalRouteRepository:
 
         When ``project_id`` is supplied we return rows that match that
         project AND (when ``include_tenant_wide``) tenant-wide
-        ``project_id IS NULL`` templates as well — so a module surface
+        ``project_id IS NULL`` templates as well - so a module surface
         can show shared templates plus per-project ones in a single
         dropdown without two round trips.
 
         ``include_inactive`` defaults to ``True`` (the admin surface shows
         archived routes). Pass ``False`` to restrict the result to
-        ``is_active = True`` rows — what a consumer picker wants so users
+        ``is_active = True`` rows - what a consumer picker wants so users
         can't start a workflow on an archived template.
         """
         stmt = select(Route)
@@ -66,7 +66,7 @@ class ApprovalRouteRepository:
         self,
         route_ids: list[uuid.UUID],
     ) -> dict[uuid.UUID, list[Step]]:
-        """Batched fetch of steps for many routes — kills the N+1 in /routes.
+        """Batched fetch of steps for many routes - kills the N+1 in /routes.
 
         Returns a dict keyed by ``route_id``; missing keys mean no steps.
         Steps within each bucket are ordered by ``ordinal``, matching the
@@ -101,7 +101,7 @@ class ApprovalRouteRepository:
         return steps
 
     async def delete_steps_for_route(self, route_id: uuid.UUID) -> None:
-        """Remove every step of a route — used when replacing the step list."""
+        """Remove every step of a route - used when replacing the step list."""
         await self.session.execute(
             delete(Step).where(Step.route_id == route_id),
         )
@@ -153,7 +153,7 @@ class ApprovalRouteRepository:
         self,
         instance_ids: list[uuid.UUID],
     ) -> dict[uuid.UUID, list[StepState]]:
-        """Batched fetch of step states for many instances — kills the N+1 in /instances.
+        """Batched fetch of step states for many instances - kills the N+1 in /instances.
 
         Returns a dict keyed by ``instance_id``; missing keys mean no
         states. States within each bucket are ordered by ``created_at``,

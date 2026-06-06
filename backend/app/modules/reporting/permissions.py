@@ -3,7 +3,7 @@
 Registered at module startup via ``app.modules.reporting.on_startup``.
 Without this, every ``RequirePermission("reporting.*")`` gate in
 ``router.py`` resolves against an *unregistered* permission, which the
-RBAC engine treats as "unknown → deny" for every non-admin role — i.e.
+RBAC engine treats as "unknown → deny" for every non-admin role - i.e.
 KPI snapshot creation, template authoring, scheduling, run-now, report
 generation and deletion would silently 403 for editors/managers and
 only work for admins.
@@ -22,7 +22,7 @@ def register_reporting_permissions() -> None:
     R7 audit (2026-05-24) added ``reporting.distribute`` for the
     schedule + recipient-list endpoints. Distribution is elevated to
     MANAGER because a scheduled template can email arbitrary recipients
-    on a cron — a compromised EDITOR account could otherwise turn the
+    on a cron - a compromised EDITOR account could otherwise turn the
     platform into a spam/phishing relay tied to legitimate project
     data.
     """

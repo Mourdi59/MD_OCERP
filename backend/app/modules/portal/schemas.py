@@ -1,5 +1,5 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
-"""‌⁠‍Customer & Partner Portal Pydantic schemas — request / response models."""
+"""‌⁠‍Customer & Partner Portal Pydantic schemas - request / response models."""
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ class PortalUserList(BaseModel):
 
 
 class PortalUserPatch(BaseModel):
-    """Body for PATCH /admin/users/{id} — suspend / reactivate / rename."""
+    """Body for PATCH /admin/users/{id} - suspend / reactivate / rename."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -78,7 +78,7 @@ class PortalUserPatch(BaseModel):
 
 
 class PortalSelfPatch(BaseModel):
-    """Body for PATCH /me — fields a portal user is allowed to change.
+    """Body for PATCH /me - fields a portal user is allowed to change.
 
     Deliberately narrower than :class:`PortalUserPatch`: a portal user
     must not be able to change their own ``status`` (only the GC admin can
@@ -102,7 +102,7 @@ class PortalUserInviteResponse(BaseModel):
 
     user: PortalUserResponse
     magic_link_token: str = Field(
-        description="Plaintext one-time token — caller must email this to the user",
+        description="Plaintext one-time token - caller must email this to the user",
     )
     magic_link_expires_at: datetime
 
@@ -117,7 +117,7 @@ class MagicLinkRequest(BaseModel):
 
 
 class MagicLinkResponse(BaseModel):
-    """Always returns 202 + this body — no email-enumeration leak."""
+    """Always returns 202 + this body - no email-enumeration leak."""
 
     accepted: bool = True
     message: str = "If the email is registered, a magic link has been sent."
@@ -130,10 +130,10 @@ class MagicLinkConsume(BaseModel):
 
 
 class SessionResponse(BaseModel):
-    """Response body for /auth/consume — gives the caller their session token."""
+    """Response body for /auth/consume - gives the caller their session token."""
 
     session_token: str = Field(
-        description="Bearer token — caller passes as 'Authorization: Bearer <token>'",
+        description="Bearer token - caller passes as 'Authorization: Bearer <token>'",
     )
     expires_at: datetime
     portal_user: PortalUserResponse
@@ -237,11 +237,11 @@ class DocumentAccessLogEntry(BaseModel):
 
 
 class PortalTicketCreate(BaseModel):
-    """Body for POST /me/tickets — a portal user files a service ticket.
+    """Body for POST /me/tickets - a portal user files a service ticket.
 
     The contract_id must belong to a ``service_contract`` access rule the
     caller holds; the service-layer RLS gate enforces this. ``priority``
-    defaults to ``med`` — portal users cannot file ``critical`` tickets
+    defaults to ``med`` - portal users cannot file ``critical`` tickets
     (escalation is internal staff's call to make).
     """
 
@@ -258,7 +258,7 @@ class PortalTicketCreate(BaseModel):
 
 
 class PortalTicketResponse(BaseModel):
-    """Buyer-side ticket view — strips internal-only fields."""
+    """Buyer-side ticket view - strips internal-only fields."""
 
     model_config = ConfigDict(from_attributes=True)
 

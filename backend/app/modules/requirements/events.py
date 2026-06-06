@@ -1,4 +1,4 @@
-"""‌⁠‍Requirements event handlers​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ — vector indexing.
+"""‌⁠‍Requirements event handlers​‌‍⁠​‌‍⁠​‌‍⁠​‌‍⁠ - vector indexing.
 
 Subscribes to ``requirements.requirement.*`` events and keeps the
 ``oe_requirements`` vector collection in sync with the underlying
@@ -41,7 +41,7 @@ async def _index_requirement(event: Event) -> None:
 
     Loads the row in a fresh short-lived session with the parent
     RequirementSet eager-loaded so ``project_id_of`` resolves cleanly.
-    Failures are swallowed — vector indexing is best-effort and must
+    Failures are swallowed - vector indexing is best-effort and must
     never break a normal CRUD or link path.
     """
     rid_raw = (event.data or {}).get("requirement_id")
@@ -98,7 +98,7 @@ async def _on_requirement_updated(event: Event) -> None:
 async def _on_requirement_linked_bim(event: Event) -> None:
     """Re-index after a new BIM↔requirement link so the payload reflects
     the new ``metadata_["bim_element_ids"]`` array.  No frontend cache
-    invalidation needed — React Query refetches the bim-elements query
+    invalidation needed - React Query refetches the bim-elements query
     on its own when the BIM viewer's link modal closes."""
     await _index_requirement(event)
 

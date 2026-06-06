@@ -24,7 +24,7 @@ from app.modules.eac.models import (
 
 # R7 audit (Wave 3): precision-critical Decimal fields are exchanged as
 # strings on the wire so a JSON float bridge never silently rounds.
-# ``unit_multiplier`` scales every downstream QTO value — a 0.001 →
+# ``unit_multiplier`` scales every downstream QTO value - a 0.001 →
 # 0.0009999... round-trip would skew area / volume aggregates.
 DecimalStr = Annotated[
     Decimal,

@@ -6,13 +6,13 @@ Registered idempotently via :func:`register_subscribers`, invoked from
 
 Subscriptions:
 
-* ``moc.candidate_from_ncr`` — emitted by ``ncr.events`` when an NCR with
+* ``moc.candidate_from_ncr`` - emitted by ``ncr.events`` when an NCR with
   cost impact closes. If the cost crosses a configurable threshold we
   auto-create a draft (``proposed``) MoCEntry so scope-affecting NCRs
   appear on the MoC dashboard ready for review. Idempotent on the
   ``source_ncr_id`` marker.
 
-* ``moc.entry.accepted`` — emitted by ``moc.service.transition`` when a
+* ``moc.entry.accepted`` - emitted by ``moc.service.transition`` when a
   MoC is approved. We fan out ``changeorders.candidate_from_moc`` so the
   changeorders module can pre-fill a CO from the approved scope change.
   Loose coupling: we do NOT import changeorders here.
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 _SUBSCRIBED_FLAG = "_moc_subscribers_registered"
 
 # Cost threshold above which an NCR-closure auto-spawns a draft MoC entry.
-# Below this the NCR is closed silently — minor reworks should not flood
+# Below this the NCR is closed silently - minor reworks should not flood
 # the MoC dashboard. Tunable per-tenant in a future config pass.
 _NCR_MOC_AUTO_THRESHOLD = Decimal("1000")
 
@@ -100,7 +100,7 @@ async def _on_moc_candidate_from_ncr(event: Event) -> None:
 
     try:
         async with async_session_factory() as session:
-            # Idempotency — check for an existing MoC keyed on this NCR.
+            # Idempotency - check for an existing MoC keyed on this NCR.
             stmt = select(MoCEntry).where(MoCEntry.project_id == project_id)
             existing = (await session.execute(stmt)).scalars().all()
             ncr_id_s = str(ncr_id)

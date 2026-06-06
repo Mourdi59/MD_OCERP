@@ -6,15 +6,15 @@ Mounted by the module loader at ``/api/v1/clash-ai-triage`` (kebab-cased
 directory name per the loader convention).
 
 Endpoints
-    POST /clashes/{clash_id}                — triage a single clash
-    POST /batch                             — triage many clashes
-    GET  /clashes/{clash_id}/history        — list past triage rows
-    GET  /prompts/current                   — read the current prompt templates
-    POST /replay/{triage_result_id}         — re-run with a new prompt version
+    POST /clashes/{clash_id}                - triage a single clash
+    POST /batch                             - triage many clashes
+    GET  /clashes/{clash_id}/history        - list past triage rows
+    GET  /prompts/current                   - read the current prompt templates
+    POST /replay/{triage_result_id}         - re-run with a new prompt version
 
 Permissions
-    clash_triage.execute  — single + batch + replay (Editor)
-    clash_triage.read     — history + prompts/current (Viewer)
+    clash_triage.execute  - single + batch + replay (Editor)
+    clash_triage.read     - history + prompts/current (Viewer)
 
 IDOR
     Project-ownership is enforced on every endpoint via the shared
@@ -106,7 +106,7 @@ def _to_response(row: ClashTriageResult) -> TriageResultResponse:
     )
 
 
-# ── POST /clashes/{clash_id} — single triage ────────────────────────────────
+# ── POST /clashes/{clash_id} - single triage ────────────────────────────────
 
 
 @router.post(
@@ -125,7 +125,7 @@ async def triage_clash(
     """Triage one clash. Returns the cached row unless ``force_refresh=true``.
 
     Rate-limited via :func:`check_ai_rate_limit` so a runaway client cannot
-    drive unbounded LLM cost — see ``AI_RATE_LIMIT`` env var (default 10/min
+    drive unbounded LLM cost - see ``AI_RATE_LIMIT`` env var (default 10/min
     per user).
     """
     project_id = await _project_id_for_clash(session, clash_id)
@@ -143,7 +143,7 @@ async def triage_clash(
     return _to_response(row)
 
 
-# ── POST /batch — fan-out triage ────────────────────────────────────────────
+# ── POST /batch - fan-out triage ────────────────────────────────────────────
 
 
 @router.post(
@@ -162,12 +162,12 @@ async def triage_batch(
 
     Rate-limited (one bucket "slot" per batch call) so a malicious project
     cannot replay-triage thousands of clashes by submitting one giant batch
-    after another — paired with ``max_concurrent`` (in-flight cap) and the
+    after another - paired with ``max_concurrent`` (in-flight cap) and the
     per-(subject, prompt, model) cache to keep cost predictable.
     """
     # Verify project access against the first reachable clash. The batch
     # contract is "all clashes belong to the same project the caller has
-    # access to" — we enforce by sampling the head; the service then
+    # access to" - we enforce by sampling the head; the service then
     # tolerates missing clashes gracefully (skips + logs).
     if not body.clash_ids:
         return []
@@ -228,7 +228,7 @@ async def get_current_prompts(
 ) -> PromptTemplatesResponse:
     """Return the prompt templates the service will use for the next call.
 
-    Read-only by design — see ``prompts.py`` for the "tune by editing
+    Read-only by design - see ``prompts.py`` for the "tune by editing
     the file" philosophy. Surfaced through HTTP so the UI can show a
     coordinator the exact prompt that produced (or will produce) a
     given verdict.
@@ -259,14 +259,14 @@ async def replay(
     """Re-run an existing triage against a (usually newer) prompt version.
 
     Replay ALWAYS pays for a fresh LLM call (the cache is by design bypassed
-    — that's the whole point of replay). Rate-limited so an actor with
+    - that's the whole point of replay). Rate-limited so an actor with
     ``clash_triage.execute`` cannot loop replays to drive LLM cost up.
     """
     stmt = select(ClashTriageResult).where(ClashTriageResult.id == triage_result_id)
     existing = (await session.execute(stmt)).scalar_one_or_none()
     if existing is None:
         raise HTTPException(status_code=404, detail="Triage result not found")
-    # Walk via the original clash_id for IDOR — replay is only allowed on
+    # Walk via the original clash_id for IDOR - replay is only allowed on
     # subjects in projects the caller still has access to.
     if existing.clash_id is not None:
         project_id = await _project_id_for_clash(session, existing.clash_id)
@@ -274,7 +274,7 @@ async def replay(
     else:
         # Source clash was deleted (FK on-delete nulled clash_id). Without
         # an anchor row we cannot resolve the owning project, so refuse to
-        # replay — any user with ``clash_triage.execute`` would otherwise
+        # replay - any user with ``clash_triage.execute`` would otherwise
         # be able to drive AI calls against an orphaned subject.
         raise HTTPException(
             status_code=410,

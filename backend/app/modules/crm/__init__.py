@@ -8,7 +8,7 @@ Project records from a closed-won opportunity payload).
 
 
 async def on_startup() -> None:
-    """‌⁠‍Module startup hook — register permissions."""
+    """‌⁠‍Module startup hook - register permissions."""
     from app.modules.crm.permissions import register_crm_permissions
 
     register_crm_permissions()

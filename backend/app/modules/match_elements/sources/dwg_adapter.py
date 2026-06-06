@@ -1,10 +1,10 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍DWG source adapter — reads ``oe_takeoff_cad_session`` for the
+"""‌⁠‍DWG source adapter - reads ``oe_takeoff_cad_session`` for the
 match-elements module.
 
 Phase B of /match-elements. The DDC ``DwgExporter`` pipeline lands an
-extracted DWG/DXF (or RVT/DGN — same table is used for any CAD via
+extracted DWG/DXF (or RVT/DGN - same table is used for any CAD via
 DDC) as a row in :class:`CadExtractionSession` whose ``elements_data``
 JSON column carries the per-element dicts the takeoff UI shows. We
 reuse those dicts here verbatim so a session a user already inspected
@@ -13,7 +13,7 @@ under /quantities can be matched against CWICR without re-extracting.
 ``MatchSession.bim_model_id`` overload
 --------------------------------------
 The match-elements schema only has one optional source-scope FK on
-:class:`MatchSession` — ``bim_model_id``. Adding a second FK plus a
+:class:`MatchSession` - ``bim_model_id``. Adding a second FK plus a
 migration just to namespace DWG sessions is unjustified for Phase B,
 so this adapter overloads ``bim_model_id`` as a *source-agnostic*
 scope id: when ``MatchSession.source == "dwg"`` it is interpreted as
@@ -46,7 +46,7 @@ keys the BIM adapter already emits so the matchers don't branch:
     length / length (m)       → ``quantities.length_m``
     count                     → ``quantities.count`` (defaults 1.0)
 
-DWG has no opening/void relations — ``use_net_quantities`` is accepted
+DWG has no opening/void relations - ``use_net_quantities`` is accepted
 for signature compatibility but ignored.
 """
 
@@ -67,7 +67,7 @@ logger = logging.getLogger(__name__)
 
 
 # Canonical group-by keys we surface first when their values are
-# populated — order matters because the chip-bar honours it.
+# populated - order matters because the chip-bar honours it.
 _GROUP_BY_KEY_ORDER = (
     "ifc_class",
     "category",
@@ -105,7 +105,7 @@ _HEADER_ALIASES: dict[str, str] = {
 }
 
 
-# Quantity-column aliases. Floats only — strings drop through.
+# Quantity-column aliases. Floats only - strings drop through.
 _QUANTITY_ALIASES: dict[str, str] = {
     "volume": "volume_m3",
     "volume (m3)": "volume_m3",
@@ -127,8 +127,8 @@ def _canon_attr(raw_key: str) -> str | None:
     """‌⁠‍Map a raw element dict key to our canonical attribute name.
 
     Keys not in the alias table pass through untouched (so a project
-    that ships extra DDC columns — wall fire rating, hatch pattern,
-    etc — can still be used in group-by). Quantity keys return
+    that ships extra DDC columns - wall fire rating, hatch pattern,
+    etc - can still be used in group-by). Quantity keys return
     ``None`` so callers know to route to ``quantities``.
     """
     k = raw_key.strip().lower()
@@ -182,7 +182,7 @@ def _quantities_from_element(elem: dict[str, Any]) -> dict[str, float]:
         if f is None:
             continue
         # Sum across duplicates (e.g. an element with both ``area``
-        # and ``area (m2)`` headers — unusual but seen in mixed
+        # and ``area (m2)`` headers - unusual but seen in mixed
         # exports) rather than overwrite.
         out[canon] = out.get(canon, 0.0) + f
     if "count" not in out:
@@ -195,7 +195,7 @@ def _attributes_from_element(elem: dict[str, Any]) -> dict[str, Any]:
 
     BIM adapter's downstream matchers read ``ifc_class``, ``type_name``,
     ``level``, ``discipline`` first; DWG has no IFC class so we promote
-    the DWG ``category`` value to ``ifc_class`` as well — this lets the
+    the DWG ``category`` value to ``ifc_class`` as well - this lets the
     same group-by key (``ifc_class``) work across sources without the
     matcher caring.
     """
@@ -221,7 +221,7 @@ class DwgAdapter:
 
     The adapter is keyed off :class:`CadExtractionSession`, the durable
     backing store the takeoff/quantities page already writes. We do
-    not re-run the converter — we read the JSON the user already
+    not re-run the converter - we read the JSON the user already
     accepted. This keeps the matcher input identical to what's
     visible in /quantities, avoiding "the matcher saw different rows
     than I did" surprises.
@@ -240,7 +240,7 @@ class DwgAdapter:
         """Resolve the CadExtractionSession to read elements from.
 
         ``bim_model_id`` here is the overload described at the top of
-        the module — when set, it's a CadExtractionSession.id. When
+        the module - when set, it's a CadExtractionSession.id. When
         unset we pick the most recent non-expired session for the
         project (mirrors BIM's "all models" fallback).
         """
@@ -256,7 +256,7 @@ class DwgAdapter:
 
         # Project_id on CadExtractionSession is String(255) not GUID,
         # so coerce to str. Also accept the UUID's string form with
-        # and without dashes — older sessions wrote bare hex.
+        # and without dashes - older sessions wrote bare hex.
         pid_str = str(project_id)
         pid_hex = pid_str.replace("-", "")
         stmt = (
@@ -316,10 +316,10 @@ class DwgAdapter:
         bim_model_id: uuid.UUID | None = None,
         filters: dict[str, list[Any]] | None = None,
         excluded_categories: list[str] | None = None,
-        use_net_quantities: bool = True,  # noqa: ARG002 — DWG no-op
+        use_net_quantities: bool = True,  # noqa: ARG002 - DWG no-op
     ) -> list[SourceElement]:
         """Load all elements from the CAD session, applying scope
-        filters in Python (the source is a JSON blob — no SQL filter
+        filters in Python (the source is a JSON blob - no SQL filter
         is possible without a full table scan anyway).
         """
         sess = await self._resolve_cad_session(project_id, bim_model_id)
@@ -344,7 +344,7 @@ class DwgAdapter:
             attrs = _attributes_from_element(elem)
             category = str(attrs.get("category") or "Unknown")
 
-            # Scope filter — drop excluded categories before the
+            # Scope filter - drop excluded categories before the
             # per-attribute filters so the user's "exclude
             # Annotation" chip cuts work uniformly.
             if category in excluded:
@@ -363,7 +363,7 @@ class DwgAdapter:
             qty = _quantities_from_element(elem)
 
             # DDC sometimes carries a stable "Id" or "ElementId" key
-            # — prefer that so re-imports keep group membership; fall
+            # - prefer that so re-imports keep group membership; fall
             # back to a synthetic positional id (the row's index in
             # the JSON list, prefixed with the cad session id so a
             # multi-session project doesn't collide).

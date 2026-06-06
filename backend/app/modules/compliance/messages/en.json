@@ -14,7 +14,7 @@
     },
     "nl": {
       "title": "Natural Language Rule Builder",
-      "subtitle": "Describe your rule in plain English, German or Russian — the builder generates valid DSL.",
+      "subtitle": "Describe your rule in plain English, German or Russian - the builder generates valid DSL.",
       "input_placeholder": "e.g. all walls must have a fire-rating property",
       "generate": "Generate",
       "save_as_rule": "Save as Compliance Rule",
@@ -25,11 +25,11 @@
       "method_ai": "AI fallback",
       "method_fallback": "No match",
       "use_ai": "Use AI fallback",
-      "ai_unavailable": "AI fallback skipped — no API key configured.",
+      "ai_unavailable": "AI fallback skipped - no API key configured.",
       "input_empty": "Input is empty.",
       "input_too_long": "Input exceeds 2000 characters.",
       "no_match": "No pattern matched the input. Try one of the supported phrasings on the right.",
-      "low_confidence": "Low confidence — review the generated DSL carefully before saving.",
+      "low_confidence": "Low confidence - review the generated DSL carefully before saving.",
       "saved": "Rule saved successfully.",
       "save_failed": "Could not save rule: {detail}",
       "pattern": {

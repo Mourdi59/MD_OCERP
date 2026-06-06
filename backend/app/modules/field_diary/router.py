@@ -2,9 +2,9 @@
 """Field Diary API routes (mounted at ``/api/v1/field-diary``).
 
 Auth model:
-    * ``POST /auth/request-magic-link/`` is **unauthenticated** — it
+    * ``POST /auth/request-magic-link/`` is **unauthenticated** - it
       provisions a magic-link + PIN for the supplied phone.
-    * ``POST /auth/consume/`` is also unauthenticated — exchanges
+    * ``POST /auth/consume/`` is also unauthenticated - exchanges
       ``(token, pin)`` for a long-lived session token.
     * Every other endpoint depends on :class:`RequirePinPlusMagicLink`
       (validates ``Authorization: Bearer <session-token>`` AND
@@ -89,7 +89,7 @@ class RequirePinPlusMagicLink:
 
     Returns the live :class:`FieldSession` on success; raises 401 on any
     failure. The session is scoped to a single ``(user, project,
-    module)`` tuple — callers should compare against the resource being
+    module)`` tuple - callers should compare against the resource being
     accessed.
     """
 
@@ -133,7 +133,7 @@ async def _require_field_module_grant(
 ):
     """Gate every diary endpoint on the dedicated module-grant table.
 
-    Reads ``project_id`` from the live session (NOT from the URL —
+    Reads ``project_id`` from the live session (NOT from the URL -
     sessions are pinned to one project, no IDOR window).
     """
     svc = FieldDiaryService(session)
@@ -167,7 +167,7 @@ async def request_magic_link(
 
     Provisions an ``oe_users_user`` row for the phone number if one
     doesn't already exist (field workers may have never logged into the
-    internal app). The user has no role + no permissions — access is
+    internal app). The user has no role + no permissions - access is
     granted exclusively via the ``oe_field_module_grant`` table.
 
     Always returns 202 with ``accepted=true`` to avoid leaking whether
@@ -251,7 +251,7 @@ async def list_entries(
     service: FieldDiaryService = Depends(_get_service),
 ) -> list[DiaryEntryResponse]:
     """List entries for the session's project (cross-project queries are
-    silently scoped down to the session project — no IDOR window)."""
+    silently scoped down to the session project - no IDOR window)."""
     target_project = field_session.project_id
     if project_id is not None and project_id != target_project:
         # Session is pinned to one project; reject mismatching ?project_id=.
@@ -295,7 +295,7 @@ async def get_entry(
 ) -> DiaryEntryResponse:
     entry = await service.get_diary_entry(entry_id)
     if entry.project_id != field_session.project_id:
-        # Hide existence — match HTTP 404 semantics used elsewhere.
+        # Hide existence - match HTTP 404 semantics used elsewhere.
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Diary entry not found",
@@ -404,7 +404,7 @@ async def upload_attachment(
     field_session=Depends(_require_field_module_grant),
     service: FieldDiaryService = Depends(_get_service),
 ) -> DiaryAttachmentResponse:
-    """Upload a file attachment (S3-style — stored as opaque bytes).
+    """Upload a file attachment (S3-style - stored as opaque bytes).
 
     Hard cap of 25 MB. The filename supplied by the client is kept as
     metadata only; the on-disk storage key is server-derived to defuse
@@ -454,7 +454,7 @@ async def upload_attachment(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to save attachment — storage error",
+            detail="Unable to save attachment - storage error",
         ) from exc
 
     relative_path = f"field_diary/attachments/{safe_name}"
@@ -607,7 +607,7 @@ async def capture_photo(
     punch_svc = PunchListService(session)
     item = await punch_svc.get_item(punch_item_id)
     if item.project_id != field_session.project_id:
-        # Hide existence — IDOR returns 404 for cross-project ids.
+        # Hide existence - IDOR returns 404 for cross-project ids.
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Punch item not found",
@@ -647,12 +647,12 @@ async def capture_photo(
         logger.exception("Unable to save field photo for punch %s", punch_item_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to save photo — storage error",
+            detail="Unable to save photo - storage error",
         ) from exc
 
     await punch_svc.add_photo(punch_item_id, f"punchlist/photos/{safe_name}")
 
-    # Cross-link into the Documents hub (best-effort — the photo is persisted).
+    # Cross-link into the Documents hub (best-effort - the photo is persisted).
     try:
         from app.modules.documents.models import Document
 
@@ -756,7 +756,7 @@ async def create_grant(
     user_id: CurrentUserId,
     service: FieldDiaryService = Depends(_get_service),
 ) -> FieldModuleGrantResponse:
-    """Operator-facing — grant a field user access to a module on a project.
+    """Operator-facing - grant a field user access to a module on a project.
 
     Gated by standard RBAC (``RequireRole("admin")``) because it modifies
     permissions; the data path it gates (the field worker's requests)

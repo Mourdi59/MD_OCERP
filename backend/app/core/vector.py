@@ -1,9 +1,9 @@
-"""‌⁠‍Vector database integration — LanceDB (embedded) or Qdrant (server).
+"""‌⁠‍Vector database integration - LanceDB (embedded) or Qdrant (server).
 
-Default: LanceDB — embedded vector DB, runs in-process like SQLite.
+Default: LanceDB - embedded vector DB, runs in-process like SQLite.
 No Docker, no server, no network. Data at ~/.openestimator/data/vectors/.
 
-Alternative: Qdrant — for server/production deployments.
+Alternative: Qdrant - for server/production deployments.
 Switch via VECTOR_BACKEND=qdrant env var.
 
 Usage:
@@ -22,7 +22,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 COST_TABLE = "cost_items"
-# Legacy default — kept as a fallback so existing CWICR LanceDB tables built
+# Legacy default - kept as a fallback so existing CWICR LanceDB tables built
 # with all-MiniLM-L6-v2 still load.  The active model is now resolved per call
 # from `Settings.embedding_model_name` (multilingual by default).
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
@@ -36,13 +36,13 @@ QDRANT_SNAPSHOT_DIM = 3072  # Dimension for pre-built Qdrant snapshots from GitH
 # the EmbeddingAdapter layer in `core/vector_index.py` can write to any one
 # of them through the same code path.
 #
-#   id          UUID string — matches the source row PK
-#   vector      list[float] — embedding (dimension = settings.embedding_model_dim)
+#   id          UUID string - matches the source row PK
+#   vector      list[float] - embedding (dimension = settings.embedding_model_dim)
 #   text        canonical text that was embedded (for snippet rendering)
-#   tenant_id   UUID string — multi-tenant scope filter
-#   project_id  UUID string or "" — per-project scope filter
+#   tenant_id   UUID string - multi-tenant scope filter
+#   project_id  UUID string or "" - per-project scope filter
 #   module      short module name ("boq", "documents", …)
-#   payload     JSON string — light metadata for hit rendering without an
+#   payload     JSON string - light metadata for hit rendering without an
 #               extra Postgres roundtrip (title, status, ordinal, etc.)
 GENERIC_FIELDS: tuple[str, ...] = (
     "id",
@@ -67,7 +67,7 @@ def _has_module(name: str) -> bool:
 
     Used during startup to report availability of optional dependencies
     (qdrant-client, sentence-transformers) without triggering heavy
-    native imports like torch — which on Windows + Anaconda can cause
+    native imports like torch - which on Windows + Anaconda can cause
     MKL/OMP DLL conflicts that terminate the process silently.
     """
     import importlib.util
@@ -113,7 +113,7 @@ def get_embedder():
     singleton stays ``None`` and ``_embedder_tried`` flips to ``True``
     so subsequent calls return ``None`` without re-running the multi-
     second download cascade. The cost-vector upsert path observed this
-    in v2.9.30 — a stuck background task was hitting both models in a
+    in v2.9.30 - a stuck background task was hitting both models in a
     loop ~every second, burning ~10s of CPU per iteration and starving
     the match-elements request path of the GIL.
     """
@@ -187,14 +187,14 @@ def encode_texts(texts: list[str]) -> list[list[float]]:
 
 
 async def encode_texts_async(texts: list[str]) -> list[list[float]]:
-    """Async wrapper — dispatch encode based on current concurrency.
+    """Async wrapper - dispatch encode based on current concurrency.
 
     Smart routing (see ``app.core.embedding_pool``):
         * If the configured pool is up AND another encode is currently
           in flight, dispatch this call to the pool so the two calls
           run on different workers in parallel.
         * Otherwise (no in-flight calls, or pool disabled), run encode
-          inline via ``asyncio.to_thread`` — this avoids the IPC
+          inline via ``asyncio.to_thread`` - this avoids the IPC
           overhead a process pool would add for what's already a fast
           single call.
 
@@ -204,7 +204,7 @@ async def encode_texts_async(texts: list[str]) -> list[list[float]]:
     """
     import asyncio
 
-    # Empty input — skip both pool dispatch and the embedder altogether.
+    # Empty input - skip both pool dispatch and the embedder altogether.
     if not texts:
         return []
 
@@ -215,14 +215,14 @@ async def encode_texts_async(texts: list[str]) -> list[list[float]]:
 
     # Increment in-flight count so the NEXT concurrent caller sees
     # ``inflight > 1`` and routes to the pool. Wrap the whole call so
-    # even on exception we decrement — a leak would mean every future
+    # even on exception we decrement - a leak would mean every future
     # call routes to the pool unnecessarily.
     if _pool_mod is not None:
         _pool_mod._inflight += 1
     try:
         # Route to pool ONLY if (a) the pool is up and (b) at least
         # one OTHER call is in flight (so this one would otherwise
-        # serialise behind it). With ``inflight == 1`` we're alone —
+        # serialise behind it). With ``inflight == 1`` we're alone -
         # encode inline.
         if _pool_mod is not None and _pool_mod._pool is not None and _pool_mod._inflight > 1:
             try:
@@ -327,7 +327,7 @@ def _lancedb_status() -> dict[str, Any]:
             }
         else:
             info["cost_collection"] = None
-        # Multi-collection inventory — every non-cost collection registered by
+        # Multi-collection inventory - every non-cost collection registered by
         # the EmbeddingAdapter layer.  Lightweight: just a row count per table.
         generic_collections: dict[str, dict[str, Any]] = {}
         for table_name in tables:
@@ -342,14 +342,14 @@ def _lancedb_status() -> dict[str, Any]:
             except Exception as exc:  # pragma: no cover - defensive
                 generic_collections[table_name] = {"status": "error", "error": str(exc)}
         info["collections"] = generic_collections
-        # LAZY checks — never instantiate heavy torch/qdrant during status.
+        # LAZY checks - never instantiate heavy torch/qdrant during status.
         # Loading torch during startup on Windows + Anaconda can trigger
         # a silent MKL/OMP DLL conflict that terminates the process.
         #
         # ``can_restore_snapshots`` is False on LanceDB by design: the
         # Qdrant snapshot endpoint (3072-d embeddings, ~1.1 GB per region)
         # requires a running Qdrant server. Having ``qdrant_client``
-        # pip-installed doesn't imply Qdrant is reachable — and the UI
+        # pip-installed doesn't imply Qdrant is reachable - and the UI
         # used the flag to route clicks into the Qdrant path, which
         # raised "Qdrant not available" from /vector/restore-snapshot on
         # every region click. The LanceDB path (/vector/load-github)
@@ -374,7 +374,7 @@ import re as _re
 # Only printable ASCII minus single-quote and backslash are allowed so a
 # caller-supplied region / project_id / tenant_id can never break out of
 # the surrounding ``field = '<value>'`` literal.  The cap (128 chars) is
-# generous — real values are ≤ 64 chars.
+# generous - real values are ≤ 64 chars.
 _LANCEDB_SAFE_STRING_RE = _re.compile(r"^[^\x00-\x1f\x7f'\\]{1,128}$")
 
 
@@ -383,7 +383,7 @@ def _safe_quote_scalar(value: str, field: str = "field") -> str | None:
 
     Returns the quoted string (``'value'``) when the input passes the
     allowlist, or ``None`` when it must be rejected.  Callers MUST treat
-    a ``None`` return as "drop this filter" — never fall through to
+    a ``None`` return as "drop this filter" - never fall through to
     interpolating the raw value.
 
     The allowlist is intentionally restrictive (printable ASCII excluding
@@ -578,7 +578,7 @@ def _lancedb_index(items: list[dict]) -> int:
     """Index items into LanceDB. Each item: {id, vector, code, description, unit, rate, region}.
 
     Cost item IDs originate from ``CostItem.id`` (a SQLAlchemy ``GUID()``
-    column) so they're always UUID strings — :func:`_safe_quote_ids`
+    column) so they're always UUID strings - :func:`_safe_quote_ids`
     enforces that as a defence-in-depth boundary check.
     """
     db = _get_lancedb()
@@ -658,7 +658,7 @@ def reset_qdrant_client() -> None:
     """Drop the cached client so the next ``_get_qdrant`` call reconnects.
 
     Called by ``/api/v1/match_elements/qdrant/install`` after a successful
-    spawn — without this the rest of the backend keeps returning
+    spawn - without this the rest of the backend keeps returning
     ``"Qdrant not reachable"`` because the first boot-time probe latched
     a ``None`` client. Cheap to call: no-op when nothing is cached.
     """
@@ -751,7 +751,7 @@ def vector_status() -> dict[str, Any]:
             else:
                 info["cost_collection"] = None
             info["can_restore_snapshots"] = True
-            # Lazy — see note on _lancedb_status above.
+            # Lazy - see note on _lancedb_status above.
             info["can_generate_locally"] = _has_module("sentence_transformers")
             info["embedding_dim"] = QDRANT_SNAPSHOT_DIM
             info["backend"] = "qdrant"
@@ -809,7 +809,7 @@ def vector_index(items: list[dict]) -> int:
             # A collection left over from a different embedding model (for
             # example a 3072-d prebuilt snapshot that was later cleared) is
             # incompatible with locally generated vectors.  Rebuild it at the
-            # correct size so indexing proceeds instead of 400-ing — the old
+            # correct size so indexing proceeds instead of 400-ing - the old
             # vectors could not be searched with the current model anyway.
             existing_dim = _qdrant_vector_size(client, COST_TABLE)
             if existing_dim is not None and existing_dim != vec_dim:
@@ -932,7 +932,7 @@ def vector_search_collection(
 
     Returns a list of hits with ``id, score, text, tenant_id, project_id,
     module, payload``.  ``payload`` is returned as a JSON string for
-    LanceDB and as the original dict (re-serialised) for Qdrant — callers
+    LanceDB and as the original dict (re-serialised) for Qdrant - callers
     should treat it as opaque and let ``core/vector_index.py`` decode it.
     """
     if _backend() == "qdrant":
@@ -960,7 +960,7 @@ def vector_search_collection(
         import json as _json
 
         # Reserved keys are extracted from the Qdrant payload via ``get``
-        # (NOT ``pop``) so we never mutate the source dict — the qdrant
+        # (NOT ``pop``) so we never mutate the source dict - the qdrant
         # client may cache result objects and other consumers downstream
         # would otherwise see a stripped payload.
         _RESERVED = {"text", "tenant_id", "project_id", "module"}
@@ -1029,7 +1029,7 @@ def vector_count_collection(collection_name: str) -> int:
         try:
             col = client.get_collection(collection_name)
             # ``points_count`` first, ``vectors_count`` (older clients) next,
-            # then a live count() — version-tolerant across qdrant-client.
+            # then a live count() - version-tolerant across qdrant-client.
             count = getattr(col, "points_count", None)
             if count is None:
                 count = getattr(col, "vectors_count", None)
@@ -1059,7 +1059,7 @@ def vector_count_with_payload_substring(
         return 0
     # Sanitise: only allow CWICR-style ids (LETTERS/digits/underscore)
     # so a malicious caller can't inject SQL into the LanceDB filter
-    # expression. The whitelist is intentionally tight — every legitimate
+    # expression. The whitelist is intentionally tight - every legitimate
     # CWICR id matches it (e.g. ``RU_STPETERSBURG``, ``USA_USD``).
     import re  # noqa: PLC0415
 
@@ -1086,8 +1086,8 @@ def vector_count_with_payload_substring(
 def vector_count_for_region(region: str) -> int:
     """Count cost-item vectors for a single catalogue region.
 
-    Reads the SAME store the ``/vector/index/`` action writes — the cost
-    collection ``COST_TABLE`` (``cost_items``) on both backends — filtered by
+    Reads the SAME store the ``/vector/index/`` action writes - the cost
+    collection ``COST_TABLE`` (``cost_items``) on both backends - filtered by
     the dedicated ``region`` field. This is what the per-catalogue
     "vectorised" badge in the UI must reflect, so the count rises right after
     a vectorise run instead of staying stuck (issue #170). Returns 0 on any

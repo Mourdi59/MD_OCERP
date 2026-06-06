@@ -3,7 +3,7 @@
 Mounted at ``/api/v1/webhook-leads/``.
 
 The public ingestion endpoint ``POST /incoming/{source_slug}/`` is NOT
-gated by the platform JWT — it authenticates against the per-source
+gated by the platform JWT - it authenticates against the per-source
 credential inside the service. Every other (admin) endpoint is gated
 through ``RequirePermission`` like the rest of the platform.
 """
@@ -56,7 +56,7 @@ async def ingest_webhook(
     response: Response,
     service: WebhookLeadsService = Depends(_get_service),
 ) -> IngestionResponse:
-    """Public ingestion endpoint — auth via the source's configured method.
+    """Public ingestion endpoint - auth via the source's configured method.
 
     Reads the RAW request body bytes (required for correct HMAC
     verification) and only then parses JSON. Every attempt is audit

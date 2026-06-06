@@ -1,4 +1,4 @@
-"""‌⁠‍Reporting & Dashboards Pydantic schemas — request/response models."""
+"""‌⁠‍Reporting & Dashboards Pydantic schemas - request/response models."""
 
 import html
 import re
@@ -15,12 +15,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 # the renderer; if a future template embeds them inside HTML without
 # auto-escaping, ``<script>`` / ``<iframe>`` / ``<img onerror=...>`` tags
 # would execute in the email recipient's browser when they preview the
-# rendered HTML, or — in WeasyPrint's CSS-only context — fetch arbitrary
+# rendered HTML, or - in WeasyPrint's CSS-only context - fetch arbitrary
 # attacker-controlled assets at render time (SSRF + tracking pixels).
 #
 # We strip raw HTML tags at the schema layer so the row never lands in
 # the DB with executable markup. This is belt-and-braces on top of any
-# future ``{{ value | e }}`` auto-escaping in the template — a renderer
+# future ``{{ value | e }}`` auto-escaping in the template - a renderer
 # regression at the template layer (e.g. ``{{ value | safe }}``) would
 # otherwise re-introduce the vulnerability.
 
@@ -38,7 +38,7 @@ _HTML_TAG_RE = re.compile(r"<[^>]*>")
 # ``override_currency`` is the highest-priority source in that resolution
 # chain, so it must be a well-formed 3-letter code before it can win.
 #
-# Soft shape check (3 uppercase letters), not a closed ISO-4217 enum — this
+# Soft shape check (3 uppercase letters), not a closed ISO-4217 enum - this
 # mirrors ``app.modules.projects.schemas._normalise_currency``: OpenEstimate
 # is a global product and we do not want to reject a valid but obscure code
 # just because it is not on a hand-maintained list. A 4-letter code such as
@@ -189,7 +189,7 @@ class ReportScheduleRequest(BaseModel):
     """Turn a template into a scheduled report.
 
     Passing ``schedule_cron=None`` turns scheduling off without clearing
-    the recipient list — the worker then skips the template on its
+    the recipient list - the worker then skips the template on its
     next-due scan.
     """
 
@@ -221,7 +221,7 @@ class GenerateReportRequest(BaseModel):
     """Request to generate a report.
 
     The ``title`` field is sanitized via ``_strip_html`` at the schema
-    layer — it is the highest-risk user-controlled string in this
+    layer - it is the highest-risk user-controlled string in this
     module because it appears in every PDF / HTML rendering of the
     report. A future template that does ``{{ title | safe }}`` would
     otherwise execute attacker-supplied ``<script>`` in the recipient's

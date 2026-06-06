@@ -1,7 +1,7 @@
 """Install the OpenCDE BCF-API 3.0 sub-router into the main BCF router.
 
 The :class:`ModuleLoader` reloads ``app.modules.bcf.router`` every time
-the module is loaded (a hot-reload safeguard — see
+the module is loaded (a hot-reload safeguard - see
 ``module_loader.py:188-225``). A naive ``router.include_router`` call
 from ``manifest.py`` therefore lands on a *stale* router object that
 the loader discards seconds later, and the OpenCDE routes never reach
@@ -13,7 +13,7 @@ executing, we look up ``router`` in its namespace, attach our OpenCDE
 sub-router, and remove the hook. The hook is installed once at
 manifest-discovery time and is a no-op for every other module's reload.
 
-The patch is minimally invasive — it only intercepts reload/import of
+The patch is minimally invasive - it only intercepts reload/import of
 this exact module, never raises into the loader, and removes itself
 after firing once.
 """
@@ -39,13 +39,13 @@ def _attach_opencde(router_module) -> None:
         if main_router is None:
             logger.debug("BCF router.py loaded without a `router` attribute; OpenCDE sub-router was NOT mounted")
             return
-        # Idempotent — guard against double-mount when the loader reloads.
+        # Idempotent - guard against double-mount when the loader reloads.
         if getattr(main_router, _INSTALLED_FLAG, False):
             return
         main_router.include_router(opencde_router)
         setattr(main_router, _INSTALLED_FLAG, True)
         logger.debug("Mounted OpenCDE 3.0 sub-router onto BCF main router")
-    except Exception:  # noqa: BLE001 — best-effort; never block module load
+    except Exception:  # noqa: BLE001 - best-effort; never block module load
         logger.exception("Failed to mount OpenCDE 3.0 sub-router")
 
 

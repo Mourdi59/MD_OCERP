@@ -1,25 +1,25 @@
-"""Buyer self-service portal — public + JWT-internal endpoints.
+"""Buyer self-service portal - public + JWT-internal endpoints.
 
 Routes (all under ``/api/v1/property-dev/portal/``):
 
-    POST   /issue/                          — JWT-authed (MANAGER+);
+    POST   /issue/                          - JWT-authed (MANAGER+);
                                               mint a fresh magic link.
-    POST   /verify/                         — public; check a token
+    POST   /verify/                         - public; check a token
                                               against the revocation list.
-    GET    /buyer/{token}/overview/         — public; full landing-page
+    GET    /buyer/{token}/overview/         - public; full landing-page
                                               payload (reservation, SPA,
                                               payment schedule, docs).
     GET    /buyer/{token}/documents/{id}/download/
-                                            — public; PDF stream IF the
+                                            - public; PDF stream IF the
                                               doc belongs to this token's
                                               buyer. 404 otherwise (IDOR).
-    POST   /buyer/{token}/upload-kyc/       — public; magic-byte-validated
+    POST   /buyer/{token}/upload-kyc/       - public; magic-byte-validated
                                               file upload (PDF / images).
-    POST   /buyer/{token}/contact-agent/    — public; files a CrmActivity
+    POST   /buyer/{token}/contact-agent/    - public; files a CrmActivity
                                               and fires the lead-msg event.
-    GET    /buyer-links/{buyer_id}/         — JWT-authed; list active
+    GET    /buyer-links/{buyer_id}/         - JWT-authed; list active
                                               tokens for the manager UI.
-    POST   /tokens/{token_id}/revoke/       — JWT-authed (MANAGER+);
+    POST   /tokens/{token_id}/revoke/       - JWT-authed (MANAGER+);
                                               revoke a token.
 
 Token-binding (IDOR) guard: every ``/buyer/{token}/...`` handler
@@ -27,7 +27,7 @@ re-resolves the token through :meth:`PortalLinkService.verify_token`
 and then verifies the requested ``doc_id`` (or implicit subject) belongs
 to ``ctx.buyer``. UUID-swap attempts collapse to 404 (NOT 403) so the
 endpoint can't be turned into an existence oracle for other buyers'
-data — mirrors the property_dev R7 convention.
+data - mirrors the property_dev R7 convention.
 """
 
 from __future__ import annotations
@@ -114,7 +114,7 @@ _KYC_UPLOADS_ROOT = Path("uploads/property_dev/portal/kyc")
 # formats; no Office/ZIP/CAD junk (we don't need to render those).
 _KYC_ALLOWED_SIGNATURES = frozenset({"pdf", "png", "jpeg", "heic", "heif"})
 
-# Rate-limit bucket — per-token (NOT per-IP) so a buyer behind CGNAT
+# Rate-limit bucket - per-token (NOT per-IP) so a buyer behind CGNAT
 # isn't starved by a noisy neighbour. The token is itself a bearer
 # capability so using it as the bucket key is safe.
 _PORTAL_RATE_BUCKET_PREFIX = "propdev_portal:"
@@ -164,7 +164,7 @@ async def _resolve_portal_context(
     endpoint.
 
     Pass ``consume=True`` from the ``/verify/`` endpoint to enforce
-    single-use magic-link redemption (industry standard — Slack/Notion/
+    single-use magic-link redemption (industry standard - Slack/Notion/
     Linear). All other endpoints leave ``consume=False`` so the
     longer-lived session JWT keeps working until expiry/revocation.
     """
@@ -203,7 +203,7 @@ async def issue_portal_token(
     """Sales-manager-only: create a fresh magic link for a buyer.
 
     The full URL is shown once in the response (and once in the issuing
-    email) — we keep only the ``jti`` server-side, never the plaintext
+    email) - we keep only the ``jti`` server-side, never the plaintext
     token. If the buyer already has an active token, it stays valid;
     callers wanting rotation must explicitly revoke the old one first.
 
@@ -373,9 +373,9 @@ async def verify_portal_token(
     settings: SettingsDep,
     request: Request,
 ) -> PortalVerifyResponse:
-    """Public endpoint — used by the portal frontend on page load.
+    """Public endpoint - used by the portal frontend on page load.
 
-    SINGLE-USE redemption — industry standard (Slack/Notion/Linear).
+    SINGLE-USE redemption - industry standard (Slack/Notion/Linear).
     The first call atomically marks the magic-link consumed and
     returns the buyer summary; any subsequent call (or a concurrent
     second call that loses the DB race) gets a 401 with the
@@ -385,7 +385,7 @@ async def verify_portal_token(
 
     The JWT itself stays valid for follow-up buyer-portal calls
     (``/overview/``, ``/documents/...``, ``/upload-kyc/``,
-    ``/contact-agent/``) until expiry/revocation — only the verify
+    ``/contact-agent/``) until expiry/revocation - only the verify
     endpoint enforces single-use. This matches the spec's
     "session JWT stays multi-use after the first verify" contract.
 
@@ -418,7 +418,7 @@ async def verify_portal_token(
 
 
 def _build_doc_download_url(token: str, doc_id: uuid.UUID) -> str:
-    """Compose the per-doc download URL (path only — host added by frontend)."""
+    """Compose the per-doc download URL (path only - host added by frontend)."""
     return f"/api/v1/property-dev/portal/buyer/{token}/documents/{doc_id}/download/"
 
 
@@ -455,7 +455,7 @@ async def _load_payment_schedule_rows(
     )
     # Waived / cancelled instalments are still listed (the buyer sees
     # them with their status) but must NOT count toward the schedule
-    # total / outstanding — a waived line is money the buyer no longer
+    # total / outstanding - a waived line is money the buyer no longer
     # owes, so including it would overstate the balance and skew the
     # progress bar. All instalments in a schedule share one currency
     # (PaymentSchedule.currency), so summing is FX-safe here.
@@ -524,7 +524,7 @@ async def _load_signed_documents(
         spa = ctx.sales_contract
         if spa.status in ("signed", "countersigned", "registered"):
             # Only surface the SPA row when a downloadable PDF actually
-            # exists — otherwise the buyer clicks a row that 404s. The
+            # exists - otherwise the buyer clicks a row that 404s. The
             # PDF is stored as a Document (category='spa') linked back to
             # the contract via metadata.sales_contract_id. We point the
             # download URL at the Document's id so /download/ serves the
@@ -574,7 +574,7 @@ async def _load_signed_documents(
                     )
                 )
 
-    # KYC docs already uploaded by this buyer — found via
+    # KYC docs already uploaded by this buyer - found via
     # Document.metadata.buyer_id (no FK, JSON match). Filter in SQL with
     # the dialect-portable ``[key].as_string()`` accessor so we never
     # scan every tenant's KYC docs on this public endpoint; the Python
@@ -774,7 +774,7 @@ async def download_buyer_document(
     settings: SettingsDep,
     request: Request,
 ) -> FileResponse:
-    """Stream the requested document — IFF it belongs to this token's buyer.
+    """Stream the requested document - IFF it belongs to this token's buyer.
 
     The IDOR guard works in two passes:
       1. Resolve the portal context (verifies token, loads buyer + scope).
@@ -785,7 +785,7 @@ async def download_buyer_document(
     """
     ctx = await _resolve_portal_context(session, settings, token, request)
 
-    # — SPA PDF (stored Document, category='spa') —
+    # - SPA PDF (stored Document, category='spa') -
     # The overview only emits an SPA row when a real PDF Document exists
     # (see _find_spa_document); resolve that doc here and serve it iff
     # its metadata.sales_contract_id matches this token's contract.
@@ -806,7 +806,7 @@ async def download_buyer_document(
                     filename=spa_doc.name,
                 )
 
-    # — HandoverDoc —
+    # - HandoverDoc -
     if ctx.buyer.plot_id is not None:
         from app.modules.property_dev.models import Handover
 
@@ -837,7 +837,7 @@ async def download_buyer_document(
                     filename=f"{hd.title or hd.doc_type}.pdf",
                 )
 
-    # — KYC Document echoes —
+    # - KYC Document echoes -
     doc = await session.get(Document, doc_id)
     if doc is not None and doc.category == "buyer_kyc":
         meta = doc.metadata_ or {}
@@ -945,7 +945,7 @@ async def upload_kyc_document(
 
     ``document_type`` must match :data:`_KYC_DOC_TYPE_PATTERN`; an
     invalid code is a 400. ``file`` content is sniffed against
-    ``ALLOWED_KYC_SIGNATURES`` (PDF + jpeg/png/heic/heif) — Content-Type
+    ``ALLOWED_KYC_SIGNATURES`` (PDF + jpeg/png/heic/heif) - Content-Type
     is fully attacker-controlled so we ignore it.
     """
     import re
@@ -967,7 +967,7 @@ async def upload_kyc_document(
         ) from None
 
     if len(content) > 20 * 1024 * 1024:
-        # 20 MB cap — KYC docs are typically <2 MB; this stops a single
+        # 20 MB cap - KYC docs are typically <2 MB; this stops a single
         # request from filling disk.
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -1062,10 +1062,10 @@ async def _resolve_assigned_agent(
     Resolution order (first hit wins):
 
       1. The property_dev :class:`Lead.assigned_agent_user_id` reached
-         through the reservation's ``lead_id`` — the sales agent who
+         through the reservation's ``lead_id`` - the sales agent who
          actually worked the deal.
       2. The owning :class:`Project.owner_id` for the buyer's
-         development — the account that owns the development is the
+         development - the account that owns the development is the
          catch-all recipient when no agent was explicitly assigned.
 
     Returns ``None`` only when neither can be resolved (orphan buyer);
@@ -1112,7 +1112,7 @@ async def contact_agent(
     <buyer> sent a message" deterministically. The ``owner_user_id`` is
     resolved to the assigned sales agent (or the development's project
     owner) so the row is visible in that agent's owner-scoped CRM
-    activity list — without an owner the activity would be invisible to
+    activity list - without an owner the activity would be invisible to
     every agent-scoped view and the message would silently go nowhere.
     """
     ctx = await _resolve_portal_context(session, settings, token, request)

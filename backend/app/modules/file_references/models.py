@@ -3,16 +3,16 @@
 """File References ORM models.
 
 Tables:
-    oe_file_naming_violation — one row per (project_id, file_kind,
+    oe_file_naming_violation - one row per (project_id, file_kind,
                                file_id) where the filename fails the
                                active naming convention. The detected
                                violation codes are stored as a JSON
                                list so a single sweep doesn't need
                                multiple rows per file.
-    oe_file_reference        — generic file → entity link. A file may
+    oe_file_reference        - generic file → entity link. A file may
                                be referenced from any kind of target
                                (RFI, issue, task, submittal, punchlist,
-                               ...) — ``target_type`` is a free-form
+                               ...) - ``target_type`` is a free-form
                                string validated by the Pydantic schema.
 
 Polymorphism rationale
@@ -81,7 +81,7 @@ class FileNamingViolation(Base):
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     # JSON list of violation codes (e.g. ``["missing-volume", "bad-role-code"]``).
     violation_codes: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
-    # Optional human-readable note for the worst single issue — surfaced
+    # Optional human-readable note for the worst single issue - surfaced
     # in the banner so the user sees the punch-line without expanding.
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     acknowledged_at: Mapped[object | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -91,7 +91,7 @@ class FileNamingViolation(Base):
         nullable=True,
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — debug helper
+    def __repr__(self) -> str:  # pragma: no cover - debug helper
         return f"<FileNamingViolation {self.file_kind}/{self.filename} codes={self.violation_codes}>"
 
 
@@ -109,7 +109,7 @@ class FileReference(Base):
     ``relation`` is intentionally an open string so consumer modules
     can describe context-specific link semantics ("evidence",
     "supersedes", "spawned-from") without a migration. The default is
-    ``"references"`` — read it as "is mentioned in".
+    ``"references"`` - read it as "is mentioned in".
     """
 
     __tablename__ = "oe_file_reference"
@@ -161,7 +161,7 @@ class FileReference(Base):
         nullable=True,
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — debug helper
+    def __repr__(self) -> str:  # pragma: no cover - debug helper
         return (
             f"<FileReference {self.file_kind}/{self.file_id} -> {self.target_type}/{self.target_id} ({self.relation})>"
         )

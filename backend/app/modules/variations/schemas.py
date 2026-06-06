@@ -201,7 +201,7 @@ class VariationOrderCreate(BaseModel):
     signed_by: str | None = Field(default=None, max_length=36)
     status: str = Field(default="issued", pattern=_VO_STATUS)
     reference_change_order_id: UUID | None = None
-    # Soft link — when set, completion of this VO emits a
+    # Soft link - when set, completion of this VO emits a
     # ``variations.contract_sum.updated`` event the contracts module
     # subscribes to.
     affected_contract_id: UUID | None = None
@@ -423,7 +423,7 @@ class DayworkSheetCreate(BaseModel):
     status: str = Field(default="draft", pattern=_DAYWORK_STATUS)
     owner_signature_ref: str = Field(default="", max_length=255)
     supplied_via_contract_id: UUID | None = None
-    # BS 6079 §6.4.2 — markup percentage applied to subtotal of all lines.
+    # BS 6079 §6.4.2 - markup percentage applied to subtotal of all lines.
     markup_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
 
 
@@ -536,7 +536,7 @@ class DisruptionClaimCreate(BaseModel):
     evidence_refs: list[str] = Field(default_factory=list)
     status: str = Field(default="draft", pattern=_DISRUPTION_STATUS)
     notes: str = Field(default="", max_length=10000)
-    # AICPA measured-mile fields — units per hour.
+    # AICPA measured-mile fields - units per hour.
     baseline_productivity: Decimal | None = Field(default=None, ge=0)
     impacted_productivity: Decimal | None = Field(default=None, ge=0)
     unit_of_measure: str = Field(default="", max_length=30)
@@ -616,7 +616,7 @@ class ExtensionOfTimeClaimCreate(BaseModel):
     requested_days: int = Field(default=0, ge=0, le=3650)
     critical_path_impact: bool = False
     status: str = Field(default="draft", pattern=_EOT_STATUS)
-    # Schedule-activity affected — either UUID-string of oe_tasks_task or
+    # Schedule-activity affected - either UUID-string of oe_tasks_task or
     # a free-text activity name. Required for TIA.
     affected_activity_ref: str = Field(default="", max_length=255)
 

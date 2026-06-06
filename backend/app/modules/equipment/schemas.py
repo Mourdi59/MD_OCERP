@@ -1,4 +1,4 @@
-"""‌⁠‍Equipment Pydantic schemas — request/response models."""
+"""‌⁠‍Equipment Pydantic schemas - request/response models."""
 
 from __future__ import annotations
 

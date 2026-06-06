@@ -65,22 +65,22 @@ PACK_CONFIG: dict[str, Any] = {
     "contract_types": [
         {
             "code": "AIA_A101",
-            "name": "AIA A101 — Stipulated Sum",
+            "name": "AIA A101 - Stipulated Sum",
             "description": "Standard owner-contractor agreement (fixed price)",
         },
         {
             "code": "AIA_A102",
-            "name": "AIA A102 — Cost Plus Fee with GMP",
+            "name": "AIA A102 - Cost Plus Fee with GMP",
             "description": "Cost-plus with guaranteed maximum price",
         },
         {
             "code": "AIA_A201",
-            "name": "AIA A201 — General Conditions",
+            "name": "AIA A201 - General Conditions",
             "description": "General conditions of the contract for construction",
         },
         {
             "code": "ConsensusDocs_200",
-            "name": "ConsensusDocs 200 — Standard Agreement",
+            "name": "ConsensusDocs 200 - Standard Agreement",
             "description": "Multi-party consensus-based standard agreement",
         },
     ],
@@ -163,7 +163,7 @@ PACK_CONFIG: dict[str, Any] = {
         "pressure": "psi",
     },
     # ── VAT rates (Wave 25) ──────────────────────────────────────────────────
-    # US has no federal VAT — per-state sales tax is modelled in tax_rules.
+    # US has no federal VAT - per-state sales tax is modelled in tax_rules.
     # Empty dict is the explicit signal that this pack opts out of VAT.
     "vat_rates": {},
 }

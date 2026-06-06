@@ -9,7 +9,7 @@ manifest = ModuleManifest(
     version="0.1.0",
     display_name="Pipeline Builder",
     description=(
-        "Visual node-graph automation builder — wraps the existing JobRun "
+        "Visual node-graph automation builder - wraps the existing JobRun "
         "runner, validation engine and per-module services as draggable, "
         "gate-able pipeline nodes"
     ),

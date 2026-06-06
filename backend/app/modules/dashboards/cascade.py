@@ -18,8 +18,8 @@ matches ``q``.
 
 Two analytical helpers are exposed:
 
-* :func:`fetch_cascade_values` — distinct-value cascade (the picker UI).
-* :func:`count_filtered_rows` — row-level rollup ("X of Y rows match"),
+* :func:`fetch_cascade_values` - distinct-value cascade (the picker UI).
+* :func:`count_filtered_rows` - row-level rollup ("X of Y rows match"),
   used by the live counter chip above the picker stack.
 
 Both reuse the snapshot's pinned DuckDB connection. They reuse the
@@ -30,7 +30,7 @@ is addressed inside the Parquet file.
 Empty-selection contract
 ------------------------
 An entry ``selected["category"] = []`` is treated as **no filter** on
-that column — never as ``WHERE category IN ()`` (DuckDB rejects that
+that column - never as ``WHERE category IN ()`` (DuckDB rejects that
 shape with a parser error). This matches Tableau's behaviour: dragging
 all chips off a filter card removes the constraint instead of producing
 "the empty intersection".
@@ -95,7 +95,7 @@ _DEFAULT_LIMIT = 50
 _MAX_LIMIT = 200
 _MAX_COLUMNS_IN_SELECTED = 32
 """Hard upper bound on the number of filter columns in a single request.
-Keeps the generated SQL bounded — no realistic dashboard exposes 32
+Keeps the generated SQL bounded - no realistic dashboard exposes 32
 filter cards at once. Anything larger is almost certainly a malformed
 request."""
 
@@ -127,7 +127,7 @@ async def fetch_cascade_values(
         ignored (no filter on that column). Unknown columns raise
         :class:`InvalidSelectedColumnError`. The target column is
         excluded from the WHERE clause even if present in ``selected``
-        — a filter doesn't constrain its own picker.
+        - a filter doesn't constrain its own picker.
     target_column:
         The column whose distinct values are being shown to the user.
     query:
@@ -172,7 +172,7 @@ async def count_filtered_rows(
     """Return ``(matched, total)`` row counts under the active selection.
 
     The frontend pairs these to render "X of Y rows match" above the
-    cascade panel — a quick gut-check that the filters do something.
+    cascade panel - a quick gut-check that the filters do something.
     """
     cleaned = _validate_and_clean_selected(selected, exclude=None)
     await _ensure_selected_exist(pool, snapshot_id, project_id, cleaned)
@@ -275,7 +275,7 @@ def _validate_and_clean_selected(
     """Drop empty-array entries, sanity-check sizes, validate identifiers.
 
     The exclude argument removes the target column from the constraint
-    set — its own picker shouldn't gate its own values, otherwise
+    set - its own picker shouldn't gate its own values, otherwise
     re-opening a column always shows only the chips you've already
     picked.
     """
@@ -387,7 +387,7 @@ def _build_where_clause(
     params: list = []
     for col, values in cleaned.items():
         if not values:
-            # Defensive — should have been dropped already, but never
+            # Defensive - should have been dropped already, but never
             # ship an empty IN-list to DuckDB.
             continue
         placeholders = ", ".join(["?"] * len(values))
@@ -404,8 +404,8 @@ def _build_where_clause(
             )
         params.extend(values)
     if not predicates:
-        # Shouldn't reach here — callers branch on cleaned-dict
-        # emptiness — but keep the function total.
+        # Shouldn't reach here - callers branch on cleaned-dict
+        # emptiness - but keep the function total.
         return ("1=1", [])
     return (" AND ".join(predicates), params)
 

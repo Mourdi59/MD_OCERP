@@ -1,4 +1,4 @@
-"""‌⁠‍BOQ event handlers — activity log integration + vector indexing.
+"""‌⁠‍BOQ event handlers - activity log integration + vector indexing.
 
 Subscribes to all ``boq.*`` events and creates activity log entries
 for audit trail purposes.  Also keeps the ``oe_boq_positions`` vector
@@ -26,7 +26,7 @@ from app.modules.boq.vector_adapter import boq_position_adapter
 logger = logging.getLogger(__name__)
 
 # Dedicated rate limiter so a transient embedding-service outage doesn't
-# flood the log — one line per (operation, error-type) per 60 s, with a
+# flood the log - one line per (operation, error-type) per 60 s, with a
 # "+N similar" suffix on the next emit.  Mirrors the cache-layer pattern.
 _vector_warn = _RateLimitedLogger(window_seconds=60.0)
 
@@ -175,7 +175,7 @@ async def _log_boq_activity(event: Event) -> None:
 # Keep the ``oe_boq_positions`` collection in sync with the live Position
 # rows.  Each handler opens its own short-lived session, eager-loads the
 # parent BOQ so ``project_id_of`` resolves cleanly, and forwards the row
-# to the adapter.  Failures are logged and swallowed — vector indexing is
+# to the adapter.  Failures are logged and swallowed - vector indexing is
 # best-effort and must never break a normal CRUD path.
 
 
@@ -185,7 +185,7 @@ async def _index_position(event: Event) -> None:
     Failures (embedding model missing, Qdrant unreachable, LanceDB IO
     error, etc.) are funnelled through :data:`_vector_warn` which
     collapses duplicate ``(operation, error-type)`` pairs to one line
-    per 60 s — a long outage produces a handful of lines, not a flood.
+    per 60 s - a long outage produces a handful of lines, not a flood.
     """
     pid_raw = (event.data or {}).get("position_id")
     if not pid_raw:
@@ -211,7 +211,7 @@ async def _index_position(event: Event) -> None:
                 row,
                 project_id=project_id,
             )
-    except Exception as exc:  # noqa: BLE001 — outage funnel
+    except Exception as exc:  # noqa: BLE001 - outage funnel
         _vector_warn.warn("boq.vector.index", str(pid_raw), exc)
 
 
@@ -219,7 +219,7 @@ async def _delete_position_vector(event: Event) -> None:
     """Remove a deleted Position row from the vector store.
 
     See :func:`_index_position` for the rationale behind the rate-limited
-    warning — deletes use the same embedding backend so they flake in
+    warning - deletes use the same embedding backend so they flake in
     the same ways.
     """
     pid_raw = (event.data or {}).get("position_id")
@@ -227,7 +227,7 @@ async def _delete_position_vector(event: Event) -> None:
         return
     try:
         await vector_delete_one(boq_position_adapter, str(pid_raw))
-    except Exception as exc:  # noqa: BLE001 — outage funnel
+    except Exception as exc:  # noqa: BLE001 - outage funnel
         _vector_warn.warn("boq.vector.delete", str(pid_raw), exc)
 
 
@@ -249,7 +249,7 @@ def _register_handlers() -> None:
 
     Vector-index handlers register per-event (create / update / delete /
     duplicate) and the activity-log wildcard handler subscribes to every
-    event.  Calling this helper is idempotent — tests can call
+    event.  Calling this helper is idempotent - tests can call
     :func:`event_bus.clear` then re-invoke it.
     """
     event_bus.subscribe("boq.position.created", _on_position_created)

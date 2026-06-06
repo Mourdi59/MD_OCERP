@@ -1,7 +1,7 @@
 """‌⁠‍US regional pack API routes.
 
 Endpoints:
-    GET /config  — Return the full US regional configuration
+    GET /config  - Return the full US regional configuration
 """
 
 import logging

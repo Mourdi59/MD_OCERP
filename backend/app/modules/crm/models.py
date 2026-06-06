@@ -1,15 +1,15 @@
 """‌⁠‍CRM ORM models.
 
 Tables:
-    oe_crm_account                    — customer / prospect accounts
-    oe_crm_lead                       — sales leads (pre-qualification)
-    oe_crm_opportunity                — qualified deals in pipeline
-    oe_crm_pipeline_stage             — pipeline stage catalogue
-    oe_crm_opportunity_stage_history  — stage transition log
-    oe_crm_activity                   — call/meeting/email/task/note touches
-    oe_crm_forecast                   — period forecast snapshots
-    oe_crm_win_loss_reason            — win/loss reason catalogue
-    oe_crm_pipeline_stage_config      — singleton config row
+    oe_crm_account                    - customer / prospect accounts
+    oe_crm_lead                       - sales leads (pre-qualification)
+    oe_crm_opportunity                - qualified deals in pipeline
+    oe_crm_pipeline_stage             - pipeline stage catalogue
+    oe_crm_opportunity_stage_history  - stage transition log
+    oe_crm_activity                   - call/meeting/email/task/note touches
+    oe_crm_forecast                   - period forecast snapshots
+    oe_crm_win_loss_reason            - win/loss reason catalogue
+    oe_crm_pipeline_stage_config      - singleton config row
 
 Notes:
     * ``primary_contact_id`` columns on Account / Opportunity are plain UUID
@@ -18,7 +18,7 @@ Notes:
       test fixtures (which never load Contacts) don't trip
       ``NoReferencedTableError``.
     * No duplicate index names: every indexed column uses column-level
-      ``index=True`` only — never combined with a table-level ``Index(...)``
+      ``index=True`` only - never combined with a table-level ``Index(...)``
       pointing at the same column.
 """
 
@@ -114,7 +114,7 @@ class Account(Base):
     size_category: Mapped[str] = mapped_column(String(32), nullable=False, default="sme", server_default="sme")
     country: Mapped[str | None] = mapped_column(String(64), nullable=True)
     website: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    # NOTE: plain UUID — no SQLAlchemy FK to oe_contacts_contact (see header).
+    # NOTE: plain UUID - no SQLAlchemy FK to oe_contacts_contact (see header).
     primary_contact_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
     status: Mapped[str] = mapped_column(
@@ -244,14 +244,14 @@ class Opportunity(Base):
         nullable=True,
     )
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
-    # NOTE: plain UUID — no SQLAlchemy FK to oe_contacts_contact (see header).
+    # NOTE: plain UUID - no SQLAlchemy FK to oe_contacts_contact (see header).
     # The CRM does NOT own contacts: this points at a row in the shared
     # Contacts directory (``oe_contacts_contact``). People/companies are
     # always created & edited through the Contacts module, never duplicated
     # here.
     primary_contact_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     # Link to a delivery Project (``oe_projects_project``). Plain UUID for
-    # the same reason as primary_contact_id — the ORM stays unaware so unit
+    # the same reason as primary_contact_id - the ORM stays unaware so unit
     # fixtures that never load the Projects module don't trip
     # NoReferencedTableError. A won deal references the project it spawned;
     # an open deal can be pre-linked to a tender/estimate project.
@@ -298,7 +298,7 @@ class OpportunityStageHistory(Base):
 
 
 class CrmActivity(Base):
-    """A CRM touch — call / meeting / email / task / note.
+    """A CRM touch - call / meeting / email / task / note.
 
     Class is prefixed ``Crm`` to avoid clashing with
     ``app.modules.schedule.models.Activity`` in the shared declarative

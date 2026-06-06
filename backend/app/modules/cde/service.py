@@ -1,4 +1,4 @@
-"""‌⁠‍CDE service — business logic for ISO 19650 Common Data Environment.
+"""‌⁠‍CDE service - business logic for ISO 19650 Common Data Environment.
 
 Stateless service layer. Handles:
 - Document container CRUD
@@ -41,7 +41,7 @@ _state_machine = CDEStateMachine()
 # CDEStateMachine gates are keyed by (viewer / editor / task_team_manager /
 # lead_ap / admin). The JWT payload only ever carries an app role, so without
 # this translation a project ``manager`` resolved to rank -1 and could never
-# cross any gate — only ``admin`` could promote a container.
+# cross any gate - only ``admin`` could promote a container.
 #
 # Gate ranks: Gate A needs task_team_manager(2), Gate B needs lead_ap(3),
 # Gate C needs admin(4). The ``cde.transition`` permission is MANAGER-level,
@@ -212,7 +212,7 @@ class CDEService:
             return container
 
         # Re-validate suitability when either the state or the suitability
-        # code changes on update — ContainerCreate has a model_validator,
+        # code changes on update - ContainerCreate has a model_validator,
         # but ContainerUpdate is a partial schema and can't express the
         # "state+code consistent" constraint on its own. Without this, an
         # editor could PATCH ``suitability_code="S1"`` onto a published
@@ -251,11 +251,11 @@ class CDEService:
         structural validity and role-based gate conditions.
 
         Gate B (SHARED → PUBLISHED) additionally requires an
-        ``approver_signature`` in the request body — this is captured in
+        ``approver_signature`` in the request body - this is captured in
         ``container.metadata_.last_approval`` for the compliance trail.
 
         A ``StateTransition`` audit row is written inline (same session) so
-        rollback leaves no orphan audit rows — the event bus is still used
+        rollback leaves no orphan audit rows - the event bus is still used
         for cross-module notification.
         """
         container = await self.get_container(container_id)
@@ -270,7 +270,7 @@ class CDEService:
 
         # Validate via CDEStateMachine (checks allowed transitions + role gates).
         # The gates are keyed by ISO 19650 role names, but ``user_role`` is the
-        # canonical app role from the JWT (admin / manager / editor / viewer) —
+        # canonical app role from the JWT (admin / manager / editor / viewer) -
         # translate it first, otherwise everyone except admin gets a spurious
         # "Insufficient role" 400.
         iso_role = _iso_role_for(user_role)
@@ -288,7 +288,7 @@ class CDEService:
         gate_meta = _state_machine.get_gate_requirements(current_state, target_state)
         gate_code = gate_meta.get("gate")
 
-        # Gate enforcement — Epic H lifted the bespoke Gate-B signature
+        # Gate enforcement - Epic H lifted the bespoke Gate-B signature
         # check into ``app.core.audit_gates.gate_registry`` so additional
         # transition preconditions can be added declaratively elsewhere.
         # ``enforce`` raises ``HTTPException(400)`` with the same detail
@@ -298,7 +298,7 @@ class CDEService:
 
         _gate_registry.enforce(gate_code, data)
 
-        # Gate B — SHARED → PUBLISHED also captures the signature in the
+        # Gate B - SHARED → PUBLISHED also captures the signature in the
         # container's metadata for the compliance trail.
         updated_metadata: dict[str, Any] | None = None
         is_gate_b = target_state == CDEState.PUBLISHED.value and current_state == CDEState.SHARED.value
@@ -319,7 +319,7 @@ class CDEService:
             update_fields["metadata_"] = updated_metadata
         await self.container_repo.update_fields(container_id, **update_fields)
 
-        # Audit row — inline in the same session so a rollback cleans it up.
+        # Audit row - inline in the same session so a rollback cleans it up.
         audit = StateTransition(
             container_id=container_id,
             from_state=current_state,
@@ -367,7 +367,7 @@ class CDEService:
         container_id: uuid.UUID,
     ) -> list[StateTransition]:
         """Return the state-transition audit log for a container, newest first."""
-        # Verify container exists — throws 404 otherwise.
+        # Verify container exists - throws 404 otherwise.
         await self.get_container(container_id)
         stmt = (
             select(StateTransition)
@@ -392,7 +392,7 @@ class CDEService:
         # Verify container exists.
         await self.get_container(container_id)
 
-        # Run a single tuple-yielding query — we pull only the columns we
+        # Run a single tuple-yielding query - we pull only the columns we
         # need, so no relationship lazy-loading is triggered when the
         # caller serialises the response.
         from app.modules.transmittals.models import Transmittal, TransmittalItem
@@ -454,7 +454,7 @@ class CDEService:
         - **Upload mode** (``data.storage_key`` set, no ``document_id``):
           materialise a new ``Document`` row in the Documents hub so a
           freshly-uploaded file appears at ``/documents`` (per the platform
-          cross-link rule — see meetings/router.py:991-1020 pattern).
+          cross-link rule - see meetings/router.py:991-1020 pattern).
 
         If neither is supplied, the revision is metadata-only and no Document is
         created (no error).
@@ -538,7 +538,7 @@ class CDEService:
         # of the primary key outside the async context.
         revision_id = revision.id
 
-        # Link mode is complete — the revision already points at the existing
+        # Link mode is complete - the revision already points at the existing
         # Document row, so we must NOT synthesise a second one. Update the
         # container's current_revision_id and return.
         if linked_doc_id is not None:
@@ -558,7 +558,7 @@ class CDEService:
 
         # Upload mode: cross-link into the Documents hub when the revision
         # carries a freshly-uploaded file. Best-effort: failure here must not
-        # break the revision create — the CDE row is the source of truth, the
+        # break the revision create - the CDE row is the source of truth, the
         # Documents row is an index.
         if storage_key:
             try:
@@ -571,7 +571,7 @@ class CDEService:
                 doc = Document(
                     project_id=container.project_id,
                     name=file_name,
-                    description=(f"CDE rev {revision_code} — {container.container_code}"),
+                    description=(f"CDE rev {revision_code} - {container.container_code}"),
                     category="cde",
                     file_size=file_size_int,
                     mime_type=mime_type or "",
@@ -591,7 +591,7 @@ class CDEService:
                     doc_id,
                 )
 
-                # Epic C — also register a unified ``oe_file_version``
+                # Epic C - also register a unified ``oe_file_version``
                 # row so the chain is continuous across modules. Best
                 # effort; failure does not roll back the revision.
                 try:

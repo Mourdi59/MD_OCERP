@@ -1,11 +1,11 @@
 """‌⁠‍Finance ORM models.
 
 Tables:
-    oe_finance_invoice       — payable/receivable invoices
-    oe_finance_invoice_item  — invoice line items
-    oe_finance_payment       — payments against invoices
-    oe_finance_budget        — project budgets by WBS/category
-    oe_finance_evm_snapshot  — Earned Value Management snapshots
+    oe_finance_invoice       - payable/receivable invoices
+    oe_finance_invoice_item  - invoice line items
+    oe_finance_payment       - payments against invoices
+    oe_finance_budget        - project budgets by WBS/category
+    oe_finance_evm_snapshot  - Earned Value Management snapshots
 """
 
 import uuid
@@ -105,7 +105,7 @@ class InvoiceLineItem(Base):
     cost_category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # Gap B (Wave 6): optional link to a costmodel.CostLine so an invoice line
     # can post its paid actual straight onto the right cost-spine row. Plain
-    # GUID (no cross-module FK) — the cost line may be deleted while the
+    # GUID (no cross-module FK) - the cost line may be deleted while the
     # invoice and its posting history survive. NULL on legacy / unlinked lines.
     cost_line_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -138,10 +138,10 @@ class Payment(Base):
     currency_code: Mapped[str] = mapped_column(String(10), nullable=False, default="")
     exchange_rate_snapshot: Mapped[Decimal] = mapped_column(MoneyType(scale=6), nullable=False, default=Decimal("1"))
     reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    # R7: idempotency key — caller supplies a unique token per payment
+    # R7: idempotency key - caller supplies a unique token per payment
     # attempt; second POST with same key returns the existing row.
     idempotency_key: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
-    # R7: is_refund flag — stored separately from amount sign so the positive
+    # R7: is_refund flag - stored separately from amount sign so the positive
     # amount validator on PaymentCreate can remain in place.
     is_refund: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False, server_default="0")
     # ── Gap E (Wave 6): retainage withholding ──────────────────────────────
@@ -157,7 +157,7 @@ class Payment(Base):
         server_default="0",
     )
     # The certified progress claim this payment settles, when it originated
-    # from one. Plain GUID (no cross-module FK) — same rationale as
+    # from one. Plain GUID (no cross-module FK) - same rationale as
     # ``Invoice.source_claim_id``. NULL for ordinary non-claim payments.
     source_claim_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     # ISO date on which the withheld retainage becomes releasable (typically
@@ -193,7 +193,7 @@ class ProjectBudget(Base):
     wbs_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     currency_code: Mapped[str] = mapped_column(
-        # v3 universality #217 — no DB default; service code MUST supply
+        # v3 universality #217 - no DB default; service code MUST supply
         # currency from the project context so per-project rollups don't
         # silently bias toward EUR. server_default preserved for backfill
         # safety on rows inserted via raw SQL paths during migration.
@@ -205,7 +205,7 @@ class ProjectBudget(Base):
     # Phase 2d pilot: money columns now return Decimal in Python.
     # On PostgreSQL this emits NUMERIC(18, 2); on the existing SQLite
     # dev DBs the physical column stays VARCHAR(50), so no destructive
-    # migration is required — MoneyType normalises both ends.
+    # migration is required - MoneyType normalises both ends.
     original_budget: Mapped[Decimal] = mapped_column(MoneyType(), nullable=False, default=Decimal("0"))
     revised_budget: Mapped[Decimal] = mapped_column(MoneyType(), nullable=False, default=Decimal("0"))
     committed: Mapped[Decimal] = mapped_column(MoneyType(), nullable=False, default=Decimal("0"))
@@ -243,10 +243,10 @@ class EVMSnapshot(Base):
     spi: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
     cpi: Mapped[str] = mapped_column(String(50), nullable=False, default="0")
     # Forecast metrics (EVM standard):
-    #   eac  = AC + (BAC - EV) / CPI  — estimate at completion
-    #   vac  = BAC - EAC              — variance at completion
-    #   etc  = EAC - AC               — estimate to complete
-    #   tcpi = (BAC - EV) / (BAC - AC) — to-complete performance index
+    #   eac  = AC + (BAC - EV) / CPI  - estimate at completion
+    #   vac  = BAC - EAC              - variance at completion
+    #   etc  = EAC - AC               - estimate to complete
+    #   tcpi = (BAC - EV) / (BAC - AC) - to-complete performance index
     eac: Mapped[str] = mapped_column(String(50), nullable=False, default="0", server_default="0")
     vac: Mapped[str] = mapped_column(String(50), nullable=False, default="0", server_default="0")
     etc: Mapped[str] = mapped_column(String(50), nullable=False, default="0", server_default="0")
@@ -267,7 +267,7 @@ class LedgerEntry(Base):
     """Append-only double-entry ledger row.
 
     R7 invariants:
-    * Rows are NEVER updated or deleted — corrections come as new rows with
+    * Rows are NEVER updated or deleted - corrections come as new rows with
       ``is_reversal=True`` referencing ``reversal_of_id``.
     * Every transaction consists of exactly two rows:
         - debit row:  debit_amount > 0, credit_amount == 0
@@ -291,7 +291,7 @@ class LedgerEntry(Base):
     posted_at: Mapped[str] = mapped_column(String(40), nullable=False)
     source_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     source_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    # Reversal link — non-null when this row reverses a prior entry
+    # Reversal link - non-null when this row reverses a prior entry
     is_reversal: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False, server_default="0")
     reversal_of_id: Mapped[uuid.UUID | None] = mapped_column(
         GUID(),

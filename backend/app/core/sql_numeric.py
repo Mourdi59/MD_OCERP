@@ -3,15 +3,15 @@
 Several monetary fields are stored as ``String`` for SQLite portability
 (``CostItem.rate``, ``CatalogResource.base_price``, ``BudgetLine.planned_amount``,
 ``Position.total`` …) and then cast to a float inside SQL for range filters and
-``SUM`` rollups. ``CAST(text AS REAL)`` is forgiving on SQLite — a non-numeric
-string like ``""`` or ``"N/A"`` silently becomes ``0.0`` — but PostgreSQL's
+``SUM`` rollups. ``CAST(text AS REAL)`` is forgiving on SQLite - a non-numeric
+string like ``""`` or ``"N/A"`` silently becomes ``0.0`` - but PostgreSQL's
 ``CAST(text AS DOUBLE PRECISION)`` raises ``invalid input syntax for type double
 precision`` and aborts the whole query. One malformed legacy/seeded row is enough
 to 500 a dashboard on PostgreSQL while it worked on SQLite.
 
 ``numeric_value(column)`` centralises a *tolerant* numeric coercion that behaves
 identically on both backends: a clean decimal (optionally signed, with optional
-fraction and exponent) is converted; anything else — including the empty string —
+fraction and exponent) is converted; anything else - including the empty string -
 becomes ``0`` (matching SQLite's existing behaviour) instead of raising. ``NULL``
 stays ``NULL`` on both dialects. Use it as a drop-in replacement for
 ``cast(column, Float)`` at SQL filter/aggregation sites.

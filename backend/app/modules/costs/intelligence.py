@@ -1,12 +1,12 @@
-"""‌⁠‍Cost Intelligence service (v3.12.0 — Stream B).
+"""‌⁠‍Cost Intelligence service (v3.12.0 - Stream B).
 
 Implements three small, independent services that share the same module:
 
-* ``RegionalIndexService`` — region × category factor lookup; backs the
+* ``RegionalIndexService`` - region × category factor lookup; backs the
   RSMeans-style "what would this rate cost in city X?" workflow.
-* ``CostCertaintyService`` — frequency + recency analysis on the per-item
+* ``CostCertaintyService`` - frequency + recency analysis on the per-item
   usage ledger; emits the green / yellow / red badge thresholds.
-* ``CostUsageRecorder`` — append-only writer for the usage ledger,
+* ``CostUsageRecorder`` - append-only writer for the usage ledger,
   invoked from the BOQ apply-rate path.
 
 All three are stateless wrappers around an ``AsyncSession`` so the
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 # ── Certainty thresholds (single source of truth) ─────────────────────────
 
 
-# These thresholds intentionally live here — not buried in the router —
+# These thresholds intentionally live here - not buried in the router -
 # so the integration tests can import them directly when asserting
 # boundary behaviour. Keep aligned with the docstring in
 # ``schemas.CertaintyBadge``.
@@ -41,7 +41,7 @@ CERTAINTY_GREEN_MIN_FREQUENCY = 10
 CERTAINTY_GREEN_MAX_AGE_DAYS = 365
 CERTAINTY_YELLOW_MIN_FREQUENCY = 3
 CERTAINTY_YELLOW_MAX_AGE_DAYS = 1095  # ≈ 3 years
-# Sentinel age used when a row has never been logged — keeps the badge
+# Sentinel age used when a row has never been logged - keeps the badge
 # JSON-clean (no nulls in the numeric field) and slots into the red
 # bucket via the threshold logic.
 NEVER_USED_AGE_DAYS = 999_999
@@ -53,7 +53,7 @@ CertaintyBand = Literal["green", "yellow", "red"]
 def classify_certainty(frequency: int, age_days: int) -> CertaintyBand:
     """‌⁠‍Map (frequency, age_days) onto a green / yellow / red band.
 
-    Pure function — exposed so the integration tests can pin the
+    Pure function - exposed so the integration tests can pin the
     boundary behaviour without going through the DB. Matches the
     contract documented on ``CertaintyBadge``.
 
@@ -161,7 +161,7 @@ class RegionalIndexService:
         """Compute ``(adjusted_rate, factor, source, effective_date)``.
 
         When no index row matches, the factor is ``Decimal("1")`` and the
-        source is ``"baseline"`` — the caller's frontend renders the
+        source is ``"baseline"`` - the caller's frontend renders the
         same shape either way.
 
         Round-7: returns ``Decimal`` so the multiply is exact (no float
@@ -178,7 +178,7 @@ class RegionalIndexService:
         # bad seed; the badge UI assumes ``factor > 0``.
         if factor <= 0:
             factor = Decimal("1")
-        # Quantise to 4 decimal places — matches the legacy round(..., 4).
+        # Quantise to 4 decimal places - matches the legacy round(..., 4).
         adjusted = (base * factor).quantize(Decimal("0.0001"))
         return adjusted, factor, row.source or "baseline", row.effective_date
 
@@ -204,7 +204,7 @@ class CostUsageRecorder:
         """Insert a usage row. Caller owns the commit.
 
         Accepts ``Decimal`` (Round-7 preferred), ``float`` (legacy callers
-        still in flight), or numeric strings — all coerced to ``Decimal``
+        still in flight), or numeric strings - all coerced to ``Decimal``
         via the ``str()`` round-trip so float imprecision never leaks into
         the persisted ledger entry.
         """
@@ -231,7 +231,7 @@ class CostCertaintyService:
         """Return a dict matching ``schemas.CertaintyBadge``.
 
         Raises:
-            LookupError: when the cost item id is unknown — the router
+            LookupError: when the cost item id is unknown - the router
                 maps this to a 404 so callers can distinguish "rate
                 with zero usage" (frequency=0, red badge) from "no
                 such rate".

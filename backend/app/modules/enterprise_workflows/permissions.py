@@ -2,20 +2,20 @@
 
 Permissions:
 
-* ``enterprise_workflows.read``     — list / get workflows and requests
+* ``enterprise_workflows.read``     - list / get workflows and requests
                                       (VIEWER tier).
-* ``enterprise_workflows.manage``   — create / update / delete workflow
+* ``enterprise_workflows.manage``   - create / update / delete workflow
                                       definitions (MANAGER tier: defining
                                       an approval chain is an admin-style
                                       configuration action, not routine
                                       editing).
-* ``enterprise_workflows.submit``   — submit an entity for approval
+* ``enterprise_workflows.submit``   - submit an entity for approval
                                       (EDITOR tier).
-* ``enterprise_workflows.decide``   — approve / reject a pending request
+* ``enterprise_workflows.decide``   - approve / reject a pending request
                                       (EDITOR tier; the per-step role /
                                       assignee gate in the service narrows
                                       this further at decision time).
-* ``enterprise_workflows.cancel``   — withdraw a pending request (EDITOR
+* ``enterprise_workflows.cancel``   - withdraw a pending request (EDITOR
                                       tier; the service additionally
                                       restricts this to the original
                                       requester or an admin).

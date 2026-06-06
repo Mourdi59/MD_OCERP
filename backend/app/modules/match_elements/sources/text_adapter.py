@@ -1,8 +1,8 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""‌⁠‍Text source adapter — free-form text inputs to /match-elements.
+"""‌⁠‍Text source adapter - free-form text inputs to /match-elements.
 
-Implements MAPPING_PROCESS.md §4.1.6 — the "Text" source type. The
+Implements MAPPING_PROCESS.md §4.1.6 - the "Text" source type. The
 estimator types (or pastes) one or more free-form descriptions
 ("ленточный фундамент 800x600", "Stahlbetonwand C30/37, d=240mm") and
 each line becomes a single :class:`SourceElement` with no structured
@@ -13,7 +13,7 @@ CWICR rates, recall@10 ≈ 0.97 per the spec's bench.
 Storage
 -------
 Text inputs live on the parent :class:`MatchSession`'s ``metadata_``
-JSON column under the ``text_inputs`` key — either a list of strings
+JSON column under the ``text_inputs`` key - either a list of strings
 (simple) or a list of dicts ``{raw_text, project_country?, stage?}``
 (when the user wants per-line overrides). Persisting in the session
 metadata avoids a new table for what is essentially a thin scratch-pad;
@@ -22,7 +22,7 @@ re-import diff and template suggestions still flow through the regular
 
 When the adapter is constructed without a ``match_session`` reference
 (unit-test or smoke probe), it returns empty results from every method
-rather than crashing — the loose contract mirrors ``DwgAdapter``'s
+rather than crashing - the loose contract mirrors ``DwgAdapter``'s
 "no CAD session → empty list" fallback.
 """
 
@@ -48,7 +48,7 @@ _GROUP_BY_KEY_ORDER = (
 def _coerce_text_input(raw: Any) -> dict[str, Any] | None:
     """‌⁠‍Normalise a single ``text_inputs`` entry to a dict shape.
 
-    Accepts either a plain string (most common — UI just collects lines)
+    Accepts either a plain string (most common - UI just collects lines)
     or a dict with ``raw_text`` plus optional per-line metadata. Returns
     ``None`` for blank or non-stringable rows so the caller can drop them.
     """
@@ -73,7 +73,7 @@ class TextAdapter:
 
     Each non-empty line becomes a single :class:`SourceElement` with
     ``category="Text"`` (or the user-provided override) and a
-    ``count=1`` quantity — semantic search drives recall.
+    ``count=1`` quantity - semantic search drives recall.
     """
 
     source_name: str = "text"
@@ -90,7 +90,7 @@ class TextAdapter:
         """Return the normalised list of text-input dicts.
 
         Empty list when no session is bound or ``metadata_["text_inputs"]``
-        is missing/malformed — callers don't need to guard.
+        is missing/malformed - callers don't need to guard.
         """
         if self.match_session is None:
             return []
@@ -107,7 +107,7 @@ class TextAdapter:
 
     async def list_attribute_keys(
         self,
-        project_id: uuid.UUID,  # noqa: ARG002 — text adapter is session-scoped
+        project_id: uuid.UUID,  # noqa: ARG002 - text adapter is session-scoped
         bim_model_id: uuid.UUID | None = None,  # noqa: ARG002
     ) -> list[str]:
         """Return the union of keys present across all text inputs.
@@ -143,7 +143,7 @@ class TextAdapter:
         bim_model_id: uuid.UUID | None = None,  # noqa: ARG002
         filters: dict[str, list[Any]] | None = None,
         excluded_categories: list[str] | None = None,
-        use_net_quantities: bool = True,  # noqa: ARG002 — text has no net/gross
+        use_net_quantities: bool = True,  # noqa: ARG002 - text has no net/gross
     ) -> list[SourceElement]:
         """Convert each text input to a single :class:`SourceElement`."""
         excluded = {str(c) for c in (excluded_categories or []) if c}

@@ -26,7 +26,7 @@ from app.modules.notifications.service import NotificationService
 
 
 async def _can_open_isolated_session() -> bool:
-    """‌⁠‍Always True post-Epic-B — see :mod:`app.modules.notifications.events`."""
+    """‌⁠‍Always True post-Epic-B - see :mod:`app.modules.notifications.events`."""
     return True
 
 
@@ -339,7 +339,7 @@ _WAVE1_SUBSCRIPTIONS: list[tuple[str, Callable[[Event], object]]] = [
 def register_wave1_notification_subscribers() -> None:
     """Wire Wave 1 module events into in-app notifications.
 
-    Idempotent — event bus deduplicates handlers by identity.
+    Idempotent - event bus deduplicates handlers by identity.
     """
     for event_name, handler in _WAVE1_SUBSCRIPTIONS:
         event_bus.subscribe(event_name, handler)

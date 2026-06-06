@@ -1,11 +1,11 @@
-"""‌⁠‍BOQ position vector adapter — feeds the ``oe_boq_positions`` collection.
+"""‌⁠‍BOQ position vector adapter - feeds the ``oe_boq_positions`` collection.
 
 Each :class:`~app.modules.boq.models.Position` row is embedded as the
 description plus its unit and any classification codes.  The result is
 upserted into the multi-collection vector store via the helpers in
 :mod:`app.core.vector_index`.
 
-The adapter is intentionally narrow — it knows nothing about the event
+The adapter is intentionally narrow - it knows nothing about the event
 bus or HTTP routing.  Wiring lives in :mod:`app.modules.boq.events` and
 ``router.py`` respectively.
 """
@@ -45,7 +45,7 @@ class BOQPositionAdapter:
                 if value is None or value == "":
                     continue
                 parts.append(f"{key}={value}")
-        # Optional cost-code / WBS hints — useful for cross-project recall.
+        # Optional cost-code / WBS hints - useful for cross-project recall.
         if getattr(row, "cost_code_id", None):
             parts.append(f"cost_code={row.cost_code_id}")
         if getattr(row, "wbs_id", None):
@@ -77,5 +77,5 @@ class BOQPositionAdapter:
         return None
 
 
-# Singleton instance — adapters are stateless so one shared object is fine.
+# Singleton instance - adapters are stateless so one shared object is fine.
 boq_position_adapter = BOQPositionAdapter()

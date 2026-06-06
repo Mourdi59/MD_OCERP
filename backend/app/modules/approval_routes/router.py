@@ -4,16 +4,16 @@
 
 Endpoints (auto-mounted at ``/api/v1/approval-routes/``)::
 
-    GET    /routes                            — list templates
-    POST   /routes                            — create template
-    GET    /routes/{route_id}                 — single template + steps
-    PATCH  /routes/{route_id}                 — update mutable fields
-    DELETE /routes/{route_id}                 — delete (rejected if instances exist)
-    GET    /instances                         — list workflows (filterable)
-    POST   /instances                         — start a workflow
-    GET    /instances/{instance_id}           — single workflow + step states
-    POST   /instances/{instance_id}/decide    — submit a decision
-    POST   /instances/{instance_id}/cancel    — cancel a pending workflow
+    GET    /routes                            - list templates
+    POST   /routes                            - create template
+    GET    /routes/{route_id}                 - single template + steps
+    PATCH  /routes/{route_id}                 - update mutable fields
+    DELETE /routes/{route_id}                 - delete (rejected if instances exist)
+    GET    /instances                         - list workflows (filterable)
+    POST   /instances                         - start a workflow
+    GET    /instances/{instance_id}           - single workflow + step states
+    POST   /instances/{instance_id}/decide    - submit a decision
+    POST   /instances/{instance_id}/cancel    - cancel a pending workflow
 
 All endpoints respect project_id tenant scoping: route templates with a
 ``project_id`` go through :func:`verify_project_access` so a caller
@@ -130,7 +130,7 @@ async def list_routes(
     When ``project_id`` is supplied we gate access through the project
     guard so callers can't enumerate routes from other projects. The
     listing then includes tenant-wide templates (``project_id IS NULL``)
-    plus that project's routes — matching the picker UX in consumer
+    plus that project's routes - matching the picker UX in consumer
     modules.
 
     ``include_inactive`` defaults to ``True`` (admin surface). A consumer

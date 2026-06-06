@@ -1,4 +1,4 @@
-"""‌⁠‍NCR service — business logic for non-conformance report management."""
+"""‌⁠‍NCR service - business logic for non-conformance report management."""
 
 import logging
 import uuid
@@ -101,8 +101,8 @@ class NCRService:
 
         # Emit event for additional cross-module handlers (analytics,
         # webhooks, smart-notifications, etc.). Detached so the request
-        # session can commit before the wildcard handlers — which open
-        # their own writers via ``async_session_factory()`` — try to run.
+        # session can commit before the wildcard handlers - which open
+        # their own writers via ``async_session_factory()`` - try to run.
         # Awaiting here on SQLite single-writer locking deadlocks the
         # event chain for ~30s before timing out.
         import asyncio

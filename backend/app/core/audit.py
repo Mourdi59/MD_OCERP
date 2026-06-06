@@ -61,7 +61,7 @@ async def audit_log(
         entity_id: UUID of the target entity (optional).
         user_id: UUID of the user who performed the action (optional).
         ip_address: Client IP address (optional).
-        details: Arbitrary JSON context — old/new values, extra info.
+        details: Arbitrary JSON context - old/new values, extra info.
 
     Returns:
         The persisted ``AuditEntry`` instance.
@@ -84,7 +84,7 @@ async def audit_log(
         user_id or "system",
     )
 
-    # Epic H — shim: mirror every legacy ``oe_core_audit_log`` write into
+    # Epic H - shim: mirror every legacy ``oe_core_audit_log`` write into
     # the unified ``oe_activity_log`` so callers building dispute
     # timelines from a single table see the full history. Best-effort: a
     # failure here MUST NOT roll the legacy write back, since callers
@@ -104,7 +104,7 @@ async def audit_log(
             module="audit_legacy_shim",
             ip_address=ip_address,
         )
-    except Exception:  # pragma: no cover — defensive, see docstring
+    except Exception:  # pragma: no cover - defensive, see docstring
         logger.exception(
             "audit shim: mirror to oe_activity_log failed (legacy write preserved)",
         )
@@ -116,7 +116,7 @@ def _parse_iso(value: str | None) -> datetime | None:
     """Best-effort ISO-8601 → ``datetime`` parser.
 
     Accepts the trailing ``Z`` shorthand for UTC. Returns ``None`` for
-    blank/unparseable inputs — callers should treat that as "no filter".
+    blank/unparseable inputs - callers should treat that as "no filter".
 
     The result is always timezone-aware (offset-naive inputs are assumed UTC).
     ``AuditEntry.created_at`` is ``DateTime(timezone=True)`` → ``TIMESTAMPTZ`` on
@@ -155,7 +155,7 @@ async def get_audit_entries(
 ) -> list[AuditEntry]:
     """Query audit log entries with optional filters.
 
-    All filter parameters are optional — when omitted, that filter is not
+    All filter parameters are optional - when omitted, that filter is not
     applied. ``date_from``/``date_to`` accept ISO-8601 strings (``Z``
     accepted as UTC). ``sort`` is ``"desc"`` (newest first, default) or
     ``"asc"`` (oldest first).
@@ -169,7 +169,7 @@ async def get_audit_entries(
         try:
             stmt = stmt.where(AuditEntry.user_id == uuid.UUID(user_id))
         except (ValueError, AttributeError):
-            # Malformed UUID — return an empty result rather than 500.
+            # Malformed UUID - return an empty result rather than 500.
             return []
     if action is not None:
         stmt = stmt.where(AuditEntry.action == action)
@@ -197,7 +197,7 @@ async def count_audit_entries(
 ) -> int:
     """Count audit-log rows matching the same filter set as
     :func:`get_audit_entries`. Used by the admin UI to render
-    "Showing 1-50 of 318" — the row paginator on the listing page.
+    "Showing 1-50 of 318" - the row paginator on the listing page.
     """
     stmt = select(func.count(AuditEntry.id))
     if entity_type is not None:

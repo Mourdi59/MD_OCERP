@@ -208,7 +208,7 @@ async def _verify_buyer_owner(
     is_admin = payload.get("role") == "admin"
     user_id = payload.get("sub") or payload.get("user_id")
     if user_id is None:
-        # Should not happen — RequirePermission already ensures auth —
+        # Should not happen - RequirePermission already ensures auth -
         # but be conservative and 401-style 404 the request.
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Buyer not found")
 
@@ -231,7 +231,7 @@ async def _verify_buyer_owner(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Buyer not found")
     project = await ProjectRepository(session).get_by_id(development.project_id)
     if project is None or str(project.owner_id) != str(user_id):
-        # 404 (not 403) — collapse "exists but not yours" into the same
+        # 404 (not 403) - collapse "exists but not yours" into the same
         # response as "doesn't exist" so this endpoint can't be turned
         # into a UUID-existence oracle for other tenants' buyers.
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Buyer not found")
@@ -346,7 +346,7 @@ async def list_plots(
     service: PropertyDevService = Depends(_svc),
     _perm: None = Depends(RequirePermission("property_dev.read")),
 ) -> list[PlotResponse]:
-    # R7 IDOR — gate the parent dev so we can't enumerate other tenants'
+    # R7 IDOR - gate the parent dev so we can't enumerate other tenants'
     # plots by guessing development UUIDs (the dev_id is a query param).
     await _verify_owner_via_development(session, development_id, user_payload)
     rows, _ = await service.plots.list_for_development(development_id, offset=offset, limit=limit, status=status)
@@ -361,7 +361,7 @@ async def create_plot(
     service: PropertyDevService = Depends(_svc),
     _perm: None = Depends(RequirePermission("property_dev.create")),
 ) -> PlotResponse:
-    # R7 IDOR — prevent creating a plot under someone else's development.
+    # R7 IDOR - prevent creating a plot under someone else's development.
     await _verify_owner_via_development(session, data.development_id, user_payload)
     obj = await service.create_plot(data)
     return PlotResponse.model_validate(obj)
@@ -570,7 +570,7 @@ async def list_house_type_catalogue(
 
     Presets (project_id IS NULL, is_preset=True) are always visible.
     Tenant-created entries are only included when the caller owns the
-    project — admins see everything.
+    project - admins see everything.
     """
     rows = await service.list_house_type_catalogue(
         country_code=country_code,
@@ -1322,7 +1322,7 @@ async def upload_snag_photo(
         _snag_logger.exception("Unable to save snag photo %s", s_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to save photo — storage error",
+            detail="Unable to save photo - storage error",
         )
 
     photo_path = f"snag/photos/{filename}"
@@ -1349,7 +1349,7 @@ async def list_warranty_claims(
 ) -> list[WarrantyClaimResponse]:
     """List warranty claims.
 
-    Supports four scoping modes (mutually exclusive — buyer wins, then
+    Supports four scoping modes (mutually exclusive - buyer wins, then
     plot, then development, then project). When NONE are supplied the
     endpoint returns the empty list to avoid an accidental cross-tenant
     enumeration (matches the v3110 ``list_warranty_claims`` behavior).
@@ -1369,7 +1369,7 @@ async def list_warranty_claims(
             severity=severity,
         )
     elif project_id is not None:
-        # Project-level listing — IDOR-gated via the project ownership
+        # Project-level listing - IDOR-gated via the project ownership
         # check that already powers ``_verify_owner_via_plot``.
         from app.modules.projects.repository import ProjectRepository
 
@@ -1534,14 +1534,14 @@ async def warranty_claim_pdf(
         f"Claim ID:       {claim.id}",
         f"Plot ID:        {claim.plot_id}",
         f"Buyer ID:       {claim.buyer_id}",
-        f"Handover ID:    {claim.handover_id or '—'}",
-        f"Raised at:      {claim.raised_at or '—'}",
+        f"Handover ID:    {claim.handover_id or '-'}",
+        f"Raised at:      {claim.raised_at or '-'}",
         f"Category:       {claim.category}",
         f"Severity:       {claim.severity}",
         f"Status:         {claim.status}",
         f"In warranty:    {'YES' if payload.is_in_warranty else 'NO'}",
-        f"SLA deadline:   {claim.sla_deadline or '—'}",
-        f"Assigned to:    {claim.assigned_to_user_id or '—'}",
+        f"SLA deadline:   {claim.sla_deadline or '-'}",
+        f"Assigned to:    {claim.assigned_to_user_id or '-'}",
         "",
         "Description:",
         claim.description or "(none)",
@@ -1579,7 +1579,7 @@ async def warranty_claim_pdf(
             },
         )
     except Exception:
-        # reportlab missing or rendering failed — return the txt fallback
+        # reportlab missing or rendering failed - return the txt fallback
         # so the legal/insurance team still gets something printable.
         return Response(
             content=body.encode("utf-8"),
@@ -1793,7 +1793,7 @@ async def sales_kanban(
     service: PropertyDevService = Depends(_svc),
     _perm: None = Depends(RequirePermission("property_dev.read")),
 ) -> SalesKanbanResponse:
-    """Kanban — one column per buyer-status.
+    """Kanban - one column per buyer-status.
 
     R8: cross-tenant IDOR closed via ``_verify_owner_via_development``.
     """
@@ -1849,7 +1849,7 @@ async def development_pnl(
 
 
 # ════════════════════════════════════════════════════════════════════════
-# R6 — Lead / Reservation / SPA / PaymentSchedule / Instalment /
+# R6 - Lead / Reservation / SPA / PaymentSchedule / Instalment /
 #       ContractParty
 # ════════════════════════════════════════════════════════════════════════
 
@@ -2547,7 +2547,7 @@ async def expire_overdue_reservations(
     service: PropertyDevService = Depends(_svc),
     _perm: None = Depends(RequirePermission("property_dev.reservation.expire")),
 ) -> ReservationExpiryBatchResponse:
-    """Admin/cron endpoint — expire every active reservation past
+    """Admin/cron endpoint - expire every active reservation past
     ``expires_at``. Idempotent + safe to schedule daily.
     """
     ids = await service.expire_overdue_reservations()
@@ -2788,11 +2788,11 @@ async def quote_sales_contract_taxes(
 
     Routes UK SDLT progressive bands, DE state-specific Grunderwerbsteuer,
     UAE DLD transfer fee, IN GST + state stamp duty, SG BSD + ABSD,
-    AU state stamp duty, US state transfer tax — all data-driven via
+    AU state stamp duty, US state transfer tax - all data-driven via
     ``data/tax_rates.yaml``. Returns Decimal amounts (2 dp HALF_UP)
     plus a human-readable breakdown for invoice rendering.
     """
-    # IDOR — close cross-tenant read first (404 not 403 = no UUID oracle).
+    # IDOR - close cross-tenant read first (404 not 403 = no UUID oracle).
     await _verify_owner_via_spa(session, spa_id, payload)
 
     from app.modules.property_dev.tax_engine import (
@@ -2897,14 +2897,14 @@ async def generate_payment_schedule_from_template(
     """Generate a payment schedule from a milestone template.
 
     Body schema (validated inline for flexibility):
-        sales_contract_id: UUID                — required.
-        template_key: str                      — one of the keys returned
+        sales_contract_id: UUID                - required.
+        template_key: str                      - one of the keys returned
                                                  by GET /payment-schedule-templates/.
                                                  Required.
-        start_date: "YYYY-MM-DD"               — optional, defaults to SPA
+        start_date: "YYYY-MM-DD"               - optional, defaults to SPA
                                                  signing date or today.
-        late_fee_pct: Decimal (0..100)         — optional, default 0.
-        grace_period_days: int                 — optional, default 0.
+        late_fee_pct: Decimal (0..100)         - optional, default 0.
+        grace_period_days: int                 - optional, default 0.
 
     Behaviour: if a schedule already exists for this SPA and it is in
     ``draft``/``suspended``/``cancelled`` state, its instalments are
@@ -2949,7 +2949,7 @@ async def list_payment_schedule_templates(
 ) -> list[dict]:
     """Static catalogue of milestone-based payment schedule templates.
 
-    Templates are pure data — see
+    Templates are pure data - see
     :data:`PropertyDevService.PAYMENT_SCHEDULE_TEMPLATES`.
     """
     return PropertyDevService.payment_schedule_template_catalogue()
@@ -3157,7 +3157,7 @@ async def accrue_late_fees(
     service: PropertyDevService = Depends(_svc),
     _perm: None = Depends(RequirePermission("property_dev.instalment.waive")),
 ) -> dict:
-    """Admin/cron endpoint — accrue one day of late fees on all overdue
+    """Admin/cron endpoint - accrue one day of late fees on all overdue
     instalments. Idempotent on the day-stamp; safe to schedule daily.
     """
     result = await service.accrue_late_fees_daily()
@@ -3231,7 +3231,7 @@ async def remove_contract_party(
 
 
 # ════════════════════════════════════════════════════════════════════════
-# Task #138 — Broker / Commission / Escrow / PriceMatrix / Phase / Block
+# Task #138 - Broker / Commission / Escrow / PriceMatrix / Phase / Block
 # ════════════════════════════════════════════════════════════════════════
 
 
@@ -3481,7 +3481,7 @@ def _ensure_broker_owner(broker: Any, payload: dict[str, Any]) -> None:
     """Tenant-isolation gate for brokers.
 
     Admins bypass. For non-admins, a broker that belongs to a different
-    tenant collapses to 404 — never leak existence via 403.
+    tenant collapses to 404 - never leak existence via 403.
     """
     if payload.get("role") == "admin":
         return
@@ -4112,7 +4112,7 @@ _VALID_DOC_TYPES_HTTP: set[str] = {
     "warranty_certificate",
     "noc",
     # New built-ins (v3124). Live ``/documents/{doc_type}`` rendering is
-    # sample-preview only for now — the entity wiring for these flows is
+    # sample-preview only for now - the entity wiring for these flows is
     # added per-event in follow-up commits as the front-end surfaces them.
     "tenant_lease_agreement",
     "move_in_checklist",
@@ -4536,7 +4536,7 @@ _DOC_TEMPLATE_CATALOGUE: list[dict[str, Any]] = [
         "title": "Move-in Checklist",
         "description": (
             "Room-by-room property-condition report attached to handover. "
-            "Captures fixtures / fittings / appliance state with notes — "
+            "Captures fixtures / fittings / appliance state with notes - "
             "complements the formal handover certificate."
         ),
         "trigger": "POST /handovers/{id}/complete → checklist captured",
@@ -4575,7 +4575,7 @@ _DOC_TEMPLATE_CATALOGUE: list[dict[str, Any]] = [
             "from the project escrow account. Required by RERA / "
             "MAHARERA / 214-FZ workflows."
         ),
-        "trigger": "Manual — generated at milestone certification",
+        "trigger": "Manual - generated at milestone certification",
         "entity": "sales_contract",
         "pages": "1",
     },
@@ -4648,7 +4648,7 @@ def _validate_custom_template_magic(ext: str, content: bytes, filename: str) -> 
 
 
 # Suggested doc_type slugs. The settings page surfaces these as combobox
-# presets BUT the value is no longer constrained to this list — any
+# presets BUT the value is no longer constrained to this list - any
 # tenant (Brazil / Japan / Mexico / Australia / Vietnam / …) can supply
 # a jurisdiction-specific slug such as ``escritura_publica`` or
 # ``juyo_jiko_setsumeisho`` without us shipping a new release. The list
@@ -4674,7 +4674,7 @@ _DOC_TYPE_PRESETS: tuple[str, ...] = (
     "refund_authorization",
 )
 # Suggested entity slugs. Same parameterization story as
-# ``_DOC_TYPE_PRESETS`` — combobox presets only, free-text accepted.
+# ``_DOC_TYPE_PRESETS`` - combobox presets only, free-text accepted.
 _ENTITY_PRESETS: tuple[str, ...] = (
     "custom",
     "reservation",
@@ -4689,14 +4689,14 @@ _ENTITY_PRESETS: tuple[str, ...] = (
     "tenant",
 )
 
-# Backwards-compatible aliases — kept for any third-party module that
+# Backwards-compatible aliases - kept for any third-party module that
 # imported the legacy whitelist names. New code should consult the
 # preset tuples above and the ``_validate_template_slug`` helper.
 _ALLOWED_CUSTOM_DOC_TYPES: tuple[str, ...] = _DOC_TYPE_PRESETS
 _ALLOWED_CUSTOM_ENTITIES: tuple[str, ...] = _ENTITY_PRESETS
 
 # Permissive slug pattern: lowercase letters, digits, underscore, dash,
-# dot — long enough to fit ``juyo_jiko_setsumeisho`` (24 chars) but
+# dot - long enough to fit ``juyo_jiko_setsumeisho`` (24 chars) but
 # bounded to keep DB columns sane and to reject SQL/path injection.
 # Cap matches the ``doc_type`` / ``entity`` ``String(40)`` columns on
 # ``PropertyDevCustomTemplate`` so the API rejects oversized values
@@ -4730,7 +4730,7 @@ def _serialize_custom_template_row(row: Any) -> dict[str, Any]:
         "description": row.description or "",
         "trigger": row.trigger,
         "entity": row.entity,
-        "pages": "—",
+        "pages": "-",
         "is_custom": True,
         "has_pdf_renderer": content_type.startswith("text/"),
         "filename": row.filename,
@@ -4744,7 +4744,7 @@ def _serialize_custom_template_row(row: Any) -> dict[str, Any]:
 
 # Documentation block for the "{i} Variables" modal in the settings
 # page. Kept in code (not a YAML file) because it mirrors the public
-# fields of the ORM models below — they move together at refactor time.
+# fields of the ORM models below - they move together at refactor time.
 _TEMPLATE_VARIABLES_DOCUMENTATION: list[dict[str, Any]] = [
     {
         "group": "development",
@@ -4861,7 +4861,7 @@ async def list_document_templates(
     # Resolve owning project IDs for the calling user. Admins see every
     # uploaded template; everyone else sees only templates from projects
     # they own. The query is bounded by RBAC + the explicit list of
-    # owned project IDs — no cross-tenant leakage.
+    # owned project IDs - no cross-tenant leakage.
     is_admin = user_payload.get("role") == "admin"
     user_id = user_payload.get("sub") or user_payload.get("user_id")
 
@@ -4962,8 +4962,8 @@ def _validate_custom_template_metadata(
 
     Raises 422 on any field that's empty, too long, or carries
     characters that wouldn't make sense as a doc_type / entity. The
-    doc_type / entity slugs are validated for SHAPE only — see
-    ``_validate_template_slug`` — so tenants are free to add
+    doc_type / entity slugs are validated for SHAPE only - see
+    ``_validate_template_slug`` - so tenants are free to add
     jurisdiction-specific document types without a code release.
     """
     name = (name or "").strip()
@@ -5166,7 +5166,7 @@ async def upload_custom_document_template(
         _CUSTOM_TEMPLATE_LOG.exception("Unable to save template upload")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to save template — storage error",
+            detail="Unable to save template - storage error",
         )
 
     row = PropertyDevCustomTemplate(
@@ -5200,7 +5200,7 @@ async def delete_custom_document_template(
 ) -> Response:
     """Delete a tenant-uploaded custom template (file + row).
 
-    404s — never 403s — when the row is owned by a different tenant so
+    404s - never 403s - when the row is owned by a different tenant so
     the endpoint can't be turned into a UUID-existence oracle.
     """
     from app.modules.projects.repository import ProjectRepository
@@ -5242,7 +5242,7 @@ async def download_custom_document_template(
 ) -> Response:
     """Stream a previously-uploaded custom template back to the client.
 
-    Same ownership check as the delete endpoint — 404 (not 403) when
+    Same ownership check as the delete endpoint - 404 (not 403) when
     the caller doesn't own the row.
     """
     from app.modules.projects.repository import ProjectRepository
@@ -5275,7 +5275,7 @@ async def download_custom_document_template(
     )
 
 
-# ── In-browser editor — text-based custom templates ────────────────────
+# ── In-browser editor - text-based custom templates ────────────────────
 
 
 # Max body for the JSON-content path. Mirrors the multipart cap so we
@@ -5329,7 +5329,7 @@ async def save_text_custom_document_template(
     """Save in-browser-edited HTML / Markdown / plain-text as a custom
     template.
 
-    Counterpart to ``POST /document-templates/upload`` — accepts a JSON
+    Counterpart to ``POST /document-templates/upload`` - accepts a JSON
     body with the raw text content instead of a multipart file. Same
     project-ownership / RBAC gating; same 10 MB cap (in characters,
     since UTF-8 bytes are <= char count for ASCII / Latin-1 and only
@@ -5347,7 +5347,7 @@ async def save_text_custom_document_template(
           "development_id": "...",             # optional
           "content_type": "text/html",         # html | markdown | plain
           "content_text": "<html>…</html>",
-          "template_id": "..."                 # optional — update in place
+          "template_id": "..."                 # optional - update in place
         }
 
     When ``template_id`` is supplied the call REPLACES the named row's
@@ -5428,7 +5428,7 @@ async def save_text_custom_document_template(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=translate("errors.template_not_found", locale=get_locale()),
             )
-        # IDOR closure — only the owner (or admin) may overwrite the row.
+        # IDOR closure - only the owner (or admin) may overwrite the row.
         if not is_admin and existing_row.project_id is not None:
             from app.modules.projects.repository import ProjectRepository
 
@@ -5517,7 +5517,7 @@ async def save_text_custom_document_template(
         _CUSTOM_TEMPLATE_LOG.exception("Unable to save text template")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to save template — storage error",
+            detail="Unable to save template - storage error",
         )
 
     size_bytes = target_path.stat().st_size
@@ -5568,10 +5568,10 @@ async def get_custom_document_template_content(
     user_payload: CurrentUserPayload,
     _perm: None = Depends(RequirePermission("property_dev.read")),
 ) -> dict[str, Any]:
-    """Return the raw text content of a custom template — for the editor.
+    """Return the raw text content of a custom template - for the editor.
 
     Only returns text content (text/html, text/markdown, text/plain).
-    Binary uploads (.docx / .pdf / .odt) return 415 — they can't be
+    Binary uploads (.docx / .pdf / .odt) return 415 - they can't be
     round-tripped through the in-browser editor.
 
     Same project-ownership / 404-not-403 guard as the download endpoint.
@@ -5620,7 +5620,7 @@ async def get_custom_document_template_content(
         )
         raise HTTPException(
             status_code=500,
-            detail="Unable to read template — storage error",
+            detail="Unable to read template - storage error",
         )
 
     return {
@@ -5974,7 +5974,7 @@ async def _run_property_dev_validation(
     from app.core.validation.engine import rule_registry, validation_engine
 
     # Ensure the rule registry is populated. ``register_builtin_rules`` is
-    # idempotent — calling it twice does not duplicate rules.
+    # idempotent - calling it twice does not duplicate rules.
     if not rule_registry.list_rule_sets().get("property_dev"):
         from app.core.validation.rules import register_builtin_rules
 
@@ -6041,7 +6041,7 @@ async def compliance_dashboard(
 ) -> ComplianceDashboardResponse:
     """Aggregated traffic-light validation report for one development.
 
-    R8: cross-tenant IDOR closed via ``_verify_owner_via_development`` —
+    R8: cross-tenant IDOR closed via ``_verify_owner_via_development`` -
     avoids letting any reader probe other tenants' dev UUIDs for an
     existence oracle via the compliance dashboard.
     """
@@ -6076,7 +6076,7 @@ async def compliance_run_checks(
 
 @router.get(
     "/compliance/regulator-reports",
-    # response_model intentionally omitted — endpoint returns either a
+    # response_model intentionally omitted - endpoint returns either a
     # streaming Response (PDF/payload bytes) or the
     # ComplianceRegulatorReportResponse JSON envelope depending on `as`.
 )
@@ -6157,7 +6157,7 @@ async def compliance_regulator_report(
 
 # ── Inventory Map (task #142) ───────────────────────────────────────────
 #
-# The Inventory Map is the sales-desk daily index — every Plot in a
+# The Inventory Map is the sales-desk daily index - every Plot in a
 # Development laid out as block → floor → unit tiles with a KPI ribbon
 # and bulk hold/release. Distinct from the analytics
 # /dashboards/inventory-heatmap (task #140) which groups by Phase.
@@ -6185,7 +6185,7 @@ async def get_inventory_map(
 
     Returns every Plot in the Development bucketed by block_code → floor →
     unit_code, with a KPI summary ribbon. Single read fan-out (one SELECT
-    for plots, one for blocks). Sales-desk usage — they hit this on
+    for plots, one for blocks). Sales-desk usage - they hit this on
     every page load, target latency <300ms even at 1000 plots.
 
     R8: cross-tenant IDOR closed via ``_verify_owner_via_development``.
@@ -6215,7 +6215,7 @@ async def inventory_map_bulk_hold(
     (matches the procurement.create_invoice_from_po atomicity pattern).
     Already-held plots are soft-skipped (idempotent).
 
-    RBAC: MANAGER+ (uses ``property_dev.delete`` which maps to MANAGER —
+    RBAC: MANAGER+ (uses ``property_dev.delete`` which maps to MANAGER -
     matches sales-floor convention that only sales managers can pull
     inventory off the market).
 
@@ -6250,7 +6250,7 @@ async def inventory_map_bulk_release(
     Idempotent: non-held plots are silently skipped (NOT 409) so that a
     shift-select range that happens to include an already-released plot
     doesn't force the user to retry one-by-one. ``blocked`` plots are
-    NEVER released through this endpoint — they require an explicit
+    NEVER released through this endpoint - they require an explicit
     MANAGER PATCH on the plot itself.
 
     R8: cross-tenant IDOR closed via ``_verify_owner_via_development``.
@@ -6386,7 +6386,7 @@ async def dashboard_buyer_journey(
 # Director-grade rollups. Each endpoint:
 #   * tenant-scoped through ``_verify_owner_via_development`` (when a
 #     dev_id is supplied) or falls back to ``ProjectRepository`` filtering
-#     (when no dev_id is supplied — non-admins only see their projects),
+#     (when no dev_id is supplied - non-admins only see their projects),
 #   * ETag + ``Cache-Control: max-age=120`` so repeated polls from the
 #     dashboard widgets short-circuit at 304,
 #   * 422 on bad ``since`` / ``until`` scope (Query regex),
@@ -6396,7 +6396,7 @@ async def dashboard_buyer_journey(
 def _validate_iso_date(value: str | None, field: str) -> None:
     """Raise 422 when ``value`` is not a real YYYY-MM-DD date.
 
-    The Query regex only checks shape (``\\d{4}-\\d{2}-\\d{2}``) — values
+    The Query regex only checks shape (``\\d{4}-\\d{2}-\\d{2}``) - values
     like ``2026-13-99`` slip through and would surface as 500 from
     ``date.fromisoformat`` in the service layer. We pre-flight them here.
     """
@@ -6418,7 +6418,7 @@ def _analytics_etag(payload: dict[str, Any], *, user_id: str) -> str:
 
     Includes ``user_id`` so the cached entry never leaks across tenants
     even if a proxy strips authorization headers. Excludes any timestamp
-    field (we don't have one in the analytics payloads — they're pure
+    field (we don't have one in the analytics payloads - they're pure
     aggregates).
     """
     import hashlib
@@ -6515,7 +6515,7 @@ async def dashboard_cohort_retention(
     _validate_iso_date(until, "until")
     user_id = str(payload.get("sub") or payload.get("user_id") or "")
     # When the caller can't see ANY development we collapse to an empty
-    # payload (200 + 0 cohorts) — never leak an existence oracle.
+    # payload (200 + 0 cohorts) - never leak an existence oracle.
     dev_ids = await _list_accessible_dev_ids(session, payload)
     if not dev_ids and payload.get("role") != "admin":
         empty = {
@@ -6539,7 +6539,7 @@ async def dashboard_cohort_retention(
         until=until,
     )
     # Tenant-scope: filter cohorts to reservations on accessible plots.
-    # The service returns aggregated cohorts already — we re-run with a
+    # The service returns aggregated cohorts already - we re-run with a
     # tenant-aware query when the caller isn't admin.
     if payload.get("role") != "admin":
         raw = await _tenant_scope_cohort_retention(
@@ -6582,7 +6582,7 @@ async def _tenant_scope_cohort_retention(
         return {**fallback, "cohorts": [], "total_cohorts": 0}
 
     svc = AnalyticsService(session)
-    # Inject the dev-ids filter via an explicit subquery — keep the
+    # Inject the dev-ids filter via an explicit subquery - keep the
     # analytics-service signature stable by replicating just the data
     # shape it expects.
     accessible_plots_q = _select(_Plot.id).where(_Plot.development_id.in_(dev_ids))
@@ -6917,7 +6917,7 @@ async def dashboard_lead_source_attribution(
 
     svc = AnalyticsService(session)
     raw = await svc.lead_source_attribution(since=since, until=until)
-    # Tenant-scope by trimming rows we have no business showing — the
+    # Tenant-scope by trimming rows we have no business showing - the
     # service today aggregates GLOBALLY because Lead.development_id can
     # be NULL (top-of-funnel). For non-admins we re-run with a dev filter
     # on the joined queries; for now we let the service return all and
@@ -7120,7 +7120,7 @@ async def portal_list_my_warranty_claims(
 
 
 # ════════════════════════════════════════════════════════════════════════
-# Pricing Engine — PriceList / PriceListEntry / PricingRule
+# Pricing Engine - PriceList / PriceListEntry / PricingRule
 # ════════════════════════════════════════════════════════════════════════
 #
 # Six endpoints:
@@ -7207,7 +7207,7 @@ async def create_price_list(
     service: PropertyDevService = Depends(_svc),
     _perm: None = Depends(RequirePermission("property_dev.contract_buyer")),
 ) -> PriceListResponse:
-    """Create a draft price list (MANAGER+ — touches commercial terms)."""
+    """Create a draft price list (MANAGER+ - touches commercial terms)."""
     await _verify_owner_via_development(session, dev_id, user_payload)
     created_by_raw = user_payload.get("sub") or user_payload.get("user_id")
     created_by: uuid.UUID | None = None
@@ -7477,7 +7477,7 @@ router.include_router(portal_router)
 # ════════════════════════════════════════════════════════════════════════
 #
 # All five endpoints are MANAGER+ gated and SAVEPOINT-atomic on writes.
-# Per-item IDOR / FSM filtering happens inside the service layer — see
+# Per-item IDOR / FSM filtering happens inside the service layer - see
 # bulk_operations.py for the contract. The router is thin on purpose:
 # validation lives in the Pydantic schemas (BULK_MAX_ITEMS cap, target
 # enums, expiry date format) so a malformed payload returns 422 before
@@ -7501,7 +7501,7 @@ async def bulk_plots_status_change(
     data: PlotBulkStatusChange,
     session: SessionDep,
     user_payload: CurrentUserPayload,
-    dry_run: bool = Query(default=False, description="Classify only — no writes."),
+    dry_run: bool = Query(default=False, description="Classify only - no writes."),
     _perm: None = Depends(RequirePermission("property_dev.bulk.plot_status_change")),
 ) -> BulkResult:
     return await bulk_plot_status_change(
@@ -7549,7 +7549,7 @@ async def bulk_reservations_extend_expiry(
         "and warranty certificates after a template fix. Pass EITHER "
         "``reservation_ids`` (for reservation_receipt) OR "
         "``sales_contract_ids`` (for everything else). One render "
-        "failure does NOT abort the batch — failed entries are reported "
+        "failure does NOT abort the batch - failed entries are reported "
         "in ``BulkResult.failed`` with ``error_code=document_render_failed``."
     ),
 )
@@ -7578,7 +7578,7 @@ async def bulk_documents_regenerate(
         "plot_type_interest, budget_min, budget_max, notes. "
         "Magic-byte sniffed to reject binaries renamed .csv. "
         "Dedupes within the same development (or globally when no "
-        "``development_id`` is passed) by ``lower(email)`` — duplicates "
+        "``development_id`` is passed) by ``lower(email)`` - duplicates "
         "append to the existing Lead's notes instead of creating a "
         "second row."
     ),
@@ -7614,7 +7614,7 @@ async def bulk_leads_import_csv(
         "primary, then soft-deletes the duplicate "
         "(``status=cancelled``, ``metadata_.merged_into=<primary_id>``). "
         "Cross-development merges are rejected per-item. The entire "
-        "operation runs inside one SAVEPOINT — any hard FK failure rolls "
+        "operation runs inside one SAVEPOINT - any hard FK failure rolls "
         "back EVERY repoint for that batch (no half-merged state)."
     ),
 )

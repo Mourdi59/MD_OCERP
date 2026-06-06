@@ -4,18 +4,18 @@ T01 responsibility: take a list of uploaded source files, run each
 through the appropriate converter, and produce three DataFrames in the
 canonical snapshot shape:
 
-* ``entities_df``    — one row per entity, columns ``entity_guid``,
+* ``entities_df``    - one row per entity, columns ``entity_guid``,
   ``category``, ``source_file_id``, ``attributes`` (dict).
-* ``materials_df``   — one row per (entity, material layer), columns
+* ``materials_df``   - one row per (entity, material layer), columns
   ``entity_guid``, ``layer_index``, ``material``, ``thickness_mm``.
-* ``source_files_df``— one row per uploaded file, columns ``id``,
+* ``source_files_df``- one row per uploaded file, columns ``id``,
   ``original_name``, ``format``, ``discipline``, ``entity_count``,
   ``bytes_size``.
 
 Converter support today:
-    IFC / RVT  — reuses :func:`app.modules.bim_hub.ifc_processor.process_ifc_file`
+    IFC / RVT  - reuses :func:`app.modules.bim_hub.ifc_processor.process_ifc_file`
                  (DDC cad2data when installed, text-parser fallback otherwise).
-    DWG / DGN  — not yet wired; we raise :class:`UnsupportedFormatError`
+    DWG / DGN  - not yet wired; we raise :class:`UnsupportedFormatError`
                  with a localised message. T10 lights these up.
 
 The bridge is format-pluggable: adding a new format = adding a
@@ -107,7 +107,7 @@ class NoEntitiesExtractedError(BridgeError):
 _SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({"ifc", "rvt"})
 """Extensions the bridge knows how to convert today. Adding a new
 format means adding its extension here AND a ``_convert_<ext>``
-function below, in one commit — the scaffolding test asserts the two
+function below, in one commit - the scaffolding test asserts the two
 stay in sync."""
 
 
@@ -120,13 +120,13 @@ def convert_to_snapshot_frames(
 ) -> SnapshotBuildResult:
     """Main entry: convert a list of uploaded files into snapshot frames.
 
-    Runs converters sequentially (not in parallel) — the DDC cad2data
+    Runs converters sequentially (not in parallel) - the DDC cad2data
     runner is itself a heavy process; two instances on a laptop will
     thrash the CPU. Parallelism is revisited in T10 when federation
     becomes the common case.
     """
     if not files:
-        raise NoEntitiesExtractedError("No source files supplied — nothing to convert.")
+        raise NoEntitiesExtractedError("No source files supplied - nothing to convert.")
 
     all_entities: list[pd.DataFrame] = []
     all_materials: list[pd.DataFrame] = []
@@ -201,7 +201,7 @@ def _dispatch(
     """Route one file to the right converter and normalise its output."""
     if ext in {"ifc", "rvt"}:
         return _convert_ifc_or_rvt(file, source_file_id)
-    # Guarded at caller — but re-raise defensively so mypy's
+    # Guarded at caller - but re-raise defensively so mypy's
     # exhaustiveness narrows correctly.
     raise UnsupportedFormatError(f"No converter registered for .{ext}")  # pragma: no cover
 
@@ -213,12 +213,12 @@ def _convert_ifc_or_rvt(
     """Hand the bytes to bim_hub's IFC/RVT processor and canonicalise
     its dict output into our DataFrame shape.
 
-    We never keep the raw bytes around longer than necessary — the
+    We never keep the raw bytes around longer than necessary - the
     processor writes to a tempdir which we clean up via the
     ``TemporaryDirectory`` context manager.
     """
     # Late import so the dashboards module does not add a hard import
-    # cycle back to bim_hub at startup — the loader only needs bim_hub
+    # cycle back to bim_hub at startup - the loader only needs bim_hub
     # to be loaded before a conversion runs, which the dependency
     # declaration on ``oe_bim_hub`` does not (yet) provide, so the
     # import happens here to keep module load deterministic.

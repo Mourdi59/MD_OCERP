@@ -1,4 +1,4 @@
-"""‌⁠‍Dashboards module — analytical layer over snapshots.
+"""‌⁠‍Dashboards module - analytical layer over snapshots.
 
 Tasks in scope (see ``CLAUDE-DASHBOARDS.md`` in the repo root):
     T01 Data Snapshot Registry
@@ -30,12 +30,12 @@ _SUBSCRIBERS_REGISTERED = False
 
 
 def _on_snapshot_refreshed(event):  # type: ignore[no-untyped-def]
-    """‌⁠‍T09 sync protocol — mark every preset pointing at the refreshed
+    """‌⁠‍T09 sync protocol - mark every preset pointing at the refreshed
     snapshot as ``sync_status='stale'``.
 
     The handler is intentionally minimal: it opens its own session via
     the application factory, runs one bulk update, and returns. Errors
-    are logged but never re-raised — a sync-status bookkeeping miss
+    are logged but never re-raised - a sync-status bookkeeping miss
     must not break snapshot creation.
     """
     import asyncio
@@ -65,7 +65,7 @@ def _on_snapshot_refreshed(event):  # type: ignore[no-untyped-def]
                         snapshot_id,
                         moved,
                     )
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.warning(
                 "dashboards.sync.mark_stale_failed snapshot_id=%s: %s",
                 snapshot_id,
@@ -76,7 +76,7 @@ def _on_snapshot_refreshed(event):  # type: ignore[no-untyped-def]
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
-        # Sync context — block until done. Only happens when an event
+        # Sync context - block until done. Only happens when an event
         # is published from a non-async test or CLI script.
         asyncio.run(_run())
     else:
@@ -84,7 +84,7 @@ def _on_snapshot_refreshed(event):  # type: ignore[no-untyped-def]
 
 
 def register_subscribers() -> None:
-    """‌⁠‍Idempotent — call multiple times safely (tests do)."""
+    """‌⁠‍Idempotent - call multiple times safely (tests do)."""
     global _SUBSCRIBERS_REGISTERED
     if _SUBSCRIBERS_REGISTERED:
         return
@@ -95,6 +95,6 @@ def register_subscribers() -> None:
     _SUBSCRIBERS_REGISTERED = True
 
 
-# Register on import — the module loader pulls in models.py which
+# Register on import - the module loader pulls in models.py which
 # imports this package, so this fires at startup.
 register_subscribers()

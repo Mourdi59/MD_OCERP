@@ -1,11 +1,11 @@
 """‌⁠‍Projects API routes.
 
 Endpoints:
-    POST /                   — Create project (auth required)
-    GET  /                   — List my projects (auth required)
-    GET  /{project_id}       — Get project (auth required)
-    PATCH /{project_id}      — Update project (auth required)
-    DELETE /{project_id}     — Archive project (auth required)
+    POST /                   - Create project (auth required)
+    GET  /                   - List my projects (auth required)
+    GET  /{project_id}       - Get project (auth required)
+    PATCH /{project_id}      - Update project (auth required)
+    DELETE /{project_id}     - Archive project (auth required)
 """
 
 import logging
@@ -137,7 +137,7 @@ async def _verify_project_access(
     Used for read operations (get, dashboard, list members, etc.).
 
     Raises 404 (not 403) on denial to keep "missing" and "denied"
-    indistinguishable — same IDOR policy as verify_project_access.
+    indistinguishable - same IDOR policy as verify_project_access.
     """
     from app.modules.teams.access import is_project_member
 
@@ -151,7 +151,7 @@ async def _verify_project_access(
     if str(project.owner_id) == user_id:
         return project
 
-    # Team-member check — any membership row for this project grants read access.
+    # Team-member check - any membership row for this project grants read access.
     # Wrap UUID conversion so a malformed user_id yields 404, not 500.
     try:
         uid = uuid.UUID(str(user_id))
@@ -358,7 +358,7 @@ async def restore_project(
     description="Server-side deep-clone of a project including WBS tree, "
     "milestones, match-settings, custom fields, validation rule sets, "
     "address, fx_rates, custom_units, VAT and metadata. The whole copy "
-    "runs in a single transaction — any child insert failure rolls back "
+    "runs in a single transaction - any child insert failure rolls back "
     "the parent insert too. The caller becomes the owner of the clone.",
 )
 async def duplicate_project(
@@ -461,7 +461,7 @@ async def add_project_member_endpoint(
     status_code=204,
     summary="Remove a project member",
     description="Remove a user from the project. Cannot remove the project "
-    "owner — use the ownership transfer flow for that.",
+    "owner - use the ownership transfer flow for that.",
 )
 @router.delete(
     "/{project_id}/members/{member_user_id}",
@@ -582,20 +582,20 @@ async def grant_folder_permission_endpoint(
     await _verify_project_owner(service, project_id, user_id, payload)
 
     # body is an untyped dict (FolderPermissionCreate is imported lazily to
-    # avoid a circular import), so validate it explicitly — otherwise a
+    # avoid a circular import), so validate it explicitly - otherwise a
     # malformed/incomplete body raises pydantic.ValidationError that escapes
     # as an opaque HTTP 500 instead of a clean 422.
     try:
         data = FolderPermissionCreate(**body)
     except ValidationError as exc:
-        # Reduce to JSON-safe fields — pydantic's raw errors() can carry a
+        # Reduce to JSON-safe fields - pydantic's raw errors() can carry a
         # non-serialisable ``ctx`` (exception objects) that would itself 500.
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=[{"loc": list(e.get("loc", [])), "msg": e.get("msg"), "type": e.get("type")} for e in exc.errors()],
         ) from exc
 
-    # Refuse to grant to a non-member — leaks "this user doesn't exist
+    # Refuse to grant to a non-member - leaks "this user doesn't exist
     # on this project" but is more useful than a downstream FK error.
     if not await is_project_member(session, project_id, data.user_id):
         raise HTTPException(
@@ -680,7 +680,7 @@ async def project_dashboard(
 
     from app.core.sql_numeric import numeric_value
 
-    # Verify read access — owner, admin, or team member
+    # Verify read access - owner, admin, or team member
     project = await _verify_project_access(service, project_id, user_id, session, payload)
 
     # ── Helper: safe query wrapper ──────────────────────────────
@@ -703,7 +703,7 @@ async def project_dashboard(
     # ── BOQ / Budget ─────────────────────────────────────────────────────────
     # A-DASH-05: every monetary field is a fixed 2-decimal string and
     # consumed_pct a fixed 1-decimal string, so the default ("empty
-    # project") and computed branches encode numbers identically — no
+    # project") and computed branches encode numbers identically - no
     # more "0" vs "0.0" vs "52.1" typing skew for the frontend parser.
     def _money(x: float) -> str:  # noqa: ANN001
         return f"{round(float(x or 0.0), 2):.2f}"
@@ -1467,7 +1467,7 @@ async def project_activity(
     """
     from sqlalchemy import func, literal_column, union_all
 
-    # Verify read access — owner, admin, or team member
+    # Verify read access - owner, admin, or team member
     await _verify_project_access(service, project_id, user_id, session, payload)
 
     activity_queries = []
@@ -1578,7 +1578,7 @@ async def dashboard_cards(
     user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> list[dict]:
-    """Dashboard summary cards — lightweight per-project KPIs in a single call.
+    """Dashboard summary cards - lightweight per-project KPIs in a single call.
 
     Returns a list of project summaries with key metrics aggregated from
     multiple modules. Each module section is wrapped in try/except for
@@ -1593,7 +1593,7 @@ async def dashboard_cards(
 
     # Fetch all projects (admin sees all, regular user sees owned + member
     # projects). When a partner pack is active, the workspace is scoped to that
-    # pack's projects only — applied to both branches so the dashboard counts
+    # pack's projects only - applied to both branches so the dashboard counts
     # match the (scoped) projects page.
     is_admin = payload.get("role") == "admin"
     if is_admin:
@@ -1626,7 +1626,7 @@ async def dashboard_cards(
     # converted to the project's base currency via ``Project.fx_rates``.
     # Each project carries exactly one base currency (``Project.currency``),
     # so the per-project ``boq_total_value`` is a single well-defined number
-    # in that currency — the frontend groups ACROSS projects by currency
+    # in that currency - the frontend groups ACROSS projects by currency
     # (rule b) and never blends different currencies into one scalar.
     boq_values: dict[str, float] = {}
     boq_counts: dict[str, int] = {}
@@ -1834,7 +1834,7 @@ async def analytics_overview(
     _user_id: CurrentUserId,
     payload: CurrentUserPayload,
 ) -> dict:
-    """Cross-project analytics — aggregated KPIs across all projects.
+    """Cross-project analytics - aggregated KPIs across all projects.
 
     Scoped to the current user's owned projects; admins see every project.
     """
@@ -1848,7 +1848,7 @@ async def analytics_overview(
 
     is_admin = bool(payload and payload.get("role") == "admin")
 
-    # Per-project summary — owner + team-member projects for non-admins, scoped
+    # Per-project summary - owner + team-member projects for non-admins, scoped
     # to the active partner pack's projects when one is active.
     proj_stmt = scope_project_query(select(Project), Project).order_by(Project.name)
     if not is_admin:
@@ -1968,7 +1968,7 @@ async def analytics_overview(
         "projects_with_budget": projects_with_budget,
         # Legacy flat scalars kept for backward compatibility. When
         # ``multi_currency`` is true these mix currencies and must NOT be
-        # rendered as a single headline figure — use ``totals_by_currency``.
+        # rendered as a single headline figure - use ``totals_by_currency``.
         "total_planned": round(total_planned, 2),
         "total_actual": round(total_actual, 2),
         "total_variance": round(total_planned - total_actual, 2),
@@ -2437,7 +2437,7 @@ async def file_manager_tree(
     endpoint so the sidebar counts match what the user actually sees
     in the right pane after a search.
     """
-    # IDOR/RBAC: team-readable docs — allow project team members (owner/admin/member), not owner-only
+    # IDOR/RBAC: team-readable docs - allow project team members (owner/admin/member), not owner-only
     await _verify_project_access(service, project_id, user_id, session, payload)
     return await fm_file_tree(
         session,
@@ -2471,7 +2471,7 @@ async def file_manager_list(
     Each row carries the *real* on-disk path so the UI can ground users
     on where their data actually lives.
     """
-    # IDOR/RBAC: team-readable docs — allow project team members (owner/admin/member), not owner-only
+    # IDOR/RBAC: team-readable docs - allow project team members (owner/admin/member), not owner-only
     await _verify_project_access(service, project_id, user_id, session, payload)
     return await fm_list_files(
         session,
@@ -2504,7 +2504,7 @@ async def file_manager_locations(
     open the containing folder (Tauri-only), or just understand where
     their attachments live.
     """
-    # IDOR/RBAC: team-readable docs — allow project team members (owner/admin/member), not owner-only
+    # IDOR/RBAC: team-readable docs - allow project team members (owner/admin/member), not owner-only
     project = await _verify_project_access(service, project_id, user_id, session, payload)
     return fm_resolve_locations(
         str(project_id),
@@ -2519,7 +2519,7 @@ async def file_manager_locations(
 @router.post(
     "/{project_id}/export/preview/",
     response_model=ExportPreview,
-    summary="Preview a bundle export — sizes & counts only",
+    summary="Preview a bundle export - sizes & counts only",
 )
 async def post_export_preview(
     project_id: uuid.UUID,
@@ -2535,7 +2535,7 @@ async def post_export_preview(
 
     Note: this endpoint accepts a body (``ExportOptions``) and is therefore
     POST-only. Probing it with a plain ``GET`` will return 405. A
-    convenience GET alias exists immediately below — it returns the same
+    convenience GET alias exists immediately below - it returns the same
     shape using ``ExportOptions()`` defaults (``scope="metadata_only"``,
     no attachments) so curl users / link previews have something to look
     at without crafting a JSON body.
@@ -2558,7 +2558,7 @@ async def get_export_preview(
 ) -> ExportPreview:
     """GET alias of ``POST /export/preview/`` for ergonomic URL probing.
 
-    Uses ``ExportOptions()`` defaults — ``scope="metadata_only"`` with
+    Uses ``ExportOptions()`` defaults - ``scope="metadata_only"`` with
     every ``include_*`` flag off. The wizard always sends POST with
     explicit options; this alias exists so opening the URL in a browser
     or hitting it from curl returns a useful 200 instead of 405.
@@ -2649,12 +2649,12 @@ async def post_import_bundle(
 
     Three modes:
 
-    * ``new_project`` — fresh UUIDs, attachments land in the new project's
+    * ``new_project`` - fresh UUIDs, attachments land in the new project's
       storage roots. The new project's owner is the importing user.
-    * ``merge_into_existing`` — keep source UUIDs, skip rows that already
+    * ``merge_into_existing`` - keep source UUIDs, skip rows that already
       exist (idempotent re-import). Requires ``target_project_id``.
-    * ``replace_existing`` — wipe ``target_project_id``'s rows for every
-      bundled table, then insert the bundle verbatim. Destructive — the
+    * ``replace_existing`` - wipe ``target_project_id``'s rows for every
+      bundled table, then insert the bundle verbatim. Destructive - the
       UI must confirm.
     """
     # merge_into_existing / replace_existing write into (and replace_existing
@@ -2741,7 +2741,7 @@ async def post_email_link(
 ) -> EmailLinkResponse:
     """Build an HMAC-signed download link the user can paste into an email.
 
-    The token is opaque to the client — server-side it carries only the
+    The token is opaque to the client - server-side it carries only the
     file id + expiry. The download endpoint (``GET /files/share/{token}``)
     decodes it, verifies signature, and streams the file. No DB row is
     written, so there's nothing to clean up after expiry.
@@ -2848,7 +2848,7 @@ async def get_share_file(
     session: SessionDep,
     settings: SettingsDep,
 ) -> Response:
-    """Public download endpoint — no auth, just HMAC verification.
+    """Public download endpoint - no auth, just HMAC verification.
 
     Token format: ``base64url(payload).base64url(signature)``. Payload
     encodes file id, kind, expiry, owner. We re-derive the signature from
@@ -2893,7 +2893,7 @@ async def get_share_file(
     if not fid or not kind:
         raise HTTPException(status_code=400, detail="Token is missing fid/kind")
 
-    # Resolve the file again — we never trust the token to carry the path.
+    # Resolve the file again - we never trust the token to carry the path.
     import importlib
 
     kind_to_class = {
@@ -2946,7 +2946,7 @@ async def get_share_file(
 # ── Project setup wizard / profile (Slice 1) ──────────────────────────────
 #
 # Presentation-only module gating. Writing a ``ProjectProfile`` +
-# ``ProjectModule`` rows never unloads a module or blocks its API — it
+# ``ProjectModule`` rows never unloads a module or blocks its API - it
 # only feeds the sidebar's visual emphasis (numbered route line for
 # enabled modules, greyed for the rest) and the wizard's live preview.
 # ``focus_mode_enabled=False`` returns the project to the legacy
@@ -2985,7 +2985,7 @@ async def list_wizard_presets(
     summary="Get a project's setup profile + resolved modules",
     description="Returns the saved wizard profile if one exists. For "
     "projects created before the wizard existed (or never run through it), "
-    "this auto-retrofits a default profile (focus mode off — legacy view, "
+    "this auto-retrofits a default profile (focus mode off - legacy view, "
     "every module enabled) so the caller always gets a usable response. "
     "Idempotent: repeat calls return the same profile without duplicating "
     "rows. Matches the retrofit done by /profile/focus-mode and /modules.",
@@ -3001,7 +3001,7 @@ async def get_project_profile(
     if result is None:
         # Auto-retrofit a default profile (same as /profile/focus-mode and
         # /modules already do) so callers never see a 404 for an old project.
-        # ensure_default_profile is idempotent — a concurrent caller that
+        # ensure_default_profile is idempotent - a concurrent caller that
         # already created the profile will short-circuit at the existence
         # check.
         result = await profile_service.ensure_default_profile(
@@ -3016,7 +3016,7 @@ async def get_project_profile(
     response_model=ProjectProfileResult,
     summary="Apply wizard answers to a project",
     description="Upsert the profile and replace the project's module "
-    "assignment rows. Idempotent — re-posting recomputes from scratch.",
+    "assignment rows. Idempotent - re-posting recomputes from scratch.",
 )
 async def apply_project_profile(
     project_id: uuid.UUID,
@@ -3084,7 +3084,7 @@ async def set_project_focus_mode(
     response_model=list[ProjectModuleRead],
     summary="Resolved module assignments for the sidebar",
     description="Phase-ordered, ordinal-numbered module rows. Retrofits a "
-    "default profile (focus mode off — legacy view) for projects created "
+    "default profile (focus mode off - legacy view) for projects created "
     "before the wizard existed, so the sidebar always has data.",
 )
 async def list_project_modules(
@@ -3116,7 +3116,7 @@ async def list_project_modules(
         "empty modules. Each field is True iff the corresponding module's "
         "primary project-scoped table has at least one row for this "
         "project. Missing tables (fresh DB) read as False. Cached for "
-        "60 seconds per project. Probes run concurrently — typical "
+        "60 seconds per project. Probes run concurrently - typical "
         "latency is well under 200 ms even with 50+ modules."
     ),
 )
@@ -3131,7 +3131,7 @@ async def get_module_presence(
 
     Auth: requires a valid JWT (``CurrentUserId``) plus project
     ownership / admin (via :func:`_verify_project_owner`). The probe
-    itself runs against the request session — no extra connection.
+    itself runs against the request session - no extra connection.
     """
     await _verify_project_owner(service, project_id, user_id, payload)
     presence = await probe_project_modules(session, project_id)

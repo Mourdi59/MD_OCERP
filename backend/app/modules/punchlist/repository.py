@@ -1,7 +1,7 @@
 """‌⁠‍Punch List data access layer.
 
 All database queries for punch list items live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid

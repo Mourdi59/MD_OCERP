@@ -1,4 +1,4 @@
-"""‌⁠‍HSE Advanced service — pure helpers + workflows for JSA / PTW / audits / CAPA / KPI."""
+"""‌⁠‍HSE Advanced service - pure helpers + workflows for JSA / PTW / audits / CAPA / KPI."""
 
 from __future__ import annotations
 
@@ -82,7 +82,7 @@ logger = logging.getLogger(__name__)
 # ── Pure helpers ─────────────────────────────────────────────────────────────
 
 
-# Permit-to-Work prerequisite matrix — keyed by permit_type.
+# Permit-to-Work prerequisite matrix - keyed by permit_type.
 # Each value lists prerequisite flag names that MUST be True on the
 # PermitToWork row before transitioning to 'active'.
 # Sourced from OSHA 1926 (US), HSG250 (UK), DGUV (DE), and SGS hot-work
@@ -144,7 +144,7 @@ def check_ptw_prerequisites(permit: Any) -> tuple[list[str], list[str]]:
     return met, missing
 
 
-# Incident escalation matrix — severity → required role notification + SLA.
+# Incident escalation matrix - severity → required role notification + SLA.
 # Hours are the maximum time-to-notification per regulation.
 # OSHA 29 CFR 1904.39: fatality 8h, in-patient hospitalisation/amputation/eye 24h.
 # UK HSE RIDDOR: fatality / major immediate, 7-day-injury within 15 days.
@@ -528,7 +528,7 @@ def allowed_certification_transitions(current: str) -> list[str]:
 
 
 def _safe_publish(name: str, data: dict, source_module: str = "hse_advanced") -> None:
-    """Fire-and-forget publish — silenced on bus errors."""
+    """Fire-and-forget publish - silenced on bus errors."""
     try:
         event_bus.publish_detached(name, data, source_module=source_module)
     except Exception:
@@ -619,7 +619,7 @@ class HSEAdvancedService:
         obj = await self.get_investigation(item_id)
         fields = data.model_dump(exclude_unset=True)
         # RIDDOR (UK) / OSHA 1904.33 (US) require the formal investigation
-        # record to be immutable once closed — re-editing findings or root
+        # record to be immutable once closed - re-editing findings or root
         # cause after completion would falsify the regulatory submission.
         # Pure status transitions go via dedicated workflow methods, so a
         # content-only update on a terminal investigation is rejected here.
@@ -629,7 +629,7 @@ class HSEAdvancedService:
         if content_keys and obj.status in ("completed", "abandoned"):
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
-                f"Cannot edit a {obj.status} investigation — "
+                f"Cannot edit a {obj.status} investigation - "
                 "regulatory records (RIDDOR / OSHA) are immutable. "
                 "Re-open it explicitly to amend.",
             )
@@ -644,7 +644,7 @@ class HSEAdvancedService:
         user_id: str | None = None,
     ) -> HSEIncidentInvestigation:
         obj = await self.get_investigation(item_id)
-        # `completed` and `abandoned` are terminal — re-completing would
+        # `completed` and `abandoned` are terminal - re-completing would
         # silently reset `completed_at` and resurrect an abandoned probe.
         if obj.status != "in_progress":
             raise HTTPException(
@@ -738,7 +738,7 @@ class HSEAdvancedService:
         if content_keys and obj.status not in ("draft", "under_review"):
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
-                f"Cannot edit a JSA in status '{obj.status}' — revert it to draft before changing content",
+                f"Cannot edit a JSA in status '{obj.status}' - revert it to draft before changing content",
             )
         if "hazards" in fields and fields["hazards"] is not None:
             fields["hazards"] = [h.model_dump() if hasattr(h, "model_dump") else h for h in fields["hazards"]]
@@ -976,7 +976,7 @@ class HSEAdvancedService:
         if missing:
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
-                "Cannot activate permit — unmet prerequisites: " + ", ".join(missing),
+                "Cannot activate permit - unmet prerequisites: " + ", ".join(missing),
             )
         # If the permit references a JSA, ensure it is approved.
         if obj.jsa_id is not None:
@@ -984,7 +984,7 @@ class HSEAdvancedService:
             if jsa is None or jsa.status not in ("approved", "active"):
                 raise HTTPException(
                     status.HTTP_409_CONFLICT,
-                    "Cannot activate permit — linked JSA must be approved",
+                    "Cannot activate permit - linked JSA must be approved",
                 )
         await self.permit_repo.update_fields(item_id, status="active")
         await self.session.refresh(obj)
@@ -1631,7 +1631,7 @@ class HSEAdvancedService:
         payload: CAPAEffectivenessPayload,
         verified_by: uuid.UUID | None = None,
     ) -> CorrectiveAction:
-        """ISO 9001 §10.2.1 — verify that a CAPA actually worked.
+        """ISO 9001 §10.2.1 - verify that a CAPA actually worked.
 
         Allowed only on completed CAPAs. If the action proves
         ineffective, the CAPA is reopened.
@@ -1647,7 +1647,7 @@ class HSEAdvancedService:
             "effectiveness_verified_by": verified_by,
         }
         if not payload.effective:
-            # Reopen for further work — record the additional notes.
+            # Reopen for further work - record the additional notes.
             fields["status"] = "in_progress"
             extra = (
                 f"\n[Effectiveness check failed: {payload.notes}]"
@@ -1762,7 +1762,7 @@ class HSEAdvancedService:
 
     # The official Form 300 carries many descriptive columns; this export
     # ships the subset that's load-bearing for the recordable-incident
-    # audit trail. It is *not* a direct OSHA submission file — for that
+    # audit trail. It is *not* a direct OSHA submission file - for that
     # employers file Form 300A through OSHA's ITA portal.
     _OSHA_300_HEADER: tuple[str, ...] = (
         "case_no",
@@ -1808,7 +1808,7 @@ class HSEAdvancedService:
             ipd = r.injured_person_details or {}
             employee_name = (ipd.get("name") if isinstance(ipd, dict) else None) or ""
             job_title = (ipd.get("role") if isinstance(ipd, dict) else None) or ""
-            # OSHA 1904.7 — fatality wins over "other recordable".
+            # OSHA 1904.7 - fatality wins over "other recordable".
             is_fatality = (r.treatment_type or "").lower() == "fatality"
             death_yes_no = "Y" if is_fatality else "N"
             # "Other recordable" = recordable AND neither death nor
@@ -1895,7 +1895,7 @@ class HSEAdvancedService:
 
         When entering ``verified`` we stamp ``verified_by_user_id`` +
         ``verified_at``. ``verification_notes`` is *appended* (preserving
-        history) when provided — not overwritten — so the audit trail is
+        history) when provided - not overwritten - so the audit trail is
         not silently lost on subsequent transitions.
         """
         obj = await self.get_corrective_action(ca_id)

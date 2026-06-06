@@ -1,7 +1,7 @@
 """‌⁠‍User data access layer.
 
 All database queries for users and API keys live here.
-No business logic — pure data access.
+No business logic - pure data access.
 """
 
 import uuid
@@ -85,7 +85,7 @@ class UserRepository:
         """Return True if at least one *real* active admin user exists.
 
         Used by the registration bootstrap: if no real admin is present in
-        the DB (fresh install — only seed/demo accounts), the next person
+        the DB (fresh install - only seed/demo accounts), the next person
         to register via the public API is promoted to admin. Once a real
         admin is on record, subsequent self-registered users default to
         the configured viewer role.
@@ -93,7 +93,7 @@ class UserRepository:
         The seeded demo account ``demo@openconstructionerp.com`` is intentionally
         excluded: a fresh ``pip install openconstructionerp`` ships with
         that admin already in the DB, and counting it would dead-lock the
-        bootstrap path — every self-registered user would be created
+        bootstrap path - every self-registered user would be created
         dormant in admin-approve mode with no real admin around to flip
         them active. Excluding it lets the first registrant claim admin
         like the bootstrap was always meant to.

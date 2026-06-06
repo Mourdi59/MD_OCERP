@@ -3,7 +3,7 @@
 Owns:
 
 * CRUD on :class:`DashboardPreset` rows.
-* "Share with project" toggle — flips ``shared_with_project`` and
+* "Share with project" toggle - flips ``shared_with_project`` and
   promotes ``kind='preset'`` to ``kind='collection'`` on the same call
   (a private preset can't be "half-shared").
 * Authorisation checks: only the owner can update/delete; others can
@@ -93,7 +93,7 @@ class DashboardPresetService:
         self._validate_description(args.description)
 
         # A bare 'preset' that has shared_with_project=True is
-        # nonsensical — auto-promote to 'collection' so the data shape
+        # nonsensical - auto-promote to 'collection' so the data shape
         # is internally consistent.
         kind = args.kind
         if args.shared_with_project and kind == "preset":
@@ -128,7 +128,7 @@ class DashboardPresetService:
 
         The owner can always see their own rows. Non-owners can see the
         row if it's a shared collection; otherwise they get a 404
-        (deliberately not 403 — leaking the existence of the row would
+        (deliberately not 403 - leaking the existence of the row would
         let an attacker probe shared-vs-private status).
         """
         row = await self.repo.get(preset_id, tenant_id=tenant_id)
@@ -276,7 +276,7 @@ class DashboardPresetService:
                 },
                 source_module=event_taxonomy.SOURCE_MODULE,
             )
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.warning(
                 "dashboards.preset.delete event failed: %s",
                 type(exc).__name__,
@@ -331,7 +331,7 @@ class DashboardPresetService:
                 },
                 source_module=event_taxonomy.SOURCE_MODULE,
             )
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             logger.warning(
                 "dashboards.preset.saved event failed: %s",
                 type(exc).__name__,

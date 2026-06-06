@@ -1,13 +1,13 @@
 """‌⁠‍Collaboration API routes.
 
 Endpoints:
-    GET    /comments              — List comments for entity (threaded)
-    POST   /comments              — Create comment (with optional mentions + viewpoint)
-    PATCH  /comments/{comment_id} — Edit comment text
-    DELETE /comments/{comment_id} — Soft delete comment
-    GET    /comments/{comment_id}/thread — Get full thread
-    POST   /viewpoints            — Create standalone viewpoint
-    GET    /viewpoints            — List viewpoints for entity
+    GET    /comments              - List comments for entity (threaded)
+    POST   /comments              - Create comment (with optional mentions + viewpoint)
+    PATCH  /comments/{comment_id} - Edit comment text
+    DELETE /comments/{comment_id} - Soft delete comment
+    GET    /comments/{comment_id}/thread - Get full thread
+    POST   /viewpoints            - Create standalone viewpoint
+    GET    /viewpoints            - List viewpoints for entity
 """
 
 import logging
@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 # Allowlist of entity types that can carry comments / viewpoints.
-# This is the authoritative list — anything else is rejected at the
+# This is the authoritative list - anything else is rejected at the
 # router boundary so we never persist orphaned references.  Adding a
 # new entity type to this set is a deliberate, reviewed change.
 _ALLOWED_ENTITY_TYPES: frozenset[str] = frozenset(
@@ -168,7 +168,7 @@ async def update_comment(
     _perm: None = Depends(RequirePermission("collaboration.update")),
     service: CollaborationService = Depends(_get_service),
 ) -> CommentResponse:
-    """Edit a comment's text (author only — enforced by service)."""
+    """Edit a comment's text (author only - enforced by service)."""
     comment = await service.update_comment(comment_id, data, uuid.UUID(user_id))
     return CommentResponse.model_validate(comment)
 
@@ -180,7 +180,7 @@ async def delete_comment(
     _perm: None = Depends(RequirePermission("collaboration.delete")),
     service: CollaborationService = Depends(_get_service),
 ) -> None:
-    """Soft-delete a comment (author only — enforced by service)."""
+    """Soft-delete a comment (author only - enforced by service)."""
     await service.delete_comment(comment_id, uuid.UUID(user_id))
 
 

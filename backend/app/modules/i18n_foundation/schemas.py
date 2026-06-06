@@ -67,7 +67,7 @@ class ExchangeRateListResponse(BaseModel):
 class CountryResponse(BaseModel):
     """Country in API responses.
 
-    Countries are seeded — no Create/Update schemas needed for now.
+    Countries are seeded - no Create/Update schemas needed for now.
     Admin endpoints will be added later.
     """
 

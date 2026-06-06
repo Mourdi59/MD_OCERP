@@ -18,7 +18,7 @@ def register_coordination_hub_permissions() -> None:
         "coordination",
         {
             "coordination.read": Role.VIEWER,
-            # Editing thresholds is a project-configuration action — gate
+            # Editing thresholds is a project-configuration action - gate
             # behind EDITOR so plain VIEWERs cannot raise/lower their own
             # alarm bar. Admins & Managers satisfy this implicitly.
             "coordination.write": Role.EDITOR,

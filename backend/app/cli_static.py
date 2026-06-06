@@ -1,11 +1,11 @@
 """‌⁠‍Serve frontend static files from the installed package or dev build.
 
 When running via `openestimate serve` or with SERVE_FRONTEND=true,
-the FastAPI app serves the pre-built React frontend directly — no Nginx needed.
+the FastAPI app serves the pre-built React frontend directly - no Nginx needed.
 
 Frontend is found in two locations (checked in order):
-1. app/_frontend_dist/ — bundled inside the Python wheel (pip install)
-2. ../frontend/dist/   — development mode (repo checkout)
+1. app/_frontend_dist/ - bundled inside the Python wheel (pip install)
+2. ../frontend/dist/   - development mode (repo checkout)
 """
 
 import logging
@@ -58,7 +58,7 @@ def get_frontend_dir() -> Path:
     if pkg_dir.is_dir() and (pkg_dir / "index.html").exists():
         return pkg_dir
 
-    # Option 2: development — frontend/dist relative to repo root
+    # Option 2: development - frontend/dist relative to repo root
     repo_root = Path(__file__).resolve().parent.parent.parent  # backend/app/../../
     dev_dist = repo_root / "frontend" / "dist"
     if dev_dist.is_dir() and (dev_dist / "index.html").exists():
@@ -73,14 +73,14 @@ def mount_frontend(app: FastAPI) -> None:
     """‌⁠‍Mount frontend static files on the FastAPI app.
 
     Serves:
-    - /assets/* — hashed JS/CSS bundles (long cache)
-    - /favicon.svg, /logo.svg — static resources
-    - /* (catch-all via 404 handler) — index.html for SPA routing
+    - /assets/* - hashed JS/CSS bundles (long cache)
+    - /favicon.svg, /logo.svg - static resources
+    - /* (catch-all via 404 handler) - index.html for SPA routing
 
     Strategy: instead of a ``/{path:path}`` catch-all route (which competes
     with FastAPI's built-in ``/api/docs``, ``/api/redoc``, and
     ``/api/openapi.json``), we override the **404 exception handler**.
-    This guarantees that all real API routes — including Swagger UI — are
+    This guarantees that all real API routes - including Swagger UI - are
     resolved first by FastAPI's normal router.  Only genuinely unmatched
     paths fall through to the 404 handler, which serves ``index.html``
     for non-API paths (SPA client-side routing).
@@ -88,14 +88,14 @@ def mount_frontend(app: FastAPI) -> None:
     try:
         frontend_dir = get_frontend_dir()
     except FileNotFoundError:
-        logger.warning("Frontend dist not found — serving API only")
+        logger.warning("Frontend dist not found - serving API only")
         return
 
     logger.info("Serving frontend from %s", frontend_dir)
 
     # Serve hashed assets (JS, CSS) with year-long immutable caching.
     # Vite emits content-hash suffixes (e.g. index-9MyhyuSS.js) so the
-    # URL changes whenever the file changes — repeat visits can serve
+    # URL changes whenever the file changes - repeat visits can serve
     # straight from the browser cache without revalidation.
     class _ImmutableStaticFiles(StaticFiles):
         async def get_response(self, path: str, scope):  # noqa: ANN001, ANN202
@@ -129,7 +129,7 @@ def mount_frontend(app: FastAPI) -> None:
 
     # Serve other root-level static files (e.g. manifest.json, robots.txt)
     # that may exist in the frontend dist directory.
-    # NB: ``.js``/``.mjs``/``.css``/``.map``/``.wasm`` MUST be here — Vite-PWA
+    # NB: ``.js``/``.mjs``/``.css``/``.map``/``.wasm`` MUST be here - Vite-PWA
     # emits ``registerSW.js``, ``sw.js`` and ``workbox-*.js`` at the dist ROOT
     # (not under ``/assets``), and Cesium ships root-level ``.css``/``.wasm``.
     # Without these suffixes the SPA 404 fallback returned ``index.html`` for
@@ -163,7 +163,7 @@ def mount_frontend(app: FastAPI) -> None:
 
     # ── Conventional API path aliases ────────────────────────────────────
     # k8s liveness/readiness probes, openapi-typescript generators, third-
-    # party Swagger UIs — all of these expect ``/health`` and
+    # party Swagger UIs - all of these expect ``/health`` and
     # ``/openapi.json`` at the root, not under ``/api``.  Without these
     # redirects the SPA fallback below catches them and returns ``index.html``
     # with HTTP 200, which makes a sick service look healthy to a probe
@@ -208,7 +208,7 @@ def mount_frontend(app: FastAPI) -> None:
                 return FileResponse(str(candidate))
 
         # Everything else: SPA client-side routing → index.html. Force
-        # the browser to revalidate the entry on every reload — a stale
+        # the browser to revalidate the entry on every reload - a stale
         # cached index.html points at hashed asset URLs that may have
         # been deleted by a redeploy.
         return FileResponse(

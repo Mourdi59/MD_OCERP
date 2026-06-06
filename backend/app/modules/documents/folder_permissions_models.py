@@ -1,7 +1,7 @@
 """‌⁠‍Per-folder permission ORM models for the file-manager.
 
 Tables:
-    oe_documents_folder_permission — grants a project member ``viewer``,
+    oe_documents_folder_permission - grants a project member ``viewer``,
                                      ``editor``, or ``owner`` access to a
                                      specific ``(scope_kind, scope_path)``
                                      folder within a project.
@@ -31,7 +31,7 @@ Access logic (enforced in :mod:`folder_permissions_service`):
   =======  =====================  =========================
 
 * Folders that have **no grants at all** stay open to every project
-  member — keeps the default UX (Team Strip) backward compatible.
+  member - keeps the default UX (Team Strip) backward compatible.
 
 Why a soft-delete column instead of ``DELETE``?
     Revoking is a frequent operation and we want it to be an atomic
@@ -57,7 +57,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.database import GUID, Base
 
 # Allowed roles. Kept as a tuple (rather than a SQLAlchemy ``Enum``) so
-# adding a new role is a Python-only change — no DDL alteration needed.
+# adding a new role is a Python-only change - no DDL alteration needed.
 FOLDER_ROLE_VIEWER = "viewer"
 FOLDER_ROLE_EDITOR = "editor"
 FOLDER_ROLE_OWNER = "owner"
@@ -88,7 +88,7 @@ class FolderPermission(Base):
     The ``(project_id, scope_kind, scope_path, user_id)`` unique
     constraint includes a special-case for ``NULL`` ``scope_path``:
     SQLite and PostgreSQL both treat NULLs as distinct under a unique
-    index, which is exactly the behaviour we want — an "all files of
+    index, which is exactly the behaviour we want - an "all files of
     this kind" grant and a "specific sub-path" grant are independent
     rows.
     """
@@ -162,7 +162,7 @@ class FolderPermission(Base):
         server_default="0",
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — debug helper
+    def __repr__(self) -> str:  # pragma: no cover - debug helper
         scope = f"{self.scope_kind}:{self.scope_path or '*'}"
         return (
             f"<FolderPermission project={self.project_id} scope={scope}"

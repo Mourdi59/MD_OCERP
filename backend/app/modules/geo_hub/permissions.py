@@ -3,26 +3,26 @@
 
 Five families:
 
-* ``geo_hub.read``      — list / get any geo entity.
-* ``geo_hub.write``     — create / update anchors, imagery, terrain,
+* ``geo_hub.read``      - list / get any geo entity.
+* ``geo_hub.write``     - create / update anchors, imagery, terrain,
                           viewpoints, overlays.
-* ``geo_hub.delete``    — destructive removal of any project-scoped geo
+* ``geo_hub.delete``    - destructive removal of any project-scoped geo
                           entity (anchor, tileset, imagery layer,
                           viewpoint, vector overlay). Gated to MANAGER+
                           because losing a hand-drawn boundary overlay
                           or a manually-anchored project is harder to
                           recover from than re-uploading a raster.
                           (Raster-overlay deletes intentionally stay on
-                          ``geo_hub.write`` — they are soft-deletes and
+                          ``geo_hub.write`` - they are soft-deletes and
                           R6-audited.)
-* ``geo_hub.admin``     — reserved for irreversible operations
-                          (delete-all, cross-project cleanup) — gated
+* ``geo_hub.admin``     - reserved for irreversible operations
+                          (delete-all, cross-project cleanup) - gated
                           to MANAGER+.
-* ``geo_hub.job_run``   — enqueue + cancel TileGenerationJob (read of
+* ``geo_hub.job_run``   - enqueue + cancel TileGenerationJob (read of
                           jobs is via ``geo_hub.read``).
 
-Tile generation is a write-shaped action — it produces persistent
-artefacts in MinIO and consumes CPU — but separating it from
+Tile generation is a write-shaped action - it produces persistent
+artefacts in MinIO and consumes CPU - but separating it from
 ``geo_hub.write`` lets us limit who can hot-spin the CPU budget on the
 VPS without forcing them out of basic CRUD.
 
