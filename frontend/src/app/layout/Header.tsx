@@ -239,7 +239,10 @@ export function Header({ title, onMenuClick }: HeaderProps) {
               className="hidden lg:block shrink-0 text-content-quaternary/60"
               aria-hidden
             />
-            <h1 className="hidden lg:flex items-center gap-2 min-w-0 text-base font-semibold text-content-primary sm:text-lg">
+            {/* text-base until xl: at lg widths the right cluster + project
+                pill left too little room and module names truncated to
+                "Estima..." (uniformity sweep S5 follow-up). */}
+            <h1 className="hidden lg:flex items-center gap-2 min-w-0 text-base font-semibold text-content-primary xl:text-lg">
               {/* Module icon — mirrors the active route's sidebar icon so the
                   top title is visually tied to the module. Decorative
                   (aria-hidden); absent (no layout shift) when the route has
@@ -310,7 +313,9 @@ export function Header({ title, onMenuClick }: HeaderProps) {
             'text-sm text-content-tertiary shadow-sm',
             'transition-colors duration-fast ease-oe',
             'hover:border-content-quaternary/40 hover:bg-white dark:hover:bg-surface-primary hover:text-content-secondary',
-            'w-40 md:w-44 lg:w-56',
+            // w-56 only at xl: at lg the wide search box squeezed the left
+            // workspace zone and truncated the module title.
+            'w-40 md:w-44 xl:w-56',
           )}
         >
           <Search size={14} strokeWidth={1.75} className="shrink-0" />

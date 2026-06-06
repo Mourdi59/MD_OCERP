@@ -720,7 +720,8 @@ export function BOQListPage() {
             {compareMode ? (
               <Button
                 variant="ghost"
-                icon={<X size={16} />}
+                size="sm"
+                icon={<X size={14} />}
                 onClick={exitCompareMode}
               >
                 {t('boq.cancel_compare', { defaultValue: 'Cancel Compare' })}
@@ -728,7 +729,8 @@ export function BOQListPage() {
             ) : null}
             <Button
               variant="primary"
-              icon={<Plus size={16} />}
+              size="sm"
+              icon={<Plus size={14} />}
               onClick={() => {
                 const pid = activeProjectId || projectFilter || (projects && projects.length === 1 ? projects[0]!.id : undefined) || undefined;
                 setCreateModalProjectId(pid);

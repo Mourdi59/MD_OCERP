@@ -25,6 +25,7 @@ import {
   EmptyState,
   SkeletonTable,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage, apiGet } from '@/shared/lib/api';
 import { getCountry } from '@/shared/lib/countries';
@@ -118,7 +119,7 @@ export function HouseTypeSettingsPage() {
   });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           { label: t('nav.settings', { defaultValue: 'Settings' }) },
@@ -134,21 +135,15 @@ export function HouseTypeSettingsPage() {
         ]}
       />
 
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex-1">
-            <h1 className="text-lg font-semibold text-content-primary">
-              {t('property_dev.house_type.settings_title', {
-                defaultValue: 'House type catalogue',
-              })}
-            </h1>
-            <p className="mt-0.5 text-xs text-content-tertiary">
-              {t('property_dev.house_type.settings_desc', {
-                defaultValue:
-                  'Country-scoped presets plus your custom entries. Presets are read-only; custom entries are scoped to one project.',
-              })}
-            </p>
-          </div>
+      <PageHeader
+        srTitle={t('property_dev.house_type.settings_title', {
+          defaultValue: 'House type catalogue',
+        })}
+        subtitle={t('property_dev.house_type.settings_desc', {
+          defaultValue:
+            'Country-scoped presets plus your custom entries. Presets are read-only; custom entries are scoped to one project.',
+        })}
+        actions={
           <Button
             variant="primary"
             icon={<Plus size={14} />}
@@ -160,8 +155,11 @@ export function HouseTypeSettingsPage() {
           >
             {t('property_dev.house_type.new', { defaultValue: 'New house type' })}
           </Button>
-        </div>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        }
+      />
+
+      <Card className="p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className={labelCls}>
               <Globe2 size={12} className="mr-1 inline" />
@@ -194,7 +192,7 @@ export function HouseTypeSettingsPage() {
               className={inputCls}
             >
               <option value="">
-                — {t('common.none', { defaultValue: 'None' })} —
+                {t('common.none', { defaultValue: 'None' })}
               </option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>

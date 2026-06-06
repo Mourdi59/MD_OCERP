@@ -25,6 +25,8 @@ import {
 
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
+import { Breadcrumb } from '@/shared/ui/Breadcrumb';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useGlobalFileSearch } from './hooks';
 import type { SearchHit, SearchHitKind } from './types';
 
@@ -208,18 +210,27 @@ export function GlobalSearchPage() {
   }, [searchParams]);
 
   return (
-    <div className="flex w-full flex-col gap-4 px-6 py-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold text-content-primary">
-          {t('files.global_search.title', { defaultValue: 'Search across all projects' })}
-        </h1>
-        <p className="text-sm text-content-secondary">
-          {t('files.global_search.subtitle', {
-            defaultValue:
-              'Find a document, sheet or photo by name across every project you can access.',
-          })}
-        </p>
-      </header>
+    <div className="space-y-5 animate-fade-in">
+      <Breadcrumb
+        items={[
+          { label: t('files.title', { defaultValue: 'Project Files' }), to: '/files' },
+          {
+            label: t('files.global_search.title', {
+              defaultValue: 'Search across all projects',
+            }),
+          },
+        ]}
+      />
+
+      <PageHeader
+        srTitle={t('files.global_search.title', {
+          defaultValue: 'Search across all projects',
+        })}
+        subtitle={t('files.global_search.subtitle', {
+          defaultValue:
+            'Find a document, sheet or photo by name across every project you can access.',
+        })}
+      />
 
       <form onSubmit={submit} className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-surface-primary px-3 py-2 focus-within:border-oe-blue">

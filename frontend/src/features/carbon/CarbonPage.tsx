@@ -153,7 +153,7 @@ export function CarbonPage() {
   const effectiveProject = projects.find((p) => p.id === effectiveProjectId);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           ...(effectiveProject
@@ -174,6 +174,7 @@ export function CarbonPage() {
             {tab === 'inventory' && (
               <Button
                 variant="primary"
+                size="sm"
                 icon={<Plus size={14} />}
                 onClick={() => setCreateInvOpen(true)}
                 disabled={!effectiveProjectId}
@@ -184,6 +185,7 @@ export function CarbonPage() {
             {tab === 'targets' && (
               <Button
                 variant="primary"
+                size="sm"
                 icon={<Plus size={14} />}
                 onClick={() => setCreateTargetOpen(true)}
                 disabled={!effectiveProjectId}
@@ -194,6 +196,7 @@ export function CarbonPage() {
             {tab === 'epds' && (
               <Button
                 variant="primary"
+                size="sm"
                 icon={<Plus size={14} />}
                 onClick={() => setCreateEpdOpen(true)}
               >
@@ -203,6 +206,7 @@ export function CarbonPage() {
             {tab === 'reports' && (
               <Button
                 variant="primary"
+                size="sm"
                 icon={<FileText size={14} />}
                 onClick={() => setGenerateReportOpen(true)}
                 disabled={!effectiveProjectId}

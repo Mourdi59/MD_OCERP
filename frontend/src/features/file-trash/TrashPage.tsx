@@ -82,7 +82,7 @@ export function TrashPage() {
 
   if (!projectId) {
     return (
-      <div className="p-8">
+      <div className="animate-fade-in">
         <EmptyState
           icon={<Trash2 size={32} strokeWidth={1.5} />}
           title={t('files.trash.no_project_title', {
@@ -152,9 +152,8 @@ export function TrashPage() {
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto" data-testid="trash-page">
+    <div className="space-y-5 animate-fade-in" data-testid="trash-page">
       <Breadcrumb
-        className="mb-3"
         items={[
           ...(projectName ? [{ label: projectName, to: `/projects/${projectId}` }] : []),
           { label: t('nav.project_files'), to: '/files' },

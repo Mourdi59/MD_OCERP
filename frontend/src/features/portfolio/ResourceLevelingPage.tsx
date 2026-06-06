@@ -13,7 +13,8 @@ import {
   HelpCircle,
 } from 'lucide-react';
 
-import { Card, CardContent, Badge, EmptyState, Skeleton, SideDrawer } from '@/shared/ui';
+import { Card, CardContent, Badge, EmptyState, Skeleton, SideDrawer, Breadcrumb } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { getErrorMessage } from '@/shared/lib/api';
 import {
   portfolioApi,
@@ -97,41 +98,42 @@ export function ResourceLevelingPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-content-primary">
-            <Scale size={24} className="text-oe-blue" />
-            {t('leveling.title', { defaultValue: 'Resource Leveling' })}
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-content-secondary">
-            {t('leveling.subtitle', {
-              defaultValue:
-                'Across every project, see where a crew or machine is booked beyond its capacity, and review suggestions for which booking to shift or spread. Nothing moves until you confirm it.',
-            })}
-          </p>
-        </div>
-        {/* Bucket toggle */}
-        <div className="inline-flex shrink-0 rounded-xl border border-border bg-surface-secondary/50 p-1">
-          {(['week', 'month'] as const).map((b) => (
-            <button
-              key={b}
-              type="button"
-              onClick={() => setBucket(b)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                bucket === b
-                  ? 'bg-surface-primary text-content-primary shadow-sm'
-                  : 'text-content-tertiary hover:text-content-secondary'
-              }`}
-            >
-              {b === 'week'
-                ? t('leveling.by_week', { defaultValue: 'Weeks' })
-                : t('leveling.by_month', { defaultValue: 'Months' })}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="space-y-5 animate-fade-in">
+      {/* Breadcrumb — single-item trail auto-hides; module name + icon live
+          in the global top app bar (canon §2). */}
+      <Breadcrumb
+        items={[{ label: t('nav.resource_leveling', { defaultValue: 'Resource Leveling' }) }]}
+      />
+
+      {/* Canonical header row — no in-page H1; the bucket toggle is a view
+          switch in the actions slot, on the same h-9 midline. */}
+      <PageHeader
+        srTitle={t('leveling.title', { defaultValue: 'Resource Leveling' })}
+        subtitle={t('leveling.subtitle', {
+          defaultValue:
+            'Across every project, see where a crew or machine is booked beyond its capacity, and review suggestions for which booking to shift or spread. Nothing moves until you confirm it.',
+        })}
+        actions={
+          <div className="inline-flex shrink-0 rounded-xl border border-border bg-surface-secondary/50 p-1">
+            {(['week', 'month'] as const).map((b) => (
+              <button
+                key={b}
+                type="button"
+                onClick={() => setBucket(b)}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                  bucket === b
+                    ? 'bg-surface-primary text-content-primary shadow-sm'
+                    : 'text-content-tertiary hover:text-content-secondary'
+                }`}
+              >
+                {b === 'week'
+                  ? t('leveling.by_week', { defaultValue: 'Weeks' })
+                  : t('leveling.by_month', { defaultValue: 'Months' })}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {/* ── Summary chips ───────────────────────────────────────────────── */}
       {data && (

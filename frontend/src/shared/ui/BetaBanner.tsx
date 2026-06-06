@@ -44,19 +44,21 @@ export function BetaBanner({
   const resolvedTitle =
     title ??
     t('common.beta_module.title', {
-      defaultValue: 'New module — work in progress',
+      defaultValue: 'New module, work in progress',
     });
   const resolvedDescription =
     description ??
     t('common.beta_module.description', {
       defaultValue:
-        'This module is still being polished. We would be grateful for your feedback — or check back in the next versions for a more complete experience.',
+        'This module is still being polished. We would be grateful for your feedback, or check back in the next versions for a more complete experience.',
     });
 
   return (
     <div
       role="status"
-      className={`mb-5 flex items-start gap-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100 ${className}`}
+      // NO own margin (same family as audit S1/S2): the page root's space-y-5
+      // owns the vertical rhythm; a built-in mb-5 stacked a double gap on it.
+      className={`flex items-start gap-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100 ${className}`}
       data-testid={`beta-banner-${moduleKey}`}
     >
       <Sparkles size={16} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />

@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Bot,
   AlertCircle,
   Loader2,
   Play,
@@ -19,7 +18,8 @@ import clsx from 'clsx';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { useConfirm } from '@/shared/hooks/useConfirm';
-import { SkeletonCard, EmptyState, ConfirmDialog } from '@/shared/ui';
+import { SkeletonCard, EmptyState, ConfirmDialog, Button } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import {
   aiAgentsApi,
   type AgentDescriptor,
@@ -315,35 +315,22 @@ export function AgentsPage(): JSX.Element {
   const selectedPrompts = (selected?.example_prompts ?? []).filter((p) => p.trim().length > 0);
 
   return (
-    <div className="mx-auto max-w-content space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-start gap-3">
-        <div className="rounded-lg bg-oe-blue-subtle p-2 text-oe-blue-text dark:bg-oe-blue/15">
-          <Bot className="h-6 w-6" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold text-content-primary">
-            {t('agents.title', { defaultValue: 'AI Agents' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('agents.subtitle', {
-              defaultValue:
-                'Run autonomous AI agents that reason, call tools, and propose actions for your review.',
-            })}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className={clsx(
-            'inline-flex shrink-0 items-center gap-2 rounded-lg bg-oe-blue px-4 py-2 text-sm font-medium text-content-inverse transition-all',
-            'hover:bg-oe-blue-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue focus-visible:ring-offset-2',
-          )}
-        >
-          <Plus className="h-4 w-4" />
-          {t('agents.builder.create_button', { defaultValue: 'Create your own agent' })}
-        </button>
-      </div>
+    <div className="space-y-5 animate-fade-in">
+      {/* Canonical top block - module name + icon live in the global top app
+          bar. The page renders only its (contextual) subtitle on the left and
+          the page actions on the right. */}
+      <PageHeader
+        srTitle={t('agents.title', { defaultValue: 'AI Agents' })}
+        subtitle={t('agents.subtitle', {
+          defaultValue:
+            'Run autonomous AI agents that reason, call tools, and propose actions for your review.',
+        })}
+        actions={
+          <Button variant="primary" size="sm" icon={<Plus className="h-4 w-4" />} onClick={openCreate}>
+            {t('agents.builder.create_button', { defaultValue: 'Create your own agent' })}
+          </Button>
+        }
+      />
 
       {/* LLM-provider banner — surfaces the most common failure cause
           (no_llm) upfront instead of letting the user write a prompt,

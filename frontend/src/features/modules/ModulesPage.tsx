@@ -299,7 +299,7 @@ export function ModulesPage() {
             })}
           >
             <Info size={14} />
-            {t('modules.dev_guide', { defaultValue: 'Build a module — developer guide' })}
+            {t('modules.dev_guide', { defaultValue: 'Build a module - developer guide' })}
           </Link>
         }
       />

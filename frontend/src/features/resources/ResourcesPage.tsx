@@ -547,6 +547,7 @@ export function ResourcesPage() {
             {tab === 'assignments' && (
               <Button
                 variant="primary"
+                size="sm"
                 icon={<Plus size={14} />}
                 onClick={() => setProposeOpen(true)}
               >
@@ -556,6 +557,7 @@ export function ResourcesPage() {
             {tab === 'resources' && (
               <Button
                 variant="primary"
+                size="sm"
                 icon={<Plus size={14} />}
                 onClick={() => setCreateOpen(true)}
               >
@@ -565,6 +567,7 @@ export function ResourcesPage() {
             {tab === 'requests' && (
               <Button
                 variant="primary"
+                size="sm"
                 icon={<Plus size={14} />}
                 onClick={() => setNewRequestOpen(true)}
                 disabled={!requestsProjectId}

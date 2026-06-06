@@ -190,10 +190,11 @@ export function SnapshotsPage() {
             </div>
             {view === 'list' && (
               <Button
+                size="sm"
+                icon={<Plus className="h-3.5 w-3.5" />}
                 onClick={() => setCreateOpen(true)}
                 data-testid="dashboards-new-snapshot-btn"
               >
-                <Plus className="mr-1 h-4 w-4" />
                 {t('dashboards.new_snapshot', { defaultValue: 'New snapshot' })}
               </Button>
             )}

@@ -2622,10 +2622,7 @@ export function CostModelPage() {
     <div className="space-y-5 animate-fade-in">
       <Breadcrumb items={[{ label: t('nav.5d_cost_model', { defaultValue: '5D Cost Model' }) }]} />
 
-      {/* Cross-module navigation — connects the planning value chain */}
-      <PlanningCrossLinks active="5d" />
-
-      {/* Canonical top block — module name + icon come from the global top
+      {/* Canonical top block - module name + icon come from the global top
           bar; the page renders only its subtitle. */}
       <PageHeader
         srTitle={t('costmodel.title', '5D Cost Model')}
@@ -2634,6 +2631,9 @@ export function CostModelPage() {
           'Earned Value Management with S-curves, cash flow forecasting, Monte Carlo risk simulation, and what-if scenario analysis. Transform your BOQ estimate into a living cost control dashboard.',
         )}
       />
+
+      {/* Cross-module navigation strip renders below the header (canon S4) */}
+      <PlanningCrossLinks active="5d" />
 
       {/* How the 5D model connects to the rest of the platform */}
       <DismissibleInfo
@@ -2664,7 +2664,7 @@ export function CostModelPage() {
 
       {/* Feature cards grid -- always visible as intro */}
       {(!projects || projects.length === 0) && !isLoading && (
-        <div className="mb-8">
+        <div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {featureCards.map((feat) => (
               <div key={feat.title} className="rounded-xl border border-border-light bg-surface-primary p-5 transition-colors hover:bg-surface-secondary/40">

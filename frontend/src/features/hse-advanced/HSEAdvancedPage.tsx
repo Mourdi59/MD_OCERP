@@ -630,7 +630,7 @@ function KpiCard({
         <span className="text-xs font-medium opacity-80">{label}</span>
         <span className="opacity-70">{icon}</span>
       </div>
-      <div className="mt-1 text-2xl font-bold tabular-nums">{value}</div>
+      <div className="mt-1 text-lg font-semibold tabular-nums">{value}</div>
     </div>
   );
 }

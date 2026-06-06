@@ -475,18 +475,6 @@ export function FieldReportsPage() {
     [approveMut, t, confirm],
   );
 
-  // Project gate
-
-  if (!projectId) {
-    return (
-      <div className="p-6">
-        <RequiresProject
-          emptyHint={t('fieldreports.no_project_desc', { defaultValue: 'Choose a project from the sidebar to view field reports.' })}
-        >{null}</RequiresProject>
-      </div>
-    );
-  }
-
   // ── Month label ─────────────────────────────────────────────────────
 
   const monthLabel = new Date(calYear, calMonth - 1).toLocaleDateString(undefined, {
@@ -608,6 +596,20 @@ export function FieldReportsPage() {
             'Capture daily, inspection, safety and concrete-pour reports with weather, workforce hours by trade, work performed and delays, then move each from draft to submitted to approved with a signature. Reports roll up workforce hours for payroll and progress, and unlike the legally sealed Daily Diary they are structured, templated forms you can export to PDF or Excel.',
         })}
       </DismissibleInfo>
+
+      {/* Project gate: keep the canonical top block above, then show the
+          select-a-project empty state as a rhythm child (instead of a
+          full-page short-circuit that dropped the breadcrumb / header). */}
+      {!projectId ? (
+        <Card className="py-12">
+          <RequiresProject
+            emptyHint={t('fieldreports.no_project_desc', {
+              defaultValue: 'Choose a project from the sidebar to view field reports.',
+            })}
+          >{null}</RequiresProject>
+        </Card>
+      ) : (
+        <>
 
       {/* Stats cards */}
       {summary && (
@@ -1002,6 +1004,8 @@ export function FieldReportsPage() {
         />
       )}
       <ConfirmDialog {...confirmProps} />
+        </>
+      )}
     </div>
   );
 }

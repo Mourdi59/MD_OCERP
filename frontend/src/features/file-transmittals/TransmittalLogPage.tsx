@@ -13,7 +13,11 @@ import clsx from 'clsx';
 
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
+import { Card } from '@/shared/ui/Card';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
+import { EmptyState } from '@/shared/ui/EmptyState';
+import { Breadcrumb } from '@/shared/ui/Breadcrumb';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 
 import { NewTransmittalWizard } from './NewTransmittalWizard';
@@ -76,10 +80,14 @@ export function TransmittalLogPage() {
 
   if (!projectId) {
     return (
-      <div className="p-8 text-center text-sm text-content-tertiary">
-        {t('files.transmittals.no_project', {
-          defaultValue: 'Select a project to view its transmittal log.',
-        })}
+      <div className="animate-fade-in">
+        <EmptyState
+          icon={<Send size={32} strokeWidth={1.5} />}
+          title={t('files.transmittals.title', { defaultValue: 'Transmittals' })}
+          description={t('files.transmittals.no_project', {
+            defaultValue: 'Select a project to view its transmittal log.',
+          })}
+        />
       </div>
     );
   }
@@ -102,70 +110,77 @@ export function TransmittalLogPage() {
         });
 
   return (
-    <div className="flex flex-col h-full">
-      <header className="flex items-center justify-between gap-3 px-6 py-4 border-b border-border-light">
-        <div className="min-w-0">
-          <h1 className="text-xl font-semibold text-content-primary">
-            {t('files.transmittals.title', { defaultValue: 'Transmittals' })}
-          </h1>
-          <p className="text-sm text-content-secondary">
-            {t('files.transmittals.description', {
-              defaultValue:
-                'Formal send-records of files to external parties, with auto-generated cover sheets and acknowledgement tracking.',
+    <div className="space-y-5 animate-fade-in">
+      <Breadcrumb
+        items={[
+          { label: t('files.title', { defaultValue: 'Project Files' }), to: '/files' },
+          {
+            label: t('files.transmittals.title', { defaultValue: 'Transmittals' }),
+          },
+        ]}
+      />
+
+      <PageHeader
+        srTitle={t('files.transmittals.title', { defaultValue: 'Transmittals' })}
+        subtitle={t('files.transmittals.description', {
+          defaultValue:
+            'Formal send-records of files to external parties, with auto-generated cover sheets and acknowledgement tracking.',
+        })}
+        actions={
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setWizardOpen(true)}
+            icon={<Send size={14} />}
+          >
+            {t('files.transmittals.new', { defaultValue: 'New Transmittal' })}
+          </Button>
+        }
+      />
+
+      <Card padding="none" className="overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-border-light bg-surface-secondary/30">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-content-secondary">
+              {t('files.transmittals.filter_status', { defaultValue: 'Status' })}
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              className="h-9 text-sm px-2 rounded-lg border border-border bg-surface-primary text-content-primary"
+            >
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {statusLabel(s)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-content-secondary">
+              {t('files.transmittals.filter_reason', { defaultValue: 'Reason' })}
+            </label>
+            <select
+              value={reasonFilter}
+              onChange={(e) => setReasonFilter(e.target.value as ReasonFilter)}
+              className="h-9 text-sm px-2 rounded-lg border border-border bg-surface-primary text-content-primary"
+            >
+              {REASON_OPTIONS.map((r) => (
+                <option key={r} value={r}>
+                  {reasonLabel(r)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="ml-auto text-xs text-content-tertiary">
+            {t('files.transmittals.count', {
+              defaultValue: '{{count}} transmittals',
+              count: rows.length,
             })}
-          </p>
+          </div>
         </div>
-        <Button
-          variant="primary"
-          onClick={() => setWizardOpen(true)}
-          icon={<Send size={14} />}
-        >
-          {t('files.transmittals.new', { defaultValue: 'New Transmittal' })}
-        </Button>
-      </header>
 
-      <div className="flex items-center gap-3 px-6 py-3 border-b border-border-light bg-surface-secondary/30">
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-content-secondary">
-            {t('files.transmittals.filter_status', { defaultValue: 'Status' })}
-          </label>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className="h-7 text-xs px-2 rounded-md border border-border bg-surface-primary"
-          >
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {statusLabel(s)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-content-secondary">
-            {t('files.transmittals.filter_reason', { defaultValue: 'Reason' })}
-          </label>
-          <select
-            value={reasonFilter}
-            onChange={(e) => setReasonFilter(e.target.value as ReasonFilter)}
-            className="h-7 text-xs px-2 rounded-md border border-border bg-surface-primary"
-          >
-            {REASON_OPTIONS.map((r) => (
-              <option key={r} value={r}>
-                {reasonLabel(r)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="ml-auto text-xs text-content-tertiary">
-          {t('files.transmittals.count', {
-            defaultValue: '{{count}} transmittals',
-            count: rows.length,
-          })}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
+        <div className="overflow-x-auto">
         {isLoading ? (
           <p className="p-8 text-center text-sm text-content-tertiary">
             {t('common.loading', { defaultValue: 'Loading…' })}
@@ -266,7 +281,8 @@ export function TransmittalLogPage() {
             </tbody>
           </table>
         )}
-      </div>
+        </div>
+      </Card>
 
       <NewTransmittalWizard
         open={wizardOpen}

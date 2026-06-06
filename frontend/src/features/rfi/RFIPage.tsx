@@ -1902,7 +1902,7 @@ export function RFIPage() {
       {/* Quick-view chips — saved-view shortcuts for the most common
           "what's on my plate?" slices. Mutually exclusive, kept above
           the dropdown toolbar so the eye can land on them first. */}
-      <div className="mb-3 flex flex-wrap gap-1.5" role="tablist" aria-label={t('rfi.quick_views_aria', { defaultValue: 'Quick views' })}>
+      <div className="flex flex-wrap gap-1.5" role="tablist" aria-label={t('rfi.quick_views_aria', { defaultValue: 'Quick views' })}>
         {(
           [
             { key: 'all', label: t('rfi.quick_all', { defaultValue: 'All' }) },

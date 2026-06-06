@@ -324,6 +324,7 @@ export function ServicePage() {
           tab !== 'recurring' ? (
             <Button
               variant="primary"
+              size="sm"
               icon={<Plus size={14} />}
               onClick={() => setCreateOpen(true)}
             >

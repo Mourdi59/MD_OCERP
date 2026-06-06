@@ -14,7 +14,6 @@ import {
   Info,
 } from 'lucide-react';
 import { Breadcrumb, AIDisclaimerBanner, DismissibleInfo } from '@/shared/ui';
-import { PageHeader } from '@/shared/ui/PageHeader';
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToastStore } from '@/stores/useToastStore';
@@ -456,10 +455,11 @@ export function AdvisorPage() {
         className="mb-3 shrink-0"
       />
 
-      {/* Canonical top block — the module name + icon are shown by the global
+      {/* Canonical top block - the module name + icon are shown by the global
           top app bar. This chat page manages its own header bar below, so we
-          emit only the sr-only h1 here to keep exactly one page heading. */}
-      <PageHeader srTitle={t('nav.ai_advisor', 'AI Cost Advisor')} />
+          emit only the sr-only h1 here (a full PageHeader row would reserve an
+          empty min-h-9 midline above the chat with no subtitle or actions). */}
+      <h1 className="sr-only">{t('nav.ai_advisor', 'AI Cost Advisor')}</h1>
 
       <AIDisclaimerBanner variant="compact" className="mb-3 shrink-0" />
 

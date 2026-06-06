@@ -28,7 +28,12 @@ export interface PageHeaderProps {
 }
 
 export function PageHeader({ subtitle, actions, srTitle, className }: PageHeaderProps) {
-  if (!subtitle && !actions && !srTitle) return null;
+  if (!subtitle && !actions) {
+    // srTitle-only pages (chat / full-bleed surfaces) still need the a11y
+    // heading, but NOT the min-h-9 row - that rendered as an empty 36px
+    // midline above the content (uniformity sweep, shared issue).
+    return srTitle ? <h1 className="sr-only">{srTitle}</h1> : null;
+  }
   return (
     // items-center: the (usually single-line) subtitle sits on the same
     // vertical midline as the h-8/h-9 action buttons. Top-aligning them

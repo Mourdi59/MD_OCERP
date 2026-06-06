@@ -1593,13 +1593,13 @@ export function MarkupsPage() {
           </DismissibleInfo>
 
           {/* ── Stats Bar ──────────────────────────────────────────────────── */}
-          <div className="mt-3">
+          <div>
             <StatsBar summary={summary} />
           </div>
 
           {/* ── Scope Tabs (Unified / Hub only) ───────────────────────────── */}
           <div
-            className="mt-3 inline-flex items-center rounded-lg border border-border-light bg-surface-primary p-0.5"
+            className="inline-flex items-center rounded-lg border border-border-light bg-surface-primary p-0.5"
             role="tablist"
             aria-label={t('markups.scope_tabs', { defaultValue: 'Annotation scope' })}
             onKeyDown={onScopeTabKeyDown}
@@ -1644,7 +1644,7 @@ export function MarkupsPage() {
 
           {/* ── Inline PDF Annotator ──────────────────────────────────────── */}
           {annotateDocId && (
-            <div className="mt-3" data-inline-annotator-mount>
+            <div data-inline-annotator-mount>
               <InlinePdfAnnotator
                 documentId={annotateDocId}
                 documentName={documents.find((d) => d.id === annotateDocId)?.name || 'Document'}
@@ -1665,7 +1665,7 @@ export function MarkupsPage() {
 
           {/* ── Unified Feed (all three sources) ──────────────────────────── */}
           {scopeTab === 'unified' && (
-            <div className="mt-3">
+            <div>
               <UnifiedMarkupsList projectId={projectId} />
             </div>
           )}
@@ -1673,7 +1673,7 @@ export function MarkupsPage() {
           {/* ── Filter / Search / View Toggle (hub-only view) ─────────────── */}
           {scopeTab === 'hub' && (
           <>
-          <div className="mt-3 flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             {/* Search */}
             <div className="relative flex-1 min-w-[200px] max-w-xs">
               <Search
@@ -1802,7 +1802,7 @@ export function MarkupsPage() {
           )}
 
           {/* ── Main Content ───────────────────────────────────────────────── */}
-          <div className="mt-3">
+          <div>
             {isLoading ? (
               <SkeletonTable rows={6} columns={4} />
             ) : isError ? (
@@ -1928,7 +1928,7 @@ export function MarkupsPage() {
 
           {/* ── Stamps (inline badges row) ─────────────────────────────────── */}
           {displayStamps.length > 0 && (
-            <div className="mt-4 flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold text-content-tertiary uppercase tracking-wide">
                 {t('markups.stamps', { defaultValue: 'Stamps' })}:
               </span>

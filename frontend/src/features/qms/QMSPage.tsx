@@ -250,7 +250,7 @@ export function QMSPage() {
   const loadError = activeQuery.isError ? activeQuery.error : null;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           ...(activeProjectId && breadcrumbProjectName

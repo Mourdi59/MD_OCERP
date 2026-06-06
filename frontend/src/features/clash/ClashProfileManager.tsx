@@ -37,6 +37,8 @@ import {
 import { Card } from '@/shared/ui/Card';
 import { Button } from '@/shared/ui/Button';
 import { Badge } from '@/shared/ui/Badge';
+import { Breadcrumb } from '@/shared/ui/Breadcrumb';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
@@ -126,6 +128,7 @@ export default function ClashProfileManager() {
   const { confirm, ...confirmProps } = useConfirm();
 
   const ctxProjectId = useProjectContextStore((s) => s.activeProjectId);
+  const ctxProjectName = useProjectContextStore((s) => s.activeProjectName);
   const projectId = ctxProjectId ?? params.get('project') ?? '';
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -271,7 +274,12 @@ export default function ClashProfileManager() {
 
   if (!projectId) {
     return (
-      <div className="p-6">
+      <div className="space-y-5 animate-fade-in">
+        <Breadcrumb
+          items={[
+            { label: t('clash.profiles.title', { defaultValue: 'Clash Profiles' }) },
+          ]}
+        />
         <EmptyState
           icon={<FolderOpen className="w-8 h-8" />}
           title={t('clash.profiles.noProject', {
@@ -287,34 +295,40 @@ export default function ClashProfileManager() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-        <div>
-          <h1 className="text-xl font-semibold text-content-primary flex items-center gap-2">
-            <Layers className="w-5 h-5 text-oe-blue" />
-            {t('clash.profiles.title', { defaultValue: 'Clash Profiles' })}
-          </h1>
-          <p className="text-sm text-content-secondary mt-0.5">
-            {t('clash.profiles.subtitle', {
-              defaultValue:
-                'Reusable clash-run configurations you can launch on any model set.',
-            })}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link to={`/clash${ctxProjectId ? '' : `?project=${projectId}`}`}>
-            <Button variant="secondary" size="sm" icon={<Radar className="w-4 h-4" />}>
-              {t('clash.profiles.backToClash', {
-                defaultValue: 'Clash detection',
-              })}
+    <div className="space-y-5 animate-fade-in">
+      {/* Canonical top block (MODULE_STYLE_GUIDE.md §2): Breadcrumb then the
+          shared PageHeader. The module name + icon live in the global top
+          app bar, so there is no in-page H1 - PageHeader carries the
+          subtitle and actions, with srTitle for screen readers. */}
+      <Breadcrumb
+        items={[
+          ...(ctxProjectName
+            ? [{ label: ctxProjectName, to: `/projects/${projectId}` }]
+            : []),
+          { label: t('clash.profiles.title', { defaultValue: 'Clash Profiles' }) },
+        ]}
+      />
+      <PageHeader
+        srTitle={t('clash.profiles.title', { defaultValue: 'Clash Profiles' })}
+        subtitle={t('clash.profiles.subtitle', {
+          defaultValue:
+            'Reusable clash-run configurations you can launch on any model set.',
+        })}
+        actions={
+          <>
+            <Link to={`/clash${ctxProjectId ? '' : `?project=${projectId}`}`}>
+              <Button variant="secondary" size="sm" icon={<Radar className="w-4 h-4" />}>
+                {t('clash.profiles.backToClash', {
+                  defaultValue: 'Clash detection',
+                })}
+              </Button>
+            </Link>
+            <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={startCreate}>
+              {t('clash.profiles.new', { defaultValue: 'New profile' })}
             </Button>
-          </Link>
-          <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={startCreate}>
-            {t('clash.profiles.new', { defaultValue: 'New profile' })}
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-[20rem_1fr] gap-5">
         {/* Profile list */}

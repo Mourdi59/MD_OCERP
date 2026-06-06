@@ -59,6 +59,9 @@ export { InfoHint } from './InfoHint';
 export { DismissibleInfo, IntroRichText } from './DismissibleInfo';
 export type { DismissibleInfoLink } from './DismissibleInfo';
 
+export { PageHeader } from './PageHeader';
+export type { PageHeaderProps } from './PageHeader';
+
 export { FeedbackDialog } from './FeedbackDialog';
 
 export { BOQPicker } from './BOQPicker';

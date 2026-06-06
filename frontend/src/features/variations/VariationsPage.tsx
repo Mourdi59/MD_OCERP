@@ -442,7 +442,7 @@ export function VariationsPage() {
 
   if (!projectId) {
     return (
-      <div className="space-y-5">
+      <div className="space-y-5 animate-fade-in">
         <Breadcrumb items={[{ label: t('nav.variations', { defaultValue: 'Variations' }) }]} />
         <EmptyState
           icon={<FileText size={22} />}
@@ -451,7 +451,7 @@ export function VariationsPage() {
           })}
           description={t('variations.no_project_desc', {
             defaultValue:
-              'Variations are project-scoped — create or open a project, then return here.',
+              'Variations are project-scoped, create or open a project, then return here.',
           })}
         />
       </div>
@@ -480,7 +480,7 @@ export function VariationsPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           ...(currentProject

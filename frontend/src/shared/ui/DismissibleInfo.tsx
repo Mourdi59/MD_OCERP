@@ -197,7 +197,9 @@ export function DismissibleInfo({
         onClick={collapse}
         className="flex cursor-pointer items-start gap-3 rounded-xl px-4 py-4 transition-colors hover:bg-oe-blue/[0.06]"
       >
-        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-oe-blue/15">
+        {/* Chip and title share the same 28px midline (uniformity sweep: the
+            mt-0.5 chip on an items-start row read ~5px low on every page). */}
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-oe-blue/15">
           <Info size={16} className="text-oe-blue-text" />
         </span>
         <div className="min-w-0 flex-1">
@@ -213,7 +215,7 @@ export function DismissibleInfo({
             }}
             aria-expanded
             title={t('common.collapse', { defaultValue: 'Collapse' })}
-            className="block rounded-sm text-left text-base font-medium leading-snug text-content-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            className="flex min-h-7 items-center rounded-sm text-left text-base font-medium leading-snug text-content-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
           >
             {title}
           </button>

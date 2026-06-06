@@ -679,6 +679,11 @@ export function PunchListPage() {
   });
 
   const projectId = activeProjectId || projects[0]?.id || '';
+  // Breadcrumb only links a project when one is explicitly in the global
+  // context (never the projects[0] fallback), matching the rest of the cluster.
+  const breadcrumbProjectName = activeProjectId
+    ? projects.find((p) => p.id === activeProjectId)?.name
+    : undefined;
 
   const { data: punchItems = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['punchlist', projectId, filterPriority, filterStatus, filterCategory, filterAssignee],
@@ -887,10 +892,15 @@ export function PunchListPage() {
 
   return (
     <div className="animate-fade-in space-y-5">
-      {/* Breadcrumb */}
+      {/* Breadcrumb — the Home icon already links to the dashboard, and a lone
+          module label auto-hides (MODULE_STYLE_GUIDE section 2.1), so no
+          literal "Dashboard" item. A project link is added once one is in
+          context, matching the rest of the quality cluster. */}
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
+          ...(breadcrumbProjectName && activeProjectId
+            ? [{ label: breadcrumbProjectName, to: `/projects/${activeProjectId}` }]
+            : []),
           { label: t('punch.title', { defaultValue: 'Punch List' }) },
         ]}
       />

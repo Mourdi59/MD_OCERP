@@ -17,6 +17,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { Button, Card, Badge, EmptyState, Skeleton, Breadcrumb } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { SectionIntro } from './SectionIntro';
 import { apiGet, apiPost, triggerDownload } from '@/shared/lib/api';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -1006,17 +1007,18 @@ export function ValidationPage() {
       <Breadcrumb items={[
         ...(selectedProject ? [{ label: selectedProject.name, to: `/projects/${selectedProject.id}` }] : []),
         { label: t('validation.title', 'Validation') },
-      ]} className="mb-1" />
+      ]} />
 
       {/* Header row — the module name lives in the top app bar; only a one-line
           subtitle here per the module style guide (no in-page H1, no project
           picker; the project comes from the global top-bar context). */}
-      <p className="text-sm text-content-tertiary">
-        {t(
+      <PageHeader
+        srTitle={t('validation.title', 'Validation')}
+        subtitle={t(
           'validation.subtitle',
           'Check a Bill of Quantities against the rule sets configured for the project.',
         )}
-      </p>
+      />
 
       <SectionIntro
         storageKey="validation"

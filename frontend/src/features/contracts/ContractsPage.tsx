@@ -335,7 +335,7 @@ export function ContractsPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           ...(selectedProject
@@ -625,7 +625,7 @@ function ContractTable({
           title={t('contracts.empty', { defaultValue: 'No contracts yet' })}
           description={t('contracts.empty_desc', {
             defaultValue:
-              'Create your first contract — pick the contract type and the engine wires up the right schedule of values, fees and gainshare rules.',
+              'Create your first contract, pick the contract type and the engine wires up the right schedule of values, fees and gainshare rules.',
           })}
           action={{
             label: t('contracts.new_contract', { defaultValue: 'New Contract' }),
@@ -985,7 +985,7 @@ function FinalAccountsView({
         })}
         description={t('contracts.empty_final_accounts_desc', {
           defaultValue:
-            'Final accounts are opened when a contract is closed — completed or terminated contracts will appear here.',
+            'Final accounts are opened when a contract is closed. Completed or terminated contracts will appear here.',
         })}
       />
     );
@@ -1549,7 +1549,7 @@ function ContractDetailDrawer({
               <p className="text-sm text-content-secondary">
                 {t('contracts.gainshare_hint', {
                   defaultValue:
-                    'GMP contract — configure target cost, GMP cap and savings split via the API.',
+                    'GMP contract, configure target cost, GMP cap and savings split via the API.',
                 })}
               </p>
               {dashQ.data?.gainshare_estimate !== null &&

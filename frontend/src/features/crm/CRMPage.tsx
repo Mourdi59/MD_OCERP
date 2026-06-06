@@ -338,7 +338,7 @@ export function CRMPage() {
         : t('crm.new_deal', { defaultValue: 'New Deal' });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb items={[{ label: t('nav.crm', { defaultValue: 'CRM' }) }]} />
 
       <PageHeader

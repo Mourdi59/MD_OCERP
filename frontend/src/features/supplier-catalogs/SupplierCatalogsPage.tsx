@@ -26,6 +26,7 @@ import {
   SkeletonTable,
   DismissibleInfo,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import {
   WideModal,
   WideModalSection,
@@ -33,7 +34,6 @@ import {
 } from '@/shared/ui/WideModal';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
-import { PipelineBanner } from './PipelineBanner';
 import { getErrorMessage } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
@@ -171,19 +171,22 @@ export function SupplierCatalogsPage() {
     <div className="space-y-5 animate-fade-in">
       <Breadcrumb items={[{ label: t('nav.supplier_catalogs', { defaultValue: 'Supplier Catalogs' }) }]} />
 
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <p className="text-sm text-content-tertiary">
-          {t('supplier_catalogs.subtitle', {
-            defaultValue:
-              'The vendor and item reference library: suppliers, priced catalogs, price comparison and warehouse stock.',
-          })}
-        </p>
-        {canCreateHere && (
-          <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>
-            {createLabel(tab, t)}
-          </Button>
-        )}
-      </div>
+      {/* Header — the module name + icon live in the global top bar; the
+          page renders only its subtitle on one shared midline with actions. */}
+      <PageHeader
+        srTitle={t('nav.supplier_catalogs', { defaultValue: 'Supplier Catalogs' })}
+        subtitle={t('supplier_catalogs.subtitle', {
+          defaultValue:
+            'The vendor and item reference library: suppliers, priced catalogs, price comparison and warehouse stock.',
+        })}
+        actions={
+          canCreateHere && (
+            <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>
+              {createLabel(tab, t)}
+            </Button>
+          )
+        }
+      />
 
       <DismissibleInfo
         storageKey="supplier-catalogs"
@@ -210,33 +213,6 @@ export function SupplierCatalogsPage() {
             'This page is your reference library of vendors, priced catalog items and warehouse stock. Live purchasing - raising requisitions, issuing purchase orders and three-way matching invoices - happens in the Procurement module.',
         })}
       </DismissibleInfo>
-
-      <PipelineBanner
-        intro={t('supplier_catalogs.pipeline_intro', {
-          defaultValue:
-            'The buying chain: register vendors and their priced catalogs, raise a requisition, convert it to a purchase order, then three-way match the invoice on receipt. Catalog prices feed the cost database.',
-        })}
-        steps={[
-          {
-            label: t('supplier_catalogs.step_costs', {
-              defaultValue: 'Cost Database',
-            }),
-            to: '/costs',
-          },
-          {
-            label: t('supplier_catalogs.step_catalog', {
-              defaultValue: 'Supplier Catalogs',
-            }),
-            current: true,
-          },
-          {
-            label: t('supplier_catalogs.step_procurement', {
-              defaultValue: 'Procurement',
-            }),
-            to: '/procurement',
-          },
-        ]}
-      />
 
       <div className="border-b border-border-light">
         <nav className="flex gap-1 -mb-px overflow-x-auto">

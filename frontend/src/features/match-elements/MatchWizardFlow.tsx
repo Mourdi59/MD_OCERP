@@ -54,7 +54,8 @@ import { projectsApi, type Project } from '@/features/projects/api';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { BIMModelPicker } from '@/shared/ui/BIMModelPicker';
-import { DismissibleInfo } from '@/shared/ui';
+import { DismissibleInfo, Breadcrumb } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 
 import {
   matchElementsApi,
@@ -767,24 +768,17 @@ export function MatchWizardFlow() {
 
   // ─────────────────────────────────────────────────────────────────────
   return (
-    <div className="mx-auto max-w-[1600px] px-4 py-6">
-      {/* Title */}
-      <div className="mb-4 flex items-center gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-oe-blue to-indigo-600 text-white shadow-sm">
-          <Sparkles className="h-5 w-5" />
-        </span>
-        <div>
-          <h1 className="text-2xl font-bold text-content-primary">
-            {t('match.wizard.title', { defaultValue: 'Match Elements to Cost' })}
-          </h1>
-          <p className="text-sm text-content-secondary">
-            {t('match.wizard.subtitle', {
-              defaultValue:
-                'A guided flow that turns a BIM model into a priced bill of quantities.',
-            })}
-          </p>
-        </div>
-      </div>
+    <div className="space-y-5 animate-fade-in">
+      {/* Canonical top block - module name + icon live in the global top app
+          bar; the page renders only its subtitle on the left. */}
+      <Breadcrumb items={[{ label: t('nav.match_elements', { defaultValue: 'Match Elements → Costs' }) }]} />
+      <PageHeader
+        srTitle={t('match.wizard.title', { defaultValue: 'Match Elements to Cost' })}
+        subtitle={t('match.wizard.subtitle', {
+          defaultValue:
+            'A guided flow that turns a BIM model into a priced bill of quantities.',
+        })}
+      />
 
       <DismissibleInfo
         storageKey="match-elements"
@@ -801,7 +795,7 @@ export function MatchWizardFlow() {
           retries, occasional stale-cache shape mismatches, ranker
           tuning). The banner sets the right expectation and gives a
           1-click path to file an issue against the public repo. */}
-      <div className="mb-3 flex flex-wrap items-center gap-2.5 rounded-xl border border-amber-200/60 bg-gradient-to-r from-amber-50/80 via-white to-white px-3 py-2 shadow-sm dark:border-amber-800/40 dark:from-amber-950/20 dark:via-surface-primary dark:to-surface-primary">
+      <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-amber-200/60 bg-gradient-to-r from-amber-50/80 via-white to-white px-3 py-2 shadow-sm dark:border-amber-800/40 dark:from-amber-950/20 dark:via-surface-primary dark:to-surface-primary">
         <span className="inline-flex shrink-0 items-center gap-1 rounded border border-amber-300/60 bg-amber-100/80 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-900 dark:border-amber-700/40 dark:bg-amber-900/40 dark:text-amber-100">
           <Sparkles className="h-2.5 w-2.5" />
           {t('match_elements.beta_badge', { defaultValue: 'Beta' })}
@@ -829,9 +823,7 @@ export function MatchWizardFlow() {
           QdrantHealthCard self-hides when Qdrant is healthy (stage 3
           carries the green confirmation) and renders the actionable
           one-click installer card the moment it is unreachable. */}
-      <div className="mb-3">
-        <QdrantHealthCard />
-      </div>
+      <QdrantHealthCard />
 
       {/* Setup & tools — dead_button fix. These panels were built and
           tested but never reachable from the route: the embedder install
@@ -841,7 +833,7 @@ export function MatchWizardFlow() {
           tenant-scoped template library. Collapsed by default so the
           first-screen wizard stays tidy; one click reveals every
           previously-orphaned control. */}
-      <details className="group mb-3 rounded-xl border border-border-light bg-surface-primary">
+      <details className="group rounded-xl border border-border-light bg-surface-primary">
         <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-content-primary">
           <Wrench className="h-4 w-4 shrink-0 text-oe-blue" />
           {t('match.wizard.setupTools', {
@@ -873,7 +865,7 @@ export function MatchWizardFlow() {
 
       {/* Plain-language "how it works" — collapsed by default to keep the
           first-screen wizard tidy; one click opens the full 8-stage tour. */}
-      <details className="group mb-5 rounded-xl border border-border-light bg-surface-primary">
+      <details className="group rounded-xl border border-border-light bg-surface-primary">
         <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-content-primary">
           <Info className="h-4 w-4 shrink-0 text-oe-blue" />
           {t('match.wizard.howItWorks', {
@@ -898,7 +890,7 @@ export function MatchWizardFlow() {
                   <span className="font-medium text-content-primary">
                     {t(s.titleKey, { defaultValue: s.titleDefault })}
                   </span>
-                  {' — '}
+                  {' - '}
                   {t(s.blurbKey, { defaultValue: s.blurbDefault })}
                 </span>
               </li>

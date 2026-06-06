@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Breadcrumb, Card, EmptyState, SkeletonGrid } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { listDevelopments, type Development } from '../api';
 import { InventoryHeatmap } from './InventoryHeatmap';
 import { SalesVelocity } from './SalesVelocity';
@@ -84,13 +85,13 @@ export function DashboardsHub() {
 
   if (isLoading)
     return (
-      <div className="p-4">
+      <div className="animate-fade-in">
         <SkeletonGrid items={6} gridCols="md:grid-cols-2" />
       </div>
     );
   if (isError) {
     return (
-      <div className="p-4">
+      <div className="animate-fade-in">
         <DashboardError
           title={t('propdev.dashboards.load_developments_error', {
             defaultValue: 'Could not load developments',
@@ -103,7 +104,7 @@ export function DashboardsHub() {
   }
   if (!developments || developments.length === 0) {
     return (
-      <div className="p-4">
+      <div className="animate-fade-in">
         <EmptyState
           icon={<Building2 size={22} />}
           title={t('propdev.dashboards.hub.no_developments_title', {
@@ -123,7 +124,7 @@ export function DashboardsHub() {
   }
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           {
@@ -137,39 +138,35 @@ export function DashboardsHub() {
           },
         ]}
       />
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-lg font-semibold text-content-primary">
-            {t('propdev.dashboards.hub.title', {
-              defaultValue: 'Property Development Dashboards',
-            })}
-          </h1>
-          <p className="mt-0.5 text-xs text-content-tertiary">
-            {t('propdev.dashboards.hub.subtitle', {
-              defaultValue:
-                'Sales velocity, inventory ageing, cash flow and conversion — scoped to one development.',
-            })}
-          </p>
-        </div>
-        <label className="flex items-center gap-2 text-xs">
-          <span className="text-content-secondary">
-            {t('propdev.dashboards.hub.development', {
-              defaultValue: 'Development',
-            })}
-          </span>
-          <select
-            value={developmentId}
-            onChange={(e) => setDevelopmentId(e.target.value)}
-            className="rounded border border-border-light bg-surface-elevated px-2 py-1"
-          >
-            {developments.map((d: Development) => (
-              <option key={d.id} value={d.id}>
-                {d.code} — {d.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </header>
+      <PageHeader
+        srTitle={t('propdev.dashboards.hub.title', {
+          defaultValue: 'Property Development Dashboards',
+        })}
+        subtitle={t('propdev.dashboards.hub.subtitle', {
+          defaultValue:
+            'Sales velocity, inventory ageing, cash flow and conversion, scoped to one development.',
+        })}
+        actions={
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-content-secondary">
+              {t('propdev.dashboards.hub.development', {
+                defaultValue: 'Development',
+              })}
+            </span>
+            <select
+              value={developmentId}
+              onChange={(e) => setDevelopmentId(e.target.value)}
+              className="h-9 rounded-lg border border-border bg-surface-primary px-2 text-sm text-content-primary"
+            >
+              {developments.map((d: Development) => (
+                <option key={d.id} value={d.id}>
+                  {d.code} - {d.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <DashboardTile

@@ -154,7 +154,6 @@ export function AccommodationListPage() {
   return (
     <div className="space-y-5 pb-20 sm:pb-0 animate-fade-in">
       <Breadcrumb items={[{ label: t('nav.accommodation', { defaultValue: 'Accommodation' }) }]} />
-      <BetaBanner moduleKey="accommodation" />
 
       {/* Header */}
       <PageHeader
@@ -177,14 +176,15 @@ export function AccommodationListPage() {
                 defaultValue: 'Suggest room for employee',
               })}
             </Button>
-            <Link
-              to="/accommodation/calendar"
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-primary px-3 py-1.5 text-xs font-medium text-content-secondary hover:text-content-primary hover:bg-surface-secondary transition-colors"
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate('/accommodation/calendar')}
               data-testid="accommodation-calendar-link"
             >
-              <CalendarCheck2 size={14} aria-hidden="true" />
+              <CalendarCheck2 size={14} className="mr-1.5" aria-hidden="true" />
               {t('accommodation.calendar.title', { defaultValue: 'Calendar' })}
-            </Link>
+            </Button>
             <Button
               variant="primary"
               size="sm"
@@ -220,6 +220,8 @@ export function AccommodationListPage() {
             'Track three kinds of stays in one place: worker camps for site crews, rentals for staff, and hotels for visiting consultants. Each property holds rooms, bookings and charges, and the calendar shows who is where across every date. Suggest a room for an employee to bridge directly from HR contacts into a booking.',
         })}
       </DismissibleInfo>
+
+      <BetaBanner moduleKey="accommodation" />
 
       {/* Summary KPI strip — collapses to a 2-col grid on phones,
           stretches to 4-col on desktop. Mute when nothing exists yet. */}

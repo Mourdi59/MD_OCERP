@@ -31,6 +31,7 @@ import {
   MoneyDisplay,
   Skeleton,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { apiGet, apiPost, API_BASE, getAuthToken, ApiError } from '@/shared/lib/api';
@@ -527,25 +528,29 @@ export function ReportingPage() {
 
       {/* Header row — module name + icon live in the top app bar (style guide
           §2); the page shows only a one-line subtitle and the right-aligned
-          action. */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <p className="text-sm text-content-tertiary">
-          {t('reporting.subtitle', {
-            defaultValue: 'Role-based KPI dashboards built from live project data.',
-          })}
-        </p>
-        {canRecalculate && (
-          <Button
-            variant="primary"
-            onClick={handleRecalculate}
-            disabled={recalculating}
-            className="inline-flex items-center gap-2"
-          >
-            {recalculating ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-            {t('reporting.recalculate', { defaultValue: 'Recalculate KPIs' })}
-          </Button>
-        )}
-      </div>
+          action, routed through the shared PageHeader so it inherits the
+          items-center midline and min-h-9 rules (audit S7). */}
+      <PageHeader
+        srTitle={t('nav.reporting_dashboards', { defaultValue: 'Reporting Dashboards' })}
+        subtitle={t('reporting.subtitle', {
+          defaultValue: 'Role-based KPI dashboards built from live project data.',
+        })}
+        actions={
+          canRecalculate && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleRecalculate}
+              disabled={recalculating}
+              icon={
+                recalculating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />
+              }
+            >
+              {t('reporting.recalculate', { defaultValue: 'Recalculate KPIs' })}
+            </Button>
+          )
+        }
+      />
 
       {/* What this page is, vs the two neighbouring surfaces it is often
           confused with (audit IA-overlap finding). */}

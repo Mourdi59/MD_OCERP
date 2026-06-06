@@ -1278,6 +1278,7 @@ export function MoCPage() {
       />
 
       <PageHeader
+        srTitle={t('moc.title', { defaultValue: 'Management of Change' })}
         subtitle={t('moc.subtitle', {
           defaultValue: 'Capture, assess, and route deviations from the agreed design, scope, or process',
         })}

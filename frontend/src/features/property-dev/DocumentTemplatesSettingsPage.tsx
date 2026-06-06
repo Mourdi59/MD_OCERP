@@ -70,6 +70,7 @@ import {
   WideModalSection,
   ConfirmDialog,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage } from '@/shared/lib/api';
 import {
@@ -229,7 +230,7 @@ export function DocumentTemplatesSettingsPage() {
   const customs = templates.filter((t) => t.is_custom);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           { label: t('nav.settings', { defaultValue: 'Settings' }) },
@@ -245,25 +246,16 @@ export function DocumentTemplatesSettingsPage() {
         ]}
       />
 
-      {/* Intro card with friendly explainer + variables modal trigger */}
-      <Card className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1">
-            <h1 className="flex items-center gap-2 text-lg font-semibold text-content-primary">
-              <FileSignature size={18} className="text-oe-blue" />
-              {t('property_dev.doc_templates.title', {
-                defaultValue: 'Document templates',
-              })}
-            </h1>
-            <p className="mt-1 text-sm text-content-secondary max-w-3xl">
-              {t('property_dev.doc_templates.intro', {
-                defaultValue:
-                  'Document templates power the PDF documents OpenConstructionERP generates for buyer journeys — reservation receipts, SPA contracts, handover protocols, warranty certificates. Pick a built-in template, preview it for your country / regulator, or upload your own .docx / .html / .pdf template.',
-              })}
-            </p>
-          </div>
+      <PageHeader
+        srTitle={t('property_dev.doc_templates.title', {
+          defaultValue: 'Document templates',
+        })}
+        subtitle={t('property_dev.doc_templates.intro', {
+          defaultValue:
+            'Document templates power the PDF documents OpenConstructionERP generates for buyer journeys, reservation receipts, SPA contracts, handover protocols, warranty certificates. Pick a built-in template, preview it for your country or regulator, or upload your own .docx / .html / .pdf template.',
+        })}
+        actions={
           <Button
-            size="sm"
             variant="ghost"
             icon={<Info size={14} />}
             onClick={() => setVariablesOpen(true)}
@@ -273,9 +265,13 @@ export function DocumentTemplatesSettingsPage() {
               defaultValue: 'Template variables',
             })}
           </Button>
-        </div>
+        }
+      />
+
+      {/* Locales / regulators meta + active-development context */}
+      <Card className="p-4">
         {dataQ.data && (
-          <div className="mt-3 space-y-2">
+          <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <div className="text-xs text-content-tertiary">
                 {t('property_dev.doc_templates.locales_supported', {

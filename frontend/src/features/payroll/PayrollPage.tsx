@@ -220,21 +220,6 @@ export default function PayrollPage() {
     postMut.mutate(selectedBatchId, { onSettled: () => setConfirmPostOpen(false) });
   }, [postMut, selectedBatchId]);
 
-  /* Project gate */
-  if (!projectId) {
-    return (
-      <div className="p-6">
-        <RequiresProject
-          emptyHint={t('payroll.no_project_desc', {
-            defaultValue: 'Choose a project from the sidebar to view payroll.',
-          })}
-        >
-          {null}
-        </RequiresProject>
-      </div>
-    );
-  }
-
   const batches = batchesQuery.data ?? [];
   const labourCost = labourCostQuery.data ?? null;
 
@@ -258,11 +243,12 @@ export default function PayrollPage() {
         actions={
           <Button
             variant="primary"
+            size="sm"
             onClick={() => generateMut.mutate()}
-            disabled={generateMut.isPending}
+            disabled={!projectId || generateMut.isPending}
             aria-label={t('payroll.generate', { defaultValue: 'Generate draft batch' })}
           >
-            {generateMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus size={16} />}
+            {generateMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus size={14} />}
             {t('payroll.generate', { defaultValue: 'Generate draft batch' })}
           </Button>
         }
@@ -276,7 +262,7 @@ export default function PayrollPage() {
         links={[
           {
             label: t('payroll.intro_link_field_reports', { defaultValue: 'Field Reports' }),
-            onClick: () => navigate('/fieldreports'),
+            onClick: () => navigate('/field-reports'),
           },
           {
             label: t('payroll.intro_link_5d', { defaultValue: '5D Cost' }),
@@ -289,6 +275,22 @@ export default function PayrollPage() {
             'Generate a draft batch to roll the hours logged in field reports into pay entries per worker, then walk the batch through its lifecycle: submit for approval, finalize to post labour cost to the project budget, and post to the general ledger. Reconcile at any point to confirm batch hours still match the underlying field records before money moves.',
         })}
       </DismissibleInfo>
+
+      {/* Project gate: keep the canonical top block above, then show the
+          select-a-project empty state as a rhythm child (instead of a
+          full-page short-circuit that dropped the breadcrumb / header). */}
+      {!projectId ? (
+        <Card className="py-12">
+          <RequiresProject
+            emptyHint={t('payroll.no_project_desc', {
+              defaultValue: 'Choose a project from the sidebar to view payroll.',
+            })}
+          >
+            {null}
+          </RequiresProject>
+        </Card>
+      ) : (
+        <>
 
       {/* Labour cost rollup (surfaced beside the cost model) */}
       <Card className="p-4">
@@ -470,7 +472,7 @@ export default function PayrollPage() {
           </div>
           {selectedBatch && (
             <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-2 text-xs text-content-tertiary">
-              <Link to="/fieldreports" className="inline-flex items-center gap-1 hover:text-content-primary">
+              <Link to="/field-reports" className="inline-flex items-center gap-1 hover:text-content-primary">
                 <ExternalLink size={12} />
                 {t('payroll.audit_field_reports', { defaultValue: 'View field reports' })}
               </Link>
@@ -612,6 +614,8 @@ export default function PayrollPage() {
         onConfirm={handleConfirmPost}
         onCancel={() => setConfirmPostOpen(false)}
       />
+        </>
+      )}
     </div>
   );
 }

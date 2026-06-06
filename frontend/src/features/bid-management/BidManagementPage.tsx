@@ -259,7 +259,7 @@ export function BidManagementPage() {
 
   if (!projectId) {
     return (
-      <div className="space-y-5">
+      <div className="space-y-5 animate-fade-in">
         <Breadcrumb
           items={[{ label: t('nav.bid_management', { defaultValue: 'Bid Management' }) }]}
         />
@@ -270,7 +270,7 @@ export function BidManagementPage() {
           })}
           description={t('bid_management.no_project_desc', {
             defaultValue:
-              'Bid Management is project-scoped — create or open a project, then return here.',
+              'Bid Management is project-scoped, create or open a project, then return here.',
           })}
         />
       </div>
@@ -278,7 +278,7 @@ export function BidManagementPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           ...(currentProject
@@ -736,10 +736,10 @@ function SubmissionsLevelingView({
           {pkg.status === 'awarded'
             ? t('bid_management.already_awarded', {
                 defaultValue:
-                  'This package has been awarded. Leveling is read-only — open Contracts to manage the awarded scope.',
+                  'This package has been awarded. Leveling is read-only, open Contracts to manage the awarded scope.',
               })
             : t('bid_management.pkg_cancelled', {
-                defaultValue: 'This package was cancelled — no further awards possible.',
+                defaultValue: 'This package was cancelled, no further awards possible.',
               })}
         </div>
       )}
@@ -1236,7 +1236,7 @@ function AwardConfirmModal({
             className={clsx(inputCls, 'text-right')}
           />
           <p className="mt-1 text-xs text-content-tertiary">
-            {currency || ''} — {t('bid_management.awarded_amount_hint', {
+            {currency || ''} - {t('bid_management.awarded_amount_hint', {
               defaultValue: 'Pre-filled from the column total; adjust if a negotiated figure applies.',
             })}
           </p>
@@ -1378,7 +1378,7 @@ function QAList({ packageId }: { packageId: string }) {
           icon={<HelpCircle size={22} />}
           title={t('bid_management.no_questions', { defaultValue: 'No questions yet' })}
           description={t('bid_management.no_questions_desc', {
-            defaultValue: 'Be the first to ask — replies are shared with all bidders by default.',
+            defaultValue: 'Be the first to ask. Replies are shared with all bidders by default.',
           })}
         />
       ) : (
@@ -1557,7 +1557,7 @@ function PackageDrawer({
         title:
           table.recommended_bidder_id && table.recommended_reason
             ? t('bid_management.leveling_done_with_rec', {
-                defaultValue: 'Leveling computed — top bid identified. Open Submissions to review the ranking.',
+                defaultValue: 'Leveling computed, top bid identified. Open Submissions to review the ranking.',
               })
             : t('bid_management.leveling_done', { defaultValue: 'Leveling computed' }),
       });
@@ -2374,7 +2374,7 @@ function CreatePackageModal({
           label={t('bid_management.code', { defaultValue: 'Code' })}
           required
           hint={t('bid_management.code_hint', {
-            defaultValue: 'Short identifier used in emails — e.g. BP-001.',
+            defaultValue: 'Short identifier used in emails, e.g. BP-001.',
           })}
         >
           <input
@@ -2435,7 +2435,7 @@ function CreatePackageModal({
         <WideModalField
           label={t('bid_management.budget', { defaultValue: 'Budget estimate' })}
           hint={t('bid_management.budget_hint', {
-            defaultValue: 'Internal anchor — not shared with bidders.',
+            defaultValue: 'Internal anchor, not shared with bidders.',
           })}
           span={2}
         >

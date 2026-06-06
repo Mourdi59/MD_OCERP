@@ -14,7 +14,6 @@ import {
   Send,
   Ban,
   RotateCcw,
-  ArrowRight,
   FileText,
 } from 'lucide-react';
 import {
@@ -27,7 +26,9 @@ import {
   WideModal,
   WideModalSection,
   WideModalField,
+  DismissibleInfo,
 } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { projectsApi } from '@/features/projects/api';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
@@ -83,100 +84,11 @@ const inputCls =
 
 // Legacy labelCls removed — modals migrated to <WideModalField>.
 
-/* ─── Workflow intro ───────────────────────────────────────────────────
- *
- * The portal is the controlled outside door of the platform. This banner
- * states the invite → grant → audit loop and the principle of least
- * privilege (each rule = one resource, one permission). Links to the
- * project data these external users are scoped against. Dismissible
- * per-session.
- */
-function WorkflowIntro() {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [dismissed, setDismissed] = useState(
-    () => sessionStorage.getItem('oe.portal.introDismissed') === '1',
-  );
-  if (dismissed) return null;
-  const dismiss = () => {
-    sessionStorage.setItem('oe.portal.introDismissed', '1');
-    setDismissed(true);
-  };
-  return (
-    <Card padding="md" className="border-oe-blue/20 bg-oe-blue-subtle/10">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-oe-blue-subtle text-oe-blue-text">
-          <ShieldCheck size={16} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-content-primary">
-            {t('portal.intro_title', {
-              defaultValue: 'Give outsiders exactly what they need — nothing more',
-            })}
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-content-secondary">
-            {t('portal.intro_body', {
-              defaultValue:
-                'Invite a client, investor or subcontractor with a magic link, then Grant Access — one rule per resource (a single project, document or invoice) and one permission (view, comment, submit or sign). Every view, download and signature they make is recorded in the audit log with IP and timestamp. Revoke access any time; nothing is visible until you explicitly grant it.',
-            })}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="text-2xs font-medium uppercase tracking-wide text-content-tertiary">
-              {t('portal.intro_connects', { defaultValue: 'Connects to' })}
-            </span>
-            <button
-              type="button"
-              onClick={() => navigate('/subcontractors')}
-              className="inline-flex items-center gap-1 rounded-full border border-border-light bg-surface-primary px-2.5 py-1 text-xs font-medium text-content-secondary transition-colors hover:border-oe-blue hover:text-oe-blue"
-            >
-              {t('portal.intro_link_subs', {
-                defaultValue: 'Subcontractors',
-              })}
-              <ArrowRight size={11} />
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/files')}
-              className="inline-flex items-center gap-1 rounded-full border border-border-light bg-surface-primary px-2.5 py-1 text-xs font-medium text-content-secondary transition-colors hover:border-oe-blue hover:text-oe-blue"
-            >
-              {t('portal.intro_link_files', {
-                defaultValue: 'Project documents',
-              })}
-              <ArrowRight size={11} />
-            </button>
-            {/* Internal staff manage the contractor-facing side of payment
-                applications as Progress Claims under Contracts. The portal's
-                /portal/payments surface is external (magic-link) only, so we
-                point internal users to the real internal home here. */}
-            <button
-              type="button"
-              onClick={() => navigate('/contracts')}
-              className="inline-flex items-center gap-1 rounded-full border border-border-light bg-surface-primary px-2.5 py-1 text-xs font-medium text-content-secondary transition-colors hover:border-oe-blue hover:text-oe-blue"
-            >
-              {t('portal.intro_link_progress_claims', {
-                defaultValue: 'Progress claims (Contracts)',
-              })}
-              <ArrowRight size={11} />
-            </button>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={dismiss}
-          className="shrink-0 rounded-md p-1 text-content-tertiary transition-colors hover:bg-surface-secondary hover:text-content-primary"
-          aria-label={t('common.dismiss', { defaultValue: 'Dismiss' })}
-        >
-          <X size={14} />
-        </button>
-      </div>
-    </Card>
-  );
-}
-
 /* ─── Page ─── */
 
 export function PortalPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('users');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -264,37 +176,63 @@ export function PortalPage() {
         items={[{ label: t('nav.portal', { defaultValue: 'Customer / Buyer Portal' }) }]}
       />
 
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-content-primary">
-            {t('portal.title', { defaultValue: 'Customer / Buyer Portal' })}
-          </h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {t('portal.subtitle', {
-              defaultValue:
-                'Invite external customers and buyers, manage scoped access to documents, and audit who saw what.',
-            })}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {tab === 'access_rules' && (
+      <PageHeader
+        srTitle={t('portal.title', { defaultValue: 'Customer / Buyer Portal' })}
+        subtitle={t('portal.subtitle', {
+          defaultValue:
+            'Invite external customers and buyers, manage scoped access to documents, and audit who saw what.',
+        })}
+        actions={
+          <>
+            {tab === 'access_rules' && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Plus size={14} />}
+                onClick={() => setGrantOpen(true)}
+              >
+                {t('portal.grant_access', { defaultValue: 'Grant Access' })}
+              </Button>
+            )}
             <Button
-              variant="secondary"
+              variant="primary"
+              size="sm"
               icon={<Plus size={14} />}
-              onClick={() => setGrantOpen(true)}
+              onClick={() => setInviteOpen(true)}
             >
-              {t('portal.grant_access', { defaultValue: 'Grant Access' })}
+              {t('portal.invite_user', { defaultValue: 'Invite User' })}
             </Button>
-          )}
-          <Button
-            variant="primary"
-            icon={<Plus size={14} />}
-            onClick={() => setInviteOpen(true)}
-          >
-            {t('portal.invite_user', { defaultValue: 'Invite User' })}
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
+
+      <DismissibleInfo
+        storageKey="portal"
+        title={t('portal.intro_title', {
+          defaultValue: 'Give outsiders exactly what they need — nothing more',
+        })}
+        links={[
+          {
+            label: t('portal.intro_link_subs', { defaultValue: 'Subcontractors' }),
+            onClick: () => navigate('/subcontractors'),
+          },
+          {
+            label: t('portal.intro_link_files', { defaultValue: 'Project documents' }),
+            onClick: () => navigate('/files'),
+          },
+          {
+            label: t('portal.intro_link_progress_claims', {
+              defaultValue: 'Progress claims (Contracts)',
+            }),
+            onClick: () => navigate('/contracts'),
+          },
+        ]}
+      >
+        {t('portal.intro_body', {
+          defaultValue:
+            'Invite a client, investor or subcontractor with a magic link, then Grant Access — one rule per resource (a single project, document or invoice) and one permission (view, comment, submit or sign). Every view, download and signature they make is recorded in the audit log with IP and timestamp. Revoke access any time; nothing is visible until you explicitly grant it.',
+        })}
+      </DismissibleInfo>
 
       {lastInviteLink && (
         <MagicLinkBanner
@@ -304,8 +242,6 @@ export function PortalPage() {
           onDismiss={() => setLastInviteLink(null)}
         />
       )}
-
-      <WorkflowIntro />
 
       {/* Tabs */}
       <div className="border-b border-border-light">

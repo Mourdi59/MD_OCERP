@@ -1181,7 +1181,7 @@ export function PermissionsMatrixPage() {
                 <ShieldCheck size={22} />
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-tight text-content-primary">
+                <h1 className="text-lg font-bold tracking-tight text-content-primary">
                   {t('admin.permissions.title', { defaultValue: 'Permissions Matrix' })}
                 </h1>
                 <p className="mt-0.5 text-sm text-content-secondary max-w-3xl">

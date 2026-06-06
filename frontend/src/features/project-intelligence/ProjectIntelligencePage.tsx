@@ -291,11 +291,11 @@ export function ProjectIntelligencePage() {
 
   if (!activeProjectId) {
     return (
-      <div className="max-w-3xl mx-auto py-12 px-6 text-center space-y-4">
-        <div className="w-14 h-14 rounded-2xl bg-oe-blue/10 flex items-center justify-center mx-auto">
+      <div className="flex flex-col items-center justify-center py-16 px-6 text-center space-y-4 animate-fade-in">
+        <div className="w-14 h-14 rounded-2xl bg-oe-blue/10 flex items-center justify-center">
           <BrainCircuit size={28} className="text-oe-blue" />
         </div>
-        <h2 className="text-lg font-bold text-content-primary">
+        <h2 className="text-lg font-semibold text-content-primary">
           {t('project_intelligence.page_title_v191', {
             defaultValue: 'Estimation Dashboard',
           })}
@@ -426,7 +426,7 @@ export function ProjectIntelligencePage() {
           <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center mx-auto">
             <AlertTriangle size={28} className="text-amber-500" />
           </div>
-          <h2 className="text-lg font-bold text-content-primary">
+          <h2 className="text-lg font-semibold text-content-primary">
             {isAuth
               ? t('project_intelligence.auth_error', {
                   defaultValue: 'Session expired',

@@ -212,6 +212,7 @@ export function EquipmentPage() {
         actions={
           <Button
             variant="primary"
+            size="sm"
             icon={<Plus size={14} />}
             onClick={() => setCreateOpen(true)}
           >

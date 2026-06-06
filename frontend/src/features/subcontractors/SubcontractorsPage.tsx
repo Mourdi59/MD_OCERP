@@ -235,7 +235,7 @@ export function SubcontractorsPage() {
   // the drawer instead.
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-fade-in">
       <Breadcrumb
         items={[
           { label: t('nav.subcontractors', { defaultValue: 'Subcontractors' }) },
@@ -1874,7 +1874,7 @@ function SubcontractorFormModal({
           })}
           hint={t('subcontractors.trade_categories_hint', {
             defaultValue:
-              'Free-form labels used for tendering filters — e.g. concrete, steel, mep, finishings.',
+              'Free-form labels used for tendering filters, e.g. concrete, steel, mep, finishings.',
           })}
         >
           <input

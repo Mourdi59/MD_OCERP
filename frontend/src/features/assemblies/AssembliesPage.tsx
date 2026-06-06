@@ -503,7 +503,7 @@ export function AssembliesPage() {
           Hidden when there are zero assemblies; renders skeleton rows
           while banner data is loading. */}
       {(banner.totalCount > 0 || allForBanner) && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
           <StatTile
             icon={<Layers size={14} />}
             label={t('assemblies.stat_total', { defaultValue: 'Assemblies' })}
@@ -572,7 +572,7 @@ export function AssembliesPage() {
           /stats/. Acts as a faster category picker than the dropdown and
           telegraphs distribution at a glance. */}
       {Object.keys(statsData?.by_category ?? {}).length > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
             onClick={() => handleCategoryChange('')}

@@ -894,9 +894,11 @@ export function IntegrationsPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
+      {/* Single-item trail auto-hides (canon §2.1): a non-project admin page
+          renders no breadcrumb, matching its sibling admin surfaces. The
+          Settings link stays reachable from the DismissibleInfo link pills. */}
       <Breadcrumb
         items={[
-          { label: t('nav.settings', 'Settings'), to: '/settings' },
           { label: t('integrations.title', 'Integrations') },
         ]}
       />

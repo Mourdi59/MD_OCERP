@@ -46,10 +46,8 @@ import {
   Loader2,
   Boxes,
   ArrowUpRight,
-  ExternalLink,
   FolderOpen,
   MessageSquare,
-  MessageSquarePlus,
   CalendarClock,
   User,
   GitCompareArrows,
@@ -74,7 +72,8 @@ import { Badge } from '@/shared/ui/Badge';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { MiniGeometryPreview } from '@/shared/ui/MiniGeometryPreview';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
-import { DismissibleInfo } from '@/shared/ui';
+import { DismissibleInfo, BetaBanner, Breadcrumb } from '@/shared/ui';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { useToastStore } from '@/stores/useToastStore';
@@ -1797,9 +1796,9 @@ export function ClashDetectionPage() {
   // (a new project) to run coordination on.
   if (!projectId) {
     return (
-      <div className="w-full animate-fade-in">
+      <div className="space-y-5 animate-fade-in">
         <Header />
-        <Card className="mt-6">
+        <Card>
           <EmptyState
             icon={<Upload className="h-10 w-10" />}
             title={t('clash.no_project_title', {
@@ -1829,64 +1828,67 @@ export function ClashDetectionPage() {
   }
 
   return (
-    <div className="w-full animate-fade-in">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <Header />
-        {/* ── Project actions ─────────────────────────────────────────────
-              No descriptive/summary panel — the selectable CAD-BIM model
-              cards below ARE the project's data surface. Keep only the
-              working deep-links into the 3D viewer / element matcher /
-              project overview. */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<Box className="h-3.5 w-3.5" />}
-            disabled={!projectId}
-            onClick={() => {
-              // Target the first model that actually has parsed
-              // geometry so the viewer opens on valid data, not an
-              // empty/unparsed model. Falls back to the global viewer.
-              const m =
-                modelsQ.data?.find((x) => (x.element_count ?? 0) > 0) ??
-                modelsQ.data?.[0];
-              navigate(
-                m
-                  ? `/projects/${projectId}/bim/${m.id}`
-                  : projectId
-                    ? `/projects/${projectId}/bim`
-                    : '/bim',
-              );
-            }}
-          >
-            {t('clash.open_bim_viewer', {
-              defaultValue: 'Open BIM 3D Viewer',
-            })}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<ArrowUpRight className="h-3.5 w-3.5" />}
-            disabled={!projectId}
-            onClick={() => navigate(`/match-elements?project=${projectId}`)}
-          >
-            {t('clash.match_elements', {
-              defaultValue: 'Match / Analyze elements',
-            })}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<FolderOpen className="h-3.5 w-3.5" />}
-            disabled={!projectId}
-            onClick={() => navigate(`/projects/${projectId}`)}
-          >
-            {t('clash.project_overview', {
-              defaultValue: 'Project overview',
-            })}
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-5 animate-fade-in">
+      {/* Canonical top block: PageHeader (subtitle + actions) then the Beta
+            banner, via the shared Header. Project actions are the working
+            deep-links into the 3D viewer / element matcher / project
+            overview - the selectable CAD-BIM model cards below ARE the
+            project's data surface, so there is no separate summary panel. */}
+      <Header
+        projectId={projectId}
+        projectName={ctxProjectName}
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Box className="h-3.5 w-3.5" />}
+              disabled={!projectId}
+              onClick={() => {
+                // Target the first model that actually has parsed
+                // geometry so the viewer opens on valid data, not an
+                // empty/unparsed model. Falls back to the global viewer.
+                const m =
+                  modelsQ.data?.find((x) => (x.element_count ?? 0) > 0) ??
+                  modelsQ.data?.[0];
+                navigate(
+                  m
+                    ? `/projects/${projectId}/bim/${m.id}`
+                    : projectId
+                      ? `/projects/${projectId}/bim`
+                      : '/bim',
+                );
+              }}
+            >
+              {t('clash.open_bim_viewer', {
+                defaultValue: 'Open BIM 3D Viewer',
+              })}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<ArrowUpRight className="h-3.5 w-3.5" />}
+              disabled={!projectId}
+              onClick={() => navigate(`/match-elements?project=${projectId}`)}
+            >
+              {t('clash.match_elements', {
+                defaultValue: 'Match / Analyze elements',
+              })}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<FolderOpen className="h-3.5 w-3.5" />}
+              disabled={!projectId}
+              onClick={() => navigate(`/projects/${projectId}`)}
+            >
+              {t('clash.project_overview', {
+                defaultValue: 'Project overview',
+              })}
+            </Button>
+          </>
+        }
+      />
 
       <DismissibleInfo
         storageKey="clash"
@@ -4299,49 +4301,42 @@ function ClashGroupingPanel({
   );
 }
 
-function Header() {
+function Header({
+  actions,
+  projectId,
+  projectName,
+}: {
+  actions?: React.ReactNode;
+  projectId?: string;
+  projectName?: string | null;
+}) {
   const { t } = useTranslation();
+  // Canonical top block (MODULE_STYLE_GUIDE.md §2): Breadcrumb (project ->
+  // module, hidden when it has no depth), the shared BetaBanner, then the
+  // shared PageHeader - the same order /bim/federations and the EIR matrix
+  // use, so the three coordination pages read identically. The module name +
+  // icon live in the global top app bar, so the page renders only its
+  // subtitle (srTitle for a11y) - never an in-page H1.
   return (
-    <div>
-      <h1 className="flex items-center gap-2 text-2xl font-bold text-content-primary">
-        <Radar className="h-6 w-6 text-oe-blue" />
-        {t('clash.title', { defaultValue: 'Clash Detection' })}
-      </h1>
-      <p className="mt-1 text-sm text-content-secondary">
-        {t('clash.subtitle', {
+    <>
+      <Breadcrumb
+        items={[
+          ...(projectId && projectName
+            ? [{ label: projectName, to: `/projects/${projectId}` }]
+            : []),
+          { label: t('nav.clash_detection', { defaultValue: 'Clash Detection' }) },
+        ]}
+      />
+      <BetaBanner moduleKey="clash" />
+      <PageHeader
+        srTitle={t('clash.title', { defaultValue: 'Clash Detection' })}
+        subtitle={t('clash.subtitle', {
           defaultValue:
-            'Geometric interference & clearance coordination across federated BIM models — with a clash matrix and BCF export.',
+            'Geometric interference and clearance coordination across federated BIM models, with a clash matrix and BCF export.',
         })}
-      </p>
-
-      {/* Beta · feedback-wanted banner. Clash Detection is a new module
-          and still has rough edges (engine tuning, grouping facets,
-          viewer edge cases). Sets the right expectation and gives a
-          1-click path to file an issue against the public repo —
-          mirrors the /match-elements banner for consistency. */}
-      <div className="mt-3 flex flex-wrap items-center gap-2.5 rounded-xl border border-amber-200/60 bg-gradient-to-r from-amber-50/80 via-white to-white px-3 py-2 shadow-sm dark:border-amber-800/40 dark:from-amber-950/20 dark:via-surface-primary dark:to-surface-primary">
-        <span className="inline-flex shrink-0 items-center gap-1 rounded border border-amber-300/60 bg-amber-100/80 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-900 dark:border-amber-700/40 dark:bg-amber-900/40 dark:text-amber-100">
-          <Sparkles className="h-2.5 w-2.5" />
-          {t('clash.beta_badge', { defaultValue: 'Beta' })}
-        </span>
-        <p className="min-w-0 flex-1 text-xs leading-snug text-content-secondary">
-          {t('clash.beta_blurb', {
-            defaultValue:
-              'Clash Detection is a new module and may still have inaccuracies. Found a bug or have an idea? Please file an issue — every report tightens the next release.',
-          })}
-        </p>
-        <a
-          href="https://github.com/datadrivenconstruction/OpenConstructionERP/issues/new?labels=clash&template=bug_report.yml"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-300/60 bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-amber-900 shadow-sm transition-all hover:-translate-y-px hover:bg-amber-50 dark:border-amber-700/40 dark:bg-surface-primary/80 dark:text-amber-100 dark:hover:bg-amber-900/30"
-        >
-          <MessageSquarePlus className="h-3 w-3" />
-          {t('clash.beta_cta', { defaultValue: 'Open an issue' })}
-          <ExternalLink className="h-2.5 w-2.5 opacity-70" />
-        </a>
-      </div>
-    </div>
+        actions={actions}
+      />
+    </>
   );
 }
 
