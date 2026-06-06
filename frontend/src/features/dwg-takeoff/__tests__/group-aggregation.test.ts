@@ -63,7 +63,7 @@ function text(id: string): DxfEntity {
 
 /* ── Tests ───────────────────────────────────────────────────────────── */
 
-describe('aggregateEntities — RFC 11 §4.5', () => {
+describe('aggregateEntities - RFC 11 §4.5', () => {
   it('returns the empty aggregate for an empty selection', () => {
     const agg = aggregateEntities([]);
     expect(agg.area).toBe(0);
@@ -137,7 +137,7 @@ describe('aggregateEntities — RFC 11 §4.5', () => {
   });
 });
 
-describe('aggregateEntities — effectiveScale (BUG-D-TKC-002 family)', () => {
+describe('aggregateEntities - effectiveScale (BUG-D-TKC-002 family)', () => {
   it('defaults to raw units when no scale is given', () => {
     const agg = aggregateEntities([rect('r1', 10, 5), line('l1', 7)]);
     expect(agg.area).toBeCloseTo(50, 3);

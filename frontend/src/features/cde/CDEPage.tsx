@@ -364,7 +364,7 @@ function CreateCDEModal({
                   aria-label={t('cde.field_suitability', { defaultValue: 'Suitability Code' })}
                 >
                   <option value="">
-                    {t('cde.suitability_none', { defaultValue: '— None —' })}
+                    {t('cde.suitability_none', { defaultValue: '- None -' })}
                   </option>
                   {availableCodes.map((entry) => (
                     <option key={entry.code} value={entry.code}>
@@ -1137,7 +1137,7 @@ export function CDEPage() {
         title: t('cde.created', { defaultValue: 'Container created' }),
         message: created?.container_code
           ? t('cde.created_msg', {
-              defaultValue: '{{code}} — {{title}}',
+              defaultValue: '{{code}} - {{title}}',
               code: created.container_code,
               title: created.title,
             })

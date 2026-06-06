@@ -542,7 +542,7 @@ function UploadPanel({
           type: 'info',
           title: t('bim.upload_started_title', { defaultValue: 'Upload started' }),
           message: t('bim.upload_background_msg', {
-            defaultValue: 'You can navigate to other pages — the upload will continue in the background.',
+            defaultValue: 'You can navigate to other pages - the upload will continue in the background.',
           }),
         });
         resetForm();
@@ -606,7 +606,7 @@ function UploadPanel({
             type: 'info',
             title: t('bim.upload_started_title', { defaultValue: 'Upload started' }),
             message: t('bim.upload_background_msg', {
-              defaultValue: 'You can navigate to other pages — the upload will continue in the background.',
+              defaultValue: 'You can navigate to other pages - the upload will continue in the background.',
             }),
           });
           resetForm();
@@ -623,7 +623,7 @@ function UploadPanel({
             type: 'info',
             title: t('bim.upload_started_title', { defaultValue: 'Upload started' }),
             message: t('bim.upload_background_msg', {
-              defaultValue: 'You can navigate to other pages — the upload will continue in the background.',
+              defaultValue: 'You can navigate to other pages - the upload will continue in the background.',
             }),
           });
           resetForm();
@@ -673,7 +673,7 @@ function UploadPanel({
         type: 'info',
         title: t('bim.upload_started_title', { defaultValue: 'Upload started' }),
         message: t('bim.upload_background_msg', {
-          defaultValue: 'You can navigate to other pages — the upload will continue in the background.',
+          defaultValue: 'You can navigate to other pages - the upload will continue in the background.',
         }),
       });
     },
@@ -739,7 +739,7 @@ function UploadPanel({
             {activeUploads.some((j) => j.status !== 'ready') && (
               <p className="text-[10px] text-content-tertiary text-center py-1">
                 {t('bim.upload_continue_working', {
-                  defaultValue: 'Processing in background — you can continue working or upload another file.',
+                  defaultValue: 'Processing in background - you can continue working or upload another file.',
                 })}
               </p>
             )}
@@ -843,7 +843,7 @@ function UploadPanel({
                     {t('bim.upload_generate_pdf_label', { defaultValue: 'Also export existing project sheets as PDF (background)' })}
                   </span>
                   <span className="block text-[10px] text-content-quaternary leading-relaxed mt-0.5">
-                    {t('bim.upload_generate_pdf_help', { defaultValue: 'Exports the sheets the designer prepared inside the model as a single PDF into Documents. Runs after the model is ready — upload is not delayed.' })}
+                    {t('bim.upload_generate_pdf_help', { defaultValue: 'Exports the sheets the designer prepared inside the model as a single PDF into Documents. Runs after the model is ready - upload is not delayed.' })}
                   </span>
                 </div>
               </label>
@@ -1041,7 +1041,7 @@ function NonReadyOverlay({ model, onUploadConverted, onDelete, onRetry, onInstal
     isOutdatedConverter
       ? t('bim.overlay_converter_outdated_clean', {
           defaultValue:
-            "The installed {{format}} converter is older than this build expects. Click 'Reinstall converter' below — we'll pull the latest version and retry your upload automatically.",
+            "The installed {{format}} converter is older than this build expects. Click 'Reinstall converter' below - we'll pull the latest version and retry your upload automatically.",
           format: fmt || 'BIM',
         })
       : null;
@@ -1058,7 +1058,7 @@ function NonReadyOverlay({ model, onUploadConverted, onDelete, onRetry, onInstal
     !isProcessing && (errorCode === 'ddc_not_found' || !!backendMessage)
       ? t('bim.overlay_converter_unavailable_calm', {
           defaultValue:
-            "We couldn't convert this {{format}} file. The CAD converter (DDC cad2data) isn't available in this environment — it's an optional, separate install. Add it, then retry the conversion.",
+            "We couldn't convert this {{format}} file. The CAD converter (DDC cad2data) isn't available in this environment - it's an optional, separate install. Add it, then retry the conversion.",
           format: fmt || 'CAD',
         })
       : null;
@@ -1153,7 +1153,7 @@ function NonReadyOverlay({ model, onUploadConverted, onDelete, onRetry, onInstal
             </div>
             <p className="text-[11px] text-content-tertiary mt-2.5">
               {t('bim.overlay_processing_hint', {
-                defaultValue: 'Backend is converting the file. This page will update automatically when ready — feel free to navigate away.',
+                defaultValue: 'Backend is converting the file. This page will update automatically when ready - feel free to navigate away.',
               })}
             </p>
           </div>
@@ -1261,7 +1261,7 @@ function LandingPage({ projectId, onUploadComplete: _onUploadComplete, breadcrum
         type: 'info',
         title: t('bim.upload_started_title', { defaultValue: 'Upload started' }),
         message: t('bim.upload_background_msg', {
-          defaultValue: 'You can navigate to other pages — the upload will continue in the background.',
+          defaultValue: 'You can navigate to other pages - the upload will continue in the background.',
         }),
       });
       resetForm();
@@ -1439,7 +1439,7 @@ function LandingPage({ projectId, onUploadComplete: _onUploadComplete, breadcrum
                               {t('bim.upload_generate_pdf_label', { defaultValue: 'Also export existing project sheets as PDF (background)' })}
                             </span>
                             <span className="block text-[10px] text-content-quaternary leading-relaxed mt-0.5">
-                              {t('bim.upload_generate_pdf_help', { defaultValue: 'Exports the sheets the designer prepared inside the model as a single PDF into Documents. Runs after the model is ready — upload is not delayed.' })}
+                              {t('bim.upload_generate_pdf_help', { defaultValue: 'Exports the sheets the designer prepared inside the model as a single PDF into Documents. Runs after the model is ready - upload is not delayed.' })}
                             </span>
                           </div>
                         </label>
@@ -3299,7 +3299,7 @@ export function BIMPage() {
                       Icon: Zap,
                       label: t('bim.quality_fast', { defaultValue: 'Fast' }),
                       tooltip: t('bim.quality_fast_hint', {
-                        defaultValue: 'Fastest — opaque walls, low pixel ratio',
+                        defaultValue: 'Fastest - opaque walls, low pixel ratio',
                       }),
                     },
                     {
@@ -3307,7 +3307,7 @@ export function BIMPage() {
                       Icon: Eye,
                       label: t('bim.quality_default', { defaultValue: 'Default' }),
                       tooltip: t('bim.quality_default_hint', {
-                        defaultValue: 'Translucent — full lighting',
+                        defaultValue: 'Translucent - full lighting',
                       }),
                     },
                     {
@@ -3315,7 +3315,7 @@ export function BIMPage() {
                       Icon: Palette,
                       label: t('bim.quality_visual', { defaultValue: 'Visual' }),
                       tooltip: t('bim.quality_visual_hint', {
-                        defaultValue: 'Cleanest — opaque + glass transparency only',
+                        defaultValue: 'Cleanest - opaque + glass transparency only',
                       }),
                     },
                     {

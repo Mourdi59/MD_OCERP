@@ -201,7 +201,7 @@ export default function ImageSourceSelector({ file, onPick }: Props) {
             </span>
             <div className="text-xs text-content-tertiary mt-0.5">
               {t('match_wizard.image_hint', {
-                defaultValue: 'PNG, JPG or WebP up to 10 MB — a site photo, sketch or CAD snapshot',
+                defaultValue: 'PNG, JPG or WebP up to 10 MB - a site photo, sketch or CAD snapshot',
               })}
             </div>
           </>
@@ -219,7 +219,7 @@ export default function ImageSourceSelector({ file, onPick }: Props) {
         <p className="text-[11px] leading-relaxed text-content-secondary">
           {t('match_wizard.image_ai_note', {
             defaultValue:
-              'AI reads the image and suggests visible elements with rough quantities. Every suggestion is low-confidence — you review and confirm each one. Needs an AI provider configured in Settings; without one the session opens empty.',
+              'AI reads the image and suggests visible elements with rough quantities. Every suggestion is low-confidence - you review and confirm each one. Needs an AI provider configured in Settings; without one the session opens empty.',
           })}
         </p>
       </div>

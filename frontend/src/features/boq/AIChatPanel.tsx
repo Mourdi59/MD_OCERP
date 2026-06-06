@@ -256,7 +256,7 @@ export function AIChatPanel({
             <p className="text-sm text-content-secondary max-w-[260px]">
               {t('boq.ai_welcome', {
                 defaultValue:
-                  'Ask me anything about construction, methods, materials or pricing — or ask me to generate BOQ positions, e.g. "Add MEP items for a 5-story office building".',
+                  'Ask me anything about construction, methods, materials or pricing - or ask me to generate BOQ positions, e.g. "Add MEP items for a 5-story office building".',
               })}
             </p>
           </div>

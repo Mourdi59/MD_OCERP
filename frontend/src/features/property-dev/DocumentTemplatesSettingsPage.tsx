@@ -357,7 +357,7 @@ export function DocumentTemplatesSettingsPage() {
             <p className="mt-0.5 text-xs text-content-secondary max-w-2xl">
               {t('property_dev.doc_templates.editor_cta_subtitle', {
                 defaultValue:
-                  "Write HTML or Markdown directly here — no upload required. Click variable chips to insert {placeholders}, and see a live preview alongside the source.",
+                  "Write HTML or Markdown directly here - no upload required. Click variable chips to insert {placeholders}, and see a live preview alongside the source.",
               })}
             </p>
           </div>
@@ -1395,7 +1395,7 @@ function TemplateEditorModal({
           '    <h1>{development.name}</h1>\n' +
           '    <p>Buyer: {buyer.full_name}</p>\n' +
           '    <p>Unit: {plot.plot_number} ({plot.area_m2} m²)</p>\n' +
-          '    <p>Contract: {contract.contract_number} — {contract.total_value} {contract.currency}</p>\n' +
+          '    <p>Contract: {contract.contract_number} - {contract.total_value} {contract.currency}</p>\n' +
           '  </body>\n' +
           '</html>',
       );
@@ -1702,7 +1702,7 @@ function TemplateEditorModal({
                 <p className="text-[11px] text-content-tertiary">
                   {t('property_dev.doc_templates.variables_empty', {
                     defaultValue:
-                      'No variable documentation is available — load this page from a tenant with property-dev enabled.',
+                      'No variable documentation is available - load this page from a tenant with property-dev enabled.',
                   })}
                 </p>
               ) : (
@@ -1757,7 +1757,7 @@ function TemplateEditorModal({
               <div className="flex items-center justify-between text-[10px] font-medium uppercase tracking-wide text-content-tertiary mb-1">
                 <span>
                   {t('property_dev.doc_templates.editor_preview_pane', {
-                    defaultValue: 'Live preview (advisory — final render is server-side)',
+                    defaultValue: 'Live preview (advisory - final render is server-side)',
                   })}
                 </span>
               </div>
@@ -1805,7 +1805,7 @@ function VariablesModal({
           <p className="text-xs text-content-tertiary">
             {t('property_dev.doc_templates.variables_empty', {
               defaultValue:
-                'No variable documentation is available — load this page from a tenant with property-dev enabled.',
+                'No variable documentation is available - load this page from a tenant with property-dev enabled.',
             })}
           </p>
         ) : (
@@ -1870,7 +1870,7 @@ function LocaleStatusList({
                   })
                 : t('property_dev.doc_templates.locale_source_fallback', {
                     defaultValue:
-                      'No translation found — PDF falls back to English. Click to add.',
+                      'No translation found - PDF falls back to English. Click to add.',
                   });
           const label = `${s.native_name} (${s.english_name})`;
           return (
@@ -1997,7 +1997,7 @@ function LocaleEditorModal({
         type: 'success',
         title: t('common.saved', { defaultValue: 'Saved' }),
         message: t('property_dev.doc_templates.locale_saved_msg', {
-          defaultValue: 'Tenant override stored — PDFs will use it on next render.',
+          defaultValue: 'Tenant override stored - PDFs will use it on next render.',
         }),
       });
       onSaved();

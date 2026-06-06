@@ -133,7 +133,7 @@ describe('SmartViewShareModal', () => {
     });
   });
 
-  it('Revoke clears the token (with explicit confirm) — back to State A', async () => {
+  it('Revoke clears the token (with explicit confirm) - back to State A', async () => {
     const { onChanged } = renderModal('tok-existing');
     fireEvent.click(screen.getByTestId('smart-view-share-revoke'));
     expect(

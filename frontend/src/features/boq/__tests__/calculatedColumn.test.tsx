@@ -58,7 +58,7 @@ function makeParams(row: Position): ValueGetterParams {
 
 /* ── Tests ──────────────────────────────────────────────────────── */
 
-describe('getCustomColumnDefs — calculated columns', () => {
+describe('getCustomColumnDefs - calculated columns', () => {
   it('renders a row-local formula with default 2 decimals', () => {
     const col: CustomColumnDef = {
       name: 'with_vat',
@@ -226,7 +226,7 @@ describe('getCustomColumnDefs — calculated columns', () => {
   });
 });
 
-describe('getCustomColumnDefs — backwards compatibility', () => {
+describe('getCustomColumnDefs - backwards compatibility', () => {
   it('still produces editable text columns', () => {
     const col: CustomColumnDef = { name: 'note', display_name: 'Note', column_type: 'text' };
     const defs = getCustomColumnDefs([col]);

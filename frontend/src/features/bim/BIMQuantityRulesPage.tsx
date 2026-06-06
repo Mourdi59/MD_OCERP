@@ -176,10 +176,10 @@ const QUANTITY_RULES_PRESETS: QuantityRulePreset[] = [
   {
     id: 'walls-area',
     icon: LayoutPanelTop,
-    title: 'Walls — area',
+    title: 'Walls - area',
     subtitle: 'Auto-create one BOQ position per wall type, sized by surface area (m²).',
     patch: {
-      name: 'Walls — area',
+      name: 'Walls - area',
       element_type_filter: 'Wall*, IfcWall*',
       quantity_source: 'area_m2',
       unit: 'm²',
@@ -189,10 +189,10 @@ const QUANTITY_RULES_PRESETS: QuantityRulePreset[] = [
   {
     id: 'slabs-volume',
     icon: Layers3,
-    title: 'Slabs — concrete volume',
+    title: 'Slabs - concrete volume',
     subtitle: 'Roll up floor / slab elements into a concrete pour position (m³).',
     patch: {
-      name: 'Slabs — concrete volume',
+      name: 'Slabs - concrete volume',
       element_type_filter: 'Floor*, Slab*, IfcSlab*',
       quantity_source: 'volume_m3',
       unit: 'm³',
@@ -202,10 +202,10 @@ const QUANTITY_RULES_PRESETS: QuantityRulePreset[] = [
   {
     id: 'doors-count',
     icon: DoorOpen,
-    title: 'Doors — count',
+    title: 'Doors - count',
     subtitle: 'Count every door element and create one supply-and-install position.',
     patch: {
-      name: 'Doors — count',
+      name: 'Doors - count',
       element_type_filter: 'Door*, IfcDoor*',
       quantity_source: 'count',
       unit: 'pcs',
@@ -215,10 +215,10 @@ const QUANTITY_RULES_PRESETS: QuantityRulePreset[] = [
   {
     id: 'windows-count',
     icon: AppWindow,
-    title: 'Windows — count',
+    title: 'Windows - count',
     subtitle: 'Count windows and create a glazing position priced per piece.',
     patch: {
-      name: 'Windows — count',
+      name: 'Windows - count',
       element_type_filter: 'Window*, IfcWindow*',
       quantity_source: 'count',
       unit: 'pcs',
@@ -461,7 +461,7 @@ function RuleEditorModal({
                 value={form.name}
                 onChange={(e) => updateField('name', e.target.value)}
                 placeholder={t('bim_rules.field_name_placeholder', {
-                  defaultValue: 'e.g. Exterior walls — concrete',
+                  defaultValue: 'e.g. Exterior walls - concrete',
                 })}
                 className="w-full rounded-lg border border-border-light bg-surface-primary px-3 py-2 text-sm text-content-primary focus:border-oe-blue focus:outline-none focus:ring-1 focus:ring-oe-blue"
               />
@@ -1111,10 +1111,10 @@ function ConstraintValueInput({
       <p className="rounded-md border border-border-light bg-surface-tertiary px-2 py-1.5 text-[10px] text-content-tertiary">
         {constraintType === 'exists'
           ? t('bim_rules.req_exists_hint', {
-              defaultValue: 'No value needed — passes when the property is present.',
+              defaultValue: 'No value needed - passes when the property is present.',
             })
           : t('bim_rules.req_not_exists_hint', {
-              defaultValue: 'No value needed — passes when the property is missing.',
+              defaultValue: 'No value needed - passes when the property is missing.',
             })}
       </p>
     );

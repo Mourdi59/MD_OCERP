@@ -451,7 +451,7 @@ function DashboardsGrid({
           <p className="mt-1.5 text-sm text-content-secondary">
             {t('bi.starter_desc', {
               defaultValue:
-                'One click installs 5 role-based dashboards (CEO · CFO · PM · Site · Safety), 14 system KPIs with 12-week history, 3 reports, 2 schedules and 4 alert rules. Idempotent — safe to re-run.',
+                'One click installs 5 role-based dashboards (CEO · CFO · PM · Site · Safety), 14 system KPIs with 12-week history, 3 reports, 2 schedules and 4 alert rules. Idempotent - safe to re-run.',
             })}
           </p>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
@@ -543,7 +543,7 @@ function KpiLibrary({ rows }: { rows: KpiDefinition[] }) {
           title={t('bi.empty_kpis', { defaultValue: 'No KPIs registered' })}
           description={t('bi.empty_kpis_desc', {
             defaultValue:
-              'KPIs (CPI, SPI, cost variance, schedule health…) are provisioned per role. None are available for your account yet — an administrator can enable the relevant KPI pack.',
+              'KPIs (CPI, SPI, cost variance, schedule health…) are provisioned per role. None are available for your account yet - an administrator can enable the relevant KPI pack.',
           })}
         />
       </Card>
@@ -759,7 +759,7 @@ function ReportList({
         title: t('bi.report_run_ok', { defaultValue: 'Report generated' }),
         message: runId
           ? t('bi.report_run_ok_download', {
-              defaultValue: '{{count}} rows — use Download to open the file.',
+              defaultValue: '{{count}} rows - use Download to open the file.',
               count: data.row_count,
             })
           : `${data.row_count} ${t('bi.rows', { defaultValue: 'rows' })}`,
@@ -2190,7 +2190,7 @@ function CreateModal({
   const subtitleByKind: Record<typeof kind, string> = {
     dashboards: t('bi.new_dashboard_subtitle', {
       defaultValue:
-        'Start with the basics — you can add KPI cards, charts and gauges after the dashboard is created.',
+        'Start with the basics - you can add KPI cards, charts and gauges after the dashboard is created.',
     }),
     reports: t('bi.new_report_subtitle', {
       defaultValue:
@@ -2269,10 +2269,10 @@ function CreateModal({
               onChange={(e) => setDashForm({ ...dashForm, scope: e.target.value as DashboardScope })}
               className={inputCls}
             >
-              <option value="personal">{t('bi.scope_personal', { defaultValue: 'Personal — only me' })}</option>
-              <option value="role">{t('bi.scope_role', { defaultValue: 'Role — my team' })}</option>
-              <option value="project">{t('bi.scope_project', { defaultValue: 'Project — project members' })}</option>
-              <option value="global">{t('bi.scope_global', { defaultValue: 'Global — entire company' })}</option>
+              <option value="personal">{t('bi.scope_personal', { defaultValue: 'Personal - only me' })}</option>
+              <option value="role">{t('bi.scope_role', { defaultValue: 'Role - my team' })}</option>
+              <option value="project">{t('bi.scope_project', { defaultValue: 'Project - project members' })}</option>
+              <option value="global">{t('bi.scope_global', { defaultValue: 'Global - entire company' })}</option>
             </select>
           </WideModalField>
           <WideModalField
@@ -2448,9 +2448,9 @@ function CreateModal({
               }
               className={inputCls}
             >
-              <option value="info">{t('bi.sev_info_v2', { defaultValue: 'Info — informational' })}</option>
-              <option value="warning">{t('bi.sev_warning_v2', { defaultValue: 'Warning — needs attention' })}</option>
-              <option value="critical">{t('bi.sev_critical_v2', { defaultValue: 'Critical — urgent' })}</option>
+              <option value="info">{t('bi.sev_info_v2', { defaultValue: 'Info - informational' })}</option>
+              <option value="warning">{t('bi.sev_warning_v2', { defaultValue: 'Warning - needs attention' })}</option>
+              <option value="critical">{t('bi.sev_critical_v2', { defaultValue: 'Critical - urgent' })}</option>
             </select>
           </WideModalField>
         </WideModalSection>

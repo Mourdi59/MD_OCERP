@@ -69,7 +69,7 @@ export function PipelinePreview() {
           <p className="text-[11px] text-content-tertiary">
             {t(
               'match_elements.pipeline.subtitle',
-              'Seven steps from CAD file to priced BoQ — every step is visible and tunable',
+              'Seven steps from CAD file to priced BoQ - every step is visible and tunable',
             )}
           </p>
         </div>
@@ -92,7 +92,7 @@ export function PipelinePreview() {
       <p className="px-3 py-2 text-[11px] text-content-tertiary">
         {t('match_elements.pipeline.preview_hint', {
           defaultValue:
-            'Pick a project and finish the quick setup below — these seven stages then run here, each visible and tunable.',
+            'Pick a project and finish the quick setup below - these seven stages then run here, each visible and tunable.',
         })}
       </p>
     </section>
@@ -188,7 +188,7 @@ export function MatchPipeline({ sessionId }: Props) {
         if (res.status === 'error') {
           setPipelineError(
             t('match_elements.pipeline.run_all_stopped', {
-              defaultValue: 'Stopped at “{{stage}}” — fix that step, then run again.',
+              defaultValue: 'Stopped at “{{stage}}” - fix that step, then run again.',
               stage: titleOf(name),
             }),
           );
@@ -238,7 +238,7 @@ export function MatchPipeline({ sessionId }: Props) {
             <p className="text-[11px] text-content-tertiary">
               {t(
                 'match_elements.pipeline.subtitle',
-                'Seven steps from CAD file to priced BoQ — every step is visible and tunable',
+                'Seven steps from CAD file to priced BoQ - every step is visible and tunable',
               )}
               {stages.length > 0 && (
                 <span className="ml-1.5 font-semibold text-content-secondary">
@@ -257,7 +257,7 @@ export function MatchPipeline({ sessionId }: Props) {
               busy
                 ? t(
                     'match_elements.pipeline.busy_hint',
-                    'A stage is running — wait for it to finish before starting another.',
+                    'A stage is running - wait for it to finish before starting another.',
                   )
                 : undefined
             }

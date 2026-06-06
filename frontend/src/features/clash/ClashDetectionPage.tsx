@@ -1975,7 +1975,7 @@ export function ClashDetectionPage() {
                 >
                   <option value="">
                     {t('clash.no_profile', {
-                      defaultValue: '— No profile (custom) —',
+                      defaultValue: '- No profile (custom) -',
                     })}
                   </option>
                   {profiles.map((p) => (
@@ -2038,7 +2038,7 @@ export function ClashDetectionPage() {
                   <p className="text-2xs leading-snug text-content-tertiary">
                     {t('clash.sets_hint', {
                       defaultValue:
-                        'Only pairs where one element is in Set A and the other in Set B are tested — e.g. all Walls (A) against all Pipes (B).',
+                        'Only pairs where one element is in Set A and the other in Set B are tested - e.g. all Walls (A) against all Pipes (B).',
                     })}
                   </p>
 
@@ -2156,13 +2156,13 @@ export function ClashDetectionPage() {
                   </option>
                   <option value="hard">
                     {t('clash.ct_hard', {
-                      defaultValue: 'Hard only — true interpenetration',
+                      defaultValue: 'Hard only - true interpenetration',
                     })}
                   </option>
                   <option value="clearance">
                     {t('clash.ct_clearance', {
                       defaultValue:
-                        'Clearance only — proximity, no overlap',
+                        'Clearance only - proximity, no overlap',
                     })}
                   </option>
                 </select>
@@ -2301,7 +2301,7 @@ export function ClashDetectionPage() {
                     <span className="mt-0.5 block text-2xs leading-snug text-content-tertiary">
                       {t('clash.ignore_same_model_hint', {
                         defaultValue:
-                          'Only report pairs whose two elements come from different BIM models — strips the intra-model self-clash noise from a federated coordination run.',
+                          'Only report pairs whose two elements come from different BIM models - strips the intra-model self-clash noise from a federated coordination run.',
                       })}
                     </span>
                   </span>
@@ -2327,7 +2327,7 @@ export function ClashDetectionPage() {
                     value={runName}
                     onChange={(e) => setRunName(e.target.value)}
                     placeholder={t('clash.run_name_ph', {
-                      defaultValue: 'e.g. Struct vs MEP — L3 coordination',
+                      defaultValue: 'e.g. Struct vs MEP - L3 coordination',
                     })}
                     className="mt-1 w-full rounded-md border border-border bg-surface-primary px-2 py-1 text-sm"
                   />
@@ -2434,7 +2434,7 @@ export function ClashDetectionPage() {
                       value={saveProfileName}
                       onChange={(e) => setSaveProfileName(e.target.value)}
                       placeholder={t('clash.profile_name_ph', {
-                        defaultValue: 'e.g. MEP × Structural — tight',
+                        defaultValue: 'e.g. MEP × Structural - tight',
                       })}
                       className="mt-1 w-full rounded-md border border-border bg-surface-primary px-2 py-1.5 text-sm"
                     />
@@ -2599,7 +2599,7 @@ export function ClashDetectionPage() {
                   <p className="text-xs text-content-tertiary">
                     {t('clash.running_desc', {
                       defaultValue:
-                        'Testing element geometry for interferences. This can take up to ~30s on large models — please keep this tab open.',
+                        'Testing element geometry for interferences. This can take up to ~30s on large models - please keep this tab open.',
                     })}
                   </p>
                 </div>
@@ -2818,7 +2818,7 @@ export function ClashDetectionPage() {
                   <h2 className="text-sm font-semibold text-content-primary">
                     {t('clash.matrix_title', {
                       defaultValue:
-                        'Clash matrix — discipline × discipline',
+                        'Clash matrix - discipline × discipline',
                     })}
                   </h2>
                   {fPair && (
@@ -2838,7 +2838,7 @@ export function ClashDetectionPage() {
                   <p className="mt-3 text-sm text-content-tertiary">
                     {t('clash.no_clashes', {
                       defaultValue:
-                        'No clashes — the models are clean.',
+                        'No clashes - the models are clean.',
                     })}
                   </p>
                 ) : (
@@ -3344,7 +3344,7 @@ export function ClashDetectionPage() {
                         : '') ||
                       t('clash.results_error_desc', {
                         defaultValue:
-                          'The clash results could not be loaded. This does not mean the models are clean — please retry.',
+                          'The clash results could not be loaded. This does not mean the models are clean - please retry.',
                       })
                     }
                     action={
@@ -3369,7 +3369,7 @@ export function ClashDetectionPage() {
                     })}
                     description={t('clash.no_clashes', {
                       defaultValue:
-                        'No clashes — the models are clean.',
+                        'No clashes - the models are clean.',
                     })}
                   />
                 ) : sorted.length === 0 ? (
@@ -3408,7 +3408,7 @@ export function ClashDetectionPage() {
                         <span>
                           {t('clash.capped_notice', {
                             defaultValue:
-                              'Showing the first {{loaded}} of {{total}} clashes — refine the filters to narrow the review set.',
+                              'Showing the first {{loaded}} of {{total}} clashes - refine the filters to narrow the review set.',
                             loaded: allResults.length,
                             total: loadedTotal,
                           })}
@@ -4064,7 +4064,7 @@ function GroupMatrix({
     return (
       <p className="text-sm text-content-tertiary">
         {t('clash.no_clashes', {
-          defaultValue: 'No clashes — the models are clean.',
+          defaultValue: 'No clashes - the models are clean.',
         })}
       </p>
     );
@@ -4219,7 +4219,7 @@ function ClashGroupingPanel({
         ) : !data ? (
           <p className="text-sm text-content-tertiary">
             {t('clash.no_clashes', {
-              defaultValue: 'No clashes — the models are clean.',
+              defaultValue: 'No clashes - the models are clean.',
             })}
           </p>
         ) : dimension === 'discipline_pair' ? (
@@ -4231,7 +4231,7 @@ function ClashGroupingPanel({
             <p className="text-sm text-content-tertiary">
               {t('clash.no_level_data', {
                 defaultValue:
-                  'No level data — the model has no resolved storeys.',
+                  'No level data - the model has no resolved storeys.',
               })}
             </p>
           ) : (
@@ -4273,7 +4273,7 @@ function ClashGroupingPanel({
           <p className="text-sm text-content-tertiary">
             {t('clash.no_level_data', {
               defaultValue:
-                'No level data — the model has no resolved storeys.',
+                'No level data - the model has no resolved storeys.',
             })}
           </p>
         ) : (
@@ -4520,7 +4520,7 @@ function StatusWorkflow({
                 s: t(`clash.status.${next}`, { defaultValue: next }),
               })
             : t('clash.status_terminal', {
-                defaultValue: 'At terminal status — pick from menu',
+                defaultValue: 'At terminal status - pick from menu',
               })
         }
         className={clsx(
@@ -4590,7 +4590,7 @@ function BulkActionsBar({
     <div className="flex flex-wrap items-center gap-2 border-t border-oe-blue/30 bg-oe-blue/[0.05] p-3 text-xs">
       <span className="font-semibold text-oe-blue">
         {t('clash.bulk_selected', {
-          defaultValue: '{{n}} selected — apply to all:',
+          defaultValue: '{{n}} selected - apply to all:',
           n: count,
         })}
       </span>
@@ -5054,7 +5054,7 @@ function SelectionSetPicker({
         {!loading && groups.length === 0 && (
           <p className="px-1 py-2 text-2xs text-content-tertiary">
             {t('clash.set_empty', {
-              defaultValue: 'No elements — select a parsed model first.',
+              defaultValue: 'No elements - select a parsed model first.',
             })}
           </p>
         )}
@@ -5161,7 +5161,7 @@ function ModelCardPicker({
         <h2 className="flex items-center gap-2 text-sm font-semibold text-content-primary">
           <Boxes className="h-4 w-4 text-oe-blue" />
           {t('clash.models_title', {
-            defaultValue: 'CAD-BIM models — pick what to coordinate',
+            defaultValue: 'CAD-BIM models - pick what to coordinate',
           })}
           {selectable.length > 0 && (
             <span className="rounded-full bg-surface-secondary px-1.5 text-2xs font-medium text-content-secondary">
@@ -5632,7 +5632,7 @@ function ClashDetailPanel({
                 <p className="text-2xs text-content-tertiary">
                   {t('clash.preview_unavailable', {
                     defaultValue:
-                      'Preview unavailable — open the full viewer.',
+                      'Preview unavailable - open the full viewer.',
                   })}
                 </p>
               </div>
@@ -6287,7 +6287,7 @@ function CompareSection({
               bucketKey="new"
               tone="new"
               title={t('clash.cmp_new_title', {
-                defaultValue: 'New clashes — need attention',
+                defaultValue: 'New clashes - need attention',
               })}
               count={data.new.length}
               collapsed={collapsed.has('new')}

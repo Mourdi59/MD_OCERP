@@ -127,17 +127,17 @@ describe('evaluateFormula', () => {
 /* ── getCurrencySymbol ───────────────────────────────────────────────────── */
 
 describe('getCurrencySymbol', () => {
-  it('returns empty string when no argument provided — never a country-specific default', () => {
+  it('returns empty string when no argument provided - never a country-specific default', () => {
     expect(getCurrencySymbol()).toBe('');
     expect(getCurrencySymbol(undefined)).toBe('');
   });
 
-  it('extracts symbol from parenthesised format: "EUR (€) — Euro" → "€"', () => {
-    expect(getCurrencySymbol('EUR (€) — Euro')).toBe('€');
+  it('extracts symbol from parenthesised format: "EUR (€) - Euro" → "€"', () => {
+    expect(getCurrencySymbol('EUR (€) - Euro')).toBe('€');
   });
 
-  it('extracts multi-char symbol: "CAD (C$) — Canadian Dollar" → "C$"', () => {
-    expect(getCurrencySymbol('CAD (C$) — Canadian Dollar')).toBe('C$');
+  it('extracts multi-char symbol: "CAD (C$) - Canadian Dollar" → "C$"', () => {
+    expect(getCurrencySymbol('CAD (C$) - Canadian Dollar')).toBe('C$');
   });
 
   it('looks up plain 3-letter code: "EUR" → "€"', () => {
@@ -164,7 +164,7 @@ describe('getCurrencySymbol', () => {
 /* ── getVatRate ──────────────────────────────────────────────────────────── */
 
 describe('getVatRate (suggestion lookup)', () => {
-  it('returns 0 when no region provided — never country-specific default', () => {
+  it('returns 0 when no region provided - never country-specific default', () => {
     expect(getVatRate()).toBe(0);
     expect(getVatRate(undefined)).toBe(0);
   });
@@ -193,7 +193,7 @@ describe('getVatRate (suggestion lookup)', () => {
 /* ── getLocaleForRegion ──────────────────────────────────────────────────── */
 
 describe('getLocaleForRegion', () => {
-  it('falls back to user UI locale when region is missing — never a country default', () => {
+  it('falls back to user UI locale when region is missing - never a country default', () => {
     // i18next lang in test env is 'en' → mapped to 'en-US' by getIntlLocale.
     expect(getLocaleForRegion()).toBe('en-US');
     expect(getLocaleForRegion(undefined)).toBe('en-US');
@@ -311,7 +311,7 @@ describe('computeQualityScore', () => {
 
 /* ── groupPositionsIntoSections (supplementary edge cases) ─────────────── */
 
-describe('groupPositionsIntoSections — edge cases', () => {
+describe('groupPositionsIntoSections - edge cases', () => {
   it('puts positions with an unresolvable parent_id into ungrouped', () => {
     const orphan = makePosition({ id: 'p1', parent_id: 'non-existent-section', total: 300 });
     const result = groupPositionsIntoSections([orphan]);

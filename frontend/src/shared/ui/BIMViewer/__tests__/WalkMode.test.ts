@@ -231,7 +231,7 @@ describe('WalkMode', () => {
   });
 });
 
-describe('WalkMode — drag-to-look (default)', () => {
+describe('WalkMode - drag-to-look (default)', () => {
   let camera: THREE.PerspectiveCamera;
   let renderer: THREE.WebGLRenderer;
   let dom: HTMLElement;

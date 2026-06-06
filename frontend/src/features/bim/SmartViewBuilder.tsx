@@ -847,7 +847,7 @@ function GroupRenderer({
         <span className="text-[10px] text-content-tertiary">
           {group.rules.length === 0
             ? t('bim.smartview.empty_group', {
-                defaultValue: 'No rules yet — add one →',
+                defaultValue: 'No rules yet - add one →',
               })
             : t('bim.smartview.rule_count', {
                 defaultValue: '{{n}} rules',

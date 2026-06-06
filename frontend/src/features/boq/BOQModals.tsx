@@ -495,7 +495,7 @@ export function CostDatabaseSearchModal({
       addToast({
         type: 'info',
         title: t('boq.cursor_error_title', {
-          defaultValue: 'Loading older results failed — refreshing',
+          defaultValue: 'Loading older results failed - refreshing',
         }),
       });
       // Drop pages so the next fetch starts at cursor=null.
@@ -1849,7 +1849,7 @@ export function CostDatabaseSearchModal({
                     <p className="mx-auto mb-4 max-w-sm text-xs text-content-tertiary">
                       {t('boq.no_databases_help', {
                         defaultValue:
-                          "There's no cost-rate database on this server, so search has nothing to show. Import a free CWICR pack — 48 regional databases are one click away.",
+                          "There's no cost-rate database on this server, so search has nothing to show. Import a free CWICR pack - 48 regional databases are one click away.",
                       })}
                     </p>
                     <Button
@@ -2031,11 +2031,11 @@ export function CostDatabaseSearchModal({
                                     title={
                                       lowRate
                                         ? t('boq.warn_zero_rate', {
-                                            defaultValue: 'No rate — review before commit',
+                                            defaultValue: 'No rate - review before commit',
                                           })
                                         : t('boq.warn_lump_sum', {
                                             defaultValue:
-                                              'Lump sum — quantity × rate may not match expected total',
+                                              'Lump sum - quantity × rate may not match expected total',
                                           })
                                     }
                                   >

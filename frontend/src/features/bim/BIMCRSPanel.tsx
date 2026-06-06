@@ -146,7 +146,7 @@ export function BIMCRSPanel({
         <div className="text-[11px] leading-snug">
           {t('bim.crs.unknown', {
             defaultValue:
-              'CRS could not be auto-detected — model uses local coordinates.',
+              'CRS could not be auto-detected - model uses local coordinates.',
           })}
         </div>
       )}

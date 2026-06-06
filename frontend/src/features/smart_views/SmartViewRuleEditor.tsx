@@ -403,7 +403,7 @@ export function SmartViewRuleEditor({
           {rules.length === 0 && (
             <div className="rounded-lg border border-dashed border-border-light bg-surface-secondary/50 px-4 py-6 text-center text-sm text-content-tertiary">
               {t('smartViews.no_rules_yet', {
-                defaultValue: 'No rules yet — add one below.',
+                defaultValue: 'No rules yet - add one below.',
               })}
             </div>
           )}

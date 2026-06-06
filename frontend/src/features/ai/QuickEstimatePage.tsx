@@ -221,7 +221,7 @@ function LoadingState({ isCad, fileName, fileSizeMB }: { isCad?: boolean; fileNa
     : t('ai.analyzing', { defaultValue: 'AI is analyzing your input...' });
   const subtitle = isCad && estimatedTotal > 0
     ? remaining > 0
-      ? t('ai.cad_progress_hint', { defaultValue: '~{{remaining}}s remaining — extracting elements and detecting columns', remaining })
+      ? t('ai.cad_progress_hint', { defaultValue: '~{{remaining}}s remaining - extracting elements and detecting columns', remaining })
       : t('ai.cad_finalizing', { defaultValue: 'Finalizing extraction...' })
     : isCad
       ? t('ai.cad_processing_hint', { defaultValue: 'Extracting elements, detecting columns. This may take 30-60 seconds for large files.' })
@@ -1486,7 +1486,7 @@ function CadConverterSection({
         <Info size={14} className="shrink-0 mt-0.5 text-oe-blue-text" />
         <p className="text-xs text-oe-blue-text leading-relaxed">
           {t('ai.cad_module_info_extract', {
-            defaultValue: 'CAD/BIM files are converted using DDC converters and quantities are extracted directly — no AI API key required.',
+            defaultValue: 'CAD/BIM files are converted using DDC converters and quantities are extracted directly - no AI API key required.',
           })}
         </p>
       </div>
@@ -2342,7 +2342,7 @@ export function QuickEstimatePage() {
         const parts = Object.entries(g.key_parts || {}).map(([col, val]) =>
           col === 'category' ? (val || '').replace(/^OST_/, '') : val || '',
         );
-        const description = parts.filter(Boolean).join(' — ');
+        const description = parts.filter(Boolean).join(' - ');
 
         // Find primary quantity (volume > area > length > count)
         let unit = 'pcs';
@@ -2689,13 +2689,13 @@ export function QuickEstimatePage() {
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-content-primary mb-1">
                 {t('ai.estimate_intro_title', {
-                  defaultValue: 'A first-pass estimate in seconds — then you refine it',
+                  defaultValue: 'A first-pass estimate in seconds - then you refine it',
                 })}
               </p>
               <p className="text-xs text-content-secondary leading-relaxed">
                 {t('ai.estimate_intro_desc', {
                   defaultValue:
-                    'Pick a source below. The AI returns a structured BOQ with quantities and indicative unit rates. Match those rates against the real CWICR cost database, save it as a project BOQ, then validate it. Treat AI numbers as a starting point — always review before pricing a tender.',
+                    'Pick a source below. The AI returns a structured BOQ with quantities and indicative unit rates. Match those rates against the real CWICR cost database, save it as a project BOQ, then validate it. Treat AI numbers as a starting point - always review before pricing a tender.',
                 })}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-1.5 text-2xs text-content-tertiary">
@@ -3152,7 +3152,7 @@ export function QuickEstimatePage() {
                         <p className="text-sm font-semibold text-content-primary">
                           {(convertersData.installed_count ?? 0) > 0
                             ? t('ai.converters_ready', { defaultValue: `${convertersData.installed_count} of ${convertersData.total_count} converters installed`, installed: convertersData.installed_count, total: convertersData.total_count })
-                            : t('ai.converters_none', { defaultValue: 'No converters installed — install below to enable CAD/BIM import' })}
+                            : t('ai.converters_none', { defaultValue: 'No converters installed - install below to enable CAD/BIM import' })}
                         </p>
                         <p className="text-xs text-content-tertiary mt-0.5">
                           {(convertersData.converters ?? []).filter((c: ConverterFull) => c.installed).map((c: ConverterFull) => c.name).join(', ') || t('ai.converters_hint', { defaultValue: 'Scroll down to install DDC converters for RVT, IFC, DWG, DGN' })}
@@ -3168,7 +3168,7 @@ export function QuickEstimatePage() {
                     onFileSelect={handleFileSelect}
                     disabled={isPending}
                     hint={t('ai.cad_extract_hint', {
-                      defaultValue: 'File will be converted and quantities extracted automatically — no AI key needed.',
+                      defaultValue: 'File will be converted and quantities extracted automatically - no AI key needed.',
                     })}
                   />
                 ) : (
@@ -3236,7 +3236,7 @@ export function QuickEstimatePage() {
                         <p>
                           {t('ai.cad_module_info_extract', {
                             defaultValue:
-                              'CAD/BIM files are converted using DDC converters and quantities are extracted directly — no AI API key required.',
+                              'CAD/BIM files are converted using DDC converters and quantities are extracted directly - no AI API key required.',
                           })}
                         </p>
                         <Link
@@ -3543,7 +3543,7 @@ export function QuickEstimatePage() {
                         )}>
                         {col}
                         {conf != null && (
-                          <span className={clsx('text-2xs', isSelected ? 'opacity-70' : 'text-content-quaternary')} title={t('ai.confidence_tooltip', { defaultValue: 'Column detection confidence — higher % = more reliable data' })}>
+                          <span className={clsx('text-2xs', isSelected ? 'opacity-70' : 'text-content-quaternary')} title={t('ai.confidence_tooltip', { defaultValue: 'Column detection confidence - higher % = more reliable data' })}>
                             {Math.round(conf * 100)}%
                           </span>
                         )}
@@ -3566,7 +3566,7 @@ export function QuickEstimatePage() {
                         )}>
                         {col}{unit ? ` (${unit})` : ''}
                         {conf != null && (
-                          <span className={clsx('text-2xs', isSelected ? 'opacity-70' : 'text-content-quaternary')} title={t('ai.confidence_tooltip', { defaultValue: 'Column detection confidence — higher % = more reliable data' })}>
+                          <span className={clsx('text-2xs', isSelected ? 'opacity-70' : 'text-content-quaternary')} title={t('ai.confidence_tooltip', { defaultValue: 'Column detection confidence - higher % = more reliable data' })}>
                             {Math.round(conf * 100)}%
                           </span>
                         )}
@@ -4337,7 +4337,7 @@ export function QuickEstimatePage() {
                 <span className="text-oe-blue font-bold shrink-0">2.</span>
                 {t('ai.estimate_after_2', {
                   defaultValue:
-                    'Save as a project BOQ — then review every quantity and rate in the BOQ editor before relying on the total.',
+                    'Save as a project BOQ - then review every quantity and rate in the BOQ editor before relying on the total.',
                 })}
               </li>
               <li className="flex gap-2">

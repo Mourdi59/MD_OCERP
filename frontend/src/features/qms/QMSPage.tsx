@@ -1179,7 +1179,7 @@ function NCRDrawer({
                   value={responsible}
                   onChange={(e) => setResponsible(e.target.value)}
                   placeholder={t('qms.responsible_user', {
-                    defaultValue: 'Responsible (name or user ID — optional)',
+                    defaultValue: 'Responsible (name or user ID - optional)',
                   })}
                   className={inputCls}
                 />

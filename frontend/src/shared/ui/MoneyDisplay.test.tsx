@@ -39,7 +39,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('MoneyDisplay — em-dash placeholders', () => {
+describe('MoneyDisplay - em-dash placeholders', () => {
   it('renders em-dash when amount is null', () => {
     const { container } = render(<MoneyDisplay amount={null} currency="USD" />);
     expect(container.textContent).toBe('—');
@@ -84,7 +84,7 @@ describe('MoneyDisplay — em-dash placeholders', () => {
   });
 });
 
-describe('MoneyDisplay — valid currency formatting', () => {
+describe('MoneyDisplay - valid currency formatting', () => {
   it('formats a positive integer amount with USD', () => {
     render(<MoneyDisplay amount={1234.56} currency="USD" />);
     // Intl renders "$1,234.56" — any whitespace variants from a future
@@ -162,7 +162,7 @@ describe('MoneyDisplay — valid currency formatting', () => {
   });
 });
 
-describe('MoneyDisplay — dev console warnings (one-shot)', () => {
+describe('MoneyDisplay - dev console warnings (one-shot)', () => {
   it('emits exactly one console.warn when currency is missing, even on re-render', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const { rerender } = render(<MoneyDisplay amount={100} />);

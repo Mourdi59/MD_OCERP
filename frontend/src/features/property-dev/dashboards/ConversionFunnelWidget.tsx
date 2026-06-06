@@ -84,7 +84,7 @@ export function ConversionFunnelWidget({
         })}
         description={t('propdev.dashboards.cf.empty_desc', {
           defaultValue:
-            'The funnel widens at the top — capture leads to see it fill in.',
+            'The funnel widens at the top - capture leads to see it fill in.',
         })}
       />
     );

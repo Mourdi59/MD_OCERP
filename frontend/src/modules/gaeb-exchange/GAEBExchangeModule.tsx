@@ -630,8 +630,8 @@ export default function GAEBExchangeModule() {
                   onChange={(e) => setExportFormat(e.target.value as GAEBExportFormat)}
                   className="w-full rounded-lg border border-border bg-surface-secondary px-3 py-2 text-sm"
                 >
-                  <option value="X83">X83 — {t('gaeb.x83_desc', { defaultValue: 'Bid Submission (with prices)' })}</option>
-                  <option value="X81">X81 — {t('gaeb.x81_desc', { defaultValue: 'Tender Specification (no prices)' })}</option>
+                  <option value="X83">X83 - {t('gaeb.x83_desc', { defaultValue: 'Bid Submission (with prices)' })}</option>
+                  <option value="X81">X81 - {t('gaeb.x81_desc', { defaultValue: 'Tender Specification (no prices)' })}</option>
                 </select>
               </div>
             </div>

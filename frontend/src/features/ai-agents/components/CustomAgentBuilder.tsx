@@ -284,7 +284,7 @@ export function CustomAgentBuilder({
               </h2>
               <p className="text-xs text-content-tertiary">
                 {t('agents.builder.subtitle', {
-                  defaultValue: 'Answer a few questions — we turn them into a ready-to-run agent.',
+                  defaultValue: 'Answer a few questions - we turn them into a ready-to-run agent.',
                 })}
               </p>
             </div>

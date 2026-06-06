@@ -47,7 +47,7 @@ function buildGraph(positions: Position[]) {
 
 /* ── Self-loop ───────────────────────────────────────────────── */
 
-describe('cycle detection — self-loop', () => {
+describe('cycle detection - self-loop', () => {
   it('detects A → A', () => {
     const a = pos('a', '1.1', '=pos("1.1").qty + 1');
     const g = buildGraph([a]);
@@ -58,7 +58,7 @@ describe('cycle detection — self-loop', () => {
 
 /* ── Length 2 ────────────────────────────────────────────────── */
 
-describe('cycle detection — length 2', () => {
+describe('cycle detection - length 2', () => {
   it('detects A ↔ B', () => {
     const a = pos('a', '1.1', '=pos("1.2").qty');
     const b = pos('b', '1.2', '=pos("1.1").qty');
@@ -74,7 +74,7 @@ describe('cycle detection — length 2', () => {
 
 /* ── Length 3 ────────────────────────────────────────────────── */
 
-describe('cycle detection — length 3', () => {
+describe('cycle detection - length 3', () => {
   it('detects A → B → C → A', () => {
     const a = pos('a', '1.1', '=pos("1.2").qty');
     const b = pos('b', '1.2', '=pos("1.3").qty');
@@ -88,7 +88,7 @@ describe('cycle detection — length 3', () => {
 
 /* ── Length N generated ───────────────────────────────────────── */
 
-describe('cycle detection — length N', () => {
+describe('cycle detection - length N', () => {
   it.each([4, 5, 8, 16, 32])('detects an N=%i cycle', (n) => {
     const positions: Position[] = [];
     for (let i = 0; i < n; i++) {
@@ -105,7 +105,7 @@ describe('cycle detection — length N', () => {
 
 /* ── DAG (no cycle) ──────────────────────────────────────────── */
 
-describe('cycle detection — acyclic graphs', () => {
+describe('cycle detection - acyclic graphs', () => {
   it('returns empty cycleIds for a chain A → B → C', () => {
     const a = pos('a', '1.1', '=pos("1.2").qty + 1');
     const b = pos('b', '1.2', '=pos("1.3").qty + 1');
@@ -126,7 +126,7 @@ describe('cycle detection — acyclic graphs', () => {
 
 /* ── Mixed: cycle + DAG ──────────────────────────────────────── */
 
-describe('cycle detection — mixed graphs', () => {
+describe('cycle detection - mixed graphs', () => {
   it('isolates the cycle from the rest of the DAG', () => {
     // Cycle: A ↔ B.
     // DAG:   C → D, where C reads B (cycle output), D is independent.
@@ -184,7 +184,7 @@ describe('variable users', () => {
 
 /* ── Robustness ──────────────────────────────────────────────── */
 
-describe('cycle detection — robustness', () => {
+describe('cycle detection - robustness', () => {
   it('handles broken formulas without throwing', () => {
     const a = pos('a', '1.1', '=this is bad syntax');
     const b = pos('b', '1.2', '=pos("1.1").qty');

@@ -193,7 +193,7 @@ export function RegionalAdjustPanel({
             {data.source === 'baseline'
               ? t('costs.regional_adjust.no_index', {
                   defaultValue:
-                    'No index on file for this region — passthrough (factor 1.0).',
+                    'No index on file for this region - passthrough (factor 1.0).',
                 })
               : t('costs.regional_adjust.source_line', {
                   defaultValue: 'Source: {{source}} · effective {{date}}',

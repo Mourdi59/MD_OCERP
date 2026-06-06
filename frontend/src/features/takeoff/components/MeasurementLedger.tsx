@@ -260,7 +260,7 @@ export function MeasurementLedger({
           data-testid="ledger-empty"
         >
           {t('takeoff_viewer.ledger_empty', {
-            defaultValue: 'No measurements yet — pick a tool to start.',
+            defaultValue: 'No measurements yet - pick a tool to start.',
           })}
         </p>
       ) : (

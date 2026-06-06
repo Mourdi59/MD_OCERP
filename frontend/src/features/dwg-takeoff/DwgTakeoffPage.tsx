@@ -483,7 +483,7 @@ function OfflineReadyBadge({
   const readyTooltip = localOnly
     ? t('dwg_takeoff.offline_ready_tooltip_local', {
         defaultValue:
-          'This tool works fully offline — conversions run on your machine.',
+          'This tool works fully offline - conversions run on your machine.',
       })
     : t('dwg_takeoff.offline_ready_tooltip_server', {
         defaultValue:
@@ -1308,7 +1308,7 @@ export function DwgTakeoffPage() {
         addToast({
           type: 'error',
           title: t('dwg_takeoff.cal_error_generic', {
-            defaultValue: 'Calibration failed — try clicking two distinct points.',
+            defaultValue: 'Calibration failed - try clicking two distinct points.',
           }) as string,
         });
       }
@@ -1797,7 +1797,7 @@ export function DwgTakeoffPage() {
             defaultValue: 'Annotation could not be saved',
           }),
           message: t('dwg_takeoff.no_project_context', {
-            defaultValue: 'No active project — open this drawing from its project first.',
+            defaultValue: 'No active project - open this drawing from its project first.',
           }),
         });
         return;
@@ -3300,7 +3300,7 @@ export function DwgTakeoffPage() {
                       <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-100">
                         <Link2 size={13} className="text-blue-400" />
                         {alreadyLinked
-                          ? t('dwg_takeoff.relink_title', { defaultValue: 'Linked — pick new' })
+                          ? t('dwg_takeoff.relink_title', { defaultValue: 'Linked - pick new' })
                           : t('dwg_takeoff.link_to_boq_title', { defaultValue: 'Link to BOQ position' })}
                       </div>
                       <button
@@ -3356,7 +3356,7 @@ export function DwgTakeoffPage() {
                           className="text-[11px] rounded-sm border border-[#3a3a3a] bg-[#262626] px-1.5 py-1 text-slate-100"
                         >
                           <option value="">
-                            {t('dwg_takeoff.pick_project', { defaultValue: '— project —' })}
+                            {t('dwg_takeoff.pick_project', { defaultValue: '- project -' })}
                           </option>
                           {linkPickerProjects.map((p) => (
                             <option key={p.id} value={p.id}>{p.name}</option>
@@ -3371,7 +3371,7 @@ export function DwgTakeoffPage() {
                           <option value="">
                             {linkBoqsLoading
                               ? t('common.loading', 'Loading...')
-                              : t('dwg_takeoff.pick_boq', { defaultValue: '— BOQ —' })}
+                              : t('dwg_takeoff.pick_boq', { defaultValue: '- BOQ -' })}
                           </option>
                           {linkPickerBoqs.map((b) => (
                             <option key={b.id} value={b.id}>{b.name}</option>
@@ -3425,7 +3425,7 @@ export function DwgTakeoffPage() {
                         ) : linkBoqPositions.filter((p) => p.unit).length === 0 ? (
                           <p className="text-[11px] text-slate-400 py-2 text-center">
                             {t('dwg_takeoff.link_boq_empty', {
-                              defaultValue: 'BOQ is empty — switch to "Create new".',
+                              defaultValue: 'BOQ is empty - switch to "Create new".',
                             })}
                           </p>
                         ) : (
@@ -4381,7 +4381,7 @@ export function DwgTakeoffPage() {
                         }),
                         message: t('dwg_takeoff.upload_started_hint', {
                           defaultValue:
-                            'Progress continues in the dock — you can navigate away.',
+                            'Progress continues in the dock - you can navigate away.',
                         }),
                       });
                       closeUploadModal();
@@ -4978,7 +4978,7 @@ function ScaleTab({
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             {t('dwg_takeoff.scale_calibrate_explainer', {
               defaultValue:
-                'Click a Distance measurement on the drawing between two points whose real length you know. Type the real length below, then press Apply — the scale is computed automatically.',
+                'Click a Distance measurement on the drawing between two points whose real length you know. Type the real length below, then press Apply - the scale is computed automatically.',
             })}
           </p>
 
@@ -5010,7 +5010,7 @@ function ScaleTab({
                 onClick={onCancelCalibration}
                 className="inline-flex items-center justify-center gap-1.5 h-7 rounded-md text-[11px] font-semibold text-content-primary bg-surface-tertiary hover:bg-surface-primary transition-colors"
               >
-                {t('dwg_takeoff.scale_calibrate_cancel', { defaultValue: 'Cancel — click two points on the drawing' })}
+                {t('dwg_takeoff.scale_calibrate_cancel', { defaultValue: 'Cancel - click two points on the drawing' })}
               </button>
             )}
           </div>
@@ -5060,7 +5060,7 @@ function ScaleTab({
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             {t('dwg_takeoff.scale_per_annotation_explainer', {
               defaultValue:
-                'Use when one sheet mixes scales (e.g. a 1:100 plan with a 1:20 detail window). Every new annotation you draw carries the scale below until you change it — older annotations keep their own stored scale.',
+                'Use when one sheet mixes scales (e.g. a 1:100 plan with a 1:20 detail window). Every new annotation you draw carries the scale below until you change it - older annotations keep their own stored scale.',
             })}
           </p>
 
@@ -5530,7 +5530,7 @@ function ConversionProgressCard({
       }),
       hint: t('dwg_takeoff.conv_step_convert_hint', {
         defaultValue:
-          'DDC cad2data is parsing your drawing. This is the slow step — usually 3-8 minutes for a medium DWG, longer for large architectural sets.',
+          'DDC cad2data is parsing your drawing. This is the slow step - usually 3-8 minutes for a medium DWG, longer for large architectural sets.',
       }),
     },
     {
@@ -5671,7 +5671,7 @@ function ConversionProgressCard({
         <div className="mt-5 rounded-lg bg-amber-500/5 border border-amber-500/20 px-3 py-2.5 text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">
           {t('dwg_takeoff.conv_note', {
             defaultValue:
-              'You can safely navigate to other pages — conversion runs on the server. The drawing will be ready here when you come back.',
+              'You can safely navigate to other pages - conversion runs on the server. The drawing will be ready here when you come back.',
           })}
         </div>
 
@@ -5687,7 +5687,7 @@ function ConversionProgressCard({
               className="text-[11px] font-medium text-content-tertiary hover:text-red-500 transition-colors underline-offset-2 hover:underline"
             >
               {t('dwg_takeoff.conv_cancel', {
-                defaultValue: 'Cancel — remove this drawing',
+                defaultValue: 'Cancel - remove this drawing',
               })}
             </button>
           </div>
@@ -5806,7 +5806,7 @@ function InstallDwgConverterCTA({
       <p className="mt-1.5 text-[10px] text-content-tertiary">
         {t('dwg_takeoff.conv_install_hint', {
           defaultValue:
-            'Downloads ~150 MB to ~/.openestimator/converters/ — Windows only. Takes 30-90 seconds.',
+            'Downloads ~150 MB to ~/.openestimator/converters/ - Windows only. Takes 30-90 seconds.',
         })}
       </p>
     </div>
@@ -5857,7 +5857,7 @@ function ConversionErrorCard({
               {isMissingConverter
                 ? t('dwg_takeoff.conv_missing_message', {
                     defaultValue:
-                      'OpenConstructionERP needs the DDC DwgExporter to read DWG files. Install it once — works for every DWG you upload after.',
+                      'OpenConstructionERP needs the DDC DwgExporter to read DWG files. Install it once - works for every DWG you upload after.',
                   })
                 : message ||
                   t('dwg_takeoff.conv_error_default', {
@@ -5881,7 +5881,7 @@ function ConversionErrorCard({
                           defaultValue: 'Re-upload after install',
                         })
                       : t('dwg_takeoff.conv_retry', {
-                          defaultValue: 'Retry — upload again',
+                          defaultValue: 'Retry - upload again',
                         })}
                   </button>
                 )}

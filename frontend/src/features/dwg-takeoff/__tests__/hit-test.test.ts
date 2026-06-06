@@ -56,7 +56,7 @@ const NO_HIDDEN = new Set<string>();
 
 /* ── Ranked hit-test ─────────────────────────────────────────────────── */
 
-describe('collectHitCandidates — RFC 11 §4.2', () => {
+describe('collectHitCandidates - RFC 11 §4.2', () => {
   it('picks the inner polygon over the outer when both contain the click', () => {
     // Outer 20x20 (area 400), inner 4x4 (area 16). Click at origin is inside both.
     const outer = polygon(
@@ -201,7 +201,7 @@ function nextCycleIndex(
   };
 }
 
-describe('cycle-through — RFC 11 §4.2', () => {
+describe('cycle-through - RFC 11 §4.2', () => {
   it('advances when clicking the same spot within 6 px + 300 ms', () => {
     const candidates = ['inner', 'outer'];
     const t0 = nextCycleIndex(null, { x: 100, y: 100, ts: 0 }, candidates);
@@ -261,7 +261,7 @@ function applySelection(prev: Set<string>, action: Action): Set<string> {
   return new Set([action.id]);
 }
 
-describe('selection Set semantics — RFC 11 §4.3', () => {
+describe('selection Set semantics - RFC 11 §4.3', () => {
   it('plain click replaces any existing selection', () => {
     const s0 = applySelection(new Set(), { kind: 'click', id: 'a' });
     expect([...s0]).toEqual(['a']);

@@ -314,7 +314,7 @@ export function FederationPanel({
             >
               <option value="">
                 {t('dashboards.federation.no_group_by', {
-                  defaultValue: '(none — group by source only)',
+                  defaultValue: '(none - group by source only)',
                 })}
               </option>
               {userColumns.map((c) => (

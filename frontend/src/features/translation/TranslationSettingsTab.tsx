@@ -784,7 +784,7 @@ function IateDownloadForm({
           <Loader2 size={12} className="animate-spin" aria-hidden />
           {t('translation.iate.in_flight', {
             defaultValue:
-              'IATE processing in progress ({{pct}}%) — large files may take several minutes.',
+              'IATE processing in progress ({{pct}}%) - large files may take several minutes.',
             pct: Math.round((iateInFlight.progress ?? 0) * 100),
           })}
         </p>

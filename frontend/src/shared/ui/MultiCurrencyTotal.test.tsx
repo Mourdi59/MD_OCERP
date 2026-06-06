@@ -18,7 +18,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('MultiCurrencyTotal — empty / degenerate cases', () => {
+describe('MultiCurrencyTotal - empty / degenerate cases', () => {
   it('renders an em-dash for an empty list', () => {
     const { container } = render(<MultiCurrencyTotal items={[]} />);
     expect(container.textContent).toBe('—');
@@ -50,7 +50,7 @@ describe('MultiCurrencyTotal — empty / degenerate cases', () => {
   });
 });
 
-describe('MultiCurrencyTotal — single-currency passthrough', () => {
+describe('MultiCurrencyTotal - single-currency passthrough', () => {
   it('delegates to MoneyDisplay (single Intl render) when all items share a currency', () => {
     render(
       <MultiCurrencyTotal
@@ -90,7 +90,7 @@ describe('MultiCurrencyTotal — single-currency passthrough', () => {
   });
 });
 
-describe('MultiCurrencyTotal — inline variant (multi-currency)', () => {
+describe('MultiCurrencyTotal - inline variant (multi-currency)', () => {
   it('renders one chip per currency, alphabetically sorted', () => {
     const { container } = render(
       <MultiCurrencyTotal
@@ -143,7 +143,7 @@ describe('MultiCurrencyTotal — inline variant (multi-currency)', () => {
   });
 });
 
-describe('MultiCurrencyTotal — kpi variant', () => {
+describe('MultiCurrencyTotal - kpi variant', () => {
   it('shows the primaryCurrency total prominently when present', () => {
     render(
       <MultiCurrencyTotal
@@ -198,7 +198,7 @@ describe('MultiCurrencyTotal — kpi variant', () => {
   });
 });
 
-describe('MultiCurrencyTotal — collapsed variant', () => {
+describe('MultiCurrencyTotal - collapsed variant', () => {
   it('renders a "Mixed (N currencies)" trigger', () => {
     render(
       <MultiCurrencyTotal
@@ -238,7 +238,7 @@ describe('MultiCurrencyTotal — collapsed variant', () => {
   });
 });
 
-describe('MultiCurrencyTotal — defensive parsing', () => {
+describe('MultiCurrencyTotal - defensive parsing', () => {
   it('drops items with invalid currency code (with a dev warning)', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     render(

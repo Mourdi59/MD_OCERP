@@ -909,7 +909,7 @@ function UploadZone({
       </div>
       <p className="text-2xs text-content-quaternary">
         {t('photos.batch_meta_hint', {
-          defaultValue: 'Category and tags apply to every photo in this upload — you can refine each one afterwards.',
+          defaultValue: 'Category and tags apply to every photo in this upload - you can refine each one afterwards.',
         })}
       </p>
       <div

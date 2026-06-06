@@ -45,7 +45,7 @@ export function SnapshotDiffView({
         <p className="text-xs text-content-tertiary">
           {t('dashboards.diff_subtitle', {
             defaultValue:
-              'Schema-level changes between the two selected snapshots — older on the left, newer on the right.',
+              'Schema-level changes between the two selected snapshots - older on the left, newer on the right.',
           })}
         </p>
       </div>

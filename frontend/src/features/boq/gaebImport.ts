@@ -357,7 +357,7 @@ export async function importGAEBToBOQ(file: File, boqId: string): Promise<GAEBIm
       await boqApi.addPosition(payload);
       imported++;
     } catch (err) {
-      const label = pos.ordinal ? `${pos.ordinal} — ${pos.description}` : pos.description;
+      const label = pos.ordinal ? `${pos.ordinal} - ${pos.description}` : pos.description;
       const message = err instanceof Error ? err.message : String(err);
       errors.push(`Failed to import position "${label}": ${message}`);
     }

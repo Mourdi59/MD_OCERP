@@ -113,7 +113,7 @@ function renderRow({
 
 /* ── Tests ─────────────────────────────────────────────────────────────── */
 
-describe('EditableResourceRow — variant re-pick pill (v2.6.26)', () => {
+describe('EditableResourceRow - variant re-pick pill (v2.6.26)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

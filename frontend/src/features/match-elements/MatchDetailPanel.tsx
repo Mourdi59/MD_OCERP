@@ -322,7 +322,7 @@ export function MatchDetailPanel({ sessionId, group, onClose }: Props) {
                                 !cand.id
                                   ? t(
                                       'match_elements.detail.candidate_no_id',
-                                      'Candidate has no DB id — cannot confirm',
+                                      'Candidate has no DB id - cannot confirm',
                                     )
                                   : undefined
                               }

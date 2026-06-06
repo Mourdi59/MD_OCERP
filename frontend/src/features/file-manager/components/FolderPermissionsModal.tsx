@@ -42,17 +42,17 @@ const ROLES: ReadonlyArray<{ value: FolderRole; labelKey: string; defaultLabel: 
   {
     value: 'viewer',
     labelKey: 'files.permissions.role.viewer',
-    defaultLabel: 'Viewer — read only',
+    defaultLabel: 'Viewer - read only',
   },
   {
     value: 'editor',
     labelKey: 'files.permissions.role.editor',
-    defaultLabel: 'Editor — upload + delete own',
+    defaultLabel: 'Editor - upload + delete own',
   },
   {
     value: 'owner',
     labelKey: 'files.permissions.role.owner',
-    defaultLabel: 'Owner — full control',
+    defaultLabel: 'Owner - full control',
   },
 ];
 

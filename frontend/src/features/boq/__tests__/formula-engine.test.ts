@@ -51,7 +51,7 @@ function makeContext(positions: Position[], variables: Record<string, FormulaVar
 
 /* ── Backwards-compat (no ctx) ──────────────────────────────────── */
 
-describe('evaluateFormula — backwards-compat (single-arg)', () => {
+describe('evaluateFormula - backwards-compat (single-arg)', () => {
   it('still evaluates basic math', () => {
     expect(evaluateFormula('2+3')).toBe(5);
     expect(evaluateFormula('=2*PI()^2*3')).toBeCloseTo(59.2176, 3);
@@ -73,7 +73,7 @@ describe('evaluateFormula — backwards-compat (single-arg)', () => {
 
 /* ── $VAR support ──────────────────────────────────────────────── */
 
-describe('evaluateFormula — variables', () => {
+describe('evaluateFormula - variables', () => {
   it('reads numeric variables', () => {
     const ctx = makeContext([], { GFA: { type: 'number', value: 1500 } });
     expect(evaluateFormula('=$GFA', ctx)).toBe(1500);
@@ -105,7 +105,7 @@ describe('evaluateFormula — variables', () => {
 
 /* ── pos() ─────────────────────────────────────────────────────── */
 
-describe('evaluateFormula — pos()', () => {
+describe('evaluateFormula - pos()', () => {
   const a = makePosition({ id: 'a', ordinal: '1.1.001', quantity: 12, unit_rate: 50 });
   const b = makePosition({ id: 'b', ordinal: '01.02', quantity: 4.5, unit_rate: 100 });
   const ctx = makeContext([a, b]);
@@ -147,7 +147,7 @@ describe('evaluateFormula — pos()', () => {
 
 /* ── section() ─────────────────────────────────────────────────── */
 
-describe('evaluateFormula — section()', () => {
+describe('evaluateFormula - section()', () => {
   const a = makePosition({ id: 'a', ordinal: '1.1', quantity: 10, unit_rate: 5 });
   const b = makePosition({ id: 'b', ordinal: '1.2', quantity: 4, unit_rate: 25 });
 
@@ -167,7 +167,7 @@ describe('evaluateFormula — section()', () => {
 
 /* ── col() ─────────────────────────────────────────────────────── */
 
-describe('evaluateFormula — col() in calculated columns', () => {
+describe('evaluateFormula - col() in calculated columns', () => {
   it('reads from currentRow', () => {
     const ctx = buildFormulaContext({
       positions: [],
@@ -193,7 +193,7 @@ describe('evaluateFormula — col() in calculated columns', () => {
 
 /* ── if() ─────────────────────────────────────────────────────── */
 
-describe('evaluateFormula — if() conditional', () => {
+describe('evaluateFormula - if() conditional', () => {
   const ctx = makeContext([], { N: { type: 'number', value: 5 } });
 
   it('evaluates the true branch', () => {
@@ -212,7 +212,7 @@ describe('evaluateFormula — if() conditional', () => {
     expect(evaluateFormula('=if($N <= 4, 100, 50)', ctx)).toBe(50);
   });
 
-  it('short-circuits — bad branch is skipped when not taken', () => {
+  it('short-circuits - bad branch is skipped when not taken', () => {
     // The false branch references a missing variable; if we evaluated
     // it we'd throw and return null. Short-circuit means 100 wins.
     expect(evaluateFormula('=if(1<2, 100, $MISSING)', ctx)).toBe(100);
@@ -226,7 +226,7 @@ describe('evaluateFormula — if() conditional', () => {
 
 /* ── unit converters ──────────────────────────────────────────── */
 
-describe('evaluateFormula — unit conversion built-ins', () => {
+describe('evaluateFormula - unit conversion built-ins', () => {
   it('converts metric ↔ imperial length', () => {
     expect(evaluateFormula('=m_to_ft(1)')).toBeCloseTo(3.2808, 3);
     expect(evaluateFormula('=ft_to_m(10)')).toBeCloseTo(3.048, 3);
@@ -256,7 +256,7 @@ describe('evaluateFormula — unit conversion built-ins', () => {
 
 /* ── round_up / round_down ─────────────────────────────────────── */
 
-describe('evaluateFormula — round_up / round_down', () => {
+describe('evaluateFormula - round_up / round_down', () => {
   it('round_up to integer (n=0 default)', () => {
     expect(evaluateFormula('=round_up(3.1)')).toBe(4);
     expect(evaluateFormula('=round_up(3.9)')).toBe(4);
@@ -281,7 +281,7 @@ describe('evaluateFormula — round_up / round_down', () => {
 
 /* ── Comparisons (raw) ────────────────────────────────────────── */
 
-describe('evaluateFormulaRaw — comparisons return booleans', () => {
+describe('evaluateFormulaRaw - comparisons return booleans', () => {
   const ctx = makeContext([], { N: { type: 'number', value: 5 } });
 
   it('returns boolean for comparison expressions', () => {
@@ -318,7 +318,7 @@ describe('isFormula', () => {
 
 /* ── Error paths ─────────────────────────────────────────────── */
 
-describe('evaluateFormula — error paths', () => {
+describe('evaluateFormula - error paths', () => {
   it('returns null on unknown function', () => {
     expect(evaluateFormula('=nosuchfn(1)')).toBeNull();
   });
@@ -339,7 +339,7 @@ describe('evaluateFormula — error paths', () => {
 
 /* ── Pure-string variables (text/date) — only legal with raw ──── */
 
-describe('evaluateFormulaRaw — text variables', () => {
+describe('evaluateFormulaRaw - text variables', () => {
   it('returns text values directly', () => {
     const ctx = makeContext([], {
       LABEL: { type: 'text', value: 'Concrete C30/37' },

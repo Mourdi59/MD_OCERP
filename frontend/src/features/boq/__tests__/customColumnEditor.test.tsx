@@ -114,7 +114,7 @@ function renderDialog({
 
 /* ── Tests ──────────────────────────────────────────────────────── */
 
-describe('CustomColumnsDialog — calculated column flow', () => {
+describe('CustomColumnsDialog - calculated column flow', () => {
   beforeEach(() => {
     mockListCustomColumns.mockReset();
     mockAddCustomColumn.mockReset();

@@ -1237,7 +1237,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           animation: oeStaggerIn 220ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
         }
         /* Hover-arrow: a subtle right-pointing chevron that fades in
-           on hover — hints "click to navigate" without taking space
+           on hover - hints "click to navigate" without taking space
            when idle. The opacity transition keeps the layout stable. */
         .oe-sidebar a .oe-hover-arrow {
           opacity: 0;
@@ -1249,7 +1249,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           opacity: 0.55;
           transform: translateX(0);
         }
-        /* Pin button on items — invisible until item is hovered, then
+        /* Pin button on items - invisible until item is hovered, then
            fades in from the right. Click does not navigate (handled by
            preventDefault + stopPropagation in the handler). */
         .oe-sidebar a .oe-pin-btn {

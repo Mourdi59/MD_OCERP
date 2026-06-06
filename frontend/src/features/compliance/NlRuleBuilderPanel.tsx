@@ -311,7 +311,7 @@ export function NlRuleBuilderPanel() {
                 <p>
                   {t('compliance.nl.low_confidence', {
                     defaultValue:
-                      'Low confidence — review the generated DSL carefully before saving.',
+                      'Low confidence - review the generated DSL carefully before saving.',
                   })}
                 </p>
               </div>

@@ -549,7 +549,7 @@ function CreateSnagModal({
             }
             className={inputCls}
             placeholder={t('propdev.snag.location_ph', {
-              defaultValue: 'e.g. Master bedroom — east wall',
+              defaultValue: 'e.g. Master bedroom - east wall',
             })}
           />
         </WideModalField>
@@ -565,7 +565,7 @@ function CreateSnagModal({
             rows={3}
             placeholder={t('propdev.snag.describe', {
               defaultValue:
-                'Defect description — what is wrong, observed symptoms, urgency…',
+                'Defect description - what is wrong, observed symptoms, urgency…',
             })}
           />
         </WideModalField>
@@ -595,7 +595,7 @@ function CreateSnagModal({
         <div className="mx-5 mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           {t('propdev.snag.no_buyer_warn', {
             defaultValue:
-              'No buyer is linked to this plot — the snag will be unattributed and cannot be promoted to a warranty claim until a buyer is assigned.',
+              'No buyer is linked to this plot - the snag will be unattributed and cannot be promoted to a warranty claim until a buyer is assigned.',
           })}
         </div>
       )}

@@ -125,7 +125,7 @@ export function ValidationRulesSettingsPage() {
               <p>
                 {t('validation_rules.intro_3', {
                   defaultValue:
-                    'Per-project rule selection is configured during the import workflow — open a project, go to its Validation tab, and pick which rule sets apply.',
+                    'Per-project rule selection is configured during the import workflow - open a project, go to its Validation tab, and pick which rule sets apply.',
                 })}
               </p>
             </div>

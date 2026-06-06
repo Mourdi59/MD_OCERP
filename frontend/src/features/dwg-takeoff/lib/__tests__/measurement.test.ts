@@ -16,7 +16,7 @@ import {
   unitFactorToMetres,
 } from '../measurement';
 
-describe('formatMeasurement — dimensional safety (D-TKC-006)', () => {
+describe('formatMeasurement - dimensional safety (D-TKC-006)', () => {
   it('keeps the SI k-prefix for LINEAR units', () => {
     expect(formatMeasurement(1500, 'm')).toBe('1.50 km');
     expect(formatMeasurement(0.005, 'm')).toBe('5.00 mm');
@@ -48,7 +48,7 @@ describe('formatMeasurement — dimensional safety (D-TKC-006)', () => {
   });
 });
 
-describe('calculateAreaSafe — degeneracy detection (D-TKC-015)', () => {
+describe('calculateAreaSafe - degeneracy detection (D-TKC-015)', () => {
   const bowtie = [
     { x: 0, y: 0 },
     { x: 4, y: 4 },

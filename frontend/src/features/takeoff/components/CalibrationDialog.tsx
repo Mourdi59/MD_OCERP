@@ -165,7 +165,7 @@ export function CalibrationDialog({
           >
             {t('takeoff_viewer.calibrate_metric_note', {
               defaultValue:
-                '{{value}} {{unit}} = {{meters}} m — measurements display in metres (metric-canonical).',
+                '{{value}} {{unit}} = {{meters}} m - measurements display in metres (metric-canonical).',
               value: parsed,
               unit,
               meters: toMeters(parsed, unit).toFixed(3),

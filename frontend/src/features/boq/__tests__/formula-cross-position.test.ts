@@ -47,7 +47,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('LiveReeval — debounced refresh', () => {
+describe('LiveReeval - debounced refresh', () => {
   it('refreshes B within 200ms when A.qty changes (B reads pos(A).qty * 2)', () => {
     const a = pos('a', '1.1', { quantity: 10 });
     const b = pos('b', '1.2', { metadata: { formula: '=pos("1.1").qty * 2' } });

@@ -194,7 +194,7 @@ function statusFallbackMessage(status: number): string {
     case 404:
       return t('errors.not_found', { defaultValue: 'The requested item could not be found.' });
     case 409:
-      return t('errors.conflict', { defaultValue: 'This conflicts with existing data — refresh and try again.' });
+      return t('errors.conflict', { defaultValue: 'This conflicts with existing data - refresh and try again.' });
     case 413:
       return t('errors.payload_too_large', { defaultValue: 'The file is too large. Please try a smaller one.' });
     case 422:

@@ -686,7 +686,7 @@ export function AccommodationCalendar({
               })}
               description={t('accommodation.calendar.noRooms', {
                 defaultValue:
-                  'No bookings this week — pick a cell to create one. Add rooms from the accommodation detail page if your camp is empty.',
+                  'No bookings this week - pick a cell to create one. Add rooms from the accommodation detail page if your camp is empty.',
               })}
             />
           </div>
@@ -901,7 +901,7 @@ function CalendarGrid({
       data-testid="accommodation-calendar-grid"
       role="grid"
       aria-label={t('accommodation.calendar.grid_aria', {
-        defaultValue: 'Bookings grid — use arrow keys to navigate cells',
+        defaultValue: 'Bookings grid - use arrow keys to navigate cells',
       })}
       className="overflow-x-auto rounded-2xl border border-border-light bg-surface-elevated"
     >
@@ -1266,7 +1266,7 @@ function CreateBookingModal({
       open
       onClose={onClose}
       title={t('accommodation.calendar.createBooking', {
-        defaultValue: 'Create booking — {{room}} ({{acc}})',
+        defaultValue: 'Create booking - {{room}} ({{acc}})',
         room: room.label,
         acc: accommodationName,
       })}
@@ -1297,7 +1297,7 @@ function CreateBookingModal({
           <AlertTriangle className="mr-1.5 inline h-3.5 w-3.5" />
           {t('accommodation.assign.disabled', {
             defaultValue:
-              'Room is {{status}} — change its status before booking.',
+              'Room is {{status}} - change its status before booking.',
             status: room.status,
           })}
         </div>
@@ -1647,7 +1647,7 @@ function BookingDetailDrawer({
           confirmTarget === 'cancelled'
             ? t('accommodation.confirm.cancel_booking_message', {
                 defaultValue:
-                  'Cancelling locks the booking — no further status changes are possible.',
+                  'Cancelling locks the booking - no further status changes are possible.',
               })
             : t('accommodation.confirm.checkout_message', {
                 defaultValue:

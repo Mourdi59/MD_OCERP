@@ -134,7 +134,7 @@ export function PlotsTab({
                   'flex flex-col items-center justify-center rounded-md border-2 px-1 py-2 text-center transition-all hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-oe-blue',
                   PLOT_STATUS_COLOR[p.status],
                 )}
-                title={`${p.plot_number} — ${p.status}`}
+                title={`${p.plot_number} - ${p.status}`}
                 data-testid="plot-tile"
               >
                 <span className="text-xs font-semibold leading-none">{p.plot_number}</span>

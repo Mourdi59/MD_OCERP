@@ -42,7 +42,7 @@ function findCap(scene: THREE.Scene): THREE.Mesh | null {
   return found;
 }
 
-describe('ClipManager — section cap hatching', () => {
+describe('ClipManager - section cap hatching', () => {
   let fakes: ReturnType<typeof makeFakes>;
   let mgr: ClipManager;
 

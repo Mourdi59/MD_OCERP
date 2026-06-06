@@ -32,7 +32,7 @@ describe('normalizeRate', () => {
     expect(normalizeRate(Infinity, 0, 100)).toBeNull();
   });
 
-  it('returns 0.5 on a degenerate range (min === max) — safe middle colour', () => {
+  it('returns 0.5 on a degenerate range (min === max) - safe middle colour', () => {
     expect(normalizeRate(42, 42, 42)).toBe(0.5);
   });
 
@@ -41,7 +41,7 @@ describe('normalizeRate', () => {
   });
 });
 
-describe('colorAtStop — gradient interpolation', () => {
+describe('colorAtStop - gradient interpolation', () => {
   it('returns the exact stop colour when t matches a stop', () => {
     expect(colorAtStop(0)).toBe(DEFAULT_5D_GRADIENT[0]!.hex);
     expect(colorAtStop(0.5)).toBe(DEFAULT_5D_GRADIENT[1]!.hex);
@@ -86,7 +86,7 @@ describe('colorAtStop — gradient interpolation', () => {
   });
 });
 
-describe('colorForRate — end-to-end rate → { color, hasLink }', () => {
+describe('colorForRate - end-to-end rate → { color, hasLink }', () => {
   it('returns the NO_LINK_COLOR and hasLink=false when rate is null', () => {
     const { color, hasLink } = colorForRate(null, 0, 100);
     expect(color).toBe(NO_LINK_COLOR);

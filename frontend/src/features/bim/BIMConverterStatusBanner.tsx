@@ -756,7 +756,7 @@ export function BIMConverterStatusBanner({
               : healthyCount === relevant.length && anyOutdated
                 ? t('bim.converter_panel_subtitle_outdated', {
                     defaultValue:
-                      'All converters are working, but a newer version is available — we recommend updating.',
+                      'All converters are working, but a newer version is available - we recommend updating.',
                   })
                 : allHealthy
                   ? t('bim.converter_panel_subtitle_ok', {
@@ -783,7 +783,7 @@ export function BIMConverterStatusBanner({
                     defaultValue: 'A new version is available',
                   })}
                 </span>
-                {' — '}
+                {' - '}
                 {t('bim.converter_panel_update_recommend', {
                   defaultValue:
                     'we recommend updating using the Update button next to each row.',
@@ -874,7 +874,7 @@ function CollapsedConverterPill({
         'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border tabular-nums',
         tone,
       )}
-      title={`${conv.name} — ${titleSuffix}`}
+      title={`${conv.name} - ${titleSuffix}`}
     >
       {label}
     </span>

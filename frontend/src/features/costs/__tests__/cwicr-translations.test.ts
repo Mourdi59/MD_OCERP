@@ -19,7 +19,7 @@
 import { describe, it, expect } from 'vitest';
 import type { VariantStats } from '../api';
 
-describe('CWICR translation contract — VariantStats', () => {
+describe('CWICR translation contract - VariantStats', () => {
   it('accepts localized mirror fields on the type', () => {
     // This block compiles iff the type declaration exposes the mirror
     // keys.  A type-level regression (someone deleting unit_localized
@@ -57,7 +57,7 @@ describe('CWICR translation contract — VariantStats', () => {
   });
 });
 
-describe('CWICR translation contract — fallback chain rendering', () => {
+describe('CWICR translation contract - fallback chain rendering', () => {
   // Mimic the ternary used in CostsPage.CostVariantDetail:
   //   stats.group_localized || stats.group
   // and the component-table cell:

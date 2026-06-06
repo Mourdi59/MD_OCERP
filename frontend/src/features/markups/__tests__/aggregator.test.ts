@@ -124,7 +124,7 @@ describe('aggregator normalisation', () => {
     expect(u.deepLink).toContain('documentId=doc-a');
   });
 
-  it('normalises a DWG annotation — no page, drawing file name, deep link', () => {
+  it('normalises a DWG annotation - no page, drawing file name, deep link', () => {
     const u = fromDwgAnnotation(makeDwgAnnotation({ type: 'text_pin' }), {
       id: 'draw-42',
       project_id: 'p1',
@@ -138,7 +138,7 @@ describe('aggregator normalisation', () => {
     expect(u.deepLink).toBe('/dwg-takeoff?drawingId=draw-42&annotationId=dwg-1');
   });
 
-  it('normalises a PDF takeoff measurement — label falls back to value+unit', () => {
+  it('normalises a PDF takeoff measurement - label falls back to value+unit', () => {
     const u = fromPdfMeasurement(
       makePdfMeasurement({ annotation: null, measurement_value: 12.3, measurement_unit: 'm2' }),
       { documentName: 'Plans.pdf' },

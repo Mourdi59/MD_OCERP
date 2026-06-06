@@ -88,7 +88,7 @@ export function getColumnDefs(context: BOQColumnContext): ColDef[] {
           return params.rowNode.data.description ?? '';
         }
         return params.rowNode?.data?.ordinal
-          ? `${params.rowNode.data.ordinal} — ${params.rowNode.data.description ?? ''}`
+          ? `${params.rowNode.data.ordinal} - ${params.rowNode.data.description ?? ''}`
           : params.defaultTextValue ?? '';
       },
       cellClass: 'oe-drag-handle-cell',
@@ -678,7 +678,7 @@ export function getCustomColumnDefs(
         base.tooltipValueGetter = (params) => {
           const v = params.value;
           if (v === '#CYCLE') {
-            return 'This calculated column references itself — cycle detected.';
+            return 'This calculated column references itself - cycle detected.';
           }
           if (v === '#ERR') {
             return `Formula error in "${col.formula ?? ''}". Open Custom Columns to edit.`;
@@ -778,9 +778,9 @@ export function getCustomColumnDefs(
         const roleLabel = roleSet ? Array.from(roleSet).join(' / ') : 'matching';
         base.tooltipValueGetter = () => {
           if (col.derived === 'percentage_of_unit_rate') {
-            return `${col.display_name} — share of unit rate from ${roleLabel} resources (auto-computed; edit resources to change)`;
+            return `${col.display_name} - share of unit rate from ${roleLabel} resources (auto-computed; edit resources to change)`;
           }
-          return `${col.display_name} — sum of ${roleLabel} resources for this position (auto-computed; edit resources to change)`;
+          return `${col.display_name} - sum of ${roleLabel} resources for this position (auto-computed; edit resources to change)`;
         };
         return base;
       }

@@ -163,7 +163,7 @@ export default function SaveGroupModal({
         type: 'success',
         title: t('bim.group_saved_title', { defaultValue: 'Group saved' }),
         message: t('bim.group_saved_msg', {
-          defaultValue: '"{{name}}" — {{count}} elements',
+          defaultValue: '"{{name}}" - {{count}} elements',
           name: group.name,
           count: group.element_count,
         }),
@@ -307,7 +307,7 @@ export default function SaveGroupModal({
                     })
                   : t('bim.group_dynamic_desc_disabled', {
                       defaultValue:
-                        'Disabled — no filter is active. Apply a storey, type or search filter to enable dynamic mode.',
+                        'Disabled - no filter is active. Apply a storey, type or search filter to enable dynamic mode.',
                     })}
               </div>
             </div>
@@ -348,7 +348,7 @@ export default function SaveGroupModal({
             <span className="flex items-center gap-1.5 text-xs font-semibold text-content-primary">
               <SlidersHorizontal size={12} className="text-oe-blue" />
               {t('bim.smartview.advanced_title', {
-                defaultValue: 'Smart View — advanced rules',
+                defaultValue: 'Smart View - advanced rules',
               })}
               {treeDirty && (
                 <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">

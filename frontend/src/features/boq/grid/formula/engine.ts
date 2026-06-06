@@ -359,7 +359,7 @@ function coerceNumber(v: Value, ctx: string): number {
     throw new Error(`${ctx}: cannot use string "${v}" as number`);
   }
   if (v && typeof v === 'object' && '__kind' in v) {
-    throw new Error(`${ctx}: cannot use ${v.__kind} record as number — did you mean .qty / .total?`);
+    throw new Error(`${ctx}: cannot use ${v.__kind} record as number - did you mean .qty / .total?`);
   }
   throw new Error(`${ctx}: not a number`);
 }

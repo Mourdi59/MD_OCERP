@@ -412,7 +412,7 @@ export default function BIMRightPanelTabs({
               <p className="text-[11px] text-content-tertiary italic p-2">
                 {t('bim.groups_empty', {
                   defaultValue:
-                    'No saved groups yet — apply a filter and click "Save as group".',
+                    'No saved groups yet - apply a filter and click "Save as group".',
                 })}
               </p>
             ) : (
@@ -527,7 +527,7 @@ function MatchTabContent({
         title: t('common.error', { defaultValue: 'Error' }),
         message: t('match.no_boq_picked', {
           defaultValue:
-            'Pick a target BOQ before accepting a match — there is no BOQ in this project yet.',
+            'Pick a target BOQ before accepting a match - there is no BOQ in this project yet.',
         }),
       });
       return;
@@ -569,7 +569,7 @@ function MatchTabContent({
           'match.accept_position_toast',
           {
             defaultValue:
-              'Position {{ordinal}} created — {{code}}: {{description}}',
+              'Position {{ordinal}} created - {{code}}: {{description}}',
             ordinal: result.position_ordinal,
             code: candidate.code,
             description: candidate.description,
@@ -706,7 +706,7 @@ function PropertiesTabContent({
             >
               {t('bim.properties_tab_loading', {
                 defaultValue:
-                  'No inline properties — open the element panel for full details.',
+                  'No inline properties - open the element panel for full details.',
               })}
             </p>
           )}

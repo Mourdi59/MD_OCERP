@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildPareto } from '../components/ParetoHelper';
 
-describe('buildPareto — top N by share', () => {
+describe('buildPareto - top N by share', () => {
   it('returns empty array when input is empty', () => {
     expect(buildPareto([], 5)).toEqual([]);
   });

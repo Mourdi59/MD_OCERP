@@ -24,7 +24,7 @@ import {
   isTransientHttpStatus,
 } from './errorLogger';
 
-describe('errorLogger.getLastError — bug-report payload selection', () => {
+describe('errorLogger.getLastError - bug-report payload selection', () => {
   beforeEach(() => {
     clearErrorLog();
   });

@@ -11,7 +11,7 @@
 import { describe, it, expect } from 'vitest';
 import { convertToBase, resourceAwareTotalInBase } from './boqHelpers';
 
-describe('convertToBase — multi-currency rebase', () => {
+describe('convertToBase - multi-currency rebase', () => {
   const fxRates = [
     { currency: 'ARS', rate: 1 / 1415 }, // 1 ARS = 0.000707 USD
     { currency: 'EUR', rate: 1.08 },     // 1 EUR = 1.08 USD
@@ -80,12 +80,12 @@ describe('convertToBase — multi-currency rebase', () => {
 // built from Σ(r.qty×r.rate) with no FX, so the section subtotal AND the
 // per-position resource subtotal summed a USD resource as if it were ARS
 // ("1 USD = 1 ARS"). This block pins the fix in both grid code paths.
-describe('resourceAwareTotalInBase — resource-currency rebase', () => {
+describe('resourceAwareTotalInBase - resource-currency rebase', () => {
   // FX semantics: rate = base units per 1 unit of the foreign currency.
   // Base ARS, so USD rate 1415 means 1 USD = 1415 ARS.
   const fx = [{ currency: 'USD', rate: 1415 }];
 
-  it('Prueba_2: pos 0040 — USD resource in an ARS project converts', () => {
+  it('Prueba_2: pos 0040 - USD resource in an ARS project converts', () => {
     // qty 2, one USD resource @ 25000 → stored total 50000 (raw).
     const pos = {
       total: 50000,
@@ -122,7 +122,7 @@ describe('resourceAwareTotalInBase — resource-currency rebase', () => {
     expect(resourceAwareTotalInBase(pos, 'ARS', fx)).toBeCloseTo(25000 * 1415, 2);
   });
 
-  it('mixed resource currencies — only the foreign part converts', () => {
+  it('mixed resource currencies - only the foreign part converts', () => {
     const pos = {
       total: 26000,
       quantity: 1,

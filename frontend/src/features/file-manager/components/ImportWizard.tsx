@@ -313,7 +313,7 @@ export function ImportWizard({ open, onClose }: ImportWizardProps) {
                     className="w-full h-9 px-2 text-sm rounded-lg border border-border-light bg-surface-primary text-content-primary focus:outline-none focus:border-oe-blue focus:ring-2 focus:ring-oe-blue/20"
                   >
                     <option value="">
-                      {t('files.import.pick_project', { defaultValue: '— pick a project —' })}
+                      {t('files.import.pick_project', { defaultValue: '- pick a project -' })}
                     </option>
                     {(projects ?? []).map((p) => (
                       <option key={p.id} value={p.id}>

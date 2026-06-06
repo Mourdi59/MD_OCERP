@@ -140,7 +140,7 @@ export function ClashRuleSuggestionBanner({
                 <div className="flex-1">
                   <div className="font-medium text-sm">
                     {s.rule.discipline_a} × {s.rule.discipline_b}
-                    {' — '}
+                    {' - '}
                     <span className="text-oe-blue">
                       {s.rule.tolerance_m.toFixed(3)} m
                     </span>

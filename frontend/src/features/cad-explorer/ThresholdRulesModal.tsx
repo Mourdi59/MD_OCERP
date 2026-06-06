@@ -109,7 +109,7 @@ export function ThresholdRulesModal({
               <p className="text-xs text-content-tertiary">
                 {t('explorer.thresholds_subtitle', {
                   defaultValue:
-                    'Colour pivot cells by value. Add up to {{max}} rules — one per numeric column.',
+                    'Colour pivot cells by value. Add up to {{max}} rules - one per numeric column.',
                   max: MAX_RULES,
                 })}
               </p>

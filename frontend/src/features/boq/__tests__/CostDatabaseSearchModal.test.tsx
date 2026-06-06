@@ -133,7 +133,7 @@ function renderModal() {
 
 // ── Tests ────────────────────────────────────────────────────────────────
 
-describe('CostDatabaseSearchModal — paginated catalog', () => {
+describe('CostDatabaseSearchModal - paginated catalog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (fetchCategoryTree as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(TREE);

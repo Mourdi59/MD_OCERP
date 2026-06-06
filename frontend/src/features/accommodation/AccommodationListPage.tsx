@@ -161,7 +161,7 @@ export function AccommodationListPage() {
         srTitle={t('accommodation.title', { defaultValue: 'Accommodation' })}
         subtitle={t('accommodation.subtitle', {
           defaultValue:
-            'Worker camps, rentals and hotels — rooms, bookings and charges in one place. Bridges to PropDev units and HR contacts.',
+            'Worker camps, rentals and hotels - rooms, bookings and charges in one place. Bridges to PropDev units and HR contacts.',
         })}
         actions={
           <>
@@ -352,7 +352,7 @@ export function AccommodationListPage() {
             accommodations.length === 0
               ? t('accommodation.empty_state.description', {
                   defaultValue:
-                    'Track three kinds of stays: worker camps for site crews, rentals for staff, and hotels for visiting consultants — each with rooms, bookings and charges.',
+                    'Track three kinds of stays: worker camps for site crews, rentals for staff, and hotels for visiting consultants - each with rooms, bookings and charges.',
                 })
               : t('accommodation.empty_filtered.description', {
                   defaultValue:
@@ -677,7 +677,7 @@ function CreateAccommodationModal({
             >
               <option value="">
                 {t('accommodation.project.placeholder', {
-                  defaultValue: '— Select project —',
+                  defaultValue: '- Select project -',
                 })}
               </option>
               {projects.map((p) => (

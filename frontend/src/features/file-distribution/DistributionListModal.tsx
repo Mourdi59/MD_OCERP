@@ -192,7 +192,7 @@ export function DistributionListModal({
           <div className="flex items-center justify-between">
             <span className="text-sm text-content-secondary">
               {lists.length === 0
-                ? t('files.distribution.empty', { defaultValue: 'No lists yet — create one.' })
+                ? t('files.distribution.empty', { defaultValue: 'No lists yet - create one.' })
                 : t('files.distribution.count', {
                     defaultValue: '{{count}} list(s)',
                     count: lists.length,
@@ -387,7 +387,7 @@ export function DistributionListModal({
             {active.members.length === 0 && (
               <li className="rounded-md border border-dashed border-border-light px-3 py-3 text-center text-xs text-content-tertiary">
                 {t('files.distribution.no_members', {
-                  defaultValue: 'No members yet — add one above.',
+                  defaultValue: 'No members yet - add one above.',
                 })}
               </li>
             )}

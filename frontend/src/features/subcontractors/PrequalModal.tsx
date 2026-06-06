@@ -156,7 +156,7 @@ export function PrequalModal({ subcontractor, onClose }: PrequalModalProps) {
       addToast({
         type: 'success',
         title: t('subcontractors.prequal_submitted', {
-          defaultValue: 'Prequalification submitted — score: {{score}}',
+          defaultValue: 'Prequalification submitted - score: {{score}}',
           score,
         }),
       });

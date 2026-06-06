@@ -135,7 +135,7 @@ afterEach(() => {
   cleanup();
 });
 
-describe('MatchPipeline — P0-1 stale-stage skip regression', () => {
+describe('MatchPipeline - P0-1 stale-stage skip regression', () => {
   it('Run-all re-executes every stage in ORDER, including stale ones', async () => {
     // Simulates the post-edit state: stages 1-2 are done with fresh
     // inputs, 3-7 carry stale outputs from a prior run that no longer

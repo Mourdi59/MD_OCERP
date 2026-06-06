@@ -430,7 +430,7 @@ export function ResourceSummary({ boqId, locale = 'de-DE' }: { boqId: string; lo
                               aria-pressed={sortBy === 'abc'}
                               title={t('boq.rs_col_abc_tooltip', {
                                 defaultValue:
-                                  'Pareto / ABC analysis — A items make up ~80% of cost, B ~15%, C ~5%. Click to highlight bucket boundaries.',
+                                  'Pareto / ABC analysis - A items make up ~80% of cost, B ~15%, C ~5%. Click to highlight bucket boundaries.',
                               })}
                             >
                               {t('boq.rs_col_abc', { defaultValue: 'ABC %' })}
@@ -658,7 +658,7 @@ function ResourceRow({
           <span
             title={t('boq.resource_type_variant_tooltip', {
               defaultValue:
-                'Variant resource — pick from {{base}} catalog. Click to reclassify resource type.',
+                'Variant resource - pick from {{base}} catalog. Click to reclassify resource type.',
               base: getResourceTypeLabel(resource.type, t),
             })}
             className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium

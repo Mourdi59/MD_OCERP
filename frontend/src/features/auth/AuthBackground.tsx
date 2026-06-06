@@ -21,18 +21,18 @@ const HEADERS = ['Pos.', 'Description', 'Unit', 'Qty', 'Rate', 'Total', 'CG'];
 const RIGHT_COLS = new Set([3, 4, 5, 6]);
 
 const TABLE_ROWS: { t: 's' | 'p'; v: string[] }[] = [
-  { t: 's', v: ['300', 'Structure — Building Construction', '', '', '', '', ''] },
+  { t: 's', v: ['300', 'Structure - Building Construction', '', '', '', '', ''] },
   { t: 'p', v: ['01.001', 'Reinforced concrete C30/37, slab', 'm\u00B3', '86.40', '\u20AC295.00', '\u20AC25,488', '330'] },
   { t: 'p', v: ['01.002', 'Formwork base slab, smooth', 'm\u00B2', '432.00', '\u20AC38.50', '\u20AC16,632', '330'] },
   { t: 'p', v: ['01.003', 'Reinforcement BSt 500S, mesh', 'kg', '10,368', '\u20AC2.18', '\u20AC22,602', '330'] },
   { t: 'p', v: ['01.004', 'Reinforced concrete C30/37, walls', 'm\u00B3', '156.00', '\u20AC285.00', '\u20AC44,460', '330'] },
   { t: 'p', v: ['01.005', 'Formwork walls, smooth finish', 'm\u00B2', '1,248', '\u20AC42.50', '\u20AC53,040', '330'] },
   { t: 's', v: ['', 'Subtotal CG 330', '', '', '', '\u20AC162,222', '330'] },
-  { t: 's', v: ['340', 'Structure — Interior Walls', '', '', '', '', ''] },
+  { t: 's', v: ['340', 'Structure - Interior Walls', '', '', '', '', ''] },
   { t: 'p', v: ['02.001', 'Masonry KS 24cm, load-bearing', 'm\u00B2', '890.00', '\u20AC68.00', '\u20AC60,520', '340'] },
   { t: 'p', v: ['02.002', 'Masonry KS 11.5cm, partition', 'm\u00B2', '620.00', '\u20AC48.00', '\u20AC29,760', '340'] },
   { t: 's', v: ['', 'Subtotal CG 340', '', '', '', '\u20AC90,280', '340'] },
-  { t: 's', v: ['400', 'Building Services — HVAC', '', '', '', '', ''] },
+  { t: 's', v: ['400', 'Building Services - HVAC', '', '', '', '', ''] },
   { t: 'p', v: ['04.001', 'Heating pipes, copper DN15', 'm', '840.00', '\u20AC28.50', '\u20AC23,940', '420'] },
   { t: 'p', v: ['04.002', 'Cable NYM-J 3\u00D71.5', 'm', '2,800', '\u20AC4.80', '\u20AC13,440', '440'] },
 ];
@@ -193,7 +193,7 @@ function DashboardGrid() {
         <div className="oce-dash-cell oce-dash-wide">
           <svg viewBox="0 0 420 120" fill="none">
             <rect x="4" y="4" width="412" height="112" rx="6" fill="none" stroke={c} strokeWidth=".7" />
-            <text x="16" y="22" fontSize="8" fill={c} opacity=".6" fontWeight="700" letterSpacing=".04em">S-CURVE — PLANNED vs ACTUAL</text>
+            <text x="16" y="22" fontSize="8" fill={c} opacity=".6" fontWeight="700" letterSpacing=".04em">S-CURVE - PLANNED vs ACTUAL</text>
             <defs>
               <linearGradient id="oceAreaFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={c} stopOpacity=".1" />

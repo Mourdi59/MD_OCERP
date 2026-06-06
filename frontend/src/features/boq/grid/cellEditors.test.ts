@@ -15,7 +15,7 @@
 import { describe, it, expect } from 'vitest';
 import { evaluateFormula } from './cellEditors';
 
-describe('evaluateFormula — basic arithmetic', () => {
+describe('evaluateFormula - basic arithmetic', () => {
   it('evaluates + - * /', () => {
     expect(evaluateFormula('2+3')).toBe(5);
     expect(evaluateFormula('10-4')).toBe(6);
@@ -40,14 +40,14 @@ describe('evaluateFormula — basic arithmetic', () => {
   });
 });
 
-describe('evaluateFormula — Excel-style "=" prefix', () => {
+describe('evaluateFormula - Excel-style "=" prefix', () => {
   it('accepts a leading equals sign', () => {
     expect(evaluateFormula('=2+3')).toBe(5);
     expect(evaluateFormula('= 12 * 4')).toBe(48);
   });
 });
 
-describe('evaluateFormula — exponent', () => {
+describe('evaluateFormula - exponent', () => {
   it('supports ^ as right-associative exponent', () => {
     expect(evaluateFormula('2^3')).toBe(8);
     expect(evaluateFormula('2^3^2')).toBe(512); // right-assoc: 2^(3^2)
@@ -59,7 +59,7 @@ describe('evaluateFormula — exponent', () => {
   });
 });
 
-describe('evaluateFormula — multiplication aliases', () => {
+describe('evaluateFormula - multiplication aliases', () => {
   it('accepts x as multiplication', () => {
     expect(evaluateFormula('12 x 4')).toBe(48);
     expect(evaluateFormula('=2 X 3')).toBe(6);
@@ -70,14 +70,14 @@ describe('evaluateFormula — multiplication aliases', () => {
   });
 });
 
-describe('evaluateFormula — locale decimal separator', () => {
+describe('evaluateFormula - locale decimal separator', () => {
   it('accepts comma as decimal point', () => {
     expect(evaluateFormula('=2,5 * 4')).toBe(10);
     expect(evaluateFormula('1,5 + 0,5')).toBe(2);
   });
 });
 
-describe('evaluateFormula — constants', () => {
+describe('evaluateFormula - constants', () => {
   it('supports PI and E (case-insensitive)', () => {
     expect(evaluateFormula('=PI()')).toBeCloseTo(Math.PI, 4);
     expect(evaluateFormula('=pi')).toBeCloseTo(Math.PI, 4);
@@ -86,7 +86,7 @@ describe('evaluateFormula — constants', () => {
   });
 });
 
-describe('evaluateFormula — functions', () => {
+describe('evaluateFormula - functions', () => {
   it('supports sqrt', () => {
     expect(evaluateFormula('=sqrt(144)')).toBe(12);
     expect(evaluateFormula('=sqrt(144) + 5')).toBe(17);
@@ -109,7 +109,7 @@ describe('evaluateFormula — functions', () => {
   });
 });
 
-describe('evaluateFormula — safety / rejection', () => {
+describe('evaluateFormula - safety / rejection', () => {
   it('returns null for unknown identifiers', () => {
     expect(evaluateFormula('=window')).toBeNull();
     expect(evaluateFormula('=alert(1)')).toBeNull();
@@ -132,7 +132,7 @@ describe('evaluateFormula — safety / rejection', () => {
   });
 });
 
-describe('evaluateFormula — Issue #90 examples', () => {
+describe('evaluateFormula - Issue #90 examples', () => {
   it('matches the user-reported example', () => {
     // The user wrote =2xPI()^2x3 with `x` instead of `*`.
     expect(evaluateFormula('=2xPI()^2x3')).toBeCloseTo(59.2176, 3);

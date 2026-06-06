@@ -5,7 +5,7 @@ import {
   VARIANCE_GREEN_THRESHOLD,
 } from '../components/variance-thresholds';
 
-describe('classifyVariance — traffic-light thresholds (RFC 25)', () => {
+describe('classifyVariance - traffic-light thresholds (RFC 25)', () => {
   it('uses the documented thresholds', () => {
     expect(VARIANCE_GREEN_THRESHOLD).toBe(3.0);
     expect(VARIANCE_AMBER_THRESHOLD).toBe(5.0);

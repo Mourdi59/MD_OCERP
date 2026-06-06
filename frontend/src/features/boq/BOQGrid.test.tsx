@@ -30,7 +30,7 @@ describe('evaluateFormula', () => {
     expect(evaluateFormula('1 / 0')).toBeNull();
   });
 
-  it('should round to 4 decimal places (Issue #90 — quantities need >2dp precision)', () => {
+  it('should round to 4 decimal places (Issue #90 - quantities need >2dp precision)', () => {
     expect(evaluateFormula('10 / 3')).toBe(3.3333);
   });
 

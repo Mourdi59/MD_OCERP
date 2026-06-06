@@ -835,12 +835,12 @@ function BIMQuantitySuggestionBadge({
     suggestion.source === 'computed_mass_from_density'
       ? t('bim.qty_low_density', {
           defaultValue:
-            'Mass was computed from volume × material density — verify the density value before accepting.',
+            'Mass was computed from volume × material density - verify the density value before accepting.',
         })
       : suggestion.source === 'unit_unknown'
       ? t('bim.qty_low_unit', {
           defaultValue:
-            'Unit not recognised — falling back to element count. Pick a known unit (m³ / m² / m / kg / pcs / lsum) for a better suggestion.',
+            'Unit not recognised - falling back to element count. Pick a known unit (m³ / m² / m / kg / pcs / lsum) for a better suggestion.',
         })
       : suggestion.value === 0
       ? t('bim.qty_low_missing', {
@@ -848,7 +848,7 @@ function BIMQuantitySuggestionBadge({
             'No matching geometric field found on these elements. Check the BIM model has the expected quantity properties.',
         })
       : t('bim.qty_low_generic', {
-          defaultValue: 'Low-confidence suggestion — verify before accepting.',
+          defaultValue: 'Low-confidence suggestion - verify before accepting.',
         });
 
   return (

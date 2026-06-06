@@ -63,7 +63,7 @@ rules:
     name: DIN 276 cost-group code present on every element
     severity: error
     rationale: |
-      DIN 276:2018-12 §3.2 — every element of the building substance is
+      DIN 276:2018-12 §3.2 - every element of the building substance is
       assigned to a cost group. Missing codes cause silent leakage in
       cost-group rollups.
     selector:
@@ -93,7 +93,7 @@ rules:
     failure_message: "DIN 276 code '{{din276}}' is outside the building-structure ranges (300/400/500)."
 `;
 
-const CLEARANCE_CORRIDOR_DOOR_YAML = `# Accessibility clearance audit (DIN 18040-1 — barrier-free public buildings).
+const CLEARANCE_CORRIDOR_DOOR_YAML = `# Accessibility clearance audit (DIN 18040-1 - barrier-free public buildings).
 #
 # - Corridors (IfcSpace where SpaceType=Corridor) must have a clear width
 #   of at least 1.50 m per DIN 18040-1 §4.3.6.
@@ -120,7 +120,7 @@ rules:
     name: Corridor minimum clear width 1.50 m
     severity: warning
     rationale: |
-      DIN 18040-1 §4.3.6 — main corridors on accessible routes must allow
+      DIN 18040-1 §4.3.6 - main corridors on accessible routes must allow
       two wheelchair users to pass; minimum clear width is 1.50 m.
     selector:
       ifc_class: IfcSpace
@@ -138,7 +138,7 @@ rules:
     name: Door clear opening width 0.90 m on accessible routes
     severity: error
     rationale: |
-      DIN 18040-1 §4.3.3.2 — doors on accessible routes require a clear
+      DIN 18040-1 §4.3.3.2 - doors on accessible routes require a clear
       opening width of 0.90 m measured between the leaf at 90 ° and the
       stop on the opposite jamb.
     selector:
@@ -160,7 +160,7 @@ const FIRE_COMPARTMENT_PROPERTY_YAML = `# Internal-wall fire-rating completeness
 # FireRating property. The set of acceptable values follows DIN 4102-2 /
 # EN 13501-2 ("F30", "F60", "F90", "F120", "F180") plus the explicit
 # "none" sentinel for walls intentionally outside any fire compartment
-# (which still must be recorded — silent absence is the failure case).
+# (which still must be recorded - silent absence is the failure case).
 schema_version: "1.0"
 pack:
   id: fire_compartment_property
@@ -216,7 +216,7 @@ const MEP_CLEARANCE_YAML = `# MEP-to-structure clearance.
 #
 # Pipe segments must keep at least 100 mm of clearance from structural
 # beams to allow insulation, sleeves and tolerance during installation
-# (cf. VDI 2055 §6.3 — Wärmedämmung an betriebstechnischen Anlagen).
+# (cf. VDI 2055 §6.3 - Wärmedämmung an betriebstechnischen Anlagen).
 #
 # This is the canonical *set-vs-set* rule: it pairs every IfcPipeSegment
 # (selector set) with every IfcBeam (other_selector set) and asserts a

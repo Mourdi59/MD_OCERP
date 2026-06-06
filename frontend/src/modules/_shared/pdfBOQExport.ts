@@ -67,7 +67,7 @@ export function generateBOQPrintHTML(
 </style>
 </head><body>
   <h1>${htmlEscape(projectName)}</h1>
-  <h2>${htmlEscape(boqName)} — ${htmlEscape(template.name)} (${htmlEscape(template.country)})</h2>
+  <h2>${htmlEscape(boqName)} - ${htmlEscape(template.name)} (${htmlEscape(template.country)})</h2>
   <div class="meta">${htmlEscape(date)} | ${posCount} positions | Standard: ${htmlEscape(template.classification)} | Currency: ${htmlEscape(template.currency)}</div>
   <table>
     <thead>

@@ -1931,7 +1931,7 @@ export function CatalogPage() {
             })}
             {(stats?.by_category ?? []).length === 0 && (
               <div className="px-3 py-3 text-2xs text-content-tertiary">
-                {t('catalog.no_categories', { defaultValue: 'No categories yet — import a region to populate.' })}
+                {t('catalog.no_categories', { defaultValue: 'No categories yet - import a region to populate.' })}
               </div>
             )}
           </div>

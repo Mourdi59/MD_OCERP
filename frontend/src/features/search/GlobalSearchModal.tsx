@@ -163,7 +163,7 @@ export default function GlobalSearchModal() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('global_search.placeholder', {
               defaultValue:
-                'Search anything — BOQ positions, drawings, tasks, risks, BIM elements…',
+                'Search anything - BOQ positions, drawings, tasks, risks, BIM elements…',
             })}
             className="flex-1 bg-transparent outline-none text-sm placeholder:text-content-quaternary"
           />
@@ -265,7 +265,7 @@ export default function GlobalSearchModal() {
                 <SearchIcon size={24} className="mb-2 opacity-50" />
                 <div className="text-xs italic">
                   {t('global_search.no_results', {
-                    defaultValue: 'No matches yet — try a different phrasing',
+                    defaultValue: 'No matches yet - try a different phrasing',
                   })}
                 </div>
               </div>

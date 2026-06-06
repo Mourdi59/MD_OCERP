@@ -269,7 +269,7 @@ export function NewTransmittalWizard({
               maxLength={255}
               className="h-9 px-3 rounded-md border border-border bg-surface-primary text-sm"
               placeholder={t('files.transmittals.subject_placeholder', {
-                defaultValue: 'e.g. Issue for review — package R1',
+                defaultValue: 'e.g. Issue for review - package R1',
               })}
             />
           </WideModalField>
@@ -318,7 +318,7 @@ export function NewTransmittalWizard({
           })}
           description={t('files.transmittals.wizard.step2_help', {
             defaultValue:
-              'These files will be referenced on the cover sheet. Files were pre-selected from the list — review and remove if needed.',
+              'These files will be referenced on the cover sheet. Files were pre-selected from the list - review and remove if needed.',
           })}
           columns={1}
         >

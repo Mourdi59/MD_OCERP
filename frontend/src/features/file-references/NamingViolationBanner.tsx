@@ -39,13 +39,13 @@ const CODE_LABELS: Record<ViolationCode, string> = {
 };
 
 const CODE_RULE_REFS: Record<ViolationCode, string> = {
-  'not-iso19650': 'ISO 19650-2 §5.4 — File naming convention',
-  'missing-volume': 'ISO 19650-2 §5.4.2 — Volume / System',
-  'bad-level': 'ISO 19650-2 §5.4.2 — Level / Location',
-  'bad-role-code': 'ISO 19650-2 §5.4.2 — Role (discipline)',
-  'bad-number': 'ISO 19650-2 §5.4.2 — Number (4-digit sequence)',
-  'too-many-parts': 'ISO 19650-2 §5.4 — Maximum 9 fields',
-  'too-few-parts': 'ISO 19650-2 §5.4 — Minimum 7 required fields',
+  'not-iso19650': 'ISO 19650-2 §5.4 - File naming convention',
+  'missing-volume': 'ISO 19650-2 §5.4.2 - Volume / System',
+  'bad-level': 'ISO 19650-2 §5.4.2 - Level / Location',
+  'bad-role-code': 'ISO 19650-2 §5.4.2 - Role (discipline)',
+  'bad-number': 'ISO 19650-2 §5.4.2 - Number (4-digit sequence)',
+  'too-many-parts': 'ISO 19650-2 §5.4 - Maximum 9 fields',
+  'too-few-parts': 'ISO 19650-2 §5.4 - Minimum 7 required fields',
 };
 
 export function NamingViolationBanner({

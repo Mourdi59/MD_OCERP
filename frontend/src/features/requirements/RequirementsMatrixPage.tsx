@@ -568,7 +568,7 @@ function CellEditor({ state, onClose, onSaved }: CellEditorProps) {
   if (!state.open || !state.row) return null;
 
   const typeLabel = TYPE_LABEL[state.deliverableType] ?? state.deliverableType;
-  const title = `${typeLabel} — ${state.row.entity}.${state.row.attribute}`;
+  const title = `${typeLabel} - ${state.row.entity}.${state.row.attribute}`;
 
   return (
     <WideModal
@@ -1062,15 +1062,15 @@ export function RequirementsMatrixPage() {
                               'group flex w-full min-w-[120px] flex-col items-start gap-0.5 rounded-lg border px-2.5 py-1.5 text-left text-xs transition',
                               CELL_STYLE[status],
                             )}
-                            aria-label={`${TYPE_LABEL[col] ?? col} — ${STATUS_LABEL[status]} — ${row.entity}.${row.attribute}`}
+                            aria-label={`${TYPE_LABEL[col] ?? col} - ${STATUS_LABEL[status]} - ${row.entity}.${row.attribute}`}
                           >
                             <span className="font-semibold uppercase tracking-wide">
                               {t(`requirements.matrix.status_${status}`, { defaultValue: STATUS_LABEL[status] })}
                             </span>
                             <span className="text-[11px] opacity-80">
-                              {cell?.lod ? `LOD ${cell.lod}` : 'LOD —'}
+                              {cell?.lod ? `LOD ${cell.lod}` : 'LOD -'}
                               {' · '}
-                              {cell?.loi ? `LOI ${cell.loi}` : 'LOI —'}
+                              {cell?.loi ? `LOI ${cell.loi}` : 'LOI -'}
                             </span>
                             {!cell?.deliverable_id && (
                               <span className="inline-flex items-center gap-0.5 text-[11px] opacity-70 group-hover:opacity-100">

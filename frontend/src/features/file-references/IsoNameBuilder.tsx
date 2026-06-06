@@ -211,7 +211,7 @@ export function IsoNameBuilder({
       <p className="mt-0.5 text-xs text-content-tertiary">
         {t('iso.builder_desc', {
           defaultValue:
-            'Fill in each segment — the preview below updates live.',
+            'Fill in each segment - the preview below updates live.',
         })}
       </p>
 
@@ -265,7 +265,7 @@ export function IsoNameBuilder({
         {isValid && (
           <div className="mt-1 text-xs text-semantic-success">
             {t('iso.preview_valid', {
-              defaultValue: 'Looks good — matches ISO 19650.',
+              defaultValue: 'Looks good - matches ISO 19650.',
             })}
           </div>
         )}

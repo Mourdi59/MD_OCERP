@@ -207,7 +207,7 @@ export function PipelineNode({ id, data, selected }: PipelineNodeProps) {
           <span
             className="ms-1 shrink-0 rounded bg-violet-200 px-1 text-2xs font-semibold text-violet-800 dark:bg-violet-800 dark:text-violet-100"
             title={t('pipeline.node.ai_confidence', {
-              defaultValue: 'AI suggestion — review the confidence score',
+              defaultValue: 'AI suggestion - review the confidence score',
             })}
           >
             {t('pipeline.node.ai_badge', { defaultValue: 'AI' })}

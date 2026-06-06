@@ -276,7 +276,7 @@ export class WalkMode {
     if (this._enabled) return;
     if (this.orbitControls && this.orbitControls.enabled) {
       throw new Error(
-        'WalkMode.enable(): OrbitControls is still active — disable it first to avoid camera-fight rendering bugs.',
+        'WalkMode.enable(): OrbitControls is still active - disable it first to avoid camera-fight rendering bugs.',
       );
     }
     this._enabled = true;

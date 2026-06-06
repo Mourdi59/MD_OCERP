@@ -728,7 +728,7 @@ function DetailDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                 <span>
                   {t('equipment.blocked_banner', {
                     defaultValue:
-                      'This unit is blocked from new assignments — its status is not active or a required inspection has expired.',
+                      'This unit is blocked from new assignments - its status is not active or a required inspection has expired.',
                   })}
                 </span>
               </div>

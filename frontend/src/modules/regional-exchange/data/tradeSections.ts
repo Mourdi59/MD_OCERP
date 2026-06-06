@@ -134,7 +134,7 @@ export const CZ_TRADE_SECTIONS: TradeSection[] = [
 export const DE_TRADE_SECTIONS: TradeSection[] = [
   { code: '100', label: 'Grundstück' },
   { code: '200', label: 'Vorbereitende Maßnahmen' },
-  { code: '300', label: 'Bauwerk — Baukonstruktionen' },
+  { code: '300', label: 'Bauwerk - Baukonstruktionen' },
   { code: '310', label: 'Baugrube/Erdbau' },
   { code: '320', label: 'Gründung' },
   { code: '330', label: 'Außenwände' },
@@ -143,7 +143,7 @@ export const DE_TRADE_SECTIONS: TradeSection[] = [
   { code: '360', label: 'Dächer' },
   { code: '370', label: 'Baukonstruktive Einbauten' },
   { code: '390', label: 'Sonstige Baukonstruktionen' },
-  { code: '400', label: 'Bauwerk — Technische Anlagen' },
+  { code: '400', label: 'Bauwerk - Technische Anlagen' },
   { code: '410', label: 'Abwasser-, Wasser-, Gasanlagen' },
   { code: '420', label: 'Wärmeversorgungsanlagen' },
   { code: '430', label: 'Lufttechnische Anlagen' },

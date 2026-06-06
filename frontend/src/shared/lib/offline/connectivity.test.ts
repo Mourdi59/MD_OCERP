@@ -13,7 +13,7 @@ function setOnLine(value: boolean): void {
   });
 }
 
-describe('connectivity — isOnline', () => {
+describe('connectivity - isOnline', () => {
   afterEach(() => {
     setOnLine(true);
   });
@@ -29,7 +29,7 @@ describe('connectivity — isOnline', () => {
   });
 });
 
-describe('connectivity — subscribe', () => {
+describe('connectivity - subscribe', () => {
   let unsub: (() => void) | null = null;
 
   beforeEach(() => {

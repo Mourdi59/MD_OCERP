@@ -77,7 +77,7 @@ const VARIANT_SUFFIX_WITH_PARENS_RE = new RegExp(
   'iu',
 );
 const VARIANT_SUFFIX_BARE_RE = new RegExp(
-  `\\s*[\\.,;·\\-—]?\\s*${VARIANT_KEYWORDS}\\s*[:：][^\\n\\r]*$`,
+  `\\s*[\\.,;·\\--]?\\s*${VARIANT_KEYWORDS}\\s*[:：][^\\n\\r]*$`,
   'iu',
 );
 
@@ -113,13 +113,13 @@ function getValidationTooltip(
 ): string {
   switch (status) {
     case 'passed':
-      return t('boq.validation_passed', { defaultValue: 'Validation passed — position is complete' });
+      return t('boq.validation_passed', { defaultValue: 'Validation passed - position is complete' });
     case 'warnings':
-      return t('boq.validation_warnings', { defaultValue: 'Validation warnings — review recommended' });
+      return t('boq.validation_warnings', { defaultValue: 'Validation warnings - review recommended' });
     case 'errors':
-      return t('boq.validation_errors', { defaultValue: 'Validation errors — action required' });
+      return t('boq.validation_errors', { defaultValue: 'Validation errors - action required' });
     case 'pending':
-      return t('boq.validation_pending', { defaultValue: 'Validation pending — not yet checked' });
+      return t('boq.validation_pending', { defaultValue: 'Validation pending - not yet checked' });
     default:
       return status;
   }
@@ -426,12 +426,12 @@ export function SectionFullWidthRenderer(params: ICellRendererParams) {
                        transition-colors"
             title={t('boq.section_fx_missing_tooltip', {
               defaultValue:
-                'Section total may be incorrect — no FX rate for: {{codes}}. Click to set rates.',
+                'Section total may be incorrect - no FX rate for: {{codes}}. Click to set rates.',
               codes: (data as { _fxWarnings: string[] })._fxWarnings.join(', '),
             })}
             aria-label={t('boq.section_fx_missing_tooltip', {
               defaultValue:
-                'Section total may be incorrect — no FX rate for: {{codes}}. Click to set rates.',
+                'Section total may be incorrect - no FX rate for: {{codes}}. Click to set rates.',
               codes: (data as { _fxWarnings: string[] })._fxWarnings.join(', '),
             })}
           >
@@ -959,7 +959,7 @@ export function DescriptionCellRenderer(params: ICellRendererParams) {
                  transition-colors duration-150"
       title={t('boq.position_variant_v_tooltip', {
         defaultValue:
-          'This position carries a variant resource — click to expand the resource panel.',
+          'This position carries a variant resource - click to expand the resource panel.',
       })}
       aria-label={t('boq.position_variant_v_label', {
         defaultValue: 'Expand resources',
@@ -992,7 +992,7 @@ export function DescriptionCellRenderer(params: ICellRendererParams) {
       <span
         className="shrink-0 inline-flex items-center gap-0.5 rounded text-[10px] font-medium px-1 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 cursor-help"
         title={t('boq.resource_breakdown_tip', {
-          defaultValue: 'Cost driver split — sourced from the linked assembly',
+          defaultValue: 'Cost driver split - sourced from the linked assembly',
         })}
         data-testid="boq-resource-breakdown-pill"
       >
@@ -1117,13 +1117,13 @@ export function OrdinalCellRenderer(params: ICellRendererParams) {
   const linkTooltip =
     linkRole === 'master'
       ? t('boq.link_badge_master', {
-          defaultValue: 'Master of code {{code}} — {{count}} linked',
+          defaultValue: 'Master of code {{code}} - {{count}} linked',
           code: refCode || (value as string),
           count: linkedCount,
         })
       : t('boq.link_badge_instance', {
           defaultValue:
-            'Linked instance of code {{code}} — edits to its definition will diverge it',
+            'Linked instance of code {{code}} - edits to its definition will diverge it',
           code: refCode || (value as string),
         });
 
@@ -1267,8 +1267,8 @@ export function BimLinkCellRenderer(params: ICellRendererParams) {
           className="h-6 px-1.5 inline-flex items-center gap-0.5 rounded
                      bg-oe-blue/10 text-oe-blue text-[10px] font-semibold
                      hover:bg-oe-blue/25 transition-colors cursor-pointer"
-          title={t('boq.bim_link_tooltip', { defaultValue: '{{count}} BIM element(s) linked — click to preview', count: bimLinkCount })}
-          aria-label={t('boq.bim_link_tooltip', { defaultValue: '{{count}} BIM element(s) linked — click to preview', count: bimLinkCount })}
+          title={t('boq.bim_link_tooltip', { defaultValue: '{{count}} BIM element(s) linked - click to preview', count: bimLinkCount })}
+          aria-label={t('boq.bim_link_tooltip', { defaultValue: '{{count}} BIM element(s) linked - click to preview', count: bimLinkCount })}
         >
           <Cuboid size={11} />
           {bimLinkCount}
@@ -1283,9 +1283,9 @@ export function BimLinkCellRenderer(params: ICellRendererParams) {
                      bg-rose-500/10 text-rose-600 dark:text-rose-400
                      hover:bg-rose-500/25 transition-colors cursor-pointer"
           title={pdfSource
-            ? `${t('boq.pdf_link_tooltip_v2', { defaultValue: 'PDF takeoff — click for details & navigation' })} — ${pdfSource}`
-            : t('boq.pdf_link_tooltip_v2', { defaultValue: 'PDF takeoff — click for details & navigation' })}
-          aria-label={t('boq.pdf_link_tooltip_v2', { defaultValue: 'PDF takeoff — click for details & navigation' })}
+            ? `${t('boq.pdf_link_tooltip_v2', { defaultValue: 'PDF takeoff - click for details & navigation' })} - ${pdfSource}`
+            : t('boq.pdf_link_tooltip_v2', { defaultValue: 'PDF takeoff - click for details & navigation' })}
+          aria-label={t('boq.pdf_link_tooltip_v2', { defaultValue: 'PDF takeoff - click for details & navigation' })}
         >
           <FileText size={12} />
         </button>
@@ -1299,9 +1299,9 @@ export function BimLinkCellRenderer(params: ICellRendererParams) {
                      bg-amber-500/10 text-amber-600 dark:text-amber-400
                      hover:bg-amber-500/25 transition-colors cursor-pointer"
           title={dwgSource
-            ? `${t('boq.dwg_link_tooltip_v2', { defaultValue: 'DWG drawing — click for details & navigation' })} — ${dwgSource}`
-            : t('boq.dwg_link_tooltip_v2', { defaultValue: 'DWG drawing — click for details & navigation' })}
-          aria-label={t('boq.dwg_link_tooltip_v2', { defaultValue: 'DWG drawing — click for details & navigation' })}
+            ? `${t('boq.dwg_link_tooltip_v2', { defaultValue: 'DWG drawing - click for details & navigation' })} - ${dwgSource}`
+            : t('boq.dwg_link_tooltip_v2', { defaultValue: 'DWG drawing - click for details & navigation' })}
+          aria-label={t('boq.dwg_link_tooltip_v2', { defaultValue: 'DWG drawing - click for details & navigation' })}
         >
           <FileBox size={12} />
         </button>
@@ -1824,7 +1824,7 @@ const BimLinkPopover = forwardRef<
               {!isLoading && !isEnriching && elements.every((el) => extractNumerics(el, showAllProps).length === 0) && (
                 <div className="py-3 text-center text-[10px] text-content-tertiary">
                   {!showAllProps
-                    ? t('boq.no_quantities_hint_button', { defaultValue: 'No quantities — press "Show all" above to surface every BIM property' })
+                    ? t('boq.no_quantities_hint_button', { defaultValue: 'No quantities - press "Show all" above to surface every BIM property' })
                     : t('boq.no_numeric_found', { defaultValue: 'No numeric values in this element' })}
                 </div>
               )}
@@ -2042,7 +2042,7 @@ const BimLinkPopover = forwardRef<
                         className="text-[8px] font-bold uppercase text-sky-600/80 tracking-wider shrink-0"
                         title={t('boq.bim_agg_distinct_title', {
                           defaultValue:
-                            'Per-element value — summing is meaningless, so each unique value is listed. Click one to apply it.',
+                            'Per-element value - summing is meaningless, so each unique value is listed. Click one to apply it.',
                         })}
                       >
                         {sortedUnique.length === 1
@@ -2307,7 +2307,7 @@ function PdfDwgSourcePopover(props: PdfDwgSourcePopoverProps) {
             </div>
           ) : (
             <div className="text-[11px] text-content-tertiary italic">
-              {t('boq.source_no_measurement', { defaultValue: 'Measurement data not stored locally — open the source to view details.' })}
+              {t('boq.source_no_measurement', { defaultValue: 'Measurement data not stored locally - open the source to view details.' })}
             </div>
           )}
         </div>
@@ -2941,7 +2941,7 @@ function ResourceTypePicker({
           isVariant
             ? t('boq.resource_type_variant_tooltip', {
                 defaultValue:
-                  'Variant resource — pick from {{base}} catalog. Click to reclassify resource type.',
+                  'Variant resource - pick from {{base}} catalog. Click to reclassify resource type.',
                 base: baseLabel,
               })
             : t('boq.resource_type', { defaultValue: 'Resource type' })
@@ -2950,7 +2950,7 @@ function ResourceTypePicker({
           isVariant
             ? t('boq.resource_type_variant_tooltip', {
                 defaultValue:
-                  'Variant resource — pick from {{base}} catalog. Click to reclassify resource type.',
+                  'Variant resource - pick from {{base}} catalog. Click to reclassify resource type.',
                 base: baseLabel,
               })
             : t('boq.resource_type', { defaultValue: 'Resource type' })
@@ -3129,7 +3129,7 @@ function ResourceCurrencyCombobox({
               code: value,
             })
           : t('boq.resource_currency_pick', {
-              defaultValue: 'Currency — {{symbol}} {{code}}',
+              defaultValue: 'Currency - {{symbol}} {{code}}',
               symbol: CURRENCY_SYMBOL[value] ?? '',
               code: value,
             })}
@@ -3221,7 +3221,7 @@ function ResourceCurrencyCombobox({
                     {fxSource === 'global'
                       ? t('boq.fx_rate_confirm_hint', {
                           defaultValue:
-                            'Default rate filled in — press Enter to apply it to this project so the section subtotal converts, or type your own.',
+                            'Default rate filled in - press Enter to apply it to this project so the section subtotal converts, or type your own.',
                         })
                       : t('boq.fx_rate_required_hint', {
                           defaultValue:
@@ -3278,7 +3278,7 @@ function ResourceCurrencyCombobox({
             )}
             {matchProject.length === 0 && matchOther.length === 0 && !canAddCustom && (
               <div className="px-2 py-3 text-[10px] text-center text-content-quaternary">
-                {t('boq.resource_currency_no_match', { defaultValue: 'No matches — type at least 2 letters to add a custom code.' })}
+                {t('boq.resource_currency_no_match', { defaultValue: 'No matches - type at least 2 letters to add a custom code.' })}
               </div>
             )}
           </div>
@@ -3596,7 +3596,7 @@ export function EditableResourceRow({ data, ctx, slots, leftPad }: { data: Recor
     if (variantBarTone === 'amber' && resourceVariantDefault) {
       return ctx.t('boq.resource_variant_bar_tooltip_default', {
         defaultValue:
-          'Auto-default ({{strategy}}){{captured}} — click pill to refine.',
+          'Auto-default ({{strategy}}){{captured}} - click pill to refine.',
         strategy: resourceVariantDefault,
         captured: captured ? ` · captured ${captured.split('T')[0]}` : '',
       });
@@ -3826,7 +3826,7 @@ export function EditableResourceRow({ data, ctx, slots, leftPad }: { data: Recor
       });
     }
     return ctx.t('boq.resource_no_fx_rate', {
-      defaultValue: 'No FX rate configured for {{code}} — total shown in {{code}}',
+      defaultValue: 'No FX rate configured for {{code}} - total shown in {{code}}',
       code: resourceCurrency,
     });
   })();
@@ -3848,7 +3848,7 @@ export function EditableResourceRow({ data, ctx, slots, leftPad }: { data: Recor
       style={{ width: `${width}px` }}
       title={resourceCode
         ? ctx.t('boq.resource_catalog_code', { defaultValue: 'Catalogue code: {{code}}', code: resourceCode })
-        : ctx.t('boq.resource_customised', { defaultValue: 'Customised resource — no catalogue code' })}
+        : ctx.t('boq.resource_customised', { defaultValue: 'Customised resource - no catalogue code' })}
     >
       {resourceCode ? (
         <span className="font-normal tracking-tight text-content-tertiary/70 overflow-hidden text-ellipsis">
@@ -3885,7 +3885,7 @@ export function EditableResourceRow({ data, ctx, slots, leftPad }: { data: Recor
         <span
           aria-hidden="true"
           title={ctx.t('boq.resource_is_variant_badge', {
-            defaultValue: 'Variant resource — multiple price options available',
+            defaultValue: 'Variant resource - multiple price options available',
           })}
           className="shrink-0 relative inline-flex h-[18px] w-[18px] items-center justify-center
                      rounded-full overflow-hidden
@@ -4045,11 +4045,11 @@ export function EditableResourceRow({ data, ctx, slots, leftPad }: { data: Recor
                        focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-500
                        transition-colors"
             title={ctx.t('boq.resource_no_fx_rate_click', {
-              defaultValue: 'No FX rate configured for {{code}} — click to set one in Project Settings',
+              defaultValue: 'No FX rate configured for {{code}} - click to set one in Project Settings',
               code: resourceCurrency,
             })}
             aria-label={ctx.t('boq.resource_no_fx_rate_click', {
-              defaultValue: 'No FX rate configured for {{code}} — click to set one in Project Settings',
+              defaultValue: 'No FX rate configured for {{code}} - click to set one in Project Settings',
               code: resourceCurrency,
             })}
           >
@@ -4061,7 +4061,7 @@ export function EditableResourceRow({ data, ctx, slots, leftPad }: { data: Recor
                        text-[8px] font-bold uppercase
                        bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
             title={ctx.t('boq.resource_no_fx_rate', {
-              defaultValue: 'No FX rate configured for {{code}} — total shown in {{code}}',
+              defaultValue: 'No FX rate configured for {{code}} - total shown in {{code}}',
               code: resourceCurrency,
             })}
           >
@@ -4337,7 +4337,7 @@ function VariantHeaderResourceRow({
       className="shrink-0 inline-flex items-center justify-end self-center pr-2 text-[8px] font-mono whitespace-nowrap overflow-hidden"
       style={{ width: `${width}px` }}
       title={ctx.t('boq.variant_header_code_tooltip', {
-        defaultValue: 'Abstract variant resource — inherits the position quantity',
+        defaultValue: 'Abstract variant resource - inherits the position quantity',
       })}
     >
       <span className="px-1 py-0.5 rounded bg-violet-200/60 dark:bg-violet-800/40 text-violet-800 dark:text-violet-200 font-bold tracking-wider">

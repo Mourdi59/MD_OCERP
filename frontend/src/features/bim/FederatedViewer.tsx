@@ -239,7 +239,7 @@ export const FederatedViewer = forwardRef<FederatedViewerHandle, Props>(
           className="block h-full w-full"
           role="img"
           aria-label={t('bim.federation.viewer.canvas_aria_label', {
-            defaultValue: 'Federated BIM viewer — use mouse to orbit, zoom, and pan',
+            defaultValue: 'Federated BIM viewer - use mouse to orbit, zoom, and pan',
           })}
         />
 

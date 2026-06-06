@@ -72,7 +72,7 @@ export function BackendModulePage({
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
             {t('backend_modules.ui_body', {
-              defaultValue: 'The interactive frontend for this module is on the roadmap. Tell us your priority — we ship most-requested modules first, for free.',
+              defaultValue: 'The interactive frontend for this module is on the roadmap. Tell us your priority - we ship most-requested modules first, for free.',
             })}
           </p>
           <Link
@@ -111,7 +111,7 @@ export function BackendModulePage({
           </h2>
           <p className="text-sm text-slate-700 dark:text-slate-300 mt-0.5">
             {t('backend_modules.cta_body', {
-              defaultValue: 'Drop us a line — popular requests get built for free.',
+              defaultValue: 'Drop us a line - popular requests get built for free.',
             })}
           </p>
         </div>

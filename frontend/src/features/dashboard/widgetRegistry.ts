@@ -62,7 +62,7 @@ export const DASHBOARD_WIDGETS: readonly DashboardWidgetMeta[] = [
     labelKey: 'dashboard.layout.w_kpi',
     labelDefault: 'KPI ribbon',
     descKey: 'dashboard.layout.w_kpi_desc',
-    descDefault: 'Portfolio totals — value, projects, schedules',
+    descDefault: 'Portfolio totals - value, projects, schedules',
     icon: TrendingUp,
   },
   {
@@ -110,7 +110,7 @@ export const DASHBOARD_WIDGETS: readonly DashboardWidgetMeta[] = [
     labelKey: 'dashboard.layout.w_onboarding',
     labelDefault: 'Getting started',
     descKey: 'dashboard.layout.w_onboarding_desc',
-    descDefault: 'Setup checklist — hides itself once complete',
+    descDefault: 'Setup checklist - hides itself once complete',
     icon: Lightbulb,
   },
   {

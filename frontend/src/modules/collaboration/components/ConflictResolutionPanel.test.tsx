@@ -39,7 +39,7 @@ function renderPanel(
 // Suite 1: Rendering
 // ---------------------------------------------------------------------------
 
-describe('ConflictResolutionPanel — rendering', () => {
+describe('ConflictResolutionPanel - rendering', () => {
   it('renders nothing when conflicts list is empty', () => {
     const { container } = renderPanel([]);
     // The component returns null — nothing inside the test container
@@ -110,7 +110,7 @@ describe('ConflictResolutionPanel — rendering', () => {
 // Suite 2: Resolution actions
 // ---------------------------------------------------------------------------
 
-describe('ConflictResolutionPanel — resolution actions', () => {
+describe('ConflictResolutionPanel - resolution actions', () => {
   it('calls onResolve with keep_mine when "Keep mine" is clicked', () => {
     const onResolve = vi.fn();
     renderPanel([makeConflict({ id: 'c-keep' })], onResolve);
@@ -169,7 +169,7 @@ describe('ConflictResolutionPanel — resolution actions', () => {
 // Suite 3: Dismiss behaviour
 // ---------------------------------------------------------------------------
 
-describe('ConflictResolutionPanel — dismiss', () => {
+describe('ConflictResolutionPanel - dismiss', () => {
   it('calls onDismiss when close button (X) is clicked', () => {
     const onDismiss = vi.fn();
     renderPanel([makeConflict()], vi.fn(), onDismiss);
@@ -199,7 +199,7 @@ describe('ConflictResolutionPanel — dismiss', () => {
 // Suite 4: Multi-conflict navigation
 // ---------------------------------------------------------------------------
 
-describe('ConflictResolutionPanel — multi-conflict navigation', () => {
+describe('ConflictResolutionPanel - multi-conflict navigation', () => {
   const conflicts: ConflictItem[] = [
     makeConflict({ id: 'c1', positionOrdinal: '01.01', field: 'description', localValue: 'Concrete wall', remoteValue: 'RC Wall' }),
     makeConflict({ id: 'c2', positionOrdinal: '01.02', field: 'unit_rate', localValue: '200', remoteValue: '220' }),
@@ -281,7 +281,7 @@ describe('ConflictResolutionPanel — multi-conflict navigation', () => {
 // Suite 5: Accessibility
 // ---------------------------------------------------------------------------
 
-describe('ConflictResolutionPanel — accessibility', () => {
+describe('ConflictResolutionPanel - accessibility', () => {
   it('has role="dialog" and aria-modal on the outer wrapper', () => {
     renderPanel([makeConflict()]);
     const dialog = screen.getByRole('dialog');
@@ -315,7 +315,7 @@ describe('ConflictResolutionPanel — accessibility', () => {
 // Suite 6: Edge cases
 // ---------------------------------------------------------------------------
 
-describe('ConflictResolutionPanel — edge cases', () => {
+describe('ConflictResolutionPanel - edge cases', () => {
   it('renders empty string values without crashing', () => {
     renderPanel([makeConflict({ localValue: '', remoteValue: '' })]);
     expect(screen.getByTestId('value-local')).toBeInTheDocument();

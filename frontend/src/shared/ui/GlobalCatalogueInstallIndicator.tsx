@@ -42,7 +42,7 @@ const STAGE_LABELS: Record<string, string> = {
   'catalogue_install.stage_restoring': 'Restoring snapshot to Qdrant…',
   'catalogue_install.stage_indexing': 'Indexing vectors (~110k positions)…',
   'catalogue_install.stage_finalizing':
-    'Finalizing — large catalogues can take 10–15 min, this is normal',
+    'Finalizing - large catalogues can take 10–15 min, this is normal',
   'catalogue_install.stage_done': 'Done',
   'catalogue_install.stage_failed': 'Failed',
   'catalogue_install.stage_stalled': 'Stalled',

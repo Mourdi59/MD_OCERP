@@ -388,7 +388,7 @@ export function ResourceLevelingPage() {
                 <p className="text-sm text-content-tertiary">
                   {drawer.row.capacity_unknown
                     ? t('leveling.no_suggestions_unknown', {
-                        defaultValue: 'No suggestions — capacity is unknown.',
+                        defaultValue: 'No suggestions - capacity is unknown.',
                       })
                     : t('leveling.no_suggestions', {
                         defaultValue: 'No over-capacity periods in this window.',

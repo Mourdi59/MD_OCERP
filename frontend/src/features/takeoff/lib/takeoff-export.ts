@@ -755,7 +755,7 @@ export async function buildTakeoffWorkbook(
       const total = subset.reduce((s, m) => s + m.value, 0);
       const unit = subset[0]!.unit;
       const subtotalRow = ws.addRow({
-        group: `${groupName} — Subtotal`,
+        group: `${groupName} - Subtotal`,
         type: t,
         annotation: `Total ${t}`,
         page: '',

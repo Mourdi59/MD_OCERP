@@ -643,7 +643,7 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
 
   const depthCapTooltip = t('boq.max_depth_reached_tooltip', {
     defaultValue:
-      'Maximum nesting depth of {{max}} levels reached — flatten the structure or use fewer sub-levels.',
+      'Maximum nesting depth of {{max}} levels reached - flatten the structure or use fewer sub-levels.',
     max: maxNestingDepth,
   });
 
@@ -2160,7 +2160,7 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
           addToast(
             {
               type: 'error',
-              title: t('boq.paste_failed', { defaultValue: 'Could not paste — invalid data or read-only cells' }),
+              title: t('boq.paste_failed', { defaultValue: 'Could not paste - invalid data or read-only cells' }),
             },
             { duration: 3000 },
           );
@@ -2942,7 +2942,7 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
               }}
               className="w-full mb-3 h-8 rounded-md border border-border-medium bg-surface-primary px-2 text-xs text-content-primary outline-none focus:border-oe-blue focus:ring-1 focus:ring-oe-blue/30"
               placeholder={t('boq.resource_code_placeholder', {
-                defaultValue: 'e.g. MAT-001 — reuse an existing code to link',
+                defaultValue: 'e.g. MAT-001 - reuse an existing code to link',
               })}
             />
 

@@ -256,7 +256,7 @@ export default function PropertySearchPanel({
         >
           {t('bim.property_search_no_schema_hint', {
             defaultValue:
-              'This model has no DDC dataframe — re-import via the CAD/BIM converter to enable property search.',
+              'This model has no DDC dataframe - re-import via the CAD/BIM converter to enable property search.',
           })}
         </p>
       )}

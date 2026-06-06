@@ -51,7 +51,7 @@ export function StylesLabPage() {
           </h1>
           <p className="mt-3 max-w-2xl text-base text-content-secondary leading-relaxed">
             12-14 направлений по каждому элементу. Радиусы выровнены под
-            Apple-current (iOS 17+ / macOS Sequoia / WWDC25 Liquid Glass) —
+            Apple-current (iOS 17+ / macOS Sequoia / WWDC25 Liquid Glass) -
             6-12px вместо прежних 16-20px.
           </p>
 
@@ -257,7 +257,7 @@ function ButtonsSection() {
           </button>
         </Specimen>
 
-        <Specimen no={4} name="Neon Glow" family="Futuristic" note="Тёмный solid + цветное свечение. На тёмном фоне — chat, advisor.">
+        <Specimen no={4} name="Neon Glow" family="Futuristic" note="Тёмный solid + цветное свечение. На тёмном фоне - chat, advisor.">
           <div className="rounded-[10px] bg-[#0f1117] p-5 -m-5 w-full">
             <div className="grid place-items-center">
               <button className="relative inline-flex h-10 items-center gap-2 px-5 rounded-[10px] text-sm font-medium bg-[#1a1d2b] text-cyan-300 ring-1 ring-cyan-400/40 shadow-[0_0_0_1px_rgba(34,211,238,0.15),0_0_24px_rgba(34,211,238,0.35)] hover:shadow-[0_0_0_1px_rgba(34,211,238,0.3),0_0_36px_rgba(34,211,238,0.55)] transition-all duration-normal ease-oe">
@@ -416,7 +416,7 @@ function IconsSection() {
           </div>
         </Specimen>
 
-        <Specimen no={11} name="Stacked Layers (3D)" family="Editorial" note="Несколько слоёв со сдвигом — псевдо-3D глубина. Для feature-карточек.">
+        <Specimen no={11} name="Stacked Layers (3D)" family="Editorial" note="Несколько слоёв со сдвигом - псевдо-3D глубина. Для feature-карточек.">
           <div className="relative h-12 w-12">
             <div className="absolute inset-0 rounded-[10px] bg-oe-blue/15 translate-x-2 translate-y-2" />
             <div className="absolute inset-0 rounded-[10px] bg-oe-blue/30 translate-x-1 translate-y-1" />
@@ -653,7 +653,7 @@ function BackgroundsSection() {
         />
 
         <BgSpecimen no={2} name="Dot Grid (subtle)" family="Linear / Vercel"
-          note="Сетка точек 0.9px с прозрачностью 16%, шаг 24px. Едва видна — добавляет «текстуру», но не отвлекает от таблиц/BOQ."
+          note="Сетка точек 0.9px с прозрачностью 16%, шаг 24px. Едва видна - добавляет «текстуру», но не отвлекает от таблиц/BOQ."
           bgStyle={{
             backgroundColor: 'var(--oe-bg-secondary)',
             backgroundImage:
@@ -724,7 +724,7 @@ function BackgroundsSection() {
         />
 
         <BgSpecimen no={9} name="Topographic Contours" family="Construction"
-          note="Изогипсы — горизонтали высот. Прямая отсылка к стройке/гео. Для projects landing, BIM, /architecture."
+          note="Изогипсы - горизонтали высот. Прямая отсылка к стройке/гео. Для projects landing, BIM, /architecture."
         >
           <div className="absolute inset-0 bg-surface-secondary" />
           <svg className="absolute inset-0 h-full w-full text-oe-blue/15" viewBox="0 0 800 240" preserveAspectRatio="none" aria-hidden>
@@ -765,7 +765,7 @@ function BackgroundsSection() {
         />
 
         <BgSpecimen no={12} name="Cross-hatch (Drafting)" family="Construction"
-          note="Двойная штриховка под 45°/135° — лист миллиметровки/чертёжного эскиза. Для CAD/BIM."
+          note="Двойная штриховка под 45°/135° - лист миллиметровки/чертёжного эскиза. Для CAD/BIM."
           bgStyle={{
             backgroundColor: 'var(--oe-bg-secondary)',
             backgroundImage:

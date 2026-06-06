@@ -283,7 +283,7 @@ describe('CascadeFilterPanel', () => {
     });
   });
 
-  it('debounces the cascade fetch — typing fast does not fire a request per keystroke', async () => {
+  it('debounces the cascade fetch - typing fast does not fire a request per keystroke', async () => {
     renderPanel({}, 60);
     // Wait for the initial mount fetches to settle.
     await waitFor(() =>

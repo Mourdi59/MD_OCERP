@@ -627,7 +627,7 @@ export function BuyerPortalPage() {
               role="status"
             >
               {t('buyer_portal.contact.sent', {
-                defaultValue: 'Thank you — your agent will reply shortly.',
+                defaultValue: 'Thank you - your agent will reply shortly.',
               })}
             </div>
           ) : (

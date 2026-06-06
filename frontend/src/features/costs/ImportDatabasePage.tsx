@@ -1183,7 +1183,7 @@ function VectorDatabaseSection() {
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-content-primary">
-                CWICR Vector Database — AI Semantic Search
+                CWICR Vector Database - AI Semantic Search
               </h3>
               {isConnected ? (
                 <>
@@ -1214,7 +1214,7 @@ function VectorDatabaseSection() {
 
         <p className="text-xs text-content-secondary mb-4">
           Select your region to generate AI vector embeddings. Enables semantic
-          search — find cost items by meaning, not just keywords. E.g. &quot;concrete wall&quot; finds
+          search - find cost items by meaning, not just keywords. E.g. &quot;concrete wall&quot; finds
           &quot;reinforced partition C30/37&quot;.
         </p>
 
@@ -1226,11 +1226,11 @@ function VectorDatabaseSection() {
             </p>
             <div className="space-y-2 text-xs text-content-tertiary">
               <div>
-                <strong className="text-content-secondary">Option A — Qdrant (best quality, 3072d):</strong><br/>
+                <strong className="text-content-secondary">Option A - Qdrant (best quality, 3072d):</strong><br/>
                 <code className="text-2xs bg-surface-secondary px-1 py-0.5 rounded">docker run -p 6333:6333 qdrant/qdrant</code>
               </div>
               <div>
-                <strong className="text-content-secondary">Option B — LanceDB (lightweight, 384d):</strong><br/>
+                <strong className="text-content-secondary">Option B - LanceDB (lightweight, 384d):</strong><br/>
                 <code className="text-2xs bg-surface-secondary px-1 py-0.5 rounded">pip install lancedb sentence-transformers</code>
               </div>
             </div>

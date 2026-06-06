@@ -190,7 +190,7 @@ export default function LinkDocumentToDwgModal({
             <div className="text-center py-8 text-[11px] text-content-tertiary italic">
               {docs.length === 0
                 ? t('dwg_takeoff.no_docs', {
-                    defaultValue: 'No documents in this project yet — upload one first',
+                    defaultValue: 'No documents in this project yet - upload one first',
                   })
                 : t('dwg_takeoff.no_doc_match', {
                     defaultValue: 'No documents match your search',

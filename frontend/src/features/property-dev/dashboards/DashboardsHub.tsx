@@ -250,7 +250,7 @@ export function DashboardsHub() {
           <p className="text-xs text-content-tertiary">
             {t('propdev.dashboards.insights.card_desc', {
               defaultValue:
-                'Cohort retention, time-to-close, lead-source CPA, conversion funnel and broker leaderboard — director-grade rollups across the full portfolio.',
+                'Cohort retention, time-to-close, lead-source CPA, conversion funnel and broker leaderboard - director-grade rollups across the full portfolio.',
             })}
           </p>
         </Card>

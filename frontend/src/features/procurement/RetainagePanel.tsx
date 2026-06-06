@@ -105,7 +105,7 @@ export function RetainagePanel({
       open={open}
       onClose={onClose}
       title={t('procurement.retainage_title', {
-        defaultValue: 'Retainage — {{po}}',
+        defaultValue: 'Retainage - {{po}}',
         po: poNumber,
       })}
       subtitle={t('procurement.retainage_subtitle', {

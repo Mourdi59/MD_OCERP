@@ -183,7 +183,7 @@ export default function SustainabilityModule() {
             {t('sustainability.epd_title', { defaultValue: 'EPD / Embodied Carbon' })}
           </h1>
           <p className="text-sm text-content-tertiary">
-            {t('sustainability.epd_subtitle', { defaultValue: 'EU CPR 2024/3110 compliance — GWP calculation per position' })}
+            {t('sustainability.epd_subtitle', { defaultValue: 'EU CPR 2024/3110 compliance - GWP calculation per position' })}
           </p>
         </div>
       </div>
@@ -457,7 +457,7 @@ export default function SustainabilityModule() {
           {/* EU CPR info */}
           <div className="rounded-xl border border-border bg-surface-secondary/30 p-4 text-xs text-content-tertiary">
             <p className="font-semibold text-content-secondary mb-1">
-              {t('sustainability.cpr_benchmarks_title', { defaultValue: 'EU CPR 2024/3110 — GWP Benchmarks (A1-A3, 50yr RSP)' })}
+              {t('sustainability.cpr_benchmarks_title', { defaultValue: 'EU CPR 2024/3110 - GWP Benchmarks (A1-A3, 50yr RSP)' })}
             </p>
             <div className="flex flex-wrap gap-4 mt-2">
               <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" /> {t('sustainability.level_excellent', { defaultValue: 'Excellent' })}: &le; {EU_CPR_BENCHMARKS.excellent} kg/m2/yr</span>

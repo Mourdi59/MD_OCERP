@@ -306,7 +306,7 @@ export function AddressAutocomplete({
           <span>
             {t('geo_hub.autocomplete.disabled', {
               defaultValue:
-                'Geocoder is disabled in this deploy — enter coordinates manually below.',
+                'Geocoder is disabled in this deploy - enter coordinates manually below.',
             })}
           </span>
         </li>
@@ -340,7 +340,7 @@ export function AddressAutocomplete({
           <span>
             {t('geo_hub.autocomplete.rate_limited', {
               defaultValue:
-                'Too many lookups right now — wait a few seconds and retry.',
+                'Too many lookups right now - wait a few seconds and retry.',
             })}
           </span>
         </li>
@@ -442,7 +442,7 @@ export function AddressAutocomplete({
               <li className="px-3 py-2 text-xs text-content-tertiary">
                 {t('geo_hub.autocomplete.no_results', {
                   defaultValue:
-                    'No matches — check spelling or paste coordinates below.',
+                    'No matches - check spelling or paste coordinates below.',
                 })}
               </li>
             )}

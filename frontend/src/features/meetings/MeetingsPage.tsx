@@ -1943,7 +1943,7 @@ export function MeetingsPage() {
       addToast({
         type: 'success',
         title: t('meetings.series_created', {
-          defaultValue: 'Recurring series created — {{count}} meetings',
+          defaultValue: 'Recurring series created - {{count}} meetings',
           count,
         }),
       });

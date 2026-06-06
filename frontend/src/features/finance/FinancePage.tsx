@@ -480,8 +480,8 @@ function FinanceSummaryCards({ projectId }: { projectId: string }) {
                     )}
                   >
                     {warningLevel === 'critical'
-                      ? t('finance.budget_critical', { defaultValue: 'Over 95% — critical' })
-                      : t('finance.budget_caution', { defaultValue: 'Over 80% — watch' })}
+                      ? t('finance.budget_critical', { defaultValue: 'Over 95% - critical' })
+                      : t('finance.budget_caution', { defaultValue: 'Over 80% - watch' })}
                   </span>
                 )}
               </span>
@@ -2669,7 +2669,7 @@ function EVMTab({
                 })
               : t('finance.no_evm_no_budget_desc', {
                   defaultValue:
-                    'EVM is computed from your project budget and paid invoices. Add budget lines first — then create a snapshot to track schedule and cost performance.',
+                    'EVM is computed from your project budget and paid invoices. Add budget lines first - then create a snapshot to track schedule and cost performance.',
                 })
           }
           action={

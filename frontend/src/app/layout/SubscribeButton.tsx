@@ -82,7 +82,7 @@ export function SubscribeButton({ condensed = false }: { condensed?: boolean } =
         type="button"
         onClick={handleClick}
         aria-label={t('header.subscribe.button_aria', {
-          defaultValue: 'Get release notes by email — opens the newsletter form on openconstructionerp.com',
+          defaultValue: 'Get release notes by email - opens the newsletter form on openconstructionerp.com',
         })}
         title={t('header.subscribe.button_title', {
           defaultValue: 'Get release notes by email (opens openconstructionerp.com)',

@@ -235,7 +235,7 @@ export function ProjectWeather({
         )}
         title={t('weather.card_summary_hint', {
           defaultValue:
-            'Rough forecast for this location — next 7 days and ~15 days avg',
+            'Rough forecast for this location - next 7 days and ~15 days avg',
         })}
       >
         <WeekIcon size={12} className="text-oe-blue shrink-0" />

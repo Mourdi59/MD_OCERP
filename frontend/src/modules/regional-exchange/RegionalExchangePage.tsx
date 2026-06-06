@@ -156,7 +156,7 @@ function ImportPreview({
                   </td>
                   <td
                     className="px-3 py-1.5 text-content-tertiary text-2xs truncate"
-                    title={info ? `${info.code} — ${info.label}` : code}
+                    title={info ? `${info.code} - ${info.label}` : code}
                   >
                     {code || '-'}
                   </td>

@@ -261,7 +261,7 @@ export function WebhookLeads() {
               <p className="font-medium text-amber-800">
                 {t('webhook_leads.secret_once', {
                   defaultValue:
-                    'Copy this secret now — it is shown only once and cannot be retrieved later.',
+                    'Copy this secret now - it is shown only once and cannot be retrieved later.',
                 })}
               </p>
               <div className="mt-2 space-y-2 text-sm">
@@ -540,7 +540,7 @@ export function WebhookLeads() {
               {(mappingsQ.data ?? []).length === 0 && (
                 <p className="text-sm text-gray-500">
                   {t('webhook_leads.no_mappings', {
-                    defaultValue: 'No mappings — add at least one required rule.',
+                    defaultValue: 'No mappings - add at least one required rule.',
                   })}
                 </p>
               )}

@@ -761,7 +761,7 @@ export function HouseTypeEditModal({
           <div className="rounded-xl border border-border-light/60 bg-surface-primary p-3 text-[11px] leading-relaxed text-content-tertiary">
             {t('property_dev.house_type.preview_tip', {
               defaultValue:
-                'Tip: keep code short and stable — it appears in BOQ rollups, plot drawers, and tender exports.',
+                'Tip: keep code short and stable - it appears in BOQ rollups, plot drawers, and tender exports.',
             })}
           </div>
         </aside>

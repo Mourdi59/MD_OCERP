@@ -104,7 +104,7 @@ export function FileGrid({
                 : 'border-border-light hover:border-border hover:shadow-sm',
             )}
             title={t('files.tile.tooltip', {
-              defaultValue: '{{name}} — double-click to open in {{module}}',
+              defaultValue: '{{name}} - double-click to open in {{module}}',
               name: row.name,
               module: moduleLabel,
             })}

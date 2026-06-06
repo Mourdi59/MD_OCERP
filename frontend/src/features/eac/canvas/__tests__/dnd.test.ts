@@ -14,7 +14,7 @@ import {
   type SlotDefinition,
 } from '../dnd';
 
-describe('isSlotCompatible — type matrix', () => {
+describe('isSlotCompatible - type matrix', () => {
   it('allows like-typed connections', () => {
     expect(isSlotCompatible('selector', 'selector')).toBe(true);
     expect(isSlotCompatible('predicate', 'predicate')).toBe(true);
@@ -42,7 +42,7 @@ describe('isSlotCompatible — type matrix', () => {
   });
 });
 
-describe('canConnectSlots — directionality', () => {
+describe('canConnectSlots - directionality', () => {
   const out: SlotDefinition = { id: 'a', label: 'A', direction: 'output', dataType: 'predicate' };
   const into: SlotDefinition = { id: 'b', label: 'B', direction: 'input', dataType: 'predicate' };
 

@@ -61,7 +61,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('RegionalExchangePage — registry pickup', () => {
+describe('RegionalExchangePage - registry pickup', () => {
   it('renders the Spanish PBC template with flag, native label, and BC3 hint', () => {
     const es = getRegionalTemplate('es-pbc');
     expect(es).toBeDefined();
@@ -104,7 +104,7 @@ describe('RegionalExchangePage — registry pickup', () => {
   });
 });
 
-describe('RegionalExchangePage — deep-link compat shim', () => {
+describe('RegionalExchangePage - deep-link compat shim', () => {
   it('deep-link slug /es-pbc-exchange resolves to the same template', () => {
     const direct = getRegionalTemplate('es-pbc');
     const viaSlug = getRegionalTemplateBySlug('es-pbc-exchange');
@@ -127,7 +127,7 @@ describe('RegionalExchangePage — deep-link compat shim', () => {
   });
 });
 
-describe('RegionalExchangePage — sample link visibility', () => {
+describe('RegionalExchangePage - sample link visibility', () => {
   it('hides the sample link for countries without a sample file', () => {
     // Australia is one of the templates that does NOT ship a sample
     // file as part of Epic I scope (only es-pbc / it-computo / uk-nrm /

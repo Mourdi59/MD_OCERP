@@ -218,7 +218,7 @@ export default function LinkActivityToDwgModal({
               {schedules.length === 0
                 ? t('dwg_takeoff.no_schedules', {
                     defaultValue:
-                      'No schedules in this project yet — create one in /schedule first',
+                      'No schedules in this project yet - create one in /schedule first',
                   })
                 : activities.length === 0
                   ? t('dwg_takeoff.no_activities', {

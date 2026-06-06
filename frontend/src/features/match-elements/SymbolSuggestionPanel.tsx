@@ -228,7 +228,7 @@ export function SymbolSuggestionPanel({
                         <span className="font-mono text-slate-400">
                           {f.name}
                         </span>
-                        {f.detail ? ` — ${f.detail}` : ''}
+                        {f.detail ? ` - ${f.detail}` : ''}
                       </li>
                     ))}
                   </ul>

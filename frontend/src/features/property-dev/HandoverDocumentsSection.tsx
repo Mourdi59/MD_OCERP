@@ -307,7 +307,7 @@ export function HandoverDocumentsSection({
                   <Badge variant="success" dot>
                     <CheckCircle2 size={11} className="mr-1 inline" />
                     {t('propdev.handover_package.ready', {
-                      defaultValue: 'Ready — all required documents delivered',
+                      defaultValue: 'Ready - all required documents delivered',
                     })}
                   </Badge>
                 ) : (

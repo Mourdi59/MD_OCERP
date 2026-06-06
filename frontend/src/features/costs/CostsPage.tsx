@@ -2047,7 +2047,7 @@ function CreateAssemblyFromCostsModal({
               <div className="mt-2 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/40 dark:bg-amber-900/20 dark:text-amber-200">
                 {t('costs.assembly_mixed_currency_warning', {
                   defaultValue:
-                    'Assemblies must be single-currency. The selected items span {{count}} currencies ({{list}}) — pick items that share one currency to continue.',
+                    'Assemblies must be single-currency. The selected items span {{count}} currencies ({{list}}) - pick items that share one currency to continue.',
                   count: distinctCurrencies.length,
                   list: distinctCurrencies.join(', '),
                 })}

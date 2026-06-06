@@ -500,7 +500,7 @@ export function FieldReportsPage() {
         srTitle={t('fieldreports.title', { defaultValue: 'Field Reports' })}
         subtitle={t('fieldreports.subtitle', {
           defaultValue:
-            'Log the daily site diary — weather, workforce, work performed, delays and safety incidents.',
+            'Log the daily site diary - weather, workforce, work performed, delays and safety incidents.',
         })}
         actions={
           <>
@@ -742,8 +742,8 @@ export function FieldReportsPage() {
                               'h-2.5 w-2.5 rounded-full ring-offset-1 transition-transform hover:scale-125 hover:ring-1 hover:ring-oe-blue',
                               STATUS_DOT_COLOR[r.status],
                             )}
-                            title={`${t(`fieldreports.type_${r.report_type}`, { defaultValue: r.report_type })} — ${t(`fieldreports.status_${r.status}`, { defaultValue: r.status })}`}
-                            aria-label={`${t(`fieldreports.type_${r.report_type}`, { defaultValue: r.report_type })} — ${t(`fieldreports.status_${r.status}`, { defaultValue: r.status })}`}
+                            title={`${t(`fieldreports.type_${r.report_type}`, { defaultValue: r.report_type })} - ${t(`fieldreports.status_${r.status}`, { defaultValue: r.status })}`}
+                            aria-label={`${t(`fieldreports.type_${r.report_type}`, { defaultValue: r.report_type })} - ${t(`fieldreports.status_${r.status}`, { defaultValue: r.status })}`}
                           />
                         ))}
                       </div>

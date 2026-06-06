@@ -195,7 +195,7 @@ export function PromptEditor({ promptKey, selectedId, onSelect }: Props) {
           <Sparkles className="w-3 h-3 shrink-0" />
           {t(
             'match_elements.pipeline.system_readonly',
-            'System prompt — read-only. Fork it to edit and tune for your company.',
+            'System prompt - read-only. Fork it to edit and tune for your company.',
           )}
         </div>
       )}

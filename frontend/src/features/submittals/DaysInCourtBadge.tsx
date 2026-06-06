@@ -75,7 +75,7 @@ export function DaysInCourtBadge({ dateSubmitted, status }: Props) {
   const srSuffix =
     days >= BREACH_DAYS
       ? t('submittals.days_in_court_sla_breach', {
-          defaultValue: ' — SLA breached',
+          defaultValue: ' - SLA breached',
         })
       : '';
 

@@ -62,7 +62,7 @@ export function NewSessionFromTextModal({ projectId, onClose, onCreated }: Props
             <h2 className="text-sm font-semibold text-content-primary">
               {t(
                 'match_elements.new_text.title',
-                'New session — paste descriptions',
+                'New session - paste descriptions',
               )}
             </h2>
           </div>
@@ -80,7 +80,7 @@ export function NewSessionFromTextModal({ projectId, onClose, onCreated }: Props
           <p className="text-xs text-content-tertiary leading-relaxed">
             {t(
               'match_elements.new_text.hint',
-              'One line per item. Each line becomes a group; semantic search finds the closest CWICR rates. Use any language — the multilingual encoder handles cross-lang queries.',
+              'One line per item. Each line becomes a group; semantic search finds the closest CWICR rates. Use any language - the multilingual encoder handles cross-lang queries.',
             )}
           </p>
 

@@ -40,7 +40,7 @@ const EXPECTED_TRANSLATIONS: Record<string, Record<string, string>> = {
   bg: { material: 'Материали', labor: 'Труд', equipment: 'Оборудване', operator: 'Оператор', subcontractor: 'Подизпълнител', electricity: 'Електричество', composite: 'Съставна', other: 'Други' },
 };
 
-describe('boqResourceTypes — RESOURCE_TYPES list', () => {
+describe('boqResourceTypes - RESOURCE_TYPES list', () => {
   it('exposes the canonical 8 types in expected order', () => {
     expect(RESOURCE_TYPES.map((rt) => rt.value)).toEqual([
       'material',
@@ -61,7 +61,7 @@ describe('boqResourceTypes — RESOURCE_TYPES list', () => {
   });
 });
 
-describe('boqResourceTypes — getResourceTypeLabel', () => {
+describe('boqResourceTypes - getResourceTypeLabel', () => {
   it('returns English fallback when no `t` is provided', () => {
     expect(getResourceTypeLabel('material')).toBe('Material');
     expect(getResourceTypeLabel('labor')).toBe('Labor');
@@ -84,7 +84,7 @@ describe('boqResourceTypes — getResourceTypeLabel', () => {
   });
 });
 
-describe('boqResourceTypes — getResourceTypeI18nKey', () => {
+describe('boqResourceTypes - getResourceTypeI18nKey', () => {
   it('maps canonical values to their i18n key', () => {
     expect(getResourceTypeI18nKey('material')).toBe('boq.resource_type_material');
     expect(getResourceTypeI18nKey('composite')).toBe('boq.resource_type_composite');
@@ -96,7 +96,7 @@ describe('boqResourceTypes — getResourceTypeI18nKey', () => {
   });
 });
 
-describe('i18n bundle — every locale ships every resource-type key', () => {
+describe('i18n bundle - every locale ships every resource-type key', () => {
   // Every canonical type must have a translation in every supported
   // locale. Missing entries fall back to English at runtime, but they
   // would be a regression — i18next would log a warning and the chip
@@ -123,7 +123,7 @@ describe('i18n bundle — every locale ships every resource-type key', () => {
   }
 });
 
-describe('integration — getResourceTypeLabel hooked up to live bundles', () => {
+describe('integration - getResourceTypeLabel hooked up to live bundles', () => {
   // Simulate i18next behaviour: lookup key in bundle, return defaultValue
   // when key is missing.
   const makeT = (locale: string) => (key: string, opts?: Record<string, string>) => {

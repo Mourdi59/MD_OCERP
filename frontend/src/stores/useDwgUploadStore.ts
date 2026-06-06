@@ -193,7 +193,7 @@ export const useDwgUploadStore = create<DwgUploadState>((set, get) => {
       progress: 0,
       stage: 'dwg_upload.stage_stalled',
       errorMessage:
-        'Conversion did not finish within 20 minutes. The DDC converter may need attention — try uploading a smaller file or restart the converter.',
+        'Conversion did not finish within 20 minutes. The DDC converter may need attention - try uploading a smaller file or restart the converter.',
       completedAt: Date.now(),
     });
   }
@@ -373,7 +373,7 @@ if (typeof window !== 'undefined') {
         stage: 'dwg_upload.stage_stalled',
         errorMessage:
           job.errorMessage ??
-          'Upload abandoned after 45 min — reload to retry if the file is still needed.',
+          'Upload abandoned after 45 min - reload to retry if the file is still needed.',
         completedAt: now,
       });
       dirty = true;

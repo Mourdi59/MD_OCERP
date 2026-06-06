@@ -195,7 +195,7 @@ export function RequestCustomModuleDialog({ open, onClose }: Props) {
             <p className="mt-3 mx-auto max-w-[640px] text-sm sm:text-base text-content-secondary leading-relaxed">
               {t('modules.request_hero_subtitle', {
                 defaultValue:
-                  'OpenConstructionERP runs on a plug-in architecture — every report, integration, regional catalogue and AI tool is its own module. If the one you need is missing, we will build it. Choose the path that fits your situation.',
+                  'OpenConstructionERP runs on a plug-in architecture - every report, integration, regional catalogue and AI tool is its own module. If the one you need is missing, we will build it. Choose the path that fits your situation.',
               })}
             </p>
           </div>
@@ -239,7 +239,7 @@ export function RequestCustomModuleDialog({ open, onClose }: Props) {
             <p className="text-sm text-content-secondary leading-relaxed">
               {t('modules.request_card_community_body', {
                 defaultValue:
-                  'We add your idea to the public roadmap. If it has broad demand we ship it in a future release of OpenConstructionERP — included in every user’s install, including yours, at no cost.',
+                  'We add your idea to the public roadmap. If it has broad demand we ship it in a future release of OpenConstructionERP - included in every user’s install, including yours, at no cost.',
               })}
             </p>
             <ul className="space-y-1.5 text-xs text-content-secondary">
@@ -247,14 +247,14 @@ export function RequestCustomModuleDialog({ open, onClose }: Props) {
                 <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-oe-blue shrink-0" />
                 {t('modules.request_card_community_bullet1', {
                   defaultValue:
-                    'Free — ships in the next public release if accepted.',
+                    'Free - ships in the next public release if accepted.',
                 })}
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-oe-blue shrink-0" />
                 {t('modules.request_card_community_bullet2', {
                   defaultValue:
-                    'Public GitHub thread — other teams can upvote, refine and contribute.',
+                    'Public GitHub thread - other teams can upvote, refine and contribute.',
                 })}
               </li>
               <li className="flex items-start gap-2">
@@ -310,7 +310,7 @@ export function RequestCustomModuleDialog({ open, onClose }: Props) {
             <p className="text-sm text-content-secondary leading-relaxed">
               {t('modules.request_card_private_body', {
                 defaultValue:
-                  'For workflows specific to your business — internal naming, proprietary cost data, ERP integrations, restricted security. We design, build, deploy and maintain the module privately for your team.',
+                  'For workflows specific to your business - internal naming, proprietary cost data, ERP integrations, restricted security. We design, build, deploy and maintain the module privately for your team.',
               })}
             </p>
             <ul className="space-y-1.5 text-xs text-content-secondary">
@@ -332,7 +332,7 @@ export function RequestCustomModuleDialog({ open, onClose }: Props) {
                 <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-purple-500 shrink-0" />
                 {t('modules.request_card_private_bullet3', {
                   defaultValue:
-                    'Maintenance + SLA included — works seamlessly with each ERP release.',
+                    'Maintenance + SLA included - works seamlessly with each ERP release.',
                 })}
               </li>
             </ul>
@@ -399,7 +399,7 @@ export function RequestCustomModuleDialog({ open, onClose }: Props) {
           <p className="text-xs text-content-tertiary leading-relaxed max-w-[560px]">
             {t('modules.request_footer_diy', {
               defaultValue:
-                'Prefer to build it yourself? Every module is a small Python package — the developer guide walks through it end-to-end in under an hour.',
+                'Prefer to build it yourself? Every module is a small Python package - the developer guide walks through it end-to-end in under an hour.',
             })}
           </p>
           <Link

@@ -140,7 +140,7 @@ describe('useConfirm', () => {
     expect(result.current.open).toBe(true);
   });
 
-  it('parallel confirms: the second call replaces the resolver — the first stays pending', async () => {
+  it('parallel confirms: the second call replaces the resolver - the first stays pending', async () => {
     // Programmer-error case: today the hook stores ONE resolver in
     // a ref, so a second confirm() overwrites it. The first promise
     // therefore never settles. We assert that explicitly so a future

@@ -46,7 +46,7 @@ export function OfflineBanner() {
       <WifiOff size={14} strokeWidth={2.25} className="shrink-0" />
       <span className="truncate">
         {t('common.offline_banner', {
-          defaultValue: "You're offline — changes will not sync.",
+          defaultValue: "You're offline - changes will not sync.",
         })}
       </span>
       <button

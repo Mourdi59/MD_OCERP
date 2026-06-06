@@ -724,7 +724,7 @@ export function BlocksTab({
           icon={<Layers size={22} />}
           title={t('propdev.no_phases', { defaultValue: 'No phases yet' })}
           description={t('propdev.create_phase_first', {
-            defaultValue: 'Blocks belong to phases — create a phase first.',
+            defaultValue: 'Blocks belong to phases - create a phase first.',
           })}
         />
       </Card>
@@ -1094,7 +1094,7 @@ function BlockFormModal({
             className={inputCls}
           >
             <option value="">
-              {t('common.none', { defaultValue: '— none —' })}
+              {t('common.none', { defaultValue: '- none -' })}
             </option>
             <option value="N">N</option>
             <option value="NE">NE</option>
@@ -2348,7 +2348,7 @@ function PriceMatrixFormModal({
           {rules.length === 0 && (
             <p className="text-xs text-content-tertiary italic">
               {t('propdev.matrix.no_rules', {
-                defaultValue: 'No rules — every plot prices at the base rate.',
+                defaultValue: 'No rules - every plot prices at the base rate.',
               })}
             </p>
           )}
@@ -2470,7 +2470,7 @@ function PriceMatrixPreviewModal({
             onChange={(e) => setPlotId(e.target.value)}
             className={inputCls}
           >
-            {plots.length === 0 && <option value="">— no plots —</option>}
+            {plots.length === 0 && <option value="">- no plots -</option>}
             {plots.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.plot_number} — {toNumber(p.area_m2)} m²

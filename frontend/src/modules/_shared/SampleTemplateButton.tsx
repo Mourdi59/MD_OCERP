@@ -93,7 +93,7 @@ export function SampleTemplateButton({ template }: { template: CountryTemplate }
         <FileSpreadsheet size={14} className="text-oe-blue shrink-0" />
         <span className="flex-1 text-left">
           {t('exchange.expected_layout', {
-            defaultValue: 'Expected file layout — {{standard}}',
+            defaultValue: 'Expected file layout - {{standard}}',
             standard: template.classification || template.name,
           })}
         </span>

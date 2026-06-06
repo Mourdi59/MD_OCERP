@@ -6,7 +6,7 @@ import {
   type BIMUrlState,
 } from '../urlState';
 
-describe('serializeBIMUrlState + parseBIMUrlState — round-trip', () => {
+describe('serializeBIMUrlState + parseBIMUrlState - round-trip', () => {
   it('round-trips a camera + multi-selection exactly (within 3-decimal precision)', () => {
     const original: BIMUrlState = {
       camera: {
@@ -38,7 +38,7 @@ describe('serializeBIMUrlState + parseBIMUrlState — round-trip', () => {
     expect(payload.cx).toBe('1.235');
   });
 
-  it('omits selection key when empty — keeps URL short', () => {
+  it('omits selection key when empty - keeps URL short', () => {
     const payload = serializeBIMUrlState({
       camera: {
         position: { x: 1, y: 2, z: 3 },
@@ -65,7 +65,7 @@ describe('serializeBIMUrlState + parseBIMUrlState — round-trip', () => {
     expect(parsed.selection).toEqual([]);
   });
 
-  it('treats a partial camera (missing tz) as no camera — never apply a half-set view', () => {
+  it('treats a partial camera (missing tz) as no camera - never apply a half-set view', () => {
     const parsed = parseBIMUrlState(
       new URLSearchParams('cx=1&cy=2&cz=3&tx=0&ty=0'),
     );
@@ -77,7 +77,7 @@ describe('serializeBIMUrlState + parseBIMUrlState — round-trip', () => {
     expect(parsed.selection).toEqual(['a', 'b']);
   });
 
-  it('ignores non-finite camera coords (NaN / Infinity) — empty string, letters', () => {
+  it('ignores non-finite camera coords (NaN / Infinity) - empty string, letters', () => {
     const parsed = parseBIMUrlState(
       new URLSearchParams('cx=abc&cy=2&cz=3&tx=0&ty=0&tz=0'),
     );

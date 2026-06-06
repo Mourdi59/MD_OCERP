@@ -185,7 +185,7 @@ export default function DataPanelEmpty({ onSuggestion }: DataPanelEmptyProps) {
               n: '1',
               title: t('chat.step1_title', { defaultValue: 'Ask in plain language' }),
               desc: t('chat.step1_desc', {
-                defaultValue: 'Type a question or request — no special syntax needed.',
+                defaultValue: 'Type a question or request - no special syntax needed.',
               }),
             },
             {
@@ -199,7 +199,7 @@ export default function DataPanelEmpty({ onSuggestion }: DataPanelEmptyProps) {
               n: '3',
               title: t('chat.step3_title', { defaultValue: 'See live results' }),
               desc: t('chat.step3_desc', {
-                defaultValue: 'Tables, charts, matrices — interactive, not screenshots.',
+                defaultValue: 'Tables, charts, matrices - interactive, not screenshots.',
               }),
             },
           ].map((s) => (

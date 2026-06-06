@@ -224,7 +224,7 @@ function renderBar(rows: FileRow[]) {
   );
 }
 
-describe('BulkActionsBar — partial failure summary toast', () => {
+describe('BulkActionsBar - partial failure summary toast', () => {
   it('emits a warning toast with succeeded/failed counts when one row 404s', async () => {
     failIds = new Set(['p2']);
     renderBar([row('p1', 'photo'), row('p2', 'photo'), row('r1', 'report')]);

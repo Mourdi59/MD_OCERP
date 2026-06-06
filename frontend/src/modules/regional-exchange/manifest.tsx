@@ -65,7 +65,7 @@ const routes = COUNTRY_TEMPLATES.map((tpl) => ({
 }));
 
 const searchEntries = COUNTRY_TEMPLATES.map((tpl) => ({
-  label: `${tpl.label} — Import / Export`,
+  label: `${tpl.label} - Import / Export`,
   path: `/${tpl.routeSlug}`,
   keywords: [
     tpl.countryCode.toLowerCase(),

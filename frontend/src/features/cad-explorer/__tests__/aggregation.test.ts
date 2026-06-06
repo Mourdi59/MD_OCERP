@@ -27,7 +27,7 @@ const rows: Record<string, unknown>[] = [
   { category: 'Floor', client_name: 'GammaLtd', volume: 5.0 },
 ];
 
-describe('aggregation — AGG_FUNCTIONS vocabulary', () => {
+describe('aggregation - AGG_FUNCTIONS vocabulary', () => {
   it('includes all six supported functions', () => {
     expect(AGG_FUNCTIONS).toContain('sum');
     expect(AGG_FUNCTIONS).toContain('avg');
@@ -38,7 +38,7 @@ describe('aggregation — AGG_FUNCTIONS vocabulary', () => {
   });
 });
 
-describe('aggregation — validators', () => {
+describe('aggregation - validators', () => {
   it('isNumericAggFn returns true only for numeric aggs', () => {
     expect(isNumericAggFn('sum')).toBe(true);
     expect(isNumericAggFn('avg')).toBe(true);
@@ -57,7 +57,7 @@ describe('aggregation — validators', () => {
     expect(isCategoricalAggFn('bogus')).toBe(false);
   });
 
-  it('canAggregateColumn — sum rejects text columns', () => {
+  it('canAggregateColumn - sum rejects text columns', () => {
     expect(canAggregateColumn('sum', false)).toBe(false);
     expect(canAggregateColumn('sum', true)).toBe(true);
     expect(canAggregateColumn('avg', false)).toBe(false);
@@ -65,7 +65,7 @@ describe('aggregation — validators', () => {
     expect(canAggregateColumn('max', false)).toBe(false);
   });
 
-  it('canAggregateColumn — count / count_unique accept any dtype', () => {
+  it('canAggregateColumn - count / count_unique accept any dtype', () => {
     expect(canAggregateColumn('count', false)).toBe(true);
     expect(canAggregateColumn('count', true)).toBe(true);
     expect(canAggregateColumn('count_unique', false)).toBe(true);
@@ -73,7 +73,7 @@ describe('aggregation — validators', () => {
   });
 });
 
-describe('aggregation — computeClientPivot (count)', () => {
+describe('aggregation - computeClientPivot (count)', () => {
   it('returns non-null row count per group for a text column', () => {
     const result = computeClientPivot(rows, ['category'], ['client_name'], 'count');
     expect(result.groups).toHaveLength(2);
@@ -114,7 +114,7 @@ describe('aggregation — computeClientPivot (count)', () => {
   });
 });
 
-describe('aggregation — computeClientPivot (count_unique)', () => {
+describe('aggregation - computeClientPivot (count_unique)', () => {
   it('returns distinct non-null value count per group', () => {
     const result = computeClientPivot(
       rows,
@@ -177,7 +177,7 @@ describe('aggregation — computeClientPivot (count_unique)', () => {
   });
 });
 
-describe('aggregation — formatCount', () => {
+describe('aggregation - formatCount', () => {
   it('formats integers with locale separators', () => {
     const s = formatCount(1234);
     // Any locale's grouping separator between 1 and 234 is acceptable.
@@ -206,7 +206,7 @@ describe('aggregation — formatCount', () => {
  * aggregation the user picked, not an unconditional sum of child
  * results. Previously aggFn='avg' showed Σ(child averages).
  */
-describe('aggregation — rollupParentValue', () => {
+describe('aggregation - rollupParentValue', () => {
   // Two child groups: 4 elements averaging 2.0, 6 elements averaging 3.0.
   const children: AggregateGroup[] = [
     { key: { type: 'A' }, results: { x: 2 }, count: 4 },

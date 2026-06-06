@@ -126,12 +126,12 @@ function networkChunks(s: string, size: number): string[] {
   return out;
 }
 
-describe('issue #138 — OpenRouter chat SSE rendering', () => {
+describe('issue #138 - OpenRouter chat SSE rendering', () => {
   const SID = '2acf082e-da7f-471d-97be-e4fe3a289ade';
   const ANSWER =
     'Here is your construction estimate.\n\n' +
     '- Concrete C30/37: 12.5 m³\n' +
-    'Quote: "two layers" of rebar. Unicode: €1.234,56 — π≈3.14';
+    'Quote: "two layers" of rebar. Unicode: €1.234,56 - π≈3.14';
 
   it('renders the full OpenRouter answer (single chunk)', () => {
     const wire = backendSSEForOpenRouter(ANSWER, SID);

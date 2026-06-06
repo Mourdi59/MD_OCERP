@@ -33,7 +33,7 @@ describe('applyTopN', () => {
     expect(out.map((g) => g.key.Category)).toEqual(['C', 'A']);
   });
 
-  it('is stable when nth and (n+1)th values tie — alphabetical by category', () => {
+  it('is stable when nth and (n+1)th values tie - alphabetical by category', () => {
     // Three groups with identical value 100 and one outlier.
     const groups = [
       mkGroup('Zebra', 100),

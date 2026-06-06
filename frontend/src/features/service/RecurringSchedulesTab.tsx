@@ -146,7 +146,7 @@ export function RecurringSchedulesTab({ contracts }: Props) {
             })}
             description={t('service.recurring.empty_desc', {
               defaultValue:
-                'Recurring schedules use RRULE syntax (RFC 5545) to materialise tickets automatically — e.g. monthly elevator inspections.',
+                'Recurring schedules use RRULE syntax (RFC 5545) to materialise tickets automatically - e.g. monthly elevator inspections.',
             })}
             action={{
               label: t('service.recurring.new', {

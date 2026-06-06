@@ -234,7 +234,7 @@ function Row({
       title={
         disabled
           ? t('geo_hub.overlay_sidebar.fly_disabled', {
-              defaultValue: 'No location info — can\'t fly the camera here.',
+              defaultValue: 'No location info - can\'t fly the camera here.',
             })
           : t('geo_hub.overlay_sidebar.fly_to', {
               defaultValue: 'Fly camera to {{name}}',

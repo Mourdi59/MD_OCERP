@@ -311,17 +311,17 @@ export function MatchProgressCard({
     }
     if (isDone) {
       return t('match_progress.headline_done', {
-        defaultValue: 'All done — opening your results',
+        defaultValue: 'All done - opening your results',
       });
     }
     const stageLabel = stages[activeIdx]?.label ?? stages[0]?.label ?? '';
     if (rankingCounter) {
-      return `${stageLabel} — ${rankingCounter}`;
+      return `${stageLabel} - ${rankingCounter}`;
     }
     if (elapsedSec >= 60) {
       return t('match_progress.headline_long', {
         defaultValue:
-          'Almost done — large projects can take a minute',
+          'Almost done - large projects can take a minute',
       });
     }
     return stageLabel;
@@ -376,12 +376,12 @@ export function MatchProgressCard({
               ? errorMessage ??
                 t('match_progress.subtitle_error', {
                   defaultValue:
-                    'The matcher couldn’t finish — try again or pick a different catalogue.',
+                    'The matcher couldn’t finish - try again or pick a different catalogue.',
                 })
               : isDone
               ? t('match_progress.subtitle_done', {
                   defaultValue:
-                    'All stages green — handing over to the review panel.',
+                    'All stages green - handing over to the review panel.',
                 })
               : t('match_progress.subtitle_running', {
                   defaultValue:
@@ -581,7 +581,7 @@ export function MatchProgressCard({
         <p className="text-[11px] text-content-tertiary mt-5 leading-snug">
           {t('match_progress.long_hint', {
             defaultValue:
-              'Still working — first runs on large BIM models take longer because vectors are warming up. Subsequent runs on the same project are much faster.',
+              'Still working - first runs on large BIM models take longer because vectors are warming up. Subsequent runs on the same project are much faster.',
           })}
         </p>
       )}

@@ -128,7 +128,7 @@ export function CashFlowWaterfall({
         <p className="text-xs text-content-tertiary">
           {t('propdev.dashboards.cashflow.subtitle', {
             defaultValue:
-              '{{months}} months from {{start}} — scheduled vs collected vs disbursed.',
+              '{{months}} months from {{start}} - scheduled vs collected vs disbursed.',
             months: data.months,
             start: data.start_month,
           })}

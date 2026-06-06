@@ -579,7 +579,7 @@ export function AdvisorPage() {
               <p className="text-xs text-content-tertiary max-w-md mb-4 leading-relaxed">
                 {t('ai.advisor_purpose', {
                   defaultValue:
-                    'Use this as a research companion while estimating: ask about typical rates, material alternatives, regional price differences or methods. Answers draw on the CWICR cost database plus AI knowledge — they inform decisions, they do not replace a priced BOQ.',
+                    'Use this as a research companion while estimating: ask about typical rates, material alternatives, regional price differences or methods. Answers draw on the CWICR cost database plus AI knowledge - they inform decisions, they do not replace a priced BOQ.',
                 })}
               </p>
               <div className="flex flex-wrap justify-center gap-2 mb-4 max-w-md">

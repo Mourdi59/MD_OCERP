@@ -124,7 +124,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('CatalogueStep — P0-2 no-catalogue gate regression', () => {
+describe('CatalogueStep - P0-2 no-catalogue gate regression', () => {
   it('renders the "Install a catalogue first" banner when installed list is empty', async () => {
     renderStep({
       catalogues: [

@@ -216,7 +216,7 @@ export function MonteCarloTab({ projectId, currency }: MonteCarloTabProps) {
             <TrendingUp size={14} className="text-content-tertiary" />
             <h3 className="text-sm font-semibold text-content-primary">
               {t('risk.montecarlo.last_run', {
-                defaultValue: 'Last run — {{risks}} risks, {{iterations}} iterations',
+                defaultValue: 'Last run - {{risks}} risks, {{iterations}} iterations',
                 risks: result.risk_count,
                 iterations: result.iterations.toLocaleString(),
               })}

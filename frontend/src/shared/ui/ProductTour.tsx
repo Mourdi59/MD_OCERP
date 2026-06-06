@@ -576,10 +576,10 @@ export const TOUR_REGISTRY: Record<TourId, ProductTourStep[]> = {
 const STEP_FALLBACKS: Record<string, string> = {
   'tour.step.1.title': 'Sidebar navigation',
   'tour.step.1.body':
-    'Your project workflow lives in the sidebar. Modules are grouped by lifecycle — Estimation, Tendering, Construction, Operations.',
+    'Your project workflow lives in the sidebar. Modules are grouped by lifecycle - Estimation, Tendering, Construction, Operations.',
   'tour.step.2.title': 'Active project',
   'tour.step.2.body':
-    'Pick the active project at the top. The whole app scopes data to this project — BOQs, BIM models, RFIs, snags.',
+    'Pick the active project at the top. The whole app scopes data to this project - BOQs, BIM models, RFIs, snags.',
   'tour.step.3.title': 'Bill of Quantities',
   'tour.step.3.body':
     'Bills of Quantity live here. Create positions, apply unit rates, link to CAD elements, export GAEB or Excel.',
@@ -588,13 +588,13 @@ const STEP_FALLBACKS: Record<string, string> = {
     'Upload IFC, RVT or DWG. Federate multiple models. Run clash detection. Take quantity off the 3D model.',
   'tour.step.5.title': 'Property Development',
   'tour.step.5.body':
-    'Real-estate developer module — Leads, Buyers, Reservations, SPA, Handover, Warranty. End-to-end click-flow.',
+    'Real-estate developer module - Leads, Buyers, Reservations, SPA, Handover, Warranty. End-to-end click-flow.',
   'tour.step.6.title': 'Geo Hub',
   'tour.step.6.body':
     '3D globe with project anchors, CAD tilesets and pins from HSE, Punchlist and Daily Diary.',
   'tour.step.7.title': 'Help and bug reports',
   'tour.step.7.body':
-    'Found something? Report a bug from here — it lands on GitHub. You can also re-launch this quick tour from this menu.',
+    'Found something? Report a bug from here - it lands on GitHub. You can also re-launch this quick tour from this menu.',
   'tour.step.8.title': "You're set!",
   'tour.step.8.body':
     'Pick a module from the sidebar to dive in. Full docs are linked from the About page.',
@@ -610,7 +610,7 @@ const STEP_FALLBACKS: Record<string, string> = {
     'Every action lives here: add sections and positions, import GAEB or Excel, pick from the cost database, validate, run AI checks, and export. Hover any icon for its keyboard shortcut.',
   'tour.boq.step.2.title': 'Add a position',
   'tour.boq.step.2.body':
-    'Creates a new line under the section you last clicked. The Description cell opens for inline edit automatically — type, then Tab through unit, quantity and unit rate.',
+    'Creates a new line under the section you last clicked. The Description cell opens for inline edit automatically - type, then Tab through unit, quantity and unit rate.',
   'tour.boq.step.3.title': 'The estimating grid',
   'tour.boq.step.3.body':
     'Click any cell to edit; arrow keys / Tab navigate; formulas like =2*A1 are supported; right-click a row for duplicate, indent, link to BIM, or save-as-assembly.',
@@ -619,13 +619,13 @@ const STEP_FALLBACKS: Record<string, string> = {
     'Run validation against DIN 276 / GAEB / NRM, recalculate rates from the cost database, price-check against market medians, or open the AI assistant for plain-text BOQ generation.',
   'tour.boq.step.5.title': 'Resource summary',
   'tour.boq.step.5.body':
-    'Live rollup of every material, labour and equipment line consumed across this BOQ — quantities, unit costs and total spend per resource. Click a row to see which positions use it.',
+    'Live rollup of every material, labour and equipment line consumed across this BOQ - quantities, unit costs and total spend per resource. Click a row to see which positions use it.',
   'tour.boq.step.6.title': 'Markups & VAT',
   'tour.boq.step.6.body':
-    'Add overhead, profit, tax, contingency, insurance or bonds — pick a regional template (DACH VOB, UK NRM, US RSMeans, FR BATIPRIX, …) or roll your own. Markups stack on the direct cost.',
+    'Add overhead, profit, tax, contingency, insurance or bonds - pick a regional template (DACH VOB, UK NRM, US RSMeans, FR BATIPRIX, …) or roll your own. Markups stack on the direct cost.',
   'tour.boq.step.7.title': 'Quality score',
   'tour.boq.step.7.body':
-    'Traffic light driven by the validation pipeline — green over 80, amber 50-80, red below. Hover for the breakdown: descriptions filled, quantities set, rates set, markups configured.',
+    'Traffic light driven by the validation pipeline - green over 80, amber 50-80, red below. Hover for the breakdown: descriptions filled, quantities set, rates set, markups configured.',
   'tour.boq.step.8.title': 'Export anywhere',
   'tour.boq.step.8.body':
     'Export to Excel (.xlsx), CSV, PDF report, or GAEB XML X83 for German tender submission. Currency, FX rates and markups are baked in so the recipient sees the same totals.',
@@ -636,22 +636,22 @@ const STEP_FALLBACKS: Record<string, string> = {
     'Name, kind badge (worker camp / rental / hotel) and quick links to the linked BIM model and the Geo Hub when geo-coordinates are set. Launch the per-module tour from the Tour button here.',
   'tour.accommodation.step.2.title': 'Tabs',
   'tour.accommodation.step.2.body':
-    'Rooms, Bookings, Charges and Settings. Each tab scopes its data to this accommodation only — no cross-contamination between properties on the same project.',
+    'Rooms, Bookings, Charges and Settings. Each tab scopes its data to this accommodation only - no cross-contamination between properties on the same project.',
   'tour.accommodation.step.3.title': 'Rooms grid',
   'tour.accommodation.step.3.body':
-    'Colour-coded by status — green available, amber occupied, grey maintenance, red blocked. Click any room tile to assign an occupant or open its booking history.',
+    'Colour-coded by status - green available, amber occupied, grey maintenance, red blocked. Click any room tile to assign an occupant or open its booking history.',
   'tour.accommodation.step.4.title': 'Add rooms in bulk',
   'tour.accommodation.step.4.body':
     'Generator creates a contiguous block of rooms in one shot: pick a prefix (B-), start number (201) and count (12) and you get B-201..B-212 with default capacity and base rate. Or paste a CSV list.',
   'tour.accommodation.step.5.title': 'Bookings & state machine',
   'tour.accommodation.step.5.body':
-    'Bookings follow reserved → checked_in → checked_out. Cancel is allowed from any non-final state. The room status flips to occupied on check-in and back to available on check-out / cancel — fully automatic.',
+    'Bookings follow reserved → checked_in → checked_out. Cancel is allowed from any non-final state. The room status flips to occupied on check-in and back to available on check-out / cancel - fully automatic.',
   'tour.accommodation.step.6.title': 'Bootstrap from PropDev',
   'tour.accommodation.step.6.body':
-    'In Settings → Bootstrap from PropDev, paste a PropDev block id to clone its plots as rooms here. Idempotent — re-run safely whenever the source block grows. Great for staff-quarter accommodation tied to a residential development.',
+    'In Settings → Bootstrap from PropDev, paste a PropDev block id to clone its plots as rooms here. Idempotent - re-run safely whenever the source block grows. Great for staff-quarter accommodation tied to a residential development.',
   'tour.accommodation.step.7.title': 'HR autobook is in the list page',
   'tour.accommodation.step.7.body':
-    'From /accommodation the "Suggest room for employee" button picks the lowest-numbered free worker-camp room for a new hire — feed it an employee id and a check-in date, accept the suggestion, and the booking is created in one click.',
+    'From /accommodation the "Suggest room for employee" button picks the lowest-numbered free worker-camp room for a new hire - feed it an employee id and a check-in date, accept the suggestion, and the booking is created in one click.',
 
   // ── BIM Hub tour ─────────────────────────────────────────────────────
   'tour.bim.step.1.title': 'Models filmstrip',
@@ -659,16 +659,16 @@ const STEP_FALLBACKS: Record<string, string> = {
     'Every model you upload (RVT, IFC, DWG-to-IFC, CSV-with-geometry) lives here. Click a card to load it, the Plus tile to upload a new one, or the chevron to collapse the strip and reclaim the canvas.',
   'tour.bim.step.2.title': 'Active model',
   'tour.bim.step.2.body':
-    'Shows the name of the model currently in the 3D viewport — drag to rotate, scroll to zoom, right-drag to pan. Hover for the storage breakdown (artifacts + originals on disk).',
+    'Shows the name of the model currently in the 3D viewport - drag to rotate, scroll to zoom, right-drag to pan. Hover for the storage breakdown (artifacts + originals on disk).',
   'tour.bim.step.3.title': 'Filter & section box',
   'tour.bim.step.3.body':
-    'Filter by storey, IFC class, discipline or any property — type a value or pick from the federation tree. Saved filter sets become reusable element groups. Hidden elements vanish from the canvas instantly.',
+    'Filter by storey, IFC class, discipline or any property - type a value or pick from the federation tree. Saved filter sets become reusable element groups. Hidden elements vanish from the canvas instantly.',
   'tour.bim.step.4.title': 'Property search',
   'tour.bim.step.4.body':
     'Query the DDC-extracted Parquet directly: pick a column, an operator (=, contains, >, <), and a value. Matches are isolated in the viewport so you can audit "all walls thicker than 30 cm" in one click.',
   'tour.bim.step.5.title': 'Asset Card & element properties',
   'tour.bim.step.5.body':
-    'Toggle the floating Asset Card to see every property on the selected element — IFC params, materials, custom asset-register fields. Edit notes / status inline; changes sync to the Asset module.',
+    'Toggle the floating Asset Card to see every property on the selected element - IFC params, materials, custom asset-register fields. Edit notes / status inline; changes sync to the Asset module.',
   'tour.bim.step.6.title': 'Linked BOQ',
   'tour.bim.step.6.body':
     'Opens the right-rail panel showing which BOQ positions reference the selected element. Drag elements onto a position to link them, or click "Quick takeoff" on a filter to auto-create a position from a group.',
@@ -679,10 +679,10 @@ const STEP_FALLBACKS: Record<string, string> = {
   // ── Geo Hub tour ─────────────────────────────────────────────────────
   'tour.geo.step.1.title': 'Mode picker',
   'tour.geo.step.1.body':
-    'Three scopes: Global shows every anchored project on one earth-scale map. Project drops into one project — anchor, tilesets, viewpoints. Development is the per-development PropDev plot map.',
+    'Three scopes: Global shows every anchored project on one earth-scale map. Project drops into one project - anchor, tilesets, viewpoints. Development is the per-development PropDev plot map.',
   'tour.geo.step.2.title': 'Live HUD',
   'tour.geo.step.2.body':
-    'Cursor latitude / longitude, camera altitude and a scale bar update as you drag the globe. The north arrow always points up — click it to reset the camera to true-north.',
+    'Cursor latitude / longitude, camera altitude and a scale bar update as you drag the globe. The north arrow always points up - click it to reset the camera to true-north.',
   'tour.geo.step.3.title': 'Anchored Projects',
   'tour.geo.step.3.body':
     'Every project you can access that has a real-world anchor is listed here. Click the name to fly the camera to its pin, or "Open" to drop into that project\'s map. Collapse to a slim pill to reclaim canvas.',
@@ -691,10 +691,10 @@ const STEP_FALLBACKS: Record<string, string> = {
     'Drag to rotate, scroll to zoom, right-drag to pan. Click any pin (project, HSE incident, Punchlist defect, Daily Diary entry) to open it in its module. Tilesets fly into view as you zoom in.',
   'tour.geo.step.5.title': 'Raster overlays',
   'tour.geo.step.5.body':
-    'Pin a PDF site plan or a georeferenced image onto the globe — click Add, drop the file, then drag the corner handles to align. Use Crop to mask the title block. Opacity slider per overlay.',
+    'Pin a PDF site plan or a georeferenced image onto the globe - click Add, drop the file, then drag the corner handles to align. Use Crop to mask the title block. Opacity slider per overlay.',
   'tour.geo.step.6.title': 'Deep links you can share',
   'tour.geo.step.6.body':
-    'Every camera move / opened overlay updates the URL — ?model=… anchors a specific BIM tileset, ?plot=… focuses a PropDev plot, ?dev_id=… opens a development map. Copy and paste to colleagues; they land exactly where you are.',
+    'Every camera move / opened overlay updates the URL - ?model=… anchors a specific BIM tileset, ?plot=… focuses a PropDev plot, ?dev_id=… opens a development map. Copy and paste to colleagues; they land exactly where you are.',
 
   // ── Property Development tour ────────────────────────────────────────
   'tour.propdev.step.1.title': 'Lifecycle pipeline',
@@ -705,7 +705,7 @@ const STEP_FALLBACKS: Record<string, string> = {
     'Master data (Developments, Phases, Blocks, Plots, House Types) on the left, sales (Leads, Buyers, Reservations, SPAs, Payment Schedules) in the middle, operations (Brokers, Price Matrix, Escrow, Handovers, Warranty) on the right.',
   'tour.propdev.step.3.title': 'Context-aware Add',
   'tour.propdev.step.3.body':
-    'The primary button always creates the right entity for the active tab — "New Plot" on Plots, "New Lead" on Leads, "New Reservation" on Reservations. SPA / Payment Schedule rows route back to Reservations because that\'s where the flow starts.',
+    'The primary button always creates the right entity for the active tab - "New Plot" on Plots, "New Lead" on Leads, "New Reservation" on Reservations. SPA / Payment Schedule rows route back to Reservations because that\'s where the flow starts.',
   'tour.propdev.step.4.title': 'House Types catalogue',
   'tour.propdev.step.4.body':
     'Reusable unit templates with floors, area, bedrooms, base price and ISO 3166-1 region (180+ countries). Pick "Custom region" for areas without an ISO code. Variants let you spin off a Type-A-mirrored or Type-A-balcony.',
@@ -728,13 +728,13 @@ const STEP_FALLBACKS: Record<string, string> = {
     'Click to open the layout manager: show / hide / reorder every widget on this page. Your layout is saved server-side, so it follows you across browsers and machines under the same account.',
   'tour.dashboard.step.3.title': 'KPI ribbon',
   'tour.dashboard.step.3.body':
-    'Total Value rolls up every active estimate. Active Estimates excludes archived / closed. Schedule Status counts active programmes. Priced Positions is the live ratio of priced vs total BOQ lines — click it to run validation if it\'s still null.',
+    'Total Value rolls up every active estimate. Active Estimates excludes archived / closed. Schedule Status counts active programmes. Priced Positions is the live ratio of priced vs total BOQ lines - click it to run validation if it\'s still null.',
   'tour.dashboard.step.4.title': 'Projects list & drill-in',
   'tour.dashboard.step.4.body':
-    'Every project card shows BOQ value, position count, open tasks, RFIs and safety incidents. Click any card to make it the active project — every page in the app then scopes its data to that project.',
+    'Every project card shows BOQ value, position count, open tasks, RFIs and safety incidents. Click any card to make it the active project - every page in the app then scopes its data to that project.',
   'tour.dashboard.step.5.title': 'Some widgets need data',
   'tour.dashboard.step.5.body':
-    'BIM Coverage, Critical Path, Procurement Pipeline and others render an empty state until the corresponding module has data — every empty card links you straight to the module so you can fill it in.',
+    'BIM Coverage, Critical Path, Procurement Pipeline and others render an empty state until the corresponding module has data - every empty card links you straight to the module so you can fill it in.',
 
   // ── ModuleHelpButton labels ──────────────────────────────────────────
   'module_help.tour_button': 'Tour',

@@ -72,7 +72,7 @@ export function EacDemoPage() {
         <main className="flex-1 overflow-auto p-6">
           <header className="mb-4">
             <h1 className="text-xl font-semibold text-content-primary">
-              EAC v2 — block primitives preview
+              EAC v2 - block primitives preview
             </h1>
             <p className="mt-1 text-sm text-content-secondary">
               EAC-3.1 scaffolding. Canvas + slot system arrive in EAC-3.2.

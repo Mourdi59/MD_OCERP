@@ -57,7 +57,7 @@ export function DemoBanner() {
       >
         <AlertTriangle size={13} className="shrink-0" />
         <span className="truncate">
-          Public demo — do not upload real data. For production use, install
+          Public demo - do not upload real data. For production use, install
           locally:
         </span>
         <code className="px-1.5 py-0.5 rounded bg-amber-900/15 text-amber-950 font-mono text-[11px] dark:bg-amber-100/10 dark:text-amber-100">
@@ -116,7 +116,7 @@ export function DemoBanner() {
                 <strong className="text-content-primary">
                   small 2&nbsp;GB&nbsp;RAM VPS
                 </strong>{' '}
-                shared with every visitor on the internet — it is meant for a{' '}
+                shared with every visitor on the internet - it is meant for a{' '}
                 <strong className="text-content-primary">
                   quick surface walkthrough
                 </strong>{' '}
@@ -139,7 +139,7 @@ export function DemoBanner() {
                       Expect a surface-level look only.
                     </strong>{' '}
                     Heavy features (CAD/BIM conversion, AI inference, vector
-                    search) need real RAM and are tuned for local installs —
+                    search) need real RAM and are tuned for local installs -
                     on the 2&nbsp;GB demo box they may be slow, rate-limited,
                     or simply unavailable. For benchmarks or full workflows,
                     install locally.
@@ -159,7 +159,7 @@ export function DemoBanner() {
 
               <div className="mt-4 rounded-lg bg-surface-secondary border border-border-light p-3">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-content-quaternary mb-1.5">
-                  Install locally — 3 commands
+                  Install locally - 3 commands
                 </div>
                 <code className="block font-mono text-[12px] text-content-primary leading-relaxed">
                   pip install openconstructionerp

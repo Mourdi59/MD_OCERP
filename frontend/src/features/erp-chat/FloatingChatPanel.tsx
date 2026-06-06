@@ -473,7 +473,7 @@ function EmptyState({
       >
         {t('chat.panel.empty_state', {
           defaultValue:
-            'Ask anything about your projects — BOQs, validation, clashes, costs — or run an action like "create RFI for clash 32".',
+            'Ask anything about your projects - BOQs, validation, clashes, costs - or run an action like "create RFI for clash 32".',
         })}
       </div>
 
@@ -1082,7 +1082,7 @@ export function FloatingChatPanel() {
           ts: new Date(),
           errorText: t('chat.panel.error_card.api_key', {
             defaultValue:
-              'AI provider needs a key — configure it in Settings to keep chatting.',
+              'AI provider needs a key - configure it in Settings to keep chatting.',
           }),
           lastUserPrompt: trimmed,
         };
@@ -1145,7 +1145,7 @@ export function FloatingChatPanel() {
             } catch {
               // Plain-text body — keep as-is.
             }
-            const finalMsg = `${response.status} — ${humanized}`;
+            const finalMsg = `${response.status} - ${humanized}`;
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === aiMsgId ? { ...m, errorText: finalMsg } : m,
@@ -1683,7 +1683,7 @@ export function FloatingChatPanel() {
               }}
             >
               {overHard
-                ? t('chat.panel.token_over', { defaultValue: 'Too long — please shorten' })
+                ? t('chat.panel.token_over', { defaultValue: 'Too long - please shorten' })
                 : overSoft
                 ? t('chat.panel.token_warn', { defaultValue: 'Long message' })
                 : `${charCount}/${HARD_LIMIT}`}
@@ -1740,7 +1740,7 @@ export function FloatingChatPanel() {
             to   { transform: translateX(0);   opacity: 1;   }
           }
           .animate-slide-in-right {
-            /* Material standard easing — 220ms slide for the floating chat panel */
+            /* Material standard easing - 220ms slide for the floating chat panel */
             animation: slide-in-right 220ms cubic-bezier(0.4, 0, 0.2, 1);
           }
           @keyframes fade-in {

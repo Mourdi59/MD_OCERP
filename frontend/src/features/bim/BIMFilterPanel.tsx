@@ -938,7 +938,7 @@ export default function BIMFilterPanel({
                 onClick={onClearIsolation}
                 className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-white dark:bg-amber-900/50 text-amber-700 dark:text-amber-200 border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/70 transition-colors"
                 title={t('bim.isolation_clear_title', {
-                  defaultValue: 'Exit isolation — show all model elements again',
+                  defaultValue: 'Exit isolation - show all model elements again',
                 })}
               >
                 <X size={10} />

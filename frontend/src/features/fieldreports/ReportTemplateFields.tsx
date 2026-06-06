@@ -89,7 +89,7 @@ export function TemplatePicker({
         aria-label={t('fieldreports.template', { defaultValue: 'Report template' })}
       >
         <option value="">
-          {t('fieldreports.no_template', { defaultValue: 'No template — blank report' })}
+          {t('fieldreports.no_template', { defaultValue: 'No template - blank report' })}
         </option>
         {templates.map((tpl) => (
           <option key={tpl.id} value={tpl.id}>

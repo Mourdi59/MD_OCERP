@@ -1325,7 +1325,7 @@ function InventoryDrawer({
                     <p className="rounded-md bg-surface-secondary/60 p-3 text-xs text-content-tertiary">
                       {t('carbon.no_entries_hint', {
                         defaultValue:
-                          'No embodied entries yet — assign material carbon factors to BOQ positions to populate this inventory.',
+                          'No embodied entries yet - assign material carbon factors to BOQ positions to populate this inventory.',
                       })}
                     </p>
                   ) : (
@@ -1400,7 +1400,7 @@ function InventoryDrawer({
                 {/* Scope 1 / 2 / 3 — full management */}
                 <ScopeSection
                   title={t('carbon.scope1_entries', {
-                    defaultValue: 'Scope 1 — direct fuel',
+                    defaultValue: 'Scope 1 - direct fuel',
                   })}
                   rows={s1Q.data ?? []}
                   describe={(e) => {
@@ -1415,7 +1415,7 @@ function InventoryDrawer({
                 />
                 <ScopeSection
                   title={t('carbon.scope2_entries', {
-                    defaultValue: 'Scope 2 — purchased energy',
+                    defaultValue: 'Scope 2 - purchased energy',
                   })}
                   rows={s2Q.data ?? []}
                   describe={(e) => {
@@ -1430,7 +1430,7 @@ function InventoryDrawer({
                 />
                 <ScopeSection
                   title={t('carbon.scope3_entries', {
-                    defaultValue: 'Scope 3 — value chain',
+                    defaultValue: 'Scope 3 - value chain',
                   })}
                   rows={s3Q.data ?? []}
                   describe={(e) => {
@@ -2196,7 +2196,7 @@ function GenerateReportModal({
         </div>
         <div>
           <label className={labelCls}>
-            {t('carbon.area_m2', { defaultValue: 'Project area (m²) — optional' })}
+            {t('carbon.area_m2', { defaultValue: 'Project area (m²) - optional' })}
           </label>
           <input
             type="number"
@@ -2536,7 +2536,7 @@ function ScopeEntryModal({
 
   return (
     <ModalShell
-      title={`${isEdit ? t('common.edit', { defaultValue: 'Edit' }) : t('common.create', { defaultValue: 'Create' })} — ${title}`}
+      title={`${isEdit ? t('common.edit', { defaultValue: 'Edit' }) : t('common.create', { defaultValue: 'Create' })} - ${title}`}
       onClose={onClose}
     >
       <div className="space-y-3">

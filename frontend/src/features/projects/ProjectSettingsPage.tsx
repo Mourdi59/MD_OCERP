@@ -741,7 +741,7 @@ export function ProjectSettingsPage() {
           title={t('project.settings.currency.title', { defaultValue: 'Currencies' })}
           subtitle={t('project.settings.currency.subtitle', {
             defaultValue:
-              'Base currency was set when the project was created. Add additional currencies to use on individual resources — rates convert back to the base for rollup totals.',
+              'Base currency was set when the project was created. Add additional currencies to use on individual resources - rates convert back to the base for rollup totals.',
           })}
           action={
             <Button
@@ -917,7 +917,7 @@ export function ProjectSettingsPage() {
           {customUnits.length === 0 ? (
             <p className="text-sm text-content-tertiary italic">
               {t('project.settings.units.empty', {
-                defaultValue: 'No custom units yet — add one below.',
+                defaultValue: 'No custom units yet - add one below.',
               })}
             </p>
           ) : (

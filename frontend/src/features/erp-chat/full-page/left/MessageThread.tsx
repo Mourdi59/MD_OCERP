@@ -131,7 +131,7 @@ export default function MessageThread({ messages, isStreaming, aiConfigured }: M
         </span>
         <span style={{ fontSize: 12, maxWidth: 360 }}>
           {t('chat.empty_subtitle', {
-            defaultValue: 'Ask about projects, BOQs, costs, validation — try a suggestion below or type your own question.',
+            defaultValue: 'Ask about projects, BOQs, costs, validation - try a suggestion below or type your own question.',
           })}
         </span>
       </div>

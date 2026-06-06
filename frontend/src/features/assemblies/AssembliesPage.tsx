@@ -1557,7 +1557,7 @@ function AIGenerateModal({
                     <span
                       title={t('assemblies.coverage_hint', {
                         defaultValue:
-                          'How many of the components were matched to a priced catalogue item by the keyword search. This reflects catalogue coverage, not AI certainty — always review the matched rates.',
+                          'How many of the components were matched to a priced catalogue item by the keyword search. This reflects catalogue coverage, not AI certainty - always review the matched rates.',
                       })}
                       className="cursor-help underline decoration-dotted decoration-content-quaternary underline-offset-2"
                     >

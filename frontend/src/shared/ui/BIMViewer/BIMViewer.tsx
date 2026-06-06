@@ -1589,7 +1589,7 @@ export function BIMViewer({
             clashHighlightIds,
             'resolved to a mesh in model',
             modelId,
-            '— and no clash centroid was supplied for camera framing.',
+            '- and no clash centroid was supplied for camera framing.',
           );
           useToastStore.getState().addToast({
             type: 'warning',
@@ -2319,7 +2319,7 @@ export function BIMViewer({
           defaultValue: 'Screenshot failed',
         }),
         message: t('bim.screenshot_failed', {
-          defaultValue: 'WebGL context unavailable — try reloading the viewer.',
+          defaultValue: 'WebGL context unavailable - try reloading the viewer.',
         }),
       });
       return;
@@ -2799,7 +2799,7 @@ export function BIMViewer({
         className="w-full h-full block"
         role="img"
         aria-label={t('bim.viewer.canvas_aria_label', {
-          defaultValue: '3D BIM model viewer — use mouse or touch to orbit, zoom, and pan',
+          defaultValue: '3D BIM model viewer - use mouse or touch to orbit, zoom, and pan',
         })}
       />
 
@@ -2813,7 +2813,7 @@ export function BIMViewer({
           className="absolute bottom-3 z-20"
           style={{ left: leftPanelOpen ? leftPanelWidth + 16 : 12 }}
           aria-label={t('bim.site_compass.aria_label', {
-            defaultValue: 'Site Compass — 3D navigation cube',
+            defaultValue: 'Site Compass - 3D navigation cube',
           })}
         >
           <BIMViewCube sceneManager={sceneManagerReady} size={112} />
@@ -2867,7 +2867,7 @@ export function BIMViewer({
                   defaultValue: 'Placeholder geometry',
                 })}
               </span>
-              <span>{' — '}</span>
+              <span>{' - '}</span>
               <span>
                 {t('bim.placeholder_banner.body', {
                   defaultValue:
@@ -2961,7 +2961,7 @@ export function BIMViewer({
                     {geometryProgress >= 0.97
                       ? t('bim.loading_parsing', {
                           defaultValue:
-                            'Parsing 3D geometry — for large models (>50 MB) this can take 20-60s; do not refresh',
+                            'Parsing 3D geometry - for large models (>50 MB) this can take 20-60s; do not refresh',
                         })
                       : geometryProgress >= 0.95
                         ? t('bim.loading_finalising', {
@@ -2973,7 +2973,7 @@ export function BIMViewer({
                   </span>
                   <span className="text-[10px] text-content-quaternary text-center mt-1">
                     {t('bim.loading_navigate_hint', {
-                      defaultValue: 'You can navigate to other pages — loading will continue in the background',
+                      defaultValue: 'You can navigate to other pages - loading will continue in the background',
                     })}
                   </span>
                 </>
@@ -3081,7 +3081,7 @@ export function BIMViewer({
           });
           plainCause = plainCause ?? t('bim.geometry_err_server_cause', {
             defaultValue:
-              'A backend error prevented the file from being served. This is usually temporary — try Retry.',
+              'A backend error prevented the file from being served. This is usually temporary - try Retry.',
           });
         } else if (status === null) {
           headline = t('bim.geometry_err_network_title', {
@@ -3643,7 +3643,7 @@ export function BIMViewer({
                 : measureKind === 'angle'
                   ? t('bim.measure_hint_angle', {
                       defaultValue:
-                        'Click 3 points — the angle is at the middle point. {{count}} saved.',
+                        'Click 3 points - the angle is at the middle point. {{count}} saved.',
                       count: measureCount,
                     })
                   : t('bim.measure_hint', {
@@ -3927,7 +3927,7 @@ export function BIMViewer({
               className="pointer-events-auto inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm hover:bg-emerald-100"
               title={t('bim.linked_count_title', {
                 defaultValue:
-                  '{{linked}} of {{total}} linked to BOQ — click to show ONLY the unlinked',
+                  '{{linked}} of {{total}} linked to BOQ - click to show ONLY the unlinked',
                 linked: healthStats.linkedToBoq,
                 total: elementCount,
               })}
@@ -3944,7 +3944,7 @@ export function BIMViewer({
               onClick={() => onSmartFilter?.('errors')}
               className="pointer-events-auto inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200 shadow-sm hover:bg-rose-100"
               title={t('bim.errors_count_title', {
-                defaultValue: '{{count}} elements with validation errors — click to filter',
+                defaultValue: '{{count}} elements with validation errors - click to filter',
                 count: healthStats.errors,
               })}
             >
@@ -3960,7 +3960,7 @@ export function BIMViewer({
               onClick={() => onSmartFilter?.('warnings')}
               className="pointer-events-auto inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200 shadow-sm hover:bg-amber-100"
               title={t('bim.warnings_count_title', {
-                defaultValue: '{{count}} elements with validation warnings — click to filter',
+                defaultValue: '{{count}} elements with validation warnings - click to filter',
                 count: healthStats.warnings,
               })}
             >
@@ -3976,7 +3976,7 @@ export function BIMViewer({
               onClick={() => onSmartFilter?.('has_tasks')}
               className="pointer-events-auto inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200 shadow-sm hover:bg-amber-100"
               title={t('bim.tasks_count_title', {
-                defaultValue: '{{count}} elements have linked tasks — click to filter',
+                defaultValue: '{{count}} elements have linked tasks - click to filter',
                 count: healthStats.hasTasks,
               })}
             >
@@ -3992,7 +3992,7 @@ export function BIMViewer({
               onClick={() => onSmartFilter?.('has_docs')}
               className="pointer-events-auto inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-violet-50 text-violet-700 border border-violet-200 shadow-sm hover:bg-violet-100"
               title={t('bim.docs_count_title', {
-                defaultValue: '{{count}} elements have linked documents — click to filter',
+                defaultValue: '{{count}} elements have linked documents - click to filter',
                 count: healthStats.hasDocs,
               })}
             >
@@ -4312,7 +4312,7 @@ export function BIMViewer({
                           className="rounded-md bg-blue-50/50 dark:bg-blue-950/20 px-2 py-1"
                           title={t('bim.agg_avg_tooltip', {
                             defaultValue:
-                              'Per-element value — averaged across {{count}} elements',
+                              'Per-element value - averaged across {{count}} elements',
                             count: a.count,
                           })}
                         >
@@ -4373,7 +4373,7 @@ export function BIMViewer({
                         className="rounded-md bg-sky-50/40 dark:bg-sky-950/20 px-2 py-1"
                         title={t('bim.agg_distinct_tooltip', {
                           defaultValue:
-                            'Per-element value — listing the {{n}} unique value(s) seen',
+                            'Per-element value - listing the {{n}} unique value(s) seen',
                           n: a.uniqueValues.length,
                         })}
                       >
@@ -5000,7 +5000,7 @@ export function BIMViewer({
               ) : (
                 <div className="text-[10px] text-content-tertiary italic">
                   {t('bim.link_empty', {
-                    defaultValue: 'Not linked — click "Add to BOQ" to link this element to a cost position',
+                    defaultValue: 'Not linked - click "Add to BOQ" to link this element to a cost position',
                   })}
                 </div>
               )}
@@ -5058,7 +5058,7 @@ export function BIMViewer({
                 ) : (
                   <div className="text-[10px] text-content-tertiary italic">
                     {t('bim.docs_empty', {
-                      defaultValue: 'No drawings linked yet — click "Link" to attach a drawing or photo',
+                      defaultValue: 'No drawings linked yet - click "Link" to attach a drawing or photo',
                     })}
                   </div>
                 )}
@@ -5127,7 +5127,7 @@ export function BIMViewer({
                 ) : (
                   <div className="text-[10px] text-content-tertiary italic">
                     {t('bim.tasks_empty', {
-                      defaultValue: 'No tasks pinned yet — click "New" to file a defect or RFI',
+                      defaultValue: 'No tasks pinned yet - click "New" to file a defect or RFI',
                     })}
                   </div>
                 )}
@@ -5188,7 +5188,7 @@ export function BIMViewer({
                 ) : (
                   <div className="text-[10px] text-content-tertiary italic">
                     {t('bim.acts_empty', {
-                      defaultValue: 'No 4D activities yet — click "Link" to attach a schedule activity',
+                      defaultValue: 'No 4D activities yet - click "Link" to attach a schedule activity',
                     })}
                   </div>
                 )}
@@ -5279,7 +5279,7 @@ export function BIMViewer({
                   <div className="text-[10px] text-content-tertiary italic">
                     {t('bim.req_empty', {
                       defaultValue:
-                        'No requirements yet — click "Link" to pin a constraint to this element',
+                        'No requirements yet - click "Link" to pin a constraint to this element',
                     })}
                   </div>
                 )}

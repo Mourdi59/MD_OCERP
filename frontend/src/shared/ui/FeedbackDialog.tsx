@@ -243,7 +243,7 @@ export function FeedbackDialog({ open, onClose }: FeedbackDialogProps) {
               )}
             />
             <p className="mt-1 text-2xs text-content-quaternary">
-              {t('feedback.email_hint', { defaultValue: 'For follow-up — we won\'t spam' })}
+              {t('feedback.email_hint', { defaultValue: 'For follow-up - we won\'t spam' })}
             </p>
           </div>
 

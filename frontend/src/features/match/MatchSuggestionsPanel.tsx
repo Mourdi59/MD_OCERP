@@ -220,7 +220,7 @@ export function MatchSuggestionsPanel({
           type: 'success',
           title: t('match.accept_toast_title', { defaultValue: 'Match accepted' }),
           message: t('match.accept_toast_recorded', {
-            defaultValue: 'Match recorded — feedback submitted.',
+            defaultValue: 'Match recorded - feedback submitted.',
           }),
         });
       }
@@ -842,7 +842,7 @@ function CatalogBlockedState({
         <p className="mt-1.5 max-w-xs text-xs text-content-secondary">
           {t('match.state_no_catalogs_body', {
             defaultValue:
-              'Matching needs at least one regional catalogue. Load one to get started — it takes about a minute.',
+              'Matching needs at least one regional catalogue. Load one to get started - it takes about a minute.',
           })}
         </p>
         <a
@@ -875,7 +875,7 @@ function CatalogBlockedState({
         <p className="mt-1.5 max-w-xs text-xs text-content-secondary">
           {t('match.state_no_pick_body', {
             defaultValue:
-              'This project has no CWICR catalogue selected yet. Pick one in the bar above — matches always come from a single explicit catalogue.',
+              'This project has no CWICR catalogue selected yet. Pick one in the bar above - matches always come from a single explicit catalogue.',
           })}
         </p>
       </div>

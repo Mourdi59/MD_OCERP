@@ -383,7 +383,7 @@ async function downloadScheduleReport(projectId: string, projectName: string): P
   }
 
   const lines: string[] = [
-    `Schedule Report — ${projectName}`,
+    `Schedule Report - ${projectName}`,
     `Generated: ${new Date().toISOString()}`,
     '='.repeat(60),
     '',
@@ -714,10 +714,10 @@ async function downloadCashFlowReport(projectId: string, projectName: string): P
  */
 async function downloadProgressReport(projectId: string, projectName: string): Promise<void> {
   const htmlParts: string[] = [];
-  htmlParts.push(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${esc(projectName)} — Progress Report</title>`);
+  htmlParts.push(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${esc(projectName)} - Progress Report</title>`);
   htmlParts.push('<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;max-width:900px;margin:0 auto;padding:40px 24px;color:#1a1a1a;line-height:1.6}h1{font-size:28px;border-bottom:3px solid #2563eb;padding-bottom:12px}h2{font-size:20px;color:#2563eb;margin-top:32px;border-bottom:1px solid #e5e7eb;padding-bottom:6px}table{width:100%;border-collapse:collapse;margin:12px 0}th,td{padding:8px 12px;text-align:left;border-bottom:1px solid #e5e7eb;font-size:14px}th{background:#f9fafb;font-weight:600}.metric{display:inline-block;margin:8px 16px 8px 0;padding:12px 20px;border:1px solid #e5e7eb;border-radius:8px;text-align:center}.metric-label{font-size:11px;text-transform:uppercase;color:#6b7280;letter-spacing:0.05em}.metric-value{font-size:22px;font-weight:700}p.footer{color:#9ca3af;font-size:12px;margin-top:40px;border-top:1px solid #e5e7eb;padding-top:12px}@media print{body{padding:0}}</style>');
   htmlParts.push('</head><body>');
-  htmlParts.push(`<h1>${esc(projectName)} — Progress Report</h1>`);
+  htmlParts.push(`<h1>${esc(projectName)} - Progress Report</h1>`);
   htmlParts.push(`<p style="color:#6b7280">Generated: ${new Date().toLocaleString()}</p>`);
 
   // EVM section
@@ -1155,7 +1155,7 @@ export function ReportsPage() {
 
               const htmlParts: string[] = [];
 
-              htmlParts.push(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${esc(projectName)} — Project Report</title>`);
+              htmlParts.push(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${esc(projectName)} - Project Report</title>`);
               htmlParts.push('<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;max-width:900px;margin:0 auto;padding:40px 24px;color:#1a1a1a;line-height:1.6}h1{font-size:28px;border-bottom:3px solid #2563eb;padding-bottom:12px;margin-bottom:8px}h2{font-size:20px;color:#2563eb;margin-top:32px;border-bottom:1px solid #e5e7eb;padding-bottom:6px}h3{font-size:16px;margin-top:20px;color:#374151}table{width:100%;border-collapse:collapse;margin:12px 0}th,td{padding:8px 12px;text-align:left;border-bottom:1px solid #e5e7eb;font-size:14px}th{background:#f9fafb;font-weight:600;color:#374151}tr:hover{background:#f9fafb}.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600}.badge-success{background:#dcfce7;color:#166534}.badge-warning{background:#fef3c7;color:#92400e}.badge-error{background:#fee2e2;color:#991b1b}.badge-blue{background:#dbeafe;color:#1e40af}.badge-neutral{background:#f3f4f6;color:#4b5563}.metric{display:inline-block;margin:8px 16px 8px 0;padding:12px 20px;border:1px solid #e5e7eb;border-radius:8px;text-align:center}.metric-label{font-size:11px;text-transform:uppercase;color:#6b7280;letter-spacing:0.05em}.metric-value{font-size:22px;font-weight:700;color:#1a1a1a}p.generated{color:#9ca3af;font-size:12px;margin-top:40px;border-top:1px solid #e5e7eb;padding-top:12px}@media print{body{padding:0}}</style>');
               htmlParts.push('</head><body>');
               htmlParts.push(`<h1>${esc(projectName)}</h1>`);

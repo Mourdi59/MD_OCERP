@@ -274,7 +274,7 @@ export function AssetEditModal({ asset, onClose, onSaved }: AssetEditModalProps)
               </span>
               <span className="text-[10px] text-content-tertiary">
                 {t('assets.custom.hint', {
-                  defaultValue: 'Stored in asset_info — snake_case keys.',
+                  defaultValue: 'Stored in asset_info - snake_case keys.',
                 })}
               </span>
             </div>

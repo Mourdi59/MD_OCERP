@@ -284,7 +284,7 @@ if (typeof window !== 'undefined') {
         stage: 'catalogue_install.stage_stalled',
         errorMessage:
           job.errorMessage ??
-          'Install abandoned after 10 min — try again or check the backend log.',
+          'Install abandoned after 10 min - try again or check the backend log.',
         completedAt: now,
       });
       clearProgressTimer(id);

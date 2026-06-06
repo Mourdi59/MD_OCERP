@@ -54,7 +54,7 @@ import { updateAssignment, deleteAssignment } from '../api';
 const apiPatchMock = api.apiPatch as unknown as ReturnType<typeof vi.fn>;
 const apiDeleteMock = api.apiDelete as unknown as ReturnType<typeof vi.fn>;
 
-describe('Resources assignments — edit/delete helpers', () => {
+describe('Resources assignments - edit/delete helpers', () => {
   beforeEach(() => {
     apiPatchMock.mockClear();
     apiDeleteMock.mockClear();

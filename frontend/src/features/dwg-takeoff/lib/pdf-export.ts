@@ -63,7 +63,7 @@ export function exportCanvasToPdf(opts: PdfExportOptions): void {
   const { canvas, filename, scale = 1, downloadName } = opts;
 
   if (canvas.width === 0 || canvas.height === 0) {
-    throw new Error('Canvas is empty — nothing to export.');
+    throw new Error('Canvas is empty - nothing to export.');
   }
 
   const dataUrl = canvas.toDataURL('image/png');

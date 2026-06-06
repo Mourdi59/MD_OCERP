@@ -285,7 +285,7 @@ function UnitCell({
   const fill = PLOT_STATUS_FILL[unit.status] ?? '#94a3b8';
   const stroke = PLOT_STATUS_STROKE[unit.status] ?? '#64748b';
   const label = t('propdev.dashboards.heatmap.cell_label', {
-    defaultValue: 'Plot {{number}} — {{status}} — {{area}} m²',
+    defaultValue: 'Plot {{number}} - {{status}} - {{area}} m²',
     number: unit.plot_number,
     status: t(`propdev.status.${unit.status}`, {
       defaultValue: unit.status.replace(/_/g, ' '),

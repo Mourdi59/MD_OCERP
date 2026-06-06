@@ -99,7 +99,7 @@ export function TriggerPanel({
       <div className="rounded-md bg-semantic-info-bg/60 px-2.5 py-1.5 text-2xs text-content-secondary">
         {t('agents.triggers.review_note', {
           defaultValue:
-            'Event-triggered runs are saved like any run for you to review — nothing is applied automatically.',
+            'Event-triggered runs are saved like any run for you to review - nothing is applied automatically.',
         })}
       </div>
     </div>

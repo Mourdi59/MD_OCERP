@@ -443,7 +443,7 @@ export function AgentsPage(): JSX.Element {
                         defaultValue: 'Run will be linked to active project.',
                       })
                     : t('agents.no_project', {
-                        defaultValue: 'No active project — run will be global.',
+                        defaultValue: 'No active project - run will be global.',
                       })}
                 </span>
                 <button
@@ -559,7 +559,7 @@ export function AgentsPage(): JSX.Element {
               </p>
               <p className="mt-1 text-xs text-content-tertiary">
                 {t('agents.no_runs_body', {
-                  defaultValue: 'Pick an agent and run it — your runs will show up here.',
+                  defaultValue: 'Pick an agent and run it - your runs will show up here.',
                 })}
               </p>
             </div>

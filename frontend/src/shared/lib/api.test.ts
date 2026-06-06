@@ -36,7 +36,7 @@ describe('extractErrorMessageFromBody', () => {
     );
   });
 
-  it('flattens FastAPI 422 validation detail array — single field', () => {
+  it('flattens FastAPI 422 validation detail array - single field', () => {
     const body = {
       detail: [
         { type: 'missing', loc: ['query', 'project_id'], msg: 'Field required' },
@@ -49,7 +49,7 @@ describe('extractErrorMessageFromBody', () => {
     expect(msg).not.toContain('[object Object]');
   });
 
-  it('flattens FastAPI 422 validation detail array — multiple fields', () => {
+  it('flattens FastAPI 422 validation detail array - multiple fields', () => {
     const body = {
       detail: [
         { type: 'missing', loc: ['body', 'name'], msg: 'Field required' },
@@ -123,7 +123,7 @@ describe('extractErrorMessageFromBody', () => {
  * thrown FastAPI ``{detail: [...]}`` becomes a readable string.
  */
 describe('getErrorMessage', () => {
-  it('normalises a thrown FastAPI 422 body (array detail) — never [object Object]', () => {
+  it('normalises a thrown FastAPI 422 body (array detail) - never [object Object]', () => {
     const thrownObject = {
       detail: [{ loc: ['body', 'email'], msg: 'Field required', type: 'missing' }],
     };

@@ -101,7 +101,7 @@ export function ModelLinkPanel({
         title: t('boq.model_link_created', { defaultValue: 'Model link created' }),
         message: t('boq.model_link_created_hint', {
           defaultValue:
-            'The quantity is not changed yet — use “Refresh from model” then Apply to pull it in.',
+            'The quantity is not changed yet - use “Refresh from model” then Apply to pull it in.',
         }),
       });
     },
@@ -162,7 +162,7 @@ export function ModelLinkPanel({
   // LinkedPositionsModal) is to widen the options to
   // `Record<string, unknown>` so the strict overload is not selected.
   const subtitleText = t('boq.model_link_subtitle', {
-    defaultValue: 'Position {{ordinal}} — bind its quantity to BIM model elements',
+    defaultValue: 'Position {{ordinal}} - bind its quantity to BIM model elements',
     ordinal: positionOrdinal,
   } as Record<string, unknown>);
   const elementsLabel = t('boq.model_link_elements', {
@@ -295,7 +295,7 @@ export function ModelLinkPanel({
               className="w-full rounded-lg border border-border-light bg-surface-primary px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-oe-blue/30"
             >
               <option value="">
-                {t('boq.model_link_pick_model', { defaultValue: '— Select a model —' })}
+                {t('boq.model_link_pick_model', { defaultValue: '- Select a model -' })}
               </option>
               {models.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -389,7 +389,7 @@ export function ModelLinkPanel({
                 >
                   <option value="">
                     {t('boq.model_link_pick_field', {
-                      defaultValue: '— Select a quantity —',
+                      defaultValue: '- Select a quantity -',
                     })}
                   </option>
                   {availableFields.map((f) => (

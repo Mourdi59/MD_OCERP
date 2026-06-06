@@ -900,7 +900,7 @@ export function PdfComparePage() {
               })}
             >
               <option value="">
-                {t('pdf_compare.choose_doc', { defaultValue: '— choose PDF —' })}
+                {t('pdf_compare.choose_doc', { defaultValue: '- choose PDF -' })}
               </option>
               {pdfDocs.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -950,7 +950,7 @@ export function PdfComparePage() {
               })}
             >
               <option value="">
-                {t('pdf_compare.choose_doc', { defaultValue: '— choose PDF —' })}
+                {t('pdf_compare.choose_doc', { defaultValue: '- choose PDF -' })}
               </option>
               {pdfDocs.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -1153,7 +1153,7 @@ export function PdfComparePage() {
                 onPanStart={panA.onStart}
                 onPanMove={panA.onMove}
                 onPanEnd={panA.onEnd}
-                label={t('pdf_compare.label_a', { defaultValue: 'A — Old' })}
+                label={t('pdf_compare.label_a', { defaultValue: 'A - Old' })}
                 docName={docAName}
                 loading={loadingA}
               />
@@ -1167,7 +1167,7 @@ export function PdfComparePage() {
                 onPanStart={panB.onStart}
                 onPanMove={panB.onMove}
                 onPanEnd={panB.onEnd}
-                label={t('pdf_compare.label_b', { defaultValue: 'B — New' })}
+                label={t('pdf_compare.label_b', { defaultValue: 'B - New' })}
                 docName={docBName}
                 loading={loadingB}
               />
@@ -1233,7 +1233,7 @@ export function PdfComparePage() {
         {docA && docB && totalPages < maxPages && (
           <span className="text-amber-500">
             {t('pdf_compare.page_count_warning', {
-              defaultValue: 'Different page counts — navigating up to {{max}} pages',
+              defaultValue: 'Different page counts - navigating up to {{max}} pages',
               max: maxPages,
             })}
           </span>

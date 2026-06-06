@@ -104,7 +104,7 @@ export function ExportWizard({ open, projectId, projectName, onClose }: ExportWi
 
   const scopeHints: Record<BundleScope, string> = {
     metadata_only: t('files.export.scope_metadata_hint', {
-      defaultValue: 'Email-friendly. BOQs, tables, and links — no attachments. Fits in any inbox.',
+      defaultValue: 'Email-friendly. BOQs, tables, and links - no attachments. Fits in any inbox.',
     }),
     documents: t('files.export.scope_documents_hint', {
       defaultValue: 'Adds uploaded documents and photos with their thumbnails.',
@@ -116,7 +116,7 @@ export function ExportWizard({ open, projectId, projectName, onClose }: ExportWi
       defaultValue: 'Adds DWG drawings, versions, and related sheets.',
     }),
     full: t('files.export.scope_full_hint', {
-      defaultValue: 'Everything — full migration package, including all attachments.',
+      defaultValue: 'Everything - full migration package, including all attachments.',
     }),
   };
 
@@ -238,7 +238,7 @@ export function ExportWizard({ open, projectId, projectName, onClose }: ExportWi
                   <p>
                     {t('files.export.large_warn', {
                       defaultValue:
-                        'Large bundle — keep this tab open while exporting.',
+                        'Large bundle - keep this tab open while exporting.',
                     })}
                   </p>
                 </div>

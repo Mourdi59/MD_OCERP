@@ -43,7 +43,7 @@ const ITEMS = [
   {
     id: 'snap-3',
     project_id: PROJECT_ID,
-    label: 'Today — final',
+    label: 'Today - final',
     created_at: '2026-04-27T12:00:00Z',
     created_by_user_id: 'u1',
     parent_snapshot_id: null,
@@ -110,7 +110,7 @@ describe('SnapshotPickerInline', () => {
     await waitFor(() => {
       expect(
         screen.getByTestId('snapshot-picker-inline-current').textContent,
-      ).toContain('Today — final');
+      ).toContain('Today - final');
     });
   });
 

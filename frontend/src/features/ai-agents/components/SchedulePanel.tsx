@@ -341,7 +341,7 @@ export function SchedulePanel({
             <span>
               {t('agents.schedule.review_note', {
                 defaultValue:
-                  'Scheduled runs are saved like any run for you to review — nothing is applied automatically.',
+                  'Scheduled runs are saved like any run for you to review - nothing is applied automatically.',
               })}
             </span>
           </div>

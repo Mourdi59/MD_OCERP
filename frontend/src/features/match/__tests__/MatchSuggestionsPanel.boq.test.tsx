@@ -110,7 +110,7 @@ function renderPanel(
 
 /* ── Tests ─────────────────────────────────────────────────────────────── */
 
-describe('MatchSuggestionsPanel — Phase 4 BOQ wiring', () => {
+describe('MatchSuggestionsPanel - Phase 4 BOQ wiring', () => {
   beforeEach(() => {
     vi.useRealTimers();
     vi.mocked(matchElement).mockReset();

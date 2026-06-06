@@ -22,7 +22,7 @@ function recordingSender(
   return { sender, calls };
 }
 
-describe('MutationQueue — enqueue', () => {
+describe('MutationQueue - enqueue', () => {
   let storage = createMemoryQueueStorage();
 
   beforeEach(() => {
@@ -72,7 +72,7 @@ describe('MutationQueue — enqueue', () => {
   });
 });
 
-describe('MutationQueue — dedupe', () => {
+describe('MutationQueue - dedupe', () => {
   it('collapses a duplicate clientOpId into one entry', async () => {
     const storage = createMemoryQueueStorage();
     const { sender } = recordingSender();
@@ -112,7 +112,7 @@ describe('MutationQueue — dedupe', () => {
   });
 });
 
-describe('MutationQueue — ordered replay', () => {
+describe('MutationQueue - ordered replay', () => {
   it('drains ops strictly in FIFO enqueue order', async () => {
     const storage = createMemoryQueueStorage();
     const { sender, calls } = recordingSender();
@@ -211,7 +211,7 @@ describe('MutationQueue — ordered replay', () => {
   });
 });
 
-describe('MutationQueue — retry on failure', () => {
+describe('MutationQueue - retry on failure', () => {
   it('keeps an op and increments retries on a transient (5xx) outcome', async () => {
     const storage = createMemoryQueueStorage();
     const { sender } = recordingSender({
@@ -310,7 +310,7 @@ describe('MutationQueue — retry on failure', () => {
   });
 });
 
-describe('MutationQueue — discard / clear', () => {
+describe('MutationQueue - discard / clear', () => {
   it('discards a single op', async () => {
     const storage = createMemoryQueueStorage();
     const { sender } = recordingSender();

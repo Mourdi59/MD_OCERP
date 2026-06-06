@@ -285,7 +285,7 @@ export function PreferencesTab(): JSX.Element {
       {upsertMut.isError && (
         <div className="mt-3 text-xs text-semantic-error">
           {t('notifications.preferences.save_error', {
-            defaultValue: 'Could not save preference — please try again.',
+            defaultValue: 'Could not save preference - please try again.',
           })}
         </div>
       )}

@@ -92,7 +92,7 @@ export function ShareDialog({ roomName, isOpen, onClose }: ShareDialogProps) {
             <strong className="text-content-secondary">
               {t('collab.p2p_note_title', { defaultValue: 'Peer-to-peer sync' })}
             </strong>
-            {' — '}
+            {' - '}
             {t('collab.p2p_note', {
               defaultValue: 'Changes sync directly between browsers via WebRTC. No data is stored on a server. All participants must be online simultaneously.',
             })}

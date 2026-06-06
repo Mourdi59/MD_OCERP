@@ -437,7 +437,7 @@ export default function ClashProfileManager() {
                 })}
                 description={t('clash.profiles.selectHint', {
                   defaultValue:
-                    'Pick a profile from the list to view, edit or launch it — or create a new one.',
+                    'Pick a profile from the list to view, edit or launch it - or create a new one.',
                 })}
               />
             </Card>
@@ -897,7 +897,7 @@ function ApplyModal({
               <p className="text-sm text-content-tertiary">
                 {t('clash.profiles.noModels', {
                   defaultValue:
-                    'This project has no BIM models yet — upload one first.',
+                    'This project has no BIM models yet - upload one first.',
                 })}
               </p>
             ) : (

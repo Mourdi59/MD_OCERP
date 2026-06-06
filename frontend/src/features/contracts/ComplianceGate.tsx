@@ -185,7 +185,7 @@ export function ComplianceGate({
             <p className="mt-0.5 text-sm text-amber-700 dark:text-amber-400">
               {t('contracts.compliance.warnings_desc', {
                 defaultValue:
-                  'No blocking issues — you can sign, but review the {{count}} warning(s) first.',
+                  'No blocking issues - you can sign, but review the {{count}} warning(s) first.',
                 count: warnings.length,
               })}
             </p>

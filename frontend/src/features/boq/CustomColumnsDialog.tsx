@@ -464,7 +464,7 @@ export function CustomColumnsDialog({
               </h2>
               <p className="text-xs text-content-tertiary">
                 {t('boq.custom_columns_subtitle', {
-                  defaultValue: 'Add your own fields — supplier, notes, procurement info…',
+                  defaultValue: 'Add your own fields - supplier, notes, procurement info…',
                 })}
               </p>
             </div>

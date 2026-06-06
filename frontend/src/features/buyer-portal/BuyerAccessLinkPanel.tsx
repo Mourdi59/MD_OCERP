@@ -145,7 +145,7 @@ export function BuyerAccessLinkPanel({
           <p className="font-medium text-amber-900 dark:text-amber-200">
             {t('buyer_portal_panel.copy_now', {
               defaultValue:
-                'Copy this URL now — it will not be shown again.',
+                'Copy this URL now - it will not be shown again.',
             })}
           </p>
           <div className="flex items-center gap-1.5">

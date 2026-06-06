@@ -103,7 +103,7 @@ export function IntegrityOverview({
           <p className="text-xs text-content-tertiary">
             {t('dashboards.integrity_subtitle', {
               defaultValue:
-                'Per-column null counts, dtype mismatches and outliers — fix upstream issues before slicing.',
+                'Per-column null counts, dtype mismatches and outliers - fix upstream issues before slicing.',
             })}
           </p>
         </div>

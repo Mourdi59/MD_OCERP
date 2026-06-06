@@ -155,7 +155,7 @@ beforeEach(() => {
    1. EmptyState
 ═══════════════════════════════════════════════════════════════════════ */
 
-describe('Visual Regression — EmptyState', () => {
+describe('Visual Regression - EmptyState', () => {
   it('renders minimal (title only)', () => {
     const { container } = render(
       <EmptyState title="No items found" />,
@@ -191,7 +191,7 @@ describe('Visual Regression — EmptyState', () => {
    2. NotFoundPage (404)
 ═══════════════════════════════════════════════════════════════════════ */
 
-describe('Visual Regression — NotFoundPage', () => {
+describe('Visual Regression - NotFoundPage', () => {
   it('renders the 404 page with navigation links', () => {
     const { container } = render(
       <RouterWrapper>
@@ -206,33 +206,33 @@ describe('Visual Regression — NotFoundPage', () => {
    3. SkeletonLoader variants
 ═══════════════════════════════════════════════════════════════════════ */
 
-describe('Visual Regression — SkeletonLoader', () => {
-  it('SkeletonText — default width', () => {
+describe('Visual Regression - SkeletonLoader', () => {
+  it('SkeletonText - default width', () => {
     const { container } = render(<SkeletonText />);
     expect(container).toMatchSnapshot();
   });
 
-  it('SkeletonText — custom width w-3/4', () => {
+  it('SkeletonText - custom width w-3/4', () => {
     const { container } = render(<SkeletonText width="w-3/4" />);
     expect(container).toMatchSnapshot();
   });
 
-  it('SkeletonCard — single card', () => {
+  it('SkeletonCard - single card', () => {
     const { container } = render(<SkeletonCard />);
     expect(container).toMatchSnapshot();
   });
 
-  it('SkeletonTable — 3 rows x 4 columns', () => {
+  it('SkeletonTable - 3 rows x 4 columns', () => {
     const { container } = render(<SkeletonTable rows={3} columns={4} />);
     expect(container).toMatchSnapshot();
   });
 
-  it('SkeletonTable — default dimensions (5x5)', () => {
+  it('SkeletonTable - default dimensions (5x5)', () => {
     const { container } = render(<SkeletonTable />);
     expect(container).toMatchSnapshot();
   });
 
-  it('SkeletonGrid — 4 items', () => {
+  it('SkeletonGrid - 4 items', () => {
     const { container } = render(<SkeletonGrid items={4} />);
     expect(container).toMatchSnapshot();
   });
@@ -242,7 +242,7 @@ describe('Visual Regression — SkeletonLoader', () => {
    4. ConfirmDialog
 ═══════════════════════════════════════════════════════════════════════ */
 
-describe('Visual Regression — ConfirmDialog', () => {
+describe('Visual Regression - ConfirmDialog', () => {
   it('renders danger variant (open)', () => {
     const { container } = render(
       <ConfirmDialog
@@ -306,7 +306,7 @@ describe('Visual Regression — ConfirmDialog', () => {
    5. Breadcrumb
 ═══════════════════════════════════════════════════════════════════════ */
 
-describe('Visual Regression — Breadcrumb', () => {
+describe('Visual Regression - Breadcrumb', () => {
   it('renders nothing for a single-item trail (top bar already names the module)', () => {
     // Founder decision 2026-06-06 (MODULE_STYLE_GUIDE 2.1): a lone module
     // label duplicates the top app bar, so the component hides itself.
@@ -347,7 +347,7 @@ describe('Visual Regression — Breadcrumb', () => {
    6. Button variants
 ═══════════════════════════════════════════════════════════════════════ */
 
-describe('Visual Regression — Button', () => {
+describe('Visual Regression - Button', () => {
   it('primary button', () => {
     const { container } = render(<Button variant="primary">Save</Button>);
     expect(container).toMatchSnapshot();
@@ -390,7 +390,7 @@ describe('Visual Regression — Button', () => {
    7. Input
 ═══════════════════════════════════════════════════════════════════════ */
 
-describe('Visual Regression — Input', () => {
+describe('Visual Regression - Input', () => {
   it('default input with label', () => {
     const { container } = render(
       <Input label="Project Name" placeholder="Enter project name" />,
@@ -431,7 +431,7 @@ describe('Visual Regression — Input', () => {
    8. Badge
 ═══════════════════════════════════════════════════════════════════════ */
 
-describe('Visual Regression — Badge', () => {
+describe('Visual Regression - Badge', () => {
   it('neutral badge', () => {
     const { container } = render(<Badge variant="neutral">Draft</Badge>);
     expect(container).toMatchSnapshot();
@@ -462,7 +462,7 @@ describe('Visual Regression — Badge', () => {
    9. Card
 ═══════════════════════════════════════════════════════════════════════ */
 
-describe('Visual Regression — Card', () => {
+describe('Visual Regression - Card', () => {
   it('card with header and content', () => {
     const { container } = render(
       <Card>
@@ -508,23 +508,23 @@ describe('Visual Regression — Card', () => {
    10. Logo
 ═══════════════════════════════════════════════════════════════════════ */
 
-describe('Visual Regression — Logo', () => {
-  it('Logo — small', () => {
+describe('Visual Regression - Logo', () => {
+  it('Logo - small', () => {
     const { container } = render(<Logo size="sm" />);
     expect(container).toMatchSnapshot();
   });
 
-  it('Logo — large with animation', () => {
+  it('Logo - large with animation', () => {
     const { container } = render(<Logo size="lg" animate />);
     expect(container).toMatchSnapshot();
   });
 
-  it('LogoWithText — default', () => {
+  it('LogoWithText - default', () => {
     const { container } = render(<LogoWithText />);
     expect(container).toMatchSnapshot();
   });
 
-  it('LogoWithText — without version', () => {
+  it('LogoWithText - without version', () => {
     const { container } = render(<LogoWithText showVersion={false} />);
     expect(container).toMatchSnapshot();
   });
@@ -534,15 +534,15 @@ describe('Visual Regression — Logo', () => {
    11. InfoHint
 ═══════════════════════════════════════════════════════════════════════ */
 
-describe('Visual Regression — InfoHint', () => {
-  it('block mode — collapsed', () => {
+describe('Visual Regression - InfoHint', () => {
+  it('block mode - collapsed', () => {
     const { container } = render(
       <InfoHint text="This is helpful information about the current section." />,
     );
     expect(container).toMatchSnapshot();
   });
 
-  it('inline mode — collapsed', () => {
+  it('inline mode - collapsed', () => {
     const { container } = render(
       <InfoHint text="Inline help tooltip content." inline />,
     );
@@ -564,7 +564,7 @@ describe('Visual Regression — InfoHint', () => {
    12. LoginPage
 ═══════════════════════════════════════════════════════════════════════ */
 
-describe('Visual Regression — LoginPage', () => {
+describe('Visual Regression - LoginPage', () => {
   // The LoginPage marketing background uses a typewriter ticker that
   // animates BOQ-table cells character-by-character via setInterval. Each
   // render captures the DOM at a slightly different point in the animation,
@@ -572,7 +572,7 @@ describe('Visual Regression — LoginPage', () => {
   // (form fields, submit button, demo access) is exercised by the e2e
   // Playwright suite where animation timing is deterministic.
   // SKIP: LoginPage marketing background runs a setInterval-driven typewriter ticker, so each render captures a different DOM state and the snapshot match is inherently flaky. Re-enable when: ticker accepts a deterministic-pause prop (or jsdom gets fake-timers wired into snapshot capture). Tracked in v4.3 backlog.
-  it.skip('renders the login form (skipped — flaky due to typewriter ticker)', async () => {
+  it.skip('renders the login form (skipped - flaky due to typewriter ticker)', async () => {
     const { LoginPage } = await import('@/features/auth/LoginPage');
     const { container } = render(
       <RouterWrapper>
@@ -587,7 +587,7 @@ describe('Visual Regression — LoginPage', () => {
    13. DashboardPage (loading state)
 ═══════════════════════════════════════════════════════════════════════ */
 
-describe('Visual Regression — DashboardPage', () => {
+describe('Visual Regression - DashboardPage', () => {
   // The hero greeting is time-of-day dependent (DashboardPage reads
   // `new Date().getHours()` → "Good morning" / "Good afternoon" /
   // "Good evening" / "Welcome back"). Pin the clock to a fixed morning

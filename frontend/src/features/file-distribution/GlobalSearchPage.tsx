@@ -394,7 +394,7 @@ export function GlobalSearchPage() {
               <span>
                 {t('files.global_search.metadata_only_notice', {
                   defaultValue:
-                    'Searching file names only — content-text index is not installed on this build.',
+                    'Searching file names only - content-text index is not installed on this build.',
                 })}
               </span>
             </div>

@@ -1029,7 +1029,7 @@ function ComponentRow({
               }
               className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold cursor-pointer border-none outline-none focus:ring-1 focus:ring-oe-blue/40 ${RESOURCE_TYPE_STYLES[resType] ?? RESOURCE_TYPE_STYLES.material}`}
               title={t('assemblies.type_change_hint', {
-                defaultValue: 'Change resource type — recomputes the line total',
+                defaultValue: 'Change resource type - recomputes the line total',
               })}
             >
               <option value="material">{t('assemblies.type_material', { defaultValue: 'Mat' })}</option>
@@ -1161,7 +1161,7 @@ function ComponentRow({
                 <DetailField
                   label={t('assemblies.field_waste', { defaultValue: 'Waste %' })}
                   hint={t('assemblies.field_waste_hint', {
-                    defaultValue: 'Adds to the line total — e.g. 10 = +10%.',
+                    defaultValue: 'Adds to the line total - e.g. 10 = +10%.',
                   })}
                   type="number"
                   value={meta.waste_pct ?? ''}
@@ -1186,7 +1186,7 @@ function ComponentRow({
                 <DetailField
                   label={t('assemblies.field_hours', { defaultValue: 'Hours' })}
                   hint={t('assemblies.field_hours_hint', {
-                    defaultValue: 'Informational — use the Qty column to drive the total.',
+                    defaultValue: 'Informational - use the Qty column to drive the total.',
                   })}
                   type="number"
                   value={meta.hours ?? ''}
@@ -1195,7 +1195,7 @@ function ComponentRow({
                 <DetailField
                   label={t('assemblies.field_burden', { defaultValue: 'Burden %' })}
                   hint={t('assemblies.field_burden_hint', {
-                    defaultValue: 'Benefits / overhead uplift — e.g. 30 = +30%.',
+                    defaultValue: 'Benefits / overhead uplift - e.g. 30 = +30%.',
                   })}
                   type="number"
                   value={meta.burden_pct ?? ''}

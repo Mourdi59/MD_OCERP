@@ -833,7 +833,7 @@ export async function resolveElementUUID(
   };
   if (!ref.meshRef && !ref.stableId) {
     throw new Error(
-      'This mesh has no Revit ElementId — cannot persist it. ' +
+      'This mesh has no Revit ElementId - cannot persist it. ' +
         'Re-upload the model so the viewer can attach a stable reference.',
     );
   }

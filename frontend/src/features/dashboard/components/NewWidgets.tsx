@@ -150,7 +150,7 @@ export function BOQSummaryWidget({ projects }: { projects?: ProjectRef[] }) {
       <WidgetCard icon={icon} title={title} subtitle={subtitle}>
         <EmptyCTA
           message={t('dashboard.boq_summary_empty', {
-            defaultValue: 'No BOQs yet — create your first to track value and completeness.',
+            defaultValue: 'No BOQs yet - create your first to track value and completeness.',
           })}
           ctaLabel={t('dashboard.boq_summary_cta', { defaultValue: 'Open BOQs' })}
           onClick={() => navigate('/boq')}

@@ -884,7 +884,7 @@ export function InstallPackPanel({ onChanged }: { onChanged: () => void }) {
             role="button"
             tabIndex={busy ? -1 : 0}
             aria-label={t('modules.pack_install_dropzone_label', {
-              defaultValue: 'Upload a partner pack .zip — click to choose a file or drop one here',
+              defaultValue: 'Upload a partner pack .zip - click to choose a file or drop one here',
             })}
             aria-describedby={dropDescId}
             aria-disabled={busy}
@@ -1864,7 +1864,7 @@ function DataPackagesTab() {
                 </h2>
               </div>
               <p className="text-sm text-content-secondary leading-relaxed mb-4">
-                {t('modules.community_desc', { defaultValue: 'OpenConstructionERP has a modular plugin architecture. Anyone can create custom modules — cost databases, regional standards, CAD converters, analytics dashboards, integrations with external systems, or any other functionality.' })}
+                {t('modules.community_desc', { defaultValue: 'OpenConstructionERP has a modular plugin architecture. Anyone can create custom modules - cost databases, regional standards, CAD converters, analytics dashboards, integrations with external systems, or any other functionality.' })}
               </p>
               <div className="flex flex-wrap gap-3">
                 <a
@@ -2126,7 +2126,7 @@ function SystemModulesTab() {
                           name: mod.display_name,
                         })
                       : t('modules.toggle_module_admin_only', {
-                          defaultValue: '{{name}} — admin only',
+                          defaultValue: '{{name}} - admin only',
                           name: mod.display_name,
                         })
                   }

@@ -5,7 +5,7 @@ describe('shortModelName', () => {
   it('strips the exact project-name prefix when known', () => {
     expect(
       shortModelName(
-        'Edifício Comercial Faria Lima — São Paulo — Modelo Estrutural Revit',
+        'Edifício Comercial Faria Lima - São Paulo - Modelo Estrutural Revit',
         'Edifício Comercial Faria Lima',
       ),
     ).toBe('Modelo Estrutural Revit');
@@ -16,13 +16,13 @@ describe('shortModelName', () => {
     // deep-link, so two such models read as "two projects".
     expect(
       shortModelName(
-        'Edifício Comercial Faria Lima — São Paulo — Modelo Estrutural Revit',
+        'Edifício Comercial Faria Lima - São Paulo - Modelo Estrutural Revit',
         '',
       ),
     ).toBe('Modelo Estrutural Revit');
     expect(
       shortModelName(
-        'Edifício Comercial Faria Lima — São Paulo — Modelo Arquitectónico IFC',
+        'Edifício Comercial Faria Lima - São Paulo - Modelo Arquitectónico IFC',
         null,
       ),
     ).toBe('Modelo Arquitectónico IFC');

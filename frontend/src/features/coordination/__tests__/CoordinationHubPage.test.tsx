@@ -105,7 +105,7 @@ const TIMELINE = {
     {
       ts: '2026-05-21T12:00:00Z',
       type: 'clash_run',
-      summary: 'Run X completed — 5 clashes',
+      summary: 'Run X completed - 5 clashes',
       user_id: 'u-1',
       target: '/clash?run=r1',
     },

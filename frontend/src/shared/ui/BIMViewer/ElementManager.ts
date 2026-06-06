@@ -987,15 +987,15 @@ export class ElementManager {
       // it shares the same prefix. The viewer needs COLLADA DAE (which
       // is also XML but with a <COLLADA root) or a GLB binary.
       hint =
-        ' — The file is XML but not COLLADA. This usually means the DDC cad2data converter did not emit 3D geometry for this model (an older converter version, or a source format without geometry — e.g. .ifcXML / gbXML). Try re-running the conversion with the latest DDC cad2data (v0.3+) or upload the source as RVT/IFC/DWG/DGN to trigger geometry export.';
+        ' - The file is XML but not COLLADA. This usually means the DDC cad2data converter did not emit 3D geometry for this model (an older converter version, or a source format without geometry - e.g. .ifcXML / gbXML). Try re-running the conversion with the latest DDC cad2data (v0.3+) or upload the source as RVT/IFC/DWG/DGN to trigger geometry export.';
     } else if (asAscii.startsWith('<!doctype') || asAscii.startsWith('<html')) {
       // HTML — almost always an auth/redirect or error page.
       hint =
-        " — The geometry URL returned an HTML page (likely an auth redirect, a 404, or a proxy/CDN error). Reload the page to refresh credentials; if it persists, check that your session hasn't expired.";
+        " - The geometry URL returned an HTML page (likely an auth redirect, a 404, or a proxy/CDN error). Reload the page to refresh credentials; if it persists, check that your session hasn't expired.";
     } else if (asAscii.startsWith('{')) {
       // JSON — server sent an error envelope instead of binary.
       hint =
-        ' — The geometry URL returned a JSON response, not 3D geometry. Open the browser network panel to see the server message — common causes are expired presigned URLs or a converter still running in the background.';
+        ' - The geometry URL returned a JSON response, not 3D geometry. Open the browser network panel to see the server message - common causes are expired presigned URLs or a converter still running in the background.';
     }
 
     throw new Error(
@@ -1068,7 +1068,7 @@ export class ElementManager {
         // The regex also accepts namespace-prefixed forms such as
         // "<ns0:COLLADA" (produced by Python ET without register_namespace()).
         if (!/<(?:[A-Za-z0-9_-]+:)?COLLADA[\s>]/i.test(text.slice(0, 4096))) {
-          reject(new Error('Not a COLLADA document — <COLLADA> root tag not found in first 4096 chars'));
+          reject(new Error('Not a COLLADA document - <COLLADA> root tag not found in first 4096 chars'));
           return;
         }
 
@@ -1093,7 +1093,7 @@ export class ElementManager {
         // shows the actual cause instead of the cryptic JS message.
         const baseMessage = err instanceof Error ? err.message : String(err);
         const hint = baseMessage.includes("reading 'getAttribute'")
-          ? ' — DAE contains broken cross-references (a node referenced an id that does not exist)'
+          ? ' - DAE contains broken cross-references (a node referenced an id that does not exist)'
           : '';
         const wrapped = new Error(`COLLADA parse: ${baseMessage}${hint}`);
         if (err instanceof Error && err.stack) wrapped.stack = err.stack;

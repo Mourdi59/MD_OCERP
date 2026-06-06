@@ -963,7 +963,7 @@ function LeadsTable({
         title={t('crm.empty_leads', { defaultValue: 'No leads yet' })}
         description={t('crm.empty_leads_desc', {
           defaultValue:
-            'Leads are inbound enquiries — qualify them, then convert to deals.',
+            'Leads are inbound enquiries - qualify them, then convert to deals.',
         })}
         action={{
           label: t('crm.new_lead', { defaultValue: 'New Lead' }),
@@ -1526,7 +1526,7 @@ function DealDrawer({
                     className={inputCls}
                   >
                     <option value="">
-                      {t('crm.no_reason', { defaultValue: '— none —' })}
+                      {t('crm.no_reason', { defaultValue: '- none -' })}
                     </option>
                     {winReasons.map((r: WinLossReason) => (
                       <option key={r.id} value={r.code}>
@@ -1829,7 +1829,7 @@ function LinkRecordsForm({
           className={inputCls}
         >
           <option value="">
-            {t('crm.no_contact', { defaultValue: '— No contact —' })}
+            {t('crm.no_contact', { defaultValue: '- No contact -' })}
           </option>
           {(contactsQ.data ?? []).map((c) => (
             <option key={c.id} value={c.id}>
@@ -1848,7 +1848,7 @@ function LinkRecordsForm({
           className={inputCls}
         >
           <option value="">
-            {t('crm.no_project', { defaultValue: '— No project —' })}
+            {t('crm.no_project', { defaultValue: '- No project -' })}
           </option>
           {(projectsQ.data ?? []).map((p) => (
             <option key={p.id} value={p.id}>
@@ -1910,7 +1910,7 @@ function LeadDrawer({
     if (!lead) return;
     setConvForm((f) => ({
       ...f,
-      title: f.title || `${lead.contact_name} — opportunity`,
+      title: f.title || `${lead.contact_name} - opportunity`,
       account_id: f.account_id || lead.account_id || accounts[0]?.id || '',
       stage_id: f.stage_id || stages[0]?.id || '',
     }));
@@ -2055,7 +2055,7 @@ function LeadDrawer({
                 rows={4}
                 placeholder={t('crm.qualification_notes', {
                   defaultValue:
-                    'Notes — budget, authority, need, timeline, fit, …',
+                    'Notes - budget, authority, need, timeline, fit, …',
                 })}
                 className={clsx(inputCls, 'h-auto py-2')}
               />
@@ -2091,7 +2091,7 @@ function LeadDrawer({
               <p className="mb-2 text-xs text-content-tertiary">
                 {t('crm.convert_hint', {
                   defaultValue:
-                    'This lead is qualified. Convert it into an open deal on the pipeline — the lead is then marked converted and linked to the new deal.',
+                    'This lead is qualified. Convert it into an open deal on the pipeline - the lead is then marked converted and linked to the new deal.',
                 })}
               </p>
               {!showConvert ? (
@@ -2129,7 +2129,7 @@ function LeadDrawer({
                     >
                       <option value="">
                         {t('crm.select_account', {
-                          defaultValue: '— Select account —',
+                          defaultValue: '- Select account -',
                         })}
                       </option>
                       {accounts.map((a) => (
@@ -2718,7 +2718,7 @@ function CreateModal({
               >
                 <option value="">
                   {t('crm.account_new', {
-                    defaultValue: '— New account below —',
+                    defaultValue: '- New account below -',
                   })}
                 </option>
                 {accounts.map((a) => (
@@ -2856,7 +2856,7 @@ function CreateModal({
                 className={inputCls}
               >
                 <option value="">
-                  {t('crm.no_contact', { defaultValue: '— No contact —' })}
+                  {t('crm.no_contact', { defaultValue: '- No contact -' })}
                 </option>
                 {(contactsQ.data ?? []).map((c) => (
                   <option key={c.id} value={c.id}>
@@ -2876,7 +2876,7 @@ function CreateModal({
                 className={inputCls}
               >
                 <option value="">
-                  {t('crm.no_project', { defaultValue: '— No project —' })}
+                  {t('crm.no_project', { defaultValue: '- No project -' })}
                 </option>
                 {(projectsQ.data ?? []).map((p) => (
                   <option key={p.id} value={p.id}>
@@ -3018,7 +3018,7 @@ function CreateModal({
             >
               <option value="">
                 {t('crm.no_account_link', {
-                  defaultValue: '— Not linked —',
+                  defaultValue: '- Not linked -',
                 })}
               </option>
               {accounts.map((a) => (

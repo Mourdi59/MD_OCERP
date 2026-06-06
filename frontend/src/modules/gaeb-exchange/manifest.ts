@@ -7,7 +7,7 @@ const GAEBExchangeModule = lazy(() => import('./GAEBExchangeModule'));
 export const manifest: ModuleManifest = {
   id: 'gaeb-exchange',
   name: 'GAEB XML 3.3 Import / Export',
-  description: 'Exchange BOQ data in GAEB DA XML 3.3 format — import X81/X83 files and export tender/bid documents',
+  description: 'Exchange BOQ data in GAEB DA XML 3.3 format - import X81/X83 files and export tender/bid documents',
   version: '1.0.0',
   icon: FileText,
   category: 'regional',

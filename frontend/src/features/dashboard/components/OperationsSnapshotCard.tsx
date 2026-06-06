@@ -236,7 +236,7 @@ export function OperationsSnapshotCard({ projects }: { projects?: ProjectRef[] }
           <p className="text-2xs text-content-tertiary">
             {t('dashboard.snapshot_subtitle', {
               defaultValue:
-                'Health across nine operations modules — empty tiles light up as data lands.',
+                'Health across nine operations modules - empty tiles light up as data lands.',
             })}
           </p>
         </div>

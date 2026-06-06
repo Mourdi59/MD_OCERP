@@ -1569,7 +1569,7 @@ export function CesiumViewer({
       if (searchPin) {
         // eslint-disable-next-line no-console
         console.warn(
-          '[geo_hub] searchPin set before Cesium loaded — will replay once cesiumStatus="loaded".',
+          '[geo_hub] searchPin set before Cesium loaded - will replay once cesiumStatus="loaded".',
           { cesiumStatus, searchPin },
         );
       }
@@ -1596,7 +1596,7 @@ export function CesiumViewer({
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
       // eslint-disable-next-line no-console
       console.warn(
-        '[geo_hub] searchPin rejected — lat/lon non-finite after Number()',
+        '[geo_hub] searchPin rejected - lat/lon non-finite after Number()',
         { lat, lon, original: searchPin },
       );
       return;
@@ -1922,7 +1922,7 @@ export function CesiumViewer({
           unrelated app chrome. */}
       <style>{`
         /* Cesium's widgets.css is intentionally NOT bundled (see note above)
-           — but without it, .cesium-viewer / .cesium-widget / canvas all
+           - but without it, .cesium-viewer / .cesium-widget / canvas all
            fall back to browser defaults (300x150 canvas), so the globe
            renders into a tiny postage-stamp in the top-left corner.
            These five rules are the minimum from widgets.css needed for

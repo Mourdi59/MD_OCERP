@@ -622,7 +622,7 @@ function SummaryRibbon({ summary, activeKey, onPick }: SummaryRibbonProps) {
       className="flex flex-wrap gap-2"
       role="group"
       aria-label={t('propdev.inventory_map.kpi_aria', {
-        defaultValue: 'Inventory KPI ribbon — click a card to filter',
+        defaultValue: 'Inventory KPI ribbon - click a card to filter',
       })}
       data-testid="inventory-map-kpi"
     >

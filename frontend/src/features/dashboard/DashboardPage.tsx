@@ -1321,7 +1321,7 @@ function NextSteps({
       id: 'try-ai-estimate',
       icon: <Sparkles size={18} strokeWidth={1.75} />,
       title: t('dashboard.next_ai_estimate', { defaultValue: 'Try the AI Quick Estimate' }),
-      description: t('dashboard.next_ai_estimate_desc', { defaultValue: 'Describe a project in plain language and get a draft BOQ in seconds — review, adjust, and ship.' }),
+      description: t('dashboard.next_ai_estimate_desc', { defaultValue: 'Describe a project in plain language and get a draft BOQ in seconds - review, adjust, and ship.' }),
       actionLabel: t('dashboard.next_ai_estimate_action', { defaultValue: 'Open AI Estimate' }),
       url: '/ai-estimate',
     });
@@ -1330,7 +1330,7 @@ function NextSteps({
       id: 'upload-cad',
       icon: <Layers size={18} strokeWidth={1.75} />,
       title: t('dashboard.next_upload_cad', { defaultValue: 'Upload a CAD or BIM model' }),
-      description: t('dashboard.next_upload_cad_desc', { defaultValue: 'Drop a RVT, IFC, DWG or DGN file — the converter extracts quantities and matches elements to cost positions.' }),
+      description: t('dashboard.next_upload_cad_desc', { defaultValue: 'Drop a RVT, IFC, DWG or DGN file - the converter extracts quantities and matches elements to cost positions.' }),
       actionLabel: t('dashboard.next_upload_cad_action', { defaultValue: 'Open BIM' }),
       url: '/bim',
     });
@@ -1745,7 +1745,7 @@ function QuickUploadCard() {
             <p className="mt-0.5 text-xs text-content-tertiary line-clamp-1">
               {hasProject
                 ? t('dashboard.upload_desc', {
-                    defaultValue: 'Upload to {{project}} — PDF, DWG, IFC, RVT, images.',
+                    defaultValue: 'Upload to {{project}} - PDF, DWG, IFC, RVT, images.',
                     project: activeProjectName || t('dashboard.active_project', { defaultValue: 'active project' }),
                   })
                 : t('dashboard.upload_select_project', {
@@ -2280,7 +2280,7 @@ function DashboardPageInner() {
             title={
               lastBoq
                 ? t('dashboard.quick_start_resume_hint', { defaultValue: 'Continue your most recent estimate: {{name}}', name: lastBoq.name })
-                : t('dashboard.quick_start_hint', { defaultValue: 'Jump into an estimate — resumes the latest or starts a new one' })
+                : t('dashboard.quick_start_hint', { defaultValue: 'Jump into an estimate - resumes the latest or starts a new one' })
             }
           >
             {lastBoq
@@ -2395,7 +2395,7 @@ function ProjectsList({ projects }: { projects?: ProjectSummary[] }) {
         <EmptyState
           icon={<FolderPlus size={28} strokeWidth={1.5} />}
           title={t('dashboard.empty.title', {
-            defaultValue: "Welcome — let's start with your first project",
+            defaultValue: "Welcome - let's start with your first project",
           })}
           description={t('dashboard.empty.desc', {
             defaultValue: 'Projects organise your BOQs, schedules, and reports.',

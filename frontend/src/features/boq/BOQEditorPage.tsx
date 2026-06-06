@@ -317,7 +317,7 @@ export function BOQEditorPage() {
           }),
           message: t('boq.fx_rate_save_failed_hint', {
             defaultValue:
-              'The rate is applied on this device but was not saved to the shared project — you may not have edit access. Ask the project owner to add it under Settings → FX rates.',
+              'The rate is applied on this device but was not saved to the shared project - you may not have edit access. Ask the project owner to add it under Settings → FX rates.',
           }),
         });
       }
@@ -471,7 +471,7 @@ export function BOQEditorPage() {
           }),
           message: t('boq.reuse_code_msg', {
             defaultValue:
-              'Linked instance created — {{count}} positions share this code. Its quantity is independently editable.',
+              'Linked instance created - {{count}} positions share this code. Its quantity is independently editable.',
             count: sharedCount,
           }),
         });
@@ -719,7 +719,7 @@ export function BOQEditorPage() {
           count: result.renumbered,
         }),
         message: t('boq.renumber_done_hint', {
-          defaultValue: 'Order preserved — only ordinals were rewritten. Undo with Ctrl+Z is not supported for renumber.',
+          defaultValue: 'Order preserved - only ordinals were rewritten. Undo with Ctrl+Z is not supported for renumber.',
         }),
       });
     },
@@ -1861,7 +1861,7 @@ export function BOQEditorPage() {
       },
       {
         id: 'tip_descriptions',
-        text: t('boq.tip_autocomplete', { defaultValue: 'Fill in descriptions for all positions — start typing to see suggestions from the cost database' }),
+        text: t('boq.tip_autocomplete', { defaultValue: 'Fill in descriptions for all positions - start typing to see suggestions from the cost database' }),
         condition: 'has_empty_descriptions',
       },
     ];
@@ -2450,7 +2450,7 @@ export function BOQEditorPage() {
       if (errors.length > 0) {
         parts.push(t('boq.validation_errors', { defaultValue: '{{count}} errors found', count: errors.length }));
         // Show first 2 error messages
-        errors.slice(0, 2).forEach(e => parts.push(`  — ${e.message}`));
+        errors.slice(0, 2).forEach(e => parts.push(`  - ${e.message}`));
       }
       if (warnings.length > 0) {
         parts.push(t('boq.validation_warnings', { defaultValue: '{{count}} warnings', count: warnings.length }));
@@ -2531,7 +2531,7 @@ export function BOQEditorPage() {
           ? t('boq.recalculate_complete', { defaultValue: 'Rates updated' })
           : t('boq.recalculate_no_changes', { defaultValue: 'No changes needed' }),
         message: parts.join('. ') || t('boq.recalculate_all_manual', {
-          defaultValue: 'All positions use manual rates — add resources from cost database to enable automatic rate calculation.',
+          defaultValue: 'All positions use manual rates - add resources from cost database to enable automatic rate calculation.',
         }),
       });
       invalidateAll();
@@ -3361,7 +3361,7 @@ export function BOQEditorPage() {
           addToast({
             type: 'info',
             title: t('boq.ai_classification', { defaultValue: 'AI Classification' }),
-            message: `${top.standard.toUpperCase()}: ${top.code} — ${top.label} (${Math.round(top.confidence * 100)}%)`,
+            message: `${top.standard.toUpperCase()}: ${top.code} - ${top.label} (${Math.round(top.confidence * 100)}%)`,
           });
           updateMutation.mutate({
             id: positionId,
@@ -3562,7 +3562,7 @@ export function BOQEditorPage() {
         title: t('boq.import_started', { defaultValue: 'Importing {{name}}…', name: file.name }),
         message: isGaeb
           ? t('boq.import_started_gaeb_hint', {
-              defaultValue: 'Parsing GAEB XML — namespace-agnostic, X81/X83/X84 supported.',
+              defaultValue: 'Parsing GAEB XML - namespace-agnostic, X81/X83/X84 supported.',
             })
           : t('boq.import_started_hint', {
               defaultValue: 'Large files (PDF / CAD / 1000+ rows) may take up to 60 seconds.',
@@ -3635,7 +3635,7 @@ export function BOQEditorPage() {
           title: t('boq.import_failed', { defaultValue: 'Import failed' }),
           message: isTimeout
             ? t('boq.import_timeout', {
-                defaultValue: 'Server did not respond within 90 seconds. The file may be too large — try splitting it.',
+                defaultValue: 'Server did not respond within 90 seconds. The file may be too large - try splitting it.',
               })
             : err instanceof Error ? err.message : 'Unknown error',
         });
@@ -4618,7 +4618,7 @@ export function BOQEditorPage() {
               className="w-full rounded-lg border border-border-light bg-surface-primary px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue"
             >
               <option value="">
-                {t('boq.section_parent_top', { defaultValue: '— Top level (no parent) —' })}
+                {t('boq.section_parent_top', { defaultValue: '- Top level (no parent) -' })}
               </option>
               {sectionParentChoices.map((c) => (
                 <option key={c.id} value={c.id} disabled={c.disabled}>

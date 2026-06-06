@@ -407,7 +407,7 @@ export default function BIMToolsPanel({
           >
             {t('bim.tools_views_quota', {
               defaultValue:
-                'Limit of 100 views per model reached — the oldest was removed.',
+                'Limit of 100 views per model reached - the oldest was removed.',
             })}
           </div>
         )}

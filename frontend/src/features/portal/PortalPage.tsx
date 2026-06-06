@@ -210,7 +210,7 @@ export function PortalPage() {
       <DismissibleInfo
         storageKey="portal"
         title={t('portal.intro_title', {
-          defaultValue: 'Give outsiders exactly what they need — nothing more',
+          defaultValue: 'Give outsiders exactly what they need - nothing more',
         })}
         more={
           t('portal.intro_more', { defaultValue: '' })
@@ -236,7 +236,7 @@ export function PortalPage() {
       >
         {t('portal.intro_body', {
           defaultValue:
-            'Invite a client, investor or subcontractor with a magic link, then Grant Access — one rule per resource (a single project, document or invoice) and one permission (view, comment, submit or sign). Every view, download and signature they make is recorded in the audit log with IP and timestamp. Revoke access any time; nothing is visible until you explicitly grant it.',
+            'Invite a client, investor or subcontractor with a magic link, then Grant Access - one rule per resource (a single project, document or invoice) and one permission (view, comment, submit or sign). Every view, download and signature they make is recorded in the audit log with IP and timestamp. Revoke access any time; nothing is visible until you explicitly grant it.',
         })}
       </DismissibleInfo>
 
@@ -459,7 +459,7 @@ function MagicLinkBanner({
           <p className="mt-0.5 text-xs text-content-secondary">
             {t('portal.magic_link_warning', {
               defaultValue:
-                'Shown once — copy and send to the user manually. Email delivery is not wired up yet.',
+                'Shown once - copy and send to the user manually. Email delivery is not wired up yet.',
             })}{' '}
             ·{' '}
             {t('portal.expires_at', { defaultValue: 'Expires' })}{' '}
@@ -1079,7 +1079,7 @@ function InviteModal({
         <WideModalField
           label={t('portal.full_name', { defaultValue: 'Full name' })}
           hint={t('portal.full_name_hint', {
-            defaultValue: 'Optional — used in the email salutation.',
+            defaultValue: 'Optional - used in the email salutation.',
           })}
         >
           <input
@@ -1145,7 +1145,7 @@ function InviteModal({
           label={t('portal.redirect_path', { defaultValue: 'Redirect path' })}
           hint={t('portal.redirect_path_hint', {
             defaultValue:
-              'Optional — page to open after the user signs in. Defaults to the portal dashboard.',
+              'Optional - page to open after the user signs in. Defaults to the portal dashboard.',
           })}
           span={2}
         >
@@ -1258,7 +1258,7 @@ function GrantAccessModal({
           required
           hint={selectedPortalUser
             ? t('portal.grant_who_hint_selected', {
-                defaultValue: 'Role: {{role}} — {{status}}',
+                defaultValue: 'Role: {{role}} - {{status}}',
                 role: t(`portal.roles.${selectedPortalUser.portal_role}`, {
                   defaultValue: selectedPortalUser.portal_role,
                 }),
@@ -1318,7 +1318,7 @@ function GrantAccessModal({
           label={t('portal.permission', { defaultValue: 'Permission' })}
           hint={t('portal.permission_hint', {
             defaultValue:
-              'View — read only. Comment — read + add comments. Submit — upload responses. Sign — apply legal e-signature.',
+              'View - read only. Comment - read + add comments. Submit - upload responses. Sign - apply legal e-signature.',
           })}
         >
           <select

@@ -67,7 +67,7 @@ export function InventoryAgeing({ developmentId }: InventoryAgeingProps) {
         })}
         description={t('propdev.dashboards.ageing.empty_desc', {
           defaultValue:
-            'No plots in an unsold state — nothing to age out.',
+            'No plots in an unsold state - nothing to age out.',
         })}
       />
     );
@@ -84,7 +84,7 @@ export function InventoryAgeing({ developmentId }: InventoryAgeingProps) {
           <p className="text-xs text-content-tertiary">
             {t('propdev.dashboards.ageing.subtitle', {
               defaultValue:
-                'Days-on-market — {{total}} unsold • as of {{date}}',
+                'Days-on-market - {{total}} unsold • as of {{date}}',
               total: data.total_unsold,
               date: data.as_of,
             })}

@@ -37,7 +37,7 @@ function renderCard(
   );
 }
 
-describe('RecoveryCard — 401 (signed out)', () => {
+describe('RecoveryCard - 401 (signed out)', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('renders the "Sign in again" CTA on a 401 ApiError-shaped error', () => {
@@ -73,7 +73,7 @@ describe('RecoveryCard — 401 (signed out)', () => {
   });
 });
 
-describe('RecoveryCard — 403 (no access)', () => {
+describe('RecoveryCard - 403 (no access)', () => {
   it('renders the "Request access" mailto CTA on a 403', () => {
     renderCard({ error: { status: 403 } });
     expect(screen.getByText(/don’t have access here/i)).toBeInTheDocument();
@@ -90,7 +90,7 @@ describe('RecoveryCard — 403 (no access)', () => {
   });
 });
 
-describe('RecoveryCard — generic / network errors', () => {
+describe('RecoveryCard - generic / network errors', () => {
   it('renders the Retry button for 500 errors when onRetry is supplied', () => {
     const onRetry = vi.fn();
     renderCard({ error: { status: 500 }, onRetry });
@@ -130,7 +130,7 @@ describe('RecoveryCard — generic / network errors', () => {
   });
 });
 
-describe('RecoveryCard — status extraction precedence', () => {
+describe('RecoveryCard - status extraction precedence', () => {
   it('reads status from the top-level `status` field (axios-style)', () => {
     renderCard({ error: { status: 401 } });
     expect(screen.getByText(/Your session has expired/i)).toBeInTheDocument();

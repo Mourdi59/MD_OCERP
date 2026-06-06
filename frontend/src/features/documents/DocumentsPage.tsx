@@ -879,7 +879,7 @@ export function DocumentsPage() {
         <div>
           <h1 className="text-2xl font-bold text-content-primary">{t('documents.title', { defaultValue: 'Documents' })}</h1>
           <p className="mt-1 text-sm text-content-secondary">
-            {t('documents.subtitle', { defaultValue: 'Upload and manage project files — drawings, contracts, specifications' })}
+            {t('documents.subtitle', { defaultValue: 'Upload and manage project files - drawings, contracts, specifications' })}
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
@@ -960,7 +960,7 @@ export function DocumentsPage() {
             : t('documents.drop_hint', { defaultValue: 'Drag & drop files here' })}
         </p>
         <p className="text-xs text-content-tertiary mt-1">
-          {t('documents.supported_types', { defaultValue: 'PDF, images, Excel, DWG, IFC — any file type' })}
+          {t('documents.supported_types', { defaultValue: 'PDF, images, Excel, DWG, IFC - any file type' })}
         </p>
         <div className="flex items-center justify-center gap-2 mt-3">
           <span className="text-[10px] font-mono px-2 py-1 rounded-md bg-red-500/8 text-red-500 border border-red-500/15 font-semibold">.pdf</span>
@@ -1237,7 +1237,7 @@ export function DocumentsPage() {
           <EmptyState
             icon={<FolderOpen size={28} strokeWidth={1.5} />}
             title={t('documents.empty', { defaultValue: 'No documents yet' })}
-            description={t('documents.empty_hint', { defaultValue: 'Upload your first file — drawings, contracts, photos, or any project document.' })}
+            description={t('documents.empty_hint', { defaultValue: 'Upload your first file - drawings, contracts, photos, or any project document.' })}
           />
         )
       ) : (

@@ -294,7 +294,7 @@ export function TaktSchedulePage() {
               >
                 {(taktQ.data ?? []).length === 0 ? (
                   <option value="">
-                    {t('takt.none', { defaultValue: '— none —' })}
+                    {t('takt.none', { defaultValue: '- none -' })}
                   </option>
                 ) : (
                   (taktQ.data ?? []).map((ts) => (
@@ -476,7 +476,7 @@ export function TaktSchedulePage() {
                     </p>
                   ) : lob.violations.length === 0 ? (
                     <p className="text-xs text-emerald-600">
-                      {t('takt.no_violations', { defaultValue: 'Takt rhythm is steady — no violations.' })}
+                      {t('takt.no_violations', { defaultValue: 'Takt rhythm is steady - no violations.' })}
                     </p>
                   ) : (
                     <ul className="space-y-2">

@@ -30,7 +30,7 @@ export function AIDisclaimerBanner({ variant = 'full', className }: AIDisclaimer
         {isCompact
           ? t(
               'ai.disclaimer_compact',
-              'AI output is preliminary — verify before contractual use.',
+              'AI output is preliminary - verify before contractual use.',
             )
           : t(
               'ai.disclaimer_full',

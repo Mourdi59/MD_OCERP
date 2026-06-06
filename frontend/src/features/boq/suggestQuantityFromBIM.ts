@@ -526,7 +526,7 @@ export function formatSuggestionBadge(s: QuantitySuggestion): string {
     case 'computed_mass_from_density':
       return `≈ ${fmt(s.value)} kg (volume × density)${elementsSuffix}`;
     case 'unit_unknown':
-      return `unit unknown — using count = ${fmt(s.value)}`;
+      return `unit unknown - using count = ${fmt(s.value)}`;
     case 'no_elements':
       return 'no elements selected';
   }

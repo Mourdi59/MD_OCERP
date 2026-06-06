@@ -690,7 +690,7 @@ export function GroupingPanel({ sessionId, groupsQ, updateSessionM }: GroupingPa
                 <div>
                   {t('match.wizard.grouping.warnTooGranular', {
                     defaultValue:
-                      'Too granular — most groups have a single element. Drop the last key.',
+                      'Too granular - most groups have a single element. Drop the last key.',
                   })}
                 </div>
               </div>

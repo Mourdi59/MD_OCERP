@@ -294,7 +294,7 @@ export function TemplatesPage() {
 
   const generatedName = useMemo(() => {
     if (!selected) return '';
-    return `${selected.name} — ${fmt.format(area)}m\u00B2`;
+    return `${selected.name} - ${fmt.format(area)}m\u00B2`;
   }, [selected, area]);
 
   /* ── Auto-populate BOQ name when template or area changes ────────── */
@@ -304,7 +304,7 @@ export function TemplatesPage() {
       setSelectedId((prev) => (prev === id ? null : id));
       const tpl = templates.find((t) => t.id === id);
       if (tpl) {
-        setBoqName(`${tpl.name} — ${fmt.format(area)}m\u00B2`);
+        setBoqName(`${tpl.name} - ${fmt.format(area)}m\u00B2`);
       }
     },
     [templates, area],
@@ -314,7 +314,7 @@ export function TemplatesPage() {
     (val: number) => {
       setArea(val);
       if (selected) {
-        setBoqName(`${selected.name} — ${fmt.format(val)}m\u00B2`);
+        setBoqName(`${selected.name} - ${fmt.format(val)}m\u00B2`);
       }
     },
     [selected],

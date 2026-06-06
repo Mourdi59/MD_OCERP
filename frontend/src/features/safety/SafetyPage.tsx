@@ -430,7 +430,7 @@ function QualityDashboardSummary({ projectId }: { projectId: string }) {
                   className="mt-0.5 flex items-center gap-1 text-2xs text-semantic-error"
                   title={t('safety.dates_unparseable_hint', {
                     defaultValue:
-                      'Some incidents have unreadable dates — "days without incident" cannot be confirmed.',
+                      'Some incidents have unreadable dates - "days without incident" cannot be confirmed.',
                   })}
                 >
                   <AlertTriangle size={11} />

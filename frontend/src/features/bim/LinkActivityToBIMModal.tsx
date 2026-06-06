@@ -218,7 +218,7 @@ export default function LinkActivityToBIMModal({
             <div className="text-center py-8 text-[11px] text-content-tertiary italic">
               {schedules.length === 0
                 ? t('bim.no_schedules', {
-                    defaultValue: 'No schedules in this project yet — create one in /schedule first',
+                    defaultValue: 'No schedules in this project yet - create one in /schedule first',
                   })
                 : activities.length === 0
                   ? t('bim.no_activities', {

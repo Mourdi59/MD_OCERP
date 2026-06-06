@@ -244,7 +244,7 @@ export function LoginPageNext() {
           100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
 
-        /* Sky base — very pale, near-white blue. Reads as a bright
+        /* Sky base - very pale, near-white blue. Reads as a bright
            daylight horizon, not a saturated marketing hero. */
         .oe-hero {
           background:
@@ -259,7 +259,7 @@ export function LoginPageNext() {
             linear-gradient(160deg, #0c1929 0%, #0a1628 45%, #061021 100%);
         }
 
-        /* Aurora — soft sky/cyan tint, low opacity so the surface
+        /* Aurora - soft sky/cyan tint, low opacity so the surface
            stays light and the module tiles read clearly. */
         .oe-aurora {
           position: absolute;
@@ -288,7 +288,7 @@ export function LoginPageNext() {
           mix-blend-mode: screen;
           opacity: 0.55;
         }
-        /* sky-300 — light daylight sky, gentle */
+        /* sky-300 - light daylight sky, gentle */
         .oe-aurora::before {
           background: conic-gradient(from 0deg,
             rgba(125, 211, 252, 0.55),
@@ -297,7 +297,7 @@ export function LoginPageNext() {
             rgba(125, 211, 252, 0.55));
           animation: oeAuroraSpin 38s linear infinite;
         }
-        /* cyan-200 — paler haze */
+        /* cyan-200 - paler haze */
         .oe-aurora::after {
           background: conic-gradient(from 90deg,
             rgba(165, 243, 252, 0.50),
@@ -306,7 +306,7 @@ export function LoginPageNext() {
             rgba(165, 243, 252, 0.50));
           animation: oeAuroraSpin 52s linear infinite reverse;
         }
-        /* blue-200 — soft cloud */
+        /* blue-200 - soft cloud */
         .oe-aurora > .oe-aurora-c {
           background: conic-gradient(from 200deg,
             rgba(191, 219, 254, 0.50),
@@ -316,7 +316,7 @@ export function LoginPageNext() {
           animation: oeAuroraSpin 64s linear infinite;
         }
 
-        /* Mouse spotlight — only renders if --mx/--my are set. */
+        /* Mouse spotlight - only renders if --mx/--my are set. */
         .oe-spot {
           position: absolute;
           inset: 0;
@@ -388,7 +388,7 @@ export function LoginPageNext() {
           animation: oeRingPulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
 
-        /* Animated spectrum bar — sky-only palette. */
+        /* Animated spectrum bar - sky-only palette. */
         .oe-spec-bar {
           background: linear-gradient(90deg,
             rgba(2,132,199,0.95), rgba(14,165,233,0.95), rgba(56,189,248,0.95),
@@ -400,7 +400,7 @@ export function LoginPageNext() {
         .oe-tile-float-a { animation: oeFloat 7s ease-in-out infinite; }
         .oe-tile-float-b { animation: oeFloat 8.5s ease-in-out infinite 1.2s; }
 
-        /* Form pane — solid white, soft shadow, NOT glass. The whole
+        /* Form pane - solid white, soft shadow, NOT glass. The whole
            right column reads as a clean, paper-white panel for max
            form readability. */
         .oe-form-pane {
@@ -418,7 +418,7 @@ export function LoginPageNext() {
             0 1px 0 rgba(255, 255, 255, 0.04) inset;
         }
 
-        /* Typography — Plus Jakarta Sans for everything, Instrument
+        /* Typography - Plus Jakarta Sans for everything, Instrument
            Serif for the editorial headline accent. */
         .oe-font-display {
           font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -504,7 +504,7 @@ export function LoginPageNext() {
           </h1>
 
           <p className="oe-font-display relative mt-5 max-w-[480px] text-[15px] leading-[1.6] text-content-secondary dark:text-white/65">
-            {t('login.welcome_sub_modules', 'Sign in to unlock every module — your workspace is empty until you import or create.')}
+            {t('login.welcome_sub_modules', 'Sign in to unlock every module - your workspace is empty until you import or create.')}
           </p>
 
           {/* Module tiles grid — same icon language as the dashboard
@@ -541,7 +541,7 @@ export function LoginPageNext() {
 
           <div className="oe-font-display relative mt-7 flex items-center gap-3 text-[11px] font-medium text-content-tertiary">
             <div className="oe-spec-bar h-[2px] w-12 rounded-full" />
-            <span>{t('login.workspace_status_first', 'Empty workspace — sign in to set up your first project')}</span>
+            <span>{t('login.workspace_status_first', 'Empty workspace - sign in to set up your first project')}</span>
           </div>
 
           {/* Copyright — left-bottom, sits below the hero content. */}

@@ -133,7 +133,7 @@ export function BOQCompareDrawer({
               className="w-full rounded-lg border border-border-light bg-surface-primary px-3 py-2 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-oe-blue/30"
             >
               <option value="">
-                {t('boq.compare_pick', { defaultValue: '— Select a BOQ —' })}
+                {t('boq.compare_pick', { defaultValue: '- Select a BOQ -' })}
               </option>
               {otherChoices.map((b) => (
                 <option key={b.id} value={b.id}>

@@ -303,7 +303,7 @@ export function StageAdjustSheet({
                 <span>
                   {t(
                     'match_elements.pipeline.llm_pending_note',
-                    'This stage runs the deterministic heuristic today. Your prompt and provider are saved and versioned per session — they take effect automatically once LLM execution is enabled for this step. Tuning them now means you are ready the moment it is.',
+                    'This stage runs the deterministic heuristic today. Your prompt and provider are saved and versioned per session - they take effect automatically once LLM execution is enabled for this step. Tuning them now means you are ready the moment it is.',
                   )}
                 </span>
               </div>
@@ -367,7 +367,7 @@ export function StageAdjustSheet({
               busy
                 ? t(
                     'match_elements.pipeline.busy_hint',
-                    'A stage is running — wait for it to finish before starting another.',
+                    'A stage is running - wait for it to finish before starting another.',
                   )
                 : undefined
             }

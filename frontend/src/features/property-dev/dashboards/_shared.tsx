@@ -188,7 +188,7 @@ export function DashboardError({
     kind === 'forbidden'
       ? t('common.access_denied_desc', {
           defaultValue:
-            "You don't have access to this data — contact your project admin.",
+            "You don't have access to this data - contact your project admin.",
         })
       : (message ??
         t('common.unknown_error', { defaultValue: 'An unknown error occurred.' }));

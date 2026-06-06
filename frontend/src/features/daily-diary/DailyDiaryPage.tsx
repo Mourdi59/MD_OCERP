@@ -753,18 +753,18 @@ function DiariesCalendar({
               const equipment = diary?.equipment_count ?? 0;
               const cellLabel = diary
                 ? t('daily_diary.cell_open', {
-                    defaultValue: '{{date}} — open diary ({{status}})',
+                    defaultValue: '{{date}} - open diary ({{status}})',
                     date: iso,
                     status: statusLabel(t, diary.status),
                   })
                 : isFuture
                   ? t('daily_diary.cell_future', {
                       defaultValue:
-                        '{{date}} — a site diary cannot be opened this far ahead',
+                        '{{date}} - a site diary cannot be opened this far ahead',
                       date: iso,
                     })
                   : t('daily_diary.cell_empty', {
-                      defaultValue: '{{date}} — start a diary',
+                      defaultValue: '{{date}} - start a diary',
                       date: iso,
                     });
               return (
@@ -782,7 +782,7 @@ function DiariesCalendar({
                     isFuture
                       ? t('daily_diary.cell_future_tooltip', {
                           defaultValue:
-                            'Future-dated site diaries are not allowed — a diary is a contemporaneous record.',
+                            'Future-dated site diaries are not allowed - a diary is a contemporaneous record.',
                         })
                       : undefined
                   }
@@ -1559,7 +1559,7 @@ function CompletenessChip({ data }: { data: DiaryCompleteness }) {
           items: missingLabels,
         })
       : t('daily_diary.completeness_ready', {
-          defaultValue: 'All recommended blocks present — ready to sign.',
+          defaultValue: 'All recommended blocks present - ready to sign.',
         });
   return (
     <span
@@ -1816,7 +1816,7 @@ function EntriesTimeline({
 
       {sealed && (
         <p className="text-xs text-content-tertiary mb-3">
-          {t('daily_diary.entries_sealed', { defaultValue: 'Diary is sealed — entries are read-only.' })}
+          {t('daily_diary.entries_sealed', { defaultValue: 'Diary is sealed - entries are read-only.' })}
         </p>
       )}
 

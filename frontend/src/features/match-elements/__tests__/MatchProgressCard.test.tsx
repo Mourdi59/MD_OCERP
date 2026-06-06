@@ -66,7 +66,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('MatchProgressCard — v3.0.6 hang regression', () => {
+describe('MatchProgressCard - v3.0.6 hang regression', () => {
   it('does not render a "Currency normalization" stage', () => {
     // The fake stage was the misleading label users saw freeze on.
     // The post-fix timeline carries only real backend stages.

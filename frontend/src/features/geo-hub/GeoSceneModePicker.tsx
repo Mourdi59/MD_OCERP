@@ -62,7 +62,7 @@ export function GeoSceneModePicker({
       key: 'columbus',
       label: t('geoHub.sceneColumbus', { defaultValue: 'Columbus' }),
       description: t('geoHub.sceneColumbus_hint', {
-        defaultValue: '2.5-D oblique view — flat map with depth.',
+        defaultValue: '2.5-D oblique view - flat map with depth.',
       }),
       Icon: Mountain,
     },

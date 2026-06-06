@@ -10,7 +10,7 @@ import {
   importDispatcher,
 } from './regionalRegistry';
 
-describe('regionalRegistry — COUNTRY_TEMPLATES', () => {
+describe('regionalRegistry - COUNTRY_TEMPLATES', () => {
   it('exposes exactly 20 country templates', () => {
     // Wave 5 Epic I scope: au, br, ca, cn, cz, de, es, fr, in, it, jp, kr,
     // nl, nordic, pl, ru, tr, uae, uk, us. Adding country #21 means a new
@@ -83,7 +83,7 @@ describe('regionalRegistry — COUNTRY_TEMPLATES', () => {
   });
 });
 
-describe('regionalRegistry — lookup helpers', () => {
+describe('regionalRegistry - lookup helpers', () => {
   it('getRegionalTemplate resolves a known id', () => {
     const tpl = getRegionalTemplate('de-din276');
     expect(tpl).toBeDefined();
@@ -141,7 +141,7 @@ describe('regionalRegistry — lookup helpers', () => {
   });
 });
 
-describe('regionalRegistry — validator regex', () => {
+describe('regionalRegistry - validator regex', () => {
   it('Spanish PBC validator accepts chapter codes like "03", "03.001"', () => {
     const es = COUNTRY_TEMPLATES.find((t) => t.id === 'es-pbc');
     expect(es!.validateCode!('03')).toBe(true);

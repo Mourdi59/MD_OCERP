@@ -116,10 +116,10 @@ export default function SimilarItemsPanel({
           title={
             crossProjectState
               ? t('similar.scope_all_title', {
-                  defaultValue: 'Searching across all projects — click to limit to current',
+                  defaultValue: 'Searching across all projects - click to limit to current',
                 })
               : t('similar.scope_one_title', {
-                  defaultValue: 'Searching current project only — click to expand',
+                  defaultValue: 'Searching current project only - click to expand',
                 })
           }
           className="inline-flex items-center gap-1 text-[10px] text-content-tertiary hover:text-content-primary"

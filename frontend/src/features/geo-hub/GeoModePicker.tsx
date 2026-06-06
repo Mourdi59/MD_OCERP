@@ -82,7 +82,7 @@ export function GeoModePicker({
       label: t('geo_hub.mode.project', { defaultValue: 'Project' }),
       description: projectId
         ? t('geo_hub.mode.project_hint', {
-            defaultValue: 'Drop into a project — anchor, tilesets, viewpoints.',
+            defaultValue: 'Drop into a project - anchor, tilesets, viewpoints.',
           })
         : t('geo_hub.mode.project_hint_disabled', {
             defaultValue: 'Open a project first to enable. Click to pick one.',

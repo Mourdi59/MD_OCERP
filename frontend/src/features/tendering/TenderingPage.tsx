@@ -1208,13 +1208,13 @@ function PackageDetail({
           confidence === 'high'
             ? t('tendering.confidence_high', 'High confidence')
             : confidence === 'low'
-              ? t('tendering.confidence_low', 'Low confidence — review carefully')
+              ? t('tendering.confidence_low', 'Low confidence - review carefully')
               : t('tendering.confidence_medium', 'Medium confidence');
         const reasonText: Record<typeof reasonKey, string> = {
           single_bid: t('tendering.reason_single_bid', 'Only one eligible bid received.'),
           clear_winner: t('tendering.reason_clear_winner', 'Clearly the lowest competitive offer.'),
-          narrow_gap: t('tendering.reason_narrow_gap', 'Winner and runner-up are within 2% — consider non-price factors.'),
-          suspicious_low: t('tendering.reason_suspicious_low', 'Lowest bid is {{pct}}% below the median — verify scope and pricing before awarding.', { pct: belowMedianPct }),
+          narrow_gap: t('tendering.reason_narrow_gap', 'Winner and runner-up are within 2% - consider non-price factors.'),
+          suspicious_low: t('tendering.reason_suspicious_low', 'Lowest bid is {{pct}}% below the median - verify scope and pricing before awarding.', { pct: belowMedianPct }),
         };
         return (
           <Card className={`border ${palette}`}>

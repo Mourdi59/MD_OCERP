@@ -1367,7 +1367,7 @@ function PartnerPackInstaller({
           </h3>
           <p className="text-xs text-content-tertiary">
             {t('onboarding.pp_subtitle', {
-              defaultValue: 'Install a complete localized workspace — language, both cost databases, and example projects — in one click',
+              defaultValue: 'Install a complete localized workspace - language, both cost databases, and example projects - in one click',
             })}
           </p>
         </div>
@@ -2272,7 +2272,7 @@ function StepDataSetup({
             <span className="flex items-center gap-2">
               <Settings2 size={16} className="text-content-tertiary" />
               {t('onboarding.advanced_manual_setup', {
-                defaultValue: 'Advanced — pick a region manually or connect AI',
+                defaultValue: 'Advanced - pick a region manually or connect AI',
               })}
             </span>
             <ChevronDown
@@ -2433,7 +2433,7 @@ function StepDataSetup({
                   {t('onboarding.connect_ai', { defaultValue: 'Connect AI Provider' })}
                 </h3>
                 <p className="text-xs text-content-tertiary">
-                  {t('onboarding.ai_optional', { defaultValue: 'Optional — smart estimation features' })}
+                  {t('onboarding.ai_optional', { defaultValue: 'Optional - smart estimation features' })}
                 </p>
               </div>
             </div>
@@ -2544,7 +2544,7 @@ function StepDataSetup({
           {t('common.back', { defaultValue: 'Back' })}
         </Button>
         <Button variant="secondary" onClick={onNext}>
-          {t('onboarding.skip', { defaultValue: 'Skip — set up later' })}
+          {t('onboarding.skip', { defaultValue: 'Skip - set up later' })}
         </Button>
         <Button
           variant="primary"

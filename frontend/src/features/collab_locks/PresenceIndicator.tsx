@@ -114,7 +114,7 @@ export function PresenceIndicator({
     <span
       className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
       title={t('collab_locks.lock_held_by_other_tooltip', {
-        defaultValue: 'Locked by {{name}} — {{seconds}}s remaining',
+        defaultValue: 'Locked by {{name}} - {{seconds}}s remaining',
         name: holder.user_name,
         seconds: holder.remaining_seconds,
       })}

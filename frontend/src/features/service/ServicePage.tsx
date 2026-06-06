@@ -795,7 +795,7 @@ function AssetTable({
         icon={<Box size={22} />}
         title={t('service.empty_assets', { defaultValue: 'No assets under this contract' })}
         description={t('service.empty_assets_desc', {
-          defaultValue: 'Register the equipment you maintain — HVAC, lifts, generators, etc.',
+          defaultValue: 'Register the equipment you maintain - HVAC, lifts, generators, etc.',
         })}
         action={{
           label: t('service.new_asset', { defaultValue: 'New Asset' }),
@@ -1503,7 +1503,7 @@ function CreateModal({
     }),
     contracts: t('service.new_contract_subtitle', {
       defaultValue:
-        'A service contract groups recurring work for one customer. Pick the customer from the contacts list — no more pasting UUIDs.',
+        'A service contract groups recurring work for one customer. Pick the customer from the contacts list - no more pasting UUIDs.',
     }),
     assets: t('service.new_asset_subtitle', {
       defaultValue: 'Register a piece of equipment that this contract covers.',
@@ -1568,7 +1568,7 @@ function CreateModal({
               onChange={(e) => setTicketForm({ ...ticketForm, title: e.target.value })}
               className={inputCls}
               placeholder={t('service.title_placeholder', {
-                defaultValue: 'AC unit not cooling — Floor 3',
+                defaultValue: 'AC unit not cooling - Floor 3',
               })}
             />
           </WideModalField>
@@ -1636,7 +1636,7 @@ function CreateModal({
           <WideModalField
             label={t('service.technician', { defaultValue: 'Technician' })}
             hint={t('service.technician_hint', {
-              defaultValue: 'Optional — assign on-site engineer.',
+              defaultValue: 'Optional - assign on-site engineer.',
             })}
           >
             <input
@@ -1664,7 +1664,7 @@ function CreateModal({
               required
               hint={t('service.customer_hint', {
                 defaultValue:
-                  'Pick from your contacts — searches as you type. Need to add a new one? Open Contacts in a new tab.',
+                  'Pick from your contacts - searches as you type. Need to add a new one? Open Contacts in a new tab.',
               })}
               span={2}
             >
@@ -1683,7 +1683,7 @@ function CreateModal({
             <WideModalField
               label={t('service.title_col', { defaultValue: 'Title' })}
               hint={t('service.contract_title_hint', {
-                defaultValue: 'Short label shown in lists, e.g. "HVAC maintenance — HQ 2026".',
+                defaultValue: 'Short label shown in lists, e.g. "HVAC maintenance - HQ 2026".',
               })}
               span={2}
             >
@@ -1692,7 +1692,7 @@ function CreateModal({
                 onChange={(e) => setContractForm({ ...contractForm, title: e.target.value })}
                 className={inputCls}
                 placeholder={t('service.contract_title_placeholder', {
-                  defaultValue: 'HVAC maintenance — HQ 2026',
+                  defaultValue: 'HVAC maintenance - HQ 2026',
                 })}
               />
             </WideModalField>
@@ -1794,7 +1794,7 @@ function CreateModal({
               {contracts.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.contract_number}
-                  {c.title ? ` — ${c.title}` : ''}
+                  {c.title ? ` - ${c.title}` : ''}
                 </option>
               ))}
             </select>
@@ -1840,7 +1840,7 @@ function CreateModal({
               onChange={(e) => setAssetForm({ ...assetForm, location: e.target.value })}
               className={inputCls}
               placeholder={t('service.location_placeholder', {
-                defaultValue: 'Roof, Floor 3 — North wing, …',
+                defaultValue: 'Roof, Floor 3 - North wing, …',
               })}
             />
           </WideModalField>

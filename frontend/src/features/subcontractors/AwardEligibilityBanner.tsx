@@ -67,7 +67,7 @@ export function AwardEligibilityBanner({
     tone = 'error';
     Icon = Ban;
     title = t('subcontractors.award_blocked_title', {
-      defaultValue: 'Blocked — not eligible for award',
+      defaultValue: 'Blocked - not eligible for award',
     });
     desc =
       blockedReason ||

@@ -162,7 +162,7 @@ export function MarkupCommentsDrawer({ markupId, onClose }: Props): JSX.Element 
         ) : !data || data.length === 0 ? (
           <p className="text-sm text-zinc-500">
             {t('takeoff.markup.comments_empty', {
-              defaultValue: 'No comments yet — be the first to add one.',
+              defaultValue: 'No comments yet - be the first to add one.',
             })}
           </p>
         ) : (

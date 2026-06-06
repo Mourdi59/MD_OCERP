@@ -8,7 +8,7 @@ function reset(): void {
   s.setSessionId(null);
 }
 
-describe('useAnalysisStateStore — slicers', () => {
+describe('useAnalysisStateStore - slicers', () => {
   beforeEach(() => {
     localStorage.clear();
     reset();
@@ -73,7 +73,7 @@ describe('useAnalysisStateStore — slicers', () => {
   });
 });
 
-describe('useAnalysisStateStore — chart config', () => {
+describe('useAnalysisStateStore - chart config', () => {
   beforeEach(() => {
     localStorage.clear();
     reset();
@@ -102,7 +102,7 @@ describe('useAnalysisStateStore — chart config', () => {
   });
 });
 
-describe('useAnalysisStateStore — saved views (localStorage persistence)', () => {
+describe('useAnalysisStateStore - saved views (localStorage persistence)', () => {
   beforeEach(() => {
     localStorage.clear();
     reset();

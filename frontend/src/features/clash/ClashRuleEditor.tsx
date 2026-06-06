@@ -155,7 +155,7 @@ export function ClashRuleEditor({
                   >
                     {t('clash.rules.empty', {
                       defaultValue:
-                        'No rules yet — add one to override the run-wide tolerance for a discipline pair.',
+                        'No rules yet - add one to override the run-wide tolerance for a discipline pair.',
                     })}
                   </td>
                 </tr>

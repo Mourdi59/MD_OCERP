@@ -256,17 +256,17 @@ describe('generateGAEBXML', () => {
   // ── New: Hierarchy preservation — multi-level (Los → Titel → Position) ─
   it('preserves multi-level hierarchy on export (Los → Titel → Position)', () => {
     const positions: ExportPosition[] = [
-      { id: 's1', ordinal: '01', description: 'Los 1 — Rohbau', unit: '', quantity: 0, unitRate: 0, total: 0, isSection: true },
-      { id: 's2', ordinal: '01.01', description: 'Titel 1.1 — Erdarbeiten', unit: '', quantity: 0, unitRate: 0, total: 0, isSection: true },
+      { id: 's1', ordinal: '01', description: 'Los 1 - Rohbau', unit: '', quantity: 0, unitRate: 0, total: 0, isSection: true },
+      { id: 's2', ordinal: '01.01', description: 'Titel 1.1 - Erdarbeiten', unit: '', quantity: 0, unitRate: 0, total: 0, isSection: true },
       { id: 'p1', ordinal: '01.01.001', description: 'Aushub', unit: 'm3', quantity: 100, unitRate: 12, total: 1200 },
-      { id: 's3', ordinal: '01.02', description: 'Titel 1.2 — Beton', unit: '', quantity: 0, unitRate: 0, total: 0, isSection: true },
+      { id: 's3', ordinal: '01.02', description: 'Titel 1.2 - Beton', unit: '', quantity: 0, unitRate: 0, total: 0, isSection: true },
       { id: 'p2', ordinal: '01.02.001', description: 'C30/37', unit: 'm3', quantity: 50, unitRate: 220, total: 11000 },
     ];
     const result = generateGAEBXML(makeOptions({ positions }));
     // Verify nesting structure: Los 1 BoQCtgy contains Titel BoQCtgy children
-    const losStart = result.xml.indexOf('<LblTx>Los 1 — Rohbau</LblTx>');
-    const titel11 = result.xml.indexOf('<LblTx>Titel 1.1 — Erdarbeiten</LblTx>');
-    const titel12 = result.xml.indexOf('<LblTx>Titel 1.2 — Beton</LblTx>');
+    const losStart = result.xml.indexOf('<LblTx>Los 1 - Rohbau</LblTx>');
+    const titel11 = result.xml.indexOf('<LblTx>Titel 1.1 - Erdarbeiten</LblTx>');
+    const titel12 = result.xml.indexOf('<LblTx>Titel 1.2 - Beton</LblTx>');
     expect(losStart).toBeGreaterThan(0);
     expect(titel11).toBeGreaterThan(losStart);
     expect(titel12).toBeGreaterThan(titel11);

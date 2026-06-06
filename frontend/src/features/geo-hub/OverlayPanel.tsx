@@ -374,7 +374,7 @@ export function OverlayPanel({
                         role="status"
                         title={t('geo.overlays.needs_corners_hint', {
                           defaultValue:
-                            'Overlay has no valid corners — showing fallback square at project anchor.',
+                            'Overlay has no valid corners - showing fallback square at project anchor.',
                         })}
                       >
                         {t('geo.overlays.needs_corners', {

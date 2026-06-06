@@ -460,7 +460,7 @@ function CatalogTable({
         icon={<Boxes size={22} />}
         title={t('supplier_catalogs.empty_catalog', { defaultValue: 'No catalog items yet' })}
         description={t('supplier_catalogs.empty_catalog_desc', {
-          defaultValue: 'SKUs you order — pipe, fittings, materials. Tie to multiple vendors for price comparison.',
+          defaultValue: 'SKUs you order - pipe, fittings, materials. Tie to multiple vendors for price comparison.',
         })}
         action={{ label: t('supplier_catalogs.new_item', { defaultValue: 'New Item' }), onClick: onAction }}
       />
@@ -751,7 +751,7 @@ function PriceComparisonModal({
                 <span>
                   {t('supplier_catalogs.mixed_currencies', {
                     defaultValue:
-                      'Vendors quote in different currencies — prices are not directly comparable, so no cheapest is highlighted.',
+                      'Vendors quote in different currencies - prices are not directly comparable, so no cheapest is highlighted.',
                   })}
                 </span>
               </div>

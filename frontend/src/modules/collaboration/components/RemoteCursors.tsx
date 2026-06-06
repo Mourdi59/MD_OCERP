@@ -105,7 +105,7 @@ export function RemoteCursors({ users, gridContainerRef, columnLabels }: RemoteC
                 fontSize: '10px', lineHeight: '14px',
                 maxWidth: o.rect.width,
               }}
-              title={`${o.userName} — ${columnLabels?.[o.cursor.field] ?? o.cursor.field}`}
+              title={`${o.userName} - ${columnLabels?.[o.cursor.field] ?? o.cursor.field}`}
             >
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-white/60" />
               <span className="truncate font-medium">{o.userName}</span>

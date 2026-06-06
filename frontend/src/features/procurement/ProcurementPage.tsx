@@ -1383,7 +1383,7 @@ function GoodsReceiptsTab({
         })}
         description={t('procurement.no_gr_desc', {
           defaultValue:
-            'Goods receipts record deliveries against a purchase order. They are created when a PO delivery is logged — start by creating or issuing a purchase order.',
+            'Goods receipts record deliveries against a purchase order. They are created when a PO delivery is logged - start by creating or issuing a purchase order.',
         })}
         action={{
           label: t('procurement.view_purchase_orders', {

@@ -230,7 +230,7 @@ export default function LinkRequirementToDwgModal({
               {sets.length === 0
                 ? t('dwg_takeoff.no_req_sets', {
                     defaultValue:
-                      'No requirement sets in this project yet — create one in BIM Rules first',
+                      'No requirement sets in this project yet - create one in BIM Rules first',
                   })
                 : requirements.length === 0
                   ? t('dwg_takeoff.no_requirements', {

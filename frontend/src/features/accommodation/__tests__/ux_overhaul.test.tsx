@@ -142,7 +142,7 @@ function makeAccommodationDetail(over: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-describe('AccommodationListPage — empty + error states', () => {
+describe('AccommodationListPage - empty + error states', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('renders the warm EmptyState with a CTA when no accommodations exist', async () => {
@@ -223,7 +223,7 @@ describe('AccommodationListPage — empty + error states', () => {
   });
 });
 
-describe('AccommodationDetailPage — IA grouping', () => {
+describe('AccommodationDetailPage - IA grouping', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('renders the 3-block tab strip + Settings, plus the KPI row', async () => {
@@ -260,7 +260,7 @@ describe('AccommodationDetailPage — IA grouping', () => {
     ).toBeInTheDocument();
   });
 
-  it('Billing tab auto-selects the first booking — no UUID paste required', async () => {
+  it('Billing tab auto-selects the first booking - no UUID paste required', async () => {
     (getAccommodation as ReturnType<typeof vi.fn>).mockResolvedValue(
       makeAccommodationDetail(),
     );
@@ -313,7 +313,7 @@ describe('AccommodationDetailPage — IA grouping', () => {
   });
 });
 
-describe('AccommodationCalendar — navigation', () => {
+describe('AccommodationCalendar - navigation', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('Next button moves the visible week forward by 7 days', async () => {

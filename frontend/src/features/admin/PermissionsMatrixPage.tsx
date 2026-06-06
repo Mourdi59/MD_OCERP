@@ -459,7 +459,7 @@ function ModuleRows({
                     })
                   : state === 'admin-bypass'
                   ? t('admin.permissions.tooltip_admin_bypass', {
-                      defaultValue: 'Admin-only by design — {{key}} requires admin',
+                      defaultValue: 'Admin-only by design - {{key}} requires admin',
                       key: perm.key,
                     })
                   : t('admin.permissions.tooltip_denied', {
@@ -744,7 +744,7 @@ export function PermissionsMatrixPage() {
             type: 'warning',
             title: t('admin.permissions.bulk_partial_title', { defaultValue: 'Partially updated' }),
             message: t('admin.permissions.bulk_partial_message', {
-              defaultValue: '{{ok}} of {{total}} permissions updated — {{failed}} failed.',
+              defaultValue: '{{ok}} of {{total}} permissions updated - {{failed}} failed.',
               ok: result.total - result.failed,
               total: result.total,
               failed: result.failed,
@@ -1112,7 +1112,7 @@ export function PermissionsMatrixPage() {
       defaultValue: 'Cannot demote admin permission',
     });
     confirmMessage = t('admin.permissions.lockout_message', {
-      defaultValue: '"{{key}}" must remain admin-only — lowering it would let non-admins edit the permissions matrix and lock you out.',
+      defaultValue: '"{{key}}" must remain admin-only - lowering it would let non-admins edit the permissions matrix and lock you out.',
       key: confirmState.permissionKey,
     });
     confirmLabel = t('admin.permissions.lockout_dismiss', { defaultValue: 'Got it' });
@@ -1192,7 +1192,7 @@ export function PermissionsMatrixPage() {
                       })
                     : t('admin.permissions.subtitle', {
                         defaultValue:
-                          'Every permission registered by every module, and which roles can use it. Admin always passes — locked cells indicate admin-only by design.',
+                          'Every permission registered by every module, and which roles can use it. Admin always passes - locked cells indicate admin-only by design.',
                       })}
                 </p>
               </div>

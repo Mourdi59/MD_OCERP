@@ -97,7 +97,7 @@ export function EmailDialog({ open, row, onClose }: EmailDialogProps) {
   const sampleBody = link
     ? t('files.email.sample_body', {
         defaultValue:
-          'Hi,\n\nHere is the file you asked about — {{name}} ({{size}}).\nDownload link (expires {{expires}}):\n{{url}}\n\n— sent from OpenConstructionERP',
+          'Hi,\n\nHere is the file you asked about - {{name}} ({{size}}).\nDownload link (expires {{expires}}):\n{{url}}\n\n- sent from OpenConstructionERP',
         name: row.name,
         size: fmtBytes(link.size_bytes),
         expires: new Date(link.expires_at).toLocaleString(),

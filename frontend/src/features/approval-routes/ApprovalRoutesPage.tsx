@@ -230,7 +230,7 @@ export function ApprovalRoutesPage() {
               })}
               description={t('approvalRoutes.empty_desc', {
                 defaultValue:
-                  'Create your first approval route — e.g. a 2-step submittal review (engineer → manager).',
+                  'Create your first approval route - e.g. a 2-step submittal review (engineer → manager).',
               })}
               action={{
                 label: t('approvalRoutes.newRoute', { defaultValue: 'New route' }),

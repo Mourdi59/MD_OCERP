@@ -3,7 +3,7 @@ import type { ModuleManifest } from '../_types';
 
 export const manifest: ModuleManifest = {
   id: 'ddc-ifc-converter',
-  name: 'DDC cad2data — IFC Converter',
+  name: 'DDC cad2data - IFC Converter',
   description:
     'Converts IFC (Industry Foundation Classes) files into element data (DataFrame) and 3D geometry (COLLADA). Enables automatic extraction of walls, slabs, columns, beams, doors, windows, MEP elements with quantities, properties, and storey classification.',
   version: '1.0.0',
@@ -22,15 +22,15 @@ export const manifest: ModuleManifest = {
   ],
   translations: {
     en: {
-      'converter.ifc.name': 'DDC cad2data — IFC Converter',
+      'converter.ifc.name': 'DDC cad2data - IFC Converter',
       'converter.ifc.desc': 'Convert IFC files to DataFrame + COLLADA geometry',
     },
     de: {
-      'converter.ifc.name': 'DDC cad2data — IFC Konverter',
+      'converter.ifc.name': 'DDC cad2data - IFC Konverter',
       'converter.ifc.desc': 'IFC-Dateien in DataFrame + COLLADA-Geometrie konvertieren',
     },
     ru: {
-      'converter.ifc.name': 'DDC cad2data — IFC Конвертер',
+      'converter.ifc.name': 'DDC cad2data - IFC Конвертер',
       'converter.ifc.desc': 'Конвертация IFC файлов в DataFrame + COLLADA геометрию',
     },
   },

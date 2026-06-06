@@ -763,9 +763,9 @@ const PIVOT_VIZ_OPTIONS: {
   title: string;
 }[] = [
   { id: 'table',   icon: Table2,      labelKey: 'explorer.viz_table',   fallback: 'Table',   title: 'Dense grid with in-cell data bars (original view)' },
-  { id: 'heatmap', icon: Hash,        labelKey: 'explorer.viz_heatmap', fallback: 'Heatmap', title: 'Color intensity shows magnitude — great for multi-column comparison' },
-  { id: 'bar',     icon: BarChart3,   labelKey: 'explorer.viz_bar',     fallback: 'Bar',     title: 'Grouped horizontal bars — best for comparing groups' },
-  { id: 'treemap', icon: Layers,      labelKey: 'explorer.viz_treemap', fallback: 'Treemap', title: 'Area proportional to value — best for proportion and share' },
+  { id: 'heatmap', icon: Hash,        labelKey: 'explorer.viz_heatmap', fallback: 'Heatmap', title: 'Color intensity shows magnitude - great for multi-column comparison' },
+  { id: 'bar',     icon: BarChart3,   labelKey: 'explorer.viz_bar',     fallback: 'Bar',     title: 'Grouped horizontal bars - best for comparing groups' },
+  { id: 'treemap', icon: Layers,      labelKey: 'explorer.viz_treemap', fallback: 'Treemap', title: 'Area proportional to value - best for proportion and share' },
   { id: 'matrix',  icon: Columns3,    labelKey: 'explorer.viz_matrix',  fallback: 'Matrix',  title: 'Crosstab: first group-by on rows, second on columns (requires 2 group-by)' },
 ];
 
@@ -779,7 +779,7 @@ function PivotVizSwitcher({ mode, onChange, matrixEnabled }: PivotVizSwitcherPro
       {PIVOT_VIZ_OPTIONS.map(({ id, icon: Icon, labelKey, fallback, title }) => {
         const isActive = mode === id;
         const disabled = id === 'matrix' && !matrixEnabled;
-        const suffix = disabled ? ` — ${fallback === 'Matrix' ? 'pick a second group-by' : ''}` : '';
+        const suffix = disabled ? ` - ${fallback === 'Matrix' ? 'pick a second group-by' : ''}` : '';
         return (
           <button
             key={id}
@@ -1005,7 +1005,7 @@ function PivotTreemap({ groups, groupBy, aggCols, aggFn, onGroupClick }: PivotVi
   if (data.length === 0) {
     return (
       <p className="py-8 text-center text-xs text-content-tertiary">
-        {t('explorer.treemap_all_zero', { defaultValue: 'All values are zero — nothing to show as area.' })}
+        {t('explorer.treemap_all_zero', { defaultValue: 'All values are zero - nothing to show as area.' })}
       </p>
     );
   }
@@ -1473,7 +1473,7 @@ function PivotTab({ sessionId, describe, thresholdRules, setThresholdRules }: Pi
                       (isNum ? `, sum=${formatNumber(col.sum)}` : `, ${col.unique} unique`);
                     const title = allowed
                       ? titleBase
-                      : `${titleBase} — text columns need count / count_unique for ${aggFn.toUpperCase()}`;
+                      : `${titleBase} - text columns need count / count_unique for ${aggFn.toUpperCase()}`;
                     return (
                       <button
                         key={col.name}
@@ -1713,7 +1713,7 @@ function PivotTab({ sessionId, describe, thresholdRules, setThresholdRules }: Pi
                                     rolled == null
                                       ? t('explorer.rollup_not_additive', {
                                           defaultValue:
-                                            'Distinct counts cannot be combined across groups — expand to see per-group values.',
+                                            'Distinct counts cannot be combined across groups - expand to see per-group values.',
                                         })
                                       : undefined
                                   }
@@ -2901,7 +2901,7 @@ function CreateBOQFromPivotModal({ open, onClose, groups, groupByColumns, aggCol
         const description = groupByColumns
           .map((col) => group.key[col] || '')
           .filter(Boolean)
-          .join(' — ');
+          .join(' - ');
 
         // Aggregate results are keyed by the bare column name (both the
         // backend endpoint and computeClientPivot write results[col]); the
@@ -3017,7 +3017,7 @@ function CreateBOQFromPivotModal({ open, onClose, groups, groupByColumns, aggCol
             </p>
             <div className="space-y-1">
               {groups.slice(0, 8).map((g, i) => {
-                const desc = groupByColumns.map((col) => g.key[col] || '').filter(Boolean).join(' — ');
+                const desc = groupByColumns.map((col) => g.key[col] || '').filter(Boolean).join(' - ');
                 const qty = g.results[quantityCol] ?? g.count;
                 return (
                   <div key={Object.values(g.key).join('-') || `group-${i}`} className="flex items-center justify-between text-xs">
@@ -3289,7 +3289,7 @@ function SaveDialog({
     staleTime: 5 * 60_000,
   });
 
-  const [name, setName] = useState(filename.replace(/\.[^.]+$/, '') + ' — Analysis');
+  const [name, setName] = useState(filename.replace(/\.[^.]+$/, '') + ' - Analysis');
   const [projectId, setProjectId] = useState(activeProjectId || '');
   const [saving, setSaving] = useState(false);
 
@@ -4210,7 +4210,7 @@ export function CadDataExplorerPage() {
                     })}
                     description={t('explorer.no_data_desc', {
                       defaultValue:
-                        'This model has no extracted data yet — convert a CAD/BIM file (RVT, IFC, DWG) to populate the explorer.',
+                        'This model has no extracted data yet - convert a CAD/BIM file (RVT, IFC, DWG) to populate the explorer.',
                     })}
                   />
                   <UploadConvertZone onSessionReady={handleSessionReady} />
@@ -4250,7 +4250,7 @@ export function CadDataExplorerPage() {
                       <p className="text-xs text-content-tertiary break-words">
                         {classified.status != null
                           ? t('explorer.load_failed_desc_status', {
-                              defaultValue: 'HTTP {{status}} — {{message}}',
+                              defaultValue: 'HTTP {{status}} - {{message}}',
                               status: classified.status,
                               message: classified.message,
                             })

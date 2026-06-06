@@ -154,7 +154,7 @@ export function AnchorDriftIndicator({
           <span className="flex-1 text-amber-800">
             {t('geo_hub.drift.warning', {
               defaultValue:
-                'Address text changed since the last geocode — anchor may be stale.',
+                'Address text changed since the last geocode - anchor may be stale.',
             })}
           </span>
           <button

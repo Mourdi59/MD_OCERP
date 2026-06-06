@@ -223,7 +223,7 @@ export function RenumberDialog({
               </h2>
               <p className="text-xs text-content-secondary mt-0.5">
                 {t('boq.renumber_dialog_subtitle', {
-                  defaultValue: 'Pick a numbering scheme. The current order is preserved — only ordinals are rewritten.',
+                  defaultValue: 'Pick a numbering scheme. The current order is preserved - only ordinals are rewritten.',
                 })}
               </p>
             </div>
@@ -380,7 +380,7 @@ export function RenumberDialog({
             <p className="text-[11px] leading-snug text-amber-800/90 dark:text-amber-200/90">
               {t('boq.renumber_warning', {
                 defaultValue:
-                  'This overwrites any manually edited position numbers. The current display order is preserved — only ordinals change.',
+                  'This overwrites any manually edited position numbers. The current display order is preserved - only ordinals change.',
               })}
             </p>
           </div>

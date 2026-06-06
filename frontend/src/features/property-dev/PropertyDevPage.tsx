@@ -601,7 +601,7 @@ export function PropertyDevPage() {
                           aria-controls={`propdev-panel-${tabItem.id}`}
                           id={`propdev-tab-${tabItem.id}`}
                           tabIndex={active ? 0 : -1}
-                          title={`${tabItem.label} — ${tabItem.tip}`}
+                          title={`${tabItem.label} - ${tabItem.tip}`}
                           onClick={() => {
                             setTab(tabItem.id);
                             setSearch('');
@@ -1789,7 +1789,7 @@ function LeadDetailDrawer({
               }
               title={t('propdev.lead_score_hint', {
                 defaultValue:
-                  'Your qualification confidence — 0 = cold, 50 = warm, 100 = hot. Drives the Leads list sort order.',
+                  'Your qualification confidence - 0 = cold, 50 = warm, 100 = hot. Drives the Leads list sort order.',
               })}
             />
             <span className="mt-0.5 text-2xs text-content-tertiary">
@@ -2206,7 +2206,7 @@ function ConvertLeadModal({
               <span>
                 {t('propdev.create_buyer_shadow', {
                   defaultValue:
-                    'Also materialise a Buyer row (recommended — downstream modules need it).',
+                    'Also materialise a Buyer row (recommended - downstream modules need it).',
                 })}
               </span>
             </label>
@@ -3860,7 +3860,7 @@ function PaymentScheduleTab({
               onClick={() => setGenerateForSpa(spasWithoutSchedule[0] ?? null)}
               title={t('propdev.generate_schedule_for_spa_help', {
                 defaultValue:
-                  '{{n}} SPA(s) have no payment schedule yet — generate one',
+                  '{{n}} SPA(s) have no payment schedule yet - generate one',
                 n: spasWithoutSchedule.length,
               })}
             >
@@ -4101,7 +4101,7 @@ function HandoversTab({ plots, buyers }: { plots: Plot[]; buyers: Buyer[] }) {
           })}
           description={t('propdev.empty_handovers_no_plots_desc', {
             defaultValue:
-              'Create plots first (under the Plots tab) — handovers are scheduled per plot once a buyer is assigned.',
+              'Create plots first (under the Plots tab) - handovers are scheduled per plot once a buyer is assigned.',
           })}
         />
       </Card>
@@ -4715,7 +4715,7 @@ function WarrantyTab({
           })}
           description={t('propdev.warranty.pick_dev_desc', {
             defaultValue:
-              'Warranty claims are listed per development — pick one from the Developments tab to see its open claims.',
+              'Warranty claims are listed per development - pick one from the Developments tab to see its open claims.',
           })}
         />
       </Card>
@@ -6755,7 +6755,7 @@ function CreateModal({
             label={t('propdev.lead_score', { defaultValue: 'Score (0-100)' })}
             hint={t('propdev.lead_score_hint', {
               defaultValue:
-                'Your qualification confidence — 0 = cold, 50 = warm, 100 = hot. Drives the Leads list sort order.',
+                'Your qualification confidence - 0 = cold, 50 = warm, 100 = hot. Drives the Leads list sort order.',
             })}
           >
             <input
@@ -7536,7 +7536,7 @@ function PlotFormBody({
           </span>
           <span className="font-medium text-content-primary">
             {activeDevelopment
-              ? `${activeDevelopment.code}${activeDevelopment.name ? ` — ${activeDevelopment.name}` : ''}`
+              ? `${activeDevelopment.code}${activeDevelopment.name ? ` - ${activeDevelopment.name}` : ''}`
               : t('propdev.unknown_development', { defaultValue: 'Selected development' })}
           </span>
         </div>

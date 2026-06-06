@@ -14,7 +14,7 @@ import {
 // If not available, we use a simple mock
 const hasIndexedDB = typeof indexedDB !== 'undefined';
 
-describe.skipIf(!hasIndexedDB)('offlineStore — IndexedDB', () => {
+describe.skipIf(!hasIndexedDB)('offlineStore - IndexedDB', () => {
   beforeEach(async () => {
     await clearCache();
     await clearMutationQueue();
@@ -115,7 +115,7 @@ describe.skipIf(!hasIndexedDB)('offlineStore — IndexedDB', () => {
 });
 
 // Fallback tests when IndexedDB is unavailable (functions should not throw)
-describe('offlineStore — graceful fallback', () => {
+describe('offlineStore - graceful fallback', () => {
   it('getCachedResponse returns null for missing keys', async () => {
     const result = await getCachedResponse('/nonexistent');
     expect(result === null || result !== undefined).toBe(true);

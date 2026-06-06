@@ -96,7 +96,7 @@ function catalogue(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-describe('DocumentTemplatesSettingsPage — worldwide parameterization', () => {
+describe('DocumentTemplatesSettingsPage - worldwide parameterization', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('upload form renders combobox inputs (not <select>) for doc_type and entity', async () => {

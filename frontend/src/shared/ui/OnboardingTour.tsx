@@ -95,7 +95,7 @@ const STEP_DEFAULTS: Record<string, { title: string; description: string }> = {
   'onboarding.step3.title': {
     title: 'Bill of Quantities',
     description:
-      'Build detailed estimates with the BOQ editor — hierarchical positions, assemblies, and real-time cost roll-up.',
+      'Build detailed estimates with the BOQ editor - hierarchical positions, assemblies, and real-time cost roll-up.',
   },
   'onboarding.step4.title': {
     title: 'Cost Databases',

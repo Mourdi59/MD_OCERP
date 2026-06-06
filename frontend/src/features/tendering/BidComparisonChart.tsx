@@ -250,7 +250,7 @@ export function BidComparisonChart({
         <p className="mb-2 text-xs text-semantic-warning">
           {t('tendering.chart_mixed_currency', {
             defaultValue:
-              '{{count}} bid(s) in {{currencies}} are not shown — bids in a different currency cannot be plotted on the {{base}} axis without conversion.',
+              '{{count}} bid(s) in {{currencies}} are not shown - bids in a different currency cannot be plotted on the {{base}} axis without conversion.',
             count: excludedCount,
             currencies: excludedCurrencies.join(', '),
             base: chartCurrency,

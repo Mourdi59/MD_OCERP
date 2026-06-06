@@ -261,7 +261,7 @@ export function MatchAnalyticsCard({ projectId }: MatchAnalyticsCardProps) {
               {empty
                 ? t(
                     'match_elements.analytics_empty_caption',
-                    'No searches yet in the last {{days}}d window — run /match-elements to populate.',
+                    'No searches yet in the last {{days}}d window - run /match-elements to populate.',
                     { days: data.window_days },
                   )
                 : t(

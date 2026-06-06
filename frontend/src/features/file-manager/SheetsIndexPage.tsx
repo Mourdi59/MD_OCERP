@@ -141,7 +141,7 @@ export function SheetsIndexPage() {
           <p className="mt-1 text-sm text-content-secondary">
             {t('sheets.subtitle', {
               defaultValue:
-                'Indexed drawing sheets across project documents — filter by discipline or search by number, title, revision.',
+                'Indexed drawing sheets across project documents - filter by discipline or search by number, title, revision.',
             })}
           </p>
         </div>
@@ -230,7 +230,7 @@ export function SheetsIndexPage() {
                     })
                   : t('sheets.no_sheets_hint', {
                       defaultValue:
-                        'Upload a multi-page PDF drawing set to the Files module — each page becomes a sheet here automatically.',
+                        'Upload a multi-page PDF drawing set to the Files module - each page becomes a sheet here automatically.',
                     })
               }
             />

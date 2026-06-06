@@ -202,7 +202,7 @@ export function ModuleDeveloperGuide() {
               <p>
                 {t('modules.dev_pack_step_create_body', {
                   defaultValue:
-                    'The CLI scaffolds a ready-to-edit folder with a valid manifest, a placeholder logo, an onboarding script and a README. Edit the placeholders and you are done — no code to write.',
+                    'The CLI scaffolds a ready-to-edit folder with a valid manifest, a placeholder logo, an onboarding script and a README. Edit the placeholders and you are done - no code to write.',
                 })}
               </p>
               <Code lang="bash">
@@ -266,7 +266,7 @@ export function ModuleDeveloperGuide() {
                 <span>
                   {t('modules.dev_pack_step_install_drop', {
                     defaultValue:
-                      'Drop the folder (or a .zip of it) into your install’s data directory under packs/ — by default ~/.openestimate/packs/, next to the database — then open the Partner Packs tab and click Rescan. No restart needed.',
+                      'Drop the folder (or a .zip of it) into your install’s data directory under packs/ - by default ~/.openestimate/packs/, next to the database - then open the Partner Packs tab and click Rescan. No restart needed.',
                   })}
                 </span>
               </p>
@@ -291,7 +291,7 @@ export function ModuleDeveloperGuide() {
                 <span>
                   {t('modules.dev_pack_step_activate_body_v2', {
                     defaultValue:
-                      'Open Modules → Partner Packs, find your pack and press Activate. It applies the currency, language, validation standards, module visibility and branding, and can install a demo project. Activation is reversible — Deactivate restores the previous state any time.',
+                      'Open Modules → Partner Packs, find your pack and press Activate. It applies the currency, language, validation standards, module visibility and branding, and can install a demo project. Activation is reversible - Deactivate restores the previous state any time.',
                   })}
                 </span>
               </p>

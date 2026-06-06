@@ -445,7 +445,7 @@ export function RulePackPreviewModal({
                 className="rounded-lg border border-border-light bg-surface-primary px-2 py-1 text-[11px] text-content-primary focus:border-oe-blue focus:outline-none disabled:opacity-50"
               >
                 <option value="">
-                  {t('rulePacks.dry_run', { defaultValue: '— no dry run —' })}
+                  {t('rulePacks.dry_run', { defaultValue: '- no dry run -' })}
                 </option>
                 {models.map((m) => (
                   <option key={m.id} value={m.id}>

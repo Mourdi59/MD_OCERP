@@ -31,8 +31,8 @@ interface ColorByPropertyPanelProps {
 
 const PALETTES: { value: ColorByPropertyPalette; labelKey: string; defaultLabel: string }[] = [
   { value: 'categorical-12', labelKey: 'bim.color_palette_categorical', defaultLabel: 'Categorical (12 colors)' },
-  { value: 'sequential-blue', labelKey: 'bim.color_palette_seq_blue', defaultLabel: 'Sequential — blue' },
-  { value: 'sequential-red-blue', labelKey: 'bim.color_palette_diverging', defaultLabel: 'Diverging — red ⇄ blue' },
+  { value: 'sequential-blue', labelKey: 'bim.color_palette_seq_blue', defaultLabel: 'Sequential - blue' },
+  { value: 'sequential-red-blue', labelKey: 'bim.color_palette_diverging', defaultLabel: 'Diverging - red ⇄ blue' },
   { value: 'fire-rating', labelKey: 'bim.color_palette_fire_rating', defaultLabel: 'Fire rating (F30 / F60 / F90)' },
 ];
 

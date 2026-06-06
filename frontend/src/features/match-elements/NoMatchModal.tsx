@@ -72,7 +72,7 @@ export function NoMatchModal({ sessionId, groupKey, onClose, onDone }: Props) {
       value: 'rfq',
       icon: Send,
       title: t('match_elements.no_match.rfq.title', 'Send to RFQ'),
-      sub: t('match_elements.no_match.rfq.sub', 'Mark for tendering — request quotes from subcontractors.'),
+      sub: t('match_elements.no_match.rfq.sub', 'Mark for tendering - request quotes from subcontractors.'),
     },
     {
       value: 'tbd',
@@ -96,7 +96,7 @@ export function NoMatchModal({ sessionId, groupKey, onClose, onDone }: Props) {
       >
         <header className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <h3 id="no-match-modal-heading" className="text-base font-semibold">
-            {t('match_elements.no_match.heading', 'No match — choose action')}
+            {t('match_elements.no_match.heading', 'No match - choose action')}
           </h3>
           <button
             type="button"

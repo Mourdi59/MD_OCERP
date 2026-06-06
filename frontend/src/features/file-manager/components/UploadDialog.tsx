@@ -276,7 +276,7 @@ export function UploadDialog({
             </p>
             <p className="mt-1 text-xs text-content-tertiary">
               {t('files.upload_hint', {
-                defaultValue: 'PDF, images, Excel, DWG, IFC — any file type',
+                defaultValue: 'PDF, images, Excel, DWG, IFC - any file type',
               })}
             </p>
             <button

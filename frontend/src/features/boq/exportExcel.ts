@@ -179,7 +179,7 @@ export function buildBOQSheetData(options: ExportOptions): {
   };
 
   // ── Header block ──────────────────────────────────────────────────────
-  rows.push([`BILL OF QUANTITIES — ${boqTitle}`, ...Array(colCount - 1).fill(null)]);
+  rows.push([`BILL OF QUANTITIES - ${boqTitle}`, ...Array(colCount - 1).fill(null)]);
   merge(0, 0, 0, colCount - 1);
 
   const infoLine = [
@@ -417,7 +417,7 @@ export async function buildBOQWorkbookBuffer(options: ExportOptions): Promise<Ar
   // Lazy-load ExcelJS; ~1MB module that we never want in the main bundle.
   const ExcelJS = (await import('exceljs')).default;
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'OpenConstructionERP — DataDrivenConstruction';
+  wb.creator = 'OpenConstructionERP - DataDrivenConstruction';
   wb.company = 'DataDrivenConstruction (DDC)';
   wb.created = new Date();
   // ExcelJS exposes only a small set of standard properties; stuff the

@@ -172,7 +172,7 @@ export function RegisterPage() {
             <span className="gradient-text">{t('login.hero_highlight', 'reimagined')}</span>
           </h2>
           <p className="mt-1.5 text-[13px] text-content-secondary leading-relaxed">
-            {t('login.hero_desc', 'Professional BOQ, 4D scheduling, 5D cost model, and tendering — all in one open-source platform.')}
+            {t('login.hero_desc', 'Professional BOQ, 4D scheduling, 5D cost model, and tendering - all in one open-source platform.')}
           </p>
         </div>
 
@@ -201,7 +201,7 @@ export function RegisterPage() {
           <HardDrive size={13} className="text-emerald-500 shrink-0 mt-0.5" />
           <div>
             <p className="text-2xs text-content-secondary leading-snug">
-              {t('login.privacy', 'All data is processed and stored locally on your machine. Nothing is sent to external servers. You own your data — always.')}
+              {t('login.privacy', 'All data is processed and stored locally on your machine. Nothing is sent to external servers. You own your data - always.')}
             </p>
             <p className="mt-0.5 text-[10px] text-content-quaternary leading-snug">
               * {t('login.privacy_ai', 'If you use built-in AI tools, some data may be sent to the AI provider you configure (OpenAI, Anthropic, etc.). You control which provider to use and what data to share.')}
@@ -313,7 +313,7 @@ export function RegisterPage() {
                       onChange={(e) => setHowFoundUs(e.target.value)}
                       className="h-9 w-full rounded-lg border border-border bg-surface-primary pl-9 pr-3 text-sm text-content-primary transition-all duration-fast ease-oe focus:outline-none focus:ring-2 focus:ring-oe-blue focus:border-transparent hover:border-content-tertiary appearance-none cursor-pointer"
                     >
-                      <option value="">{t('auth.how_found_select', '— Select —')}</option>
+                      <option value="">{t('auth.how_found_select', '- Select -')}</option>
                       <option value="google">{t('auth.how_found_google', 'Google Search')}</option>
                       <option value="github">{t('auth.how_found_github', 'GitHub')}</option>
                       <option value="linkedin">{t('auth.how_found_linkedin', 'LinkedIn')}</option>

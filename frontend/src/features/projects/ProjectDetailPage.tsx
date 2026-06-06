@@ -325,7 +325,7 @@ function computeProjectHealth(
     nextStep = {
       label: t('projects.health_action_add_positions', { defaultValue: 'Add positions' }),
       description: t('projects.health_next_add_positions', {
-        defaultValue: 'Open the BOQ editor and add your first positions — manually, from Excel, or with AI.',
+        defaultValue: 'Open the BOQ editor and add your first positions - manually, from Excel, or with AI.',
       }),
       to: `/boq/${largestBoq.id}`,
       variant: 'primary',
@@ -369,7 +369,7 @@ function computeProjectHealth(
     nextStep = {
       label: t('projects.health_action_export', { defaultValue: 'Export & report' }),
       description: t('projects.health_next_export', {
-        defaultValue: 'Project is ready. Export to GAEB, Excel, or PDF — or distribute as a tender package.',
+        defaultValue: 'Project is ready. Export to GAEB, Excel, or PDF - or distribute as a tender package.',
       }),
       to: '/reports',
       variant: 'success',
@@ -1413,7 +1413,7 @@ export function ProjectDetailPage() {
                 })
               : t('projects.network_error_desc', {
                   defaultValue:
-                    'The server is not responding right now. This does not mean the project is deleted — try again in a moment.',
+                    'The server is not responding right now. This does not mean the project is deleted - try again in a moment.',
                 })
           }
           action={
@@ -1434,7 +1434,7 @@ export function ProjectDetailPage() {
           title={t('projects.not_found', { defaultValue: 'Project not found' })}
           description={t('projects.not_found_desc', {
             defaultValue:
-              'The project you are looking for does not exist or has been deleted. Stale bookmarks have been cleared — pick an active project below.',
+              'The project you are looking for does not exist or has been deleted. Stale bookmarks have been cleared - pick an active project below.',
           })}
           action={
             <Button variant="primary" onClick={() => navigate('/projects')}>

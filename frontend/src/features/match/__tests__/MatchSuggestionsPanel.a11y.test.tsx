@@ -88,7 +88,7 @@ function renderPanel(autoFetch = true) {
   );
 }
 
-describe('MatchSuggestionsPanel — a11y', () => {
+describe('MatchSuggestionsPanel - a11y', () => {
   beforeEach(() => {
     vi.mocked(matchElement).mockReset();
     vi.mocked(submitMatchFeedback).mockReset();

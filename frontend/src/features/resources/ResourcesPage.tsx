@@ -541,7 +541,7 @@ export function ResourcesPage() {
         srTitle={t('resources.title', { defaultValue: 'Resources & Crews' })}
         subtitle={t('resources.subtitle', {
           defaultValue:
-            'People, equipment and crew assignments — propose, confirm, resolve conflicts.',
+            'People, equipment and crew assignments - propose, confirm, resolve conflicts.',
         })}
         actions={
           <>
@@ -971,7 +971,7 @@ export function ResourcesPage() {
         })}
         message={t('resources.delete_resource_msg', {
           defaultValue:
-            'This permanently removes the resource. Active assignments referencing it will be blocked — cancel or reassign them first.',
+            'This permanently removes the resource. Active assignments referencing it will be blocked - cancel or reassign them first.',
         })}
         confirmLabel={t('common.delete', { defaultValue: 'Delete' })}
         cancelLabel={t('common.cancel', { defaultValue: 'Cancel' })}
@@ -991,7 +991,7 @@ export function ResourcesPage() {
         })}
         message={t('resources.bulk_delete_resources_msg', {
           defaultValue:
-            'This permanently removes {{count}} resources. Any active assignments referencing them will block their delete — those rows stay and a warning will be shown.',
+            'This permanently removes {{count}} resources. Any active assignments referencing them will block their delete - those rows stay and a warning will be shown.',
           count: selectedIds.size,
         })}
         confirmLabel={t('common.delete', { defaultValue: 'Delete' })}
@@ -1257,7 +1257,7 @@ function ResourceTable({
         })}
         description={t('resources.empty_filter_desc', {
           defaultValue:
-            'Adjust the type, status or currency filter — or clear all filters to see everything.',
+            'Adjust the type, status or currency filter - or clear all filters to see everything.',
         })}
         action={{
           label: t('resources.clear_filters', { defaultValue: 'Clear filters' }),
@@ -1828,7 +1828,7 @@ function RequestsTab({
         <p className="mt-3 text-xs text-content-secondary leading-relaxed">
           {t('resources.requests_explainer', {
             defaultValue:
-              'Resource requests are "demand-side" records — foremen and PMs raise them when they need people or equipment on a specific date range. Dispatchers fulfil each request by matching one of your resources to it; that creates an assignment row in the Assignments tab.',
+              'Resource requests are "demand-side" records - foremen and PMs raise them when they need people or equipment on a specific date range. Dispatchers fulfil each request by matching one of your resources to it; that creates an assignment row in the Assignments tab.',
           })}
         </p>
       </Card>
@@ -1845,12 +1845,12 @@ function RequestsTab({
               activeProjectName
                 ? t('resources.requests_pick_project_active', {
                     defaultValue:
-                      'You currently have "{{name}}" active elsewhere — pick it from the dropdown to start.',
+                      'You currently have "{{name}}" active elsewhere - pick it from the dropdown to start.',
                     name: activeProjectName,
                   })
                 : t('resources.requests_pick_project_desc', {
                     defaultValue:
-                      'Requests are project-scoped — choose a project to see the open queue and start fulfilling.',
+                      'Requests are project-scoped - choose a project to see the open queue and start fulfilling.',
                   })
             }
           />
@@ -3225,7 +3225,7 @@ function AssignmentsTab({
                                 className="text-xs text-content-tertiary"
                                 title={t('resources.readonly_hint', {
                                   defaultValue:
-                                    'Read-only — ask a manager to edit assignments',
+                                    'Read-only - ask a manager to edit assignments',
                                 })}
                               >
                                 —
@@ -3446,7 +3446,7 @@ function EditAssignmentModal({
           <span>
             {t('resources.edit_past_warning', {
               defaultValue:
-                'This assignment is in the past — changes are typically only for record corrections.',
+                'This assignment is in the past - changes are typically only for record corrections.',
             })}
           </span>
         </div>

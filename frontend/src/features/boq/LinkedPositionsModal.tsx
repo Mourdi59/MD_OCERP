@@ -58,7 +58,7 @@ export function LinkedPositionsModal({
     defaultValue: 'Linked positions',
   });
   const subtitleOpts: Record<string, unknown> = {
-    defaultValue: 'Code {{code}} — viewing from position {{ordinal}}',
+    defaultValue: 'Code {{code}} - viewing from position {{ordinal}}',
     code: data?.reference_code ?? positionOrdinal,
     ordinal: positionOrdinal,
   };
@@ -125,7 +125,7 @@ export function LinkedPositionsModal({
               <p className="text-sm text-content-secondary">
                 {t('boq.linked_positions_none', {
                   defaultValue:
-                    'This position is standalone — no other position shares its code.',
+                    'This position is standalone - no other position shares its code.',
                 })}
               </p>
             </div>

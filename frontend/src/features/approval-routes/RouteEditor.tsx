@@ -393,7 +393,7 @@ export function RouteEditor({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t('approvalRoutes.name_placeholder', {
-              defaultValue: 'e.g. Submittals — Standard 2-step review',
+              defaultValue: 'e.g. Submittals - Standard 2-step review',
             })}
             className="h-9 w-full rounded-md border border-border bg-surface-primary px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue"
             autoFocus
@@ -467,7 +467,7 @@ export function RouteEditor({
             className="h-4 w-4 rounded border-border accent-oe-blue"
           />
           {t('approvalRoutes.is_active', {
-            defaultValue: 'Active — available for new approvals',
+            defaultValue: 'Active - available for new approvals',
           })}
         </label>
       </WideModalSection>

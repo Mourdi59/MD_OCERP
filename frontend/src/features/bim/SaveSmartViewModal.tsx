@@ -126,7 +126,7 @@ export default function SaveSmartViewModal({
           defaultValue: 'Smart View saved',
         }),
         message: t('bim.smartview.saved_msg', {
-          defaultValue: '"{{name}}" — {{count}} elements',
+          defaultValue: '"{{name}}" - {{count}} elements',
           name: group.name,
           count: group.element_count,
         }),

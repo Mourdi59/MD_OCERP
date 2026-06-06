@@ -92,7 +92,7 @@ export function CompliancePage({ projectId }: CompliancePageProps) {
         })}
         description={t('compliance.empty.no_project_description', {
           defaultValue:
-            'Compliance documents are scoped to a project — open one first.',
+            'Compliance documents are scoped to a project - open one first.',
         })}
       />
     );

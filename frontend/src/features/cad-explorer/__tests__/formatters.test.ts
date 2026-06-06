@@ -8,7 +8,7 @@ import { formatValue } from '@/shared/lib/numberFormat';
 // locale. Asserting digit characters keeps the test portable while still
 // validating that grouping and formatting ran.
 
-describe('formatValue — number kind', () => {
+describe('formatValue - number kind', () => {
   it('handles zero', () => {
     expect(formatValue(0, 'number')).toMatch(/0/);
   });
@@ -45,7 +45,7 @@ describe('formatValue — number kind', () => {
   });
 });
 
-describe('formatValue — currency kind', () => {
+describe('formatValue - currency kind', () => {
   it('includes digits of the value', () => {
     const s = formatValue(1234.5, 'currency', { currency: 'EUR' });
     expect(s.replace(/[^0-9]/g, '')).toMatch(/12345|1234/);
@@ -70,7 +70,7 @@ describe('formatValue — currency kind', () => {
   });
 });
 
-describe('formatValue — percent kind', () => {
+describe('formatValue - percent kind', () => {
   it('appends a % sign to the raw percentage (stored-value semantics)', () => {
     const s = formatValue(42.5, 'percent');
     expect(s).toContain('%');

@@ -117,7 +117,7 @@ export function CalibrationDialog({
     if (pixelDistance(pointA, pointB) <= 0) {
       setError(
         t('dwg_takeoff.cal_error_coincident', {
-          defaultValue: 'Points are identical — click two different points.',
+          defaultValue: 'Points are identical - click two different points.',
         }) as string,
       );
       return;

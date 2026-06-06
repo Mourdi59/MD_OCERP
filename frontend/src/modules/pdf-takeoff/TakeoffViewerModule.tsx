@@ -2285,7 +2285,7 @@ export default function TakeoffViewerModule({
       addToast({
         type: 'success',
         title: t('takeoff.linked_created', { defaultValue: 'Position created & linked' }),
-        message: `${ordinal} — ${newQty} ${canonicalUnit}`,
+        message: `${ordinal} - ${newQty} ${canonicalUnit}`,
       });
       setLinkingMeasurementId(null);
     } catch (err) {
@@ -2612,42 +2612,42 @@ export default function TakeoffViewerModule({
       color: 'bg-blue-50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-800',
       ic: 'text-blue-500',
       title: t('takeoff.landing_feat_click_title', { defaultValue: 'Click-to-measure' }),
-      desc: t('takeoff.landing_feat_click_desc', { defaultValue: 'Distance, area, polyline and count tools — click directly on the PDF to capture quantities.' }),
+      desc: t('takeoff.landing_feat_click_desc', { defaultValue: 'Distance, area, polyline and count tools - click directly on the PDF to capture quantities.' }),
     },
     {
       icon: Scan,
       color: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-800',
       ic: 'text-emerald-500',
       title: t('takeoff.landing_feat_extract_title', { defaultValue: 'AI text & table extraction' }),
-      desc: t('takeoff.landing_feat_extract_desc', { defaultValue: 'Pull schedules and BOQ tables straight out of the PDF text — each row comes back with a confidence score to review.' }),
+      desc: t('takeoff.landing_feat_extract_desc', { defaultValue: 'Pull schedules and BOQ tables straight out of the PDF text - each row comes back with a confidence score to review.' }),
     },
     {
       icon: Ruler,
       color: 'bg-violet-50 dark:bg-violet-950/20 border-violet-100 dark:border-violet-800',
       ic: 'text-violet-500',
       title: t('takeoff.landing_feat_scale_title', { defaultValue: 'Scale calibration' }),
-      desc: t('takeoff.landing_feat_scale_desc', { defaultValue: 'Two-point calibration or preset scales (1:50, 1:100) — every measurement stays accurate.' }),
+      desc: t('takeoff.landing_feat_scale_desc', { defaultValue: 'Two-point calibration or preset scales (1:50, 1:100) - every measurement stays accurate.' }),
     },
     {
       icon: Layers,
       color: 'bg-orange-50 dark:bg-orange-950/20 border-orange-100 dark:border-orange-800',
       ic: 'text-orange-500',
       title: t('takeoff.landing_feat_units_title', { defaultValue: 'Area · length · count' }),
-      desc: t('takeoff.landing_feat_units_desc', { defaultValue: 'Switch freely between m, m², m³, pcs — grouped by trade with hide/show per layer.' }),
+      desc: t('takeoff.landing_feat_units_desc', { defaultValue: 'Switch freely between m, m², m³, pcs - grouped by trade with hide/show per layer.' }),
     },
     {
       icon: Sparkles,
       color: 'bg-pink-50 dark:bg-pink-950/20 border-pink-100 dark:border-pink-800',
       ic: 'text-pink-500',
       title: t('takeoff.landing_feat_ai_title', { defaultValue: 'AI-assisted quantities' }),
-      desc: t('takeoff.landing_feat_ai_desc', { defaultValue: 'Let the AI extract walls, slabs and rooms from a drawing — you review and confirm before committing.' }),
+      desc: t('takeoff.landing_feat_ai_desc', { defaultValue: 'Let the AI extract walls, slabs and rooms from a drawing - you review and confirm before committing.' }),
     },
     {
       icon: Link2,
       color: 'bg-cyan-50 dark:bg-cyan-950/20 border-cyan-100 dark:border-cyan-800',
       ic: 'text-cyan-500',
       title: t('takeoff.landing_feat_export_title', { defaultValue: 'Export to BOQ' }),
-      desc: t('takeoff.landing_feat_export_desc', { defaultValue: 'Send measurements straight into your Bill of Quantities — with links back to the source drawing.' }),
+      desc: t('takeoff.landing_feat_export_desc', { defaultValue: 'Send measurements straight into your Bill of Quantities - with links back to the source drawing.' }),
     },
   ];
 
@@ -3099,7 +3099,7 @@ export default function TakeoffViewerModule({
                   onClick={handleStartCalibration}
                   className="flex items-center gap-1 px-1.5 py-1 rounded text-[10px] font-mono whitespace-nowrap shrink-0 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors border border-purple-300/50 dark:border-purple-700/50"
                   title={t('takeoff_viewer.calibrated_tooltip', {
-                    defaultValue: 'Calibrated · {{ratio}}{{atLen}} — click to recalibrate',
+                    defaultValue: 'Calibrated · {{ratio}}{{atLen}} - click to recalibrate',
                     ratio: formatScaleRatio(scale),
                     atLen: lastCalibration
                       ? ` @ ${lastCalibration.realLength} ${lastCalibration.unit}`
@@ -3121,7 +3121,7 @@ export default function TakeoffViewerModule({
                 <button
                   onClick={handleStartCalibration}
                   className="flex items-center gap-1 px-1.5 py-1 rounded text-[10px] font-mono whitespace-nowrap shrink-0 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors border border-amber-300/50 dark:border-amber-700/50"
-                  title={t('takeoff_viewer.uncalibrated_hint', { defaultValue: 'Drawing is not calibrated — measurements may be inaccurate. Click to calibrate.' })}
+                  title={t('takeoff_viewer.uncalibrated_hint', { defaultValue: 'Drawing is not calibrated - measurements may be inaccurate. Click to calibrate.' })}
                   data-testid="uncalibrated-badge"
                 >
                   <AlertTriangle size={11} className="text-amber-500 shrink-0" />
@@ -3728,7 +3728,7 @@ export default function TakeoffViewerModule({
                     {totalOtherPages > 0
                       ? t('takeoff_viewer.no_measurements_this_page', {
                           defaultValue:
-                            'No measurements on page {{page}}. {{count}} measurement(s) on other pages — open the Ledger tab to see them all.',
+                            'No measurements on page {{page}}. {{count}} measurement(s) on other pages - open the Ledger tab to see them all.',
                           page: currentPage,
                           count: totalOtherPages,
                         })
@@ -3881,7 +3881,7 @@ export default function TakeoffViewerModule({
                                   <div className="flex items-center justify-between mb-1.5">
                                     <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
                                       {m.linkedPositionId
-                                        ? t('takeoff_viewer.relink_title', { defaultValue: 'Linked — pick new or unlink' })
+                                        ? t('takeoff_viewer.relink_title', { defaultValue: 'Linked - pick new or unlink' })
                                         : t('takeoff_viewer.link_to_boq_title', { defaultValue: 'Link to BOQ position' })}
                                     </span>
                                     <button
@@ -3940,7 +3940,7 @@ export default function TakeoffViewerModule({
                                       onChange={(e) => handlePickerProjectChange(e.target.value)}
                                       className="text-[10px] rounded border border-border-subtle bg-surface-primary px-1 py-0.5 text-content-primary"
                                     >
-                                      <option value="">{t('takeoff.pick_project', { defaultValue: '— project —' })}</option>
+                                      <option value="">{t('takeoff.pick_project', { defaultValue: '- project -' })}</option>
                                       {linkPickerProjects.map((p) => (
                                         <option key={p.id} value={p.id}>{p.name}</option>
                                       ))}
@@ -3954,7 +3954,7 @@ export default function TakeoffViewerModule({
                                       <option value="">
                                         {linkBoqsLoading
                                           ? t('common.loading', { defaultValue: 'Loading...' })
-                                          : t('takeoff.pick_boq', { defaultValue: '— BOQ —' })}
+                                          : t('takeoff.pick_boq', { defaultValue: '- BOQ -' })}
                                       </option>
                                       {linkPickerBoqs.map((b) => (
                                         <option key={b.id} value={b.id}>{b.name}</option>
@@ -4005,7 +4005,7 @@ export default function TakeoffViewerModule({
                                       </div>
                                     ) : linkBoqPositions.filter((p) => p.unit).length === 0 ? (
                                       <p className="text-[10px] text-content-tertiary py-1">
-                                        {t('takeoff.link_boq_empty', { defaultValue: 'BOQ is empty — switch to "Create new".' })}
+                                        {t('takeoff.link_boq_empty', { defaultValue: 'BOQ is empty - switch to "Create new".' })}
                                       </p>
                                     ) : (
                                       <>

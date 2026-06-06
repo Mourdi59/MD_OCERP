@@ -471,7 +471,7 @@ export function MatchWizardFlow() {
         project_id: projectId!,
         source: 'bim',
         bim_model_id: modelId,
-        name: `${project?.name ?? 'Match'} — ${new Date().toLocaleDateString()}`,
+        name: `${project?.name ?? 'Match'} - ${new Date().toLocaleDateString()}`,
         construction_stage: stageHint || null,
         use_net_quantities: useNet,
         auto_confirm_threshold: autoThreshold,
@@ -806,7 +806,7 @@ export function MatchWizardFlow() {
         <p className="min-w-0 flex-1 text-xs leading-snug text-content-secondary">
           {t('match_elements.beta_blurb', {
             defaultValue:
-              'Match Elements is a new section and still has rough edges. Found a bug or have an idea? Please file an issue — every report tightens the next release.',
+              'Match Elements is a new section and still has rough edges. Found a bug or have an idea? Please file an issue - every report tightens the next release.',
           })}
         </p>
         <a
@@ -840,7 +840,7 @@ export function MatchWizardFlow() {
         <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-content-primary">
           <Wrench className="h-4 w-4 shrink-0 text-oe-blue" />
           {t('match.wizard.setupTools', {
-            defaultValue: 'Setup & tools — language model, catalogues, analytics, templates',
+            defaultValue: 'Setup & tools - language model, catalogues, analytics, templates',
           })}
           <ChevronRight className="ml-auto h-4 w-4 text-content-tertiary transition-transform group-open:rotate-90" />
         </summary>
@@ -872,7 +872,7 @@ export function MatchWizardFlow() {
         <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-content-primary">
           <Info className="h-4 w-4 shrink-0 text-oe-blue" />
           {t('match.wizard.howItWorks', {
-            defaultValue: 'How matching works — read this first',
+            defaultValue: 'How matching works - read this first',
           })}
           <ChevronRight className="ml-auto h-4 w-4 text-content-tertiary transition-transform group-open:rotate-90" />
         </summary>
@@ -902,7 +902,7 @@ export function MatchWizardFlow() {
           <p className="text-xs text-content-tertiary">
             {t('match.wizard.howItWorksVector', {
               defaultValue:
-                'Semantic search needs a running vector database (Qdrant). If it is offline, matching still works using keyword + rule-based scoring — accuracy is just lower. The status above tells you which mode you are in.',
+                'Semantic search needs a running vector database (Qdrant). If it is offline, matching still works using keyword + rule-based scoring - accuracy is just lower. The status above tells you which mode you are in.',
             })}
           </p>
         </div>
@@ -1040,7 +1040,7 @@ export function MatchWizardFlow() {
                           : loadedCatalogues.length === 0
                             ? t('match.wizard.catalogueNoneLoaded', {
                                 defaultValue:
-                                  'No catalogues loaded yet — install one from the Cost catalogues panel on /match-elements home.',
+                                  'No catalogues loaded yet - install one from the Cost catalogues panel on /match-elements home.',
                               })
                             : t('match.wizard.catalogueHelpInline', {
                                 defaultValue:
@@ -1119,7 +1119,7 @@ export function MatchWizardFlow() {
                   <div className="rounded-lg border border-border-light bg-surface-muted p-4 text-sm text-content-secondary">
                     {t('match.wizard.catalogueNote', {
                       defaultValue:
-                        'If your region has no dedicated catalogue, pick a multilingual one (e.g. EN) — the search model is multilingual and still returns real candidates.',
+                        'If your region has no dedicated catalogue, pick a multilingual one (e.g. EN) - the search model is multilingual and still returns real candidates.',
                     })}
                   </div>
                 </div>
@@ -1250,7 +1250,7 @@ export function MatchWizardFlow() {
                   <p className="text-sm text-content-secondary">
                     {t('match.wizard.runHelp', {
                       defaultValue:
-                        'Each group is embedded with a multilingual model and ranked against the cost catalogue. This can take a minute on large models — progress is live below.',
+                        'Each group is embedded with a multilingual model and ranked against the cost catalogue. This can take a minute on large models - progress is live below.',
                     })}
                   </p>
                   {!sessionId ? (

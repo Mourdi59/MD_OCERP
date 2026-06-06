@@ -564,7 +564,7 @@ if (typeof window !== 'undefined') {
         stage: 'bim_upload.stage_stalled',
         errorMessage:
           job.errorMessage ??
-          'Upload abandoned after 45 min — reload to retry if the file is still needed.',
+          'Upload abandoned after 45 min - reload to retry if the file is still needed.',
         completedAt: now,
       });
       dirty = true;

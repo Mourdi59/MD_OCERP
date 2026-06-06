@@ -22,13 +22,13 @@ import { copyToClipboard } from '@/shared/lib/browser';
 const REPO_URL = 'https://github.com/datadrivenconstruction/OpenConstructionERP';
 const CASE_STUDY_EMAIL = 'info@datadrivenconstruction.io';
 const CASE_STUDY_MAILTO = `mailto:${CASE_STUDY_EMAIL}?subject=${encodeURIComponent(
-  'Case study / article — OpenConstructionERP',
+  'Case study / article - OpenConstructionERP',
 )}&body=${encodeURIComponent(
-  'Hi DDC team,\n\nI have a case study / video / article about how we use OpenConstructionERP that you may want to share.\n\nLink / attachment:\n\nA few lines about the project:\n\n— ',
+  'Hi DDC team,\n\nI have a case study / video / article about how we use OpenConstructionERP that you may want to share.\n\nLink / attachment:\n\nA few lines about the project:\n\n- ',
 )}`;
 
 const SHARE_TEXT =
-  'OpenConstructionERP — free open-source construction cost estimation platform (BOQ, BIM takeoff, AI, 26 languages). Self-hosted. AGPL-3.0.';
+  'OpenConstructionERP - free open-source construction cost estimation platform (BOQ, BIM takeoff, AI, 26 languages). Self-hosted. AGPL-3.0.';
 
 const TWITTER_URL = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
   SHARE_TEXT,
@@ -176,7 +176,7 @@ export function SupportUsButton({ condensed = false }: { condensed?: boolean } =
           'transition-all duration-300 ease-out',
         )}
         title={t('support.button_tooltip', {
-          defaultValue: 'Support the project — star us or share',
+          defaultValue: 'Support the project - star us or share',
         })}
         aria-label={t('support.button_aria', { defaultValue: 'Support us' })}
       >
@@ -449,7 +449,7 @@ function SupportUsModal({ onClose, copied, setCopied }: ModalProps) {
               <p className="mt-1 text-xs text-content-secondary leading-relaxed">
                 {t('support.action_case_study_body', {
                   defaultValue:
-                    'Show us how you use OpenConstructionERP — a video, a case study, a LinkedIn write-up. You can send us the link directly, or just tag @DataDrivenConstruction in your post — we will spot it and re-share through our newsletter and social channels, where tens of thousands of construction professionals and senior industry experts follow our work. Email for links: ',
+                    'Show us how you use OpenConstructionERP - a video, a case study, a LinkedIn write-up. You can send us the link directly, or just tag @DataDrivenConstruction in your post - we will spot it and re-share through our newsletter and social channels, where tens of thousands of construction professionals and senior industry experts follow our work. Email for links: ',
                 })}
                 <span className="font-semibold text-purple-700 dark:text-purple-300">
                   {CASE_STUDY_EMAIL}
@@ -470,7 +470,7 @@ function SupportUsModal({ onClose, copied, setCopied }: ModalProps) {
           <p className="text-xs text-content-secondary leading-relaxed">
             {t('support.thanks', {
               defaultValue:
-                'Thank you. Every star and every share genuinely keeps this project alive — built with ❤️ for the construction community.',
+                'Thank you. Every star and every share genuinely keeps this project alive - built with ❤️ for the construction community.',
             })}
           </p>
         </div>

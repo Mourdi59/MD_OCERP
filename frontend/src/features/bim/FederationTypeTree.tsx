@@ -183,7 +183,7 @@ export function FederationTypeTree({ federationId, onSelectClass }: Props) {
       >
         {t('bim.federation.type_tree.empty', {
           defaultValue:
-            'No elements yet — add a model with imported elements to populate the type tree.',
+            'No elements yet - add a model with imported elements to populate the type tree.',
         })}
       </div>
     );

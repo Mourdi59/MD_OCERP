@@ -66,7 +66,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
     const name = err instanceof Error ? err.name : '';
     if (name === 'AbortError' || name === 'TimeoutError') {
       throw new Error(
-        'Request cancelled or timed out — the backend did not respond in time.',
+        'Request cancelled or timed out - the backend did not respond in time.',
       );
     }
     throw err;

@@ -90,7 +90,7 @@ function Avatar({ member, size = 32, className = '' }: AvatarProps) {
     <div
       role="img"
       aria-label={`${member.full_name || member.email} (${member.role})`}
-      title={`${member.full_name || member.email} — ${member.role}`}
+      title={`${member.full_name || member.email} - ${member.role}`}
       className={`inline-flex items-center justify-center rounded-full border-2 border-white text-white font-semibold select-none ${className}`}
       style={{
         width: size,

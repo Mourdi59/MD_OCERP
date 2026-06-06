@@ -117,7 +117,7 @@ export function AboutPage() {
             </div>
             <ul className="space-y-1.5">
               {[
-                { v: '3.12.0', date: '2026-05-20', note: t('about.recent_3_12_0', { defaultValue: 'Wave 5/6/7 pro-grade — BOQ + Cost Intel + Clash A4 + Files CDE' }) },
+                { v: '3.12.0', date: '2026-05-20', note: t('about.recent_3_12_0', { defaultValue: 'Wave 5/6/7 pro-grade - BOQ + Cost Intel + Clash A4 + Files CDE' }) },
                 { v: '3.11.0', date: '2026-05-20', note: t('about.recent_3_11_0', { defaultValue: 'Wave 3/4 modules · Validation@Import · X84 export · /about redesign' }) },
                 { v: '3.10.0', date: '2026-05-19', note: t('about.recent_3_10_0', { defaultValue: '/files ACC-grade wave · Clash collab/metadata · match polish' }) },
               ].map(r => (
@@ -172,7 +172,7 @@ export function AboutPage() {
             ))}
           </div>
           <p className="mt-auto pt-4 text-sm text-content-secondary leading-relaxed">
-            {t('about.platform_desc', { defaultValue: 'OpenConstructionERP covers the full construction estimation workflow — BOQ editing, 4D scheduling, 5D cost modeling, AI-powered estimation, CAD/BIM quantity takeoff (RVT, IFC, DWG, DGN), tendering, and reporting. Supports regional classification standards and custom schemas.' })}
+            {t('about.platform_desc', { defaultValue: 'OpenConstructionERP covers the full construction estimation workflow - BOQ editing, 4D scheduling, 5D cost modeling, AI-powered estimation, CAD/BIM quantity takeoff (RVT, IFC, DWG, DGN), tendering, and reporting. Supports regional classification standards and custom schemas.' })}
           </p>
         </div>
       </Card>
@@ -191,12 +191,12 @@ export function AboutPage() {
               <MessageCircle size={20} strokeWidth={1.75} className="shrink-0 mt-0.5 text-oe-blue" />
               <div className="min-w-0 flex-1">
                 <h3 className="text-sm font-semibold text-content-primary">
-                  {t('about.community_title', { defaultValue: 'Join the community — your feedback shapes the roadmap' })}
+                  {t('about.community_title', { defaultValue: 'Join the community - your feedback shapes the roadmap' })}
                 </h3>
                 <p className="text-xs text-content-secondary mt-1 leading-relaxed">
                   {t('about.community_desc', {
                     defaultValue:
-                      'Share what works, what breaks, and what you want next. Every release in the changelog started as a user request. Pick the channel you already use — we read all three.',
+                      'Share what works, what breaks, and what you want next. Every release in the changelog started as a user request. Pick the channel you already use - we read all three.',
                   })}
                 </p>
               </div>
@@ -232,7 +232,7 @@ export function AboutPage() {
                     </span>
                   </div>
                   <p className="text-xs text-content-secondary mt-0.5 leading-snug">
-                    {t('about.community_telegram_v2', { defaultValue: 'Fastest replies from the maintainers — questions, ideas, bug reports, partnerships.' })}
+                    {t('about.community_telegram_v2', { defaultValue: 'Fastest replies from the maintainers - questions, ideas, bug reports, partnerships.' })}
                   </p>
                 </div>
                 <ExternalLink size={13} className="text-content-quaternary group-hover:text-[#26A5E4] shrink-0" />
@@ -286,7 +286,7 @@ export function AboutPage() {
             <p className="mt-auto pt-4 text-[11px] text-content-tertiary text-center">
               {t('about.community_cta', {
                 defaultValue:
-                  'Have a feature idea? A bug? A workflow we haven\'t thought of? Drop a message — we reply.',
+                  'Have a feature idea? A bug? A workflow we haven\'t thought of? Drop a message - we reply.',
               })}
             </p>
         </div>
@@ -319,13 +319,13 @@ export function AboutPage() {
                 <p>
                   {t('about.founder_bio_p1', {
                     defaultValue:
-                      'Over the past ten years, I have been deeply involved in resource management for construction projects. This journey inevitably led me to study the history of the technologies that have shaped the industry — from the earliest attempts at design automation to modern ERP platforms (the series of articles "The Lobbyists\' Wars and the Development of BIM" and "The History of the BIM Map"). Without understanding where we came from, it is impossible to see where we are going.',
+                      'Over the past ten years, I have been deeply involved in resource management for construction projects. This journey inevitably led me to study the history of the technologies that have shaped the industry - from the earliest attempts at design automation to modern ERP platforms (the series of articles "The Lobbyists\' Wars and the Development of BIM" and "The History of the BIM Map"). Without understanding where we came from, it is impossible to see where we are going.',
                   })}
                 </p>
                 <p>
                   <Trans
                     i18nKey="about.founder_bio_p2"
-                    defaults='Over the years, dozens of articles have come off my desk, read by millions of professionals around the world. At the same time, I&rsquo;ve consulted with major construction and consulting firms, developers, and software vendors themselves on data management in projects — helping them navigate processes where data is not a byproduct but the foundation for decision-making. This work gave me a rare opportunity to see the industry from both sides: through the eyes of those who create the tools and through the eyes of those who use them in real projects every day. Many of these observations and reflections are collected in my book <book>Data-Driven Construction</book>, which is now available in 16 languages — <books>datadrivenconstruction.io/books</books>.'
+                    defaults='Over the years, dozens of articles have come off my desk, read by millions of professionals around the world. At the same time, I&rsquo;ve consulted with major construction and consulting firms, developers, and software vendors themselves on data management in projects - helping them navigate processes where data is not a byproduct but the foundation for decision-making. This work gave me a rare opportunity to see the industry from both sides: through the eyes of those who create the tools and through the eyes of those who use them in real projects every day. Many of these observations and reflections are collected in my book <book>Data-Driven Construction</book>, which is now available in 16 languages - <books>datadrivenconstruction.io/books</books>.'
                     components={{
                       book: (
                         <a
@@ -349,7 +349,7 @@ export function AboutPage() {
                 <p>
                   <Trans
                     i18nKey="about.founder_bio_p3"
-                    defaults='Two other things have kept me busy: helping non-developers get into proprietary formats that were never meant to be opened, and finding a cleaner way to describe construction work through a resource model. These efforts have resulted in free tools — <cad>DDC CAD/BIM data converters</cad> (Revit, IFC, DWG, DGN → structured data), <gh>available on GitHub</gh>, and the multilingual <cwicr>CWICR database</cwicr> of construction works and resources — over 55,000 items in 11 languages, published as <cwicr>OpenConstructionEstimate-DDC-CWICR</cwicr>. All of this was a necessary step toward an idea I&rsquo;ve been pursuing for the past decade — an open-source modular ERP for the construction industry.'
+                    defaults='Two other things have kept me busy: helping non-developers get into proprietary formats that were never meant to be opened, and finding a cleaner way to describe construction work through a resource model. These efforts have resulted in free tools - <cad>DDC CAD/BIM data converters</cad> (Revit, IFC, DWG, DGN → structured data), <gh>available on GitHub</gh>, and the multilingual <cwicr>CWICR database</cwicr> of construction works and resources - over 55,000 items in 11 languages, published as <cwicr>OpenConstructionEstimate-DDC-CWICR</cwicr>. All of this was a necessary step toward an idea I&rsquo;ve been pursuing for the past decade - an open-source modular ERP for the construction industry.'
                     components={{
                       cad: (
                         <a
@@ -381,13 +381,13 @@ export function AboutPage() {
                 <blockquote className="my-4 rounded-r-lg border-l-4 border-oe-blue bg-oe-blue/[0.04] py-3 px-4 text-[15px] italic text-content-primary leading-relaxed">
                   {t('about.founder_bio_p4', {
                     defaultValue:
-                      "The recent generation of AI tooling finally made it feasible to consolidate that work — methodology, data models, and prior implementations — into a single platform. It's now public and open source.",
+                      "The recent generation of AI tooling finally made it feasible to consolidate that work - methodology, data models, and prior implementations - into a single platform. It's now public and open source.",
                   })}
                 </blockquote>
                 <p className="border-l-2 border-oe-blue/40 pl-3 italic text-content-primary">
                   {t('about.founder_bio_p5', {
                     defaultValue:
-                      'Progress is born from dialogue — from the clash of perspectives and openness to new approaches. I would be grateful if you would be willing to participate in this conversation on the inevitable Uberization of the construction industry and the transparency of cost and time estimation processes for construction projects.',
+                      'Progress is born from dialogue - from the clash of perspectives and openness to new approaches. I would be grateful if you would be willing to participate in this conversation on the inevitable Uberization of the construction industry and the transparency of cost and time estimation processes for construction projects.',
                   })}
                 </p>
               </div>
@@ -430,7 +430,7 @@ export function AboutPage() {
               </h3>
             </div>
             <p className="text-xs text-content-tertiary mb-6">
-              {t('about.ddc_ecosystem_subtitle', { defaultValue: 'Projects mentioned above — every one is open-source or has a free tier.' })}
+              {t('about.ddc_ecosystem_subtitle', { defaultValue: 'Projects mentioned above - every one is open-source or has a free tier.' })}
             </p>
 
             {/* ── Subsection 1: Flagship products ── */}
@@ -439,10 +439,10 @@ export function AboutPage() {
             </p>
             <ul className="mb-6 space-y-2.5">
               {[
-                { href: 'https://datadrivenconstruction.io', label: 'DataDrivenConstruction', desc: t('about.ddc_link_lab', { defaultValue: 'Lab homepage — research & consulting' }) },
+                { href: 'https://datadrivenconstruction.io', label: 'DataDrivenConstruction', desc: t('about.ddc_link_lab', { defaultValue: 'Lab homepage - research & consulting' }) },
                 { href: 'https://datadrivenconstruction.io/books/', label: 'DDC Guidebook', desc: t('about.ddc_link_book', { defaultValue: 'Reference reading, free, 16 languages' }) },
                 { href: 'https://github.com/datadrivenconstruction/cad2data-Revit-IFC-DWG-DGN-pipeline-with-conversion-validation-qto', label: 'CAD-BIM Converter', desc: t('about.ddc_link_cad', { defaultValue: 'Pipeline: Revit · IFC · DWG · DGN → data' }) },
-                { href: 'https://datadrivenconstruction.io/excel-plugin/', label: 'DDC Excel Plugin', desc: t('about.ddc_link_excel', { defaultValue: 'Spreadsheet bridge — pull live data into Excel' }) },
+                { href: 'https://datadrivenconstruction.io/excel-plugin/', label: 'DDC Excel Plugin', desc: t('about.ddc_link_excel', { defaultValue: 'Spreadsheet bridge - pull live data into Excel' }) },
               ].map(item => (
                 <li key={item.href}>
                   <a
@@ -543,7 +543,7 @@ export function AboutPage() {
             </h2>
           </div>
           <p className="text-sm text-content-secondary leading-relaxed mb-5 max-w-3xl">
-            {t('about.services_desc_v2', { defaultValue: 'Need a custom build, a workshop, or an outside expert on data + cost workflows? Data Driven Construction delivers three engagement shapes — pick what fits and we scope from there.' })}
+            {t('about.services_desc_v2', { defaultValue: 'Need a custom build, a workshop, or an outside expert on data + cost workflows? Data Driven Construction delivers three engagement shapes - pick what fits and we scope from there.' })}
           </p>
 
           {/* Three numbered service cards — Build · Workshops · Consulting */}
@@ -705,7 +705,7 @@ export function AboutPage() {
                       {t('about.support_star', { defaultValue: 'Star on GitHub' })}
                     </p>
                     <p className="text-2xs text-content-tertiary leading-snug mt-0.5">
-                      {t('about.support_star_desc', { defaultValue: 'Show your support — it takes 2 seconds and helps others discover the project' })}
+                      {t('about.support_star_desc', { defaultValue: 'Show your support - it takes 2 seconds and helps others discover the project' })}
                     </p>
                   </div>
                   <ArrowRight size={14} className="shrink-0 text-content-quaternary group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
@@ -846,7 +846,7 @@ export function AboutPage() {
           {/* ── Right column — Part-level table of contents (narrower) ── */}
           <div className="lg:col-span-3">
             <p className="text-2xs font-semibold uppercase tracking-wider text-content-tertiary mb-3">
-              {t('about.book_toc_label', { defaultValue: 'Inside the book — 10 parts' })}
+              {t('about.book_toc_label', { defaultValue: 'Inside the book - 10 parts' })}
             </p>
             <ol className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {[
@@ -855,11 +855,11 @@ export function AboutPage() {
                 { num: 'III',  title: t('about.book_p3',  { defaultValue: 'Data framework in construction business processes' }) },
                 { num: 'IV',   title: t('about.book_p4',  { defaultValue: 'Data quality: organization, structuring, modeling' }) },
                 { num: 'V',    title: t('about.book_p5',  { defaultValue: 'Cost & time calculations: incorporating data into processes' }) },
-                { num: 'VI',   title: t('about.book_p6',  { defaultValue: 'CAD & BIM — marketing, reality and the future of design data' }) },
+                { num: 'VI',   title: t('about.book_p6',  { defaultValue: 'CAD & BIM - marketing, reality and the future of design data' }) },
                 { num: 'VII',  title: t('about.book_p7',  { defaultValue: 'Data-driven decision-making, analytics and automation' }) },
                 { num: 'VIII', title: t('about.book_p8',  { defaultValue: 'Data storage and management in construction' }) },
                 { num: 'IX',   title: t('about.book_p9',  { defaultValue: 'Big Data, machine learning and forecasts' }) },
-                { num: 'X',    title: t('about.book_p10', { defaultValue: 'The construction industry in the digital age — opportunities & challenges' }) },
+                { num: 'X',    title: t('about.book_p10', { defaultValue: 'The construction industry in the digital age - opportunities & challenges' }) },
               ].map(p => (
                 <li key={p.num} className="group flex items-start gap-2.5 rounded-lg border border-border-light bg-surface-secondary/30 px-3 py-2.5 hover:border-oe-blue/30 hover:bg-oe-blue/[0.025] transition-colors">
                   <span className="shrink-0 inline-flex h-6 min-w-[2rem] items-center justify-center rounded-md bg-oe-blue/10 text-oe-blue font-mono text-2xs font-bold ring-1 ring-oe-blue/20 px-1.5">
@@ -905,9 +905,9 @@ export function AboutPage() {
             <ul className="space-y-1.5 text-xs text-content-secondary mb-4">
               {[
                 t('about.docs_b1', { defaultValue: 'Installation & deployment guides (Docker, VPS, Kubernetes)' }),
-                t('about.docs_b2', { defaultValue: 'Feature walkthroughs — BOQ editor, BIM viewer, takeoff' }),
+                t('about.docs_b2', { defaultValue: 'Feature walkthroughs - BOQ editor, BIM viewer, takeoff' }),
                 t('about.docs_b3', { defaultValue: 'OpenAPI reference for all 100+ backend modules' }),
-                t('about.docs_b4', { defaultValue: 'Module SDK — write your own plugin' }),
+                t('about.docs_b4', { defaultValue: 'Module SDK - write your own plugin' }),
               ].map((b, i) => (
                 <li key={i} className="flex items-start gap-2">
                   <ArrowRight size={11} className="mt-1 shrink-0 text-oe-blue" />
@@ -925,7 +925,7 @@ export function AboutPage() {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {[
-                { href: 'https://github.com/datadrivenconstruction/OpenConstructionERP/tree/main/docs', label: t('about.docs_pop_quickstart', { defaultValue: 'Quick start — Docker compose' }) },
+                { href: 'https://github.com/datadrivenconstruction/OpenConstructionERP/tree/main/docs', label: t('about.docs_pop_quickstart', { defaultValue: 'Quick start - Docker compose' }) },
                 { href: 'https://github.com/datadrivenconstruction/OpenConstructionERP/blob/main/docs/BIM-STORAGE-ARCHITECTURE.md', label: t('about.docs_pop_bim', { defaultValue: 'Import BIM (RVT/IFC) → BOQ' }) },
                 { href: 'https://github.com/datadrivenconstruction/OpenConstructionERP/tree/main/docs', label: t('about.docs_pop_gaeb', { defaultValue: 'GAEB X83/X84 import & export' }) },
                 { href: 'https://github.com/datadrivenconstruction/OpenConstructionERP/tree/main/docs', label: t('about.docs_pop_takeoff', { defaultValue: 'PDF takeoff with annotations' }) },
@@ -971,12 +971,12 @@ export function AboutPage() {
                   {t('about.license_title', { defaultValue: 'License & Open Source' })}
                 </h2>
                 <p className="text-xs text-content-tertiary">
-                  {t('about.license_subtitle', { defaultValue: 'AGPL-3.0 — free for any use, including commercial' })}
+                  {t('about.license_subtitle', { defaultValue: 'AGPL-3.0 - free for any use, including commercial' })}
                 </p>
               </div>
             </div>
             <p className="text-sm text-content-secondary leading-relaxed mb-4">
-              {t('about.license_desc_short', { defaultValue: 'GNU Affero General Public License v3.0 — copyleft. The full text ships with the source and is also available at gnu.org/licenses/agpl-3.0.' })}
+              {t('about.license_desc_short', { defaultValue: 'GNU Affero General Public License v3.0 - copyleft. The full text ships with the source and is also available at gnu.org/licenses/agpl-3.0.' })}
             </p>
 
             {/* ── You can / You must — concrete bullet pairs so the AGPL

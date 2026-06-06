@@ -443,7 +443,7 @@ export function AISmartPanel({
           )}
           {prereqResult && prereqResult.suggestions.length === 0 && (
             <p className="text-xs text-text-muted italic">
-              {t('boq.ai_no_prereqs', { defaultValue: 'No missing items found — BOQ looks complete for this position.' })}
+              {t('boq.ai_no_prereqs', { defaultValue: 'No missing items found - BOQ looks complete for this position.' })}
             </p>
           )}
         </ActionCard>
@@ -600,7 +600,7 @@ export function AISmartPanel({
       <div className="shrink-0 px-4 py-2 border-t border-border-light text-[10px] text-text-muted">
         <div className="flex items-center gap-1">
           <Sparkles size={10} />
-          {t('boq.ai_smart_footer', { defaultValue: 'Powered by your AI provider (Settings > AI). Results are suggestions — always review.' })}
+          {t('boq.ai_smart_footer', { defaultValue: 'Powered by your AI provider (Settings > AI). Results are suggestions - always review.' })}
         </div>
       </div>
     </div>

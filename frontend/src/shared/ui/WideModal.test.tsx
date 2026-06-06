@@ -208,7 +208,7 @@ describe('WideModalSection', () => {
 //   * WideModalField with required=false leaves the inner control's
 //     aria-required untouched (no false injection).
 
-describe('WideModal — controlled open toggling', () => {
+describe('WideModal - controlled open toggling', () => {
   it('removes the dialog from the DOM when open flips to false', () => {
     const { rerender } = render(
       <WideModal open onClose={() => undefined} title="Toggle">
@@ -252,7 +252,7 @@ describe('WideModal — controlled open toggling', () => {
   });
 });
 
-describe('WideModal — title and footer composition', () => {
+describe('WideModal - title and footer composition', () => {
   it('renders the title heading element and the footer slot together', () => {
     render(
       <WideModal
@@ -288,7 +288,7 @@ describe('WideModal — title and footer composition', () => {
   });
 });
 
-describe('WideModal — backdrop interactions', () => {
+describe('WideModal - backdrop interactions', () => {
   it('clicking the panel does not bubble to the backdrop handler', () => {
     const onClose = vi.fn();
     render(
@@ -314,7 +314,7 @@ describe('WideModal — backdrop interactions', () => {
   });
 });
 
-describe('WideModalField — required=false (no aria injection)', () => {
+describe('WideModalField - required=false (no aria injection)', () => {
   it('does NOT inject aria-required on the child when required is omitted', () => {
     render(
       <WideModalField label="Phone">

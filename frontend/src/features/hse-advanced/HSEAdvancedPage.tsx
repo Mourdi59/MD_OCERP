@@ -977,7 +977,7 @@ function IncidentDetailDrawer({
 
   return (
     <ModalShell
-      title={`${t('hse_advanced.investigation', { defaultValue: 'Investigation' })} — ${item.incident_ref}`}
+      title={`${t('hse_advanced.investigation', { defaultValue: 'Investigation' })} - ${item.incident_ref}`}
       onClose={onClose}
       size="max-w-3xl"
       footer={
@@ -1390,7 +1390,7 @@ function JSADetailDrawer({
 
   return (
     <ModalShell
-      title={`${t('hse_advanced.jsa', { defaultValue: 'JSA' })} — ${item.task_description.slice(0, 60)}`}
+      title={`${t('hse_advanced.jsa', { defaultValue: 'JSA' })} - ${item.task_description.slice(0, 60)}`}
       onClose={onClose}
       size="max-w-3xl"
       footer={
@@ -1398,7 +1398,7 @@ function JSADetailDrawer({
           <span className="text-xs text-content-tertiary">
             {actions.length === 0
               ? t('hse_advanced.jsa_terminal', {
-                  defaultValue: 'This JSA is archived — no further actions.',
+                  defaultValue: 'This JSA is archived - no further actions.',
                 })
               : t('hse_advanced.jsa_fsm_hint', {
                   defaultValue: 'Lifecycle: draft → review → approved → active → archived.',
@@ -1989,7 +1989,7 @@ function PermitDetailDrawer({
 
   return (
     <ModalShell
-      title={`${item.permit_number} — ${item.permit_type.replace(/_/g, ' ')}`}
+      title={`${item.permit_number} - ${item.permit_type.replace(/_/g, ' ')}`}
       onClose={onClose}
       size="max-w-2xl"
       footer={
@@ -2269,7 +2269,7 @@ function PermitPrereqChecklist({
       {editable && (
         <p className="text-2xs text-content-tertiary mb-1.5">
           {t('hse_advanced.prereq_editable_hint', {
-            defaultValue: 'Tick each gate as it is verified — all must pass before activation.',
+            defaultValue: 'Tick each gate as it is verified - all must pass before activation.',
           })}
         </p>
       )}
@@ -2645,7 +2645,7 @@ function PPETab({ projectId }: { projectId: string }) {
         title={t('hse_advanced.no_ppe', { defaultValue: 'No PPE issued yet' })}
         description={t('hse_advanced.no_ppe_desc', {
           defaultValue:
-            'Log PPE issued to workers — hard hats, harnesses, respirators, hearing protection. Tracks expiry, return-by dates and inventory.',
+            'Log PPE issued to workers - hard hats, harnesses, respirators, hearing protection. Tracks expiry, return-by dates and inventory.',
         })}
         action={{
           label: t('hse_advanced.new_ppe', { defaultValue: 'Issue PPE' }),
@@ -2878,7 +2878,7 @@ function PPEDetailDrawer({ item, onClose }: { item: PPEIssue; onClose: () => voi
   return (
     <ModalShell
       title={`${item.ppe_type.replace(/_/g, ' ')}${
-        item.recipient_name ? ` — ${item.recipient_name}` : ''
+        item.recipient_name ? ` - ${item.recipient_name}` : ''
       }`}
       onClose={onClose}
       size="max-w-xl"
@@ -2956,7 +2956,7 @@ function PPEDetailDrawer({ item, onClose }: { item: PPEIssue; onClose: () => voi
           >
             <DateDisplay value={item.valid_until} />
             {expiryDays !== null &&
-              ` — ${
+              ` - ${
                 expiryDays < 0
                   ? t('hse_advanced.expired_days_ago', {
                       defaultValue: '{{n}}d ago',
@@ -3356,7 +3356,7 @@ function AuditDetailDrawer({
     <ModalShell
       title={`${t(`hse_advanced.audit_type_${item.audit_type}`, {
         defaultValue: item.audit_type.replace(/_/g, ' '),
-      })} — ${t('hse_advanced.tab_audits', { defaultValue: 'Audit' })}`}
+      })} - ${t('hse_advanced.tab_audits', { defaultValue: 'Audit' })}`}
       onClose={onClose}
       size="max-w-3xl"
       footer={
@@ -3364,7 +3364,7 @@ function AuditDetailDrawer({
           <span className="text-xs text-content-tertiary">
             {isCompleted
               ? t('hse_advanced.audit_done_hint', {
-                  defaultValue: 'Audit completed — score is locked from the recorded findings.',
+                  defaultValue: 'Audit completed - score is locked from the recorded findings.',
                 })
               : t('hse_advanced.audit_open_hint', {
                   defaultValue: 'Record each finding, then complete the audit to lock the score.',
@@ -4105,7 +4105,7 @@ function CAPADetailDrawer({
 
   return (
     <ModalShell
-      title={`${t('hse_advanced.tab_capa', { defaultValue: 'CAPA' })} — ${item.title.slice(0, 60)}`}
+      title={`${t('hse_advanced.tab_capa', { defaultValue: 'CAPA' })} - ${item.title.slice(0, 60)}`}
       onClose={onClose}
       size="max-w-3xl"
       footer={

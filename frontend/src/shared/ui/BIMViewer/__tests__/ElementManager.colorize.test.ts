@@ -93,7 +93,7 @@ function colorHex(mesh: THREE.Mesh): string {
 
 /* ── setColorByProperty (fire-rating) ────────────────────────────────────── */
 
-describe('ElementManager.setColorByProperty — fire-rating', () => {
+describe('ElementManager.setColorByProperty - fire-rating', () => {
   let scene: SceneManager;
   let mgr: ElementManager;
 
@@ -146,7 +146,7 @@ describe('ElementManager.setColorByProperty — fire-rating', () => {
 
 /* ── getDistinctPropertyValues / getAvailablePropertyKeys ──────────────── */
 
-describe('ElementManager — property introspection', () => {
+describe('ElementManager - property introspection', () => {
   let scene: SceneManager;
   let mgr: ElementManager;
 
@@ -174,7 +174,7 @@ describe('ElementManager — property introspection', () => {
 
 /* ── hide / showAll / isolate ────────────────────────────────────────── */
 
-describe('ElementManager — hide / showAll / isolate', () => {
+describe('ElementManager - hide / showAll / isolate', () => {
   let scene: SceneManager;
   let mgr: ElementManager;
 

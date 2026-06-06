@@ -592,7 +592,7 @@ function RoomsTab({ data }: { data: AccommodationDetail }) {
               onClick={() => setAssignRoom(r)}
               data-testid={`accommodation-room-${r.label}`}
               aria-label={t('accommodation.room.tile_aria', {
-                defaultValue: 'Room {{label}} — {{status}}',
+                defaultValue: 'Room {{label}} - {{status}}',
                 label: r.label,
                 status: t(`accommodation.room.status.${r.status}`, {
                   defaultValue: r.status,
@@ -702,7 +702,7 @@ function AssignOccupantModal({
       open
       onClose={onClose}
       title={t('accommodation.assign.title', {
-        defaultValue: 'Assign occupant — {{label}}',
+        defaultValue: 'Assign occupant - {{label}}',
         label: room.label,
       })}
       size="md"
@@ -732,7 +732,7 @@ function AssignOccupantModal({
           <AlertTriangle className="mr-1.5 inline h-3.5 w-3.5" aria-hidden="true" />
           {t('accommodation.assign.disabled', {
             defaultValue:
-              'Room is {{status}} — change its status before booking.',
+              'Room is {{status}} - change its status before booking.',
             status: room.status,
           })}
         </div>
@@ -842,7 +842,7 @@ function BookingsTab({ data }: { data: AccommodationDetail }) {
           })}
           description={t('accommodation.bookings.no_rooms_desc', {
             defaultValue:
-              'Bookings live on rooms. Add some rooms first — Inventory tab → Add rooms — then come back here.',
+              'Bookings live on rooms. Add some rooms first - Inventory tab → Add rooms - then come back here.',
           })}
         />
       </div>
@@ -1214,7 +1214,7 @@ function BookingsList({
           confirm?.target === 'cancelled'
             ? t('accommodation.confirm.cancel_booking_message', {
                 defaultValue:
-                  'Cancelling locks the booking — no further status changes are possible.',
+                  'Cancelling locks the booking - no further status changes are possible.',
               })
             : t('accommodation.confirm.checkout_message', {
                 defaultValue:
@@ -1414,7 +1414,7 @@ function ChargesTab({ data }: { data: AccommodationDetail }) {
           })}
           description={t('accommodation.charges.no_bookings_desc', {
             defaultValue:
-              'Create a booking from the Occupancy tab — charges (base rent, extras, deposits, refunds) appear here once a stay exists.',
+              'Create a booking from the Occupancy tab - charges (base rent, extras, deposits, refunds) appear here once a stay exists.',
           })}
         />
       </div>
@@ -1783,7 +1783,7 @@ function AddChargeModal({
           label={t('accommodation.charges.amount', { defaultValue: 'Amount' })}
           required
           hint={t('accommodation.charges.amount_hint', {
-            defaultValue: 'Decimal — e.g. 199.99. Stays exact through to billing.',
+            defaultValue: 'Decimal - e.g. 199.99. Stays exact through to billing.',
           })}
           error={
             !amountValid
@@ -1982,7 +1982,7 @@ function SettingsTab({
             <p className="mt-0.5 text-xs text-content-tertiary">
               {t('accommodation.settings.general_hint', {
                 defaultValue:
-                  'Core metadata — name, address and links to the BIM model / Geo Hub coordinates that power the right-rail shortcuts.',
+                  'Core metadata - name, address and links to the BIM model / Geo Hub coordinates that power the right-rail shortcuts.',
               })}
             </p>
           </div>

@@ -23,7 +23,7 @@ const draft: Transmittal = {
   id: 'tx-1',
   project_id: 'proj-1',
   number: 'T-0001',
-  subject: 'Issue for review — package R1',
+  subject: 'Issue for review - package R1',
   reason_code: 'for_review',
   sender_id: 'user-1',
   sent_at: '2026-05-19T10:00:00Z',

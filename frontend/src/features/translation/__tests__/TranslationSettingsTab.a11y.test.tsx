@@ -63,7 +63,7 @@ function renderTab() {
   );
 }
 
-describe('TranslationSettingsTab — a11y', () => {
+describe('TranslationSettingsTab - a11y', () => {
   beforeEach(() => {
     vi.mocked(getTranslationStatus).mockReset();
   });

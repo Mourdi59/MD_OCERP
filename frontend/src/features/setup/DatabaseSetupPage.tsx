@@ -411,11 +411,11 @@ export function DatabaseSetupPage() {
       message: isLoaded
         ? t('setup.vectorize_already_loaded', {
             defaultValue:
-              'Catalogue already loaded — click the card to refresh and (re)build vectors.',
+              'Catalogue already loaded - click the card to refresh and (re)build vectors.',
           })
         : t('setup.vectorize_not_loaded', {
             defaultValue:
-              'Catalogue not yet loaded — click the card to load and build vectors.',
+              'Catalogue not yet loaded - click the card to load and build vectors.',
           }),
     });
     // Clear the param so reloading the page doesn't re-toast.

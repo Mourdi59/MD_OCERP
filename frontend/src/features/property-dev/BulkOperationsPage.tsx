@@ -115,7 +115,7 @@ function BulkResultPanel({
     <div className="mt-4 rounded-lg border border-border-light bg-surface-secondary p-4">
       <div className="flex flex-wrap items-center gap-3">
         {dry_run && (
-          <Badge variant="blue">DRY RUN — no rows were written</Badge>
+          <Badge variant="blue">DRY RUN - no rows were written</Badge>
         )}
         <div className="text-sm font-semibold text-content-primary">
           {succeeded} / {requested} succeeded ({pct}%)
@@ -284,7 +284,7 @@ function PlotStatusChangeSection() {
       <SectionShell
         title="Bulk plot status change"
         icon={<RefreshCw size={16} />}
-        desc="Flip a set of plots to a new status (excludes hold/release — use the inventory map)."
+        desc="Flip a set of plots to a new status (excludes hold/release - use the inventory map)."
       >
         <EmptyState
           title="No plots selected"
@@ -311,7 +311,7 @@ function PlotStatusChangeSection() {
     <SectionShell
       title="Bulk plot status change"
       icon={<RefreshCw size={16} />}
-      desc="Flip a set of plots to a new status (excludes hold/release — use the inventory map)."
+      desc="Flip a set of plots to a new status (excludes hold/release - use the inventory map)."
     >
       <PlotIdsInput
         value={idsText}
@@ -505,7 +505,7 @@ function DocumentsRegenerateSection() {
     <SectionShell
       title="Bulk regenerate documents"
       icon={<FileText size={16} />}
-      desc="Re-render PDFs after a template fix — receipts, SPAs, certificates, NOCs."
+      desc="Re-render PDFs after a template fix - receipts, SPAs, certificates, NOCs."
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
@@ -529,12 +529,12 @@ function DocumentsRegenerateSection() {
             onChange={(e) => setLocale(e.target.value)}
             className={inputCls}
           >
-            <option value="en">en — English</option>
-            <option value="de">de — Deutsch</option>
-            <option value="ru">ru — Русский</option>
-            <option value="fr">fr — Français</option>
-            <option value="es">es — Español</option>
-            <option value="ar">ar — العربية</option>
+            <option value="en">en - English</option>
+            <option value="de">de - Deutsch</option>
+            <option value="ru">ru - Русский</option>
+            <option value="fr">fr - Français</option>
+            <option value="es">es - Español</option>
+            <option value="ar">ar - العربية</option>
           </select>
         </div>
       </div>
@@ -644,7 +644,7 @@ function LeadsImportCsvSection() {
         </div>
         <div>
           <label className={labelCls}>
-            Development UUID (optional — scopes dedupe)
+            Development UUID (optional - scopes dedupe)
           </label>
           <input
             value={developmentId}
@@ -829,7 +829,7 @@ function PlotIdsInput({
       {plotIdsCount > BULK_MAX_ITEMS && (
         <div className="mt-1 text-xs text-red-600">
           <AlertTriangle size={12} className="mr-1 inline" />
-          Over the {BULK_MAX_ITEMS}-item cap — server will return 422.
+          Over the {BULK_MAX_ITEMS}-item cap - server will return 422.
         </div>
       )}
     </div>
@@ -879,7 +879,7 @@ function ActionBar({
         {phase !== 'idle' && (
           <span className="text-xs text-content-tertiary">
             {phase === 'dry-run-done'
-              ? 'Dry run complete — review below before executing'
+              ? 'Dry run complete - review below before executing'
               : 'Live run complete'}
           </span>
         )}
@@ -887,7 +887,7 @@ function ActionBar({
       {confirm.needsTypedConfirm && phase === 'dry-run-done' && (
         <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-xs text-red-900 dark:border-red-700 dark:bg-red-900/30 dark:text-red-200">
           <AlertTriangle size={12} className="mr-1 inline" />
-          {plotIdsCount} items selected — type{' '}
+          {plotIdsCount} items selected - type{' '}
           <code className="rounded bg-white px-1 font-bold dark:bg-surface-primary">
             EXECUTE
           </code>{' '}

@@ -227,7 +227,7 @@ export default function ElementAssetCard({
         ) : (
           <p className="text-[11px] text-content-tertiary italic">
             {t('assets.not_tracked', {
-              defaultValue: 'Not tracked yet — register to capture manufacturer, serial, warranty…',
+              defaultValue: 'Not tracked yet - register to capture manufacturer, serial, warranty…',
             })}
           </p>
         )}

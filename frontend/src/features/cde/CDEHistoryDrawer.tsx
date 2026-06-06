@@ -73,7 +73,7 @@ export function CDEHistoryDrawer({
               <History size={24} className="mx-auto mb-2 opacity-30" />
               <p>
                 {t('cde.history_empty', {
-                  defaultValue: 'No state transitions yet — promote the container to start the audit trail.',
+                  defaultValue: 'No state transitions yet - promote the container to start the audit trail.',
                 })}
               </p>
             </div>

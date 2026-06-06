@@ -289,7 +289,7 @@ function useFailureLabel(run: AgentRun, steps: AgentStep[]): string | null {
   switch (run.failure_reason) {
     case 'no_llm':
       return t('agents.failure.no_llm', {
-        defaultValue: 'AI provider not configured — add an API key in Settings → AI.',
+        defaultValue: 'AI provider not configured - add an API key in Settings → AI.',
       });
     case 'unknown_agent':
       return t('agents.failure.unknown_agent', { defaultValue: 'Unknown agent registered.' });

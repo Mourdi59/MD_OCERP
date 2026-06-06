@@ -429,7 +429,7 @@ function BrandingEditor({
                   </p>
                   <p className="text-xs text-content-tertiary mt-1">
                     {t('branding.logo_hint', {
-                      defaultValue: 'PNG, JPG, SVG, or WebP — up to 2 MB',
+                      defaultValue: 'PNG, JPG, SVG, or WebP - up to 2 MB',
                     })}
                   </p>
                 </div>

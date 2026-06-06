@@ -90,7 +90,7 @@ function renderDrawer(
   return { onClose, ...utils };
 }
 
-describe('SideDrawer — rendering', () => {
+describe('SideDrawer - rendering', () => {
   it('renders nothing when open=false', () => {
     renderDrawer({ open: false });
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -124,7 +124,7 @@ describe('SideDrawer — rendering', () => {
   });
 });
 
-describe('SideDrawer — focus management', () => {
+describe('SideDrawer - focus management', () => {
   it('moves initial focus into a focusable element inside the panel', () => {
     renderDrawer();
     // The first focusable in DOM order is the X close button rendered
@@ -207,7 +207,7 @@ describe('SideDrawer — focus management', () => {
   });
 });
 
-describe('SideDrawer — close paths', () => {
+describe('SideDrawer - close paths', () => {
   it('Escape calls onClose', () => {
     const { onClose } = renderDrawer();
     fireEvent.keyDown(document, { key: 'Escape' });
@@ -254,7 +254,7 @@ describe('SideDrawer — close paths', () => {
   });
 });
 
-describe('SideDrawer — body scroll lock', () => {
+describe('SideDrawer - body scroll lock', () => {
   it('locks document.body scroll while mounted and restores on unmount', () => {
     document.body.style.overflow = '';
     const { unmount } = render(
@@ -268,7 +268,7 @@ describe('SideDrawer — body scroll lock', () => {
   });
 });
 
-describe('SideDrawer — headerActions slot', () => {
+describe('SideDrawer - headerActions slot', () => {
   it('renders headerActions before the X close button', () => {
     renderDrawer({
       headerActions: (

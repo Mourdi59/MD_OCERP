@@ -27,7 +27,7 @@ function makeRule(overrides: Partial<ThresholdRule> = {}): ThresholdRule {
   };
 }
 
-describe('thresholds — resolveThresholdColor', () => {
+describe('thresholds - resolveThresholdColor', () => {
   const rule = makeRule();
 
   it('returns "low" when the value is strictly below low', () => {
@@ -86,7 +86,7 @@ describe('thresholds — resolveThresholdColor', () => {
   });
 });
 
-describe('thresholds — applyRuleToBar', () => {
+describe('thresholds - applyRuleToBar', () => {
   const rule = makeRule();
 
   it('returns neutral fallback when no zone matches', () => {
@@ -117,7 +117,7 @@ describe('thresholds — applyRuleToBar', () => {
   });
 });
 
-describe('thresholds — URL round-trip', () => {
+describe('thresholds - URL round-trip', () => {
   it('serialises an empty rule list to an empty string', () => {
     expect(serialiseThresholds([])).toBe('');
     expect(parseThresholds('')).toEqual([]);
@@ -197,7 +197,7 @@ describe('thresholds — URL round-trip', () => {
   });
 });
 
-describe('thresholds — findRuleForColumn', () => {
+describe('thresholds - findRuleForColumn', () => {
   it('returns null when no rules exist', () => {
     expect(findRuleForColumn([], 'volume')).toBeNull();
   });
@@ -213,7 +213,7 @@ describe('thresholds — findRuleForColumn', () => {
   });
 });
 
-describe('thresholds — isRuleValid', () => {
+describe('thresholds - isRuleValid', () => {
   it('accepts a well-formed rule whose column is present', () => {
     expect(isRuleValid(makeRule(), ['volume', 'area'])).toBe(true);
   });
@@ -236,7 +236,7 @@ describe('thresholds — isRuleValid', () => {
   });
 });
 
-describe('thresholds — createDefaultRule', () => {
+describe('thresholds - createDefaultRule', () => {
   it('builds a rule with the canonical defaults', () => {
     const r = createDefaultRule('volume');
     expect(r.column).toBe('volume');

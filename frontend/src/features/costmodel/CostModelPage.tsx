@@ -839,7 +839,7 @@ const EVMDashboard = memo(function EVMDashboard({
               <p className="text-xs leading-relaxed text-amber-700 dark:text-amber-400/80">
                 {t('costmodel.spi_capped_hint', {
                   defaultValue:
-                    'SPI is indicative only — the project schedule has barely started, so Planned Value is approximate and the index was clamped to a safe range.',
+                    'SPI is indicative only - the project schedule has barely started, so Planned Value is approximate and the index was clamped to a safe range.',
                 })}
               </p>
             </div>
@@ -1881,7 +1881,7 @@ function MonteCarloPanel({ projectId, currency }: { projectId: string; currency:
                             isP95 ? 'bg-semantic-error' : isP80 ? 'bg-semantic-warning' : isP50 ? 'bg-oe-blue' : 'bg-oe-blue/30'
                           }`}
                           style={{ height: `${Math.max(2, pct)}%` }}
-                          title={`${fmt(bin.from)} — ${fmt(bin.to)}: ${bin.count} iterations`}
+                          title={`${fmt(bin.from)} - ${fmt(bin.to)}: ${bin.count} iterations`}
                         />
                       </div>
                     );

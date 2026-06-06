@@ -84,7 +84,7 @@ describe('coerceFilters', () => {
   });
 });
 
-describe('saveFilters / loadFilters — hydrate round-trip', () => {
+describe('saveFilters / loadFilters - hydrate round-trip', () => {
   it('writes and reads back identical filter state', () => {
     const original = aFilters();
     saveFilters(PROJECT_A, original);

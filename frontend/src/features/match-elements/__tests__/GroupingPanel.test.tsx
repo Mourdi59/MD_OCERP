@@ -89,7 +89,7 @@ afterEach(() => {
   cleanup();
 });
 
-describe('GroupingPanel — Phase 0 preset contract', () => {
+describe('GroupingPanel - Phase 0 preset contract', () => {
   it('writes group_by ["level", "ifc_class"] when the Level + IFC class preset is clicked', async () => {
     renderPanel();
 

@@ -521,10 +521,10 @@ function BugReportMenu() {
   const handleEmail = () => {
     setOpen(false);
     const { body, title } = buildBugReportUrl(t);
-    const subject = `OpenConstructionERP Issue — ${title}`;
+    const subject = `OpenConstructionERP Issue - ${title}`;
     // mailto bodies are also length-limited (~2000 chars in Chrome),
     // so we trim aggressively. The downloaded log JSON is the long form.
-    const safeBody = body.length > 1500 ? `${body.slice(0, 1500)}\n\n_[truncated — attach the JSON log if needed]_` : body;
+    const safeBody = body.length > 1500 ? `${body.slice(0, 1500)}\n\n_[truncated - attach the JSON log if needed]_` : body;
     const href = `mailto:info@datadrivenconstruction.io?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(safeBody)}`;
     window.location.href = href;
   };
@@ -653,7 +653,7 @@ function BugReportMenu() {
             </div>
             <p className="mt-1 text-2xs text-content-tertiary leading-snug">
               {t('bug.menu_subheading', {
-                defaultValue: 'Pick where to send it — every channel includes the same diagnostic payload.',
+                defaultValue: 'Pick where to send it - every channel includes the same diagnostic payload.',
               })}
             </p>
           </div>
@@ -671,7 +671,7 @@ function BugReportMenu() {
               <p className="mt-1 text-2xs text-amber-700/90 dark:text-amber-300/90 leading-snug">
                 {t('bug.network_only_desc', {
                   defaultValue:
-                    'Recent errors look like the backend was unreachable (offline, restarting, or VPN dropped). Check your connection and reload — if the problem persists, you can still file a report.',
+                    'Recent errors look like the backend was unreachable (offline, restarting, or VPN dropped). Check your connection and reload - if the problem persists, you can still file a report.',
                 })}
               </p>
               <button
@@ -1145,7 +1145,7 @@ function buildBugReportUrl(
     // Keep the head; truncation marker tells the maintainer to ask for the
     // full JSON via "Report Issue" if they need more.
     const trimmed = safeBody.slice(0, Math.floor(safeBody.length * (MAX_BODY_BYTES / encoded.length)) - 64);
-    safeBody = trimmed + '\n\n_[truncated — attach the full JSON via the Report Issue button if needed]_';
+    safeBody = trimmed + '\n\n_[truncated - attach the full JSON via the Report Issue button if needed]_';
     encoded = encodeURIComponent(safeBody);
   }
 

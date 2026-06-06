@@ -193,7 +193,7 @@ export function StageCard({
                     className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40"
                     title={t(
                       'match_elements.pipeline.llm_tunable',
-                      'LLM-augmented — prompt is editable',
+                      'LLM-augmented - prompt is editable',
                     )}
                   >
                     <Sparkles className="w-2.5 h-2.5" />
@@ -229,7 +229,7 @@ export function StageCard({
                   busy && !isRunning
                     ? t(
                         'match_elements.pipeline.busy_hint',
-                        'A stage is running — wait for it to finish before starting another.',
+                        'A stage is running - wait for it to finish before starting another.',
                       )
                     : undefined
                 }
@@ -270,7 +270,7 @@ export function StageCard({
             <div className="mt-2 text-[11px] text-amber-700 dark:text-amber-300">
               {t(
                 'match_elements.pipeline.stale_hint',
-                'An earlier stage changed — re-run this step to refresh its output.',
+                'An earlier stage changed - re-run this step to refresh its output.',
               )}
             </div>
           )}

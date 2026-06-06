@@ -188,7 +188,7 @@ export function AIAdvisorPanel({ projectId, role }: AIAdvisorPanelProps) {
             >
               <Settings size={12} />
               {t('project_intelligence.go_to_ai_settings', {
-                defaultValue: 'Settings — AI Configuration',
+                defaultValue: 'Settings - AI Configuration',
               })}
             </Link>
           </div>

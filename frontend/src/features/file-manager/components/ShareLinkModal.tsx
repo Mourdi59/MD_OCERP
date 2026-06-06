@@ -333,7 +333,7 @@ export function ShareLinkModal({ open, row, onClose }: ShareLinkModalProps) {
             ) : existingLinks.length === 0 ? (
               <p className="text-xs text-content-tertiary">
                 {t('files.share.existing_empty', {
-                  defaultValue: 'No share links yet — create one above.',
+                  defaultValue: 'No share links yet - create one above.',
                 })}
               </p>
             ) : (

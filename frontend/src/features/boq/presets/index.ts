@@ -62,7 +62,7 @@ const UNIVERSAL_PRESETS: ColumnPreset[] = [
     id: 'procurement',
     region: 'universal',
     name: 'Procurement',
-    description: 'Supplier, lead time, PO number, status — for purchasing tracking',
+    description: 'Supplier, lead time, PO number, status - for purchasing tracking',
     icon: Package,
     iconClass: 'text-violet-600 bg-violet-500/10',
     columns: [
@@ -81,7 +81,7 @@ const UNIVERSAL_PRESETS: ColumnPreset[] = [
     id: 'notes',
     region: 'universal',
     name: 'Notes',
-    description: 'Internal note + reference — quick context per position',
+    description: 'Internal note + reference - quick context per position',
     icon: NotesIcon,
     iconClass: 'text-blue-600 bg-blue-500/10',
     columns: [
@@ -93,7 +93,7 @@ const UNIVERSAL_PRESETS: ColumnPreset[] = [
     id: 'quality',
     region: 'universal',
     name: 'Quality Control',
-    description: 'Inspection status, inspector and date — for QA workflow',
+    description: 'Inspection status, inspector and date - for QA workflow',
     icon: ShieldCheck,
     iconClass: 'text-emerald-600 bg-emerald-500/10',
     columns: [
@@ -124,7 +124,7 @@ const UNIVERSAL_PRESETS: ColumnPreset[] = [
     id: 'status_scope',
     region: 'universal',
     name: 'Status & Scope',
-    description: 'Position status, scope flag, risk level and owner — for review workflows',
+    description: 'Position status, scope flag, risk level and owner - for review workflows',
     icon: Flag,
     iconClass: 'text-amber-600 bg-amber-500/10',
     columns: [
@@ -153,7 +153,7 @@ const UNIVERSAL_PRESETS: ColumnPreset[] = [
     id: 'tendering',
     region: 'universal',
     name: 'Tendering',
-    description: 'Bidder, bid amount and award status — track tender packages per position',
+    description: 'Bidder, bid amount and award status - track tender packages per position',
     icon: Gavel,
     iconClass: 'text-indigo-600 bg-indigo-500/10',
     columns: [
@@ -173,7 +173,7 @@ const UNIVERSAL_PRESETS: ColumnPreset[] = [
     id: 'schedule',
     region: 'universal',
     name: 'Schedule',
-    description: 'Start, end, duration and WBS code — link BOQ rows to the construction schedule',
+    description: 'Start, end, duration and WBS code - link BOQ rows to the construction schedule',
     icon: CalendarIcon,
     iconClass: 'text-sky-600 bg-sky-500/10',
     columns: [
@@ -194,7 +194,7 @@ const REGIONAL_PRESETS: ColumnPreset[] = [
     region: 'germany',
     name: 'GAEB / AVA Style',
     description:
-      'Splits unit rate into Lohn / Material / Geräte / Sonstiges + risk markup. Lohn/Material/Geräte auto-fill from position resources — no manual entry.',
+      'Splits unit rate into Lohn / Material / Geräte / Sonstiges + risk markup. Lohn/Material/Geräte auto-fill from position resources - no manual entry.',
     icon: FileCheck,
     iconClass: 'text-rose-600 bg-rose-500/10',
     columns: [
@@ -244,7 +244,7 @@ const REGIONAL_PRESETS: ColumnPreset[] = [
     region: 'austria',
     name: 'ÖNORM / BRZ Style',
     description:
-      'LV position code, keyword, supplier + auto-computed labor share — matches Austrian ÖNORM B 2061 / A 2063 used in BRZ',
+      'LV position code, keyword, supplier + auto-computed labor share - matches Austrian ÖNORM B 2061 / A 2063 used in BRZ',
     icon: Building2,
     iconClass: 'text-orange-600 bg-orange-500/10',
     columns: [
@@ -267,9 +267,9 @@ const REGIONAL_PRESETS: ColumnPreset[] = [
   {
     id: 'csi_masterformat',
     region: 'usa',
-    name: 'USA — CSI MasterFormat',
+    name: 'USA - CSI MasterFormat',
     description:
-      'Division / Section codes, crew, productivity and RSMeans reference — matches CSI MasterFormat 2018',
+      'Division / Section codes, crew, productivity and RSMeans reference - matches CSI MasterFormat 2018',
     icon: ClipboardList,
     iconClass: 'text-blue-700 bg-blue-700/10',
     columns: [
@@ -283,9 +283,9 @@ const REGIONAL_PRESETS: ColumnPreset[] = [
   {
     id: 'aiqs_australia',
     region: 'australia',
-    name: 'Australia — AIQS',
+    name: 'Australia - AIQS',
     description:
-      'AIQS code, trade element, AS reference and floor area type — Australian QS measurement practice',
+      'AIQS code, trade element, AS reference and floor area type - Australian QS measurement practice',
     icon: Globe,
     iconClass: 'text-yellow-600 bg-yellow-500/10',
     columns: [
@@ -304,9 +304,9 @@ const REGIONAL_PRESETS: ColumnPreset[] = [
   {
     id: 'sinapi_brazil',
     region: 'brazil',
-    name: 'Brazil — SINAPI',
+    name: 'Brazil - SINAPI',
     description:
-      'SINAPI code, BDI, encargos and origin — matches Brazilian Caixa SINAPI cost-base format',
+      'SINAPI code, BDI, encargos and origin - matches Brazilian Caixa SINAPI cost-base format',
     icon: Sparkles,
     iconClass: 'text-lime-600 bg-lime-500/10',
     columns: [
@@ -325,9 +325,9 @@ const REGIONAL_PRESETS: ColumnPreset[] = [
   {
     id: 'nrm2_uk',
     region: 'uk',
-    name: 'UK — NRM2',
+    name: 'UK - NRM2',
     description:
-      'NRM2 code, element group / sub-element and BCIS reference — RICS New Rules of Measurement',
+      'NRM2 code, element group / sub-element and BCIS reference - RICS New Rules of Measurement',
     icon: Building2,
     iconClass: 'text-purple-600 bg-purple-500/10',
     columns: [
@@ -343,7 +343,7 @@ const REGIONAL_PRESETS: ColumnPreset[] = [
     region: 'integration',
     name: 'BIM Integration',
     description:
-      'IFC GUID, element ID, storey and lifecycle phase — for linking BoQ rows to BIM models',
+      'IFC GUID, element ID, storey and lifecycle phase - for linking BoQ rows to BIM models',
     icon: Boxes,
     iconClass: 'text-cyan-600 bg-cyan-500/10',
     columns: [

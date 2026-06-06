@@ -16,7 +16,7 @@ import type {
   SlicerFilter,
 } from '@/stores/useAnalysisStateStore';
 
-describe('urlState — tab', () => {
+describe('urlState - tab', () => {
   it('returns the default when the raw value is null / empty / unknown', () => {
     expect(parseTab(null)).toBe('table');
     expect(parseTab('')).toBe('table');
@@ -36,7 +36,7 @@ describe('urlState — tab', () => {
   });
 });
 
-describe('urlState — slicer round-trip', () => {
+describe('urlState - slicer round-trip', () => {
   it('empty list ↔ empty string', () => {
     expect(serialiseSlicers([])).toBe('');
     expect(parseSlicers('')).toEqual([]);
@@ -105,7 +105,7 @@ describe('urlState — slicer round-trip', () => {
   });
 });
 
-describe('urlState — pivot round-trip', () => {
+describe('urlState - pivot round-trip', () => {
   const snapshot: PivotConfigSnapshot = {
     groupBy: ['category', 'level'],
     aggCols: ['volume', 'area'],
@@ -208,7 +208,7 @@ describe('urlState — pivot round-trip', () => {
   });
 });
 
-describe('urlState — chart round-trip', () => {
+describe('urlState - chart round-trip', () => {
   const full: ChartConfig = {
     kind: 'line',
     category: 'category',
@@ -268,7 +268,7 @@ describe('urlState — chart round-trip', () => {
   });
 });
 
-describe('urlState — pivot viz mode', () => {
+describe('urlState - pivot viz mode', () => {
   it('defaults to table when the viz key is absent', () => {
     const parsed = parsePivot({ group: 'category', sum: 'volume' });
     expect(parsed?.viz).toBe('table');
@@ -315,7 +315,7 @@ describe('urlState — pivot viz mode', () => {
   });
 });
 
-describe('urlState — computeDataBar', () => {
+describe('urlState - computeDataBar', () => {
   it('returns 0 width when max is 0 (single-row case)', () => {
     expect(computeDataBar(42, 0)).toEqual({ widthPct: 0, negative: false });
   });
@@ -354,7 +354,7 @@ describe('urlState — computeDataBar', () => {
   });
 });
 
-describe('urlState — maxAbsAcross', () => {
+describe('urlState - maxAbsAcross', () => {
   it('returns 0 for an empty list', () => {
     expect(maxAbsAcross([], (r) => r as number)).toBe(0);
   });

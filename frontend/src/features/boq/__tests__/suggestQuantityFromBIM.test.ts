@@ -82,7 +82,7 @@ describe('normalizeUnit', () => {
 // suggestQuantityFromBIM
 // ---------------------------------------------------------------------------
 
-describe('suggestQuantityFromBIM — volume (m³)', () => {
+describe('suggestQuantityFromBIM - volume (m³)', () => {
   it('reads volume_m3 from quantities (single element)', () => {
     const e = el({ quantities: { volume_m3: 9.0, area_m2: 37.5, length_m: 12.5 } });
     const r = suggestQuantityFromBIM([e], 'm³');
@@ -132,7 +132,7 @@ describe('suggestQuantityFromBIM — volume (m³)', () => {
   });
 });
 
-describe('suggestQuantityFromBIM — area (m²)', () => {
+describe('suggestQuantityFromBIM - area (m²)', () => {
   it('reads area_m2 from quantities', () => {
     const e = el({ quantities: { area_m2: 37.5 } });
     const r = suggestQuantityFromBIM([e], 'm²');
@@ -163,7 +163,7 @@ describe('suggestQuantityFromBIM — area (m²)', () => {
   });
 });
 
-describe('suggestQuantityFromBIM — length (m)', () => {
+describe('suggestQuantityFromBIM - length (m)', () => {
   it('reads length_m from quantities', () => {
     const e = el({ quantities: { length_m: 12.5 } });
     const r = suggestQuantityFromBIM([e], 'm');
@@ -186,7 +186,7 @@ describe('suggestQuantityFromBIM — length (m)', () => {
   });
 });
 
-describe('suggestQuantityFromBIM — mass (kg)', () => {
+describe('suggestQuantityFromBIM - mass (kg)', () => {
   it('reads NetWeight directly when present', () => {
     const e = el({ properties: { NetWeight: 250.0 } });
     const r = suggestQuantityFromBIM([e], 'kg');
@@ -214,7 +214,7 @@ describe('suggestQuantityFromBIM — mass (kg)', () => {
   });
 });
 
-describe('suggestQuantityFromBIM — count (pcs / Stk / шт)', () => {
+describe('suggestQuantityFromBIM - count (pcs / Stk / шт)', () => {
   it('counts elements for pcs', () => {
     const r = suggestQuantityFromBIM([el(), el(), el()], 'pcs');
     expect(r.value).toBe(3);
@@ -235,7 +235,7 @@ describe('suggestQuantityFromBIM — count (pcs / Stk / шт)', () => {
   });
 });
 
-describe('suggestQuantityFromBIM — lsum', () => {
+describe('suggestQuantityFromBIM - lsum', () => {
   it('always returns 1 for lump sum', () => {
     const r = suggestQuantityFromBIM([el(), el(), el()], 'lsum');
     expect(r.value).toBe(1);
@@ -244,7 +244,7 @@ describe('suggestQuantityFromBIM — lsum', () => {
   });
 });
 
-describe('suggestQuantityFromBIM — edge cases', () => {
+describe('suggestQuantityFromBIM - edge cases', () => {
   it('handles zero elements', () => {
     const r = suggestQuantityFromBIM([], 'm³');
     expect(r.value).toBe(0);

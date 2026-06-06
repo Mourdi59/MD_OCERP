@@ -530,7 +530,7 @@ function TemplateDrawer({
                   className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                 >
                   <option value="">
-                    {t('assemblies.library.pick_project', '— pick a project —')}
+                    {t('assemblies.library.pick_project', '- pick a project -')}
                   </option>
                   {(projects ?? []).map((p) => (
                     <option key={p.id} value={p.id}>

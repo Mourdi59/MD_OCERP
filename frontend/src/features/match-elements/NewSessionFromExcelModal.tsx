@@ -92,7 +92,7 @@ export function NewSessionFromExcelModal({
           <p className="text-xs text-content-tertiary leading-relaxed">
             {t(
               'match_elements.new_excel.hint',
-              'Upload an .xlsx with at least a "Description" column (or its localised equivalent — Beschreibung, Описание, Descripción, 描述, etc.). Optional columns: Qty, Unit, Code, Category. Decimal-comma quantities are recognised.',
+              'Upload an .xlsx with at least a "Description" column (or its localised equivalent - Beschreibung, Описание, Descripción, 描述, etc.). Optional columns: Qty, Unit, Code, Category. Decimal-comma quantities are recognised.',
             )}
           </p>
 

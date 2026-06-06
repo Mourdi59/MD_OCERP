@@ -45,7 +45,7 @@ describe('<ContractExpiryBadge>', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders nothing for a draft contract — not live yet', () => {
+  it('renders nothing for a draft contract - not live yet', () => {
     const { container } = render(
       <ContractExpiryBadge endDate="2026-04-01" status="draft" />,
     );
