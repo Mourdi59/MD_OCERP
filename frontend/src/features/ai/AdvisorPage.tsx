@@ -450,10 +450,7 @@ export function AdvisorPage() {
   return (
     <div className="w-full animate-fade-in flex flex-col" style={{ height: 'calc(100vh - 80px)' }}>
       <Breadcrumb
-        items={[
-          { label: t('nav.dashboard', 'Dashboard'), to: '/' },
-          { label: t('nav.ai_advisor', 'AI Cost Advisor') },
-        ]}
+        items={[{ label: t('nav.ai_advisor', 'AI Cost Advisor') }]}
         className="mb-3 shrink-0"
       />
 

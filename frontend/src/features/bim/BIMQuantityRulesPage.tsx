@@ -55,7 +55,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-import { Badge, ConfirmDialog, EmptyState, SkeletonTable } from '@/shared/ui';
+import { Badge, Breadcrumb, ConfirmDialog, EmptyState, SkeletonTable } from '@/shared/ui';
 import { apiGet } from '@/shared/lib/api';
 import { FolderOpen } from 'lucide-react';
 import BIMRequirementsImport from './BIMRequirementsImport';
@@ -2895,6 +2895,15 @@ export function BIMQuantityRulesPage() {
     <div className="flex min-h-full flex-col">
       {/* Header */}
       <div className="border-b border-border-light bg-surface-primary px-6 py-4">
+        <Breadcrumb
+          items={[
+            ...(activeProjectId && activeProjectName
+              ? [{ label: activeProjectName, to: `/projects/${activeProjectId}` }]
+              : []),
+            { label: t('nav.bim_rules', { defaultValue: 'BIM Rules' }) },
+          ]}
+          className="mb-2"
+        />
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-oe-blue/10 text-oe-blue">

@@ -247,7 +247,7 @@ export function PortalPage() {
   return (
     <div className="space-y-5">
       <Breadcrumb
-        items={[{ label: t('portal.title', { defaultValue: 'Customer / Buyer Portal' }) }]}
+        items={[{ label: t('nav.portal', { defaultValue: 'Customer / Buyer Portal' }) }]}
       />
 
       <div className="flex items-start justify-between gap-4 flex-wrap">

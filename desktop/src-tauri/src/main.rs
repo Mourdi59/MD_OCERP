@@ -32,6 +32,37 @@ struct AppState {
     backend_child: Mutex<Option<CommandChild>>,
 }
 
+/// Open the launcher diagnostic log in the OS default handler.
+///
+/// Exposed to the splash screen (via `withGlobalTauri`) so the failure UI can
+/// offer a one-click "Open log" button. Returns an error string the splash can
+/// show if the log path cannot be resolved or opened. Shells out to the
+/// platform's default opener (`cmd /c start` on Windows, `open` on macOS,
+/// `xdg-open` on Linux) rather than the tauri shell plugin's `open`, which is
+/// deprecated; this keeps the dependency surface unchanged and avoids the
+/// deprecation while still being fully cross-platform.
+#[tauri::command]
+fn open_log_file(_app: tauri::AppHandle) -> Result<(), String> {
+    let path = log_path().ok_or_else(|| "Could not resolve the log file path".to_string())?;
+    let path_str = path.to_string_lossy().to_string();
+
+    let result = if cfg!(target_os = "windows") {
+        // The empty "" is start's title argument; without it a quoted path is
+        // mis-parsed as the window title and the file never opens.
+        std::process::Command::new("cmd")
+            .args(["/c", "start", "", &path_str])
+            .spawn()
+    } else if cfg!(target_os = "macos") {
+        std::process::Command::new("open").arg(&path_str).spawn()
+    } else {
+        std::process::Command::new("xdg-open").arg(&path_str).spawn()
+    };
+
+    result
+        .map(|_| ())
+        .map_err(|e| format!("Could not open the log file: {e}"))
+}
+
 /// Resolve the user's home directory without pulling in extra crates.
 fn home_dir() -> Option<PathBuf> {
     for var in ["USERPROFILE", "HOME"] {
@@ -180,6 +211,56 @@ fn find_available_port() -> u16 {
     portpicker::pick_unused_port().unwrap_or(8732)
 }
 
+/// Ports an already-running OpenConstructionERP backend is likely to be on.
+///
+/// Checked in order before we spawn our own sidecar. This is what lets the
+/// desktop app coexist with a developer backend or a CLI ``openconstructionerp
+/// serve`` already running on the same machine: rather than booting a SECOND
+/// backend that fights the first one over the shared embedded-PostgreSQL cluster
+/// at ``~/.openestimate/pgdata`` (a real founder-machine failure mode), we
+/// simply attach to the healthy instance that is already there.
+const ATTACH_CANDIDATE_PORTS: [u16; 4] = [8000, 8080, 8732, 8765];
+
+/// Probe ``127.0.0.1:<port>/api/health`` and return ``true`` only if it answers
+/// 2xx AND self-identifies as an OpenConstructionERP backend (the health body
+/// carries a ``version`` field). The identity check stops us from attaching to
+/// an unrelated service that merely happens to occupy a candidate port.
+async fn is_our_backend_healthy(client: &reqwest::Client, port: u16) -> bool {
+    let url = format!("http://127.0.0.1:{port}/api/health");
+    match client
+        .get(&url)
+        .timeout(std::time::Duration::from_millis(1500))
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => match resp.text().await {
+            // The health payload is small JSON like {"status":..,"version":..,
+            // "modules_loaded":..}. Matching on these markers avoids attaching to
+            // a foreign server. A full JSON parse is avoided on purpose to keep
+            // the dependency surface minimal.
+            Ok(body) => {
+                body.contains("\"version\"")
+                    && (body.contains("\"modules_loaded\"") || body.contains("\"alembic"))
+            }
+            Err(_) => false,
+        },
+        _ => false,
+    }
+}
+
+/// Scan the candidate ports for an existing healthy backend to attach to.
+///
+/// Returns the first port that responds as our backend, or ``None`` if none do
+/// (the normal cold-start case, where we then spawn our own sidecar).
+async fn find_existing_backend(client: &reqwest::Client) -> Option<u16> {
+    for port in ATTACH_CANDIDATE_PORTS {
+        if is_our_backend_healthy(client, port).await {
+            return Some(port);
+        }
+    }
+    None
+}
+
 /// Wait for the backend health endpoint to respond.
 ///
 /// Polls `/api/health` every ~500ms until it succeeds or the timeout elapses.
@@ -232,6 +313,7 @@ fn main() {
         .manage(AppState {
             backend_child: Mutex::new(None),
         })
+        .invoke_handler(tauri::generate_handler![open_log_file])
         .setup(move |app| {
             let handle = app.handle().clone();
             log_line(&format!("setup() running; backend port = {port}"));
@@ -263,6 +345,59 @@ fn main() {
                 Ok(_) => {}
                 Err(e) => log_line(&format!("warning: tray icon build failed (non-fatal): {e}")),
             }
+
+            // Attach to an existing healthy backend instead of booting a second
+            // one.
+            //
+            // If a developer backend or a CLI `openconstructionerp serve` is
+            // already running on this machine, it already owns the embedded
+            // PostgreSQL cluster at ~/.openestimate/pgdata. Spawning our own
+            // sidecar against the SAME default data dir makes two processes
+            // share one cluster; when the desktop app later exits it tells
+            // pixeltable-pgserver to clean up, which can stop the postmaster out
+            // from under the still-running developer backend. Attaching instead
+            // is both safer and faster (no second boot, no second cluster
+            // handle). We only attach to a server that self-identifies as ours.
+            //
+            // The probe is short (four ports, 1.5s each at worst, only while
+            // they are actually open) and is run to completion here so the
+            // decision to spawn is made BEFORE we start a sidecar -- otherwise a
+            // concurrent probe would race the spawn and we could end up with two
+            // backends anyway. block_on is safe: setup() already runs on the
+            // Tauri async runtime's worker, and the probe never blocks
+            // indefinitely.
+            let attached_port = tauri::async_runtime::block_on(async {
+                let client = reqwest::Client::new();
+                find_existing_backend(&client).await
+            });
+
+            if let Some(existing) = attached_port {
+                log_line(&format!(
+                    "found an existing OpenConstructionERP backend on port {existing}; attaching instead of starting a second one"
+                ));
+                boot_stage(&handle, "sidecar", "done", "Found a running backend");
+                boot_stage(&handle, "pg", "done", "");
+                boot_stage(&handle, "migrate", "done", "");
+                boot_stage(&handle, "server", "done", "");
+                boot_stage(&handle, "open", "done", "Ready");
+                let handle_nav = handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    // Give the splash script a moment to finish loading, then
+                    // navigate the webview to the running app.
+                    tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+                    if let Some(window) = handle_nav.get_webview_window("main") {
+                        let url = format!("http://127.0.0.1:{existing}/");
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                        let _ = window.eval(&format!("window.location.replace('{url}')"));
+                    }
+                });
+                // We did not spawn a sidecar, so there is no child to manage and
+                // nothing more for setup() to do.
+                return Ok(());
+            }
+
+            log_line("no existing backend found; starting our own sidecar");
 
             // Start the backend sidecar.
             //

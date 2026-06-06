@@ -151,7 +151,7 @@ export function AccommodationListPage() {
 
   return (
     <div className="space-y-4 pb-20 sm:pb-0">
-      <Breadcrumb items={[{ label: t('accommodation.title', { defaultValue: 'Accommodation' }) }]} />
+      <Breadcrumb items={[{ label: t('nav.accommodation', { defaultValue: 'Accommodation' }) }]} />
       <BetaBanner moduleKey="accommodation" className="mt-3" />
 
       {/* Header */}

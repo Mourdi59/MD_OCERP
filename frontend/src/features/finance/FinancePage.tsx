@@ -670,7 +670,6 @@ export function FinancePage() {
     <div className="w-full animate-fade-in">
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', 'Dashboard'), to: '/' },
           ...(projectName
             ? [{ label: projectName, to: `/projects/${projectId}` }]
             : []),

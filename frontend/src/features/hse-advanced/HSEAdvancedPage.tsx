@@ -197,9 +197,8 @@ export function HSEAdvancedPage() {
     <div className="w-full animate-fade-in">
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
           ...(projectName ? [{ label: projectName, to: `/projects/${projectId}` }] : []),
-          { label: t('hse_advanced.title', { defaultValue: 'HSE Advanced' }) },
+          { label: t('nav.hse_advanced', { defaultValue: 'HSE Advanced' }) },
         ]}
         className="mb-4"
       />

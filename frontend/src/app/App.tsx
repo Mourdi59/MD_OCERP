@@ -447,6 +447,9 @@ const LoginPageNext = lazy(() =>
 const QuickEstimatePage = lazy(() =>
   import('@/features/ai/QuickEstimatePage').then((m) => ({ default: m.QuickEstimatePage }))
 );
+const AiEstimatorPage = lazy(() =>
+  import('@/features/ai-estimator/AiEstimatorPage').then((m) => ({ default: m.AiEstimatorPage }))
+);
 
 // Rarely-visited or heavy secondary pages — moved out of the initial
 // `index` bundle (was eager via barrel imports, ~1.4 MB chunk; these
@@ -802,6 +805,7 @@ export default function App() {
         />
 
         <Route path="/ai-estimate" element={<P title="AI Quick Estimate"><QuickEstimatePage /></P>} />
+        <Route path="/ai-estimator" element={<P title="AI Estimate Builder"><AiEstimatorPage /></P>} />
         <Route path="/ai-agents" element={<P title="AI Agents"><AgentsPage /></P>} />
         <Route path="/advisor" element={<P title="AI Cost Advisor"><AdvisorPage /></P>} />
         <Route path="/chat" element={<P title="AI Chat"><ERPChatPage /></P>} />

@@ -12,7 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { Card, CardHeader, CardContent, Button, EmptyState, Skeleton } from '@/shared/ui';
+import { Breadcrumb, Card, CardHeader, CardContent, Button, EmptyState, Skeleton } from '@/shared/ui';
 import { apiGet } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import {
@@ -287,8 +287,19 @@ export function SustainabilityPage() {
     }
   }
 
+  const selectedProject = projects?.find((p) => p.id === selectedProjectId);
+
   return (
     <div className="w-full animate-fade-in">
+      <Breadcrumb
+        items={[
+          ...(selectedProject
+            ? [{ label: selectedProject.name, to: `/projects/${selectedProject.id}` }]
+            : []),
+          { label: t('nav.sustainability', { defaultValue: 'Sustainability' }) },
+        ]}
+        className="mb-4"
+      />
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">

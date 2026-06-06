@@ -961,8 +961,7 @@ export function ReportsPage() {
       <div className="w-full space-y-6 animate-fade-in">
         <Breadcrumb
           items={[
-            { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
-            { label: t('reports.title', { defaultValue: 'Reports' }) },
+            { label: t('nav.reports', { defaultValue: 'Reports' }) },
           ]}
           className="mb-4"
         />
@@ -975,8 +974,7 @@ export function ReportsPage() {
     <div className="w-full space-y-6 animate-fade-in">
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
-          { label: t('reports.title', { defaultValue: 'Reports' }) },
+          { label: t('nav.reports', { defaultValue: 'Reports' }) },
         ]}
         className="mb-4"
       />

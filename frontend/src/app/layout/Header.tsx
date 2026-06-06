@@ -25,6 +25,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { useI18nReady } from '@/shared/lib/useI18nReady';
 import { SupportUsButton } from './SupportUsButton';
 import { SubscribeButton } from './SubscribeButton';
+import { getRouteIcon } from './routeIcons';
 
 /**
  * Map the English page titles passed from App.tsx routes to i18n keys.
@@ -183,9 +184,15 @@ export function Header({ title, onMenuClick }: HeaderProps) {
   // every operator. The chip sits in a flex-1 column that yields space, so it
   // never has to push the action buttons into icon-only mode to fit.
   const packActive = usePartnerPack().data?.active === true;
+  const location = useLocation();
   const translatedTitle = title
     ? t(TITLE_I18N_MAP[title] ?? title, { defaultValue: title })
     : undefined;
+  // Icon for the active module, mirroring the matching sidebar row. Shown as
+  // a small chip before the top-bar title so each module is identifiable at
+  // the very top. `null` when the route has no sidebar entry (then nothing
+  // renders and the layout is unchanged).
+  const RouteIcon = getRouteIcon(location.pathname);
   const currentLang = getLanguageByCode(i18n.language) ?? { code: 'en', name: 'English', flag: '', country: 'gb' };
   const openCommandPalette = useCallback(() => {
     // Dispatch Ctrl+K to open the CommandPalette managed by App.tsx
@@ -231,7 +238,21 @@ export function Header({ title, onMenuClick }: HeaderProps) {
               className="hidden lg:block shrink-0 text-content-quaternary/60"
               aria-hidden
             />
-            <h1 className="hidden lg:block text-base font-semibold text-content-primary truncate sm:text-lg">{translatedTitle}</h1>
+            <h1 className="hidden lg:flex items-center gap-2 min-w-0 text-base font-semibold text-content-primary sm:text-lg">
+              {/* Module icon — mirrors the active route's sidebar icon so the
+                  top title is visually tied to the module. Decorative
+                  (aria-hidden); absent (no layout shift) when the route has
+                  no sidebar entry. */}
+              {RouteIcon && (
+                <RouteIcon
+                  size={18}
+                  strokeWidth={1.75}
+                  className="shrink-0 text-content-secondary"
+                  aria-hidden
+                />
+              )}
+              <span className="truncate">{translatedTitle}</span>
+            </h1>
           </>
         )}
       </div>

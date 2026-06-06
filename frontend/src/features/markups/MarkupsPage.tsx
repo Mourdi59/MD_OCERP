@@ -1452,12 +1452,17 @@ export function MarkupsPage() {
   }, [stamps]);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-4 animate-fade-in">
+    <div className="animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
-          { label: t('markups.title', { defaultValue: 'Markups & Annotations' }) },
+          ...(activeProjectId
+            ? (() => {
+                const name = projects.find((p) => p.id === activeProjectId)?.name;
+                return name ? [{ label: name, to: `/projects/${activeProjectId}` }] : [];
+              })()
+            : []),
+          { label: t('nav.markups', { defaultValue: 'Markups' }) },
         ]}
       />
 

@@ -2093,9 +2093,8 @@ export function SchedulePage() {
     return (
       <div className="w-full animate-fade-in">
         <Breadcrumb items={[
-          { label: t('nav.dashboard', 'Dashboard'), to: '/' },
-          { label: t('schedule.title', '4D Schedule'), to: '/schedule' },
-          { label: selectedProject.name },
+          { label: selectedProject.name, to: `/projects/${selectedProject.id}` },
+          { label: t('schedule.title', '4D Schedule') },
         ]} className="mb-4" />
 
         <ProjectSchedules
@@ -2110,7 +2109,6 @@ export function SchedulePage() {
   return (
     <div className="w-full animate-fade-in">
       <Breadcrumb items={[
-        { label: t('nav.dashboard', 'Dashboard'), to: '/' },
         { label: t('schedule.title', '4D Schedule') },
       ]} className="mb-4" />
 

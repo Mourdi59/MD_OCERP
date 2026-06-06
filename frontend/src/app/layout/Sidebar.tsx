@@ -79,6 +79,7 @@ import {
   ScrollText,
   CalendarRange,
   Gauge,
+  Wand2,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -197,6 +198,7 @@ const navGroups: NavGroup[] = [
     items: [
       { labelKey: 'boq.title', to: '/boq', icon: Table2, tourId: 'boq' },
       { labelKey: 'nav.match_elements', to: '/match-elements', icon: Link2, badge: 'BETA' },
+      { labelKey: 'nav.ai_estimator', to: '/ai-estimator', icon: Wand2, badge: 'NEW' },
       { labelKey: 'nav.ai_estimate', to: '/ai-estimate', icon: Sparkles, badge: 'BETA' },
       { labelKey: 'nav.estimation_dashboard', to: '/project-intelligence', icon: BrainCircuit, badge: 'BETA' },
     ],
@@ -225,6 +227,7 @@ const navGroups: NavGroup[] = [
     defaultLabel: 'Takeoff',
     defaultOpen: false,
     items: [
+      { labelKey: 'nav.quantities', to: '/quantities', icon: Ruler },
       { labelKey: 'nav.pdf_measurements', to: '/takeoff?tab=measurements', icon: Ruler },
       { labelKey: 'nav.dwg_takeoff', to: '/dwg-takeoff', icon: PencilRuler },
       { labelKey: 'nav.bim_viewer', to: '/bim', icon: Box },
@@ -437,6 +440,7 @@ const navGroups: NavGroup[] = [
     hideInSimple: true,
     items: [
       { labelKey: 'finance.title', to: '/finance', icon: Wallet, advancedOnly: true },
+      { labelKey: 'nav.analytics', to: '/analytics', icon: LineChart, advancedOnly: true },
       { labelKey: 'nav.reports', to: '/reports', icon: FileBarChart, advancedOnly: true },
       { labelKey: 'nav.reporting_dashboards', to: '/reporting', icon: BarChart3, advancedOnly: true },
       { labelKey: 'nav.snapshots', to: '/dashboards', icon: TrendingUp, advancedOnly: true },
@@ -583,6 +587,7 @@ interface BackendModuleState {
  *  are never gated by backend state (fail-open). */
 const ROUTE_BACKEND_MODULE: Record<string, string> = {
   // Takeoff
+  '/quantities': 'oe_takeoff',
   '/takeoff': 'oe_takeoff',
   '/dwg-takeoff': 'oe_dwg_takeoff',
   '/bim': 'oe_bim_hub',
@@ -676,12 +681,14 @@ const ROUTE_MODULE_KEY: Record<string, string> = {
   // Estimating
   '/boq': 'boq',
   '/match-elements': 'match_elements',
+  '/ai-estimator': 'ai_estimator',
   '/ai-estimate': 'ai',
   // Catalogues & reference (/costs, /catalog, /assemblies) are intentionally
   // absent: the cost database, resource catalogue and assembly library are
   // core to a cost-estimation platform, so a company profile must never hide
   // them. They are forced on in onboarding_presets._CORE_MODULES too.
   // Takeoff
+  '/quantities': 'takeoff',
   '/takeoff': 'takeoff',
   '/dwg-takeoff': 'dwg_takeoff',
   '/bim': 'bim_hub',
@@ -1783,10 +1790,16 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
                 rel="noopener noreferrer"
                 title={t('sidebar.github_repo', { defaultValue: 'GitHub repository' })}
                 aria-label={t('sidebar.github_repo', { defaultValue: 'GitHub repository' })}
-                className="flex items-center justify-center gap-1.5 rounded-md border border-border-light bg-surface-primary hover:bg-surface-elevated hover:border-border-medium px-2 py-1.5 transition-all"
+                className={clsx(
+                  'group flex h-8 w-full items-center justify-start gap-1.5 rounded-md border px-2 text-left transition-colors duration-fast ease-oe',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue/40',
+                  'border-border-light/60 bg-surface-primary text-content-secondary hover:bg-surface-secondary hover:text-content-primary hover:border-border-medium',
+                )}
               >
-                <Github size={13} strokeWidth={1.75} className="text-content-secondary" />
-                <span className="text-xs font-medium text-content-secondary">GitHub</span>
+                <Github size={14} strokeWidth={1.75} aria-hidden className="shrink-0 text-content-secondary" />
+                <span className="min-w-0 flex-1 text-[11px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis text-content-secondary">
+                  GitHub
+                </span>
               </a>
               <a
                 href="https://t.me/datadrivenconstruction"
@@ -1794,12 +1807,16 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
                 rel="noopener noreferrer"
                 title={t('sidebar.join_telegram', { defaultValue: 'Join the Telegram community' })}
                 aria-label={t('sidebar.telegram_community', { defaultValue: 'Telegram community' })}
-                className="flex items-center justify-center gap-1.5 rounded-md border border-border-light bg-surface-primary hover:bg-surface-elevated hover:border-border-medium px-2 py-1.5 transition-all"
+                className={clsx(
+                  'group flex h-8 w-full items-center justify-start gap-1.5 rounded-md border px-2 text-left transition-colors duration-fast ease-oe',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-oe-blue/40',
+                  'border-border-light/60 bg-surface-primary text-content-secondary hover:bg-surface-secondary hover:text-content-primary hover:border-border-medium',
+                )}
               >
-                <svg viewBox="0 0 24 24" fill="currentColor" className="h-[13px] w-[13px] text-content-secondary" aria-hidden>
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-[14px] w-[14px] shrink-0 text-content-secondary" aria-hidden>
                   <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71l-4.14-3.06-1.99 1.93c-.23.23-.42.42-.83.42z" />
                 </svg>
-                <span className="text-xs font-medium text-content-secondary">
+                <span className="min-w-0 flex-1 text-[11px] font-medium leading-none whitespace-nowrap overflow-hidden text-ellipsis text-content-secondary">
                   {t('sidebar.community_title', { defaultValue: 'Community' })}
                 </span>
               </a>

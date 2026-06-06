@@ -126,6 +126,7 @@ QA_*.md
 UX_*.md
 # Curated QA docs committed deliberately — opt-in exceptions to the above ignores.
 !docs/qa/UX_WEAKNESSES_AUDIT.md
+!docs/strategy/UX_*.md
 TESTING_PLAN.md
 TAKEOFF_TESTING_PLAN.md
 IMPROVEMENTS_TODO.md

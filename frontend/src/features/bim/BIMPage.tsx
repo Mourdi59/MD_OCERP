@@ -2795,9 +2795,9 @@ export function BIMPage() {
   }, [activeModelId, addToast, queryClient, projectId, t]);
 
   const breadcrumbItems = useMemo(() => {
-    const items: { label: string; to?: string }[] = [{ label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' }];
+    const items: { label: string; to?: string }[] = [];
     if (projectId && contextProjectName) items.push({ label: contextProjectName, to: `/projects/${projectId}` });
-    items.push({ label: t('bim.title') });
+    items.push({ label: t('nav.bim_viewer', { defaultValue: 'BIM Viewer' }) });
     return items;
   }, [t, projectId, contextProjectName]);
 

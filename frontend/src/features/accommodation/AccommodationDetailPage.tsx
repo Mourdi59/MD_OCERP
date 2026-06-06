@@ -193,7 +193,7 @@ export function AccommodationDetailPage() {
       <Breadcrumb
         items={[
           {
-            label: t('accommodation.title', { defaultValue: 'Accommodation' }),
+            label: t('nav.accommodation', { defaultValue: 'Accommodation' }),
             to: '/accommodation',
           },
           { label: data.name || t('common.unnamed', { defaultValue: '(unnamed)' }) },

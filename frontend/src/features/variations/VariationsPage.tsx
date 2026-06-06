@@ -442,7 +442,7 @@ export function VariationsPage() {
   if (!projectId) {
     return (
       <div className="space-y-5">
-        <Breadcrumb items={[{ label: t('variations.title', { defaultValue: 'Variations' }) }]} />
+        <Breadcrumb items={[{ label: t('nav.variations', { defaultValue: 'Variations' }) }]} />
         <EmptyState
           icon={<FileText size={22} />}
           title={t('variations.no_project', {
@@ -480,7 +480,14 @@ export function VariationsPage() {
 
   return (
     <div className="space-y-5">
-      <Breadcrumb items={[{ label: t('variations.title', { defaultValue: 'Variations' }) }]} />
+      <Breadcrumb
+        items={[
+          ...(currentProject
+            ? [{ label: currentProject.name, to: `/projects/${currentProject.id}` }]
+            : []),
+          { label: t('nav.variations', { defaultValue: 'Variations' }) },
+        ]}
+      />
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>

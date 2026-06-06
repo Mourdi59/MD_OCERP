@@ -651,7 +651,7 @@ export function ProjectSettingsPage() {
     <div className="w-full space-y-4 animate-fade-in">
       <Breadcrumb
         items={[
-          { label: t('nav.projects', { defaultValue: 'Projects' }), to: '/projects' },
+          { label: t('projects.title', { defaultValue: 'Projects' }), to: '/projects' },
           {
             label: project.name,
             to: `/projects/${project.id}`,

@@ -382,7 +382,7 @@ export function ProjectsPage() {
 
   return (
     <div className="w-full animate-fade-in">
-      <Breadcrumb items={[{ label: t('nav.dashboard', 'Dashboard'), to: '/' }, { label: t('nav.projects', 'Projects') }]} className="mb-4" />
+      <Breadcrumb items={[{ label: t('projects.title', 'Projects') }]} className="mb-4" />
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>

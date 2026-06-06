@@ -44,7 +44,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import clsx from 'clsx';
-import { Card, CardContent, Button, Badge, AIDisclaimerBanner, DismissibleInfo } from '@/shared/ui';
+import { Card, CardContent, Button, Badge, AIDisclaimerBanner, DismissibleInfo, Breadcrumb } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { aiApi, type QuickEstimateRequest, type EstimateJobResponse, type EstimateItem, type CadExtractResponse, type EnrichResult, type EnrichedItem, type CostMatch, type CadColumnsResponse, type CadGroupResponse, type CadDynamicGroup, type CadGroupElementsResponse } from './api';
@@ -2176,6 +2176,15 @@ export function QuickEstimatePage() {
       />
 
       <div className="space-y-6 px-4 py-5 lg:px-6 lg:py-6">
+      <Breadcrumb
+        items={[
+          {
+            label: isCadRoute
+              ? t('nav.cad_bim_explorer', { defaultValue: 'CAD-BIM BI Explorer' })
+              : t('nav.ai_estimate', { defaultValue: 'Quick Estimate (AI)' }),
+          },
+        ]}
+      />
       {/* Hero header — glass pill with title, subtitle, model pill */}
       <header
         className="animate-card-in relative overflow-hidden rounded-2xl border border-white/40 bg-white/60 px-5 py-4 backdrop-blur-xl shadow-lg shadow-slate-900/[0.04] dark:border-white/5 dark:bg-slate-900/40"

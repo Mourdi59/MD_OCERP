@@ -211,8 +211,7 @@ export function AnalyticsPage() {
       <div className="space-y-6">
         <Breadcrumb
           items={[
-            { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
-            { label: t('analytics.title', { defaultValue: 'Analytics' }) },
+            { label: t('nav.analytics', { defaultValue: 'Analytics' }) },
           ]}
           className="mb-4"
         />
@@ -244,8 +243,7 @@ export function AnalyticsPage() {
       <div className="space-y-6">
         <Breadcrumb
           items={[
-            { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
-            { label: t('analytics.title', { defaultValue: 'Analytics' }) },
+            { label: t('nav.analytics', { defaultValue: 'Analytics' }) },
           ]}
           className="mb-4"
         />
@@ -284,8 +282,7 @@ export function AnalyticsPage() {
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
-          { label: t('analytics.title', { defaultValue: 'Analytics' }) },
+          { label: t('nav.analytics', { defaultValue: 'Analytics' }) },
         ]}
         className="mb-4"
       />

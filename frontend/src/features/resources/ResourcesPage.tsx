@@ -608,7 +608,12 @@ export function ResourcesPage() {
   return (
     <div className="space-y-5">
       <Breadcrumb
-        items={[{ label: t('resources.title', { defaultValue: 'Resources & Crews' }) }]}
+        items={[
+          ...(activeProjectName
+            ? [{ label: activeProjectName, to: `/projects/${activeProjectId}` }]
+            : []),
+          { label: t('nav.resources', { defaultValue: 'Resources & Crews' }) },
+        ]}
       />
 
       <div className="flex items-start justify-between gap-4 flex-wrap">

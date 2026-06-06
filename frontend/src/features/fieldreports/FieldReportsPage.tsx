@@ -495,8 +495,10 @@ export function FieldReportsPage() {
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
-          { label: t('fieldreports.title', { defaultValue: 'Field Reports' }) },
+          ...(activeProjectName
+            ? [{ label: activeProjectName, to: `/projects/${projectId}` }]
+            : []),
+          { label: t('nav.field_reports', { defaultValue: 'Field Reports' }) },
         ]}
       />
 

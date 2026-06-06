@@ -272,7 +272,7 @@ export function EquipmentPage() {
       <Breadcrumb
         items={[
           {
-            label: t('equipment.title', { defaultValue: 'Equipment & Fleet' }),
+            label: t('nav.equipment', { defaultValue: 'Equipment & Fleet' }),
           },
         ]}
       />

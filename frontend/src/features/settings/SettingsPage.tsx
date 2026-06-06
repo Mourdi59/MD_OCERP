@@ -1196,10 +1196,7 @@ export function SettingsPage() {
   return (
     <div className="w-full animate-fade-in">
       <Breadcrumb
-        items={[
-          { label: t('nav.dashboard', 'Dashboard'), to: '/' },
-          { label: t('nav.settings', 'Settings') },
-        ]}
+        items={[{ label: t('nav.settings', 'Settings') }]}
         className="mb-4"
       />
 

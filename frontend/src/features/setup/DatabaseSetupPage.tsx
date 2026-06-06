@@ -607,8 +607,6 @@ export function DatabaseSetupPage() {
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
-          { label: t('nav.settings', { defaultValue: 'Settings' }), to: '/settings' },
           { label: t('setup.databases_resources', { defaultValue: 'Databases & Resources' }) },
         ]}
       />

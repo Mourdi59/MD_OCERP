@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { Button, Card, EmptyState, Skeleton } from '@/shared/ui';
+import { Breadcrumb } from '@/shared/ui/Breadcrumb';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -151,6 +152,14 @@ export function TrashPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto" data-testid="trash-page">
+      <Breadcrumb
+        className="mb-3"
+        items={[
+          ...(projectName ? [{ label: projectName, to: `/projects/${projectId}` }] : []),
+          { label: t('nav.project_files'), to: '/files' },
+          { label: t('files.trash.title', { defaultValue: 'Recycle Bin' }) },
+        ]}
+      />
       <header className="flex items-center gap-3 mb-6">
         <button
           type="button"

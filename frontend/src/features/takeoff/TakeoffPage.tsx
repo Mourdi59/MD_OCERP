@@ -28,7 +28,7 @@ import {
   GitCompare,
 } from 'lucide-react';
 
-import { Button, Card, Badge, Input, Skeleton, DismissibleInfo } from '@/shared/ui';
+import { Button, Card, Badge, Input, Skeleton, DismissibleInfo, Breadcrumb } from '@/shared/ui';
 import { PdfCompareDrawer } from './PdfCompareDrawer';
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { formatFileSize } from '@/shared/lib/formatters';
@@ -1794,6 +1794,16 @@ export function TakeoffPage() {
           </g>
         </g>
       </svg>
+      <Breadcrumb
+        items={[
+          ...(() => {
+            const sel = projects?.find((p) => p.id === selectedProjectId);
+            return sel ? [{ label: sel.name, to: `/projects/${sel.id}` }] : [];
+          })(),
+          { label: t('nav.pdf_measurements', 'PDF Measurements') },
+        ]}
+        className="mb-3"
+      />
       {/* Header removed — the page title is already in the left sidebar
           nav, and the subtitle was purely decorative. Saves ~80px of
           vertical space so the main workspace fits in one viewport. */}

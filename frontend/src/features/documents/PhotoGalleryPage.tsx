@@ -10,7 +10,6 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Camera,
   Upload,
   Search,
   X,
@@ -1267,7 +1266,7 @@ export function PhotoGalleryPage() {
 
   if (!projectId) {
     return (
-      <div className="space-y-6 p-6 max-w-7xl mx-auto">
+      <div className="space-y-6">
         <RequiresProject
           emptyHint={t('photos.select_project', {
             defaultValue: 'Select a project from the header to view its photo documentation.',
@@ -1278,7 +1277,7 @@ export function PhotoGalleryPage() {
   }
 
   return (
-    <div className="space-y-6 p-6 max-w-7xl mx-auto animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -1287,59 +1286,48 @@ export function PhotoGalleryPage() {
         ]}
       />
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-oe-blue-subtle">
-            <Camera size={20} className="text-oe-blue" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-content-primary">
-              {t('photos.title', { defaultValue: 'Project Photos' })}
-            </h1>
-            <p className="text-xs text-content-tertiary">
+      {/* Header — Variant C: minimal flat dense (GitHub/Stripe-dashboard feel).
+          The module title lives in the global top app bar, so the in-page
+          header does NOT repeat it. Project selection is also global (top
+          bar) - we read the shared project context only. What remains: a
+          tiny uppercase eyebrow (sidebar group), a compact row led by the
+          inline count badge(s) with right-aligned compact actions, a muted
+          subtitle line, then a hairline divider into the content. A
+          screen-reader-only h1 keeps the page heading semantics intact. */}
+      <div className="border-b border-border-light pb-4">
+        <h1 className="sr-only">{t('photos.title', { defaultValue: 'Project Photos' })}</h1>
+        <p className="text-2xs font-semibold uppercase tracking-wider text-content-quaternary">
+          {t('sidebar.group.documents', { defaultValue: 'Documents' })}
+        </p>
+        <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="shrink-0 rounded-full bg-surface-secondary px-2 py-0.5 text-xs text-content-secondary">
               {t('photos.subtitle', {
                 defaultValue: '{{count}} photos',
                 count: photoList.length,
               })}
-            </p>
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+            {/* Select mode toggle */}
+            {photoList.length > 0 && !selectMode && (
+              <Button variant="ghost" size="sm" onClick={() => setSelectMode(true)} className="h-8 shrink-0 whitespace-nowrap">
+                <CheckSquare size={14} className="mr-1.5 shrink-0" />
+                <span className="whitespace-nowrap">{t('photos.select', { defaultValue: 'Select' })}</span>
+              </Button>
+            )}
+            <Button onClick={() => setShowUpload(!showUpload)} size="sm" disabled={!projectId} className="h-8 shrink-0 whitespace-nowrap">
+              <Upload size={14} className="mr-1.5 shrink-0" />
+              <span className="whitespace-nowrap">{t('photos.upload_photos', { defaultValue: 'Upload Photos' })}</span>
+            </Button>
           </div>
         </div>
-        <p className="hidden max-w-md text-2xs leading-relaxed text-content-tertiary lg:block">
+        <p className="mt-1 text-xs text-content-tertiary">
           {t('photos.page_intro', {
             defaultValue:
-              'Visual site documentation — progress, defects, deliveries and safety. EXIF date and GPS are read on upload so photos sort chronologically and on a timeline.',
+              'Visual site documentation: progress, defects, deliveries and safety. EXIF date and GPS are read on upload so photos sort chronologically and on a timeline.',
           })}
         </p>
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
-          {/* Project selector */}
-          {projects.length > 0 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((pr) => pr.id === e.target.value);
-                if (p) useProjectContextStore.getState().setActiveProject(p.id, p.name);
-              }}
-              className="h-8 rounded-lg border border-border bg-surface-primary px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue transition-colors pr-7 appearance-none cursor-pointer max-w-[180px]"
-            >
-              <option value="" disabled>{t('photos.select_project', { defaultValue: 'Select project...' })}</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          )}
-          {/* Select mode toggle */}
-          {photoList.length > 0 && !selectMode && (
-            <Button variant="ghost" size="sm" onClick={() => setSelectMode(true)} className="shrink-0 whitespace-nowrap">
-              <CheckSquare size={14} className="mr-1.5 shrink-0" />
-              <span className="whitespace-nowrap">{t('photos.select', { defaultValue: 'Select' })}</span>
-            </Button>
-          )}
-          <Button onClick={() => setShowUpload(!showUpload)} size="sm" disabled={!projectId} className="shrink-0 whitespace-nowrap">
-            <Upload size={14} className="mr-1.5 shrink-0" />
-            <span className="whitespace-nowrap">{t('photos.upload_photos', { defaultValue: 'Upload Photos' })}</span>
-          </Button>
-        </div>
       </div>
 
       {/* Batch selection bar */}

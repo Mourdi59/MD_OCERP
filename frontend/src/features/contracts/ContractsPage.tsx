@@ -259,6 +259,10 @@ export function ContractsPage() {
   });
 
   const contracts = contractsQ.data ?? [];
+  const selectedProject = useMemo(
+    () => (projectsQ.data ?? []).find((p) => p.id === projectId),
+    [projectsQ.data, projectId],
+  );
   const [claimsContractId, setClaimsContractId] = useState<string>('');
   const effectiveClaimsContract = claimsContractId || contracts[0]?.id || '';
 
@@ -330,7 +334,10 @@ export function ContractsPage() {
     <div className="space-y-5">
       <Breadcrumb
         items={[
-          { label: t('contracts.title', { defaultValue: 'Contracts' }) },
+          ...(selectedProject
+            ? [{ label: selectedProject.name, to: `/projects/${selectedProject.id}` }]
+            : []),
+          { label: t('nav.contracts', { defaultValue: 'Contracts' }) },
         ]}
       />
 

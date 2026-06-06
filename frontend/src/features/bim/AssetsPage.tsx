@@ -127,8 +127,7 @@ export function AssetsPage() {
     <div className="flex h-full flex-col p-6">
       <Breadcrumb
         items={[
-          { label: t('nav.projects', { defaultValue: 'Projects' }), to: '/projects' },
-          { label: activeProjectName || t('nav.project', { defaultValue: 'Project' }) },
+          { label: activeProjectName || t('nav.project', { defaultValue: 'Project' }), to: `/projects/${activeProjectId}` },
           { label: t('nav.assets', { defaultValue: 'Assets' }) },
         ]}
       />

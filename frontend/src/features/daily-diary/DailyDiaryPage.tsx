@@ -28,6 +28,7 @@ import {
   Users,
   Package,
   CheckCircle2,
+  Pencil,
 } from 'lucide-react';
 import {
   Button,
@@ -53,6 +54,7 @@ import {
   listDiaries,
   getDiary,
   createDiary,
+  updateDiary,
   closeDiary,
   deleteDiary,
   signDiary,
@@ -156,6 +158,17 @@ const inputCls =
 // implementation lives in shared/lib/dates.ts and is shared with field-reports.
 const todayIso = todayLocalISO;
 const isoDate = isoDateFromLocal;
+
+// The latest date a diary may be opened for. The backend allows today plus
+// one day of slack (service.create_diary: now(UTC).date() + 1 day) so a site
+// running ahead of UTC can still open "its" current day. Mirror that rule
+// exactly in the UI so the calendar enables/disables the same cells the API
+// would accept, instead of a stricter "today only" guess.
+function maxDiaryIso(): string {
+  const t = new Date();
+  t.setDate(t.getDate() + 1);
+  return todayLocalISO(t);
+}
 
 function monthBounds(year: number, month: number): { from: string; to: string } {
   // Built from the local calendar fields the grid itself uses, NOT a UTC
@@ -283,7 +296,16 @@ export function DailyDiaryPage() {
   const [month, setMonth] = useState(today.getMonth());
   const [activeDiaryId, setActiveDiaryId] = useState<string>('');
   const [createOpen, setCreateOpen] = useState(false);
+  // Date the create flow should be prefilled with. Set when a user clicks an
+  // empty calendar day so the new diary defaults to THAT day rather than
+  // today; empty string means "use today" (the header / FAB entry points).
+  const [createDate, setCreateDate] = useState<string>('');
   const [signOpen, setSignOpen] = useState(false);
+
+  const openCreate = (date?: string) => {
+    setCreateDate(date ?? '');
+    setCreateOpen(true);
+  };
 
   const projectsQ = useQuery({
     queryKey: ['projects-list-for-diary'],
@@ -295,6 +317,8 @@ export function DailyDiaryPage() {
     const seed = activeProjectId || projectsQ.data?.[0]?.id;
     if (seed) setProjectId(seed);
   }, [activeProjectId, projectsQ.data, projectId]);
+
+  const selectedProjectName = projectsQ.data?.find((p) => p.id === projectId)?.name ?? '';
 
   const bounds = useMemo(() => monthBounds(year, month), [year, month]);
 
@@ -359,10 +383,14 @@ export function DailyDiaryPage() {
     <div className="space-y-5">
       <Breadcrumb
         items={[
+          ...(selectedProjectName
+            ? [{ label: selectedProjectName, to: `/projects/${projectId}` }]
+            : []),
           {
-            label: t('daily_diary.title', { defaultValue: 'Daily Site Diary' }),
+            label: t('nav.daily_diary', { defaultValue: 'Daily Site Diary' }),
           },
         ]}
+        className="mb-2"
       />
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -411,7 +439,7 @@ export function DailyDiaryPage() {
             variant="primary"
             size="sm"
             icon={<Plus size={14} />}
-            onClick={() => setCreateOpen(true)}
+            onClick={() => openCreate()}
             disabled={!projectId}
           >
             {t('daily_diary.new_diary', { defaultValue: 'New Diary' })}
@@ -510,6 +538,7 @@ export function DailyDiaryPage() {
               setActiveDiaryId(diary.id);
               setTab('today');
             }}
+            onEmptyDayClick={(iso) => openCreate(iso)}
           />
         )
       ) : tab === 'today' ? (
@@ -535,7 +564,7 @@ export function DailyDiaryPage() {
             projectId={projectId}
             diary={activeDiary}
             loading={activeLoading}
-            onCreate={() => setCreateOpen(true)}
+            onCreate={() => openCreate()}
             onSign={() => setSignOpen(true)}
             onDeleted={() => {
               // After delete, drop the calendar-selected diary so the
@@ -570,7 +599,14 @@ export function DailyDiaryPage() {
       {createOpen && projectId && (
         <CreateDiaryModal
           projectId={projectId}
+          initialDate={createDate || undefined}
           onClose={() => setCreateOpen(false)}
+          onCreated={(diary) => {
+            // Jump straight into the freshly-created day so the user lands on
+            // the editable record they just opened from the calendar.
+            setActiveDiaryId(diary.id);
+            setTab('today');
+          }}
         />
       )}
       {signOpen && activeDiary && (
@@ -585,7 +621,7 @@ export function DailyDiaryPage() {
           primary action without scrolling. ≥44×44 tap target. */}
       <button
         type="button"
-        onClick={() => setCreateOpen(true)}
+        onClick={() => openCreate()}
         disabled={!projectId}
         aria-label={t('daily_diary.new_diary', { defaultValue: 'New Diary' })}
         className="fixed bottom-5 right-5 z-40 inline-flex h-14 w-14 min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-oe-blue text-white shadow-lg ring-1 ring-black/5 transition-transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 sm:hidden"
@@ -607,6 +643,7 @@ function DiariesCalendar({
   onYearChange,
   onMonthChange,
   onDayClick,
+  onEmptyDayClick,
 }: {
   diaries: DailyDiary[];
   loading: boolean;
@@ -616,8 +653,20 @@ function DiariesCalendar({
   onYearChange: (y: number) => void;
   onMonthChange: (m: number) => void;
   onDayClick: (diary: DailyDiary) => void;
+  /** Open the create flow prefilled with this YYYY-MM-DD (empty, allowed day). */
+  onEmptyDayClick: (iso: string) => void;
 }) {
   const { t } = useTranslation();
+  // Roving-tabindex focus target so arrow keys can walk the grid. Defaults to
+  // today when it's in the visible month, else the first of the month.
+  const initialFocus = useMemo(() => {
+    const ti = todayIso();
+    return ti.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`)
+      ? Number(ti.slice(8, 10))
+      : 1;
+  }, [year, month]);
+  const [focusedDay, setFocusedDay] = useState(initialFocus);
+  useEffect(() => setFocusedDay(initialFocus), [initialFocus]);
 
   const byDate = useMemo(() => {
     const map = new Map<string, DailyDiary>();
@@ -630,6 +679,7 @@ function DiariesCalendar({
   const daysCount = daysInMonth(year, month);
   const firstWeekday = new Date(year, month, 1).getDay(); // 0=Sun
   const offset = (firstWeekday + 6) % 7; // ISO Mon=0
+  const maxIso = maxDiaryIso();
 
   const prevMonth = () => {
     if (month === 0) {
@@ -648,29 +698,103 @@ function DiariesCalendar({
     }
   };
 
+  const activate = (day: number) => {
+    const iso = isoDate(year, month, day);
+    const diary = byDate.get(iso);
+    if (diary) {
+      onDayClick(diary);
+    } else if (iso <= maxIso) {
+      onEmptyDayClick(iso);
+    }
+    // A future empty day is a no-op — the cell carries a tooltip explaining
+    // why it can't be opened (mirrors the backend future-date rejection).
+  };
+
+  // Arrow keys move focus by ±1 / ±7 days within the month; Home/End jump to
+  // the month edges; Enter/Space activate. Focus is moved imperatively to the
+  // newly-focused cell so screen readers and sighted keyboard users track it.
+  const onGridKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    let next = focusedDay;
+    switch (e.key) {
+      case 'ArrowRight':
+        next = Math.min(daysCount, focusedDay + 1);
+        break;
+      case 'ArrowLeft':
+        next = Math.max(1, focusedDay - 1);
+        break;
+      case 'ArrowDown':
+        next = Math.min(daysCount, focusedDay + 7);
+        break;
+      case 'ArrowUp':
+        next = Math.max(1, focusedDay - 7);
+        break;
+      case 'Home':
+        next = 1;
+        break;
+      case 'End':
+        next = daysCount;
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        activate(focusedDay);
+        return;
+      default:
+        return;
+    }
+    e.preventDefault();
+    if (next !== focusedDay) {
+      setFocusedDay(next);
+      const el = document.getElementById(`dd-cell-${isoDate(year, month, next)}`);
+      el?.focus();
+    }
+  };
+
   const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   return (
     <Card padding="md">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <button
           type="button"
           onClick={prevMonth}
-          className="rounded-md p-1.5 hover:bg-surface-secondary"
+          className="rounded-md p-1.5 hover:bg-surface-secondary focus:outline-none focus:ring-2 focus:ring-oe-blue/40"
           aria-label={t('daily_diary.prev_month', { defaultValue: 'Previous month' })}
         >
           <ChevronLeft size={16} />
         </button>
-        <h3 className="text-base font-semibold">{fmtMonth(year, month, locale)}</h3>
-        <button
-          type="button"
-          onClick={nextMonth}
-          className="rounded-md p-1.5 hover:bg-surface-secondary"
-          aria-label={t('daily_diary.next_month', { defaultValue: 'Next month' })}
-        >
-          <ChevronRight size={16} />
-        </button>
+        <h3 className="text-base font-semibold" aria-live="polite">
+          {fmtMonth(year, month, locale)}
+        </h3>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const now = new Date();
+              onYearChange(now.getFullYear());
+              onMonthChange(now.getMonth());
+            }}
+          >
+            {t('daily_diary.today', { defaultValue: 'Today' })}
+          </Button>
+          <button
+            type="button"
+            onClick={nextMonth}
+            className="rounded-md p-1.5 hover:bg-surface-secondary focus:outline-none focus:ring-2 focus:ring-oe-blue/40"
+            aria-label={t('daily_diary.next_month', { defaultValue: 'Next month' })}
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
       </div>
+
+      <p className="mb-3 text-xs text-content-tertiary">
+        {t('daily_diary.calendar_hint', {
+          defaultValue:
+            'Click a day to open its diary, or an empty day to start one. Arrow keys move between days, Enter opens.',
+        })}
+      </p>
 
       {loading ? (
         <SkeletonTable rows={5} columns={7} />
@@ -686,39 +810,105 @@ function DiariesCalendar({
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-1">
+          <div
+            role="grid"
+            aria-label={fmtMonth(year, month, locale)}
+            className="grid grid-cols-7 gap-1"
+            onKeyDown={onGridKeyDown}
+          >
             {Array.from({ length: offset }, (_, i) => (
-              <div key={`pad-${i}`} className="h-20" />
+              <div key={`pad-${i}`} className="h-20" role="presentation" />
             ))}
             {Array.from({ length: daysCount }, (_, i) => {
               const day = i + 1;
               const iso = isoDate(year, month, day);
               const diary = byDate.get(iso);
               const isToday = iso === todayIso();
+              const isFuture = !diary && iso > maxIso;
+              const labour = diary?.labour_count ?? 0;
+              const equipment = diary?.equipment_count ?? 0;
+              const cellLabel = diary
+                ? t('daily_diary.cell_open', {
+                    defaultValue: '{{date}} — open diary ({{status}})',
+                    date: iso,
+                    status: statusLabel(t, diary.status),
+                  })
+                : isFuture
+                  ? t('daily_diary.cell_future', {
+                      defaultValue:
+                        '{{date}} — a site diary cannot be opened this far ahead',
+                      date: iso,
+                    })
+                  : t('daily_diary.cell_empty', {
+                      defaultValue: '{{date}} — start a diary',
+                      date: iso,
+                    });
               return (
                 <button
                   key={iso}
+                  id={`dd-cell-${iso}`}
                   type="button"
-                  onClick={() => diary && onDayClick(diary)}
-                  disabled={!diary}
+                  role="gridcell"
+                  tabIndex={day === focusedDay ? 0 : -1}
+                  onFocus={() => setFocusedDay(day)}
+                  onClick={() => activate(day)}
+                  disabled={isFuture}
+                  aria-label={cellLabel}
+                  title={
+                    isFuture
+                      ? t('daily_diary.cell_future_tooltip', {
+                          defaultValue:
+                            'Future-dated site diaries are not allowed — a diary is a contemporaneous record.',
+                        })
+                      : undefined
+                  }
                   className={clsx(
-                    'h-20 rounded-md border p-1.5 text-left transition-colors flex flex-col',
+                    'group relative h-20 rounded-md border p-1.5 text-left transition-colors flex flex-col focus:outline-none focus:ring-2 focus:ring-oe-blue/50',
                     diary
                       ? 'border-border-light bg-surface-elevated hover:border-oe-blue hover:shadow-sm cursor-pointer'
-                      : 'border-dashed border-border-light/60 bg-transparent text-content-tertiary cursor-default',
+                      : isFuture
+                        ? 'border-dashed border-border-light/40 bg-transparent text-content-tertiary cursor-not-allowed opacity-60'
+                        : 'border-dashed border-border-light/60 bg-transparent text-content-tertiary hover:border-oe-blue hover:text-oe-blue hover:bg-oe-blue-subtle/10 cursor-pointer',
                     isToday && 'ring-2 ring-oe-blue/30',
                   )}
                 >
                   <span className="text-xs font-semibold">{day}</span>
-                  {diary && (
+                  {diary ? (
                     <>
                       <Badge variant={STATUS_VARIANT[diary.status]} size="sm" dot>
                         {statusLabel(t, diary.status)}
                       </Badge>
-                      {diary.status === 'signed' && (
-                        <Lock size={10} className="mt-auto text-semantic-success" />
-                      )}
+                      <div className="mt-auto flex items-center gap-2 text-2xs text-content-tertiary">
+                        {labour > 0 && (
+                          <span
+                            className="inline-flex items-center gap-0.5"
+                            title={t('daily_diary.labour', { defaultValue: 'Labour' })}
+                          >
+                            <Users size={9} />
+                            {labour}
+                          </span>
+                        )}
+                        {equipment > 0 && (
+                          <span
+                            className="inline-flex items-center gap-0.5"
+                            title={t('daily_diary.equipment', { defaultValue: 'Equipment' })}
+                          >
+                            <Package size={9} />
+                            {equipment}
+                          </span>
+                        )}
+                        {diary.status === 'signed' && (
+                          <Lock size={9} className="ml-auto text-semantic-success" />
+                        )}
+                      </div>
                     </>
+                  ) : (
+                    !isFuture && (
+                      <Plus
+                        size={14}
+                        className="mt-auto self-end text-content-tertiary opacity-0 transition-opacity group-hover:opacity-100"
+                      />
+                    )
                   )}
                 </button>
               );
@@ -758,6 +948,7 @@ function TodayTab({
   const [droneOpen, setDroneOpen] = useState(false);
   const [realityOpen, setRealityOpen] = useState(false);
   const [sclOpen, setSclOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   // All asset panels are scoped to the diary's OWN date — not todayIso().
   // A diary opened from the calendar can be any past day; previously the
@@ -1097,6 +1288,18 @@ function TodayTab({
               {t('daily_diary.archive', { defaultValue: 'Archive' })}
             </Button>
           )}
+          {!sealed && (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Pencil size={14} />}
+              onClick={() => setEditOpen(true)}
+              data-testid="daily-diary-edit"
+              aria-label={t('daily_diary.edit_diary', { defaultValue: 'Edit diary' })}
+            >
+              {t('common.edit', { defaultValue: 'Edit' })}
+            </Button>
+          )}
           {diary.status === 'open' && (
             <Button
               variant="secondary"
@@ -1295,7 +1498,111 @@ function TodayTab({
           onClose={() => setSclOpen(false)}
         />
       )}
+      {editOpen && (
+        <EditDiaryModal diary={diary} onClose={() => setEditOpen(false)} />
+      )}
     </div>
+  );
+}
+
+/* ── Edit diary modal ──────────────────────────────────────────────────────
+ *
+ * Amend the diary's own fields (labour / equipment headcount, notes) via the
+ * real PATCH /diaries/{id} endpoint. The backend rejects edits on
+ * signed/archived diaries (409), so this is only surfaced for open/closed
+ * records — matching the immutability rule in service.update_diary.
+ */
+function EditDiaryModal({
+  diary,
+  onClose,
+}: {
+  diary: DailyDiary;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const addToast = useToastStore((s) => s.addToast);
+  const [labour, setLabour] = useState(diary.labour_count);
+  const [equipment, setEquipment] = useState(diary.equipment_count);
+  const [notes, setNotes] = useState(diary.notes ?? '');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await updateDiary(diary.id, {
+        labour_count: labour,
+        equipment_count: equipment,
+        notes,
+      });
+      // Refresh the diary record, its by-id view and the calendar signals.
+      qc.invalidateQueries({ queryKey: ['daily-diary'] });
+      addToast({
+        type: 'success',
+        title: t('daily_diary.updated', { defaultValue: 'Diary updated' }),
+      });
+      onClose();
+    } catch (err) {
+      addToast({ type: 'error', title: getErrorMessage(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <WideModal
+      open
+      onClose={onClose}
+      busy={busy}
+      size="lg"
+      title={t('daily_diary.edit_diary', { defaultValue: 'Edit diary' })}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} disabled={busy}>
+            {t('common.cancel', { defaultValue: 'Cancel' })}
+          </Button>
+          <Button variant="primary" onClick={submit} loading={busy}>
+            {t('common.save', { defaultValue: 'Save' })}
+          </Button>
+        </>
+      }
+    >
+      <WideModalSection columns={2}>
+        <WideModalField label={t('daily_diary.date', { defaultValue: 'Date' })} span={2}>
+          {/* The diary date is the record's identity and is immutable once
+              opened — shown read-only so the editor is unambiguous. */}
+          <div className="flex h-9 items-center rounded-lg border border-border bg-surface-secondary/40 px-3 text-sm text-content-secondary">
+            <DateDisplay value={diary.diary_date} />
+          </div>
+        </WideModalField>
+        <WideModalField label={t('daily_diary.labour', { defaultValue: 'Labour' })}>
+          <input
+            type="number"
+            min={0}
+            value={labour}
+            onChange={(e) => setLabour(Number(e.target.value) || 0)}
+            className={inputCls}
+          />
+        </WideModalField>
+        <WideModalField label={t('daily_diary.equipment', { defaultValue: 'Equipment' })}>
+          <input
+            type="number"
+            min={0}
+            value={equipment}
+            onChange={(e) => setEquipment(Number(e.target.value) || 0)}
+            className={inputCls}
+          />
+        </WideModalField>
+        <WideModalField label={t('common.notes')} span={2}>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            className={clsx(inputCls, 'h-auto py-2')}
+          />
+        </WideModalField>
+      </WideModalSection>
+    </WideModal>
   );
 }
 
@@ -1920,19 +2227,26 @@ function ArchiveTab({
 
 function CreateDiaryModal({
   projectId,
+  initialDate,
   onClose,
+  onCreated,
 }: {
   projectId: string;
+  /** Prefill the date field (e.g. the empty calendar day that was clicked). */
+  initialDate?: string;
   onClose: () => void;
+  /** Invoked with the created diary so the page can open it for editing. */
+  onCreated?: (diary: DailyDiary) => void;
 }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
-  const [diaryDate, setDiaryDate] = useState(todayIso());
+  const [diaryDate, setDiaryDate] = useState(initialDate || todayIso());
   const [labour, setLabour] = useState(0);
   const [equipment, setEquipment] = useState(0);
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
+  const maxIso = maxDiaryIso();
 
   const submit = async () => {
     if (!diaryDate) {
@@ -1944,7 +2258,7 @@ function CreateDiaryModal({
       });
       return;
     }
-    if (diaryDate > todayIso()) {
+    if (diaryDate > maxIso) {
       addToast({
         type: 'error',
         title: t('daily_diary.date_future', {
@@ -1955,7 +2269,7 @@ function CreateDiaryModal({
     }
     setBusy(true);
     try {
-      await createDiary({
+      const created = await createDiary({
         project_id: projectId,
         diary_date: diaryDate,
         labour_count: labour,
@@ -1964,6 +2278,7 @@ function CreateDiaryModal({
       });
       qc.invalidateQueries({ queryKey: ['daily-diary'] });
       addToast({ type: 'success', title: t('daily_diary.created', { defaultValue: 'Diary created' }) });
+      onCreated?.(created);
       onClose();
     } catch (err) {
       addToast({ type: 'error', title: getErrorMessage(err) });
@@ -2003,7 +2318,7 @@ function CreateDiaryModal({
           <input
             type="date"
             value={diaryDate}
-            max={todayIso()}
+            max={maxIso}
             onChange={(e) => setDiaryDate(e.target.value)}
             className={inputCls}
           />

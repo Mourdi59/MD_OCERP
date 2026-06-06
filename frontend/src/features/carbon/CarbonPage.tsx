@@ -150,11 +150,17 @@ export function CarbonPage() {
   // Prefer an explicit in-page selection; otherwise fall back to the globally
   // selected active project, and only then to the first project in the list.
   const effectiveProjectId = projectId || activeProjectId || projects[0]?.id || '';
+  const effectiveProject = projects.find((p) => p.id === effectiveProjectId);
 
   return (
     <div className="space-y-5">
       <Breadcrumb
-        items={[{ label: t('carbon.title', { defaultValue: 'Carbon & Sustainability' }) }]}
+        items={[
+          ...(effectiveProject
+            ? [{ label: effectiveProject.name, to: `/projects/${effectiveProject.id}` }]
+            : []),
+          { label: t('nav.carbon', { defaultValue: 'Carbon & ESG' }) },
+        ]}
       />
 
       <div className="flex items-start justify-between gap-4 flex-wrap">

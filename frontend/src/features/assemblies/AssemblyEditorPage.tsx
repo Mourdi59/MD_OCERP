@@ -294,7 +294,7 @@ export function AssemblyEditorPage() {
       <Breadcrumb
         className="mb-4"
         items={[
-          { label: t('assemblies.title', 'Assemblies'), to: '/assemblies' },
+          { label: t('nav.assemblies', 'Assemblies'), to: '/assemblies' },
           { label: assembly.name },
         ]}
       />

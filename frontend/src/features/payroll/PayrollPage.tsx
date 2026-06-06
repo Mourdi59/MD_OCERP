@@ -239,8 +239,10 @@ export default function PayrollPage() {
     <div className="flex flex-col gap-6 p-6 animate-fade-in">
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
-          { label: t('payroll.title', { defaultValue: 'Payroll' }) },
+          ...(activeProjectName
+            ? [{ label: activeProjectName, to: `/projects/${projectId}` }]
+            : []),
+          { label: t('nav.payroll', { defaultValue: 'Payroll' }) },
         ]}
       />
 

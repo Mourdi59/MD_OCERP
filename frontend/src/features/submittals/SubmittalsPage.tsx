@@ -724,7 +724,11 @@ export function SubmittalsPage() {
   });
 
   const projectId = routeProjectId || activeProjectId || projects[0]?.id || '';
-  const projectName = projects.find((p) => p.id === projectId)?.name || '';
+  // Genuinely-selected project (route param or shared context) — used for
+  // the breadcrumb so the trail never shows a first-project guess.
+  const selectedProjectId = routeProjectId || activeProjectId || '';
+  const projectName =
+    projects.find((p) => p.id === selectedProjectId)?.name || '';
 
   const {
     data: submittals = [],
@@ -920,9 +924,8 @@ export function SubmittalsPage() {
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
-          ...(projectName
-            ? [{ label: projectName, to: `/projects/${projectId}` }]
+          ...(selectedProjectId && projectName
+            ? [{ label: projectName, to: `/projects/${selectedProjectId}` }]
             : []),
           { label: t('submittals.title', { defaultValue: 'Submittals' }) },
         ]}

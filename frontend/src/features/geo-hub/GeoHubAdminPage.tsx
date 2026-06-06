@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 
 import { AdminOnly } from '@/shared/auth/AdminOnly';
+import { Breadcrumb } from '@/shared/ui';
 
 import { GeocodeCacheAdminPanel } from './GeocodeCacheAdminPanel';
 
@@ -22,6 +23,12 @@ export function GeoHubAdminPage() {
   return (
     <AdminOnly redirectTo="/404">
       <div className="mx-auto max-w-3xl space-y-4">
+        <Breadcrumb
+          items={[
+            { label: t('sidebar.geo_hub', { defaultValue: 'Geo Hub' }), to: '/geo' },
+            { label: t('geo_hub.admin_title', { defaultValue: 'Geo Hub — Admin' }) },
+          ]}
+        />
         <header className="flex items-center gap-3">
           <Link
             to="/geo"

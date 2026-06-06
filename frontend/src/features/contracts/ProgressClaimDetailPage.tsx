@@ -190,7 +190,10 @@ export function ProgressClaimDetailPage() {
     <div className="space-y-5" data-testid="progress-claim-detail">
       <Breadcrumb
         items={[
-          { label: t('contracts.title', { defaultValue: 'Contracts' }), to: contractsHref },
+          ...(projectQ.data
+            ? [{ label: projectQ.data.name, to: `/projects/${projectQ.data.id}` }]
+            : []),
+          { label: t('nav.contracts', { defaultValue: 'Contracts' }), to: contractsHref },
           { label: claim.claim_number || t('contracts.claim', { defaultValue: 'Claim' }) },
         ]}
       />

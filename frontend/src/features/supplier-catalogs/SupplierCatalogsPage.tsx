@@ -156,7 +156,7 @@ export function SupplierCatalogsPage() {
 
   return (
     <div className="space-y-5">
-      <Breadcrumb items={[{ label: t('supplier_catalogs.title', { defaultValue: 'Supplier Catalogs' }) }]} />
+      <Breadcrumb items={[{ label: t('nav.supplier_catalogs', { defaultValue: 'Supplier Catalogs' }) }]} />
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>

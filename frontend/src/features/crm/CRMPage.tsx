@@ -337,7 +337,7 @@ export function CRMPage() {
 
   return (
     <div className="space-y-4">
-      <Breadcrumb items={[{ label: t('crm.title', { defaultValue: 'CRM' }) }]} />
+      <Breadcrumb items={[{ label: t('nav.crm', { defaultValue: 'CRM' }) }]} />
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>

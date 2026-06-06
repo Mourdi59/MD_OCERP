@@ -14,6 +14,7 @@ import { ArrowLeft, ChevronRight, HardDrive, UploadCloud, Search, Send } from 'l
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 import { EmptyState } from '@/shared/ui';
+import { Breadcrumb } from '@/shared/ui/Breadcrumb';
 import { fetchTagsForFile } from '@/features/file-tags/api';
 import { fileTagsKeys } from '@/features/file-tags/hooks';
 import type { TagRecord } from '@/features/file-tags/types';
@@ -528,6 +529,16 @@ export function FileManagerPage() {
           projectName={ctxProjectName}
         />
       )}
+      <div className="px-4 pt-3">
+        <Breadcrumb
+          items={[
+            ...(ctxProjectName
+              ? [{ label: ctxProjectName, to: `/projects/${projectId}` }]
+              : []),
+            { label: t('nav.project_files') },
+          ]}
+        />
+      </div>
       <PathBar locations={locations} isLoading={locLoading} selectedKind={selectedKind} />
 
       {/* Page-level breadcrumb + primary upload CTA. Lives outside the

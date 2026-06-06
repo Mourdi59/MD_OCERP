@@ -173,7 +173,7 @@ export function TaktSchedulePage() {
   return (
     <div className="space-y-5">
       <Breadcrumb
-        items={[{ label: t('takt.title', { defaultValue: 'Takt Planning' }) }]}
+        items={[{ label: t('nav.takt', { defaultValue: 'Takt Planning' }) }]}
       />
 
       <div className="flex flex-wrap items-start justify-between gap-4">

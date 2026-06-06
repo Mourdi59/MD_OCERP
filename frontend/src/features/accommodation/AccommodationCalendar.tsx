@@ -491,7 +491,7 @@ export function AccommodationCalendar({
           <Breadcrumb
             items={[
               {
-                label: t('accommodation.title', {
+                label: t('nav.accommodation', {
                   defaultValue: 'Accommodation',
                 }),
                 to: '/accommodation',

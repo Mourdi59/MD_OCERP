@@ -237,7 +237,10 @@ export function RFIDetailPage() {
   // which may be EUR/BRL/GBP/… — never assume USD).
   const { data: project } = useQuery({
     queryKey: ['project', rfi?.project_id ?? null],
-    queryFn: () => apiGet<{ id: string; currency: string }>(`/v1/projects/${rfi?.project_id}`),
+    queryFn: () =>
+      apiGet<{ id: string; name: string; currency: string }>(
+        `/v1/projects/${rfi?.project_id}`,
+      ),
     enabled: !!rfi?.project_id,
     staleTime: 5 * 60_000,
   });
@@ -433,7 +436,9 @@ export function RFIDetailPage() {
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
+          ...(rfi.project_id && project?.name
+            ? [{ label: project.name, to: `/projects/${rfi.project_id}` }]
+            : []),
           { label: t('rfi.title', { defaultValue: 'RFIs' }), to: '/rfi' },
           { label: `#${rfi.rfi_number}` },
         ]}

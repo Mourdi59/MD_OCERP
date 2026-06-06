@@ -2571,6 +2571,13 @@ export function CostModelPage() {
   if (selectedProject) {
     return (
       <div className="w-full animate-fade-in">
+        <Breadcrumb
+          items={[
+            { label: selectedProject.name, to: `/projects/${selectedProject.id}` },
+            { label: t('nav.5d_cost_model', { defaultValue: '5D Cost Model' }) },
+          ]}
+          className="mb-4"
+        />
         <PlanningCrossLinks active="5d" />
 
         <button
@@ -2623,7 +2630,7 @@ export function CostModelPage() {
   // Project selector view
   return (
     <div className="w-full animate-fade-in">
-      <Breadcrumb items={[{ label: t('nav.dashboard', 'Dashboard'), to: '/' }, { label: t('nav.costmodel', { defaultValue: '5D Cost Model' }) }]} className="mb-4" />
+      <Breadcrumb items={[{ label: t('nav.5d_cost_model', { defaultValue: '5D Cost Model' }) }]} className="mb-4" />
 
       {/* Cross-module navigation — connects the planning value chain */}
       <PlanningCrossLinks active="5d" />

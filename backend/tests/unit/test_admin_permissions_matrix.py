@@ -49,12 +49,24 @@ def fresh_registry(monkeypatch):
 class TestPermissionsMatrixPayload:
     def test_empty_registry_returns_canonical_roles_only(self, fresh_registry):
         payload = _build_matrix_payload()
+        # ``roles`` is the matrix *column* set: the four permission-bearing
+        # roles the UI renders cells for. The three field-worker personas
+        # (field_worker / site_foreman / site_inspector) carry no
+        # permissions yet (register_field_role_permissions is a design-stage
+        # stub), so they are intentionally omitted from the column set even
+        # though they exist in the canonical role hierarchy below.
         assert payload["roles"] == ["viewer", "editor", "manager", "admin"]
         assert payload["modules"] == []
         # Role hierarchy is rendered as {role_value: int_level} so the
         # UI can label / sort columns without re-implementing the
-        # canonical order on its side.
+        # canonical order on its side. This mirrors the full canonical
+        # ROLE_HIERARCHY, including the field-worker personas whose ranks
+        # are NEGATIVE (below viewer=0) so a legacy default-`-1` lookup
+        # can never promote a field worker above a viewer.
         assert payload["role_hierarchy"] == {
+            "field_worker": -2,
+            "site_foreman": -1,
+            "site_inspector": 0,
             "viewer": 0,
             "editor": 1,
             "manager": 2,

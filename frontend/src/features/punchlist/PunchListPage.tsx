@@ -123,14 +123,20 @@ const STATUS_TRANSITION: Record<PunchStatus, { next: PunchStatus; labelKey: stri
   in_progress: [
     { next: 'resolved', labelKey: 'punch.action_resolve', defaultLabel: 'Mark Resolved', icon: CheckCircle2 },
   ],
+  // Reopen targets must mirror the backend FSM (punchlist/service.py
+  // VALID_TRANSITIONS): resolved/verified/closed may all go back to "open" —
+  // "in_progress" is NOT a legal reopen target and the API rejects it.
   resolved: [
     { next: 'verified', labelKey: 'punch.action_verify', defaultLabel: 'Verify', icon: ShieldCheck },
-    { next: 'in_progress', labelKey: 'punch.action_reopen', defaultLabel: 'Reopen', icon: XCircle },
+    { next: 'open', labelKey: 'punch.action_reopen', defaultLabel: 'Reopen', icon: XCircle },
   ],
   verified: [
     { next: 'closed', labelKey: 'punch.action_close', defaultLabel: 'Close', icon: CheckCircle2 },
+    { next: 'open', labelKey: 'punch.action_reopen', defaultLabel: 'Reopen', icon: XCircle },
   ],
-  closed: [],
+  closed: [
+    { next: 'open', labelKey: 'punch.action_reopen', defaultLabel: 'Reopen', icon: XCircle },
+  ],
 };
 
 /* ── Styling helpers ──────────────────────────────────────────────────── */
@@ -186,14 +192,17 @@ function StatsCards({ summary }: { summary: PunchSummary | undefined }) {
   ];
 
   return (
-    <div className="grid grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       {items.map((item) => (
-        <Card key={item.label} className="p-4 animate-card-in">
-          <p className="text-2xs text-content-tertiary uppercase tracking-wide">{item.label}</p>
-          <p className={clsx('text-xl font-bold mt-1 tabular-nums', item.cls)}>
+        <div
+          key={item.label}
+          className="rounded-xl border border-border bg-surface-primary p-3 animate-card-in"
+        >
+          <p className="text-2xs uppercase tracking-wide text-content-tertiary">{item.label}</p>
+          <p className={clsx('mt-1 text-lg font-semibold tabular-nums', item.cls)}>
             {item.value}
           </p>
-        </Card>
+        </div>
       ))}
     </div>
   );
@@ -876,7 +885,7 @@ export function PunchListPage() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-6 animate-fade-in">
+    <div className="animate-fade-in space-y-5">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -885,39 +894,20 @@ export function PunchListPage() {
         ]}
       />
 
-      {/* ── Header: single compact row ─────────────────────────────────── */}
-      <div className="mt-3 flex items-center justify-between gap-3 flex-nowrap overflow-x-auto">
-        {/* Left: title */}
-        <h1 className="text-lg font-bold text-content-primary flex items-center gap-2 shrink-0">
-          <ListChecks size={20} className="text-oe-blue" />
-          {t('punch.title', { defaultValue: 'Punch List' })}
-        </h1>
+      {/* ── Header: one-line subtitle + primary actions ────────────────── */}
+      {/* Module title and icon live in the global top app bar; project
+          selection is handled by the global top bar and read here from the
+          shared project context. */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* Left: one-line subtitle */}
+        <p className="text-sm text-content-tertiary min-w-0">
+          {t('punch.header_subtitle', {
+            defaultValue: 'Track snags and deficiencies through to close-out',
+          })}
+        </p>
 
         {/* Right: controls */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Project selector */}
-          {projects.length > 0 && (
-            <select
-              value={projectId}
-              onChange={(e) => {
-                const p = projects.find((pr) => pr.id === e.target.value);
-                if (p) {
-                  useProjectContextStore.getState().setActiveProject(p.id, p.name);
-                }
-              }}
-              aria-label={t('punch.select_project', { defaultValue: 'Project...' })}
-              className={inputCls + ' !h-8 !text-xs max-w-[180px]'}
-            >
-              <option value="" disabled>
-                {t('punch.select_project', { defaultValue: 'Project...' })}
-              </option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
           {projectId && (
             <button
               type="button"
@@ -937,7 +927,7 @@ export function PunchListPage() {
         </div>
       </div>
 
-      <div className="mt-4">
+      <div>
         <SectionIntro
           storageKey="punchlist"
           title={t('punch.intro_title', {
@@ -961,13 +951,11 @@ export function PunchListPage() {
         </SectionIntro>
       </div>
 
-      {/* Stats */}
-      <div className="mt-6">
-        <StatsCards summary={summary} />
-      </div>
+      {/* KPI strip */}
+      <StatsCards summary={summary} />
 
       {/* Toolbar */}
-      <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search
@@ -1036,7 +1024,7 @@ export function PunchListPage() {
 
       {/* Collapsible filters */}
       {showFilters && (
-        <div className="mt-3 flex flex-wrap gap-3 animate-fade-in">
+        <div className="flex flex-wrap gap-3 animate-fade-in">
           <select
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value as PunchPriority | '')}
@@ -1116,7 +1104,7 @@ export function PunchListPage() {
       )}
 
       {/* Content */}
-      <div className="mt-6">
+      <div>
         {!projectId ? (
           <RequiresProject
             emptyHint={t('punch.no_project_desc', {

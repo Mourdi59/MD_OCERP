@@ -1624,7 +1624,7 @@ export function ChangeOrdersPage() {
   return (
     <div className="w-full animate-fade-in">
       <Breadcrumb items={[
-        { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
+        ...(project ? [{ label: project.name, to: `/projects/${project.id}` }] : []),
         { label: t('nav.change_orders', { defaultValue: 'Change Orders' }) },
       ]} />
 

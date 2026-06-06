@@ -321,7 +321,7 @@ export function ScheduleAdvancedPage() {
       <Breadcrumb
         items={[
           {
-            label: t('schedule_advanced.title', {
+            label: t('nav.schedule_advanced', {
               defaultValue: 'Last Planner / CPM',
             }),
           },

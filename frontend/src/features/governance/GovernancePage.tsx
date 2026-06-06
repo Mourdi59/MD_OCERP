@@ -98,8 +98,9 @@ export function GovernancePage() {
     <div className="w-full animate-fade-in">
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', 'Dashboard'), to: '/' },
-          { label: t('governance.title', { defaultValue: 'Governance' }) },
+          {
+            label: t('sidebar.admin_grid.governance', { defaultValue: 'Governance' }),
+          },
         ]}
         className="mb-4"
       />

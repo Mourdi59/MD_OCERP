@@ -56,7 +56,7 @@ export function BetaBanner({
   return (
     <div
       role="status"
-      className={`flex items-start gap-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100 ${className}`}
+      className={`mb-5 flex items-start gap-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100 ${className}`}
       data-testid={`beta-banner-${moduleKey}`}
     >
       <Sparkles size={16} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />

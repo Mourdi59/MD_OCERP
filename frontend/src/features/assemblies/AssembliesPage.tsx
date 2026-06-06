@@ -9,7 +9,7 @@ import {
   Upload, Tag, Eye, Share2, LayoutGrid, Table2, ArrowUpDown, BarChart3, AlertCircle,
   CheckSquare, Square as SquareIcon, Library,
 } from 'lucide-react';
-import { Button, Card, Badge, DismissibleInfo, EmptyState, SkeletonGrid } from '@/shared/ui';
+import { Button, Card, Badge, DismissibleInfo, EmptyState, SkeletonGrid, Breadcrumb } from '@/shared/ui';
 import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
 import { copyToClipboard } from '@/shared/lib/browser';
@@ -353,6 +353,7 @@ export function AssembliesPage() {
 
   return (
     <div className="w-full animate-fade-in">
+      <Breadcrumb items={[{ label: t('nav.assemblies', 'Assemblies') }]} className="mb-4" />
       {/* Header — compact single-row: title + counter chip + action stack
           on the right. The previous header burned ~80px on a 2xl headline +
           paragraph subtitle that just restated what the page is. */}

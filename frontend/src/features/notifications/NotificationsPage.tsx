@@ -190,7 +190,6 @@ export function NotificationsPage() {
     <div className="w-full animate-fade-in">
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', 'Dashboard'), to: '/' },
           { label: t('notifications.title', 'Notifications') },
         ]}
         className="mb-3"

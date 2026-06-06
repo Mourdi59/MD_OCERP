@@ -146,8 +146,10 @@ export function SnapshotsPage() {
     <div className="space-y-4 p-4" data-testid="dashboards-snapshots-page">
       <Breadcrumb
         items={[
-          { label: t('common.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
-          { label: t('dashboards.snapshots', { defaultValue: 'Dashboards' }) },
+          ...(activeProjectName
+            ? [{ label: activeProjectName, to: `/projects/${activeProjectId}` }]
+            : []),
+          { label: t('nav.snapshots', { defaultValue: 'Snapshots' }) },
         ]}
       />
 

@@ -3825,8 +3825,7 @@ export function CadDataExplorerPage() {
       <div className="flex flex-col -mx-4 sm:-mx-7 -mt-6 -mb-6 border-s border-border-light animate-fade-in" style={{ height: 'calc(100vh - 56px)' }}>
         <div className="px-6 pt-4 pb-3 border-b border-border-light">
           <Breadcrumb items={[
-            { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
-            { label: t('explorer.title', { defaultValue: 'CAD-BIM BI Explorer' }) },
+            { label: t('nav.cad_bim_explorer', { defaultValue: 'CAD-BIM Explorer' }) },
           ]} />
         </div>
 

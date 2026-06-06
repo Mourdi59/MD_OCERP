@@ -940,7 +940,7 @@ export function QuantitiesPage() {
 
   return (
     <div className="w-full space-y-8 animate-fade-in">
-      <Breadcrumb items={[{ label: t('nav.dashboard', 'Dashboard'), to: '/' }, { label: t('nav.quantities', 'Quantity Takeoff') }]} className="mb-4" />
+      <Breadcrumb items={[{ label: t('nav.quantities', 'Quantity Takeoff') }]} className="mb-4" />
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-content-primary">

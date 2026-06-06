@@ -276,7 +276,7 @@ export function BIDashboardsPage() {
     <div className="space-y-5">
       <Breadcrumb
         items={[
-          { label: t('bi.title', { defaultValue: 'BI & Dashboards' }) },
+          { label: t('nav.bi_dashboards', { defaultValue: 'BI Dashboards' }) },
         ]}
       />
 

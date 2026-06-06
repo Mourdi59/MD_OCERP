@@ -30,7 +30,7 @@ import {
   AlertTriangle,
   type LucideIcon,
 } from 'lucide-react';
-import { Button, Card, Badge, ConfirmDialog, EmptyState, Skeleton, DismissibleInfo, CountryFlag } from '@/shared/ui';
+import { Button, Card, Badge, ConfirmDialog, EmptyState, Skeleton, DismissibleInfo, CountryFlag, Breadcrumb } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
@@ -1605,6 +1605,7 @@ export function CatalogPage() {
 
   return (
     <div className="w-full animate-fade-in">
+      <Breadcrumb items={[{ label: t('catalog.title', { defaultValue: 'Resource Catalog' }) }]} className="mb-4" />
       {/* Header */}
       <div className="mb-5 flex items-start justify-between">
         <div>

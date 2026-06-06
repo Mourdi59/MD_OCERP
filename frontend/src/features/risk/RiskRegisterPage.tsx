@@ -610,7 +610,10 @@ export function RiskRegisterPage() {
 
   return (
     <div className="w-full animate-fade-in">
-      <Breadcrumb items={[{ label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' }, { label: t('nav.risk_register', { defaultValue: 'Risk Register' }) }]} />
+      <Breadcrumb items={[
+        ...(project ? [{ label: project.name, to: `/projects/${project.id}` }] : []),
+        { label: t('nav.risk_register', { defaultValue: 'Risk Register' }) },
+      ]} />
 
       {/* Cross-module navigation — connects the planning value chain */}
       <div className="mt-3">

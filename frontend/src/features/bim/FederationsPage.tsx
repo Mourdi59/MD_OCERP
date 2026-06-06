@@ -31,6 +31,7 @@ import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
 import {
   Badge,
   BetaBanner,
+  Breadcrumb,
   Button,
   Card,
   CardContent,
@@ -926,8 +927,19 @@ export function FederationsPage() {
     [addToast, confirm, refetch, selectedFedId, t],
   );
 
+  const selectedProject = (projects ?? []).find((p) => p.id === projectId);
+
   return (
     <div className="w-full animate-fade-in">
+      <Breadcrumb
+        items={[
+          ...(selectedProject
+            ? [{ label: selectedProject.name, to: `/projects/${selectedProject.id}` }]
+            : []),
+          { label: t('nav.bim_federations', { defaultValue: 'BIM Federations' }) },
+        ]}
+        className="mb-2"
+      />
       <BetaBanner moduleKey="bim-federations" className="mt-3" />
       <header className="mb-4 rounded-xl border border-border-light bg-surface-primary px-5 py-4">
         <div className="flex flex-wrap items-end justify-between gap-4">

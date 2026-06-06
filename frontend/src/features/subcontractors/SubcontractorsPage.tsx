@@ -237,7 +237,7 @@ export function SubcontractorsPage() {
     <div className="space-y-5">
       <Breadcrumb
         items={[
-          { label: t('subcontractors.title', { defaultValue: 'Subcontractors' }) },
+          { label: t('nav.subcontractors', { defaultValue: 'Subcontractors' }) },
         ]}
       />
 

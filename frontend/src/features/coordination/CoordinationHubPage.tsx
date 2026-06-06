@@ -33,7 +33,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import { DateDisplay } from '@/shared/ui/DateDisplay';
-import { BetaBanner, DismissibleInfo, EmptyState, RecoveryCard } from '@/shared/ui';
+import { BetaBanner, Breadcrumb, DismissibleInfo, EmptyState, RecoveryCard } from '@/shared/ui';
 import { useActiveProjectProfile } from '@/features/projects/useProjectProfile';
 import { projectsApi } from '@/features/projects/api';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -215,6 +215,7 @@ export function CoordinationHubPage() {
   const navigate = useNavigate();
   const { projectId } = useActiveProjectProfile();
   const clearProject = useProjectContextStore((s) => s.clearProject);
+  const projectName = useProjectContextStore((s) => s.activeProjectName);
 
   const dashboardQuery = useQuery({
     queryKey: ['coordination-dashboard', projectId],
@@ -373,6 +374,14 @@ export function CoordinationHubPage() {
       />
 
       <div className="space-y-5 px-4 py-5 lg:px-6 lg:py-6">
+        <Breadcrumb
+          items={[
+            ...(projectName
+              ? [{ label: projectName, to: `/projects/${projectId}` }]
+              : []),
+            { label: t('nav.coordination_hub', { defaultValue: 'Coordination Hub' }) },
+          ]}
+        />
         {/* Hero header — glass pill with title, subtitle, refresh */}
         <header className="relative overflow-hidden rounded-2xl border border-white/40 bg-white/60 px-5 py-4 backdrop-blur-xl shadow-lg shadow-slate-900/[0.04] dark:border-white/5 dark:bg-slate-900/40">
           <div

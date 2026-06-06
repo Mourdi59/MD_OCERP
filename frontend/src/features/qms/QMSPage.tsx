@@ -169,6 +169,10 @@ export function QMSPage() {
   });
 
   const projectId = activeProjectId || projects[0]?.id || '';
+  // Genuinely-selected project (shared context) — used for the breadcrumb
+  // so the trail never shows a first-project guess.
+  const breadcrumbProjectName =
+    projects.find((p) => p.id === activeProjectId)?.name || '';
 
   const itpQ = useQuery({
     queryKey: ['qms', 'itp', projectId, statusFilter],
@@ -244,7 +248,14 @@ export function QMSPage() {
 
   return (
     <div className="space-y-5">
-      <Breadcrumb items={[{ label: t('qms.title', { defaultValue: 'Quality Management' }) }]} />
+      <Breadcrumb
+        items={[
+          ...(activeProjectId && breadcrumbProjectName
+            ? [{ label: breadcrumbProjectName, to: `/projects/${activeProjectId}` }]
+            : []),
+          { label: t('nav.qms', { defaultValue: 'Quality Management' }) },
+        ]}
+      />
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>

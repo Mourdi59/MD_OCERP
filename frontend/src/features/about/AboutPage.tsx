@@ -9,7 +9,7 @@ import {
   Linkedin, Youtube, Star, Coffee, Rocket, ArrowRight, Handshake,
   Github, MessageCircle,
 } from 'lucide-react';
-import { Card, Button, Badge } from '@/shared/ui';
+import { Card, Button, Badge, Breadcrumb } from '@/shared/ui';
 import { APP_VERSION } from '@/shared/lib/version';
 import { UpdateNotification } from '@/shared/ui/UpdateChecker';
 import { Changelog } from './Changelog';
@@ -19,6 +19,7 @@ export function AboutPage() {
 
   return (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6 animate-fade-in">
+      <Breadcrumb items={[{ label: t('nav.about', { defaultValue: 'About' }) }]} />
       {/* Header — two columns on wide screens: identity on the left,
           update-availability notification on the right so users can
           spot a new release at a glance. */}

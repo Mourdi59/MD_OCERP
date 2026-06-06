@@ -15,7 +15,7 @@ import {
   Check,
   Loader2,
 } from 'lucide-react';
-import { Button, Badge } from '@/shared/ui';
+import { Button, Badge, Breadcrumb } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
 import { apiGet, apiPost, ApiError } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
@@ -333,6 +333,7 @@ export function TemplatesPage() {
 
   return (
     <div className="w-full animate-fade-in pb-12">
+      <Breadcrumb items={[{ label: t('boq.templates', { defaultValue: 'BOQ Templates' }) }]} className="mb-4" />
       {/* ── Page header ──────────────────────────────────────────────── */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-content-primary">

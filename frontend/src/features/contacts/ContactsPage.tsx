@@ -1407,10 +1407,7 @@ export function ContactsPage() {
     <div className="w-full animate-fade-in">
       {/* Breadcrumb */}
       <Breadcrumb
-        items={[
-          { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
-          { label: t('contacts.title', { defaultValue: 'Contacts' }) },
-        ]}
+        items={[{ label: t('contacts.title', { defaultValue: 'Contacts' }) }]}
         className="mb-4"
       />
 

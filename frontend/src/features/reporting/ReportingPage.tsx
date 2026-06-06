@@ -421,11 +421,10 @@ export function ReportingPage() {
     <div className="w-full space-y-6 animate-fade-in">
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
           ...(activeProjectName
             ? [{ label: activeProjectName, to: `/projects/${activeProjectId}` }]
             : []),
-          { label: t('reporting.title', { defaultValue: 'Reporting Dashboards' }) },
+          { label: t('nav.reporting_dashboards', { defaultValue: 'Reporting Dashboards' }) },
         ]}
         className="mb-4"
       />

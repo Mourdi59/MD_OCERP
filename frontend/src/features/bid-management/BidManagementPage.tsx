@@ -261,7 +261,7 @@ export function BidManagementPage() {
     return (
       <div className="space-y-5">
         <Breadcrumb
-          items={[{ label: t('bid_management.title', { defaultValue: 'Bid Management' }) }]}
+          items={[{ label: t('nav.bid_management', { defaultValue: 'Bid Management' }) }]}
         />
         <EmptyState
           icon={<PackageIcon size={22} />}
@@ -280,7 +280,12 @@ export function BidManagementPage() {
   return (
     <div className="space-y-5">
       <Breadcrumb
-        items={[{ label: t('bid_management.title', { defaultValue: 'Bid Management' }) }]}
+        items={[
+          ...(currentProject
+            ? [{ label: currentProject.name, to: `/projects/${currentProject.id}` }]
+            : []),
+          { label: t('nav.bid_management', { defaultValue: 'Bid Management' }) },
+        ]}
       />
 
       <div className="flex items-start justify-between gap-4 flex-wrap">

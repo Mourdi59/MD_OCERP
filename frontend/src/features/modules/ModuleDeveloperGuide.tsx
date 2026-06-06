@@ -97,7 +97,6 @@ export function ModuleDeveloperGuide() {
     <div className="max-w-4xl mx-auto animate-fade-in">
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', 'Dashboard'), to: '/' },
           { label: t('nav.modules', 'Modules'), to: '/modules' },
           { label: t('modules.dev_guide', 'Developer guide') },
         ]}

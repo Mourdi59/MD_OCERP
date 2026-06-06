@@ -913,8 +913,8 @@ export function ValidationPage() {
   return (
     <div className="w-full animate-fade-in">
       <Breadcrumb items={[
-        { label: t('nav.dashboard', 'Dashboard'), to: '/' },
-        { label: t('validation.title', 'Validation Dashboard') },
+        ...(selectedProject ? [{ label: selectedProject.name, to: `/projects/${selectedProject.id}` }] : []),
+        { label: t('validation.title', 'Validation') },
       ]} className="mb-4" />
 
       {/* Header */}

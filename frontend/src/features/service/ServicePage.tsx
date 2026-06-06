@@ -393,7 +393,7 @@ export function ServicePage() {
     <div className="space-y-5">
       <Breadcrumb
         items={[
-          { label: t('service.title', { defaultValue: 'Service & Maintenance' }) },
+          { label: t('nav.service', { defaultValue: 'Service & Maintenance' }) },
         ]}
       />
 

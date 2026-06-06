@@ -1299,7 +1299,6 @@ export function CDEPage() {
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
           ...(projectName
             ? [{ label: projectName, to: `/projects/${projectId}` }]
             : []),

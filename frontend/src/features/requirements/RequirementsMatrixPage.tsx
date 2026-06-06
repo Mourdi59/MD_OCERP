@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 
 import { BetaBanner } from '@/shared/ui/BetaBanner';
+import { Breadcrumb } from '@/shared/ui/Breadcrumb';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
@@ -805,6 +806,14 @@ export function RequirementsMatrixPage() {
 
   return (
     <div className="flex flex-col gap-4 p-4 md:p-6">
+      <Breadcrumb
+        items={[
+          ...(ctxProjectName
+            ? [{ label: ctxProjectName, to: `/projects/${projectId}` }]
+            : []),
+          { label: t('nav.eir_matrix', { defaultValue: 'EIR Matrix (ISO 19650)' }) },
+        ]}
+      />
       <BetaBanner moduleKey="requirements" className="mt-3" />
 
       {/* Header */}

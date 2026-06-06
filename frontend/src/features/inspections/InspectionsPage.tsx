@@ -1016,6 +1016,11 @@ export function InspectionsPage() {
 
   const projectId = routeProjectId || activeProjectId || projects[0]?.id || '';
   const projectName = projects.find((p) => p.id === projectId)?.name || '';
+  // Genuinely-selected project (route param or shared context) — used for
+  // the breadcrumb so the trail never shows a first-project guess.
+  const selectedProjectId = routeProjectId || activeProjectId || '';
+  const breadcrumbProjectName =
+    projects.find((p) => p.id === selectedProjectId)?.name || '';
 
   const { data: inspections = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['inspections', projectId, statusFilter, typeFilter],
@@ -1316,8 +1321,9 @@ export function InspectionsPage() {
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
-          { label: t('nav.dashboard', { defaultValue: 'Dashboard' }), to: '/' },
-          ...(projectName ? [{ label: projectName, to: `/projects/${projectId}` }] : []),
+          ...(selectedProjectId && breadcrumbProjectName
+            ? [{ label: breadcrumbProjectName, to: `/projects/${selectedProjectId}` }]
+            : []),
           { label: t('inspections.title', { defaultValue: 'Inspections' }) },
         ]}
         className="mb-4"

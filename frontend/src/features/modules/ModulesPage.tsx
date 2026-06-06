@@ -280,10 +280,7 @@ export function ModulesPage() {
   return (
     <div className="w-full animate-fade-in">
       <Breadcrumb
-        items={[
-          { label: t('nav.dashboard', 'Dashboard'), to: '/' },
-          { label: t('nav.modules', 'Modules') },
-        ]}
+        items={[{ label: t('nav.modules', 'Modules') }]}
         className="mb-4"
       />
 

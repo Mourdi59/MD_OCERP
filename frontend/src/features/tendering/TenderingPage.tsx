@@ -1350,7 +1350,7 @@ export function TenderingPage() {
   return (
     <div className="w-full animate-fade-in">
       <Breadcrumb items={[
-        { label: t('nav.dashboard', 'Dashboard'), to: '/' },
+        ...(selectedProject ? [{ label: selectedProject.name, to: `/projects/${selectedProject.id}` }] : []),
         { label: t('tendering.title', 'Tendering') },
       ]} className="mb-4" />
 

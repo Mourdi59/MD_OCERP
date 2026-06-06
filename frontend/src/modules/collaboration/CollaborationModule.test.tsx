@@ -1,6 +1,7 @@
 // @ts-nocheck
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import CollaborationModule from './CollaborationModule';
 import { COLLAB_COLORS, pickColor } from './types';
 import { ConnectionStatus } from './components/ConnectionStatus';
@@ -8,51 +9,96 @@ import { CollaborationBar } from './components/CollaborationBar';
 import type { ConnectionStatusInfo } from './hooks/useConnectionStatus';
 import type { CollabUser } from './types';
 
+// The hub fetches the project list, presence and locks. Stub the network
+// layer so the page renders deterministically against an empty backend —
+// the static chrome (header, settings, how-it-works) renders regardless,
+// and the live sections fall back to their honest empty states.
+vi.mock('@/shared/lib/api', () => ({
+  apiGet: vi.fn(() => Promise.resolve([])),
+  apiPost: vi.fn(() => Promise.resolve({})),
+  apiPatch: vi.fn(() => Promise.resolve({})),
+  apiDelete: vi.fn(() => Promise.resolve(undefined)),
+  getErrorMessage: (e: unknown) => String(e),
+}));
+
+vi.mock('@/features/collab_locks', () => ({
+  usePresenceWebSocket: () => ({ status: 'idle', users: [], lastEvent: null }),
+  listMyLocks: () => Promise.resolve([]),
+}));
+
+function renderHub() {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={qc}>
+      <CollaborationModule />
+    </QueryClientProvider>,
+  );
+}
+
 describe('CollaborationModule', () => {
-  it('should render the page header', () => {
-    render(<CollaborationModule />);
-    // Regex matchers tolerate identity-marker ZWJ/ZWNJ trailing the visible text.
-    expect(screen.getByText(/Real-time Collaboration/)).toBeInTheDocument();
-    expect(screen.getByText(/Work together on estimates/)).toBeInTheDocument();
+  beforeEach(() => {
+    localStorage.clear();
   });
 
-  it('should render feature cards', () => {
-    render(<CollaborationModule />);
+  it('should render the page header', () => {
+    renderHub();
+    // Regex matchers tolerate identity-marker ZWJ/ZWNJ trailing the visible text.
+    expect(screen.getByText(/Real-time Collaboration/)).toBeInTheDocument();
+    expect(screen.getByText(/Discuss, share viewpoints/)).toBeInTheDocument();
+  });
+
+  it('should expose the collapsible how-it-works + settings panel', () => {
+    renderHub();
+    expect(
+      screen.getByText(/How real-time editing works/),
+    ).toBeInTheDocument();
+  });
+
+  it('should reveal feature cards when the panel is expanded', () => {
+    renderHub();
+    fireEvent.click(screen.getByText(/How real-time editing works/));
     expect(screen.getByText(/Peer-to-Peer Sync/)).toBeInTheDocument();
     expect(screen.getByText(/CRDT Conflict Resolution/)).toBeInTheDocument();
     expect(screen.getByText('Presence Awareness')).toBeInTheDocument();
   });
 
-  it('should render display name input', () => {
-    render(<CollaborationModule />);
+  it('should render display name input inside the expanded panel', () => {
+    renderHub();
+    fireEvent.click(screen.getByText(/How real-time editing works/));
     expect(screen.getByText('Your display name')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Your name')).toBeInTheDocument();
   });
 
   it('should save display name to localStorage', () => {
-    render(<CollaborationModule />);
+    renderHub();
+    fireEvent.click(screen.getByText(/How real-time editing works/));
     const input = screen.getByPlaceholderText('Your name');
     fireEvent.change(input, { target: { value: 'Test User' } });
     fireEvent.click(screen.getByText('Save'));
     expect(localStorage.getItem('oe_collab_name')).toBe('Test User');
   });
 
-  it('should show color palette', () => {
-    render(<CollaborationModule />);
-    expect(screen.getByText('User Colors')).toBeInTheDocument();
+  it('should show color palette inside the expanded panel', () => {
+    renderHub();
+    fireEvent.click(screen.getByText(/How real-time editing works/));
+    expect(screen.getByText(/User Colors/)).toBeInTheDocument();
   });
 
-  it('should show how-to steps', () => {
-    render(<CollaborationModule />);
-    expect(screen.getByText(/Open a BOQ in the editor/)).toBeInTheDocument();
-    expect(screen.getByText(/Click "Share"/)).toBeInTheDocument();
-    expect(screen.getByText(/Send the link/)).toBeInTheDocument();
-    expect(screen.getByText(/Edit together/)).toBeInTheDocument();
-  });
-
-  it('should show disclaimer', () => {
-    render(<CollaborationModule />);
+  it('should show disclaimer inside the expanded panel', () => {
+    renderHub();
+    fireEvent.click(screen.getByText(/How real-time editing works/));
     expect(screen.getByText(/peer-to-peer WebRTC/)).toBeInTheDocument();
+  });
+
+  it('should show an honest empty state when there are no projects', async () => {
+    renderHub();
+    // The projects query resolves to [] asynchronously; once settled the page
+    // drops the loading spinner and shows the honest no-projects empty state.
+    expect(
+      await screen.findByText(/No project to collaborate on yet/),
+    ).toBeInTheDocument();
   });
 });
 

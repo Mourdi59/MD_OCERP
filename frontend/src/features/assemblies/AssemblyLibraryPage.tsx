@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Library, Search, X, Layers, Globe, AlertCircle, Loader2, Eye, Save } from 'lucide-react';
 
-import { Button, Card, Badge, EmptyState, SkeletonGrid } from '@/shared/ui';
+import { Button, Card, Badge, EmptyState, SkeletonGrid, Breadcrumb } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
 import { projectsApi } from '@/features/projects/api';
 
@@ -79,6 +79,12 @@ export function AssemblyLibraryPage() {
 
   return (
     <div className="space-y-6 p-6">
+      <Breadcrumb
+        items={[
+          { label: t('nav.assemblies', 'Assemblies'), to: '/assemblies' },
+          { label: t('assemblies.library.title', 'Assembly library') },
+        ]}
+      />
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">

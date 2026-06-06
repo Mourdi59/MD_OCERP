@@ -853,10 +853,7 @@ export function CostsPage() {
 
   return (
     <div className="w-full animate-fade-in">
-      <Breadcrumb items={[
-        { label: t('nav.dashboard', 'Dashboard'), to: '/' },
-        { label: t('costs.title', 'Cost Database') },
-      ]} className="mb-4" />
+      <Breadcrumb items={[{ label: t('costs.title') }]} className="mb-4" />
 
       {/* Header */}
       <div className="mb-5 flex items-start justify-between">
