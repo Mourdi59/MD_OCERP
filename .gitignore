@@ -523,3 +523,8 @@ email-delivery-failures*.jsonl
 
 # Locale bootstrap batches, see scripts/i18n_new_locale.py
 .i18n-work/
+
+# Claude Code local config + local import-template generation tooling/output
+.claude/
+scripts/generate_import_templates.py
+data/import_templates/
