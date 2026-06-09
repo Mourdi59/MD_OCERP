@@ -365,3 +365,8 @@ frontend/scripts/_i18n_stage2_state.cjs
 frontend/scripts/_stage2_tx/
 frontend/scripts/_validate_out.cjs
 frontend/scripts/_vite.out
+
+# Claude Code local config + local import-template generation tooling/output
+.claude/
+scripts/generate_import_templates.py
+data/import_templates/
