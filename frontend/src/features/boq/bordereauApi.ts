@@ -118,6 +118,20 @@ export interface ResolveLineResponse {
   created: boolean;
 }
 
+// ── Drag-and-drop contract (drawer → BOQ grid) ───────────────────────────────
+
+/** Custom dataTransfer MIME type carrying a bordereau line across the drag. */
+export const BORDEREAU_LINE_MIME = 'application/x-oe-bordereau-line';
+
+/** Payload serialized into dataTransfer on dragstart in the BordereauDrawer. */
+export interface BordereauLineDragPayload {
+  lineId: string;
+  designation: string;
+  unit: string;
+  unit_rate: number;
+  is_assembly: boolean;
+}
+
 // ── API client ───────────────────────────────────────────────────────────────
 
 export const bordereauApi = {
