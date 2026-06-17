@@ -103,6 +103,7 @@ import {
   resourceExpansionState,
   type ResourceExpansionState,
 } from './resourceExpansion';
+import { BORDEREAU_LINE_MIME, type BordereauLineDragPayload } from './bordereauApi';
 import { CURRENCY_GROUPS } from '@/features/projects/CreateProjectPage';
 import { useToastStore } from '@/stores/useToastStore';
 import { useBoqDescDensityStore, BOQ_DESC_ROW_HEIGHT } from '@/stores/useBoqDescDensityStore';
@@ -546,6 +547,17 @@ export interface BOQGridProps {
    * open. Fires on mount and on every change to either number.
    */
   onResourceExpansionChange?: (state: ResourceExpansionState) => void;
+  /**
+   * Bordereau drag-and-drop — a line dragged out of the BordereauDrawer was
+   * dropped on the grid. `afterPositionId` is the row the new position should
+   * slot right after (a section id means "insert as its first child");
+   * `null` ⇒ append at the end of the BOQ. `parentId` is the section the new
+   * row belongs to (`null` ⇒ top level / caller default).
+   */
+  onDropBordereauLine?: (
+    payload: BordereauLineDragPayload,
+    target: { afterPositionId: string | null; parentId: string | null },
+  ) => void;
 }
 
 /** Imperative handle exposed by BOQGrid for external control (e.g. clearing selection). */
@@ -647,6 +659,7 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
   bimModelId,
   onHighlightBIMElements,
   onResourceExpansionChange,
+  onDropBordereauLine,
 }, ref) {
   const { t, i18n } = useTranslation();
   // `t` is a fresh function on every render which would invalidate the
@@ -2231,6 +2244,118 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
     [onReorderSections, onReorderPositions, onUpdatePosition],
   );
 
+  /* ── Bordereau line drop target (HTML5 drag from BordereauDrawer) ── */
+  // Disjoint from AG Grid's own rowDrag system: the grid reorders rows with
+  // synthetic mouse events, never native HTML5 drag, so these handlers only
+  // ever see drags carrying the BORDEREAU_LINE_MIME payload.
+  const [dropIndicatorTop, setDropIndicatorTop] = useState<number | null>(null);
+  const dragOverRafRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (dragOverRafRef.current != null) cancelAnimationFrame(dragOverRafRef.current);
+  }, []);
+
+  /** Map viewport coordinates to an insertion target + indicator position. */
+  const computeDropTarget = useCallback((clientX: number, clientY: number): {
+    target: { afterPositionId: string | null; parentId: string | null };
+    indicatorTop: number | null;
+  } => {
+    const appendAtEnd = {
+      target: { afterPositionId: null, parentId: null },
+      indicatorTop: null,
+    };
+    const api = gridApiRef.current;
+    const wrapper = gridWrapperRef.current;
+    if (!api || !wrapper) return appendAtEnd;
+
+    const rowEl = (document.elementFromPoint(clientX, clientY) as HTMLElement | null)
+      ?.closest('.ag-row') as HTMLElement | null;
+    // Footer (pinned-bottom) rows and empty space below the rows → append.
+    if (!rowEl || rowEl.closest('.ag-floating-bottom')) return appendAtEnd;
+
+    const idxAttr = rowEl.getAttribute('row-index');
+    if (idxAttr == null) return appendAtEnd;
+    const idx = parseInt(idxAttr, 10);
+    const data = api.getDisplayedRowAtIndex(idx)?.data as GridRow | undefined;
+    if (!data || (data as Record<string, unknown>)._isFooter) return appendAtEnd;
+
+    /** Anchor "right after" a displayed row, resolving sub-rows to their parent position. */
+    const anchorAfter = (row: GridRow): { afterPositionId: string | null; parentId: string | null } => {
+      const r = row as Record<string, unknown>;
+      if (r._isResource || r._isAddResource || r._isVariantHeader) {
+        const parentPositionId = r._parentPositionId as string;
+        const parentData = api.getRowNode(parentPositionId)?.data as Position | undefined;
+        return { afterPositionId: parentPositionId, parentId: parentData?.parent_id ?? null };
+      }
+      if (r._isSection) {
+        // Right after a section header = first child of that section
+        // (placement is sort_order-driven; the section row is a Position).
+        return { afterPositionId: row.id as string, parentId: row.id as string };
+      }
+      return { afterPositionId: row.id as string, parentId: (row as Position).parent_id ?? null };
+    };
+
+    const rect = rowEl.getBoundingClientRect();
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const inUpperHalf = clientY < rect.top + rect.height / 2;
+
+    if (!inUpperHalf) {
+      return { target: anchorAfter(data), indicatorTop: rect.bottom - wrapperRect.top };
+    }
+
+    // Upper half → insert *before* this row = right after the previous
+    // displayed row. Nothing above (very first row): a section header gets
+    // the drop as its first child, anything else appends at the end.
+    const prev = idx > 0 ? (api.getDisplayedRowAtIndex(idx - 1)?.data as GridRow | undefined) : undefined;
+    if (prev && !(prev as Record<string, unknown>)._isFooter) {
+      return { target: anchorAfter(prev), indicatorTop: rect.top - wrapperRect.top };
+    }
+    if ((data as Record<string, unknown>)._isSection) {
+      return {
+        target: { afterPositionId: data.id as string, parentId: data.id as string },
+        indicatorTop: rect.bottom - wrapperRect.top,
+      };
+    }
+    return appendAtEnd;
+  }, []);
+
+  const handleGridDragOver = useCallback((e: React.DragEvent) => {
+    if (!onDropBordereauLine) return;
+    // During dragover only the MIME types are readable, not the payload.
+    if (!e.dataTransfer.types.includes(BORDEREAU_LINE_MIME)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    const { clientX, clientY } = e;
+    if (dragOverRafRef.current != null) return;
+    dragOverRafRef.current = requestAnimationFrame(() => {
+      dragOverRafRef.current = null;
+      setDropIndicatorTop(computeDropTarget(clientX, clientY).indicatorTop);
+    });
+  }, [onDropBordereauLine, computeDropTarget]);
+
+  const handleGridDragLeave = useCallback((e: React.DragEvent) => {
+    // Child-to-child transitions also fire dragleave — only clear when the
+    // pointer actually left the wrapper.
+    if (e.relatedTarget && e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setDropIndicatorTop(null);
+  }, []);
+
+  const handleGridDrop = useCallback((e: React.DragEvent) => {
+    setDropIndicatorTop(null);
+    if (!onDropBordereauLine) return;
+    const raw = e.dataTransfer.getData(BORDEREAU_LINE_MIME);
+    if (!raw) return;
+    e.preventDefault();
+    let payload: BordereauLineDragPayload;
+    try {
+      payload = JSON.parse(raw) as BordereauLineDragPayload;
+    } catch {
+      return;
+    }
+    if (!payload?.lineId) return;
+    onDropBordereauLine(payload, computeDropTarget(e.clientX, e.clientY).target);
+  }, [onDropBordereauLine, computeDropTarget]);
+
   /* ── Column resize → persist widths to localStorage ──────────── */
   const handleColumnResized = useCallback((event: ColumnResizedEvent) => {
     if (!event.finished || !event.column) return;
@@ -2851,9 +2976,19 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
   return (
     <div
       ref={gridWrapperRef}
-      className="rounded-xl border border-border-light bg-surface-elevated shadow-xs overflow-hidden"
+      className="relative rounded-xl border border-border-light bg-surface-elevated shadow-xs overflow-hidden"
       onContextMenu={(e) => e.preventDefault()}
+      onDragOver={handleGridDragOver}
+      onDragLeave={handleGridDragLeave}
+      onDrop={handleGridDrop}
     >
+      {/* Insertion indicator for bordereau line drops */}
+      {dropIndicatorTop != null && (
+        <div
+          className="pointer-events-none absolute left-0 right-0 z-10 h-0.5 rounded bg-indigo-500"
+          style={{ top: dropIndicatorTop }}
+        />
+      )}
       <div
         className={`ag-theme-quartz ${
           // Shrink header text when many columns are visible so labels

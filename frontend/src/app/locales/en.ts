@@ -35655,7 +35655,14 @@ const resource = {
     "bordereau.component.resourceType": "Type",
     "bordereau.component.delete": "Delete",
     "bordereau.component.runningTotal": "Subtotal",
-    "bordereau.component.qty": "Qty"
+    "bordereau.component.qty": "Qty",
+    "bordereau.dragHint": "Drag a line onto the BOQ to add a position priced from this schedule.",
+    "bordereau.pin": "Pin — dock the panel beside the BOQ",
+    "bordereau.unpin": "Unpin — back to overlay",
+    "bordereau.dropNoUnit": "This bordereau line has no unit — set one before using it in a BOQ",
+    "bordereau.droppedPositionCreated": "Position created from bordereau line",
+    "bordereau.droppedPositionCreatedHint": "Quantity starts at 0 — type the real measure to price it",
+    "boq.locked_drop_blocked": "BOQ is locked — unlock it to add positions"
   }
 } as { translation: Record<string, string> };
 

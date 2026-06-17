@@ -354,6 +354,18 @@ class PositionCreate(BaseModel):
             "Ignored for the reuse/linked-instance path."
         ),
     )
+    bordereau_line_id: UUID | None = Field(
+        default=None,
+        description=(
+            "Explicit bordereau line to link this position to at creation "
+            "(drag-and-drop from the bordereau drawer). The BOQ must be "
+            "attached to the line's bordereau (422 otherwise). unit_rate "
+            "and total are derived from the line, and the designation-based "
+            "auto-link is skipped entirely - so an exact link never spawns "
+            "a near-duplicate bordereau line from unit normalisation. "
+            "Ignored for the reuse/linked-instance path."
+        ),
+    )
 
     # Sanitise + canonicalise; **don't** gate on a fixed catalogue.  Locale
     # spellings (Romanian "Bucat", Bulgarian "бр", Russian "шт", German

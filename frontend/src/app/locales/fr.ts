@@ -41205,7 +41205,14 @@ const resource = {
     "bordereau.component.resourceType": "Type",
     "bordereau.component.delete": "Supprimer",
     "bordereau.component.runningTotal": "Sous-total",
-    "bordereau.component.qty": "Qté"
+    "bordereau.component.qty": "Qté",
+    "bordereau.dragHint": "Glissez une ligne sur le devis pour ajouter une position au prix du bordereau.",
+    "bordereau.pin": "Épingler — ancrer le panneau à côté du devis",
+    "bordereau.unpin": "Désépingler — revenir en superposition",
+    "bordereau.dropNoUnit": "Cette ligne du bordereau n'a pas d'unité — renseignez-la avant de l'utiliser dans un devis",
+    "bordereau.droppedPositionCreated": "Position créée depuis la ligne du bordereau",
+    "bordereau.droppedPositionCreatedHint": "La quantité démarre à 0 — saisissez le métré réel pour la chiffrer",
+    "boq.locked_drop_blocked": "Le devis est verrouillé — déverrouillez-le pour ajouter des positions"
   }
 } as { translation: Record<string, string> };
 

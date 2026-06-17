@@ -2918,9 +2918,21 @@ class BOQService:
                     exc_info=True,
                 )
 
-        # ── Phase 2: auto-link to bordereau ──────────────────────────────
-        # Non-fatal: a bordereau misconfiguration never blocks creation.
-        position = await self._auto_link_bordereau(position, _boq)
+        # ── Phase 2: link to bordereau ───────────────────────────────────
+        if data.bordereau_line_id is not None:
+            # Explicit link (drag-and-drop from the drawer): bind to the
+            # exact line. Fatal on failure — the client only sends ids from
+            # the currently attached bordereau, so an error means stale
+            # state and silently degrading would mask it.
+            from app.modules.bordereau.service import BordereauService
+
+            position = await BordereauService(self.session).link_position_to_line(
+                position.id, data.bordereau_line_id
+            )
+        else:
+            # Designation-based auto-link. Non-fatal: a bordereau
+            # misconfiguration never blocks creation.
+            position = await self._auto_link_bordereau(position, _boq)
 
         await _safe_publish(
             "boq.position.created",
