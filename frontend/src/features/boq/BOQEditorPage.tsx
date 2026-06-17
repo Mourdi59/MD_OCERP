@@ -58,6 +58,7 @@ import { ModelLinkPanel } from './ModelLinkPanel';
 import { ModelLinkReviewPanel } from './ModelLinkReviewPanel';
 import { BOQCompareDrawer } from './BOQCompareDrawer';
 import { BordereauDrawer } from './BordereauDrawer';
+import { BORDEREAU_LINE_MIME, type BordereauLineDragPayload } from './bordereauApi';
 import { CostBreakdownPanel } from './CostBreakdownPanel';
 import { EstimateClassification } from './EstimateClassification';
 import { ResourceSummary } from './ResourceSummary';
@@ -147,6 +148,74 @@ function computeNextSubOrdinal(all: Position[], parentOrdinal: string): string {
     candidate = `${parentOrdinal}.${String(next).padStart(2, '0')}`;
   }
   return candidate;
+}
+
+/* Generate the next ordinal using the standard "gap-of-10" scheme
+ * common in German/Austrian AVA software:
+ *
+ *   01.10, 01.20, 01.30, …            ← child positions
+ *   01, 02, 03, …                     ← top-level sections
+ *   0010, 0020, …                     ← top-level positions (no section)
+ *
+ * The +10 gap lets the user later insert 01.15 between 01.10 and 01.20
+ * without renumbering everything. We look at the LARGEST existing
+ * sibling ordinal (parsed) and add 10 — that way ordinals stay sorted
+ * even if previous ones were manually edited. */
+function nextChildOrdinal(parentOrdinal: string, siblings: Position[]): string {
+  // Pick the largest numeric suffix among siblings (e.g. "01.30" → 30)
+  let maxSuffix = 0;
+  const prefix = `${parentOrdinal}.`;
+  for (const sib of siblings) {
+    if (!sib.ordinal?.startsWith(prefix)) continue;
+    const suffix = parseInt(sib.ordinal.slice(prefix.length), 10);
+    if (!isNaN(suffix) && suffix > maxSuffix) maxSuffix = suffix;
+  }
+  const nextSuffix = maxSuffix + 10;
+  return `${parentOrdinal}.${String(nextSuffix).padStart(2, '0')}`;
+}
+
+/* Issue #139 — when inserting *between* two siblings, pick an ordinal
+ * that sorts strictly between them by halving the gap on the trailing
+ * numeric segment (e.g. "01.20" + "01.30" → "01.25"). Returns null
+ * when the two share no common prefix or the integer gap is too tight
+ * to fit a clean value — the caller then falls back to the gap-of-10
+ * append ordinal (placement stays correct via sort_order regardless). */
+function splitOrdinal(ord: string): [string, string] {
+  const dot = ord.lastIndexOf('.');
+  return dot === -1 ? ['', ord] : [ord.slice(0, dot + 1), ord.slice(dot + 1)];
+}
+function interpolateOrdinal(prev: string, next: string): string | null {
+  const [pPre, pNum] = splitOrdinal(prev);
+  const [nPre, nNum] = splitOrdinal(next);
+  if (pPre !== nPre) return null;
+  const a = parseInt(pNum, 10);
+  const b = parseInt(nNum, 10);
+  if (isNaN(a) || isNaN(b)) return null;
+  const mid = Math.floor((a + b) / 2);
+  if (mid <= a || mid >= b) return null;
+  const width = Math.max(pNum.length, nNum.length);
+  return `${pPre}${String(mid).padStart(width, '0')}`;
+}
+
+/* Gap-of-10 ordinal for a position without a section (top level). */
+function nextTopLevelOrdinal(all: Position[]): string {
+  let maxTop = 0;
+  for (const p of all) {
+    const num = parseInt(p.ordinal ?? '', 10);
+    if (!isNaN(num) && num > maxTop) maxTop = num;
+  }
+  return String((Math.floor(maxTop / 10) + 1) * 10).padStart(4, '0');
+}
+
+/* Bordereau drawer pin state — persisted so the docked layout survives
+ * reloads (same localStorage pattern as the sidebar pins). */
+const BORDEREAU_PINNED_KEY = 'oe_bordereau_pinned';
+function readBordereauPinned(): boolean {
+  try {
+    return localStorage.getItem(BORDEREAU_PINNED_KEY) === '1';
+  } catch {
+    return false;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════ */
@@ -556,7 +625,7 @@ export function BOQEditorPage() {
 
   const addMutation = useMutation({
     mutationFn: (data: CreatePositionData) => boqApi.addPosition(data),
-    onSuccess: (addedPosition) => {
+    onSuccess: (addedPosition, variables) => {
       invalidateAll();
       // Highlight new position and scroll to it
       setNewPositionId(addedPosition.id);
@@ -589,6 +658,19 @@ export function BOQEditorPage() {
             defaultValue:
               'Linked instance created - {{count}} positions share this code. Its quantity is independently editable.',
             count: sharedCount,
+          }),
+        });
+      } else if (variables.bordereau_line_id) {
+        // Dropped from the bordereau drawer: description/unit/rate are
+        // already seeded from the line, so no auto-edit on Description —
+        // only the quantity is left to fill in.
+        addToast({
+          type: 'success',
+          title: t('bordereau.droppedPositionCreated', {
+            defaultValue: 'Position created from bordereau line',
+          }),
+          message: t('bordereau.droppedPositionCreatedHint', {
+            defaultValue: 'Quantity starts at 0 — type the real measure to price it',
           }),
         });
       } else {
@@ -2631,53 +2713,9 @@ export function BOQEditorPage() {
       if (!boqId) return;
       const allPositions = boq?.positions ?? [];
 
-      /* Generate the next ordinal using the standard "gap-of-10" scheme
-       * common in German/Austrian AVA software:
-       *
-       *   01.10, 01.20, 01.30, …            ← child positions
-       *   01, 02, 03, …                     ← top-level sections
-       *   0010, 0020, …                     ← top-level positions (no section)
-       *
-       * The +10 gap lets the user later insert 01.15 between 01.10 and 01.20
-       * without renumbering everything. We look at the LARGEST existing
-       * sibling ordinal (parsed) and add 10 — that way ordinals stay sorted
-       * even if previous ones were manually edited. */
-
-      const nextChildOrdinal = (parentOrdinal: string, siblings: Position[]): string => {
-        // Pick the largest numeric suffix among siblings (e.g. "01.30" → 30)
-        let maxSuffix = 0;
-        const prefix = `${parentOrdinal}.`;
-        for (const sib of siblings) {
-          if (!sib.ordinal?.startsWith(prefix)) continue;
-          const suffix = parseInt(sib.ordinal.slice(prefix.length), 10);
-          if (!isNaN(suffix) && suffix > maxSuffix) maxSuffix = suffix;
-        }
-        const nextSuffix = maxSuffix + 10;
-        return `${parentOrdinal}.${String(nextSuffix).padStart(2, '0')}`;
-      };
-
-      /* Issue #139 — when inserting *between* two siblings, pick an ordinal
-       * that sorts strictly between them by halving the gap on the trailing
-       * numeric segment (e.g. "01.20" + "01.30" → "01.25"). Returns null
-       * when the two share no common prefix or the integer gap is too tight
-       * to fit a clean value — the caller then falls back to the gap-of-10
-       * append ordinal (placement stays correct via sort_order regardless). */
-      const splitOrdinal = (ord: string): [string, string] => {
-        const dot = ord.lastIndexOf('.');
-        return dot === -1 ? ['', ord] : [ord.slice(0, dot + 1), ord.slice(dot + 1)];
-      };
-      const interpolateOrdinal = (prev: string, next: string): string | null => {
-        const [pPre, pNum] = splitOrdinal(prev);
-        const [nPre, nNum] = splitOrdinal(next);
-        if (pPre !== nPre) return null;
-        const a = parseInt(pNum, 10);
-        const b = parseInt(nNum, 10);
-        if (isNaN(a) || isNaN(b)) return null;
-        const mid = Math.floor((a + b) / 2);
-        if (mid <= a || mid >= b) return null;
-        const width = Math.max(pNum.length, nNum.length);
-        return `${pPre}${String(mid).padStart(width, '0')}`;
-      };
+      // Ordinal helpers (nextChildOrdinal / interpolateOrdinal /
+      // nextTopLevelOrdinal) live at module level — shared with
+      // handleDropBordereauLine.
 
       // Issue #134 — when invoked without an explicit parent (the
       // Ctrl+Enter shortcut, or the toolbar "Add Position" button),
@@ -2733,14 +2771,7 @@ export function BOQEditorPage() {
                 parentOrdinal,
                 allPositions.filter((p) => p.parent_id === parentId),
               )
-            : (() => {
-                let maxTop = 0;
-                for (const p of allPositions) {
-                  const num = parseInt(p.ordinal ?? '', 10);
-                  if (!isNaN(num) && num > maxTop) maxTop = num;
-                }
-                return String((Math.floor(maxTop / 10) + 1) * 10).padStart(4, '0');
-              })();
+            : nextTopLevelOrdinal(allPositions);
         }
       } else if (parentId) {
         const parentSection = allPositions.find((p) => p.id === parentId);
@@ -2755,13 +2786,7 @@ export function BOQEditorPage() {
           ordinal = nextChildOrdinal(lastSection.section.ordinal, lastSection.children);
         } else {
           // No sections — generate a unique top-level ordinal in 4-digit gap-of-10
-          let maxTop = 0;
-          for (const p of allPositions) {
-            const num = parseInt(p.ordinal ?? '', 10);
-            if (!isNaN(num) && num > maxTop) maxTop = num;
-          }
-          const next = (Math.floor(maxTop / 10) + 1) * 10;
-          ordinal = String(next).padStart(4, '0');
+          ordinal = nextTopLevelOrdinal(allPositions);
         }
       }
 
@@ -2787,6 +2812,114 @@ export function BOQEditorPage() {
       });
     },
     [boqId, boq, grouped, selectedPosition, addMutation, addToast, t],
+  );
+
+  /**
+   * Bordereau drag-and-drop — a line dragged from the BordereauDrawer was
+   * dropped on the grid. Creates a position at the drop location, linked to
+   * the line at creation (`bordereau_line_id`) so its rate derives from the
+   * bordereau like every other instance of the line. Quantity starts at 0 —
+   * the row is neutral in the totals until the user types the real measure.
+   */
+  const handleDropBordereauLine = useCallback(
+    (
+      payload: BordereauLineDragPayload,
+      target: { afterPositionId: string | null; parentId: string | null },
+    ) => {
+      if (!boqId) return;
+      if (boq?.is_locked) {
+        addToast({
+          type: 'error',
+          title: t('boq.locked_drop_blocked', {
+            defaultValue: 'BOQ is locked — unlock it to add positions',
+          }),
+        });
+        return;
+      }
+      // PositionCreate.unit requires a non-empty unit (422 otherwise).
+      if (!payload.unit?.trim()) {
+        addToast({
+          type: 'error',
+          title: t('bordereau.dropNoUnit', {
+            defaultValue: 'This bordereau line has no unit — set one before using it in a BOQ',
+          }),
+        });
+        return;
+      }
+
+      const allPositions = boq?.positions ?? [];
+      let parentId = target.parentId ?? undefined;
+      const afterPositionId = target.afterPositionId;
+
+      // Ordinal: interpolate between the anchor and its next sibling when
+      // there's room; otherwise gap-of-10 append in the resolved parent.
+      // Placement itself is sort_order-driven (after_position_id), so a
+      // fallback label never changes where the row lands.
+      let ordinal: string | null = null;
+      const anchor = afterPositionId
+        ? allPositions.find((p) => p.id === afterPositionId)
+        : undefined;
+      if (anchor && anchor.id === parentId) {
+        // Anchor IS the target section → insert as its first child.
+        ordinal = nextChildOrdinal(
+          anchor.ordinal ?? '01',
+          allPositions.filter((p) => p.parent_id === anchor.id),
+        );
+      } else if (anchor) {
+        parentId = anchor.parent_id ?? undefined;
+        const siblings = allPositions
+          .filter((p) => (p.parent_id ?? null) === (anchor.parent_id ?? null))
+          .sort((a, b) =>
+            a.sort_order !== b.sort_order
+              ? a.sort_order - b.sort_order
+              : (a.ordinal ?? '').localeCompare(b.ordinal ?? '', undefined, { numeric: true }),
+          );
+        const anchorIdx = siblings.findIndex((p) => p.id === anchor.id);
+        const nextSibling = anchorIdx >= 0 ? siblings[anchorIdx + 1] : undefined;
+        ordinal =
+          nextSibling && anchor.ordinal && nextSibling.ordinal
+            ? interpolateOrdinal(anchor.ordinal, nextSibling.ordinal)
+            : null;
+      }
+      if (!ordinal) {
+        if (parentId) {
+          const parentSection = allPositions.find((p) => p.id === parentId);
+          ordinal = nextChildOrdinal(
+            parentSection?.ordinal ?? '01',
+            allPositions.filter((p) => p.parent_id === parentId),
+          );
+        } else {
+          const lastSection = grouped.sections[grouped.sections.length - 1];
+          if (lastSection) {
+            parentId = lastSection.section.id;
+            ordinal = nextChildOrdinal(lastSection.section.ordinal, lastSection.children);
+          } else {
+            ordinal = nextTopLevelOrdinal(allPositions);
+          }
+        }
+      }
+
+      // Make the landing spot visible when it's inside a collapsed section.
+      if (parentId && collapsedSections.has(parentId)) toggleSection(parentId);
+
+      addMutation.mutate({
+        boq_id: boqId,
+        ordinal,
+        description: payload.designation,
+        unit: payload.unit,
+        quantity: 0,
+        unit_rate: payload.unit_rate,
+        parent_id: parentId,
+        reference_code: ordinal,
+        // 'standalone' is load-bearing: a reference_code collision would
+        // otherwise take the Issue #127 reuse path, which ignores both
+        // after_position_id and bordereau_line_id.
+        link_mode: 'standalone',
+        after_position_id: afterPositionId,
+        bordereau_line_id: payload.lineId,
+      });
+    },
+    [boqId, boq, grouped, collapsedSections, toggleSection, addMutation, addToast, t],
   );
 
   /**
@@ -2949,7 +3082,16 @@ export function BOQEditorPage() {
   );
 
   // ── Bordereau de prix drawer ────────────────────────────────────────────
-  const [bordereauOpen, setBordereauOpen] = useState(false);
+  // Pinned ⇒ docked side-by-side (page shrinks, no backdrop) and auto-open
+  // on the next visit. Explicit close (X) always unpins, so a dismissed
+  // drawer never ghost-reopens on reload.
+  const [bordereauPinned, setBordereauPinned] = useState<boolean>(() => readBordereauPinned());
+  const [bordereauOpen, setBordereauOpen] = useState<boolean>(() => readBordereauPinned());
+  useEffect(() => {
+    try {
+      localStorage.setItem(BORDEREAU_PINNED_KEY, bordereauPinned ? '1' : '0');
+    } catch { /* storage unavailable — pin just won't persist */ }
+  }, [bordereauPinned]);
   const [bordereauId, setBordereauId] = useState<string | null>(boq?.bordereau_id ?? null);
   // Keep the ref in sync so invalidateAll (declared earlier) can reach bordereauId.
   bordereauIdRef.current = bordereauId;
@@ -4679,7 +4821,10 @@ export function BOQEditorPage() {
     <div
       ref={editorContainerRef}
       tabIndex={-1}
-      className="w-full animate-fade-in pb-12 outline-none"
+      className="w-full animate-fade-in pb-12 outline-none transition-[padding-right] duration-200"
+      // Pinned bordereau docks at the viewport's right edge (520px fixed
+      // panel) — shrink the editor so the grid and the drawer sit side by side.
+      style={{ paddingRight: bordereauOpen && bordereauPinned ? 520 : undefined }}
     >
       {/* ── Breadcrumb ────────────────────────────────────────────────── */}
       <Breadcrumb
@@ -5069,9 +5214,30 @@ export function BOQEditorPage() {
           onHighlightBIMElements={(elementIds) => {
             setBOQLinkSelection(null, elementIds);
           }}
+          onDropBordereauLine={handleDropBordereauLine}
         /></div>
       ) : (
-        <div className="rounded-xl border border-border-light bg-surface-elevated shadow-xs overflow-hidden p-8">
+        <div
+          className="rounded-xl border border-border-light bg-surface-elevated shadow-xs overflow-hidden p-8"
+          // The grid isn't rendered while the BOQ is empty — accept bordereau
+          // line drops here too so drag-and-drop works from the first line.
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes(BORDEREAU_LINE_MIME)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+          }}
+          onDrop={(e) => {
+            const raw = e.dataTransfer.getData(BORDEREAU_LINE_MIME);
+            if (!raw) return;
+            e.preventDefault();
+            try {
+              handleDropBordereauLine(JSON.parse(raw) as BordereauLineDragPayload, {
+                afterPositionId: null,
+                parentId: null,
+              });
+            } catch { /* malformed payload — ignore the drop */ }
+          }}
+        >
           <EmptyBOQOnboarding
             onAddSection={handleAddSection}
             onAddPosition={() => handleAddPosition()}
@@ -5444,7 +5610,14 @@ export function BOQEditorPage() {
           projectId={boq.project_id}
           bordereauId={bordereauId}
           isOpen={bordereauOpen}
-          onClose={() => setBordereauOpen(false)}
+          pinned={bordereauPinned}
+          onTogglePin={() => setBordereauPinned((v) => !v)}
+          // Explicit close always unpins — a dismissed drawer must not
+          // ghost-reopen docked on the next visit.
+          onClose={() => {
+            setBordereauOpen(false);
+            setBordereauPinned(false);
+          }}
           onBordereauChanged={(bid) => {
             setBordereauId(bid);
             invalidateAll();

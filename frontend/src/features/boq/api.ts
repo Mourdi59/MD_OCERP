@@ -322,6 +322,11 @@ export interface CreatePositionData {
    *  sibling (sort_order = anchor + 1, later rows shift down) instead of
    *  at the end of the section. Ignored on the reuse/linked-instance path. */
   after_position_id?: string | null;
+  /** Bordereau drag-and-drop — link the new position to this exact bordereau
+   *  line at creation. unit_rate/total derive from the line and the
+   *  designation-based auto-link is skipped (422 if the BOQ isn't attached
+   *  to the line's bordereau). Ignored on the reuse/linked-instance path. */
+  bordereau_line_id?: string | null;
 }
 
 export interface UpdatePositionData {
