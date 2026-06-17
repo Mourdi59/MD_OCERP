@@ -19,10 +19,13 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  GripVertical,
   Link2Off,
   Trash2,
   Loader2,
   Package,
+  Pin,
+  PinOff,
   Download,
   Search,
 } from 'lucide-react';
@@ -32,7 +35,9 @@ import { assembliesApi } from '@/features/assemblies/api';
 import type { AssemblyWithComponents } from '@/features/assemblies/api';
 import {
   bordereauApi,
+  BORDEREAU_LINE_MIME,
   type BordereauLine,
+  type BordereauLineDragPayload,
   type CreateLineData,
   type UpdateLineData,
   type CreateComponentData,
@@ -43,6 +48,9 @@ export interface BordereauDrawerProps {
   projectId: string;
   bordereauId: string | null;
   isOpen: boolean;
+  /** Docked side-by-side: no backdrop, Escape/outside-click don't close. */
+  pinned: boolean;
+  onTogglePin: () => void;
   onClose: () => void;
   onBordereauChanged: (bordereauId: string | null) => void;
 }
@@ -61,6 +69,8 @@ export function BordereauDrawer({
   projectId,
   bordereauId,
   isOpen,
+  pinned,
+  onTogglePin,
   onClose,
   onBordereauChanged,
 }: BordereauDrawerProps) {
@@ -68,15 +78,37 @@ export function BordereauDrawer({
   const toast = useToastStore((s) => s.addToast);
   const qc = useQueryClient();
 
+  // ── Drag a line out to the BOQ grid ──────────────────────────────────
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleLineDragStart = useCallback((e: React.DragEvent, line: BordereauLine) => {
+    const payload: BordereauLineDragPayload = {
+      lineId: line.id,
+      designation: line.designation,
+      unit: line.unit,
+      unit_rate: line.unit_rate,
+      is_assembly: line.is_assembly,
+    };
+    e.dataTransfer.setData(BORDEREAU_LINE_MIME, JSON.stringify(payload));
+    e.dataTransfer.setData('text/plain', line.designation);
+    e.dataTransfer.effectAllowed = 'copy';
+    setIsDragging(true);
+  }, []);
+
   // ── Close on Escape ──────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+      if (e.key !== 'Escape') return;
+      // Pinned: docked panels don't dismiss. Dragging: Escape cancels the
+      // browser drag — swallowing the drawer with it would be jarring.
+      if (pinned || isDragging) return;
+      e.preventDefault();
+      onClose();
     }
     document.addEventListener('keydown', handleKey, { capture: true });
     return () => document.removeEventListener('keydown', handleKey, { capture: true });
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, pinned, isDragging]);
 
   // ── Data fetching ────────────────────────────────────────────────────
   const { data: projectBordereaux = [], isLoading: loadingList } = useQuery({
@@ -228,7 +260,12 @@ export function BordereauDrawer({
 
   return (
     <div className="fixed inset-0 z-40 flex pointer-events-none">
-      <div className="flex-1 pointer-events-auto" onClick={onClose} />
+      {/* Backdrop: inert when pinned (clicks reach the page) and while a line
+          is dragged (drops must land on the grid left of the panel). */}
+      <div
+        className={`flex-1 ${pinned || isDragging ? 'pointer-events-none' : 'pointer-events-auto'}`}
+        onClick={pinned ? undefined : onClose}
+      />
 
       <div className="w-[520px] max-w-full bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-2xl flex flex-col pointer-events-auto h-full overflow-hidden">
         {/* Header */}
@@ -242,9 +279,20 @@ export function BordereauDrawer({
               <Badge variant="neutral" className="text-xs">{bordereau.name}</Badge>
             )}
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onTogglePin}
+              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+              title={t(pinned ? 'bordereau.unpin' : 'bordereau.pin')}
+            >
+              {pinned
+                ? <PinOff className="w-4 h-4 text-indigo-500" />
+                : <Pin className="w-4 h-4" />}
+            </button>
+            <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {isLoading && (
@@ -412,8 +460,14 @@ export function BordereauDrawer({
 
                   return (
                     <div key={line.id} className="border border-gray-100 dark:border-gray-800 rounded overflow-hidden">
-                      {/* Line row */}
-                      <div className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                      {/* Line row — draggable onto the BOQ grid */}
+                      <div
+                        className="group flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-grab active:cursor-grabbing"
+                        draggable={!isEditing}
+                        onDragStart={(e) => handleLineDragStart(e, line)}
+                        onDragEnd={() => setIsDragging(false)}
+                      >
+                        <GripVertical className="w-3.5 h-3.5 -ml-1.5 flex-shrink-0 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100" />
                         {/* Expand (assembly) / spacer */}
                         {line.is_assembly ? (
                           <button
@@ -535,6 +589,9 @@ export function BordereauDrawer({
         {/* Footer */}
         <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-2">
           <p className="text-xs text-gray-400">{t('bordereau.footerInfo')}</p>
+          {lines.length > 0 && (
+            <p className="text-xs text-gray-400">{t('bordereau.dragHint')}</p>
+          )}
         </div>
       </div>
     </div>
