@@ -3348,33 +3348,41 @@ def _extract_quantities_for_element(
                 "IFCQUANTITYNUMBER",
             ):
                 continue
-            q_strings = q_ent["strings"]
-            q_name = q_strings[0] if q_strings else "unknown"
-            # Bugfix (C7): the old regex r"[\d.]+(?:E[+-]?\d+)?" also
-            # matched the digit portion of #N references - so
-            # IFCQUANTITYAREA('NetArea',$,$,#5,42.5) parsed as nums[0]="5"
-            # and we recorded NetArea=5 m² instead of 42.5. Strip all
-            # #N tokens first, then look for the trailing numeric literal.
-            args_no_refs = re.sub(r"#\d+", "", q_ent["args_raw"])
-            nums = re.findall(r"-?\d+\.?\d*(?:[Ee][+-]?\d+)?", args_no_refs)
-            # The measurement value is the LAST positional argument of an
-            # IFCQUANTITY* entity, so prefer the last numeric we found.
-            for n in reversed(nums):
+            for pr in re.findall(r"#(\d+)", pdef["args_raw"]):
+                prop_ent = entities.get(int(pr))
+                if not prop_ent or prop_ent["type"] != "IFCPROPERTYSINGLEVALUE":
+                    continue
+                prop_name = prop_ent["strings"][0] if prop_ent["strings"] else "unknown"
+                # Value encoded as typed measure, e.g. IFCLENGTHMEASURE(3.5)
+                m = re.search(
+                    r"IFC(\w+MEASURE)\((-?[\d.]+(?:[Ee][+-]?\d+)?)\)",
+                    prop_ent["args_raw"],
+                    re.IGNORECASE,
+                )
+                if not m:
+                    continue
                 try:
-                    val = float(n)
+                    val = float(m.group(2))
                 except ValueError:
                     continue
-                if val > 0:
-                    # Audit C2 - apply unit scale so the recorded value is
-                    # always in canonical SI (m, m², m³, kg, s) regardless
-                    # of whether the source IFC used millimetres, feet, or
-                    # any other declared unit. unit_ctx is None for the
-                    # legacy regression tests that pass entities by hand;
-                    # we skip the scale in that case to preserve their
-                    # expectations.
-                    scale = unit_ctx.scale(q_ent["type"]) if unit_ctx else 1.0
-                    quantities[q_name] = val * scale
-                    break
+                if val <= 0:
+                    continue
+                measure_kind = m.group(1).upper()
+                if "LENGTH" in measure_kind:
+                    unit_type = "LENGTHUNIT"
+                elif "AREA" in measure_kind:
+                    unit_type = "AREAUNIT"
+                elif "VOLUME" in measure_kind:
+                    unit_type = "VOLUMEUNIT"
+                elif "MASS" in measure_kind:
+                    unit_type = "MASSUNIT"
+                else:
+                    unit_type = ""
+                scale = (
+                    unit_ctx.scale_for.get(unit_type, 1.0)
+                    if (unit_ctx and unit_type) else 1.0
+                )
+                quantities[prop_name] = val * scale
 
     return quantities
 
