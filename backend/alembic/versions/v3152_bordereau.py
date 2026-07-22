@@ -13,7 +13,7 @@ Idempotent: guarded by inspector so re-running after SQLite
 ``Base.metadata.create_all`` (dev) is a no-op.
 
 Revision ID: v3152_bordereau
-Revises: v3239_takeoff_page_scales
+Revises: v3253_credentials
 Created: 2026-05-31
 """
 
@@ -27,7 +27,7 @@ from alembic import op
 from app.database import GUID
 
 revision: str = "v3152_bordereau"
-down_revision: Union[str, Sequence[str], None] = "v3239_takeoff_page_scales"
+down_revision: Union[str, Sequence[str], None] = "v3253_credentials"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
