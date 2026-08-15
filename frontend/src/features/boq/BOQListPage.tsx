@@ -13,7 +13,7 @@ import { Card, Badge, EmptyState, Skeleton, Button, Breadcrumb, FileTypeChips, D
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { apiGet } from '@/shared/lib/api';
-import { fmtCompact, fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtCompact, fmtNumber, fmtPercent } from '@/shared/lib/formatters';
 import { boqApi, type BOQWithPositions, groupPositionsIntoSections, type SectionGroup } from './api';
 import { resourceAwareTotalInBase, getCurrencyCode } from './boqHelpers';
 import { projectsApi, type ProjectFxRate } from '@/features/projects/api';
@@ -55,10 +55,17 @@ interface BOQWithProject extends BOQ {
 
 const ITEMS_PER_PAGE = 12;
 
-const currencyFmt = new Intl.NumberFormat(getIntlLocale(), {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
+/**
+ * A whole-number amount in the reader's language.
+ *
+ * This used to be an `Intl.NumberFormat` built at module scope. The language
+ * switcher deliberately does not reload the app, so a formatter built when
+ * the chunk first loaded kept writing in whatever language the page opened
+ * in: a German reader who arrived in English saw `12,550,880` beside rows
+ * formatted `12.550.880`. Reading the locale per call is what every other
+ * helper in `shared/lib/formatters` already does.
+ */
+const currencyFmt = { format: (value: number) => fmtNumber(value, 0) };
 
 /**
  * Compact money for the stat cards — always paired with its ISO currency

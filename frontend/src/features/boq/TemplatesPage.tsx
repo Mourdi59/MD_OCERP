@@ -21,7 +21,7 @@ import { Button, Badge, Breadcrumb, DismissibleInfo } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useToastStore } from '@/stores/useToastStore';
 import { apiGet, apiPost, ApiError } from '@/shared/lib/api';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { fmtNumber } from '@/shared/lib/formatters';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 import { projectsApi, type Project } from '@/features/projects/api';
 import { useActiveProjectId } from '@/shared/hooks/useActiveProjectId';
@@ -202,17 +202,16 @@ const FALLBACK_TEMPLATES: BOQTemplate[] = [
   },
 ];
 
-/* ── Number formatter ───────────────────────────────────────────────── */
+/* ── Number formatters ──────────────────────────────────────────────── */
+//
+// Per call, not per import. An `Intl.NumberFormat` built at module scope
+// reads the language once, when this lazy chunk first loads, and the
+// language switcher does not reload the app - so the area beside a template
+// kept the separators of whatever language the page opened in.
 
-const fmt = new Intl.NumberFormat(getIntlLocale(), {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
+const fmt = { format: (value: number) => fmtNumber(value, 0) };
 
-const fmtCurrency = new Intl.NumberFormat(getIntlLocale(), {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
+const fmtCurrency = { format: (value: number) => fmtNumber(value, 2) };
 
 /* ══════════════════════════════════════════════════════════════════════ */
 /*  TemplatesPage                                                       */
