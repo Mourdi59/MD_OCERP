@@ -139,6 +139,10 @@ class PunchItemResponse(BaseModel):
     priority: str = "medium"
     status: str = "open"
     assigned_to: str | None = None
+    #: Who ``assigned_to`` names, when it carries a contact id rather than a
+    #: name someone typed. Null when the raw value is already a name, when it
+    #: points at no contact, and when the contacts module is not installed.
+    assigned_to_name: str | None = None
     due_date: datetime | None = None
     category: str | None = None
     trade: str | None = None
@@ -151,6 +155,8 @@ class PunchItemResponse(BaseModel):
     resolved_at: datetime | None = None
     verified_at: datetime | None = None
     verified_by: str | None = None
+    #: Who ``verified_by`` names - same rule as ``assigned_to_name``.
+    verified_by_name: str | None = None
     created_by: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     reopen_history: list[dict[str, Any]] = Field(default_factory=list)

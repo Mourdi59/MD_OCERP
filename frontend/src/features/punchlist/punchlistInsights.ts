@@ -18,6 +18,7 @@
 import { useTranslation } from 'react-i18next';
 import type { InsightDataset, InsightDef } from '@/features/insights';
 import type { PunchItem } from './api';
+import { resolveAssignee } from './assignee';
 
 type Translate = ReturnType<typeof useTranslation>['t'];
 
@@ -77,7 +78,27 @@ interface Row {
   reopened: number;
 }
 
-function toRow(item: PunchItem, unassigned: string, none: string, t: Translate): Row {
+/**
+ * Which bar a snag belongs on when the chart groups by assignee.
+ *
+ * The column can hold a contact id, and an id makes a bar nobody can read.
+ * Ids the API resolved group under the person; ids it could not resolve get
+ * their own bucket rather than joining the genuinely unassigned work, which
+ * is a different queue with a different owner.
+ */
+function assigneeBucket(item: PunchItem, unassigned: string, unknown: string): string {
+  const who = resolveAssignee(item.assigned_to, item.assigned_to_name);
+  if (who.kind === 'named') return who.name;
+  return who.kind === 'unresolved' ? unknown : unassigned;
+}
+
+function toRow(
+  item: PunchItem,
+  unassigned: string,
+  none: string,
+  unknown: string,
+  t: Translate,
+): Row {
   const now = Date.now();
   const isOpen = !DONE_STATUSES.includes(item.status);
   const due = item.due_date ? new Date(item.due_date).getTime() : NaN;
@@ -94,7 +115,7 @@ function toRow(item: PunchItem, unassigned: string, none: string, t: Translate):
     priority: priorityLabel(item.priority, t),
     category: categoryLabel(item.category, t, none),
     trade: item.trade?.trim() || none,
-    assignee: item.assigned_to?.trim() || unassigned,
+    assignee: assigneeBucket(item, unassigned, unknown),
     month: monthKey(item.created_at),
     open: isOpen ? 1 : 0,
     overdue,
@@ -117,10 +138,11 @@ export interface PunchlistInsights {
 export function buildPunchlistInsights(items: PunchItem[], t: Translate): PunchlistInsights {
   const unassigned = t('punch.insights.unassigned', { defaultValue: 'Unassigned' });
   const none = t('punch.insights.none', { defaultValue: 'Not set' });
+  const unknown = t('common.unknown', { defaultValue: 'Unknown' });
 
   const rows: Row[] = [...items]
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-    .map((item) => toRow(item, unassigned, none, t));
+    .map((item) => toRow(item, unassigned, none, unknown, t));
 
   const dataset: InsightDataset = {
     id: 'punch',

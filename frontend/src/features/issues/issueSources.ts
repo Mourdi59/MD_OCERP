@@ -231,7 +231,9 @@ export function mapPunch(p: PunchItem): UnifiedIssue | null {
     status: bucket,
     rawStatus: p.status,
     priority: normalizePriority(p.priority),
-    assignee: strOrNull(p.assigned_to),
+    // The column holds a contact id as often as a name, and the hub can only
+    // stub an id into `#3f2b8c1e`. Prefer the name the punch API resolved.
+    assignee: strOrNull(p.assigned_to_name) ?? strOrNull(p.assigned_to),
     dueDate: strOrNull(p.due_date),
     createdAt: strOrNull(p.created_at),
     deepLink: `/punchlist?highlight=${encodeURIComponent(p.id)}`,

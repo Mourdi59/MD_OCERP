@@ -44,6 +44,8 @@ export interface PunchItem {
   status: PunchStatus;
   category: PunchCategory | null;
   assigned_to: string | null;
+  /** Name of the contact `assigned_to` holds the id of, when it holds one. */
+  assigned_to_name: string | null;
   due_date: string | null;
   document_id: string | null;
   page: number | null;
@@ -53,6 +55,8 @@ export interface PunchItem {
   trade: string | null;
   resolution_notes: string | null;
   verified_by: string | null;
+  /** Name of the contact `verified_by` holds the id of, when it holds one. */
+  verified_by_name: string | null;
   metadata: Record<string, unknown>;
   created_by: string | null;
   created_at: string;

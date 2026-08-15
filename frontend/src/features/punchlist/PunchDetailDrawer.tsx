@@ -29,6 +29,7 @@ import {
 } from './api';
 import { PunchClosureStepper } from './PunchClosureStepper';
 import { PunchPhotoGallery } from './PunchPhotoGallery';
+import { AssigneeLabel } from './assignee';
 
 const STATUS_VARIANT: Record<PunchStatus, 'error' | 'warning' | 'blue' | 'success' | 'neutral'> = {
   open: 'error',
@@ -150,7 +151,6 @@ export function PunchDetailDrawer({
     );
   }
 
-  const assignee = item.assigned_to?.trim();
   const category = item.category;
   const hasPin =
     Boolean(item.document_id) && item.location_x != null && item.location_y != null;
@@ -192,11 +192,11 @@ export function PunchDetailDrawer({
               : '-'}
           </Field>
           <Field icon={User} label={t('punch.field_assigned_to', { defaultValue: 'Assigned To' })}>
-            {assignee || (
-              <span className="text-content-quaternary">
-                {t('punch.unassigned', { defaultValue: 'Unassigned' })}
-              </span>
-            )}
+            <AssigneeLabel
+              raw={item.assigned_to}
+              name={item.assigned_to_name}
+              variant="plain"
+            />
           </Field>
           <Field icon={Calendar} label={t('punch.field_due_date', { defaultValue: 'Due Date' })}>
             {formatDate(item.due_date)}

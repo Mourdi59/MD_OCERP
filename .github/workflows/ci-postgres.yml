@@ -474,6 +474,26 @@ jobs:
           pytest tests/modules/test_ai_security.py
           tests/unit/test_ai_self_hosted_endpoint_isolation.py
           -q -p no:cacheprovider
+      # A punch list row printed the assigned_to column as it stood, and that
+      # column holds a contact id as often as a name, so a German demo read
+      # "ZUGEWIESEN AN 3f2b8c1e-9a44-..." on every row of the list, on every
+      # kanban card, in the drawer and along the axis of the insights chart.
+      # The names are resolved in two queries per page now, one against the
+      # contacts register and one against the user list, because the seeder
+      # writes a contact id where the assignment control writes a user id.
+      # Three things here are worth a gate rather than a review: that the cost
+      # is fixed per page rather than per row, on the slowest screen the module
+      # has; that free text is
+      # never sent to the database, because a typed-in name is already the
+      # answer; and that an id which resolves to nothing does not come back as
+      # "Unassigned", which would tell a site manager to hand out work that
+      # already has an owner.
+      - name: Run punch list assignee resolution tests
+        run: >-
+          pytest tests/unit/test_punch_assignee_names.py
+          tests/unit/test_punchlist.py
+          tests/unit/test_punchlist_polish.py
+          -q -p no:cacheprovider
       # The literal string bim did not appear anywhere in this file, so 30 unit
       # files and 528 tests, including the ones covering all 28 BIM validation
       # rules, were enforced by nothing. Those rules are reachable in production:
@@ -773,6 +793,8 @@ jobs:
         src/features/module-builder/api.test.ts
         src/features/module-builder/draft.test.ts
         src/features/module-builder/fields.test.ts
+        src/features/punchlist/assignee.test.tsx
+        src/features/punchlist/punchlistInsights.test.ts
         src/features/schedule/ScheduleResourcePanel.test.tsx
         src/shared/lib/__tests__/formatCompactCurrency.test.ts
         src/shared/lib/i18nInterpolatedKeys.test.ts

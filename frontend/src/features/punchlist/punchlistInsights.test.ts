@@ -76,6 +76,23 @@ describe('buildPunchlistInsights', () => {
     expect(buildPunchlistInsights([punch({})], t).datasets[0]?.rows).toHaveLength(1);
   });
 
+  // The assignee column holds a contact id as often as a name, and an id makes
+  // a bar nobody can read. Grouping is the one place where the three states
+  // have to stay apart: work owned by a named party, work owned by somebody
+  // the register can no longer name, and work owned by nobody.
+  it('groups by the resolved name rather than the id behind it', () => {
+    const r = row(
+      punch({ assigned_to: '3f2b8c1e-9a44-4d2e-8b7a-0c1d2e3f4a5b', assigned_to_name: 'Keller' }),
+    );
+    expect(r?.assignee).toBe('Keller');
+  });
+
+  it('keeps an unresolvable owner out of the unassigned bucket', () => {
+    const r = row(punch({ assigned_to: '3f2b8c1e-9a44-4d2e-8b7a-0c1d2e3f4a5b' }));
+    expect(r?.assignee).toBe('Unknown');
+    expect(row(punch({ assigned_to: null }))?.assignee).toBe('Unassigned');
+  });
+
   it('exposes no currency-formatted measure, because a snag carries no money', () => {
     const ds = buildPunchlistInsights([], t).datasets[0];
     expect(ds?.currency).toBe('');

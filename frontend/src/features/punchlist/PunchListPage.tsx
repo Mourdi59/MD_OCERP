@@ -76,6 +76,7 @@ import type {
 } from './api';
 import { punchlistGuide } from './punchlistGuide';
 import { PunchDetailDrawer } from './PunchDetailDrawer';
+import { AssigneeLabel } from './assignee';
 import { VoiceEntry, getField } from '@/features/voice';
 
 // The pin board pulls in the PDF renderer (pdfjs-dist), which is heavy. Keep it
@@ -827,18 +828,7 @@ const PunchKanbanCard = React.memo(function PunchKanbanCard({
       <div className="flex items-center justify-between mt-3 text-xs text-content-tertiary">
         {/* Assignee avatar */}
         <div className="flex items-center gap-1.5">
-          {item.assigned_to ? (
-            <>
-              <div className="h-5 w-5 rounded-full bg-oe-blue/10 text-oe-blue flex items-center justify-center text-2xs font-semibold shrink-0">
-                {item.assigned_to.charAt(0).toUpperCase()}
-              </div>
-              <span className="truncate max-w-[80px]">{item.assigned_to}</span>
-            </>
-          ) : (
-            <span className="text-content-quaternary">
-              {t('punch.unassigned', { defaultValue: 'Unassigned' })}
-            </span>
-          )}
+          <AssigneeLabel raw={item.assigned_to} name={item.assigned_to_name} variant="card" />
         </div>
 
         {/* Due date + overdue + photos */}
@@ -1093,6 +1083,9 @@ export function PunchListPage() {
       (item) =>
         item.title.toLowerCase().includes(q) ||
         item.description.toLowerCase().includes(q) ||
+        // Search the owner by the name that is on the screen, not only by the
+        // id underneath it - typing the name you can see must find the row.
+        (item.assigned_to_name && item.assigned_to_name.toLowerCase().includes(q)) ||
         (item.assigned_to && item.assigned_to.toLowerCase().includes(q)),
     );
   }, [punchItems, searchQuery]);
@@ -1983,20 +1976,7 @@ const PunchTableRow = React.memo(function PunchTableRow({
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
-          {item.assigned_to ? (
-            <>
-              <div className="h-6 w-6 rounded-full bg-oe-blue/10 text-oe-blue flex items-center justify-center text-xs font-semibold shrink-0">
-                {item.assigned_to.charAt(0).toUpperCase()}
-              </div>
-              <span className="text-sm text-content-secondary truncate max-w-[100px]">
-                {item.assigned_to}
-              </span>
-            </>
-          ) : (
-            <span className="text-sm text-content-quaternary">
-              {t('punch.unassigned', { defaultValue: 'Unassigned' })}
-            </span>
-          )}
+          <AssigneeLabel raw={item.assigned_to} name={item.assigned_to_name} variant="row" />
         </div>
       </td>
       <td className="px-4 py-3">
