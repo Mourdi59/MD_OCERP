@@ -32,7 +32,11 @@ from types import SimpleNamespace
 from typing import Any
 
 from app.modules.punchlist.router import _item_response, _item_responses, _item_to_response
-from app.modules.punchlist.service import PunchListService, _contact_display_name
+from app.modules.punchlist.service import (
+    PunchListService,
+    _contact_display_name,
+    _render_punchlist_text,
+)
 
 FIRM = uuid.uuid4()
 PERSON = uuid.uuid4()
@@ -189,6 +193,16 @@ class TestResolvePartyNames:
         service, _session = _service(rows=[], users=[])
         assert asyncio.run(service.resolve_party_names([str(uuid.uuid4())])) == {}
 
+    def test_the_shape_the_driver_returns_does_not_decide_the_answer(self) -> None:
+        # The id column is a type decorator over VARCHAR(36) that parses back
+        # into a UUID, and it falls through to the raw string for anything it
+        # cannot parse. Comparing one shape against the other would resolve
+        # nothing and say nothing, which reads on screen as "every owner is
+        # unknown" - strictly worse than the id it replaced. Both sides go
+        # through the same normalisation, so either shape has to work.
+        service, _session = _service(rows=[(str(FIRM), "Bauunternehmung Keller", None, None, None)])
+        assert asyncio.run(service.resolve_party_names([str(FIRM)])) == {str(FIRM): "Bauunternehmung Keller"}
+
     def test_a_nameless_contact_is_not_a_blank_name(self) -> None:
         service, _session = _service(rows=[(FIRM, "", None, None, "  ")], users=[])
         assert asyncio.run(service.resolve_party_names([str(FIRM)])) == {}
@@ -250,6 +264,22 @@ class TestResponseCarriesTheName:
         assert responses[20].assigned_to_name == "Anna Schmidt"
         assert responses[20].verified_by_name == "Bauunternehmung Keller"
         assert session.queries == 2
+
+    def test_the_exported_list_names_the_same_party_the_screen_names(self) -> None:
+        # The export is the artefact that leaves the building. A screen saying
+        # "Bauunternehmung Keller" over a spreadsheet saying "3f2b8c1e-..." is
+        # one concept rendered twice and disagreeing, which is the shape this
+        # whole change exists to remove.
+        item = _item(assigned_to=str(FIRM))
+        text = _render_punchlist_text(uuid.uuid4(), [item], {str(FIRM): "Bauunternehmung Keller"})
+        assert "Assigned to: Bauunternehmung Keller" in text
+        assert str(FIRM) not in text
+
+    def test_an_export_still_prints_an_unresolved_id_rather_than_a_blank(self) -> None:
+        # A name we cannot resolve is worse as an empty cell: the id can at
+        # least be looked up by whoever receives the sheet.
+        item = _item(assigned_to=str(FIRM))
+        assert str(FIRM) in _render_punchlist_text(uuid.uuid4(), [item], {})
 
     def test_the_builder_is_usable_without_any_names(self) -> None:
         # The pure builder keeps working for callers that have no session to

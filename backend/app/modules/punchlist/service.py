@@ -13,7 +13,7 @@ Stateless service layer. Handles:
 
 import logging
 import uuid
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -51,6 +51,44 @@ def _contact_display_name(company: str | None, legal: str | None, first: str | N
     """
     person = " ".join(part.strip() for part in (first, last) if part and part.strip())
     return (company or "").strip() or person or (legal or "").strip()
+
+
+def _canonical_id(value: object) -> str:
+    """The form of ``value`` two ids can be compared in.
+
+    Ids reach this module as a string from a free-text column and as whatever
+    the type decorator hands back from a row - a ``uuid.UUID`` today, a string
+    on any column it could not parse. Comparing the two shapes directly works
+    right up until the day one of them changes, and it fails by resolving
+    nothing rather than by raising, so nobody would see it. Both sides go
+    through here instead.
+
+    Args:
+        value: An id in any of the shapes above.
+
+    Returns:
+        The canonical lower-case form, or ``str(value)`` for anything that is
+        not an id at all.
+    """
+    try:
+        return str(uuid.UUID(str(value)))
+    except (AttributeError, TypeError, ValueError):
+        return str(value)
+
+
+def _party_label(item: PunchItem, names: Mapping[str, str] | None) -> str:
+    """What an export should print in an assignee column.
+
+    Args:
+        item: The punch row.
+        names: Resolved names as ``resolve_party_names`` returns them.
+
+    Returns:
+        The name when one is known, otherwise the column as stored - an id is
+        still better than a blank, because it can at least be looked up.
+    """
+    raw = item.assigned_to or ""
+    return (names or {}).get(raw) or raw
 
 
 def _as_utc(value: object) -> datetime | None:
@@ -216,13 +254,13 @@ class PunchListService:
         Returns:
             ``{raw value: display name}`` for the ids that resolved.
         """
-        wanted: dict[uuid.UUID, str] = {}
+        wanted: dict[str, str] = {}
         for value in values:
             text = (value or "").strip()
             if not text:
                 continue
             try:
-                wanted[uuid.UUID(text)] = text
+                wanted[str(uuid.UUID(text))] = text
             except (AttributeError, TypeError, ValueError):
                 continue  # a typed-in name, not an id
         if not wanted:
@@ -233,13 +271,13 @@ class PunchListService:
             (lambda r: (r[1] or "").strip() or (r[2] or "").strip(), await self._user_rows(wanted)),
         ):
             for row in rows:
-                raw = wanted.get(row[0])
+                raw = wanted.get(_canonical_id(row[0]))
                 name = name_of(row)
                 if raw and name and raw not in resolved:
                     resolved[raw] = name
         return resolved
 
-    async def _contact_rows(self, wanted: dict[uuid.UUID, str]) -> list[Any]:
+    async def _contact_rows(self, wanted: dict[str, str]) -> list[Any]:
         """Contacts among ``wanted``, or nothing if the module is not there."""
         try:
             from app.modules.contacts.models import Contact
@@ -260,7 +298,7 @@ class PunchListService:
             logger.debug("Contacts unavailable, punch assignees stay unresolved", exc_info=True)
             return []
 
-    async def _user_rows(self, wanted: dict[uuid.UUID, str]) -> list[Any]:
+    async def _user_rows(self, wanted: dict[str, str]) -> list[Any]:
         """Platform users among ``wanted``.
 
         The assignment control on the punch screen is a list of users, so a
@@ -812,11 +850,15 @@ class PunchListService:
         endpoint always returns a valid ``application/pdf``.
         """
         items = await self.repo.all_for_project(project_id)
+        # The exported list is the artefact that leaves the building, so it
+        # has to name the same party the screen names. An id in a printed
+        # column cannot even be clicked.
+        names = await self.resolve_party_names(item.assigned_to for item in items)
 
         if _REPORTLAB_AVAILABLE:
-            pdf = _build_reportlab_pdf(project_id, items)
+            pdf = _build_reportlab_pdf(project_id, items, names)
         else:
-            pdf = _build_minimal_pdf(_render_punchlist_text(project_id, items))
+            pdf = _build_minimal_pdf(_render_punchlist_text(project_id, items, names))
 
         logger.info(
             "Punch list PDF exported for project %s (%d items, reportlab=%s)",
@@ -835,6 +877,7 @@ class PunchListService:
         branch to take without repeatedly catching ``ImportError``.
         """
         items = await self.repo.all_for_project(project_id)
+        names = await self.resolve_party_names(item.assigned_to for item in items)
 
         if _OPENPYXL_AVAILABLE:
             import io
@@ -871,7 +914,7 @@ class PunchListService:
                 ws.cell(row=row_idx, column=4, value=item.priority)
                 ws.cell(row=row_idx, column=5, value=item.category or "")
                 ws.cell(row=row_idx, column=6, value=item.trade or "")
-                ws.cell(row=row_idx, column=7, value=item.assigned_to or "")
+                ws.cell(row=row_idx, column=7, value=_party_label(item, names))
                 ws.cell(row=row_idx, column=8, value=str(item.due_date) if item.due_date else "")
                 ws.cell(row=row_idx, column=9, value=(item.description or "")[:500])
                 ws.cell(row=row_idx, column=10, value=(item.resolution_notes or "")[:500])
@@ -914,7 +957,7 @@ class PunchListService:
                     item.priority,
                     item.category or "",
                     item.trade or "",
-                    item.assigned_to or "",
+                    _party_label(item, names),
                     str(item.due_date) if item.due_date else "",
                     (item.description or "")[:500],
                     (item.resolution_notes or "")[:500],
@@ -990,7 +1033,11 @@ def _build_minimal_pdf(text: str) -> bytes:
     return "\n".join(parts).encode("latin-1")
 
 
-def _render_punchlist_text(project_id: uuid.UUID, items: list[PunchItem]) -> str:
+def _render_punchlist_text(
+    project_id: uuid.UUID,
+    items: list[PunchItem],
+    names: Mapping[str, str] | None = None,
+) -> str:
     """Render a flat text view of the punch list - used by the minimal-PDF fallback."""
     lines: list[str] = []
     lines.append("PUNCH LIST REPORT")
@@ -1008,7 +1055,7 @@ def _render_punchlist_text(project_id: uuid.UUID, items: list[PunchItem]) -> str
         if item.trade:
             lines.append(f"   Trade: {item.trade}")
         if item.assigned_to:
-            lines.append(f"   Assigned to: {item.assigned_to}")
+            lines.append(f"   Assigned to: {_party_label(item, names)}")
         if item.due_date:
             lines.append(f"   Due: {item.due_date}")
         if item.description:
@@ -1039,7 +1086,11 @@ def _resolve_photo_path(rel_or_abs: str) -> Path | None:
         return None
 
 
-def _build_reportlab_pdf(project_id: uuid.UUID, items: list[PunchItem]) -> bytes:
+def _build_reportlab_pdf(
+    project_id: uuid.UUID,
+    items: list[PunchItem],
+    names: Mapping[str, str] | None = None,
+) -> bytes:
     """Build a styled PDF using ReportLab.
 
     Layout:
@@ -1136,7 +1187,7 @@ def _build_reportlab_pdf(project_id: uuid.UUID, items: list[PunchItem]) -> bytes
             ["Status", item.status or "-", "Priority", item.priority or "-"],
             [
                 "Assignee",
-                item.assigned_to or "-",
+                _party_label(item, names) or "-",
                 "Due Date",
                 item.due_date.strftime("%Y-%m-%d") if item.due_date else "-",
             ],
