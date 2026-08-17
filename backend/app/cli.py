@@ -362,18 +362,36 @@ def check_port_free(host: str, port: int) -> Check:
 
 
 def check_frontend_bundled() -> Check:
-    pkg_dir = Path(__file__).parent / "_frontend_dist"
-    if pkg_dir.is_dir() and (pkg_dir / "index.html").exists():
-        return Check("Frontend bundle", "ok", "bundled React UI ready")
-    dev_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
-    if dev_dist.is_dir() and (dev_dist / "index.html").exists():
-        return Check("Frontend bundle", "ok", f"using dev build from {dev_dist}")
-    return Check(
-        "Frontend bundle",
-        "warn",
-        "no frontend found - server will run API only",
-        "Reinstall the pip package to get the bundled UI, or run `npm run build` in frontend/",
-    )
+    """Report the UI the server would actually serve, by asking the server's own lookup.
+
+    This used to repeat ``Path(__file__).parent / "_frontend_dist"``, the same
+    expression ``cli_static.get_frontend_dir()`` uses, on the reasoning that two
+    copies of one expression cannot disagree. They can, and in the frozen
+    desktop build they do, because the expression is identical and the anchor is
+    not. This module is the PyInstaller entry script, so it is executed as
+    ``__main__`` and its ``__file__`` sits at the root of the unpacked bundle;
+    ``cli_static`` is an ordinary module inside the ``app`` package, so its
+    ``__file__`` sits one level down, which is where the UI is actually
+    unpacked. The copy here therefore looked one directory too high and
+    reported "no frontend" on a sidecar that was serving the UI perfectly - a
+    false negative on the desktop channel, where this check matters most,
+    telling the operator to reinstall a package that was not broken.
+
+    Asking the real lookup removes the duplication and the divergence together.
+    A check that answers from its own reimplementation of the thing it is
+    checking can only ever be right by coincidence.
+    """
+    from app.cli_static import get_frontend_dir
+
+    try:
+        return Check("Frontend bundle", "ok", f"bundled React UI ready at {get_frontend_dir()}")
+    except FileNotFoundError:
+        return Check(
+            "Frontend bundle",
+            "warn",
+            "no frontend found - server will run API only",
+            "Reinstall the pip package to get the bundled UI, or run `npm run build` in frontend/",
+        )
 
 
 def check_env_overrides() -> Check:
