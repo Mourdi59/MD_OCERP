@@ -69,7 +69,28 @@
     "vat": "VAT",
     "add_markups": "Thêm phụ phí",
     "validate": "Xác thực",
-    "export": "Xuất"
+    "export": "Xuất",
+    "mvp": {
+      "title": "Chọn vật liệu",
+      "subtitle_one": "{{count}} tài nguyên cần lựa chọn",
+      "subtitle_other": "{{count}} tài nguyên cần lựa chọn",
+      "bulk_label": "Điền nhanh:",
+      "bulk_median": "Trung vị cho tất cả",
+      "bulk_mean": "Trung bình cho tất cả",
+      "bulk_cheapest": "Rẻ nhất cho tất cả",
+      "bulk_priciest": "Đắt nhất cho tất cả",
+      "slot_variant_count": "{{n}} tùy chọn",
+      "selected_label": "Đã chọn:",
+      "default_mean": "đơn giá trung bình",
+      "default_median": "đơn giá trung vị",
+      "row_median": "Đơn giá trung vị · {{price}}",
+      "row_mean": "Đơn giá trung bình · {{price}}",
+      "subtotal_label": "Đơn giá hạng mục",
+      "apply": "Áp dụng và thêm vào bảng khối lượng",
+      "batch_progress": "Hạng mục {{current}} / {{total}}",
+      "toast_applied_one": "Đã chọn {{count}} phương án",
+      "toast_applied_other": "Đã chọn {{count}} phương án"
+    }
   },
   "costs": {
     "title": "Cơ sở dữ liệu chi phí",

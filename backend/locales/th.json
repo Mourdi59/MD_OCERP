@@ -69,7 +69,28 @@
     "vat": "VAT",
     "add_markups": "เพิ่มมาร์กอัป",
     "validate": "ตรวจสอบ",
-    "export": "ส่งออก"
+    "export": "ส่งออก",
+    "mvp": {
+      "title": "เลือกวัสดุ",
+      "subtitle_one": "มีทรัพยากร {{count}} รายการที่ต้องเลือก",
+      "subtitle_other": "มีทรัพยากร {{count}} รายการที่ต้องเลือก",
+      "bulk_label": "กรอกด่วน:",
+      "bulk_median": "ค่ามัธยฐานสำหรับทั้งหมด",
+      "bulk_mean": "ค่าเฉลี่ยสำหรับทั้งหมด",
+      "bulk_cheapest": "ถูกที่สุดสำหรับทั้งหมด",
+      "bulk_priciest": "แพงที่สุดสำหรับทั้งหมด",
+      "slot_variant_count": "{{n}} ตัวเลือก",
+      "selected_label": "เลือกแล้ว:",
+      "default_mean": "ราคาเฉลี่ย",
+      "default_median": "ราคามัธยฐาน",
+      "row_median": "ราคามัธยฐาน · {{price}}",
+      "row_mean": "ราคาเฉลี่ย · {{price}}",
+      "subtotal_label": "ราคารายการ",
+      "apply": "ใช้และเพิ่มลงในบัญชีปริมาณงาน",
+      "batch_progress": "รายการที่ {{current}} จาก {{total}}",
+      "toast_applied_one": "เลือกแล้ว {{count}} ตัวเลือก",
+      "toast_applied_other": "เลือกแล้ว {{count}} ตัวเลือก"
+    }
   },
   "costs": {
     "title": "ฐานข้อมูลต้นทุน",

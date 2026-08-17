@@ -69,7 +69,28 @@
     "vat": "TVA",
     "add_markups": "Adăugați adaosuri",
     "validate": "Validați",
-    "export": "Exportați"
+    "export": "Exportați",
+    "mvp": {
+      "title": "Alegeți materialele",
+      "subtitle_one": "{{count}} resursă necesită o alegere",
+      "subtitle_other": "{{count}} resurse necesită o alegere",
+      "bulk_label": "Completare rapidă:",
+      "bulk_median": "Mediana pentru toate",
+      "bulk_mean": "Media pentru toate",
+      "bulk_cheapest": "Cel mai ieftin pentru toate",
+      "bulk_priciest": "Cel mai scump pentru toate",
+      "slot_variant_count": "{{n}} opțiuni",
+      "selected_label": "Selectat:",
+      "default_mean": "preț mediu",
+      "default_median": "preț median",
+      "row_median": "Preț median · {{price}}",
+      "row_mean": "Preț mediu · {{price}}",
+      "subtotal_label": "Preț articol",
+      "apply": "Aplicați și adăugați în antemăsurătoare",
+      "batch_progress": "Articolul {{current}} din {{total}}",
+      "toast_applied_one": "{{count}} variantă aleasă",
+      "toast_applied_other": "{{count}} variante alese"
+    }
   },
   "costs": {
     "title": "Bază de date costuri",

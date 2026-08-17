@@ -69,7 +69,28 @@
     "vat": "PPN",
     "add_markups": "Tambah markup",
     "validate": "Validasi",
-    "export": "Ekspor"
+    "export": "Ekspor",
+    "mvp": {
+      "title": "Pilih bahan",
+      "subtitle_one": "{{count}} sumber daya perlu dipilih",
+      "subtitle_other": "{{count}} sumber daya perlu dipilih",
+      "bulk_label": "Isi cepat:",
+      "bulk_median": "Median untuk semua",
+      "bulk_mean": "Rata-rata untuk semua",
+      "bulk_cheapest": "Termurah untuk semua",
+      "bulk_priciest": "Termahal untuk semua",
+      "slot_variant_count": "{{n}} opsi",
+      "selected_label": "Dipilih:",
+      "default_mean": "tarif rata-rata",
+      "default_median": "tarif median",
+      "row_median": "Tarif median · {{price}}",
+      "row_mean": "Tarif rata-rata · {{price}}",
+      "subtotal_label": "Tarif posisi",
+      "apply": "Terapkan dan tambahkan ke BOQ",
+      "batch_progress": "Item {{current}} dari {{total}}",
+      "toast_applied_one": "{{count}} varian dipilih",
+      "toast_applied_other": "{{count}} varian dipilih"
+    }
   },
   "costs": {
     "title": "Basis Data Biaya",

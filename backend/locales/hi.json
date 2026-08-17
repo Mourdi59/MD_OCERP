@@ -69,7 +69,28 @@
     "vat": "VAT",
     "add_markups": "मार्कअप जोड़ें",
     "validate": "मान्य करें",
-    "export": "निर्यात"
+    "export": "निर्यात",
+    "mvp": {
+      "title": "सामग्री चुनें",
+      "subtitle_one": "{{count}} संसाधन के लिए चयन आवश्यक है",
+      "subtitle_other": "{{count}} संसाधनों के लिए चयन आवश्यक है",
+      "bulk_label": "त्वरित भरण:",
+      "bulk_median": "सभी के लिए माध्यिका",
+      "bulk_mean": "सभी के लिए औसत",
+      "bulk_cheapest": "सभी के लिए सबसे सस्ता",
+      "bulk_priciest": "सभी के लिए सबसे महंगा",
+      "slot_variant_count": "{{n}} विकल्प",
+      "selected_label": "चयनित:",
+      "default_mean": "औसत दर",
+      "default_median": "माध्यिका दर",
+      "row_median": "माध्यिका दर · {{price}}",
+      "row_mean": "औसत दर · {{price}}",
+      "subtotal_label": "मद दर",
+      "apply": "लागू करें और BOQ में जोड़ें",
+      "batch_progress": "मद {{current}} / {{total}}",
+      "toast_applied_one": "{{count}} विकल्प चुना गया",
+      "toast_applied_other": "{{count}} विकल्प चुने गए"
+    }
   },
   "costs": {
     "title": "लागत डेटाबेस",
