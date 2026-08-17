@@ -697,22 +697,66 @@ def check_optional_extras() -> list[Check]:
     # this function's own docstring was written about, which had been closed for
     # the vector and encoder checks and left open one extra over.
     #
-    # Open question, deliberately not answered here. [cv] resolves paddleocr and
-    # paddlex but does NOT pull paddlepaddle, because upstream expects the
-    # caller to choose a CPU, GPU or platform build. If ``import paddleocr``
-    # succeeds anyway on such an install, this check would still call it ok
-    # while OCR fails at upload time, and catching that needs a probe that
-    # exercises the engine rather than the frontend. That is a measurement
-    # nobody has made yet, so it is written down rather than guessed at.
-    out.append(
-        _extra_check(
-            "PDF dimension OCR [cv]",
-            "paddleocr",
-            "cv",
-            "paddleocr imports cleanly",
-            "not installed (geometry detection still works; dimension-text reading disabled)",
+    # The engine is asked about separately, because importing the frontend does
+    # not answer for it. [cv] resolves paddleocr and paddlex and does NOT pull
+    # paddlepaddle: upstream expects the caller to choose a CPU, GPU or
+    # platform-specific build. Measured on a throwaway venv carrying nothing but
+    # `paddleocr==3.7.0`, exactly as the extra declares it: `import paddleocr`
+    # succeeds, `from paddleocr import PaddleOCR` succeeds, and no engine is
+    # installed. So find_spec says installed, a real import says installed, and
+    # OCR still cannot run. Importing harder cannot separate these, which is why
+    # the question changes rather than the depth of the probe.
+    #
+    # It gets its own line and its own severity because the fix is different. A
+    # broken paddleocr is reinstalled; a missing engine is chosen and installed
+    # per platform, and telling someone to reinstall the extra there sends them
+    # round a loop that reproduces the same state.
+    #
+    # What is NOT covered: the failure at construction time. PaddleOCR() fetches
+    # models over the network on first use, so probing it would measure the
+    # operator's connection as much as their install, and no preflight check can
+    # honestly do that.
+    cv_label = "PDF dimension OCR [cv]"
+    if not _present("paddleocr"):
+        out.append(
+            Check(
+                cv_label,
+                "warn",
+                "not installed (geometry detection still works; dimension-text reading disabled)",
+                "pip install 'openconstructionerp[cv]'",
+            )
         )
-    )
+    elif (cv_err := _import_error("paddleocr")) is not None:
+        out.append(
+            Check(
+                cv_label,
+                "error",
+                f"present but will not import: {cv_err}",
+                "pip install --force-reinstall 'openconstructionerp[cv]'",
+            )
+        )
+    elif not _present("paddle"):
+        out.append(
+            Check(
+                cv_label,
+                "error",
+                "paddleocr is installed but its inference engine (paddlepaddle) is not - "
+                "OCR will fail when a scanned drawing is uploaded, not here",
+                "Install a paddlepaddle build for this platform. The [cv] extra deliberately "
+                "does not choose one, because the right build depends on CPU vs GPU and OS.",
+            )
+        )
+    elif (engine_err := _import_error("paddle")) is not None:
+        out.append(
+            Check(
+                cv_label,
+                "error",
+                f"the OCR engine is installed but will not import: {engine_err}",
+                "Reinstall a paddlepaddle build matching this platform and Python version.",
+            )
+        )
+    else:
+        out.append(Check(cv_label, "ok", "paddleocr and its engine import cleanly"))
 
     # AI provider key configuration (not a package check).
     out.append(check_ai_provider_keys())

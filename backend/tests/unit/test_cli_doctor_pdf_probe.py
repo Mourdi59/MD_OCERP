@@ -72,7 +72,11 @@ class TestFrozenBuildIsNotProbedWithAChild:
         checks = cli.check_optional_extras()
         pdf = [c for c in checks if c.name == "PDF takeoff"]
         assert pdf, "the PDF takeoff check disappeared from the doctor output"
-        assert pdf[0].status == "ok", f"a readable install reported as {pdf[0].status}: {pdf[0].detail}"
+        # `.message`, not `.detail`: Check has no `detail`, and an assert's
+        # message is only evaluated when the assert fails, so the wrong
+        # attribute name sat here harmlessly until the day it mattered and
+        # then raised AttributeError instead of saying what went wrong.
+        assert pdf[0].status == "ok", f"a readable install reported as {pdf[0].status}: {pdf[0].message}"
 
     def test_normal_install_still_uses_a_child(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(sys, "frozen", False, raising=False)
@@ -118,10 +122,17 @@ class TestTheOcrExtraAnswersInBothDirections:
         self,
         monkeypatch: pytest.MonkeyPatch,
         *,
-        present: bool,
-        import_fails: bool,
+        frontend: bool = True,
+        frontend_imports: bool = True,
+        engine: bool = True,
+        engine_imports: bool = True,
     ) -> list:
-        """Run the extras report with paddleocr's state forced, return its line."""
+        """Run the extras report with the OCR wheels' state forced.
+
+        Four dials rather than two, because the state that matters in the field
+        is frontend present and importable with no engine behind it, and two
+        booleans cannot express it.
+        """
         import importlib.util as importlib_util
         import subprocess
 
@@ -131,10 +142,11 @@ class TestTheOcrExtraAnswersInBothDirections:
         monkeypatch.delenv("OE_DESKTOP", raising=False)
 
         real_find_spec = importlib_util.find_spec
+        found = {"paddleocr": frontend, "paddle": engine}
 
         def fake_find_spec(name: str, package: str | None = None):
-            if name == "paddleocr":
-                return object() if present else None
+            if name in found:
+                return object() if found[name] else None
             return real_find_spec(name, package)
 
         class _Result:
@@ -145,8 +157,10 @@ class TestTheOcrExtraAnswersInBothDirections:
 
         def fake_run(cmd, **kwargs):
             source = cmd[2] if len(cmd) == 3 else ""
-            if "import paddleocr" in source and import_fails:
-                return _Result(1, b"ModuleNotFoundError: No module named 'paddle'\n")
+            if "import paddleocr" in source and not frontend_imports:
+                return _Result(1, b"ImportError: DLL load failed while importing _ocr\n")
+            if "import paddle" in source and not engine_imports:
+                return _Result(1, b"ImportError: libpaddle.so: cannot open shared object file\n")
             return _Result(0)
 
         monkeypatch.setattr(importlib_util, "find_spec", fake_find_spec)
@@ -155,20 +169,53 @@ class TestTheOcrExtraAnswersInBothDirections:
         return [c for c in cli.check_optional_extras() if c.name == self.CV]
 
     def test_a_working_install_says_so_instead_of_saying_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        found = self._cv_check(monkeypatch, present=True, import_fails=False)
+        found = self._cv_check(monkeypatch)
         assert len(found) == 1, "an install WITH the extra must still produce a line"
         assert found[0].status == "ok"
 
+    def test_the_frontend_importing_is_not_enough_to_call_ocr_working(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The state the [cv] extra actually installs, measured on a real venv.
+
+        `pip install paddleocr` brings no paddlepaddle, because upstream leaves
+        the CPU/GPU/platform choice to the caller. In that state find_spec finds
+        it, `import paddleocr` succeeds, `from paddleocr import PaddleOCR`
+        succeeds, and OCR cannot run. A check that only imports the frontend
+        calls this healthy.
+        """
+        found = self._cv_check(monkeypatch, engine=False)
+        assert len(found) == 1
+        assert found[0].status == "error", "OCR without an inference engine is not a working install"
+        assert "paddlepaddle" in found[0].message, (
+            f"the operator has to know WHICH piece is missing, got {found[0].message!r}"
+        )
+
+    def test_the_missing_engine_is_not_answered_with_reinstall_the_extra(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Reinstalling [cv] reproduces this state exactly, so it cannot be the fix."""
+        found = self._cv_check(monkeypatch, engine=False)
+        remedy = found[0].hint or ""
+        assert "paddlepaddle" in remedy, f"the remedy must name the engine, got {remedy!r}"
+        assert "openconstructionerp[cv]" not in remedy, (
+            "reinstalling the extra installs the same wheels again and lands back here"
+        )
+
     def test_installed_but_unloadable_is_not_reported_as_installed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """find_spec would call this one installed; importing it does not."""
-        found = self._cv_check(monkeypatch, present=True, import_fails=True)
+        found = self._cv_check(monkeypatch, frontend_imports=False)
         assert len(found) == 1
         assert found[0].status == "error", "a wheel set that cannot import is not a working OCR install"
-        assert "paddle" in found[0].message, f"the failure should name what went wrong, got {found[0].message!r}"
+        assert "will not import" in found[0].message
+
+    def test_a_broken_engine_is_distinguished_from_an_absent_one(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Present-but-unloadable and absent need different fixes, so different lines."""
+        broken = self._cv_check(monkeypatch, engine_imports=False)
+        assert broken[0].status == "error"
+        assert "will not import" in broken[0].message
+        absent = self._cv_check(monkeypatch, engine=False)
+        assert broken[0].message != absent[0].message, "two different faults must not print one sentence"
 
     def test_a_plain_install_without_the_extra_is_still_only_a_warning(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Absent stays non-fatal: a stock install is meant not to carry this."""
-        found = self._cv_check(monkeypatch, present=False, import_fails=False)
+        found = self._cv_check(monkeypatch, frontend=False)
         assert len(found) == 1
         assert found[0].status == "warn"
         assert "geometry detection still works" in found[0].message
