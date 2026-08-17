@@ -1339,5 +1339,14 @@
       "fr"
     ],
     "key_count_at_seed": 3
+  },
+  {
+    "locale_set": [
+      "et",
+      "hi",
+      "id",
+      "uk"
+    ],
+    "key_count_at_seed": 3
   }
 ]
