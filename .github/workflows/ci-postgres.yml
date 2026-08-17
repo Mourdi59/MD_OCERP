@@ -782,20 +782,33 @@ jobs:
     # token check and the IDOR job. The conclusion is unchanged, the cause is
     # not, and a wrong cause invites somebody to "fix the OOM" and expect this
     # job to become redundant.
-    # Counted 2026-08-07: the include in vite.config.ts is
-    # src/**/*.test.{ts,tsx} plus tests/**/*.test.{ts,tsx}, which collects 534
-    # files under src and 2 under frontend/tests/pwa, so 536 in all. 21 are
-    # named below, so 515 of them gate nothing. Recount rather than trust that
+    # Recounted 2026-08-17: the include in vite.config.ts is
+    # src/**/*.test.{ts,tsx} plus tests/**/*.test.{ts,tsx}, which collects 590
+    # files under src and 2 under frontend/tests/pwa, so 592 in all. 32 are
+    # named below, so 560 of them gate nothing. Recount rather than trust that
     # sentence, and recount against that include rather than against the vitest
     # default: the default would also sweep up the Playwright specs, which this
     # job does not run and which were never part of this number.
     #
+    # The previous recount said 536 files and 21 named, on 2026-08-07. Both
+    # halves had drifted: the suite grew by 56 files and the list below had
+    # quietly reached 28 without the sentence being touched. A count written
+    # into prose stops being true the moment somebody adds a line and does not
+    # scroll up, which is the argument for recounting rather than for writing a
+    # better sentence.
+    #
+    # That is not a hypothetical. Between writing "30" and writing "31" here,
+    # two parallel sessions each added an entry, and the true figure was 32.
+    # Parse the list and count it, do not add one to the number above.
+    #
     # Named files rather than the whole suite, and that is a measurement rather
     # than a preference. The whole suite came to somewhere between 55 and 95
     # minutes when it was last timed, depending on how the workers saturate,
-    # and that does not belong in front of every merge. The twenty-one named
-    # here run 322 tests in 29 seconds against 12 logical cores with a warm
-    # cache, measured 2026-08-07. An earlier note in this file recorded 118 seconds
+    # and that does not belong in front of every merge. Twenty-one of the names
+    # below ran 322 tests in 29 seconds against 12 logical cores with a warm
+    # cache, measured 2026-08-07; the list has grown to 32 since and that figure
+    # was not re-timed, so read it as the shape and not as the current cost. An
+    # earlier note in this file recorded 118 seconds
     # for eleven files and that could not be reproduced, so take neither figure
     # as the cost on the runner: it has four cores and installs cold. What the
     # numbers do support is the shape, a named list rather than the suite. This
@@ -851,7 +864,11 @@ jobs:
         src/app/layout/navCatalog.test.ts
         src/features/assemblies/__tests__/preview-totals-no-blended-scalar.test.tsx
         src/features/bim/BIMConverterVerifyGate.test.tsx
+        src/features/cases/caseVocabulary.test.ts
+        src/features/cases/cases.test.ts
         src/features/cases/casesProjectContext.test.tsx
+        src/features/cases/chipConsistency.test.ts
+        src/features/cases/roles.test.ts
         src/features/contracts/ContractAnalyticsPanels.test.tsx
         src/features/contracts/ContractDetailDrawerDelete.test.tsx
         src/features/contracts/ContractSecuritiesPanel.test.tsx
