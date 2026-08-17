@@ -61,6 +61,9 @@ const __mockPrefState = { currency: 'EUR', numberLocale: 'en-US' };
 vi.mock('@/stores/usePreferencesStore', () => ({
   usePreferencesStore: (sel?: (s: unknown) => unknown) =>
     sel ? sel(__mockPrefState) : __mockPrefState,
+  // Money surfaces resolve the locale through this rather than off the raw
+  // preference, so a wholesale mock of the store has to carry it too.
+  useNumberLocale: () => __mockPrefState.numberLocale,
 }));
 
 import { apiGet } from '@/shared/lib/api';

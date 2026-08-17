@@ -20,6 +20,7 @@ import {
   type EPDMaterial,
   type EPDCategory,
 } from './data/epd-materials';
+import { fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -257,7 +258,7 @@ export default function SustainabilityModule() {
                         >
                           <span className="text-content-primary truncate">{m.name}</span>
                           <span className={`ml-2 whitespace-nowrap font-mono ${m.gwp < 0 ? 'text-emerald-600' : 'text-content-tertiary'}`}>
-                            {m.gwp < 0 ? '' : '+'}{m.gwp.toFixed(m.gwp < 1 ? 3 : 1)} {m.unit}
+                            {m.gwp < 0 ? '' : '+'}{fmtFixed(m.gwp, m.gwp < 1 ? 3 : 1)} {m.unit}
                           </span>
                         </div>
                       ))}
@@ -298,7 +299,7 @@ export default function SustainabilityModule() {
               {t('sustainability.eu_cpr_label', { defaultValue: 'EU CPR' })}:{' '}
               {carbonBreakdown.compliance.replace('-', ' ')}
               <span className="text-xs opacity-75">
-                ({carbonBreakdown.gwpPerM2Year.toFixed(1)} kg CO2e/m2/yr)
+                ({fmtFixed(carbonBreakdown.gwpPerM2Year, 1)} kg CO2e/m2/yr)
               </span>
             </div>
           </div>
@@ -368,7 +369,7 @@ export default function SustainabilityModule() {
                     </td>
                     <td className="px-3 py-2 text-xs text-content-tertiary">{item.unit}</td>
                     <td className={`px-3 py-2 text-right font-mono text-xs ${item.gwp < 0 ? 'text-emerald-600' : 'text-content-primary'}`}>
-                      {item.gwp < 0 ? '' : '+'}{item.gwp.toLocaleString('en', { maximumFractionDigits: 0 })}
+                      {item.gwp < 0 ? '' : '+'}{item.gwp.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })}
                     </td>
                     <td className="px-3 py-2">
                       <button
@@ -388,7 +389,7 @@ export default function SustainabilityModule() {
                     {t('common.total', { defaultValue: 'Total' })}
                   </td>
                   <td className={`px-3 py-2 text-right font-mono text-sm font-bold ${carbonBreakdown.totalGWP < 0 ? 'text-emerald-600' : 'text-content-primary'}`}>
-                    {carbonBreakdown.totalGWP.toLocaleString('en', { maximumFractionDigits: 0 })} kg
+                    {carbonBreakdown.totalGWP.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })} kg
                   </td>
                   <td />
                 </tr>
@@ -410,7 +411,7 @@ export default function SustainabilityModule() {
                 {t('sustainability.total_gwp', { defaultValue: 'Total Embodied Carbon' })}
               </p>
               <p className="text-xl font-bold text-content-primary">
-                {(carbonBreakdown.totalGWP / 1000).toFixed(1)} <span className="text-sm font-normal">t CO2e</span>
+                {fmtFixed(carbonBreakdown.totalGWP / 1000, 1)} <span className="text-sm font-normal">t CO2e</span>
               </p>
             </div>
             <div className="rounded-xl border border-border bg-surface-primary p-4">
@@ -418,7 +419,7 @@ export default function SustainabilityModule() {
                 {t('sustainability.gwp_per_m2', { defaultValue: 'Carbon per m2 GFA' })}
               </p>
               <p className="text-xl font-bold text-content-primary">
-                {carbonBreakdown.gwpPerM2.toFixed(1)} <span className="text-sm font-normal">kg CO2e/m2</span>
+                {fmtFixed(carbonBreakdown.gwpPerM2, 1)} <span className="text-sm font-normal">kg CO2e/m2</span>
               </p>
             </div>
             <div className="rounded-xl border border-border bg-surface-primary p-4">
@@ -426,7 +427,7 @@ export default function SustainabilityModule() {
                 {t('sustainability.gwp_annual', { defaultValue: 'Annual (50yr RSP)' })}
               </p>
               <p className="text-xl font-bold text-content-primary">
-                {carbonBreakdown.gwpPerM2Year.toFixed(2)} <span className="text-sm font-normal">kg/m2/yr</span>
+                {fmtFixed(carbonBreakdown.gwpPerM2Year, 2)} <span className="text-sm font-normal">kg/m2/yr</span>
               </p>
             </div>
           </div>
@@ -448,7 +449,7 @@ export default function SustainabilityModule() {
                       />
                     </div>
                     <span className="w-24 text-right text-xs font-mono text-content-tertiary">
-                      {cat.value.toLocaleString('en', { maximumFractionDigits: 0 })} kg
+                      {cat.value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })} kg
                     </span>
                   </div>
                 ))}

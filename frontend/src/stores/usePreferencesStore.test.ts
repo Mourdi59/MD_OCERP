@@ -20,7 +20,11 @@ describe('usePreferencesStore', () => {
     expect(state.measurementSystem).toBe('metric');
     // 'auto' = follow the UI language. See the date-format block below.
     expect(state.dateFormat).toBe('auto');
-    expect(state.numberLocale).toBe('de-DE');
+    // 'auto' = follow the UI language, same as dateFormat above. It used to be
+    // a hardcoded 'de-DE', which is what put the money surfaces on German
+    // separators inside an English UI while every other number followed the
+    // language. See `numbersAgreeAcrossSurfaces.test.tsx`.
+    expect(state.numberLocale).toBe('auto');
     expect(state.vatRate).toBe(19);
   });
 

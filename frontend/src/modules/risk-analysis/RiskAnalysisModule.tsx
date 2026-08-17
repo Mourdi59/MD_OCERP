@@ -25,7 +25,7 @@ import {
 import { apiGet } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
-import { usePreferencesStore } from '@/stores/usePreferencesStore';
+import { useNumberLocale } from '@/stores/usePreferencesStore';
 import { projectsApi, type Project } from '@/features/projects/api';
 import {
   runSimulation,
@@ -35,7 +35,7 @@ import {
   type DistributionType,
   type BOQPositionForRisk,
 } from './data/montecarlo';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
 
 // ---------------------------------------------------------------------------
 // Money formatting
@@ -52,7 +52,7 @@ import { fmtPercent } from '@/shared/lib/formatters';
  * strict no-silent-fallback policy.
  */
 function useCompactMoney(currency: string | undefined): (n: number) => string {
-  const numberLocale = usePreferencesStore((s) => s.numberLocale);
+  const numberLocale = useNumberLocale();
   return useCallback(
     (n: number): string => {
       const trimmed = typeof currency === 'string' ? currency.trim() : currency;
@@ -814,7 +814,7 @@ export default function RiskAnalysisModule() {
                   <span className="text-content-quaternary">|</span>
                   <span>
                     {t('risk.iterations', { defaultValue: 'Iterations' })}:{' '}
-                    <span className="font-semibold text-content-primary">{result.iterations.toLocaleString()}</span>
+                    <span className="font-semibold text-content-primary">{result.iterations.toLocaleString(getIntlLocale())}</span>
                   </span>
                   <span className="text-content-quaternary">|</span>
                   <span>

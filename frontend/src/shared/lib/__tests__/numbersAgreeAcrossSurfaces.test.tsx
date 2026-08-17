@@ -1,0 +1,317 @@
+// DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
+// Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+//
+// One amount, one reading, on every surface that shows it.
+//
+// The defect this was written from: the same record rendered `$180,174.28` on
+// the bill of quantities and `180.174,28 $` on the finance register, inside one
+// English UI. Nothing was random about it. The bill formats through
+// `shared/lib/money`, which resolves the locale from the UI language, and the
+// finance register formats through `<MoneyDisplay>`, which read a separate
+// `numberLocale` preference whose default was the literal `'de-DE'`. Both
+// surfaces were doing exactly what they were told; they were told different
+// things.
+//
+// So this file asks the question the sibling gates cannot. They ask whether a
+// call names a locale at all - `numbersAreWrittenInTheAppLanguage` catches the
+// missing argument, `formattersReadTheLocalePerCall` catches the argument read
+// once at chunk load. A call that confidently passes the WRONG locale satisfies
+// both. That is the shape of this bug, and it is why finding it needed a
+// screenshot rather than a gate.
+//
+// Two halves, in one file because they are one question:
+//
+//   * the rendering half checks that the money surfaces agree with the common
+//     path, in a form derived from the locale rather than compared to a string.
+//     A test that knows `$180,174.28` passes again the moment the seed amount
+//     changes; a test that knows en-US groups with commas, points its decimals
+//     and leads with the symbol keeps working on any amount.
+//   * the census half checks that there is only one place the answer can come
+//     from. Fixing the two rows in the screenshot would have left every other
+//     surface free to invent its own locale, and we would be back here.
+import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { render, cleanup } from '@testing-library/react';
+import i18next from 'i18next';
+
+import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
+import { QuantityDisplay } from '@/shared/ui/QuantityDisplay';
+import { formatCurrency } from '@/shared/lib/money';
+import { usePreferencesStore } from '@/stores/usePreferencesStore';
+
+const SRC = join(__dirname, '..', '..', '..');
+
+/**
+ * The fixed point of the whole file: the language the reader picked, and the
+ * locale tag their numbers therefore have to be written in. Taken straight
+ * from `LOCALE_MAP` in `intlLocale.ts`, deliberately restated here rather than
+ * imported - a test that derives its expectation from the same function it is
+ * checking passes whatever that function returns.
+ */
+const LANGUAGES: [string, string][] = [
+  ['en', 'en-US'],
+  ['de', 'de-DE'],
+  ['fr', 'fr-FR'],
+  ['ja', 'ja-JP'],
+];
+
+/** Amounts, not an amount. The assertion must not depend on which one. */
+const AMOUNTS = [180174.28, 225297.6, 3088.4, 0, -1234.5];
+
+const originalLanguage = i18next.language;
+
+function speak(language: string) {
+  // The store is read through a selector, and `useIntlLocale` reads i18next at
+  // render, so both are in place before the component mounts.
+  i18next.language = language;
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  usePreferencesStore.getState().resetPreferences();
+});
+
+afterEach(() => {
+  cleanup();
+});
+
+afterAll(() => {
+  i18next.language = originalLanguage;
+});
+
+/* ── The reading a locale actually prescribes ─────────────────────────────── */
+
+interface Shape {
+  group: string | undefined;
+  decimal: string | undefined;
+  symbolLeads: boolean;
+}
+
+/**
+ * What this locale does to a number, asked of Intl rather than asserted from
+ * memory. Returning the separators and the symbol position - the three things
+ * that differed on the screenshot - lets the tests below state the rule
+ * ("English groups on commas") without hardcoding any rendered amount.
+ */
+function shapeOf(locale: string, currency: string, amount: number): Shape {
+  const parts = new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).formatToParts(amount);
+  const symbolAt = parts.findIndex((p) => p.type === 'currency');
+  const digitsAt = parts.findIndex((p) => p.type === 'integer');
+  return {
+    group: parts.find((p) => p.type === 'group')?.value,
+    decimal: parts.find((p) => p.type === 'decimal')?.value,
+    symbolLeads: symbolAt >= 0 && symbolAt < digitsAt,
+  };
+}
+
+/** The money string a reader of `locale` is owed, computed, never quoted. */
+function expectedMoney(locale: string, currency: string, amount: number): string {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+/* ── Half one: the surfaces agree, in the reader's language ───────────────── */
+
+describe('a money surface is written in the language the reader is reading', () => {
+  // Guards the guard. Every assertion below compares a rendered string against
+  // an Intl-derived one, which would be satisfied by anything at all if the
+  // test host shipped no locale data and Intl collapsed every locale onto one
+  // output. Stating the differences explicitly means a hollow environment
+  // fails here, loudly, instead of turning the rest of the file green.
+  it('the locales under test genuinely disagree about how to write a number', () => {
+    const en = shapeOf('en-US', 'USD', 180174.28);
+    const de = shapeOf('de-DE', 'USD', 180174.28);
+
+    expect(en.group).toBe(',');
+    expect(en.decimal).toBe('.');
+    expect(en.symbolLeads).toBe(true);
+
+    expect(de.group).toBe('.');
+    expect(de.decimal).toBe(',');
+    expect(de.symbolLeads).toBe(false);
+  });
+
+  it.each(LANGUAGES)('MoneyDisplay writes %s money as %s prescribes', (language, tag) => {
+    speak(language);
+    for (const amount of AMOUNTS) {
+      const { container } = render(<MoneyDisplay amount={amount} currency="USD" />);
+      expect(container.textContent).toBe(expectedMoney(tag, 'USD', amount));
+      cleanup();
+    }
+  });
+
+  // The defect itself: `/boq` renders through `formatCurrency` and `/finance`
+  // through `<MoneyDisplay>`. Whatever else changes, those two have to produce
+  // one string for one amount.
+  it.each(LANGUAGES)('the bill and the register agree in %s', (language, _tag) => {
+    speak(language);
+    for (const amount of AMOUNTS) {
+      const { container } = render(<MoneyDisplay amount={amount} currency="USD" />);
+      expect(container.textContent).toBe(formatCurrency(amount, 'USD'));
+      cleanup();
+    }
+  });
+
+  it('a quantity is written with the same separators as the money beside it', () => {
+    speak('de');
+    const { container } = render(<QuantityDisplay value={1234.5} unit="m³" precision={2} />);
+    const expected = new Intl.NumberFormat('de-DE', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(1234.5);
+    expect(container.textContent).toContain(expected);
+  });
+
+  it('switching the language moves the numbers with it', () => {
+    speak('en');
+    const first = render(<MoneyDisplay amount={180174.28} currency="USD" />).container.textContent;
+    cleanup();
+    speak('de');
+    const second = render(<MoneyDisplay amount={180174.28} currency="USD" />).container.textContent;
+
+    expect(first).toBe(expectedMoney('en-US', 'USD', 180174.28));
+    expect(second).toBe(expectedMoney('de-DE', 'USD', 180174.28));
+    expect(first).not.toBe(second);
+  });
+});
+
+/* ── Half one, continued: an explicit choice still wins ───────────────────── */
+
+describe('the number-format preference', () => {
+  it('overrides the UI language when the reader has actually chosen one', () => {
+    speak('en');
+    usePreferencesStore.getState().setPreference('numberLocale', 'de-DE');
+    const { container } = render(<MoneyDisplay amount={180174.28} currency="USD" />);
+    expect(container.textContent).toBe(expectedMoney('de-DE', 'USD', 180174.28));
+  });
+
+  // The half of the fix that is invisible from a fresh profile. `persist`
+  // writes the whole preferences object on any change, so every browser that
+  // ever set a currency has the old hardcoded `'de-DE'` written down. Changing
+  // the default without reading that value back would have fixed the bug for
+  // nobody who had ever used the app.
+  // `setPreference` rebuilds the stored blob from `readPreferences()`, so what
+  // lands back in localStorage is the migration's own output. Asserting there
+  // exercises the real boot path rather than a helper exported for the test.
+  const persisted = () => JSON.parse(localStorage.getItem('oe_preferences') as string);
+
+  it('reads the pre-auto default out of an existing browser', () => {
+    localStorage.setItem('oe_preferences', JSON.stringify({ currency: 'USD', numberLocale: 'de-DE' }));
+    usePreferencesStore.getState().setPreference('vatRate', 19);
+    expect(persisted().numberLocale).toBe('auto');
+  });
+
+  it('migrates once, so a de-DE chosen afterwards survives', () => {
+    localStorage.setItem(
+      'oe_preferences',
+      JSON.stringify({ currency: 'USD', numberLocale: 'de-DE', _v: 2 }),
+    );
+    usePreferencesStore.getState().setPreference('vatRate', 19);
+    expect(persisted().numberLocale).toBe('de-DE');
+  });
+
+  it('leaves a locale nobody could have got by default alone', () => {
+    localStorage.setItem('oe_preferences', JSON.stringify({ numberLocale: 'ja-JP' }));
+    usePreferencesStore.getState().setPreference('vatRate', 19);
+    expect(persisted().numberLocale).toBe('ja-JP');
+  });
+});
+
+/* ── Half two: only one place may answer the question ─────────────────────── */
+
+function sourceFiles(dir: string, found: string[] = []): string[] {
+  for (const name of readdirSync(dir)) {
+    // Locale files hold translated data, not formatting calls.
+    if (name === 'node_modules' || name === 'locales' || name === '__tests__') continue;
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) {
+      sourceFiles(full, found);
+    } else if (/\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name)) {
+      found.push(full);
+    }
+  }
+  return found;
+}
+
+const PRODUCT_FILES = sourceFiles(SRC).map((f) => relative(SRC, f).replace(/\\/g, '/'));
+const read = (rel: string) => readFileSync(join(SRC, rel), 'utf8');
+
+/**
+ * The two files allowed to read the raw preference: the store, which owns it
+ * and turns it into an answer, and the settings screen, which has to show the
+ * reader what they picked. Everywhere else asks `useNumberLocale`.
+ */
+const MAY_READ_THE_PREFERENCE = [
+  'stores/usePreferencesStore.ts',
+  'features/settings/RegionalSettings.tsx',
+];
+
+/**
+ * A locale tag written into a formatter, argued one line at a time.
+ *
+ * The snippet is matched against the file, so an exemption covers the line it
+ * was argued for and expires the moment that line changes - the same discipline
+ * the `toFixed` allowlist uses next door.
+ */
+const HARDCODED_LOCALE_ALLOWED: readonly { file: string; snippet: string; why: string }[] = [
+  {
+    file: 'shared/lib/money.ts',
+    snippet: "const resolved = new Intl.NumberFormat('en-US', {",
+    why:
+      'A probe, not a rendering. It asks Intl how many decimal places a currency ' +
+      'has and reads `resolvedOptions()`; nothing it produces reaches a screen. ' +
+      'CLDR currency digits do not vary by locale, so the tag is a constant here ' +
+      'in the same way `2` is.',
+  },
+];
+
+describe('there is one place the number locale comes from', () => {
+  it('no surface reads the raw preference behind the resolver', () => {
+    const offenders = PRODUCT_FILES.filter(
+      (f) => !MAY_READ_THE_PREFERENCE.includes(f) && /\bs\.numberLocale\b/.test(read(f)),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it('no formatter is handed a locale tag written into the source', () => {
+    // `new Intl.NumberFormat('de-DE'` and `(1234).toLocaleString('en-US'` alike:
+    // a quoted BCP-47 tag in the locale position of anything that formats.
+    const pattern =
+      /(?:new Intl\.(?:NumberFormat|DateTimeFormat)|\.toLocaleString|\.toLocaleDateString|\.toLocaleTimeString)\(\s*(['"`])([a-z]{2}(?:-[A-Za-z0-9]+)*)\1/g;
+
+    const offenders: string[] = [];
+    for (const file of PRODUCT_FILES) {
+      const source = read(file);
+      for (const match of source.matchAll(pattern)) {
+        const line = source.slice(0, match.index).split('\n').length;
+        const argued = HARDCODED_LOCALE_ALLOWED.some(
+          (a) => a.file === file && source.includes(a.snippet),
+        );
+        if (!argued) offenders.push(`${file}:${line} ${match[0]}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  // An allowlist that outlives the line it was written for is a blank cheque.
+  it('every argued exemption still matches its line', () => {
+    const stale = HARDCODED_LOCALE_ALLOWED.filter((a) => !read(a.file).includes(a.snippet));
+    expect(stale).toEqual([]);
+  });
+
+  it('the store never hands the raw preference straight to a formatter', () => {
+    const store = read('stores/usePreferencesStore.ts');
+    expect(store).not.toMatch(/new Intl\.NumberFormat\(\s*numberLocale\b/);
+    expect(store).toMatch(/new Intl\.NumberFormat\(resolveNumberLocale\(/);
+  });
+});

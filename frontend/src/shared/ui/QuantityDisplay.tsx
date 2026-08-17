@@ -1,7 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import clsx from 'clsx';
-import { usePreferencesStore } from '../../stores/usePreferencesStore';
+import { usePreferencesStore, useNumberLocale } from '../../stores/usePreferencesStore';
 import { convertUnit, getDisplayUnit, isMetricUnit } from '../lib/unitConversion';
 
 export interface QuantityDisplayProps {
@@ -27,7 +27,9 @@ export function QuantityDisplay({
   // Selector-scoped reads — keep this component out of the re-render
   // path for unrelated preferences-store mutations (v4.3 audit).
   const measurementSystem = usePreferencesStore((s) => s.measurementSystem);
-  const numberLocale = usePreferencesStore((s) => s.numberLocale);
+  // The shared resolver, so a quantity and the money beside it are written
+  // with the same separators. See `useNumberLocale`.
+  const numberLocale = useNumberLocale();
 
   if (value == null) {
     return <span className={clsx('text-content-tertiary', className)}>&mdash;</span>;

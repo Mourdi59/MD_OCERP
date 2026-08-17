@@ -36,6 +36,7 @@
 
 import type { BIMElementData } from '@/shared/ui/BIMViewer/ElementManager';
 import { toDisplayQuantity } from '@/shared/lib/unitConversion';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Types ────────────────────────────────────────────────────────────── */
 
@@ -514,8 +515,8 @@ export function formatSuggestionBadge(
 ): string {
   const fmt = (n: number) =>
     Number.isInteger(n)
-      ? n.toLocaleString('en', { maximumFractionDigits: 0 })
-      : n.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+      ? n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })
+      : n.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 
   const elementsSuffix =
     s.totalElements > 1

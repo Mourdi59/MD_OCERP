@@ -3,7 +3,7 @@
 import clsx from 'clsx';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { usePreferencesStore } from '../../stores/usePreferencesStore';
+import { useNumberLocale } from '../../stores/usePreferencesStore';
 import { currencyMinorUnits } from './currencyMinorUnits';
 
 export interface MoneyDisplayProps {
@@ -48,13 +48,17 @@ export function MoneyDisplay({
   className,
   colorize = false,
 }: MoneyDisplayProps) {
-  // Selector-scoped read for numberLocale — without it the component
-  // re-renders on every unrelated preferences-store mutation (v4.3 audit).
+  // The one resolver, not the raw preference: it reads the number-format
+  // setting when the reader has chosen one and the UI language when they have
+  // not, which is what keeps this component agreeing with every surface that
+  // formats through `getIntlLocale()`. It is selector-scoped inside, so the
+  // component still stays out of the re-render path for unrelated
+  // preferences-store mutations (v4.3 audit).
   // Note: we no longer read `currency` from the prefs store. The
   // user-preferences default (always 'EUR' for a fresh install) was
   // the source of the silent-EUR-fallback bug a Saudi user would hit
   // on every money cell. Caller must supply a `currency` prop.
-  const numberLocale = usePreferencesStore((s) => s.numberLocale);
+  const numberLocale = useNumberLocale();
 
   // Above the early returns below: a hook after them renders a different
   // number of hooks on the null-amount branch alone, which React only

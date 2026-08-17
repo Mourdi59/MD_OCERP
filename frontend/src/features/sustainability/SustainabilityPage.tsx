@@ -21,7 +21,7 @@ import { sustainabilityGuide } from './sustainabilityGuide';
 import { apiGet } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
-import { usePreferencesStore } from '@/stores/usePreferencesStore';
+import { useNumberLocale } from '@/stores/usePreferencesStore';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 import {
   fetchSustainability,
@@ -32,7 +32,7 @@ import {
   type PositionCO2Detail,
   type EPDMaterial,
 } from './api';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -176,8 +176,10 @@ export function SustainabilityPage() {
   // Reciprocal area factor (1 metric, 10.7639 imperial) for "per m2" rates.
   const areaRateFactor = q.convert(1, 'm²').value;
   // The user's number locale (replaces the previously hardcoded de-DE so CO2
-  // figures group/decimal the way the rest of the user's app does).
-  const numberLocale = usePreferencesStore((s) => s.numberLocale);
+  // figures group/decimal the way the rest of the user's app does). Through
+  // the shared resolver, which follows the UI language until the reader picks
+  // a format of their own.
+  const numberLocale = useNumberLocale();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
   // Deep-link preselect (e.g. from the BOQ toolbar "Carbon footprint" action:
@@ -550,7 +552,7 @@ export function SustainabilityPage() {
                     <div className="text-sm text-content-secondary">
                       {/* RATE (reciprocal): kg CO2e per m2 per year -> per ft2/yr; mass + time stay */}
                       {data.eu_cpr_gwp_per_m2_year != null
-                        ? (data.eu_cpr_gwp_per_m2_year / areaRateFactor).toFixed(2)
+                        ? fmtFixed(data.eu_cpr_gwp_per_m2_year / areaRateFactor, 2)
                         : data.eu_cpr_gwp_per_m2_year}{' '}
                       kg CO2e/{areaUnit}/yr
                     </div>

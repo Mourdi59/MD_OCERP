@@ -23,12 +23,12 @@ import {
 import { useProjectBenchmarkData } from './hooks/useProjectBenchmarkData';
 import { fetchOwnPortfolio, type BenchmarkResponse } from './api';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Helpers ───────────────────────────────────────────────────────── */
 
 function formatCurrency(value: number, currency: string): string {
-  return value.toLocaleString('en', {
+  return value.toLocaleString(getIntlLocale(), {
     style: 'currency',
     currency,
     maximumFractionDigits: 0,
@@ -485,7 +485,7 @@ export default function BenchmarkModule() {
             {t('benchmarks.percentile_industry', { defaultValue: 'Percentile vs Industry' })}
           </p>
           <p className={`text-2xl font-bold ${getPercentileColor(analysis.percentile)}`}>
-            P{analysis.percentile.toFixed(0)}
+            P{fmtFixed(analysis.percentile, 0)}
           </p>
           <p className="text-xs text-content-tertiary mt-1">
             {(() => { const lbl = getPercentileLabelKey(analysis.percentile); return t(lbl.key, { defaultValue: lbl.defaultValue }); })()}
@@ -501,7 +501,7 @@ export default function BenchmarkModule() {
           {ownPortfolio && percentileVsOwn !== null ? (
             <>
               <p className={`text-2xl font-bold ${getPercentileColor(percentileVsOwn)}`}>
-                P{percentileVsOwn.toFixed(0)}
+                P{fmtFixed(percentileVsOwn, 0)}
               </p>
               <p className="text-xs text-content-tertiary mt-1">
                 {t('benchmarks.portfolio_basis', {
@@ -562,14 +562,14 @@ export default function BenchmarkModule() {
                 unit: rateUnit,
                 type: buildingInfo.label,
                 region: regionInfo.label,
-                pct: analysis.percentile.toFixed(0),
+                pct: fmtFixed(analysis.percentile, 0),
                 // Not lowercased: the label is a translated string, and casing is
                 // not a safe transform across locales. German keeps nouns capital
                 // mid-sentence, and Turkish maps I to i rather than the dotless
                 // form. It follows a dash here, so sentence case reads correctly.
                 label: t(pctLabel.key, { defaultValue: pctLabel.defaultValue }),
                 sign: analysis.diffPct > 0 ? '+' : '',
-                diff: analysis.diffPct.toFixed(1),
+                diff: fmtFixed(analysis.diffPct, 1),
                 median: fmtRate(benchmarkRange.median, regionInfo.currency),
                 source: benchmarkRange.source,
               })}
@@ -823,7 +823,7 @@ export default function BenchmarkModule() {
                   (multiply) to ft2 for imperial; the unit label follows. */}
               {t('benchmarks.secondary_basis_v2', {
                 defaultValue: 'Median basis, about {{area}} {{unit}} GFA per unit.',
-                area: q.convert(benchmarkRange.secondary.areaPerUnit, 'm²').value.toLocaleString('en', { maximumFractionDigits: 0 }),
+                area: q.convert(benchmarkRange.secondary.areaPerUnit, 'm²').value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 }),
                 unit: rateUnit,
               })}
             </p>

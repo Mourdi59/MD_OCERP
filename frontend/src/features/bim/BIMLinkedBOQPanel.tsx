@@ -8,6 +8,7 @@ import type { BIMElementData } from '@/shared/ui/BIMViewer';
 import type { BIMBOQLinkBrief } from '@/shared/ui/BIMViewer/ElementManager';
 import { fetchBIMModelBOQLinks } from './api';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface AggregatedPosition {
   boq_position_id: string;
@@ -277,14 +278,14 @@ export default function BIMLinkedBOQPanel({
                         const dq = q.convert(pos.quantity, pos.unit ?? '');
                         return (
                           <span className="text-[10px] tabular-nums font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded">
-                            {dq.value.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                            {dq.value.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                             {dq.unit ? ` ${dq.unit}` : ''}
                           </span>
                         );
                       })()}
                       {pos.total != null && (
                         <span className="text-[10px] tabular-nums font-medium text-content-primary bg-surface-secondary px-1.5 py-0.5 rounded">
-                          {pos.total.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {pos.total.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       )}
                       {(derivedBoqId || pos.boq_id) && (

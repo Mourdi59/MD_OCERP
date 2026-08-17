@@ -3,48 +3,22 @@
 /**
  * Locale-aware number and date formatters.
  *
- * Maps i18next language codes to Intl locale tags.
- * Falls back to browser locale when no mapping exists.
+ * The language-to-locale mapping itself lives in `./intlLocale` and is
+ * re-exported below, so this module stays the place to import a formatter from
+ * while the locale question has a single answer of its own.
  *
  * This module also hosts a small handful of file/number helpers that
  * are not AI-specific (`formatNumber`, `formatFileSize`,
  * `getFileExtension`) — they used to live inside AI feature files but
  * were lifted out so any feature can reuse them.
  */
-import i18next from 'i18next';
 import { usePreferencesStore, type DateFormat } from '@/stores/usePreferencesStore';
+import { getIntlLocale } from './intlLocale';
 
-/** i18next language code → Intl BCP-47 locale tag */
-const LOCALE_MAP: Record<string, string> = {
-  de: 'de-DE',
-  da: 'da-DK',
-  cs: 'cs-CZ',
-  en: 'en-US',
-  es: 'es-ES',
-  fr: 'fr-FR',
-  fi: 'fi-FI',
-  hi: 'hi-IN',
-  it: 'it-IT',
-  ja: 'ja-JP',
-  ko: 'ko-KR',
-  nl: 'nl-NL',
-  no: 'nb-NO',
-  pl: 'pl-PL',
-  pt: 'pt-BR',
-  ru: 'ru-RU',
-  sv: 'sv-SE',
-  tr: 'tr-TR',
-  uk: 'uk-UA',
-  bg: 'bg-BG',
-  ar: 'ar-SA',
-  zh: 'zh-CN',
-};
-
-/** Returns the Intl-compatible locale string for the current i18next language. */
-export function getIntlLocale(): string {
-  const lang = i18next.language || 'en';
-  return LOCALE_MAP[lang] || lang;
-}
+// The language-to-locale map moved to `./intlLocale`, a leaf module the
+// preferences store can import without closing a cycle back through this file.
+// Re-exported here because this is where the rest of the app looks for it.
+export { getIntlLocale, useIntlLocale } from './intlLocale';
 
 /** Currency-style number formatter (e.g. 1,234.56) using current locale. */
 export function fmtNumber(value: number | string | null | undefined, decimals = 2): string {

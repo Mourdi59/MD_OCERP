@@ -15,7 +15,7 @@ import { Globe, Ruler, FileText, Calendar, Hash, DollarSign, Search, Check } fro
 import clsx from 'clsx';
 import { Card, CardHeader, CardContent } from '@/shared/ui';
 import { apiGet, apiPatch } from '@/shared/lib/api';
-import { usePreferencesStore, type MeasurementSystem, type DateFormat, type NumberLocale } from '@/stores/usePreferencesStore';
+import { usePreferencesStore, resolveNumberLocale, type MeasurementSystem, type DateFormat, type NumberLocale } from '@/stores/usePreferencesStore';
 import { useToastStore } from '@/stores/useToastStore';
 import {
   CUSTOM_CURRENCY_SENTINEL,
@@ -337,7 +337,15 @@ export function RegionalSettings({ animationDelay = '0ms' }: { animationDelay?: 
   // its default is indistinguishable from a real choice. The store is what the
   // date surfaces actually render with, so showing it keeps the control honest.
   const dateFormat = storeDateFormat;
-  const numberFormat = (prefs?.number_format as NumberLocale) ?? storeNumberLocale;
+  // Resolve before showing it: `numberLocale` defaults to `'auto'` (follow the
+  // UI language), which is not one of the buttons, so an unresolved value would
+  // light none of them while the app was quite definitely formatting with
+  // something. Showing the resolved locale keeps the control describing what
+  // the money surfaces actually render with. Clicking a button turns the
+  // automatic default into an explicit choice, which is the honest reading of a
+  // deliberate click. A locale outside the six (the UI has 29 languages) lights
+  // no button, exactly as an unmapped account value already did.
+  const numberFormat = resolveNumberLocale((prefs?.number_format as NumberLocale) ?? storeNumberLocale);
   // MONEY-BUG FIX: read the persisted server value from `currency_code`
   // (the real backend field) instead of the non-existent `currency`, so a
   // saved currency survives reload. Do NOT hardcode 'EUR' here — fall back to

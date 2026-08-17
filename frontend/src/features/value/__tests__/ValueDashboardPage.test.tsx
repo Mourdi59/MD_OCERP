@@ -36,6 +36,9 @@ vi.mock('@/shared/lib/api', () => ({
 // the component renders a real formatted value rather than throwing.
 vi.mock('@/stores/usePreferencesStore', () => ({
   usePreferencesStore: (sel: (s: { numberLocale: string }) => unknown) => sel({ numberLocale: 'en-US' }),
+  // Money surfaces resolve the locale through this rather than off the raw
+  // preference, so a wholesale mock of the store has to carry it too.
+  useNumberLocale: () => 'en-US',
 }));
 
 import {
