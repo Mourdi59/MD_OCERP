@@ -177,6 +177,9 @@ export type ProfessionalRole =
   | 'design-lead'
   | 'document-controller'
   | 'commercial-manager'
+  | 'accountant'
+  | 'contract-administrator'
+  | 'finance-manager'
   | 'foreman';
 
 /**
