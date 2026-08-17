@@ -81,6 +81,13 @@ jobs:
           npm run build
 
       - name: Install Python dependencies
+        # This step is written in POSIX and runs on all three legs, so it has
+        # to say so. Without an explicit shell a windows runner uses pwsh,
+        # where a trailing backslash does not continue a line: pwsh read the
+        # continuation below as a fresh statement and stopped on "Missing
+        # expression after unary operator '--'". Every other multi-line step
+        # in this file already declares its shell.
+        shell: bash
         run: |
           cd backend
           # Install the exact, pinned dependency set first so every release
