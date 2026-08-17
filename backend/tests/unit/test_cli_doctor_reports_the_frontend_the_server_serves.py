@@ -19,11 +19,12 @@ the lookup names somewhere the check would never have looked by itself.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
 
-from app.cli import check_frontend_bundled
+from app.cli import check_frontend_bundled, run_preflight
 
 
 class TestTheCheckAnswersFromTheLookup:
@@ -79,9 +80,8 @@ class TestTheCheckDoesNotSecondGuessTheLookup:
         """A broken lookup must not be reported as a tidy "no frontend".
 
         FileNotFoundError is the lookup's way of saying it looked and found
-        nothing. Anything else means the lookup itself is wrong, and turning
-        that into a warning about a missing UI would send the operator after
-        the wrong problem.
+        nothing. Anything else means the lookup itself is wrong, and calling
+        that a missing UI would send the operator after the wrong problem.
         """
 
         def broken():
@@ -89,5 +89,39 @@ class TestTheCheckDoesNotSecondGuessTheLookup:
 
         monkeypatch.setattr("app.cli_static.get_frontend_dir", broken)
 
-        with pytest.raises(RuntimeError):
-            check_frontend_bundled()
+        check = check_frontend_bundled()
+
+        assert check.status == "error"
+        assert "could not run" in check.message
+        assert "RuntimeError" in check.message
+
+
+class TestOneCheckCannotTakeDownTheReport:
+    def test_an_unimportable_web_stack_costs_one_line_not_the_whole_run(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """The reason this check may not import anything heavy above its guard.
+
+        cli_static imports fastapi and starlette at module level, while this
+        module's own imports are stdlib only on purpose: that is what lets the
+        CLI diagnose an install whose dependencies did not resolve. run_preflight
+        builds its list as a plain literal with no per-check guard, so an
+        ImportError escaping this one check does not degrade a line, it aborts
+        the report before anything prints.
+
+        Asserting on the returned Check alone would not catch that, since a
+        version that takes the whole run down never gets far enough to be asked.
+        So this calls run_preflight and requires the other checks to still be
+        there, which is the property that actually matters to someone whose
+        install is broken.
+        """
+        monkeypatch.setitem(sys.modules, "app.cli_static", None)
+
+        checks = run_preflight("127.0.0.1", 8931, tmp_path, verbose=False)
+
+        names = [c.name for c in checks]
+        assert "Python version" in names
+        assert "Data directory" in names
+        frontend = [c for c in checks if c.name == "Frontend bundle"]
+        assert len(frontend) == 1
+        assert frontend[0].status == "error"

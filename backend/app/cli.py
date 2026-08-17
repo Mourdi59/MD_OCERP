@@ -381,9 +381,16 @@ def check_frontend_bundled() -> Check:
     A check that answers from its own reimplementation of the thing it is
     checking can only ever be right by coincidence.
     """
-    from app.cli_static import get_frontend_dir
-
     try:
+        # Imported inside the try, not above it. cli_static pulls fastapi and
+        # starlette at module level, and this module's own imports are stdlib
+        # only on purpose: that is what lets the CLI diagnose an install whose
+        # dependencies did not resolve. run_preflight builds its list with no
+        # per-check guard, so an ImportError escaping here would not degrade one
+        # line, it would abort the whole report - on exactly the broken install
+        # the report exists to explain.
+        from app.cli_static import get_frontend_dir
+
         return Check("Frontend bundle", "ok", f"bundled React UI ready at {get_frontend_dir()}")
     except FileNotFoundError:
         return Check(
@@ -391,6 +398,17 @@ def check_frontend_bundled() -> Check:
             "warn",
             "no frontend found - server will run API only",
             "Reinstall the pip package to get the bundled UI, or run `npm run build` in frontend/",
+        )
+    except Exception as exc:
+        # Deliberately broad, because this function is a reporter: anything it
+        # fails to catch it converts into the absence of every other check. A
+        # lookup that cannot run is still its own finding, and not the same
+        # finding as a UI that is absent.
+        return Check(
+            "Frontend bundle",
+            "error",
+            f"the frontend lookup could not run: {type(exc).__name__}: {exc}",
+            "Reinstall the pip package: this install cannot load its own web stack.",
         )
 
 
