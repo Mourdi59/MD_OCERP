@@ -184,10 +184,28 @@ export default defineConfig({
         globPatterns: ['**/*.{js,mjs,css,html,svg,woff2,ico}'],
         // Skip huge prerendered marketing assets (handled by the static
         // host) and stats.html (visualizer output).
-        globIgnores: ['stats.html', '**/*.map'],
+        //
+        // The locale chunks are excluded deliberately, and not because
+        // they are merely large. Precaching them means every visitor
+        // downloads all 43 languages to read one: the chunks run past
+        // 5 MB each, so the manifest was asking for well over 200 MB
+        // before anyone saw a screen. They already have their own
+        // ``oce-i18n-locales`` StaleWhileRevalidate lane below, which
+        // caches the one locale a reader actually loads and refreshes it
+        // in the background, so precaching them was never doing work the
+        // runtime lane does not already do better.
+        //
+        // Leaving them in is also what broke the build rather than merely
+        // bloating it: workbox fails ``generateSW`` outright once a
+        // precache entry exceeds the ceiling, so every locale that grew
+        // past it took the desktop build down with it. Excluding them
+        // takes the growing file out of the manifest entirely, which is
+        // the fix that does not need revisiting the next time a
+        // translation lands.
+        globIgnores: ['stats.html', '**/*.map', '**/i18n-*.js'],
         // Allow large lazy-loaded chunks (vendor-three, vendor-maplibre)
-        // to be runtime-cached on first visit. 5 MB ceiling matches
-        // workbox's default but is set explicitly for clarity.
+        // to be precached on first visit. Workbox's own default is 2 MiB;
+        // this raises it, it does not restate it.
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallback: '/index.html',
         // Don't try to fall back to /index.html for API routes or for
