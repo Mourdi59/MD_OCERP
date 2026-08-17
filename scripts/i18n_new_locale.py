@@ -43,10 +43,11 @@ extract already wrote; to take on keys that appeared since, use `delta`.
 
 `assemble` is the step that publishes, so it carries the same refusal from the
 other end: it overwrites the shipped .ts from the batches, and once it has, the
-real translation is gone with nothing to resync from. It measures how many
-values still read as their English source and refuses over a quarter of them.
-Finished locales sit between 0.7% and 4.8%, so that threshold only ever catches
-batches nobody filled in. `--force` is the way past it.
+real translation is gone with nothing to resync from. It refuses when a key
+reads as a translation in the file today and would read as its English source
+afterwards. That is deliberately not a threshold on how English the corpus is -
+a locale under translation is assembled repeatedly and legitimately carries
+placeholders, because i18next falls back per key. `--force` is the way past it.
 
 `delta` catches a locale's corpus up when target_keys() has moved since
 extract() ran (new modules landed, or keys reached the shipped locales after
@@ -502,18 +503,12 @@ def cmd_delta(code: str) -> int:
     return 0
 
 
-# Every locale keeps some values identical to English: proper nouns, unit
-# symbols, format tokens, acronyms like BIM and GAEB. So "any value equals its
-# source" is not a signal, and a guard written that way would refuse every real
-# assemble. The signal is the proportion, and it separates cleanly. Measured
-# across the 41 shipped locales on 17.08, the English-identical share runs from
-# 0.7% (fa) to 4.8% (nl); uz, half translated at the time, sat at 59.2%. A
-# corpus that extract has just rewritten is at 100%.
-#
-# A quarter is therefore five times the worst finished locale and well below
-# anything half-done. It is a tripwire for "these batches were never filled in",
-# not a quality bar.
-ENGLISH_SHARE_LIMIT = 0.25
+def shipped_values(code: str) -> dict[str, str]:
+    """What `code`.ts holds today, key -> value. Empty if it does not exist yet."""
+    path = LOCALES / f"{code}.ts"
+    if not path.exists():
+        return {}
+    return {m.group(1): unescape(m.group(3)) for m in KEY_VAL_MULTILINE.finditer(read(path))}
 
 
 def cmd_assemble(code: str, force: bool = False) -> int:
@@ -547,19 +542,39 @@ def cmd_assemble(code: str, force: bool = False) -> int:
             print(f"    {k}")
         return 1
 
-    # assemble is the step that publishes. It overwrites the shipped .ts from
-    # the batches, so a corpus that is still mostly English is not a warning
-    # here, it is the loss itself: after this write there is nothing left to
-    # resync the real translation out of.
-    still_english = [k for k in order if merged[k].strip() and merged[k] == sources.get(k, ("",))[0]]
-    share = len(still_english) / len(order) if order else 0.0
-    if share > ENGLISH_SHARE_LIMIT and not force:
-        print(f"REFUSED {len(still_english)} of {len(order)} value(s), {share * 100:.1f}%, still read as English.")
-        print(f"  Finished locales sit under {ENGLISH_SHARE_LIMIT * 100:.0f}%, so these batches are not done.")
-        print(f"  Writing them would publish English over {LOCALES / f'{code}.ts'}.")
-        for k in still_english[:10]:
-            print(f"    {k}")
-        print("  Pass --force only if this locale really is meant to read as English.")
+    # assemble is the step that publishes, and it overwrites the shipped .ts
+    # from whatever the batches hold. Extract's own guard stops the batches
+    # being wiped; this one stops a wiped set being written out over work that
+    # is already in the file, because after that write there is nothing left to
+    # resync from.
+    #
+    # The test is not "how much of this reads as English". A locale under
+    # translation is assembled repeatedly and legitimately carries placeholders
+    # for the batches nobody has reached yet - i18next falls back per key, so
+    # shipping it half done is the working method, not a defect. Nor is it a
+    # count: `delta` adds genuinely new keys as English and must stay allowed.
+    #
+    # What is never legitimate is a key that reads as a translation in the file
+    # today and would read as its English source afterwards. That is the loss
+    # itself, it needs no threshold, and it is zero on every honest assemble.
+    shipped = shipped_values(code)
+    would_lose = [
+        k
+        for k in order
+        if k in shipped
+        and shipped[k].strip()
+        and shipped[k] != sources.get(k, ("",))[0]
+        and merged[k] == sources.get(k, ("",))[0]
+    ]
+    if would_lose and not force:
+        print(f"REFUSED {len(would_lose)} key(s) are translated in {LOCALES / f'{code}.ts'} today")
+        print("  and would be written back to English by these batches.")
+        for k in would_lose[:10]:
+            print(f'    {k}: "{shipped[k]}" -> "{merged[k]}"')
+        print("  The batches are behind the file, which is what a second `extract` leaves.")
+        print("  Recover the values from the file itself before assembling. To take on keys")
+        print(f"  that appeared since, run: {sys.argv[0]} delta {code}")
+        print("  Pass --force only if you mean to throw those translations away.")
         return 1
 
     body = "".join(f'    "{key}": "{escape(merged[key])}",\n' for key in order)
