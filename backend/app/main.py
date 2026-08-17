@@ -1309,6 +1309,18 @@ def create_app() -> FastAPI:
 
     app.add_middleware(AcceptLanguageMiddleware)
 
+    # ── Response compression ──────────────────────────────────────────────
+    # Every screen pulls a 2.44 MB application bundle and a 2.21 MB locale
+    # chunk before it draws, and both went over the wire uncompressed although
+    # the browser asked for gzip each time. That is the whole of the four
+    # seconds the case audits measured on the snag register and the bill
+    # editor; the endpoints behind those screens answer in under a tenth of a
+    # second. Text only, and only when the length is known, so exports and
+    # photo bytes are passed through rather than re-compressed.
+    from app.middleware.compression import CompressionMiddleware
+
+    app.add_middleware(CompressionMiddleware)
+
     # ── Request-body-size backstop (added last -> outermost -> runs first) ─
     # Coarse global ceiling above every per-endpoint upload cap. Rejects an
     # absurdly large body before any other middleware or endpoint reads it, so
