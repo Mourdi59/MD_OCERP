@@ -2,7 +2,22 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """i18n API endpoints.
 
-Serves translations to the frontend.
+Serves the backend catalogue, backend/locales/*.json, to any HTTP consumer.
+
+It does NOT serve this product's own UI, despite what the route names suggest.
+The frontend builds its i18next store from bundled resources and lazy-loaded
+locale chunks (frontend/src/app/i18n.ts, the ``resources: { en: enResource }``
+init at line 264); there is no i18next-http-backend plugin, no ``loadPath``,
+and nothing under frontend/src fetches these routes. So the two catalogues are
+separate: roughly four hundred backend keys here, tens of thousands of UI keys
+in frontend/src/app/locales/*.ts, and a key belongs to whichever side renders it.
+
+That matters because reading this the other way invites someone to translate
+the whole UI into these files to close a gap that does not exist. What the
+backend catalogue is actually for is the strings the backend itself renders
+through ``t()`` - validation messages, error text - plus any external client
+that wants them.
+
 Module translations are merged with core translations.
 """
 
@@ -50,7 +65,10 @@ async def get_locale_messages(locale: str) -> dict:
 
 @router.get("/{locale}")
 async def get_translations(locale: str) -> dict:
-    """Get all translations for a locale (used by frontend i18next-http-backend).
+    """Get all backend translations for a locale.
+
+    Shaped for an i18next-http-backend style client, though this product's own
+    frontend does not use one - see the module docstring.
 
     Returns 404 for unsupported locale codes. For supported locales whose
     bundle hasn't been loaded yet we still serve the English fallback but
