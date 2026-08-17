@@ -57,6 +57,49 @@ export function fmtNumber(value: number | string | null | undefined, decimals = 
 }
 
 /**
+ * `toFixed` with the reader's separators, and nothing else changed.
+ *
+ * `(1234.5).toFixed(2)` is `1234.50` for everyone on earth: the method takes
+ * no locale, always writes a point and never groups the thousands. There is no
+ * argument that fixes it, so a visible number has to move onto a formatter,
+ * and this is the one that moves without deciding anything else on the way.
+ *
+ * It exists next to `fmtNumber` rather than inside it because the two answer
+ * different questions about a number that is not a number. `fmtNumber` takes
+ * `string | null | undefined` off the wire and renders nonsense as zero, which
+ * is right when the alternative is `NaN` in a total. Applied to a `toFixed`
+ * call site it would be a quiet lie: `NaN.toFixed(2)` says `NaN` today, and a
+ * sweep that turned every one of those into `0.00` would trade a formatting
+ * bug for a costing bug and leave the screen looking confident about it. So a
+ * non-finite value is handed back to `toFixed` and keeps the text it already
+ * had; only finite numbers are localised.
+ */
+export function fmtFixed(value: number, decimals = 2): string {
+  if (!Number.isFinite(value)) return value.toFixed(decimals);
+  return new Intl.NumberFormat(getIntlLocale(), {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(value);
+}
+
+/**
+ * `toPrecision` with the reader's separators: a count of significant digits
+ * rather than of decimal places.
+ *
+ * Used where a quantity can be very small and a fixed number of decimals would
+ * round it away, so `0.0012` has to keep its two digits while `1234` keeps
+ * four. Like `fmtFixed`, a non-finite value is handed back to the method it
+ * replaces rather than being invented into a zero.
+ */
+export function fmtPrecision(value: number, digits: number): string {
+  if (!Number.isFinite(value)) return value.toPrecision(digits);
+  return new Intl.NumberFormat(getIntlLocale(), {
+    maximumSignificantDigits: digits,
+    minimumSignificantDigits: Math.min(digits, 2),
+  }).format(value);
+}
+
+/**
  * A percentage that is already on a 0-100 scale, written the way the reader's
  * language writes one.
  *
@@ -380,8 +423,8 @@ export function formatNumber(n: number, currency?: string): string {
  */
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 1)} KB`;
+  return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
 }
 
 /**

@@ -60,9 +60,10 @@ import {
   type PhotoCategory,
   type DefectSeverity,
   type PhotoFilters,
-  type PhotoTimelineGroup as _PhotoTimelineGroup,
+  groupPhotosByDay,
   type PhotoUpdatePayload,
 } from './api';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Constants ────────────────────────────────────────────────────────── */
 
@@ -102,7 +103,7 @@ function useDebounce<T>(value: T, delayMs: number): T {
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '';
   try {
-    return new Date(dateStr).toLocaleDateString(undefined, {
+    return new Date(dateStr).toLocaleDateString(getIntlLocale(), {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -115,7 +116,7 @@ function formatDate(dateStr: string | null): string {
 function formatDateFull(dateStr: string | null): string {
   if (!dateStr) return '';
   try {
-    return new Date(dateStr).toLocaleString(undefined, {
+    return new Date(dateStr).toLocaleString(getIntlLocale(), {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -259,7 +260,7 @@ function Lightbox({
                 {photo.gps_lat != null && photo.gps_lon != null && (
                   <span className="flex items-center gap-1">
                     <MapPin size={12} />
-                    {photo.gps_lat.toFixed(5)}, {photo.gps_lon.toFixed(5)}
+                    {fmtFixed(photo.gps_lat, 5)}, {fmtFixed(photo.gps_lon, 5)}
                     {isGpsFromExif(photo) && (
                       <span className="ml-1 text-white/40">
                         {t('photos.gps_auto_paren', { defaultValue: '(auto, EXIF)' })}
