@@ -4898,7 +4898,7 @@ def _generate_module_data(
         inspections.append(
             {
                 "inspection_number": f"INS-{i + 1:03d}",
-                "inspection_type": "quality",
+                "inspection_type": "general",
                 "title": f"{trade} inspection",
                 "description": f"Hold-point inspection for {item or trade} (section {code or trade}).",
                 "location": f"{trade} area",
@@ -8085,7 +8085,7 @@ async def _seed_module_data(
             },
             {
                 "inspection_number": "INS-003",
-                "inspection_type": "curtain_wall",
+                "inspection_type": "waterproofing",
                 "title": "Curtain Wall Mock-up Test",
                 "description": "Performance testing of curtain wall mock-up panel",
                 "location": "Off-site testing facility",
@@ -8169,7 +8169,7 @@ async def _seed_module_data(
             },
             {
                 "inspection_number": "INS-003",
-                "inspection_type": "radiation_shielding",
+                "inspection_type": "general",
                 "title": "CT Room Radiation Shielding",
                 "description": "Inspection of lead-lined walls and door in CT room 2-104",
                 "location": "Level 2, Room 2-104",
@@ -8217,7 +8217,7 @@ async def _seed_module_data(
             },
             {
                 "inspection_number": "INS-002",
-                "inspection_type": "acoustic",
+                "inspection_type": "general",
                 "title": "Gymnase Isolation Acoustique",
                 "description": "Acoustic testing of gymnasium wall and ceiling treatment",
                 "location": "Gymnasium",
@@ -8300,7 +8300,7 @@ async def _seed_module_data(
             },
             {
                 "inspection_number": "INS-002",
-                "inspection_type": "fire_protection",
+                "inspection_type": "fire_safety",
                 "title": "ESFR Sprinkler Installation - Zone 1",
                 "description": "Inspection of ESFR sprinkler system installation",
                 "location": "Warehouse Zone 1",
@@ -8322,7 +8322,7 @@ async def _seed_module_data(
             },
             {
                 "inspection_number": "INS-003",
-                "inspection_type": "slab",
+                "inspection_type": "concrete",
                 "title": "Warehouse Floor Slab Flatness",
                 "description": "Floor flatness survey for high-bay racking areas",
                 "location": "Warehouse main floor, full area",
@@ -8350,7 +8350,7 @@ async def _seed_module_data(
         "retail-market-heilbronn": [
             {
                 "inspection_number": "I-01",
-                "inspection_type": "earthworks",
+                "inspection_type": "structural",
                 "title": "Abnahme Erdplanum mit Lastplattendruckversuchen (subgrade acceptance, plate load tests)",
                 "description": "Ev2 >= 45 MN/m2 nachgewiesen. Prüfberichte D22/D23. Durchgeführt durch S08.",
                 "location": "Baufeld, Planum Bauwerk",
@@ -8382,7 +8382,7 @@ async def _seed_module_data(
             },
             {
                 "inspection_number": "I-02",
-                "inspection_type": "rebar",
+                "inspection_type": "concrete_pour",
                 "title": "Bewehrungsabnahme Bodenplatte durch Prüfstatiker (slab rebar inspection by checking engineer)",
                 "description": "Bestanden mit Auflage: Randbewehrung Feld A1 nachgelegt, erledigt 2026-04-16. Durchgeführt durch S05. Protokoll D24.",
                 "location": "Bodenplatte, Feld A1",
@@ -8414,7 +8414,7 @@ async def _seed_module_data(
             },
             {
                 "inspection_number": "I-03",
-                "inspection_type": "drainage",
+                "inspection_type": "plumbing",
                 "title": "Dichtheitsprüfung und Kamerabefahrung Grundleitungen DIN EN 1610 (drainage tightness test and CCTV)",
                 "description": "Teilweise bestanden, Mangel M-007 (Gefälle 0,3 % statt 0,5 % Abschnitt S3-S4). Wiederholungsprüfung geplant 2026-06-26. Prüfprotokoll D25 an S16.",
                 "location": "Grundleitungen unter Bodenplatte, Anlieferzone",
@@ -8446,7 +8446,7 @@ async def _seed_module_data(
             },
             {
                 "inspection_number": "I-04",
-                "inspection_type": "safety",
+                "inspection_type": "general",
                 "title": "SiGeKo-Baustellenbegehung Nr. 7 (H&S coordinator site walkthrough no. 7)",
                 "description": "3 Feststellungen: Absturzsicherung Dachrandarbeiten nachrüsten, Verkehrsweg Fassadengerüst freihalten, Erste-Hilfe-Aushang aktualisieren. Frist 2026-06-16. Durchgeführt durch S10.",
                 "location": "Gesamte Baustelle",

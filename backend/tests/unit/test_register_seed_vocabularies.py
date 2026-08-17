@@ -41,6 +41,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core import demo_projects
+from app.modules.inspections.schemas import InspectionUpdate
 from app.modules.punchlist.schemas import PunchItemUpdate
 from app.modules.tendering.schemas import PackageUpdate
 
@@ -53,6 +54,7 @@ _ALTERNATION = re.compile(r"\^\(([a-z0-9_|\-]+)\)\$")
 # zero that a collector reading nothing cannot look clean.
 _MIN_PACKAGE_STATUSES = 90
 _MIN_PUNCH_CATEGORIES = 20
+_MIN_INSPECTION_TYPES = 15  # measured 21
 
 
 def _vocabulary(model: Any, field: str) -> set[str]:
@@ -170,6 +172,13 @@ def _punch_categories() -> list[tuple[str, str]]:
     return found
 
 
+def _inspection_types() -> list[tuple[str, str]]:
+    found: list[tuple[str, str]] = []
+    for source in _sources():
+        found += _dict_field(source, "inspection_type", {"status", "title"})
+    return found
+
+
 def test_seeded_tender_package_statuses_are_the_modules_own() -> None:
     """A package the register cannot label is a package the edit form cannot save.
 
@@ -207,6 +216,28 @@ def test_seeded_punch_categories_are_the_modules_own() -> None:
     assert not refused, f"punchlist accepts only {'|'.join(sorted(allowed))}:\n  " + "\n  ".join(refused)
 
 
+def test_seeded_inspection_types_are_the_modules_own() -> None:
+    """The type column printed a bare token beside a result column that read Pass.
+
+    That contrast is what made it a defect rather than a rough edge: the
+    inspection register already knew how to say Pass and Fail, so "concrete"
+    next to it reads as a column nobody finished. Ten of the seeded types were
+    also outside the eleven the module offers, which is a second fault in the
+    same cell - a type no filter can select and no edit form can save. The
+    module's own explainer names the eleven, so the schema is the product's
+    intent and the seed is what drifted.
+    """
+    allowed = _vocabulary(InspectionUpdate, "inspection_type")
+    seeded = _inspection_types()
+    assert len(seeded) >= _MIN_INSPECTION_TYPES, (
+        f"only {len(seeded)} seeded inspection types were found, expected at least "
+        f"{_MIN_INSPECTION_TYPES}; the collector has broken and this test would pass "
+        f"without reading an inspection"
+    )
+    refused = [f"{where} seeds inspection_type={value!r}" for where, value in seeded if value not in allowed]
+    assert not refused, f"inspections accepts only {'|'.join(sorted(allowed))}:\n  " + "\n  ".join(refused)
+
+
 def test_the_collectors_would_notice_a_refused_value(tmp_path: Path) -> None:
     """The green runs above have to mean the seed is right, not that nothing is read.
 
@@ -221,15 +252,19 @@ def test_the_collectors_would_notice_a_refused_value(tmp_path: Path) -> None:
         ")\n"
         "_PACKAGE_SPECS = [('ELEC', 'Electrical works', 'open', '2026-07-15', '1')]\n"
         "PUNCH = [{'title': 'T', 'priority': 'high', 'status': 'open',\n"
-        "          'trade': 'Plumbing', 'category': 'mep'}]\n",
+        "          'trade': 'Plumbing', 'category': 'mep'}]\n"
+        "INSPECTIONS = [{'title': 'T', 'status': 'completed', 'inspection_type': 'slab'}]\n",
         encoding="utf-8",
     )
     statuses = _tuple_field(planted, {"tender_packages", "_PACKAGE_SPECS"}, index=2)
     categories = _dict_field(planted, "category", {"priority", "status", "title", "trade"})
+    types = _dict_field(planted, "inspection_type", {"status", "title"})
 
     assert [value for _, value in statuses] == ["open", "open"], (
         "the collector no longer reads a package status out of either shape"
     )
     assert [value for _, value in categories] == ["mep"], "the collector no longer reads a punch category"
+    assert [value for _, value in types] == ["slab"], "the collector no longer reads an inspection type"
     assert "open" not in _vocabulary(PackageUpdate, "status")
     assert "mep" not in _vocabulary(PunchItemUpdate, "category")
+    assert "slab" not in _vocabulary(InspectionUpdate, "inspection_type")
