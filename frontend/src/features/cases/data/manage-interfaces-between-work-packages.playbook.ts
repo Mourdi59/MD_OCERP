@@ -44,7 +44,7 @@ const playbook: Playbook = {
       whyKey: "cases.manage_interfaces_between_work_packages.step.register.why",
       whyDefault:
         "Naming the interfaces is what turns a fuzzy boundary into a managed one. The interface nobody wrote down is the gap that becomes a variation and a delay when both sides deny it.",
-      moduleLabel: "Interface management",
+      moduleLabel: "Interface Register",
       moduleLabelKey: "interface_management.title",
       to: "/projects/:projectId/interface-management",
     },
@@ -65,7 +65,7 @@ const playbook: Playbook = {
       whyKey: "cases.manage_interfaces_between_work_packages.step.owners.why",
       whyDefault:
         "An interface with one owner is an argument waiting to happen. Naming both sides and what each owes the other is what makes the handover actually work at the boundary.",
-      moduleLabel: "Interface management",
+      moduleLabel: "Interface Register",
       moduleLabelKey: "interface_management.title",
       to: "/projects/:projectId/interface-management",
     },
@@ -107,7 +107,7 @@ const playbook: Playbook = {
       whyKey: "cases.manage_interfaces_between_work_packages.step.close.why",
       whyDefault:
         "Closing on one side's say-so is how a gap reopens on site. Requiring both sides to agree is what makes the register a true picture of what is settled and what still bites.",
-      moduleLabel: "Interface management",
+      moduleLabel: "Interface Register",
       moduleLabelKey: "interface_management.title",
       to: "/projects/:projectId/interface-management",
     },
