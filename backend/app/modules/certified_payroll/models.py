@@ -12,6 +12,40 @@ Tables:
                                 compliance, the signature and the fringe election
     oe_certpay_line           - the frozen, per-worker record of a certified week
 
+Who owns what, and where the join is
+====================================
+
+``oe_payroll`` owns the pay run. ``oe_certified_payroll`` owns the compliance
+record. They are joined, not parallel, and neither is a copy of the other:
+
+    oe_payroll               oe_certified_payroll
+    ----------               --------------------
+    PayrollBatch             WageDetermination
+    PayrollEntry             WageClassification
+    PayrollDeduction         WorkerClassificationAssignment
+    (oe_payroll_*)           CertifiedPayrollWeek
+                             CertifiedPayrollLine
+                             (oe_certpay_*)
+
+The pay run answers "what did we pay this person, and when". The compliance
+record answers "what were we required to pay them, on whose authority, and did
+we say so in writing". Neither question is derivable from the other: a rate on
+its own does not say which determination it had to meet, and a determination on
+its own does not say what anybody worked.
+
+The join runs one way only. This module reads ``PayrollEntry`` (hours, rate,
+work date), ``PayrollBatch`` (project, currency) and ``PayrollDeduction``, and
+it uses ``payroll.intl`` for the money arithmetic so there is one implementation
+of overtime in the tree. It writes nothing back, declares no relationship or
+foreign key onto any ``oe_payroll_*`` table, and links to a worker through a
+soft ``resource_id`` column that mirrors ``PayrollEntry.resource_id`` without
+constraining it. Deleting this module leaves the pay run untouched.
+
+This split is worth stating because it is not obvious from the names, and both
+the author of this module and its reviewer independently started from the
+assumption that a certified payroll must be a second payroll. It is not. It is
+a statement about a pay run that already happened.
+
 What this module is NOT
 =======================
 
