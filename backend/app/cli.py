@@ -225,8 +225,11 @@ def _setup_env(data_dir: Path, host: str, port: int) -> None:
             print(
                 _red(_u("✗ ", "X "))
                 + "Embedded PostgreSQL could not start (already retried a few times). "
-                + "Reinstall the package (pip install --upgrade --force-reinstall "
-                + "openconstructionerp), run 'openconstructionerp doctor' for details, or "
+                + _repair_hint(
+                    "Reinstall the package (pip install --upgrade --force-reinstall openconstructionerp), ",
+                    "Reinstall the app from its installer, ",
+                )
+                + "run 'openconstructionerp doctor' for details, or "
                 + "set DATABASE_URL to an external PostgreSQL."
             )
             print(
@@ -279,6 +282,47 @@ class Check:
             print(f"            {_dim(arrow + self.hint)}")
 
 
+#: Repairing a bundle that shipped something broken.
+_DESKTOP_REPAIR = (
+    "This is the desktop build and it carries no pip. Repair it by reinstalling "
+    "the app from its installer, which replaces the whole application."
+)
+
+#: Adding something the bundle never carried in the first place.
+_DESKTOP_NO_EXTRA = (
+    "This is the desktop build. It ships a fixed set of packages and has no pip "
+    "to add to them, so this cannot be switched on here. It needs either a build "
+    "that carries it or the server install."
+)
+
+
+def _repair_hint(pip_advice: str, frozen_advice: str = _DESKTOP_REPAIR) -> str:
+    """Give advice the reader can carry out where they are standing.
+
+    Every remedy below was written for a pip install, which is where most of
+    them are read. The desktop build has no pip: ``sys.executable`` is the app
+    binary, so "pip install --force-reinstall openconstructionerp" is not
+    merely awkward there, it is impossible, and an operator who follows it
+    learns only that the tool that diagnosed the fault also cannot fix it.
+
+    Today one such line can reach a desktop reader, because everything else the
+    doctor names is in ``requirements-desktop.lock`` and those branches report
+    ok with the hint never rendered. That is a fact about today's lock rather
+    than about this code: the day a dependency leaves the lock, or a new check
+    lands for something the bundle does not carry, another armed line goes
+    live silently. Routing them all through one function is insurance against
+    that, and costs a function call.
+
+    ``is_frozen_build`` and not ``desktop_mode``: the question here is the
+    mechanical one, whether ``sys.executable`` can run ``-m pip``. The Windows
+    installer builds are desktop too and they run a real interpreter out of a
+    private venv, so pip advice is correct for them.
+    """
+    from app.core.self_upgrade import is_frozen_build
+
+    return frozen_advice if is_frozen_build() else pip_advice
+
+
 def check_python_version() -> Check:
     ver = sys.version_info
     if (ver.major, ver.minor) < MIN_PYTHON:
@@ -306,7 +350,12 @@ def check_package_installed() -> Check:
             "Package installed",
             "warn",
             "running from source checkout (not pip-installed)",
-            "For production use: pip install openconstructionerp",
+            _repair_hint(
+                "For production use: pip install openconstructionerp",
+                # A bundle that cannot read its own version is not a source
+                # checkout and has nothing to install itself from.
+                _DESKTOP_REPAIR,
+            ),
         )
 
 
@@ -411,7 +460,12 @@ def check_frontend_bundled() -> Check:
             "Frontend bundle",
             "warn",
             "no frontend found - server will run API only",
-            "Reinstall the pip package to get the bundled UI, or run `npm run build` in frontend/",
+            _repair_hint(
+                "Reinstall the pip package to get the bundled UI, or run `npm run build` in frontend/",
+                # `npm run build` is not an answer here either: there is no
+                # repo checkout beside a bundle to run it in.
+                _DESKTOP_REPAIR,
+            ),
         )
     except Exception as exc:
         # Deliberately broad, because this function is a reporter: anything it
@@ -422,7 +476,7 @@ def check_frontend_bundled() -> Check:
             "Frontend bundle",
             "error",
             f"the frontend lookup could not run: {type(exc).__name__}: {exc}",
-            "Reinstall the pip package: this install cannot load its own web stack.",
+            _repair_hint("Reinstall the pip package: this install cannot load its own web stack."),
         )
 
 
@@ -458,7 +512,12 @@ def check_core_tabular_deps() -> list[Check]:
     """
     from importlib.util import find_spec
 
-    hint = "Cost database import requires pandas + pyarrow. Reinstall with: pip install --upgrade openconstructionerp"
+    hint = _repair_hint(
+        "Cost database import requires pandas + pyarrow. Reinstall with: pip install --upgrade openconstructionerp",
+        # Both are base dependencies, so a bundle missing one is damaged rather
+        # than merely lean, and repair is the honest advice.
+        _DESKTOP_REPAIR,
+    )
     out: list[Check] = []
     for mod in ("pandas", "pyarrow"):
         try:
@@ -620,7 +679,12 @@ def check_optional_extras() -> list[Check]:
         before.
         """
         if not _present(mod):
-            return Check(label, "warn", missing_msg, f"pip install 'openconstructionerp[{extra}]'")
+            return Check(
+                label,
+                "warn",
+                missing_msg,
+                _repair_hint(f"pip install 'openconstructionerp[{extra}]'", _DESKTOP_NO_EXTRA),
+            )
         err = _import_error(mod)
         if err is None:
             return Check(label, "ok", ok_msg)
@@ -628,7 +692,7 @@ def check_optional_extras() -> list[Check]:
             label,
             "error",
             f"present but will not import: {err}",
-            f"pip install --force-reinstall 'openconstructionerp[{extra}]'",
+            _repair_hint(f"pip install --force-reinstall 'openconstructionerp[{extra}]'"),
         )
 
     out: list[Check] = []
@@ -684,7 +748,7 @@ def check_optional_extras() -> list[Check]:
                 "PDF takeoff",
                 "error" if both_gone else "warn",
                 f"PDF reader will not import: {broken}",
-                "pip install --force-reinstall --no-cache-dir openconstructionerp",
+                _repair_hint("pip install --force-reinstall --no-cache-dir openconstructionerp"),
             )
         )
 
@@ -772,7 +836,7 @@ def check_optional_extras() -> list[Check]:
                 cv_label,
                 "warn",
                 "not installed (geometry detection still works; dimension-text reading disabled)",
-                "pip install 'openconstructionerp[cv]'",
+                _repair_hint("pip install 'openconstructionerp[cv]'", _DESKTOP_NO_EXTRA),
             )
         )
     elif (cv_err := _import_error("paddleocr")) is not None:
@@ -781,7 +845,7 @@ def check_optional_extras() -> list[Check]:
                 cv_label,
                 "error",
                 f"present but will not import: {cv_err}",
-                "pip install --force-reinstall 'openconstructionerp[cv]'",
+                _repair_hint("pip install --force-reinstall 'openconstructionerp[cv]'"),
             )
         )
     elif not _present("paddle") and not _engine_distribution_installed():
@@ -791,8 +855,15 @@ def check_optional_extras() -> list[Check]:
                 "error",
                 "paddleocr is installed but its inference engine (paddlepaddle) is not - "
                 "OCR will fail when a scanned drawing is uploaded, not here",
-                "Install a paddlepaddle build for this platform. The [cv] extra deliberately "
-                "does not choose one, because the right build depends on CPU vs GPU and OS.",
+                # Routed too, though it never says "pip": what makes a remedy
+                # unreachable is that it asks the reader to install something,
+                # not the word it uses to ask. Testing only for the word would
+                # have passed this line and left it broken.
+                _repair_hint(
+                    "Install a paddlepaddle build for this platform. The [cv] extra deliberately "
+                    "does not choose one, because the right build depends on CPU vs GPU and OS.",
+                    _DESKTOP_NO_EXTRA,
+                ),
             )
         )
     # find_spec is the gate here and the import is the verdict, deliberately in
@@ -810,7 +881,7 @@ def check_optional_extras() -> list[Check]:
                 cv_label,
                 "error",
                 f"the OCR engine is installed but will not import: {engine_err}",
-                "Reinstall a paddlepaddle build matching this platform and Python version.",
+                _repair_hint("Reinstall a paddlepaddle build matching this platform and Python version."),
             )
         )
     else:
@@ -1171,7 +1242,15 @@ def cmd_init_db(args: argparse.Namespace) -> None:
             print(f"    - {_bold(name)}: {_dim(err)}")
         print()
         print(_red("Schema may be incomplete. Reinstall the package or check the error above."))
-        print(_dim(f"  {_u('\u2192', '->')} pip install --upgrade --force-reinstall openconstructionerp"))
+        print(
+            _dim(
+                f"  {_u('\u2192', '->')} "
+                + _repair_hint(
+                    "pip install --upgrade --force-reinstall openconstructionerp",
+                    "Reinstall the app from its installer",
+                )
+            )
+        )
         print(_dim(f"  {_u('\u2192', '->')} Then run 'openconstructionerp doctor' to verify."))
         sys.exit(1)
 

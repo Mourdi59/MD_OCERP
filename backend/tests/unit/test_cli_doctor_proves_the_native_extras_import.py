@@ -81,6 +81,44 @@ def _fake_resolution(
     monkeypatch.setattr(importlib, "import_module", fake_import)
 
 
+def _resolving(names: set[str]):
+    """A find_spec that reports ``names`` present and leaves the rest alone."""
+    real_find_spec = importlib.util.find_spec
+
+    def fake_find_spec(name: str, package: str | None = None) -> object:
+        if name in names:
+            return ModuleType(name).__spec__ or object()
+        return real_find_spec(name, package)
+
+    return fake_find_spec
+
+
+def _fake_child(monkeypatch: pytest.MonkeyPatch, *, fails: set[str]) -> None:
+    """Answer the child-process probe without launching one.
+
+    The unfrozen arm shells out to ``sys.executable -c "import <mod>"``. Real
+    children would import torch and friends for a test about wording, so the
+    answers are supplied here instead. Matched on the whole statement, never a
+    substring: "import paddleocr" contains "import paddle".
+    """
+    import subprocess
+
+    class _Result:
+        def __init__(self, code: int, err: bytes = b"") -> None:
+            self.returncode = code
+            self.stdout = b""
+            self.stderr = err
+
+    def fake_run(cmd, **kwargs):
+        source = cmd[2] if isinstance(cmd, list) and len(cmd) == 3 else ""
+        for mod in fails:
+            if source == f"import {mod}":
+                return _Result(1, f"ImportError: {mod} will not load\n".encode())
+        return _Result(0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+
 class TestPresentButBrokenIsNotOk:
     """The case find_spec cannot see, and the whole reason for the change."""
 
@@ -124,7 +162,15 @@ class TestPresentButBrokenIsNotOk:
         assert "torch" in check.message, "the missing piece must survive into the message"
 
     def test_the_broken_hint_repairs_rather_than_installs(self, monkeypatch: pytest.MonkeyPatch, frozen: None) -> None:
-        """Telling someone to install what they already have is not a fix."""
+        """Telling someone to install what they already have is not a fix.
+
+        The ``frozen`` fixture here is about the import probe, not about the
+        audience, but the remedy now depends on the audience: a bundle has no
+        pip, so the repair it is offered is the installer rather than
+        --force-reinstall. Both are the same instruction in the deployment that
+        reads them, which is what this test is really about, so it asserts the
+        instruction and leaves the pip wording to the test below.
+        """
         _fake_resolution(
             monkeypatch,
             resolves={"lancedb"},
@@ -133,10 +179,28 @@ class TestPresentButBrokenIsNotOk:
 
         check = _named(cli.check_optional_extras(), VECTOR)
 
-        assert "--force-reinstall" in check.hint, (
+        assert "reinstall" in check.hint.lower(), (
             f"hint for a present-but-broken extra was {check.hint!r}, which asks the "
             "operator to install a package that is already there"
         )
+
+    def test_the_broken_hint_on_a_pip_install_is_a_force_reinstall(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The wiring for the audience that does have pip.
+
+        Unfrozen, so the probe goes through a child and the remedy is the pip
+        one. Without this, making the hint deployment-aware could silently stop
+        naming --force-reinstall for the readers who can actually run it.
+        """
+        _fake_child(monkeypatch, fails={"lancedb"})
+        monkeypatch.setattr(sys, "frozen", False, raising=False)
+        monkeypatch.delenv("OE_DESKTOP", raising=False)
+        monkeypatch.setattr(importlib.util, "find_spec", _resolving({"lancedb"}))
+
+        check = _named(cli.check_optional_extras(), VECTOR)
+
+        assert check.status == "error"
+        assert "--force-reinstall" in check.hint, f"the pip audience lost its remedy: {check.hint!r}"
+        assert "openconstructionerp[vector]" in check.hint
 
 
 class TestTheOtherTwoStatesStillBehave:
@@ -150,7 +214,24 @@ class TestTheOtherTwoStatesStillBehave:
         assert check.status == "warn", "a stock server without the extra is not an error"
         assert "not installed" in check.message
         assert "--force-reinstall" not in check.hint
-        assert "openconstructionerp[vector]" in check.hint
+        # Frozen here, so the hint is the bundle's: a build ships a fixed set
+        # of packages and has no pip to add to it, which is a different true
+        # answer rather than a missing one. The pip wording for this branch is
+        # asserted unfrozen below.
+        assert check.hint == cli._DESKTOP_NO_EXTRA, f"a bundle was told to run pip: {check.hint!r}"
+
+    def test_absent_on_a_pip_install_names_the_extra(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _fake_child(monkeypatch, fails=set())
+        monkeypatch.setattr(sys, "frozen", False, raising=False)
+        monkeypatch.delenv("OE_DESKTOP", raising=False)
+        monkeypatch.setattr(importlib.util, "find_spec", lambda name, package=None: None)
+
+        check = _named(cli.check_optional_extras(), VECTOR)
+
+        assert check.status == "warn"
+        assert "openconstructionerp[vector]" in check.hint, (
+            f"the reader who can run pip was not told what to run: {check.hint!r}"
+        )
 
     def test_present_and_importable_is_ok(self, monkeypatch: pytest.MonkeyPatch, frozen: None) -> None:
         _fake_resolution(monkeypatch, resolves={"lancedb"}, fails={})
