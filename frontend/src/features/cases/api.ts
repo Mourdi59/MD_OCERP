@@ -301,6 +301,9 @@ const ROLE_SET: Record<ProfessionalRole, true> = {
   'design-lead': true,
   'document-controller': true,
   'commercial-manager': true,
+  accountant: true,
+  'contract-administrator': true,
+  'finance-manager': true,
   foreman: true,
 };
 
