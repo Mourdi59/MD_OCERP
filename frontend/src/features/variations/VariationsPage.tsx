@@ -392,14 +392,22 @@ export function VariationsPage() {
   const [tab, setTab] = useState<Tab>('notices');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  /* Both of these narrow every tab, and the status one is sent to the
+     endpoint, which applies it before counting. So while either is set the
+     `total` on the envelope describes the query rather than the register and
+     cannot be read as a denial that the register holds anything. */
+  const filtersActive = Boolean(search.trim() || statusFilter);
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('');
+  };
   // Arrow-key navigation across the 5-tab variations strip (WCAG 2.1.1).
   const onTabKeyDown = useTabKeyboardNav<Tab>({
     ids: VARIATIONS_TAB_IDS,
     activeId: tab,
     onChange: (next) => {
       setTab(next);
-      setStatusFilter('');
-      setSearch('');
+      clearFilters();
     },
     orientation: 'horizontal',
   });
@@ -823,8 +831,7 @@ export function VariationsPage() {
                 tabIndex={isActive ? 0 : -1}
                 onClick={() => {
                   setTab(tabItem.id);
-                  setStatusFilter('');
-                  setSearch('');
+                  clearFilters();
                 }}
                 className={clsx(
                   'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors',
@@ -896,6 +903,7 @@ export function VariationsPage() {
           <NoticeTable
             rows={filteredNotices}
             registerTotal={activeQuery.data?.total ?? 0}
+            onClearFilters={filtersActive ? clearFilters : undefined}
             onSelect={(id) => setSelected({ kind: 'notices', id })}
             onEdit={(row) => setEditTarget({ kind: 'notices', row })}
             onDelete={(id) => void handleDelete('notices', id)}
@@ -905,6 +913,7 @@ export function VariationsPage() {
           <RequestTable
             rows={filteredRequests}
             registerTotal={activeQuery.data?.total ?? 0}
+            onClearFilters={filtersActive ? clearFilters : undefined}
             currency={currency}
             onSelect={(id) => setSelected({ kind: 'requests', id })}
             onEdit={(row) => setEditTarget({ kind: 'requests', row })}
@@ -915,6 +924,7 @@ export function VariationsPage() {
           <OrderTable
             rows={filteredOrders}
             registerTotal={activeQuery.data?.total ?? 0}
+            onClearFilters={filtersActive ? clearFilters : undefined}
             currency={currency}
             onSelect={(id) => setSelected({ kind: 'orders', id })}
             onEdit={(row) => setEditTarget({ kind: 'orders', row })}
@@ -925,6 +935,7 @@ export function VariationsPage() {
           <DayworkTable
             rows={filteredDaywork}
             registerTotal={activeQuery.data?.total ?? 0}
+            onClearFilters={filtersActive ? clearFilters : undefined}
             currency={currency}
             onSelect={(id) => setSelected({ kind: 'daywork', id })}
             onEdit={(row) => setEditTarget({ kind: 'daywork', row })}
@@ -935,6 +946,7 @@ export function VariationsPage() {
           <EoTTable
             rows={filteredEot}
             registerTotal={activeQuery.data?.total ?? 0}
+            onClearFilters={filtersActive ? clearFilters : undefined}
             onSelect={(id) => setSelected({ kind: 'eot', id })}
             onEdit={(row) => setEditTarget({ kind: 'eot', row })}
             onDelete={(id) => void handleDelete('eot', id)}
@@ -990,6 +1002,7 @@ export function VariationsPage() {
 function NoticeTable({
   rows,
   registerTotal,
+  onClearFilters,
   onSelect,
   onEdit,
   onDelete,
@@ -998,6 +1011,10 @@ function NoticeTable({
   rows: Notice[];
   /** What the register holds, from the page envelope, not what survived the search box. */
   registerTotal: number;
+  /** Set only while a filter narrows the list, and clears every one of them.
+      Its presence is also the signal that `registerTotal` counts a filtered
+      query rather than the register, so it cannot be read as a denial. */
+  onClearFilters?: () => void;
   onSelect: (id: string) => void;
   onEdit: (row: Notice) => void;
   onDelete: (id: string) => void;
@@ -1009,11 +1026,19 @@ function NoticeTable({
     // survived the search box narrowing the loaded page. Reading it off `rows`
     // prints "No notices yet" under a notice reporting how many the register
     // holds, and invites the reader to raise the first one.
-    if (registerTotal > 0) {
+    if (registerTotal > 0 || onClearFilters) {
       return (
         <EmptyState
           icon={<Bell size={22} />}
           title={t('common.no_results', { defaultValue: 'No results found' })}
+          action={
+            onClearFilters
+              ? {
+                  label: t('common.clear_filters', { defaultValue: 'Clear filters' }),
+                  onClick: onClearFilters,
+                }
+              : undefined
+          }
         />
       );
     }
@@ -1091,6 +1116,7 @@ function NoticeTable({
 function RequestTable({
   rows,
   registerTotal,
+  onClearFilters,
   currency,
   onSelect,
   onEdit,
@@ -1100,6 +1126,10 @@ function RequestTable({
   rows: VariationRequest[];
   /** What the register holds, from the page envelope, not what survived the search box. */
   registerTotal: number;
+  /** Set only while a filter narrows the list, and clears every one of them.
+      Its presence is also the signal that `registerTotal` counts a filtered
+      query rather than the register, so it cannot be read as a denial. */
+  onClearFilters?: () => void;
   currency: string;
   onSelect: (id: string) => void;
   onEdit: (row: VariationRequest) => void;
@@ -1108,11 +1138,19 @@ function RequestTable({
 }) {
   const { t } = useTranslation();
   if (rows.length === 0) {
-    if (registerTotal > 0) {
+    if (registerTotal > 0 || onClearFilters) {
       return (
         <EmptyState
           icon={<FileText size={22} />}
           title={t('common.no_results', { defaultValue: 'No results found' })}
+          action={
+            onClearFilters
+              ? {
+                  label: t('common.clear_filters', { defaultValue: 'Clear filters' }),
+                  onClick: onClearFilters,
+                }
+              : undefined
+          }
         />
       );
     }
@@ -1195,6 +1233,7 @@ function RequestTable({
 function OrderTable({
   rows,
   registerTotal,
+  onClearFilters,
   currency,
   onSelect,
   onEdit,
@@ -1204,6 +1243,10 @@ function OrderTable({
   rows: VariationOrder[];
   /** What the register holds, from the page envelope, not what survived the search box. */
   registerTotal: number;
+  /** Set only while a filter narrows the list, and clears every one of them.
+      Its presence is also the signal that `registerTotal` counts a filtered
+      query rather than the register, so it cannot be read as a denial. */
+  onClearFilters?: () => void;
   currency: string;
   onSelect: (id: string) => void;
   onEdit: (row: VariationOrder) => void;
@@ -1212,11 +1255,19 @@ function OrderTable({
 }) {
   const { t } = useTranslation();
   if (rows.length === 0) {
-    if (registerTotal > 0) {
+    if (registerTotal > 0 || onClearFilters) {
       return (
         <EmptyState
           icon={<FileCheck2 size={22} />}
           title={t('common.no_results', { defaultValue: 'No results found' })}
+          action={
+            onClearFilters
+              ? {
+                  label: t('common.clear_filters', { defaultValue: 'Clear filters' }),
+                  onClick: onClearFilters,
+                }
+              : undefined
+          }
         />
       );
     }
@@ -1306,6 +1357,7 @@ function OrderTable({
 function DayworkTable({
   rows,
   registerTotal,
+  onClearFilters,
   currency,
   onSelect,
   onEdit,
@@ -1315,6 +1367,10 @@ function DayworkTable({
   rows: DayworkSheet[];
   /** What the register holds, from the page envelope, not what survived the search box. */
   registerTotal: number;
+  /** Set only while a filter narrows the list, and clears every one of them.
+      Its presence is also the signal that `registerTotal` counts a filtered
+      query rather than the register, so it cannot be read as a denial. */
+  onClearFilters?: () => void;
   currency: string;
   onSelect: (id: string) => void;
   onEdit: (row: DayworkSheet) => void;
@@ -1323,11 +1379,19 @@ function DayworkTable({
 }) {
   const { t } = useTranslation();
   if (rows.length === 0) {
-    if (registerTotal > 0) {
+    if (registerTotal > 0 || onClearFilters) {
       return (
         <EmptyState
           icon={<Hammer size={22} />}
           title={t('common.no_results', { defaultValue: 'No results found' })}
+          action={
+            onClearFilters
+              ? {
+                  label: t('common.clear_filters', { defaultValue: 'Clear filters' }),
+                  onClick: onClearFilters,
+                }
+              : undefined
+          }
         />
       );
     }
@@ -1412,6 +1476,7 @@ function DayworkTable({
 function EoTTable({
   rows,
   registerTotal,
+  onClearFilters,
   onSelect,
   onEdit,
   onDelete,
@@ -1420,6 +1485,10 @@ function EoTTable({
   rows: ExtensionOfTimeClaim[];
   /** What the register holds, from the page envelope, not what survived the search box. */
   registerTotal: number;
+  /** Set only while a filter narrows the list, and clears every one of them.
+      Its presence is also the signal that `registerTotal` counts a filtered
+      query rather than the register, so it cannot be read as a denial. */
+  onClearFilters?: () => void;
   onSelect: (id: string) => void;
   onEdit: (row: ExtensionOfTimeClaim) => void;
   onDelete: (id: string) => void;
@@ -1427,11 +1496,19 @@ function EoTTable({
 }) {
   const { t } = useTranslation();
   if (rows.length === 0) {
-    if (registerTotal > 0) {
+    if (registerTotal > 0 || onClearFilters) {
       return (
         <EmptyState
           icon={<Clock size={22} />}
           title={t('common.no_results', { defaultValue: 'No results found' })}
+          action={
+            onClearFilters
+              ? {
+                  label: t('common.clear_filters', { defaultValue: 'Clear filters' }),
+                  onClick: onClearFilters,
+                }
+              : undefined
+          }
         />
       );
     }

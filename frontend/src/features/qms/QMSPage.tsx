@@ -378,6 +378,16 @@ export function QMSPage() {
     [auditQ.data, search],
   );
 
+  /* Category only appears on the punch tab, and switching tabs resets all
+     three below, so a set category cannot outlive the tab that offers it and
+     needs no tab test here. */
+  const filtersActive = Boolean(search.trim() || statusFilter || categoryFilter);
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('');
+    setCategoryFilter('');
+  };
+
   const isLoading =
     (tab === 'itp' && itpQ.isLoading) ||
     (tab === 'inspections' && inspQ.isLoading) ||
@@ -477,9 +487,7 @@ export function QMSPage() {
                 type="button"
                 onClick={() => {
                   setTab(it.id);
-                  setStatusFilter('');
-                  setSearch('');
-                  setCategoryFilter('');
+                  clearFilters();
                 }}
                 className={clsx(
                   'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
@@ -600,6 +608,7 @@ export function QMSPage() {
           <ITPTable
             rows={filteredItp}
             registerTotal={activeQuery.data?.total ?? 0}
+            onClearFilters={filtersActive ? clearFilters : undefined}
             onAction={() => setCreateOpen(true)}
             onSelect={(id) => setSelectedPlanId(id)}
           />
@@ -607,6 +616,7 @@ export function QMSPage() {
           <InspectionTable
             rows={filteredInsp}
             registerTotal={activeQuery.data?.total ?? 0}
+            onClearFilters={filtersActive ? clearFilters : undefined}
             onSelect={(id) => setSelectedInspectionId(id)}
             onAction={() => setCreateOpen(true)}
           />
@@ -614,6 +624,7 @@ export function QMSPage() {
           <NCRTable
             rows={filteredNcrs}
             registerTotal={activeQuery.data?.total ?? 0}
+            onClearFilters={filtersActive ? clearFilters : undefined}
             onSelect={(id) => setSelectedNcrId(id)}
             onAction={() => setCreateOpen(true)}
           />
@@ -621,12 +632,14 @@ export function QMSPage() {
           <PunchTable
             rows={filteredPunch}
             registerTotal={activeQuery.data?.total ?? 0}
+            onClearFilters={filtersActive ? clearFilters : undefined}
             onAction={() => setCreateOpen(true)}
           />
         ) : (
           <AuditTable
             rows={filteredAudits}
             registerTotal={activeQuery.data?.total ?? 0}
+            onClearFilters={filtersActive ? clearFilters : undefined}
             onAction={() => setCreateOpen(true)}
           />
         )}
@@ -819,12 +832,17 @@ function KvBlock({ label, value }: { label: React.ReactNode; value: React.ReactN
 function ITPTable({
   rows,
   registerTotal,
+  onClearFilters,
   onAction,
   onSelect,
 }: {
   rows: ITPPlan[];
   /** What the register holds, from the page envelope, not what survived the search box. */
   registerTotal: number;
+  /** Set only while a filter narrows the list, and clears every one of them.
+      Its presence is also the signal that `registerTotal` counts a filtered
+      query rather than the register, so it cannot be read as a denial. */
+  onClearFilters?: () => void;
   onAction: () => void;
   onSelect: (id: string) => void;
 }) {
@@ -844,11 +862,19 @@ function ITPTable({
     // is left after the search box has narrowed the loaded page. Reading it
     // off `rows` prints "No ITP plans yet" directly under a notice saying how
     // many the register holds, and offers to create the first one.
-    if (registerTotal > 0) {
+    if (registerTotal > 0 || onClearFilters) {
       return (
         <EmptyState
           icon={<FileCheck size={22} />}
           title={t('common.no_results', { defaultValue: 'No results found' })}
+          action={
+            onClearFilters
+              ? {
+                  label: t('common.clear_filters', { defaultValue: 'Clear filters' }),
+                  onClick: onClearFilters,
+                }
+              : undefined
+          }
         />
       );
     }
@@ -918,22 +944,35 @@ function ITPTable({
 function InspectionTable({
   rows,
   registerTotal,
+  onClearFilters,
   onSelect,
   onAction,
 }: {
   rows: Inspection[];
   /** What the register holds, from the page envelope, not what survived the search box. */
   registerTotal: number;
+  /** Set only while a filter narrows the list, and clears every one of them.
+      Its presence is also the signal that `registerTotal` counts a filtered
+      query rather than the register, so it cannot be read as a denial. */
+  onClearFilters?: () => void;
   onSelect: (id: string) => void;
   onAction: () => void;
 }) {
   const { t } = useTranslation();
   if (rows.length === 0) {
-    if (registerTotal > 0) {
+    if (registerTotal > 0 || onClearFilters) {
       return (
         <EmptyState
           icon={<ClipboardCheck size={22} />}
           title={t('common.no_results', { defaultValue: 'No results found' })}
+          action={
+            onClearFilters
+              ? {
+                  label: t('common.clear_filters', { defaultValue: 'Clear filters' }),
+                  onClick: onClearFilters,
+                }
+              : undefined
+          }
         />
       );
     }
@@ -991,22 +1030,35 @@ function InspectionTable({
 function NCRTable({
   rows,
   registerTotal,
+  onClearFilters,
   onSelect,
   onAction,
 }: {
   rows: NCR[];
   /** What the register holds, from the page envelope, not what survived the search box. */
   registerTotal: number;
+  /** Set only while a filter narrows the list, and clears every one of them.
+      Its presence is also the signal that `registerTotal` counts a filtered
+      query rather than the register, so it cannot be read as a denial. */
+  onClearFilters?: () => void;
   onSelect: (id: string) => void;
   onAction: () => void;
 }) {
   const { t } = useTranslation();
   if (rows.length === 0) {
-    if (registerTotal > 0) {
+    if (registerTotal > 0 || onClearFilters) {
       return (
         <EmptyState
           icon={<AlertOctagon size={22} />}
           title={t('common.no_results', { defaultValue: 'No results found' })}
+          action={
+            onClearFilters
+              ? {
+                  label: t('common.clear_filters', { defaultValue: 'Clear filters' }),
+                  onClick: onClearFilters,
+                }
+              : undefined
+          }
         />
       );
     }
@@ -1073,11 +1125,16 @@ function NCRTable({
 function PunchTable({
   rows,
   registerTotal,
+  onClearFilters,
   onAction,
 }: {
   rows: PunchItem[];
   /** What the register holds, from the page envelope, not what survived the search box. */
   registerTotal: number;
+  /** Set only while a filter narrows the list, and clears every one of them.
+      Its presence is also the signal that `registerTotal` counts a filtered
+      query rather than the register, so it cannot be read as a denial. */
+  onClearFilters?: () => void;
   onAction: () => void;
 }) {
   const { t } = useTranslation();
@@ -1092,11 +1149,19 @@ function PunchTable({
     onError: (e) => addToast({ type: 'error', title: getErrorMessage(e) }),
   });
   if (rows.length === 0) {
-    if (registerTotal > 0) {
+    if (registerTotal > 0 || onClearFilters) {
       return (
         <EmptyState
           icon={<ListChecks size={22} />}
           title={t('common.no_results', { defaultValue: 'No results found' })}
+          action={
+            onClearFilters
+              ? {
+                  label: t('common.clear_filters', { defaultValue: 'Clear filters' }),
+                  onClick: onClearFilters,
+                }
+              : undefined
+          }
         />
       );
     }
@@ -1163,11 +1228,16 @@ function PunchTable({
 function AuditTable({
   rows,
   registerTotal,
+  onClearFilters,
   onAction,
 }: {
   rows: Audit[];
   /** What the register holds, from the page envelope, not what survived the search box. */
   registerTotal: number;
+  /** Set only while a filter narrows the list, and clears every one of them.
+      Its presence is also the signal that `registerTotal` counts a filtered
+      query rather than the register, so it cannot be read as a denial. */
+  onClearFilters?: () => void;
   onAction: () => void;
 }) {
   const { t } = useTranslation();
@@ -1182,11 +1252,19 @@ function AuditTable({
     onError: (e) => addToast({ type: 'error', title: getErrorMessage(e) }),
   });
   if (rows.length === 0) {
-    if (registerTotal > 0) {
+    if (registerTotal > 0 || onClearFilters) {
       return (
         <EmptyState
           icon={<Award size={22} />}
           title={t('common.no_results', { defaultValue: 'No results found' })}
+          action={
+            onClearFilters
+              ? {
+                  label: t('common.clear_filters', { defaultValue: 'Clear filters' }),
+                  onClick: onClearFilters,
+                }
+              : undefined
+          }
         />
       );
     }

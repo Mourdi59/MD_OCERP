@@ -1862,6 +1862,14 @@ export function RFIPage() {
      one page at a time and `total` is the only thing that says so. */
   const rfis = rfiPage?.items ?? [];
   const rfiTotal = rfiPage?.total ?? rfis.length;
+  /* `total` counts the rows the query matched, and the endpoint narrows by
+     ?status= and ?search= before it counts, so this number speaks for the
+     whole register only when neither was sent. With either one set the
+     unfiltered question was never asked, and an answer nobody asked for
+     cannot be used to call the register empty. Priority and discipline are
+     absent on purpose: they are applied here rather than by the endpoint,
+     so they leave `total` alone. */
+  const registerMayHold = rfiTotal > 0 || Boolean(statusFilter) || Boolean(debouncedSearch);
 
   /* Server already filters by ?status= / ?search= but priority + discipline
      are filtered client-side for now — the column list endpoint does not
@@ -2493,7 +2501,7 @@ export function RFIPage() {
                      so narrowing by either of those alone reached "No RFIs
                      yet" on a project holding hundreds. What the register
                      holds is the thing being denied, so ask that instead. */
-                  rfiTotal > 0
+                  registerMayHold
                   ? t('rfi.no_results', { defaultValue: 'No matching RFIs' })
                   : t('rfi.no_rfis', { defaultValue: 'No RFIs yet' })
             }
@@ -2502,7 +2510,7 @@ export function RFIPage() {
                 ? t('rfi.no_quick_hint', {
                     defaultValue: 'Clear the quick filter to see all RFIs for this project.',
                   })
-                : rfiTotal > 0
+                : registerMayHold
                   ? t('rfi.no_results_hint', {
                       defaultValue: 'Try adjusting your search or filters to find what you are looking for.',
                     })
@@ -2516,7 +2524,7 @@ export function RFIPage() {
                     label: t('rfi.quick_clear', { defaultValue: 'Show all RFIs' }),
                     onClick: () => setQuickView('all'),
                   }
-                : rfiTotal === 0
+                : !registerMayHold
                   ? {
                       label: t('rfi.new_rfi', { defaultValue: 'New RFI' }),
                       onClick: () => setShowCreateModal(true),
