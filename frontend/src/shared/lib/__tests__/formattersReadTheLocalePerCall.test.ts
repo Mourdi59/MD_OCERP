@@ -40,7 +40,7 @@ function frozenSites(text: string): number[] {
     const hook = lines.slice(Math.max(0, index - 4), index + 1).some((candidate) => MEMOISED.test(candidate));
     // A memo that lists the language is re-run by the switch, so it is fine.
     const deps = lines.slice(index, index + 12).join('\n').match(/,\s*(\[[^\]]*\])\s*,?\s*\)/);
-    const watchesLanguage = deps !== null && /language|locale|i18n/i.test(deps[1]);
+    const watchesLanguage = deps?.[1] !== undefined && /language|locale|i18n/i.test(deps[1]);
     if (atModuleScope || (hook && !watchesLanguage)) frozen.push(index + 1);
   });
   return frozen;
