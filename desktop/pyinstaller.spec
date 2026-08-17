@@ -178,15 +178,15 @@ a = Analysis(
     # wheel would ever see it. Both names are now in requirements-desktop.lock
     # and both are gone from this list.
     #
-    # It costs what a machine-learning runtime costs. Measured against PyPI for
-    # the pinned versions, the encoder closure adds roughly 190 MB of compressed
-    # wheels on Windows and 174 MB on macOS. Linux is far worse, about 2.7 GB,
-    # because torch's Linux wheels declare the whole nvidia CUDA stack while the
-    # Windows and macOS wheels are CPU-only. That asymmetry is not something
-    # this file can fix; see the note on --torch-backend in the lock's history.
-    # It matters more than a download counter, because the EXE below is a
-    # onefile build that unpacks its entire payload to a temporary directory on
-    # every launch.
+    # It costs what a machine-learning runtime costs, and the number depends on
+    # a decision made in the lock rather than here. torch's Linux wheels on PyPI
+    # declare the whole nvidia CUDA stack, so a lock compiled without
+    # --torch-backend=cpu adds about 2.7 GB there against about 190 MB on
+    # Windows. The lock pins the CPU build, which brings Linux back in line and
+    # costs the other two platforms nothing, because their PyPI wheels were
+    # CPU-only to begin with. It is worth more than a download counter: the EXE
+    # below is a onefile build that unpacks its entire payload to a temporary
+    # directory on every launch, so this weight is paid at every start.
     #
     # The Qt bindings stay excluded because the sidecar is a headless HTTP
     # server with no GUI; they are never imported at runtime. That exclusion

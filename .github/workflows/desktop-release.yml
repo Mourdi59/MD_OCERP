@@ -88,7 +88,24 @@ jobs:
           # (environment markers), so the same file resolves correctly on
           # Windows, macOS and Linux. Then install the project itself without
           # touching deps, so the lock fully owns the dependency graph.
-          pip install -r requirements-desktop.lock
+          #
+          # The extra index is where torch's CPU builds live, and Linux is the
+          # only leg that needs it. Left to PyPI, torch's Linux wheels declare
+          # the whole nvidia CUDA stack and this step grows from about 190 MB
+          # of wheels to about 2.7 GB, on a headless server that will never
+          # address a GPU. The Windows and macOS wheels on PyPI are CPU-only
+          # already, so the pin costs them nothing.
+          #
+          # The index is added here rather than written into the lock on
+          # purpose. It publishes its own copies of a few ordinary packages,
+          # some of them years stale, and offering it to the resolver as a
+          # general source is not free: it serves urllib3 1.26.13 against
+          # qdrant-client's floor of 1.26.14, and compiling the lock with the
+          # index in scope fails outright on that conflict. Here every version
+          # is already decided by the lock, so pip only has to find the pinned
+          # files rather than choose between them.
+          pip install -r requirements-desktop.lock \
+            --extra-index-url https://download.pytorch.org/whl/cpu
           pip install -e . --no-deps
 
       - name: Build sidecar with PyInstaller

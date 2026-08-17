@@ -40,14 +40,23 @@ _BACKEND = Path(__file__).resolve().parents[2]
 _LOCK = _BACKEND / "requirements-desktop.lock"
 _SPEC = _BACKEND.parent / "desktop" / "pyinstaller.spec"
 
-# The command that regenerates the lock. It carries ``--extra semantic-encoder``:
-# without it uv resolves the base dependencies only and silently drops both the
-# vector-store client and the encoder below, which is the exact drift this file
-# exists to catch.
+# The command that regenerates the lock. Both flags are load-bearing. Without
+# ``--extra semantic-encoder`` uv resolves the base dependencies only and
+# silently drops the vector-store client and the encoder below. Without
+# ``--torch-backend=cpu`` it resolves torch's default Linux wheels, which
+# declare the whole nvidia CUDA stack and take the Linux install from roughly
+# 190 MB of wheels to roughly 2.7 GB, for a headless server that never
+# addresses a GPU.
 _REGEN = (
     "uv pip compile pyproject.toml --universal --python-version 3.12 "
-    "--extra semantic-encoder -o requirements-desktop.lock"
+    "--extra semantic-encoder --torch-backend=cpu -o requirements-desktop.lock"
 )
+
+# Package-name prefixes that only appear when torch resolved its GPU build.
+# Kept as prefixes because the CUDA wheels are split across a dozen
+# differently-suffixed distributions (nvidia-cublas, nvidia-cudnn-cu13,
+# cuda-toolkit, triton) and a new CUDA release renames them again.
+_GPU_PREFIXES = ("nvidia-", "cuda-", "triton")
 
 # Base deps whose absence silently breaks a desktop-only feature. Each is an
 # unconditional (non-optional, non-platform-gated) dependency declared in
@@ -161,6 +170,38 @@ def test_cwicr_embedder_absent_from_desktop_lock() -> None:
         "carries [semantic-encoder], not [semantic]: FlagEmbedding needs a ~700 MB model no desktop "
         "install downloads and polars reads a parquet nothing ships, so both are weight with no "
         f"reachable code path. Regenerate with: {_REGEN}"
+    )
+
+
+def test_torch_is_pinned_to_its_cpu_build() -> None:
+    """The desktop sidecar is a headless HTTP server and never addresses a GPU.
+
+    Two assertions because they fail in different ways. A lock recompiled
+    without ``--torch-backend=cpu`` still works, still passes every other test
+    in this file, and simply makes the Linux installer about 2.5 GB heavier -
+    which nobody notices until a release. The CUDA distributions are the
+    visible symptom; the local version on the torch pin is the cause.
+
+    macOS is exempt and has to be: there are no CUDA wheels for it, so the
+    pytorch index publishes no ``+cpu`` variant and the plain PyPI wheel is
+    already CPU-only.
+    """
+    versions = _lock_versions()
+    assert versions, f"parsed no pins from {_LOCK}; the lock format changed and this guard went blind"
+
+    gpu = sorted(name for name in versions if name.startswith(_GPU_PREFIXES))
+    assert not gpu, (
+        f"requirements-desktop.lock resolved torch's GPU build; it pulled {len(gpu)} CUDA "
+        f"distributions: {gpu[:5]}{' ...' if len(gpu) > 5 else ''}. That is roughly 2.5 GB of "
+        f"wheels the headless sidecar cannot use. Regenerate with: {_REGEN}"
+    )
+
+    torch_pins = [line for line in _LOCK.read_text(encoding="utf-8").splitlines() if re.match(r"^torch==", line)]
+    assert torch_pins, "torch missing from requirements-desktop.lock"
+    non_darwin = [line for line in torch_pins if "darwin" not in line or "!=" in line]
+    assert non_darwin and all("+cpu" in line for line in non_darwin), (
+        f"torch is pinned as {torch_pins} but the Windows and Linux pins must carry the +cpu "
+        f"local version. Regenerate with: {_REGEN}"
     )
 
 
