@@ -1,0 +1,113 @@
+{
+  "english_keys": 391,
+  "locales": {
+    "ar": {
+      "missing": 218,
+      "digest": "333e281fe8bce6ef"
+    },
+    "bg": {
+      "missing": 0,
+      "digest": "e3b0c44298fc1c14"
+    },
+    "cs": {
+      "missing": 255,
+      "digest": "8965e5fa9e93c591"
+    },
+    "da": {
+      "missing": 255,
+      "digest": "8965e5fa9e93c591"
+    },
+    "de": {
+      "missing": 0,
+      "digest": "e3b0c44298fc1c14"
+    },
+    "es": {
+      "missing": 255,
+      "digest": "8965e5fa9e93c591"
+    },
+    "fi": {
+      "missing": 255,
+      "digest": "8965e5fa9e93c591"
+    },
+    "fr": {
+      "missing": 0,
+      "digest": "e3b0c44298fc1c14"
+    },
+    "hi": {
+      "missing": 0,
+      "digest": "e3b0c44298fc1c14"
+    },
+    "hr": {
+      "missing": 0,
+      "digest": "e3b0c44298fc1c14"
+    },
+    "id": {
+      "missing": 0,
+      "digest": "e3b0c44298fc1c14"
+    },
+    "it": {
+      "missing": 255,
+      "digest": "8965e5fa9e93c591"
+    },
+    "ja": {
+      "missing": 238,
+      "digest": "f2f1b678ba005e21"
+    },
+    "ko": {
+      "missing": 255,
+      "digest": "8965e5fa9e93c591"
+    },
+    "nl": {
+      "missing": 255,
+      "digest": "8965e5fa9e93c591"
+    },
+    "no": {
+      "missing": 255,
+      "digest": "8965e5fa9e93c591"
+    },
+    "pl": {
+      "missing": 255,
+      "digest": "8965e5fa9e93c591"
+    },
+    "pt": {
+      "missing": 255,
+      "digest": "8965e5fa9e93c591"
+    },
+    "ro": {
+      "missing": 0,
+      "digest": "e3b0c44298fc1c14"
+    },
+    "ru": {
+      "missing": 0,
+      "digest": "e3b0c44298fc1c14"
+    },
+    "sv": {
+      "missing": 255,
+      "digest": "8965e5fa9e93c591"
+    },
+    "th": {
+      "missing": 0,
+      "digest": "e3b0c44298fc1c14"
+    },
+    "tr": {
+      "missing": 255,
+      "digest": "8965e5fa9e93c591"
+    },
+    "uk": {
+      "missing": 0,
+      "digest": "e3b0c44298fc1c14"
+    },
+    "uz": {
+      "missing": 0,
+      "digest": "e3b0c44298fc1c14"
+    },
+    "vi": {
+      "missing": 0,
+      "digest": "e3b0c44298fc1c14"
+    },
+    "zh": {
+      "missing": 255,
+      "digest": "8965e5fa9e93c591"
+    }
+  }
+}
