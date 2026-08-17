@@ -37,6 +37,15 @@ Three checks:
     compared only when the count is unchanged: without it a locale could
     drop one key and fill another and stay green on an unmoved number.
 
+  * No locale answers a question en.json did not ask. The coverage check above
+    runs one way only, and is blind in the other by construction: asking
+    whether every English key is present can never notice a locale carrying
+    keys English does not have. ar.json held twelve such keys and ru.json four,
+    for months, through every gate we had. The two directions get separate
+    assertions and separate messages on purpose, because a locale short of a
+    key and a locale carrying a spare one are opposite faults with opposite
+    fixes, and one symmetric message for both would obscure which had happened.
+
   * Placeholders survive translation. ``t()`` runs str.format over the value,
     so the braces are code and not text. It catches KeyError and ValueError,
     which makes a renamed field degrade to the untouched string, but it does
@@ -115,6 +124,31 @@ def test_locale_is_not_mostly_english(code: str) -> None:
     assert ratio <= MAX_ENGLISH_IDENTITY, (
         f"{code}.json is {ratio:.1%} byte-identical to en.json over {len(shared)} shared keys "
         f"({len(identical)} untranslated values) - that is an English file under a {code} name"
+    )
+
+
+@pytest.mark.parametrize("code", sorted(_locale_files() - {"en"}))
+def test_locale_declares_no_key_english_lacks(code: str) -> None:
+    """en.json defines the key set; a locale translates it and adds nothing.
+
+    A spare key is unreachable rather than harmless. t() looks up the key the
+    caller names, so a key no caller names is never read, and it costs nothing
+    to keep only until someone reads the file and concludes the platform
+    supports something it does not.
+
+    Two kinds turned up when this was first measured. Plural variants (_few,
+    _many, _two, _zero) are inert here because backend t() is a flat dictionary
+    lookup with no plural resolution at all, so nothing can select them; four
+    form correctness belongs in the frontend, which has a plural engine. And
+    keys copied in from the frontend catalogue, which is a separate and much
+    larger key set that this side never renders.
+    """
+    extra = sorted(set(_load_locale(code)) - set(_load_locale("en")))
+    assert not extra, (
+        f"{code}.json declares {len(extra)} key(s) that en.json does not: {extra}. "
+        f"This is the opposite of a coverage gap - nothing is missing, these are spare. "
+        f"Delete them from {code}.json, or add them to en.json first if the backend really "
+        f"should render them, since en.json is what defines the key set."
     )
 
 
