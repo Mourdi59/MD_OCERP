@@ -193,8 +193,15 @@ CLUSTER_MIN_KEYS = 3  # locale-set coherence detector: >=N keys sharing one exac
 # words is a property of the locale alone. It rises when translation lands and
 # falls only when somebody removes a translation, which is the one thing worth
 # forbidding here.
+#
+# Measure the number on the COMMITTED tree, which is what this guard reads when
+# CI runs it. Taken off a working tree it is whatever that tree happens to hold,
+# and this one was written from a disk carrying 1919 uz translations nobody had
+# committed yet, so CI read a locale 1919 values poorer than the number claimed
+# and the guard failed on a repository that had done nothing wrong:
+#   git show HEAD:frontend/src/app/locales/uz.ts
 UNDER_TRANSLATION: dict[str, int] = {
-    "uz": 15797,
+    "uz": 13878,
 }
 
 import re
