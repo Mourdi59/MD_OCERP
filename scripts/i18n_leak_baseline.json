@@ -38,6 +38,7 @@
       "sv",
       "th",
       "tr",
+      "uz",
       "vi",
       "zh"
     ]
@@ -72,6 +73,7 @@
       "sv",
       "th",
       "tr",
+      "uz",
       "vi",
       "zh"
     ]
@@ -84,6 +86,35 @@
       "id",
       "ky"
     ]
+  },
+  "hse.advanced.subtab_capa": {
+    "en_value": "CAPAs",
+    "leaked_locales": [
+      "ar",
+      "bg",
+      "cs",
+      "da",
+      "de",
+      "es",
+      "es-CL",
+      "es-CO",
+      "es-MX",
+      "hi",
+      "ko",
+      "nl",
+      "no",
+      "pl",
+      "pt",
+      "pt-BR",
+      "ro",
+      "sv",
+      "th",
+      "ur",
+      "uz",
+      "vi",
+      "zh"
+    ],
+    "note": "HSE sub-tab label pluralising the CAPA (Corrective and Preventive Action) initialism with a bare English \"-s\". Sibling locales show the initialism is genuinely handled per language: several attach their own plural morphology instead of the English one (et: CAPA-d, fi: CAPA:t, hr: CAPA-e, ky: CAPAлар, tr: CAPA'lar, fil: Mga CAPA), and kk translates the expansion outright (Түзету/алдын алу шаралары). The listed locales, including ru, simply left the untouched English plural form and still need real localisation."
   },
   "match_elements.stage.09_MEP": {
     "en_value": "MEP",
@@ -126,6 +157,7 @@
       "sv",
       "th",
       "tr",
+      "uz",
       "vi",
       "zh"
     ]
@@ -162,6 +194,7 @@
       "sv",
       "th",
       "tr",
+      "uz",
       "vi",
       "zh"
     ]
@@ -198,6 +231,7 @@
       "sv",
       "th",
       "tr",
+      "uz",
       "vi",
       "zh"
     ]
@@ -234,6 +268,7 @@
       "sv",
       "th",
       "tr",
+      "uz",
       "vi",
       "zh"
     ]
@@ -270,8 +305,69 @@
       "sv",
       "th",
       "tr",
+      "uz",
       "vi",
       "zh"
     ]
+  },
+  "takeoff_viewer.width_unit_ftin": {
+    "en_value": "ft + in",
+    "leaked_locales": [
+      "ar",
+      "bg",
+      "cs",
+      "da",
+      "de",
+      "es-MX",
+      "fi",
+      "fil",
+      "hi",
+      "hr",
+      "id",
+      "it",
+      "ko",
+      "nl",
+      "no",
+      "pl",
+      "pt",
+      "pt-BR",
+      "ro",
+      "sv",
+      "th",
+      "tr",
+      "uz",
+      "vi"
+    ],
+    "note": "imperial width-unit dropdown option next to the metric option 'm', read next to a numeric takeoff measurement. Not an invariant SI-style symbol: most locales translate it as a real unit-name label (es/es-CL/es-CO: ft + pulg, fr: pi + po, ru: фт + дюйм, kk/ky/uk: фут + дюйм, ja: フィート + インチ, zh: 英尺 + 英寸), which shows the listed locales still carry the plain English copy."
+  },
+  "takeoff_viewer.width_unit_in": {
+    "en_value": "in",
+    "leaked_locales": [
+      "ar",
+      "bg",
+      "cs",
+      "da",
+      "de",
+      "es-MX",
+      "fi",
+      "fil",
+      "hi",
+      "hr",
+      "id",
+      "it",
+      "ko",
+      "nl",
+      "no",
+      "pl",
+      "pt",
+      "pt-BR",
+      "ro",
+      "sv",
+      "th",
+      "tr",
+      "uz",
+      "vi"
+    ],
+    "note": "unit suffix rendered next to a stroke-width number input (data-testid=prop-stroke-width-in). Sibling key takeoff_viewer.width_unit_ftin's own translations confirm this is a translated unit-name label, not an invariant symbol or the English preposition 'in': ru gives дюйм, es gives pulg, fr gives po, ja gives インチ. The listed locales still carry the plain English copy."
   }
 }

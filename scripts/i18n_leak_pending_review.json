@@ -1761,6 +1761,52 @@
     "en_value": "{{current}} / {{total}}",
     "n": 27
   },
+  "property_dev.house_type.preview_ba": {
+    "differs_in": [
+      "ar",
+      "bg",
+      "bn",
+      "el",
+      "et",
+      "fa",
+      "fil",
+      "fr",
+      "he",
+      "id",
+      "kk",
+      "ko",
+      "ky",
+      "ru",
+      "uk",
+      "ur",
+      "zh"
+    ],
+    "en_value": "Ba",
+    "n": 24
+  },
+  "property_dev.house_type.preview_bd": {
+    "differs_in": [
+      "ar",
+      "bg",
+      "bn",
+      "el",
+      "et",
+      "fa",
+      "fil",
+      "fr",
+      "he",
+      "id",
+      "kk",
+      "ko",
+      "ky",
+      "ru",
+      "uk",
+      "ur",
+      "zh"
+    ],
+    "en_value": "Bd",
+    "n": 24
+  },
   "property_dev.house_type.preview_energy": {
     "differs_in": [
       "ar",

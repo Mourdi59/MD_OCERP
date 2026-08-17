@@ -35205,6 +35205,7 @@ const resource = {
     "review_authority.days_overdue": "Прострочено на {{count}} дн.",
     "review_authority.pinned_version": "Закріплена версія",
     "review_authority.current_version": "Поточна версія",
+    "review_authority.move_to": "Перевести в {{status}}",
     "review_authority.submit_cycle": "Подати",
     "review_authority.withdraw_cycle": "Відкликати",
     "review_authority.cycle_terminal": "Цей цикл закрито.",

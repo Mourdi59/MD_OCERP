@@ -694,6 +694,11 @@
     "note": "literal example source path shown verbatim in a code sample, not prose",
     "reason_category": "file_path_example"
   },
+  "modules.dev_test_e2e": {
+    "en_value": "E2E, Playwright",
+    "note": "developer-facing module-builder documentation naming the project's own test tooling (pytest, vitest, Playwright), sibling entries on the same panel (modules.dev_test_backend/frontend); Playwright is the test framework the project itself uses, not a competitor brand, and CLAUDE.md already treats tooling/framework names as untranslated technical terms. ru.ts also leaves it identical; tr.ts and uk.ts spell out \"end-to-end\" in their own words but keep Playwright, a pre-existing local phrasing choice, not evidence this needs translating everywhere else.",
+    "reason_category": "product_name"
+  },
   "nav.bim": {
     "en_value": "BIM",
     "note": "named open data / interchange standard or format code (CLAUDE.md: not translated)",
@@ -939,6 +944,11 @@
     "note": "id/nl/pt keep 'Item' as an identical loanword (Indonesian, Dutch and Portuguese all use the same spelling for a single list/line entry) - corroborated by the 14-sibling app-wide pool this key was grounded from.",
     "reason_category": "cognate_loanword"
   },
+  "punch.view_kanban": {
+    "en_value": "Kanban",
+    "note": "board-view toggle label; Kanban is an established loanword kept unchanged in every Latin-script locale (cs, da, de, es*, et, fi, fil, fr, hr, id, it, nl, no, pl, pt*, ro, sv, tr, uz, vi). Every locale that differs does so only because its script cannot represent the Latin word losslessly and transliterates it phonetically into its own alphabet (ru/uk/kk/ky/mn: Канбан, ar: كانبان, fa: کانبان, he: קנבן, hi: कानबन, ja: カンバン, ko: 칸반, th: คันบัง, zh: 看板, el: Κάνμπαν) - the same word, not a different one, the same pattern already accepted for transmittals.insights.f_transmittal.",
+    "reason_category": "cognate_loanword"
+  },
   "quantities.badge_cad": {
     "en_value": "CAD",
     "note": "named open data / interchange standard or format code (CLAUDE.md: not translated)",
@@ -1033,6 +1043,11 @@
     "en_value": "PERT",
     "note": "bare technical/business acronym or initialism",
     "reason_category": "abbreviation"
+  },
+  "risk.tab_montecarlo": {
+    "en_value": "Monte Carlo",
+    "note": "Monte Carlo simulation tab label; a named method after the Monaco casino district, kept unchanged in every Latin-script locale (cs, da, de, es*, et, fi, fil, hr, id, it, nl, no, pl, pt*, ro, sv, th, tr, uz, vi). Non-Latin-script locales transliterate rather than translate it (ru/uk/kk/ky/mn: Монте-Карло/Монте Карло, ar: مونت كارلو, fa: مونتکارلو, he: מונטה קרלו, hi: मोंटे कार्लो, ja: モンテカルロ, ko: 몬테카를로, zh: 蒙特卡洛, el: Μόντε Κάρλο, bn: মন্টে কার্লো, fr: Monte-Carlo with a hyphen) - same proper noun, different script or punctuation, not an untranslated leak.",
+    "reason_category": "cognate_loanword"
   },
   "rulePacks.format_ifc": {
     "en_value": "IFC",
