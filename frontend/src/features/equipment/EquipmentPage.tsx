@@ -545,18 +545,32 @@ export function EquipmentPage() {
             }}
           />
         ) : filtered.length === 0 ? (
-          <EmptyState
-            icon={<Truck size={22} />}
-            title={t('equipment.empty', { defaultValue: 'No equipment yet' })}
-            description={t('equipment.empty_desc', {
-              defaultValue:
-                'Register equipment to track utilization, maintenance schedules and certifications.',
-            })}
-            action={{
-              label: t('equipment.new', { defaultValue: 'New Asset' }),
-              onClick: () => setCreateOpen(true),
-            }}
-          />
+          /* "No equipment yet" is a claim about the register, not about what
+             reached the screen. A search matching none of the loaded page, and
+             units the server withheld past that page, both leave `filtered`
+             empty while the register holds hundreds: the invitation to register
+             a first asset then sits directly beneath a notice reading 200 of
+             340. The register's own count is what separates the two cases, so
+             ask it rather than read emptiness off the rows in hand. */
+          (eqQ.data?.total ?? 0) > 0 ? (
+            <EmptyState
+              icon={<Truck size={22} />}
+              title={t('common.no_results', { defaultValue: 'No results found' })}
+            />
+          ) : (
+            <EmptyState
+              icon={<Truck size={22} />}
+              title={t('equipment.empty', { defaultValue: 'No equipment yet' })}
+              description={t('equipment.empty_desc', {
+                defaultValue:
+                  'Register equipment to track utilization, maintenance schedules and certifications.',
+              })}
+              action={{
+                label: t('equipment.new', { defaultValue: 'New Asset' }),
+                onClick: () => setCreateOpen(true),
+              }}
+            />
+          )
         ) : (
           <AssetTable rows={filtered} onSelect={setSelectedId} />
         )}
