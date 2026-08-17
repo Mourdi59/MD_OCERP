@@ -3282,6 +3282,27 @@ async def validate_boq(
         for pos in boq_data.positions
     ]
 
+    # The markup stack, in the shape the boq.markup.* rules read. Without this
+    # key those rules pass vacuously on every bill, which is exactly how a
+    # registered rule ends up dormant: nothing errors, nothing is checked, and
+    # the report says the bill is clean.
+    markups_data = [
+        {
+            "id": str(markup.id),
+            "name": markup.name,
+            "markup_type": markup.markup_type,
+            "category": markup.category,
+            "percentage": markup.percentage,
+            "fixed_amount": markup.fixed_amount,
+            "apply_to": markup.apply_to,
+            "sort_order": markup.sort_order,
+            "is_active": markup.is_active,
+            "scope_position_id": (str(markup.scope_position_id) if markup.scope_position_id else None),
+            "overrides_id": (str(markup.overrides_id) if markup.overrides_id else None),
+        }
+        for markup in await service.list_markups(boq_id)
+    ]
+
     # Determine rule sets from project config. Empty classification /
     # region means "no preference"; the rule registry resolves to a
     # universal rule set (boq_quality only) instead of biasing every
@@ -3296,7 +3317,7 @@ async def validate_boq(
 
     # Run validation
     report = await validation_engine.validate(
-        data={"positions": positions_data},
+        data={"positions": positions_data, "markups": markups_data},
         rule_sets=rule_sets,
         target_type="boq",
         target_id=str(boq_id),

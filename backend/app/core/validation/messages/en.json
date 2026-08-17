@@ -1,4 +1,22 @@
 {
+  "boq_markup": {
+    "contingency_not_on_profit": {
+      "fail": "Contingency \"{markup}\" is computed on a base that already carries the profit line \"{profit}\", so a margin is charged on money set aside for risk",
+      "suggestion": "Apply this line to the direct cost, unless the market's standard method deliberately places risk after overhead and profit"
+    },
+    "order_is_declared": {
+      "fail": "Place {order} in the order is claimed by more than one markup line: {markups}",
+      "suggestion": "Give each markup line its own place, so what compounds onto what is not left to chance"
+    },
+    "percentage_within_band": {
+      "fail": "\"{markup}\" is {percentage}% as a {category} line, outside the plausible band of 0 to {ceiling}%",
+      "suggestion": "Check the decimal point. The line is priced exactly as entered either way"
+    },
+    "cumulative_base_is_settled": {
+      "fail": "\"{markup}\" applies to \"{apply_to}\" but nothing precedes it, so it computes on the direct cost alone",
+      "suggestion": "Move it after the lines it should compound onto, or apply it to the direct cost"
+    }
+  },
   "common": {
     "ok": "OK"
   },

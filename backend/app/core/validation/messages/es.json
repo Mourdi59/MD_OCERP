@@ -1,4 +1,22 @@
 {
+  "boq_markup": {
+    "contingency_not_on_profit": {
+      "fail": "La contingencia \"{markup}\" se calcula sobre una base que ya incluye la línea de beneficio \"{profit}\", de modo que se cobra margen sobre dinero reservado para riesgo",
+      "suggestion": "Aplique esta línea al coste directo, salvo que el método de cálculo habitual del mercado sitúe deliberadamente el riesgo después de gastos generales y beneficio"
+    },
+    "order_is_declared": {
+      "fail": "El puesto {order} del orden lo reclama más de una línea de recargo: {markups}",
+      "suggestion": "Dé a cada línea su propio puesto, para que la secuencia de acumulación no quede al azar"
+    },
+    "percentage_within_band": {
+      "fail": "\"{markup}\" es {percentage}% como línea de tipo \"{category}\", fuera de la banda plausible de 0 a {ceiling}%",
+      "suggestion": "Revise la coma decimal. La línea se calcula exactamente como se introdujo en cualquier caso"
+    },
+    "cumulative_base_is_settled": {
+      "fail": "\"{markup}\" se aplica a \"{apply_to}\" pero nada la precede, por lo que se calcula solo sobre el coste directo",
+      "suggestion": "Colóquela después de las líneas sobre las que debe acumularse, o aplíquela al coste directo"
+    }
+  },
   "common": {
     "ok": "OK"
   },

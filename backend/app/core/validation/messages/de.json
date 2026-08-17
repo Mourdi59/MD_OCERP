@@ -1,4 +1,22 @@
 {
+  "boq_markup": {
+    "contingency_not_on_profit": {
+      "fail": "Der Risikozuschlag \"{markup}\" wird auf eine Basis berechnet, die bereits die Gewinnposition \"{profit}\" enthält, sodass Gewinn auf zurückgestellte Risikomittel anfällt",
+      "suggestion": "Diese Position auf die Einzelkosten beziehen, sofern die im Markt übliche Berechnungsmethode das Risiko nicht bewusst nach Gemeinkosten und Gewinn ansetzt"
+    },
+    "order_is_declared": {
+      "fail": "Platz {order} in der Reihenfolge ist von mehreren Zuschlagspositionen belegt: {markups}",
+      "suggestion": "Jeder Zuschlagsposition einen eigenen Platz geben, damit die Aufschlagsfolge nicht dem Zufall überlassen bleibt"
+    },
+    "percentage_within_band": {
+      "fail": "\"{markup}\" liegt mit {percentage}% als Position der Art \"{category}\" außerhalb des plausiblen Bereichs von 0 bis {ceiling}%",
+      "suggestion": "Das Komma prüfen. Die Position wird in jedem Fall genau wie eingegeben berechnet"
+    },
+    "cumulative_base_is_settled": {
+      "fail": "\"{markup}\" bezieht sich auf \"{apply_to}\", steht aber an erster Stelle und rechnet damit allein auf die Einzelkosten",
+      "suggestion": "Die Position hinter die Zuschläge stellen, auf die sie aufschlagen soll, oder sie auf die Einzelkosten beziehen"
+    }
+  },
   "common": {
     "ok": "OK"
   },
