@@ -61,7 +61,12 @@ function readLocale(code: string): Entry[] {
   const entries: Entry[] = [];
   for (const line of text.split('\n')) {
     const match = PAIR.exec(line);
-    if (match) entries.push({ key: match[1], value: match[2] });
+    // Both groups are read explicitly rather than relying on the match being
+    // truthy: under noUncheckedIndexedAccess an indexed read off a match array
+    // is string | undefined however the regex is written, because the compiler
+    // has no way to know the pattern has two groups.
+    const [, key, value] = match ?? [];
+    if (key !== undefined && value !== undefined) entries.push({ key, value });
   }
   return entries;
 }
