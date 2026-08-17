@@ -44,6 +44,7 @@ from app.core.validation.engine import ValidationReport, validation_engine
 from app.modules.field_diary.models import FieldSyncLedger
 from app.modules.field_diary.repository import FieldSyncLedgerRepository
 from app.modules.field_time import field_time_math as ft
+from app.modules.field_time import working_time as wt
 from app.modules.field_time.models import FieldTimesheet, FieldTimesheetLine
 from app.modules.field_time.repository import FieldTimeRepository
 from app.modules.field_time.schemas import (
@@ -84,6 +85,34 @@ _LEDGER_OP_KIND = "field.time.timesheet"
 _LEDGER_RESULT_TIMESHEET = "field_timesheet"
 _LEDGER_RESULT_WITHDRAWN = "field_timesheet_withdrawn"
 
+# Why a pair of clock times cannot produce a duration, said in the words of the
+# person who typed them. Keyed by the reason codes the pure engine returns.
+_INTERVAL_MESSAGES: dict[str, str] = {
+    ft.INTERVAL_TIMES_REQUIRED: (
+        "A line records both clock times or neither. Add the missing one, or clear the one that is set "
+        "and book the hours by hand."
+    ),
+    ft.INTERVAL_TIMEZONE_MISMATCH: (
+        "The start and the end of this line are on different clocks: one carries a time zone and the "
+        "other does not. Send both the same way."
+    ),
+    ft.INTERVAL_END_BEFORE_START: "This line ends before it starts. Check the two times.",
+    ft.INTERVAL_ZERO_LENGTH: (
+        "This line starts and ends at the same moment, so there is no working time to record. Give it an "
+        "end, or remove the line."
+    ),
+    ft.INTERVAL_OVER_24H: (
+        "One continuous shift longer than 24 hours is a data-entry error. Split it into the days it "
+        "was actually worked on."
+    ),
+    ft.INTERVAL_BREAK_NEGATIVE: "A break cannot be a negative number of minutes.",
+    ft.INTERVAL_BREAK_EXCEEDS_SHIFT: (
+        "The break is as long as the shift, or longer, so nothing is left to record as working time. "
+        "Check the break and the two times."
+    ),
+}
+_INTERVAL_FALLBACK = "The start time, the end time and the break on this line do not make a working period."
+
 
 def _offline_scope_error() -> HTTPException:
     """The refusal for an entry key that is not this project's to touch.
@@ -119,6 +148,18 @@ class OfflineOpOutcome:
 def _utcnow() -> datetime:
     """Return a timezone-aware UTC now."""
     return datetime.now(UTC)
+
+
+def _instant_key(value: object) -> str:
+    """A comparable spelling of an instant, empty when there is none.
+
+    Normalised to UTC first. A device an hour east sends the same moment as
+    ``09:00+02:00`` that the column reads back as ``07:00+00:00``, and comparing
+    the two spellings would call a redelivery an edit.
+    """
+    if not isinstance(value, datetime):
+        return ""
+    return (value.astimezone(UTC) if value.tzinfo is not None else value).isoformat()
 
 
 def _as_uuid(value: object) -> uuid.UUID | None:
@@ -161,6 +202,7 @@ class FieldTimeService:
             date=data.date,
             status=_DRAFT,
             note=data.note,
+            working_time_regime=data.working_time_regime,
             metadata_=metadata,
         )
         timesheet = await self.repo.create(timesheet)
@@ -243,6 +285,195 @@ class FieldTimeService:
             "overtime_hours": ft.quantize_hours(overtime),
         }
 
+    # ── Statutory working-time record ────────────────────────────────────────
+
+    async def working_time_record(
+        self,
+        project_id: uuid.UUID,
+        *,
+        date_from: date,
+        date_to: date,
+        regime_code: str | None = None,
+        today: date | None = None,
+    ) -> dict[str, Any]:
+        """The working-time record for a project over a period, as an audit asks for it.
+
+        A customs inspection asks one question: for this site, over these dates,
+        which people worked, and when did each of them start and stop on each
+        day. That is a worker-day, so this folds the period's timesheet lines
+        into worker-days: earliest start, latest end, total unpaid break, total
+        hours, and how many of the bookings behind them carry no clock times at
+        all. Plant is left out; a machine has no working time to record.
+
+        Reversed timesheets and the reversals that netted them out are left out
+        of the fold, so a corrected day is not counted twice, and counted in
+        ``excluded_corrections`` so nobody has to guess why the total moved.
+
+        The regime is the one asked for, or failing that the first one the
+        period's own timesheets carry. With no regime anywhere, the record is
+        still produced - it simply says nothing about deadlines or retention,
+        because no rule was chosen to say it under.
+
+        Args:
+            project_id: The project the record is for.
+            date_from: First day of the period, inclusive.
+            date_to: Last day of the period, inclusive.
+            regime_code: Force a regime rather than reading it off the data.
+            today: The day the retention window is judged on (defaults to now).
+
+        Returns:
+            A dict the router renders as a :class:`WorkingTimeRecordOut`.
+        """
+        timesheets, _total = await self.repo.list_for_project(
+            project_id,
+            limit=100000,
+            date_from=date_from,
+            date_to=date_to,
+        )
+        live: list[FieldTimesheet] = []
+        excluded = 0
+        for sheet in timesheets:
+            if sheet.status == _REVERSED or sheet.reverses_id is not None:
+                excluded += 1
+                continue
+            live.append(sheet)
+
+        spec = wt.regime_for(regime_code)
+        if spec is None:
+            for sheet in sorted(live, key=lambda s: s.date):
+                spec = wt.regime_for(sheet.working_time_regime)
+                if spec is not None:
+                    break
+
+        entries: list[dict[str, Any]] = []
+        for sheet in live:
+            for line in sheet.lines:
+                if line.resource_id is None:
+                    continue
+                entries.append(
+                    {
+                        "work_date": sheet.date,
+                        "resource_id": str(line.resource_id),
+                        "employer_kind": line.employer_kind or "",
+                        "employer_subcontractor_id": (
+                            str(line.employer_subcontractor_id) if line.employer_subcontractor_id else None
+                        ),
+                        "started_at": line.started_at,
+                        "ended_at": line.ended_at,
+                        "break_minutes": line.break_minutes,
+                        # The hours as stored, which for a timed line are the
+                        # hours its times produced. Deliberately not put through
+                        # the project's rounding step the way the timesheet
+                        # header rollup is: a duration rounded to a quarter hour
+                        # no longer equals end minus start minus break, and this
+                        # is the one place where it has to.
+                        "hours": line.hours,
+                        "reference": sheet.reference or "",
+                        "status": sheet.status,
+                        "recorded_at": sheet.created_at,
+                    },
+                )
+
+        days = wt.worker_day_records(entries)
+        worker_names = await self._worker_names({d.resource_id for d in days})
+        employer_names = await self._employer_names({d.employer_id for d in days if d.employer_id})
+        as_of = today or _utcnow().date()
+
+        rows: list[dict[str, Any]] = []
+        total_hours = Decimal("0")
+        late_days = 0
+        missing_times = 0
+        for day in days:
+            stamp = wt.timeliness(day.work_date, day.recorded_at, spec) if spec is not None else None
+            total_hours += day.duration_hours
+            if stamp is not None and stamp.late:
+                late_days += 1
+            if day.segments_without_times:
+                missing_times += 1
+            rows.append(
+                {
+                    "date": day.work_date,
+                    "resource_id": _as_uuid(day.resource_id),
+                    "worker": worker_names.get(day.resource_id, "") or day.resource_id,
+                    "employer_kind": day.employer_kind,
+                    "employer_subcontractor_id": _as_uuid(day.employer_id) if day.employer_id else None,
+                    "employer": (employer_names.get(day.employer_id, "") or day.employer_id or "")
+                    if day.employer_id
+                    else "",
+                    "started_at": day.started_at,
+                    "ended_at": day.ended_at,
+                    "break_minutes": day.break_minutes,
+                    "duration_hours": format(day.duration_hours, "f"),
+                    "segments": day.segments,
+                    "segments_without_times": day.segments_without_times,
+                    "references": list(day.references),
+                    "status": day.status,
+                    "recorded_at": day.recorded_at,
+                    "days_taken": stamp.days_taken if stamp is not None else None,
+                    "late": bool(stamp is not None and stamp.late),
+                    "deadline": stamp.deadline if stamp is not None else None,
+                    "retain_until": stamp.retain_until if stamp is not None else None,
+                    "within_retention": (wt.within_retention(day.work_date, spec, as_of) if spec is not None else True),
+                },
+            )
+
+        return {
+            "project_id": project_id,
+            "date_from": date_from,
+            "date_to": date_to,
+            "regime": spec.code if spec is not None else None,
+            "provision": spec.provision if spec is not None else "",
+            "generated_at": _utcnow(),
+            "days": rows,
+            "workers": len({row["resource_id"] for row in rows}),
+            "total_hours": format(ft.quantize_hours(total_hours), "f"),
+            "late_days": late_days,
+            "days_missing_times": missing_times,
+            "excluded_corrections": excluded,
+        }
+
+    async def _worker_names(self, resource_ids: set[str]) -> dict[str, str]:
+        """Best-effort ``{resource_id: name}`` from the resources register."""
+        ids = [i for i in (_as_uuid(r) for r in resource_ids) if i is not None]
+        if not ids:
+            return {}
+        try:
+            from sqlalchemy import select
+
+            from app.modules.resources.models import Resource
+
+            rows = (await self.session.execute(select(Resource.id, Resource.name).where(Resource.id.in_(ids)))).all()
+        except Exception:
+            logger.debug("Worker-name lookup unavailable")
+            return {}
+        return {str(rid): str(name or "") for rid, name in rows}
+
+    async def _employer_names(self, subcontractor_ids: set[str]) -> dict[str, str]:
+        """Best-effort ``{subcontractor_id: legal name}`` from the subcontractor register.
+
+        The legal name, not the trading one: a record kept for an inspection has
+        to name the firm that owes the wage. An id that no longer resolves is
+        left to the caller to print as an id, which is a gap somebody can see
+        rather than an empty cell that reads like "own staff".
+        """
+        ids = [i for i in (_as_uuid(s) for s in subcontractor_ids) if i is not None]
+        if not ids:
+            return {}
+        try:
+            from sqlalchemy import select
+
+            from app.modules.subcontractors.models import Subcontractor
+
+            rows = (
+                await self.session.execute(
+                    select(Subcontractor.id, Subcontractor.legal_name).where(Subcontractor.id.in_(ids)),
+                )
+            ).all()
+        except Exception:
+            logger.debug("Employer-name lookup unavailable")
+            return {}
+        return {str(sid): str(name or "") for sid, name in rows}
+
     # ── Update (draft only) ──────────────────────────────────────────────────
 
     async def update_timesheet(
@@ -305,6 +536,18 @@ class FieldTimeService:
         self._assert_line_xor(new_resource, new_equipment)
         if not fields:
             return timesheet
+
+        # Re-derive the hours from the line as it will stand, so a patch that
+        # moves a clock time moves the duration with it and a patch that types a
+        # number over a timed line is overruled by the times rather than stored
+        # beside them. Untouched on a patch that mentions neither.
+        if {"started_at", "ended_at", "break_minutes", "hours"} & set(fields):
+            fields["hours"] = self._derive_hours(
+                fields.get("started_at", line.started_at),
+                fields.get("ended_at", line.ended_at),
+                fields.get("break_minutes", line.break_minutes),
+                fields.get("hours", line.hours),
+            )
 
         await self.repo.update_line_fields(line_id, **fields)
         await self.session.refresh(timesheet)
@@ -760,6 +1003,12 @@ class FieldTimeService:
         ``Numeric(18, 4)``, so eight hours reads back as ``8.0000`` while the
         device sends ``8``; comparing the two as text would call every single
         redelivery an edit and quietly rewrite the day on each one.
+
+        A line with clock times is compared on the hours those times produce,
+        for the same reason: the server derives them on the way in, so comparing
+        the stored duration against the number the device happened to put in the
+        ``hours`` field would make every redelivery of a timed day look like an
+        edit.
         """
 
         def line_key(
@@ -771,6 +1020,11 @@ class FieldTimeService:
             is_daywork: object,
             variation: object,
             note: object,
+            started_at: object = None,
+            ended_at: object = None,
+            break_minutes: object = None,
+            employer_kind: object = None,
+            employer_subcontractor_id: object = None,
         ) -> tuple[str, ...]:
             return (
                 str(resource or ""),
@@ -781,6 +1035,11 @@ class FieldTimeService:
                 "1" if is_daywork else "0",
                 str(variation or ""),
                 str(note or ""),
+                _instant_key(started_at),
+                _instant_key(ended_at),
+                str(int(break_minutes)) if break_minutes else "",
+                str(employer_kind or ""),
+                str(employer_subcontractor_id or ""),
             )
 
         if timesheet.date != data.date:
@@ -797,6 +1056,11 @@ class FieldTimeService:
                 line.is_daywork,
                 line.variation_id,
                 line.note,
+                line.started_at,
+                line.ended_at,
+                line.break_minutes,
+                line.employer_kind,
+                line.employer_subcontractor_id,
             )
             for line in timesheet.lines
         )
@@ -804,12 +1068,22 @@ class FieldTimeService:
             line_key(
                 line.resource_id,
                 line.equipment_id,
-                line.hours,
+                ft.derive_line_hours(
+                    line.started_at,
+                    line.ended_at,
+                    line.break_minutes,
+                    booked_hours=line.hours,
+                ).hours,
                 line.cost_code,
                 line.wbs,
                 line.is_daywork,
                 line.variation_id,
                 line.note,
+                line.started_at,
+                line.ended_at,
+                line.break_minutes,
+                line.employer_kind,
+                line.employer_subcontractor_id,
             )
             for line in data.lines
         )
@@ -1020,18 +1294,56 @@ class FieldTimeService:
 
     @staticmethod
     def _line_from_create(timesheet_id: uuid.UUID, data: FieldTimesheetLineCreate) -> FieldTimesheetLine:
-        """Build a line ORM object from a create schema."""
+        """Build a line ORM object from a create schema.
+
+        A line that carries clock times gets its hours from them; a line without
+        them keeps the hours as sent, which is every line this module has ever
+        written and every line whoever does not need the times will write.
+        """
         return FieldTimesheetLine(
             timesheet_id=timesheet_id,
             resource_id=data.resource_id,
             equipment_id=data.equipment_id,
-            hours=data.hours,
+            hours=FieldTimeService._derive_hours(
+                data.started_at,
+                data.ended_at,
+                data.break_minutes,
+                data.hours,
+            ),
             cost_code=data.cost_code or "",
             wbs=data.wbs,
             is_daywork=data.is_daywork,
             variation_id=data.variation_id,
             note=data.note,
+            started_at=data.started_at,
+            ended_at=data.ended_at,
+            break_minutes=data.break_minutes,
+            employer_kind=data.employer_kind,
+            employer_subcontractor_id=data.employer_subcontractor_id,
         )
+
+    @staticmethod
+    def _derive_hours(
+        started_at: datetime | None,
+        ended_at: datetime | None,
+        break_minutes: int | None,
+        booked_hours: object,
+    ) -> Decimal:
+        """The hours a line will carry, refusing clock times that cannot make one.
+
+        There is no state in which a line holds both a pair of times and an
+        independent number of hours: with times, the times decide. A pair that
+        cannot produce a duration is refused rather than quietly falling back to
+        the typed figure, because the record would then say one thing and its
+        own evidence another.
+        """
+        derived = ft.derive_line_hours(started_at, ended_at, break_minutes, booked_hours=booked_hours)
+        if derived.reason:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=_INTERVAL_MESSAGES.get(derived.reason, _INTERVAL_FALLBACK),
+            )
+        return derived.hours
 
     @staticmethod
     def _line_dicts(timesheet: FieldTimesheet) -> list[dict[str, Any]]:
@@ -1049,6 +1361,13 @@ class FieldTimeService:
                     "is_daywork": bool(line.is_daywork),
                     "variation_id": str(line.variation_id) if line.variation_id else None,
                     "note": line.note or "",
+                    # The clock times under the names the pure engine reads them
+                    # by. They are what wakes up the double-booking check: two
+                    # lines that put the same worker in two places at once are
+                    # only detectable once the lines say when. A line without
+                    # times is skipped by that check exactly as before.
+                    "start": line.started_at,
+                    "end": line.ended_at,
                 },
             )
         return out

@@ -27,6 +27,7 @@ from sqlalchemy import (
     CheckConstraint,
     ForeignKey,
     Index,
+    Integer,
     Numeric,
     String,
     Text,
@@ -81,6 +82,16 @@ class FieldTimesheet(Base):
         index=True,
     )
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Which statutory working-time regime this day is recorded under, or NULL
+    # when nobody chose one. NULL is the state every timesheet starts in and the
+    # state every existing row stays in: no regime means no recording deadline,
+    # no retention window and nothing on screen about either. The vocabulary is
+    # ALL_WORKING_TIME_REGIMES in
+    # :mod:`app.modules.field_time.working_time`, stored as a plain string so a
+    # further regime never needs a schema change. Deliberately no server
+    # default: most of this platform's users work under no such obligation, and
+    # a default would be this module answering a legal question for them.
+    working_time_regime: Mapped[str | None] = mapped_column(String(30), nullable=True)
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
         JSON,
@@ -105,6 +116,12 @@ class FieldTimesheetLine(Base):
     Labour XOR plant: exactly one of ``resource_id`` / ``equipment_id`` is set.
     Hours are a ``Decimal`` (never float); ``cost_code`` / ``wbs`` code the line
     to a BOQ position so the hours flow into the right cost line.
+
+    A line may also carry clock times (``started_at`` / ``ended_at`` and the
+    unpaid ``break_minutes``). It never has to: a line without them is the line
+    this module has always written. With them, ``hours`` is derived from them
+    rather than typed, which is what a statutory working-time record needs and
+    what stops a duration from disagreeing with the times that produced it.
     """
 
     __tablename__ = "oe_field_time_line"
@@ -151,6 +168,26 @@ class FieldTimesheetLine(Base):
     # daywork line. Plain GUID (no DB FK) - the sheet is created dynamically by
     # the variations service and this only records the resulting id for trace.
     daywork_sheet_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
+    # Clock times for this booking, and the unpaid break inside them. All three
+    # are nullable with no server default, so every line written before they
+    # existed - and every line written today by somebody who does not need them -
+    # is byte for byte what it was. When both times are present they are the
+    # single source of the line's ``hours``: the service derives the duration
+    # from them (see ``field_time_math.derive_line_hours``) instead of storing a
+    # typed number that could disagree with the times beside it. ``ended_at`` is
+    # a full instant, so a night shift simply ends on the following day.
+    started_at: Mapped[datetime | None] = mapped_column(AwareDateTime(), nullable=True)
+    ended_at: Mapped[datetime | None] = mapped_column(AwareDateTime(), nullable=True)
+    break_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Who employs this worker: "own" or "subcontractor" (see ALL_EMPLOYER_KINDS
+    # in :mod:`app.modules.field_time.working_time`), NULL when nobody said. A
+    # main contractor is answerable for the wages its subcontractors pay, so the
+    # employer is part of a statutory working-time record and not a payroll
+    # detail. Soft link, no foreign key, exactly like ``daywork_sheet_id``: the
+    # subcontractor register is another module's table and a working-time record
+    # must outlive an entry being tidied out of it.
+    employer_kind: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    employer_subcontractor_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     timesheet: Mapped[FieldTimesheet] = relationship(back_populates="lines")

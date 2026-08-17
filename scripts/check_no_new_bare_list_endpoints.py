@@ -249,6 +249,20 @@ ALLOWED: frozenset[str] = frozenset(
         "field_diary/router.py::list_schedule_activities",
         "field_diary/router.py::sync_ops",
         "field_time/router.py::list_timesheets",
+        # A fixed taxonomy, not a register. WORKING_TIME_REGIMES in
+        # field_time/working_time.py is a frozen tuple of statutes compiled into
+        # the source, today just MiLoG (German minimum wage act) section 17 (1);
+        # it gains an entry when a developer implements another jurisdiction's
+        # recording duty, never at runtime and never per tenant. The route is a
+        # comprehension over the whole tuple, so there is no query, no LIMIT and
+        # no state in which it answers with part of the set. An envelope here
+        # would carry a total that is len(items) by construction and an
+        # "incomplete page" branch no caller could ever reach, and it would
+        # advertise a truncation this endpoint must not have: a worker choosing
+        # which statute their hours are recorded under has to see every statute
+        # on offer, so a short answer would be a correctness bug, not a page.
+        # Do not migrate this one; it is not what the census is counting down.
+        "field_time/router.py::list_working_time_regimes",
         "fieldreports/router.py::get_calendar",
         "fieldreports/router.py::get_linked_documents",
         "fieldreports/router.py::list_equipment_logs",

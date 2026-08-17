@@ -9,6 +9,9 @@ Endpoints (mounted at ``/api/v1/field-time``):
     POST   /timesheets/suggest-cost-codes/       - Ranked cost-code suggestions
     POST   /timesheets/offline/                  - Record a day captured offline
     POST   /timesheets/offline/withdraw/         - Withdraw a day captured offline
+    GET    /timesheets/working-time-regimes/     - The statutory regimes on offer
+    GET    /timesheets/working-time/             - Worker-day working-time record
+    GET    /timesheets/working-time.csv          - The same record as a CSV file
     GET    /timesheets/{id}/                      - Get one
     PATCH  /timesheets/{id}/                      - Update draft header
     DELETE /timesheets/{id}/                      - Delete draft
@@ -26,13 +29,17 @@ forbidden) and the field_time RBAC permissions.
 
 from __future__ import annotations
 
+import csv
+import io
 import uuid
-from datetime import date
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import StreamingResponse
 
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
 from app.modules.field_time import field_time_math as ft
+from app.modules.field_time import working_time as wt
 from app.modules.field_time.models import FieldTimesheet, FieldTimesheetLine
 from app.modules.field_time.schemas import (
     FieldTimesheetCreate,
@@ -49,6 +56,10 @@ from app.modules.field_time.schemas import (
     SuggestCostCodeRequest,
     SuggestCostCodeResponse,
     ValidationReportOut,
+    WorkingTimeRecordOut,
+    WorkingTimeRegimeOut,
+    WorkingTimeStatusOut,
+    WorkingTimeWorkerDayOut,
 )
 from app.modules.field_time.service import FieldTimeService, OfflineOpOutcome
 
@@ -75,8 +86,42 @@ def _line_to_response(line: FieldTimesheetLine) -> FieldTimesheetLineResponse:
         daywork_sheet_id=line.daywork_sheet_id,
         note=line.note,
         kind=kind,
+        started_at=line.started_at,
+        ended_at=line.ended_at,
+        break_minutes=line.break_minutes,
+        employer_kind=line.employer_kind,
+        employer_subcontractor_id=line.employer_subcontractor_id,
+        # A line with both clock times has its hours derived from them, so the
+        # editor can say where the figure came from instead of offering to edit
+        # something the server recomputes on the next write.
+        hours_derived=line.started_at is not None and line.ended_at is not None,
         created_at=line.created_at,
         updated_at=line.updated_at,
+    )
+
+
+def _working_time_status(timesheet: FieldTimesheet) -> WorkingTimeStatusOut | None:
+    """The statutory status of this day's record, or None when no regime is set.
+
+    Never a refusal: a record made on the eighth day is late and is still the
+    record. Never a deletion either - the retention window is reported and
+    nothing acts on it.
+    """
+    spec = wt.regime_for(timesheet.working_time_regime)
+    if spec is None:
+        return None
+    stamp = wt.timeliness(timesheet.date, timesheet.created_at, spec)
+    if stamp is None:
+        return None
+    today = datetime.now(UTC).date()
+    return WorkingTimeStatusOut(
+        regime=spec.code,
+        provision=spec.provision,
+        deadline=stamp.deadline,
+        days_taken=stamp.days_taken,
+        late=stamp.late,
+        retain_until=stamp.retain_until,
+        within_retention=wt.within_retention(timesheet.date, spec, today),
     )
 
 
@@ -95,6 +140,8 @@ def _timesheet_to_response(timesheet: FieldTimesheet) -> FieldTimesheetResponse:
     config = ft.read_hours_config(getattr(timesheet, "metadata_", None))
     roll = ft.rollup(line_dicts, rounding_increment=config.rounding_increment)
     return FieldTimesheetResponse(
+        working_time_regime=timesheet.working_time_regime,
+        working_time=_working_time_status(timesheet),
         id=timesheet.id,
         project_id=timesheet.project_id,
         reference=timesheet.reference or "",
@@ -163,6 +210,165 @@ async def suggest_cost_codes(
     await verify_project_access(project_id, user_id, session)
     suggestions = await service.suggest_cost_codes(project_id, payload.text, limit=payload.limit)
     return SuggestCostCodeResponse(suggestions=suggestions, applied=False)
+
+
+# ── Statutory working-time record ────────────────────────────────────────────
+
+
+@router.get("/timesheets/working-time-regimes/", response_model=list[WorkingTimeRegimeOut])
+async def list_working_time_regimes(
+    _perm: None = Depends(RequirePermission("field_time.read")),
+) -> list[WorkingTimeRegimeOut]:
+    """The statutory working-time regimes a project can choose to record under.
+
+    Not project-scoped and deliberately so: this is the vocabulary, not any
+    project's data. A project that chooses none of them - which is most of them,
+    since this is one country's rule and the platform is used everywhere - simply
+    never sends the choice back.
+    """
+    return [
+        WorkingTimeRegimeOut(
+            code=spec.code,
+            label=spec.label,
+            provision=spec.provision,
+            record_within_days=spec.record_within_days,
+            retention_years=spec.retention_years,
+            summary=spec.summary,
+        )
+        for spec in wt.WORKING_TIME_REGIMES
+    ]
+
+
+async def _working_time_record(
+    service: FieldTimeService,
+    session: SessionDep,
+    project_id: uuid.UUID,
+    user_id: str,
+    date_from: date,
+    date_to: date,
+    regime: str | None,
+) -> WorkingTimeRecordOut:
+    """Shared body for the two ways of asking for the record (JSON and CSV)."""
+    await verify_project_access(project_id, user_id, session)
+    data = await service.working_time_record(
+        project_id,
+        date_from=date_from,
+        date_to=date_to,
+        regime_code=regime,
+    )
+    return WorkingTimeRecordOut(
+        project_id=data["project_id"],
+        date_from=data["date_from"],
+        date_to=data["date_to"],
+        regime=data["regime"],
+        provision=data["provision"],
+        generated_at=data["generated_at"],
+        days=[WorkingTimeWorkerDayOut(**row) for row in data["days"]],
+        workers=data["workers"],
+        total_hours=data["total_hours"],
+        late_days=data["late_days"],
+        days_missing_times=data["days_missing_times"],
+        excluded_corrections=data["excluded_corrections"],
+    )
+
+
+@router.get("/timesheets/working-time/", response_model=WorkingTimeRecordOut)
+async def get_working_time_record(
+    session: SessionDep,
+    project_id: uuid.UUID = Query(...),
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    regime: str | None = Query(None),
+    user_id: CurrentUserId = None,  # type: ignore[assignment]
+    _perm: None = Depends(RequirePermission("field_time.read")),
+    service: FieldTimeService = Depends(_get_service),
+) -> WorkingTimeRecordOut:
+    """Who worked on this site over this period, and when each of them started and stopped.
+
+    One row per worker per day, which is the unit a labour inspection asks in.
+    Late records are marked, not hidden and not refused, and nothing is left out
+    for being outside a retention window.
+    """
+    return await _working_time_record(service, session, project_id, user_id, date_from, date_to, regime)
+
+
+@router.get("/timesheets/working-time.csv")
+async def export_working_time_record_csv(
+    session: SessionDep,
+    project_id: uuid.UUID = Query(...),
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    regime: str | None = Query(None),
+    user_id: CurrentUserId = None,  # type: ignore[assignment]
+    _perm: None = Depends(RequirePermission("field_time.read")),
+    service: FieldTimeService = Depends(_get_service),
+) -> StreamingResponse:
+    """The same record as a CSV file, which is what an inspector asks to be handed.
+
+    Every column an auditor needs is spelled out in the row itself, including
+    the worker's name beside the id: whoever opens this file has the file and
+    not the database. The durations are the ones the clock times produced and
+    are not put through any payroll rounding step, so a row can always be
+    checked by subtracting its own columns.
+    """
+    record = await _working_time_record(service, session, project_id, user_id, date_from, date_to, regime)
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(
+        [
+            "date",
+            "worker",
+            "resource_id",
+            "employer_kind",
+            "employer",
+            "employer_id",
+            "started_at",
+            "ended_at",
+            "break_minutes",
+            "duration_hours",
+            "segments",
+            "segments_without_times",
+            "timesheets",
+            "status",
+            "recorded_at",
+            "days_taken",
+            "late",
+            "deadline",
+            "retain_until",
+        ],
+    )
+    for row in record.days:
+        writer.writerow(
+            [
+                row.date.isoformat(),
+                row.worker,
+                str(row.resource_id or ""),
+                row.employer_kind,
+                row.employer,
+                str(row.employer_subcontractor_id or ""),
+                row.started_at.isoformat() if row.started_at else "",
+                row.ended_at.isoformat() if row.ended_at else "",
+                row.break_minutes,
+                row.duration_hours,
+                row.segments,
+                row.segments_without_times,
+                " ".join(row.references),
+                row.status,
+                row.recorded_at.isoformat() if row.recorded_at else "",
+                "" if row.days_taken is None else row.days_taken,
+                "yes" if row.late else "no",
+                row.deadline.isoformat() if row.deadline else "",
+                row.retain_until.isoformat() if row.retain_until else "",
+            ],
+        )
+    buf.seek(0)
+    filename = f"working-time-{project_id}-{record.date_from.isoformat()}-{record.date_to.isoformat()}.csv"
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/timesheets/", response_model=list[FieldTimesheetResponse])

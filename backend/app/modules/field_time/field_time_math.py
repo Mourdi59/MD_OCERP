@@ -722,6 +722,66 @@ def worked_hours(
     return WorkedInterval(net, gross_hours, break_hours, valid=True, reason=INTERVAL_OK)
 
 
+@dataclass(frozen=True)
+class DerivedDuration:
+    """The hours a line should carry, and where they came from.
+
+    Attributes:
+        hours: The hours to store. Derived from the clock times when they are
+            there, otherwise the hours as booked by hand.
+        derived: True when the figure came from the times rather than the hand.
+        reason: An ``INTERVAL_*`` code when clock times were given but cannot
+            produce a duration (empty otherwise). The caller refuses the write:
+            a line whose times cannot be read must not fall back to a typed
+            number, because the two would then say different things.
+    """
+
+    hours: Decimal
+    derived: bool
+    reason: str = INTERVAL_OK
+
+
+def derive_line_hours(
+    start: object,
+    end: object,
+    break_minutes: object = 0,
+    *,
+    booked_hours: object = 0,
+) -> DerivedDuration:
+    """Decide a line's hours from its clock times, or leave the booked figure alone.
+
+    A line that carries a start and an end has exactly one duration and it is
+    the one those times produce, less the unpaid break. A line without them
+    keeps the hours somebody typed. There is deliberately no third state where a
+    line has both times and an independent number, because that number could
+    disagree with them and an audit would have no way to tell which was true.
+
+    Not rounded, whatever rounding step the project uses for its payroll
+    figures: the recorded duration has to be the duration the times produce, and
+    a quarter-hour step would make it something else.
+
+    Args:
+        start: Shift start ``datetime``, or None.
+        end: Shift end ``datetime``, or None.
+        break_minutes: Unpaid break in minutes (None reads as 0).
+        booked_hours: The hours as typed, used when there are no clock times.
+
+    Returns:
+        A :class:`DerivedDuration`.
+    """
+    booked = to_decimal(booked_hours)
+    has_start = isinstance(start, datetime)
+    has_end = isinstance(end, datetime)
+    if not has_start and not has_end:
+        return DerivedDuration(hours=booked, derived=False)
+    if not (has_start and has_end):
+        return DerivedDuration(hours=booked, derived=False, reason=INTERVAL_TIMES_REQUIRED)
+    interval = worked_hours(start, end, break_minutes if break_minutes is not None else 0)
+    if not interval.valid:
+        return DerivedDuration(hours=booked, derived=False, reason=interval.reason)
+    return DerivedDuration(hours=interval.net_hours, derived=True)
+
+
 def _interval_bounds(entry: Mapping[str, Any]) -> tuple[datetime, datetime] | None:
     """Return ``(start, end)`` datetimes for an entry, or None when not usable."""
     start = _get(entry, "start")
