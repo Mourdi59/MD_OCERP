@@ -17,6 +17,16 @@ The second is the directory. That gate globs ``demo_*.py`` beside
 subdirectory of neither, so the twenty-odd project packs, which carry most of
 the seeded records a reader ever sees, are not read at all.
 
+There is a third reason a value survives, and it is invisible from outside
+because the record looks like exactly the shape the wide gate reads. The punch
+items in ``demo_projects.py`` ARE dict literals, they ARE read, and they still
+pass. Measured rather than assumed: the attribution was instrumented on 18.08
+and those records land on ``PunchItemResponse``, which carries no pattern,
+because the response schema is the one that also has ``trade``, ``location_x``
+and ``resolution_notes`` and therefore covers the record best. A vocabulary
+lives on Create and Update; attributing by key coverage steers towards
+Response, which is where a seeded row's extra fields are.
+
 So this file is the narrow and deep half of that division of labour, for the
 registers where the miss reached a screenshot. It reads the vocabulary out of
 the schema rather than restating it, so widening the product widens the test
@@ -31,16 +41,18 @@ from pathlib import Path
 from typing import Any
 
 from app.core import demo_projects
+from app.modules.punchlist.schemas import PunchItemUpdate
 from app.modules.tendering.schemas import PackageUpdate
 
 _ALTERNATION = re.compile(r"\^\(([a-z0-9_|\-]+)\)\$")
 
-# A floor, so that a collector which stops finding anything fails instead of
+# Floors, so that a collector which stops finding anything fails instead of
 # passing over nothing. Measured 18.08: 135 package statuses are reachable from
-# these sources, of which 112 are "evaluating". Set well under that so ordinary
-# drift does not trip it, and far enough above zero that a collector reading
-# nothing cannot look clean.
+# these sources, of which 112 are "evaluating", and 30 punch categories. Set
+# well under both so ordinary drift does not trip them, and far enough above
+# zero that a collector reading nothing cannot look clean.
 _MIN_PACKAGE_STATUSES = 90
+_MIN_PUNCH_CATEGORIES = 20
 
 
 def _vocabulary(model: Any, field: str) -> set[str]:
@@ -118,11 +130,43 @@ def _call_keyword(path: Path, callee: str, keyword: str) -> list[tuple[str, str]
     return found
 
 
+def _dict_field(path: Path, field: str, companions: set[str]) -> list[tuple[str, str]]:
+    """Constant ``field`` values from dict literals that also carry ``companions``.
+
+    The companion keys are what identifies the record. ``category`` on its own
+    is written all over the seed; a literal that also carries ``priority``,
+    ``status``, ``title`` and ``trade`` is a punch item.
+    """
+    found: list[tuple[str, str]] = []
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Dict):
+            continue
+        record = {
+            key.value: value
+            for key, value in zip(node.keys, node.values, strict=False)
+            if isinstance(key, ast.Constant) and isinstance(key.value, str)
+        }
+        if not companions <= set(record):
+            continue
+        slot = record.get(field)
+        if isinstance(slot, ast.Constant) and isinstance(slot.value, str):
+            found.append((_where(path, slot.lineno), slot.value))
+    return found
+
+
 def _package_statuses() -> list[tuple[str, str]]:
     found: list[tuple[str, str]] = []
     for source in _sources():
         found += _tuple_field(source, {"tender_packages", "_PACKAGE_SPECS"}, index=2)
         found += _call_keyword(source, "TenderPackage", "status")
+    return found
+
+
+def _punch_categories() -> list[tuple[str, str]]:
+    found: list[tuple[str, str]] = []
+    for source in _sources():
+        found += _dict_field(source, "category", {"priority", "status", "title", "trade"})
     return found
 
 
@@ -144,11 +188,30 @@ def test_seeded_tender_package_statuses_are_the_modules_own() -> None:
     assert not refused, f"tendering accepts only {'|'.join(sorted(allowed))}:\n  " + "\n  ".join(refused)
 
 
-def test_the_collector_would_notice_a_refused_status(tmp_path: Path) -> None:
-    """The green run above has to mean the seed is right, not that nothing is read.
+def test_seeded_punch_categories_are_the_modules_own() -> None:
+    """A category outside the eleven prints as a title-cased token.
 
-    The collector is pointed at a file written here that holds the bad value in
-    both shapes it reads. If this stops failing, the test above has stopped
+    "mep" is not one of them, and the punch register showed it as "Mep" - the
+    fallback doing exactly what it is for, on a value that should never have
+    reached it. No caser can know that this particular token is an initialism,
+    which is why the fix is the value and not the caser.
+    """
+    allowed = _vocabulary(PunchItemUpdate, "category")
+    seeded = _punch_categories()
+    assert len(seeded) >= _MIN_PUNCH_CATEGORIES, (
+        f"only {len(seeded)} seeded punch categories were found, expected at least "
+        f"{_MIN_PUNCH_CATEGORIES}; the collector has broken and this test would pass "
+        f"without reading a punch item"
+    )
+    refused = [f"{where} seeds category={value!r}" for where, value in seeded if value not in allowed]
+    assert not refused, f"punchlist accepts only {'|'.join(sorted(allowed))}:\n  " + "\n  ".join(refused)
+
+
+def test_the_collectors_would_notice_a_refused_value(tmp_path: Path) -> None:
+    """The green runs above have to mean the seed is right, not that nothing is read.
+
+    Both collectors are pointed at a file written here that holds a bad value in
+    each shape they read. If this stops failing, the tests above have stopped
     checking.
     """
     planted = tmp_path / "demo_planted.py"
@@ -156,12 +219,17 @@ def test_the_collector_would_notice_a_refused_status(tmp_path: Path) -> None:
         "TEMPLATE = dict(\n"
         "    tender_packages=[('Package', 'Scope', 'open', [])],\n"
         ")\n"
-        "_PACKAGE_SPECS = [('ELEC', 'Electrical works', 'open', '2026-07-15', '1')]\n",
+        "_PACKAGE_SPECS = [('ELEC', 'Electrical works', 'open', '2026-07-15', '1')]\n"
+        "PUNCH = [{'title': 'T', 'priority': 'high', 'status': 'open',\n"
+        "          'trade': 'Plumbing', 'category': 'mep'}]\n",
         encoding="utf-8",
     )
     statuses = _tuple_field(planted, {"tender_packages", "_PACKAGE_SPECS"}, index=2)
+    categories = _dict_field(planted, "category", {"priority", "status", "title", "trade"})
 
     assert [value for _, value in statuses] == ["open", "open"], (
         "the collector no longer reads a package status out of either shape"
     )
+    assert [value for _, value in categories] == ["mep"], "the collector no longer reads a punch category"
     assert "open" not in _vocabulary(PackageUpdate, "status")
+    assert "mep" not in _vocabulary(PunchItemUpdate, "category")
