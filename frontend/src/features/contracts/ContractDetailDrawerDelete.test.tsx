@@ -157,7 +157,10 @@ function confirmButton(): HTMLElement {
 beforeEach(() => {
   vi.clearAllMocks();
   linesMock.mockResolvedValue([]);
-  claimsMock.mockResolvedValue([]);
+  // An envelope, not an array: the claim history reads `.items` and asks the
+  // page whether it is the whole set. A bare array here would type-check
+  // against nothing and destructure to undefined at runtime.
+  claimsMock.mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 });
   dashMock.mockResolvedValue({
     contract_id: CONTRACT_ID,
     total_value: 486000,

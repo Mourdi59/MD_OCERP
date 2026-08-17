@@ -114,6 +114,26 @@ class ContractResponse(BaseModel):
     updated_at: datetime
 
 
+class ContractListResponse(BaseModel):
+    """One page of contracts plus the size of the whole matching set.
+
+    ``total`` counts the rows the filters matched, not the length of ``items``.
+    The register is the commercial spine of a project, so a page presented as
+    the register hides exactly the contracts nobody has looked at yet, and it
+    hides them from the totals a reader adds up by eye.
+
+    ``total`` is a count of the query, not of the project. ``status``,
+    ``counterparty_type`` and ``contract_type`` are applied before the count is
+    taken, so a zero here means this question found nothing rather than the
+    project holding nothing.
+    """
+
+    items: list[ContractResponse] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50
+
+
 # ── ContractLine (SoV) ───────────────────────────────────────────────────
 
 
@@ -431,6 +451,21 @@ class ProgressClaimResponse(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     created_at: datetime
     updated_at: datetime
+
+
+class ProgressClaimListResponse(BaseModel):
+    """One page of progress claims plus the size of the whole matching set.
+
+    Payment history is read to answer how much has been claimed to date, and
+    that question is answered wrongly by a page that does not say it is one.
+    ``total`` counts the rows the filters matched, so with ``status`` set it
+    describes that query rather than the contract.
+    """
+
+    items: list[ProgressClaimResponse] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50
 
 
 class ProgressClaimLineCreate(BaseModel):

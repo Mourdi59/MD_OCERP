@@ -21,6 +21,7 @@ import {
   getAuthToken,
   triggerDownload,
 } from '@/shared/lib/api';
+import type { Page } from '@/shared/lib/api';
 
 /* ── Enums / unions ───────────────────────────────────────────────────── */
 
@@ -337,9 +338,41 @@ async function safeGetList<T>(path: string): Promise<T[]> {
   }
 }
 
+/**
+ * The paged counterpart of `safeGetList`, for the routes that answer with an
+ * envelope. It is a separate helper rather than a widening of that one because
+ * the two cannot share a return type: `safeGetList` exists to flatten the
+ * envelope away, which is the thing this programme is undoing.
+ *
+ * It takes the request rather than the path, so the caller writes its own
+ * `apiGet<Page<Row>>` and names the row type at the point of the request. That
+ * reads better, and it is also what lets a caller be checked: a helper that
+ * takes a path hides both the type argument and the URL inside itself, and
+ * `scripts/check_page_envelope_consumers.py` binds a URL literal to the call
+ * it stands next to. Through a path-taking helper the two are never adjacent
+ * and every caller is invisible to the gate.
+ *
+ * The absent-module fallback reports zero of zero. That is a statement about
+ * the module not being mounted rather than a count of the register, so nothing
+ * should read a zero from here as evidence that a project has no contracts.
+ */
+async function safePage<T>(request: Promise<Page<T>>): Promise<Page<T>> {
+  try {
+    return await request;
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'status' in err) {
+      const status = (err as { status: number }).status;
+      if (status === 404 || status === 501) {
+        return { items: [], total: 0, offset: 0, limit: 0 };
+      }
+    }
+    throw err;
+  }
+}
+
 /* ── Contracts ────────────────────────────────────────────────────────── */
 
-export function listContracts(filters: ContractFilters): Promise<ContractItem[]> {
+export function listContracts(filters: ContractFilters): Promise<Page<ContractItem>> {
   const qs = new URLSearchParams();
   qs.set('project_id', filters.project_id);
   if (filters.status) qs.set('status', filters.status);
@@ -347,7 +380,7 @@ export function listContracts(filters: ContractFilters): Promise<ContractItem[]>
   if (filters.counterparty_type) qs.set('counterparty_type', filters.counterparty_type);
   if (filters.offset !== undefined) qs.set('offset', String(filters.offset));
   if (filters.limit !== undefined) qs.set('limit', String(filters.limit));
-  return safeGetList<ContractItem>(`/v1/contracts/contracts/?${qs.toString()}`);
+  return safePage(apiGet<Page<ContractItem>>(`/v1/contracts/contracts/?${qs.toString()}`));
 }
 
 export function getContract(id: string): Promise<ContractItem> {
@@ -409,13 +442,15 @@ export function listProgressClaims(params: {
   status?: ClaimStatus | '';
   offset?: number;
   limit?: number;
-}): Promise<ProgressClaimItem[]> {
+}): Promise<Page<ProgressClaimItem>> {
   const qs = new URLSearchParams();
   qs.set('contract_id', params.contract_id);
   if (params.status) qs.set('status', params.status);
   if (params.offset !== undefined) qs.set('offset', String(params.offset));
   if (params.limit !== undefined) qs.set('limit', String(params.limit));
-  return safeGetList<ProgressClaimItem>(`/v1/contracts/progress-claims/?${qs.toString()}`);
+  return safePage(
+    apiGet<Page<ProgressClaimItem>>(`/v1/contracts/progress-claims/?${qs.toString()}`),
+  );
 }
 
 export function getProgressClaim(id: string): Promise<ProgressClaimItem> {

@@ -29,6 +29,7 @@ import {
 import { Button, Card, Badge, EmptyState, Breadcrumb, InfoHint, DismissibleInfo, IntroRichText, ConfirmDialog, RecoveryCard, SkeletonTable, SkeletonCard, ModuleGuideButton } from '@/shared/ui';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/shared/ui/PageHeader';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
 import {
   WideModal,
@@ -256,11 +257,12 @@ function CreateDialog({
   const [contractId, setContractId] = useState('');
   const addToast = useToastStore((s) => s.addToast);
 
-  const { data: contracts = [] } = useQuery({
+  const contractsQ = useQuery({
     queryKey: ['changeorders', 'contract-options', projectId],
     queryFn: () => listContracts({ project_id: projectId, limit: 200 }),
     enabled: Boolean(projectId),
   });
+  const contracts = contractsQ.data?.items ?? [];
   // Change orders are only valid on commercially-live contracts (same
   // amendability rule as the contracts module: active / suspended).
   const linkableContracts = useMemo(
@@ -401,6 +403,15 @@ function CreateDialog({
                 </option>
               ))}
             </select>
+            {/* Driven by the server page rather than by `linkableContracts`.
+                The active/suspended rule is applied here after the fetch, so
+                it shortens the list without the server knowing, and only the
+                envelope can say whether a contract the user is looking for was
+                never sent. A picker that quietly lacks the row someone wants
+                reads as the contract not existing. */}
+            {contractsQ.data && (
+              <TruncationNotice page={contractsQ.data} className="mt-1.5" />
+            )}
           </WideModalField>
         )}
       </WideModalSection>

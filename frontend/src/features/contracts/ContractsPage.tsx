@@ -53,6 +53,7 @@ import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { MultiCurrencyTotal } from '@/shared/ui/MultiCurrencyTotal';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { PageHeader } from '@/shared/ui/PageHeader';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import {
   ContractTemplatesPanel,
   TEMPLATE_CATALOGUE_KEY,
@@ -514,7 +515,10 @@ export function ContractsPage() {
     enabled: !!projectId,
   });
 
-  const contracts = contractsQ.data ?? [];
+  /* `.items` is the page and `.total` is how many rows matched. The
+     register is asked for 200 at a time, so those two part company on
+     any project past that, and everything below counts the page. */
+  const contracts = contractsQ.data?.items ?? [];
   const selectedProject = useMemo(
     () => (projectsQ.data ?? []).find((p) => p.id === projectId),
     [projectsQ.data, projectId],
@@ -561,7 +565,7 @@ export function ContractsPage() {
   }, [contracts, search, typeFilter, statusFilter, counterpartyFilter]);
 
   const filteredClaims = useMemo(() => {
-    const items = claimsQ.data ?? [];
+    const items = claimsQ.data?.items ?? [];
     const s = search.toLowerCase();
     return items.filter((c) => {
       if (statusFilter && c.status !== statusFilter) return false;
@@ -858,6 +862,17 @@ export function ContractsPage() {
         {/* Templates are tenant-wide paper, not project data, so the library
             sits above the project gate. Requiring a project to look at a
             standard form would be a gate on nothing. */}
+        {/* Whichever of the two registers the body is showing says how
+            much of itself the reader has. Both are read at a limit, and
+            the search and status boxes below narrow the rows in hand
+            without reaching the ones the server withheld, so the notice
+            is driven by the server page and not by the filtered list. */}
+        {tab === 'contracts' && contractsQ.data && (
+          <TruncationNotice page={contractsQ.data} className="px-4 pt-3" />
+        )}
+        {tab === 'claims' && claimsQ.data && (
+          <TruncationNotice page={claimsQ.data} className="px-4 pt-3" />
+        )}
         {tab === 'templates' ? (
           <ContractTemplatesPanel search={search} />
         ) : !projectId ? (
@@ -1974,11 +1989,15 @@ export function ContractDetailDrawer({
           <Card padding="sm">
             <p className="text-xs font-semibold uppercase tracking-wide text-content-secondary mb-2">
               {t('contracts.claim_history', { defaultValue: 'Claim history' })}
+              {/* The count beside the heading names the whole claim
+                  history rather than the rows on this page. It is read
+                  as "how many claims have there been", and the page
+                  length answers a question nobody asked. */}
               <span className="ml-2 text-content-tertiary normal-case">
-                ({(claimsQ.data ?? []).length})
+                ({claimsQ.data?.total ?? 0})
               </span>
             </p>
-            {(claimsQ.data ?? []).length === 0 ? (
+            {(claimsQ.data?.items ?? []).length === 0 ? (
               <p className="text-sm text-content-tertiary py-2">
                 {t('contracts.no_claims_yet', {
                   defaultValue: 'No progress claims yet.',
@@ -1986,7 +2005,7 @@ export function ContractDetailDrawer({
               </p>
             ) : (
               <ul className="space-y-1 text-sm">
-                {(claimsQ.data ?? []).map((c) => (
+                {(claimsQ.data?.items ?? []).map((c) => (
                   <li
                     key={c.id}
                     className="flex items-center justify-between border-b border-border-light py-1 last:border-0"
@@ -2006,6 +2025,9 @@ export function ContractDetailDrawer({
                   </li>
                 ))}
               </ul>
+            )}
+            {claimsQ.data && (
+              <TruncationNotice page={claimsQ.data} className="mt-2" />
             )}
           </Card>
 

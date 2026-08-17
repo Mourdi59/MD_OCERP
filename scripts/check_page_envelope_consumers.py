@@ -162,6 +162,32 @@ MIGRATED_ENDPOINTS: dict[str, str] = {
     "/v1/qms/ncrs/{}/actions": "qms ncr actions",
     "/v1/qms/punch-items": "qms punch items",
     "/v1/qms/audits": "qms audits",
+    # Wave 7, the commercial spine. Two of the fifteen bare-list routes in the
+    # contracts module accept offset and limit, so those two are the only two
+    # that truncate today; the other thirteen answer whole and are a separate
+    # job. Both repositories already counted the filtered set and both routes
+    # wrote `items, _total = ...` and dropped the number.
+    #
+    # No cache-key entry, and "contracts" specifically MUST NOT be added:
+    # QUERY_KEY_RE anchors the first array element only, and this module keys
+    # ['contracts', 'list', ...], ['contracts', 'claims', ...] alongside
+    # ['contracts', 'lines', ...] and ['contracts', 'claim-history', ...],
+    # neither of which is enveloped. The entry would report those UNMIGRATED
+    # forever - the daily-diary trap. The change-order picker keys under
+    # ['changeorders', ...] and shares nothing.
+    #
+    # One call site each, and one is the right number: every reader goes
+    # through `listContracts` / `listProgressClaims` in features/contracts/
+    # api.ts, so the wrapper's return type binds them and tsc enforces the
+    # rest. Both wrappers had to stop fetching through a path-taking helper to
+    # be seen here at all. `safeGetPage(path)` hid the URL and the type
+    # argument in different functions, and this scan binds a URL literal to the
+    # call it stands next to, so both entries reported "0 call sites, 0
+    # migrated" - the decorative entry the notes above ban. The helper now
+    # takes the request instead of the path, which puts `apiGet<Page<Row>>`
+    # against the URL and names the row type where it is asked for.
+    "/v1/contracts/contracts/": "contracts register",
+    "/v1/contracts/progress-claims/": "progress claims",
 }
 
 # Left bare on purpose in wave 4: `/v1/documents/photos/recent/`. It is a
