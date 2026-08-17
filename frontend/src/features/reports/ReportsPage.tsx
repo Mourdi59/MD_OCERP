@@ -1482,18 +1482,39 @@ export function ReportsPage() {
                   // Exposure, and both were reduced over whatever the first
                   // fifty rows happened to be: a project with three hundred
                   // risks got a confident, wrong pair of figures inside a
-                  // document the reader treats as the record. A throw here
-                  // lands in the catch below and the section says it has no
-                  // risk data, which is the honest answer when it cannot
-                  // stand behind the numbers.
+                  // document the reader treats as the record.
+                  //
+                  // Past the ceiling the read is partial, and the figures that
+                  // need every row - exposure, the high and critical count, the
+                  // top five - are dropped rather than computed over part of
+                  // the register and stated with the same confidence as the
+                  // real thing. The register's own size survives being cut off,
+                  // because the page envelope carries it, so the section still
+                  // reports how many risks there are and how much of them it
+                  // read. Failing the section instead printed "No risk data
+                  // available." over a register holding thousands of rows,
+                  // which a reader takes for an empty register rather than for
+                  // a summary that was cut short.
                   type ReportRiskRow = { id: string; code: string; title: string; probability: number; impact_cost: number; impact_severity: string; risk_score: number; status: string };
-                  const { items: risks, truncated: risksTruncated, ceiling: riskCeiling } = await fetchAllPages<ReportRiskRow>((offset, limit) =>
+                  const { items: risks, truncated: risksTruncated, ceiling: riskCeiling, total: riskTotal } = await fetchAllPages<ReportRiskRow>((offset, limit) =>
                     apiGet<Page<ReportRiskRow>>(`/v1/risk/?project_id=${selectedProjectId}&limit=${limit}&offset=${offset}`),
                   );
-                  if (risksTruncated) {
+                  // A partial read can only be described as partial when there
+                  // is a size to quote it against, and when that size is really
+                  // larger than what was read: rows deleted while the loop ran
+                  // can leave a total that no longer exceeds the rows in hand,
+                  // and "Showing 10,000 of 9,998" is worse than saying nothing.
+                  // Holding the number itself rather than a flag is what lets
+                  // the branch below use it without a second existence check.
+                  const partialRiskTotal =
+                    risksTruncated && riskTotal !== undefined && riskTotal > risks.length ? riskTotal : undefined;
+                  if (risksTruncated && partialRiskTotal === undefined) {
                     throw new Error(`The risk register exceeds the ${riskCeiling} row report ceiling.`);
                   }
-                  if (risks.length === 0) {
+                  if (partialRiskTotal !== undefined) {
+                    htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_total_risks', { defaultValue: 'Total Risks' }))}</div><div class="metric-value">${partialRiskTotal.toLocaleString(lang)}</div></div>`);
+                    htmlParts.push(`<p style="color:#92400e;font-size:13px">${esc(t('cases.showing_count', { defaultValue: 'Showing {{shown}} of {{total}}', shown: risks.length, total: partialRiskTotal }))}</p>`);
+                  } else if (risks.length === 0) {
                     htmlParts.push(`<p>${esc(t('reports.html_no_risks', { defaultValue: 'No risks registered.' }))}</p>`);
                   } else {
                     const totalExposure = risks.reduce((sum, r) => sum + r.probability * r.impact_cost, 0);

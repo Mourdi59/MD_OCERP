@@ -21,6 +21,15 @@ export interface PagedResult<T> {
   truncated: boolean;
   /** The ceiling that stopped it, for a message the user can act on. */
   ceiling: number;
+  /**
+   * How many records the server said the full set holds, when it answered with
+   * a page envelope. This is the one number a partial read still knows exactly,
+   * which is what lets a caller say how much of a list it is showing instead of
+   * either guessing or refusing. Undefined for a route that still answers with
+   * a bare array, so a caller wanting to state a denominator must handle its
+   * absence rather than print one it does not have.
+   */
+  total?: number;
 }
 
 /**
@@ -33,6 +42,11 @@ export interface PagedResult<T> {
  *
  * The ceiling is a memory guard, not a page size. When it is reached the result
  * says so, so a partial read can never be presented as a complete one.
+ *
+ * A page envelope also states how many records exist in total, and that number
+ * survives being cut off. It is reported back so that a caller stopped by the
+ * ceiling can still say how much of the set it read, rather than having to
+ * choose between a wrong figure and no answer at all.
  */
 export async function fetchAllPages<T>(
   fetchPage: (offset: number, limit: number) => Promise<T[] | { items: T[] } | undefined | null>,
@@ -41,16 +55,27 @@ export async function fetchAllPages<T>(
   const pageSize = options.pageSize ?? 100;
   const ceiling = options.ceiling ?? 10_000;
   const items: T[] = [];
+  let total: number | undefined;
 
   for (let offset = 0; offset < ceiling; offset += pageSize) {
-    const page = normalizeListResponse<T>(await fetchPage(offset, Math.min(pageSize, ceiling - offset)));
+    const answer = await fetchPage(offset, Math.min(pageSize, ceiling - offset));
+    // Take the count off the envelope before normalizing it away, and keep the
+    // first page's answer rather than the last. A register being written while
+    // this loop runs would otherwise hand back a denominator that moved as it
+    // was being read, and a later page's total is no more authoritative than
+    // the first one's.
+    if (total === undefined && answer && !Array.isArray(answer)) {
+      const declared = (answer as { total?: unknown }).total;
+      if (typeof declared === 'number') total = declared;
+    }
+    const page = normalizeListResponse<T>(answer);
     items.push(...page);
     // A short page is the end of the data. An empty one guards against a route
     // that ignores offset, which would otherwise loop until the ceiling.
-    if (page.length < pageSize) return { items, truncated: false, ceiling };
+    if (page.length < pageSize) return { items, truncated: false, ceiling, total };
   }
 
-  return { items, truncated: true, ceiling };
+  return { items, truncated: true, ceiling, total };
 }
 
 /**
