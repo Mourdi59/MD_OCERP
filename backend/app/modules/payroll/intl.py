@@ -83,10 +83,28 @@ CONCEPTS: dict[str, str] = {
         "for time-and-a-half. It is set per agreement or law, never assumed."
     ),
     "rate": "The pay for one regular hour of work, in a stated currency (per hour).",
+    "basic_rate": (
+        "The part of the hourly rate that the overtime multiplier applies to. "
+        "Where a rate is made up of a basic wage plus an hourly fringe benefit "
+        "amount, only the basic wage is the overtime base. With no basic rate "
+        "stated, the whole rate is the base."
+    ),
+    "fringe_rate": (
+        "The part of the hourly rate paid as a fringe benefit, either into a "
+        "benefit plan or in cash. It is paid on every hour at its face value and "
+        "is never multiplied by the overtime multiplier."
+    ),
+    "overtime_base_rate": (
+        "The rate the overtime multiplier was actually applied to: the basic "
+        "rate when one is stated, otherwise the whole hourly rate."
+    ),
     "regular_pay": "Pay for the regular hours: regular hours multiplied by the hourly rate.",
     "overtime_pay": (
-        "Pay for the overtime hours: overtime hours multiplied by the hourly rate "
-        "multiplied by the overtime multiplier."
+        "Pay for the overtime hours. With no basic rate stated it is overtime "
+        "hours multiplied by the hourly rate multiplied by the overtime "
+        "multiplier. Where a basic rate is stated, the multiplier applies to the "
+        "basic rate only and the remaining fringe part is paid at face value on "
+        "each overtime hour."
     ),
     "gross_pay": (
         "Pay before deductions: regular pay plus overtime pay. This is the employer's labour cost for the work."
@@ -412,25 +430,72 @@ def regular_pay(
     return quantize_money(hours * hourly, quantum)
 
 
+def resolve_overtime_base(rate: object, basic_rate: object | None = None) -> tuple[Decimal, Decimal]:
+    """Split an hourly rate into the overtime base and the part paid at face value.
+
+    Returns ``(base, flat)`` where ``base`` is the rate the overtime multiplier
+    applies to and ``flat`` is the remainder, which is paid at face value on
+    every hour including overtime ones.
+
+    With ``basic_rate`` omitted this is ``(rate, 0)``: the whole rate is the
+    base, which is the behaviour every caller had before this parameter existed.
+
+    Where a rate is made up of a basic wage plus an hourly fringe benefit
+    amount, the fringe part is not part of the overtime base. Multiplying a
+    combined rate by the overtime multiplier overpays the fringe and is the
+    commonest error in construction wage compliance, so the split is available
+    as its own function rather than left to each caller to remember.
+
+    Args:
+        rate: The whole hourly rate. Non-negative and finite.
+        basic_rate: The part the multiplier applies to, or ``None`` for the
+            whole rate. Non-negative and finite when given.
+
+    Returns:
+        A ``(base, flat)`` tuple of Decimals that sums back to ``rate``.
+
+    Raises:
+        ValueError: If either figure is negative or non-finite, or if
+            ``basic_rate`` exceeds ``rate`` (which would make the fringe part
+            negative and means the two figures do not describe one rate).
+    """
+    hourly = _non_negative(to_decimal(rate, "rate"), "rate")
+    if basic_rate is None:
+        return hourly, Decimal("0")
+    base = _non_negative(to_decimal(basic_rate, "basic_rate"), "basic_rate")
+    if base > hourly:
+        raise ValueError(f"basic_rate {base} must not exceed the hourly rate {hourly}.")
+    return base, hourly - base
+
+
 def overtime_pay(
     overtime_hours: object,
     rate: object,
     overtime_multiplier: object = DEFAULT_OVERTIME_MULTIPLIER,
     *,
+    basic_rate: object | None = None,
     quantum: Decimal = DEFAULT_MONEY_QUANTUM,
 ) -> Decimal:
     """Return pay for the overtime hours.
 
-    Overtime pay = overtime hours times the hourly rate times the overtime
-    multiplier. The multiplier is an explicit parameter (default 1.5 for
-    time-and-a-half) so any agreement or law applies; it is never a fixed rule.
+    With no ``basic_rate``, overtime pay = overtime hours times the hourly rate
+    times the overtime multiplier. The multiplier is an explicit parameter
+    (default 1.5 for time-and-a-half) so any agreement or law applies; it is
+    never a fixed rule.
+
+    Where ``basic_rate`` is given, the multiplier applies to the basic rate only
+    and the remainder of the hourly rate is paid at face value on each overtime
+    hour: ``hours x (basic x multiplier + (rate - basic))``. That is what a rate
+    split into a basic wage and an hourly fringe benefit amount requires, and
+    the two forms agree exactly when ``basic_rate == rate``.
+
     All inputs must be non-negative finite numbers. Zero overtime hours gives a
     well-defined ``0.00``.
     """
     hours = _non_negative(to_decimal(overtime_hours, "overtime_hours"), "overtime_hours")
-    hourly = _non_negative(to_decimal(rate, "rate"), "rate")
+    base, flat = resolve_overtime_base(rate, basic_rate)
     multiplier = _non_negative(to_decimal(overtime_multiplier, "overtime_multiplier"), "overtime_multiplier")
-    return quantize_money(hours * hourly * multiplier, quantum)
+    return quantize_money(hours * ((base * multiplier) + flat), quantum)
 
 
 def gross_pay(
@@ -439,21 +504,26 @@ def gross_pay(
     rate: object,
     overtime_multiplier: object = DEFAULT_OVERTIME_MULTIPLIER,
     *,
+    basic_rate: object | None = None,
     quantum: Decimal = DEFAULT_MONEY_QUANTUM,
 ) -> Decimal:
     """Return gross pay = regular pay plus overtime pay.
 
-    Gross pay is regular hours times the rate, plus overtime hours times the
-    rate times the overtime multiplier. It is the pay before any deduction, and
-    is the employer's labour cost for the work. All inputs must be non-negative
-    finite numbers; the multiplier is explicit (default 1.5). Rounded once at
-    the end to ``quantum``.
+    Regular hours are always paid at the whole hourly rate. Overtime hours are
+    paid per :func:`overtime_pay`: at the whole rate times the multiplier when
+    no ``basic_rate`` is given, and otherwise with the multiplier applied to the
+    basic rate only and the fringe remainder paid at face value.
+
+    Gross pay is the pay before any deduction, and is the employer's labour cost
+    for the work. All inputs must be non-negative finite numbers; the multiplier
+    is explicit (default 1.5). Rounded once at the end to ``quantum``.
     """
     hours_reg = _non_negative(to_decimal(regular_hours, "regular_hours"), "regular_hours")
     hours_ot = _non_negative(to_decimal(overtime_hours, "overtime_hours"), "overtime_hours")
     hourly = _non_negative(to_decimal(rate, "rate"), "rate")
+    base, flat = resolve_overtime_base(hourly, basic_rate)
     multiplier = _non_negative(to_decimal(overtime_multiplier, "overtime_multiplier"), "overtime_multiplier")
-    total = (hours_reg * hourly) + (hours_ot * hourly * multiplier)
+    total = (hours_reg * hourly) + (hours_ot * ((base * multiplier) + flat))
     return quantize_money(total, quantum)
 
 
@@ -548,6 +618,7 @@ def payslip_breakdown(
     *,
     overtime_threshold: object | None = None,
     overtime_multiplier: object = DEFAULT_OVERTIME_MULTIPLIER,
+    basic_rate: object | None = None,
     deductions: Iterable[object] = (),
     quantum: Decimal = DEFAULT_MONEY_QUANTUM,
     rate_quantum: Decimal = DEFAULT_RATE_QUANTUM,
@@ -564,9 +635,15 @@ def payslip_breakdown(
         * ``overtime_threshold``     - the threshold used, or ``""`` if none.
         * ``rate``                   - the hourly rate, echoed.
         * ``overtime_multiplier``    - the multiplier used (default 1.5).
+        * ``basic_rate``             - the stated basic rate, or ``""`` if none.
+        * ``fringe_rate``            - the remainder of the rate paid at face
+                                       value on every hour, ``0`` if no basic
+                                       rate was stated.
+        * ``overtime_base_rate``     - the rate the multiplier was applied to.
         * ``currency``               - the stated currency code, or ``""``.
         * ``regular_pay``            - regular hours times rate.
-        * ``overtime_pay``           - overtime hours times rate times multiplier.
+        * ``overtime_pay``           - the multiplier applied to the overtime
+                                       base, plus the fringe part at face value.
         * ``gross_pay``              - regular pay plus overtime pay.
         * ``total_deductions``       - sum of the supplied deductions.
         * ``net_pay``                - gross minus deductions, floored at zero.
@@ -579,12 +656,13 @@ def payslip_breakdown(
     """
     hourly = _non_negative(to_decimal(rate, "rate"), "rate")
     multiplier = _non_negative(to_decimal(overtime_multiplier, "overtime_multiplier"), "overtime_multiplier")
+    ot_base, fringe_part = resolve_overtime_base(hourly, basic_rate)
     regular_hours, overtime_hours = split_regular_overtime(total_hours, overtime_threshold)
     total = regular_hours + overtime_hours
 
     reg_pay = regular_pay(regular_hours, hourly, quantum=quantum)
-    ot_pay = overtime_pay(overtime_hours, hourly, multiplier, quantum=quantum)
-    gross = gross_pay(regular_hours, overtime_hours, hourly, multiplier, quantum=quantum)
+    ot_pay = overtime_pay(overtime_hours, hourly, multiplier, basic_rate=basic_rate, quantum=quantum)
+    gross = gross_pay(regular_hours, overtime_hours, hourly, multiplier, basic_rate=basic_rate, quantum=quantum)
     withheld = total_deductions(deductions, quantum=quantum)
     net = net_pay(gross, deductions, quantum=quantum)
     per_hour = effective_hourly_rate(gross, total, quantum=rate_quantum)
@@ -600,6 +678,9 @@ def payslip_breakdown(
         "overtime_threshold": threshold_out,
         "rate": str(quantize_money(hourly, rate_quantum)),
         "overtime_multiplier": format(multiplier.normalize(), "f"),
+        "basic_rate": "" if basic_rate is None else str(quantize_money(ot_base, rate_quantum)),
+        "fringe_rate": str(quantize_money(fringe_part, rate_quantum)),
+        "overtime_base_rate": str(quantize_money(ot_base, rate_quantum)),
         "currency": normalize_currency(currency),
         "regular_pay": str(reg_pay),
         "overtime_pay": str(ot_pay),
