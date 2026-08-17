@@ -6,6 +6,13 @@ import { useTranslation as useI18nTranslation } from 'react-i18next';
 
 export const SUPPORTED_LANGUAGES = [
   { code: 'en', name: 'English', flag: '🇬🇧', country: 'gb' },
+  // American English is a regional variant of the entry above, in the same sense
+  // es-MX is one of es: the file under `locales/en-US.ts` holds only the words
+  // American practice names differently, and every other key is answered by
+  // `en.ts` through the fallback chain. The region subtag is upper case because
+  // that is how i18next normalises a two-part code, and the bundle has to be
+  // registered under the same spelling it looks up.
+  { code: 'en-US', name: 'English (US)', english: 'English (United States)', flag: '🇺🇸', country: 'us' },
   { code: 'de', name: 'Deutsch', english: 'German', flag: '🇩🇪', country: 'de' },
   { code: 'fr', name: 'Français', english: 'French', flag: '🇫🇷', country: 'fr' },
   { code: 'es', name: 'Español', english: 'Spanish', flag: '🇪🇸', country: 'es' },
@@ -48,6 +55,19 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'fa', name: 'فارسی', english: 'Persian', flag: '🇮🇷', country: 'ir', dir: 'rtl' },
   { code: 'he', name: 'עברית', english: 'Hebrew', flag: '🇮🇱', country: 'il', dir: 'rtl' },
   { code: 'el', name: 'Ελληνικά', english: 'Greek', flag: '🇬🇷', country: 'gr' },
+  // `uk` is the ISO 639-1 code for Ukrainian, and it is also the string this
+  // codebase already uses for the United Kingdom as a *region*: a BoQ preset
+  // region, a country-pack id, and the country map in CreateProjectPage all
+  // carry `uk` meaning Britain. The two live in different namespaces and must
+  // stay that way. Nothing may derive a UI language from a region code, or a
+  // British project would come up in Ukrainian.
+  { code: 'uk', name: 'Українська', english: 'Ukrainian', flag: '🇺🇦', country: 'ua' },
+  // Uzbek is written in Latin script: the Latin alphabet has been the official
+  // one since 1993 and is what public and construction documentation uses. The
+  // two modifier letters in the language's own name are U+02BB, not an
+  // apostrophe, and a straight quote there is a misspelling rather than a
+  // typographic preference.
+  { code: 'uz', name: 'Oʻzbekcha', english: 'Uzbek', flag: '🇺🇿', country: 'uz' },
 ];
 
 export function getLanguageByCode(code: string): (typeof SUPPORTED_LANGUAGES)[number] {
@@ -58,15 +78,24 @@ export function getLanguageByCode(code: string): (typeof SUPPORTED_LANGUAGES)[nu
  * Normalize a partner-pack ``default_locale`` to a supported UI language code.
  *
  * Pack manifests carry BCP-47 locales that often include a region subtag
- * (batimatech-ca ships ``fr-CA`` for French Canada, uk-jct ships ``en-GB``).
- * The UI ships base languages only, so we strip the region and lower-case
- * (``fr-CA`` -> ``fr``), then validate against ``SUPPORTED_LANGUAGES``.
- * Returns ``'en'`` for any locale we do not ship, so a pack can never force the
- * app into an unsupported language.
+ * (batimatech-ca ships ``fr-CA`` for French Canada, uk-jct ships ``en-GB``,
+ * commercial-denver ships ``en-US``). A regional code the UI actually ships is
+ * answered with itself, because a pack that names a region has asked for that
+ * region and stripping it would hand a Denver pack British English. Anything
+ * else falls back to the base language (``fr-CA`` -> ``fr``), and a locale we do
+ * not ship at all returns ``'en'``, so a pack can never force the app into a
+ * language that has no strings.
  */
 export function normalizePackLocale(locale: string | null | undefined): string {
   if (!locale) return 'en';
-  const base = locale.split('-')[0]!.trim().toLowerCase();
+  const trimmed = locale.trim();
+  // Match how i18next writes a two-part code, so 'en-us' and 'EN-us' both find
+  // the 'en-US' we ship rather than falling through to the base language.
+  const parts = trimmed.split('-');
+  const regional =
+    parts.length === 2 ? `${parts[0]!.toLowerCase()}-${parts[1]!.toUpperCase()}` : trimmed;
+  if (SUPPORTED_LANGUAGES.some((l) => l.code === regional)) return regional;
+  const base = parts[0]!.toLowerCase();
   return SUPPORTED_LANGUAGES.some((l) => l.code === base) ? base : 'en';
 }
 
@@ -237,6 +266,13 @@ i18n
     // The regional variants fall back to their own language before English, so
     // a key not localised for Chile shows Spanish rather than English. That is
     // what lets those files carry only the words that actually differ.
+    //
+    // en-US needs no line of its own. i18next resolves a two-part code through
+    // ['en-US', 'en'] before it ever consults this map, and the `default` branch
+    // below names the same fallback again, so a key absent from en-US.ts is
+    // answered by en.ts either way. Asserted in enUSFallsBackToEnglish.test.ts
+    // rather than assumed, because a missing key and a resolved one look alike
+    // on screen when every call site passes a defaultValue.
     fallbackLng: {
       'es-MX': ['es', 'en'],
       'es-CL': ['es', 'en'],
