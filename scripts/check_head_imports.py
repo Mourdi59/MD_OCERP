@@ -35,7 +35,12 @@ parse are counted and named rather than being reported as missing, because
 calling an unreadable file an absent one produced 120 false findings on the
 first run of this script and a checker that cries wolf stops being read.
 
-Usage: python scripts/check_head_imports.py [ref]   (default HEAD)
+Needs a 3.12 interpreter, the same floor the backend itself declares, because
+it parses the backend's own syntax. Anything older reads healthy files as
+unparsable and the check refuses rather than blaming them.
+
+Usage: .venv-run/Scripts/python.exe scripts/check_head_imports.py [ref]
+       (default ref HEAD)
 """
 
 from __future__ import annotations
@@ -132,6 +137,20 @@ def toplevel_names(tree: ast.Module) -> tuple[set[str], bool]:
 
 def main() -> int:
     ref = sys.argv[1] if len(sys.argv) > 1 else "HEAD"
+
+    # The backend needs 3.12 (PEP 695 `type` aliases, PEP 701 f-strings), so an
+    # older interpreter cannot parse it and the files that use either read as
+    # unparsable. The check then names those files and returns 2, which is
+    # indistinguishable from "this commit is broken". On 2026-08-18 that cost a
+    # real investigation before a release: a 3.11 on PATH accused four healthy
+    # files, one of them on the single line `type JobHandler = ...`. "I cannot
+    # read this" is not "this is wrong", so refuse rather than accuse.
+    if sys.version_info < (3, 12):
+        running = ".".join(str(p) for p in sys.version_info[:3])
+        print(f"ERROR: this check parses 3.12 syntax and is running on {running}, so it proved nothing")
+        print("Re-run with the project interpreter, e.g. .venv-run/Scripts/python.exe scripts/check_head_imports.py")
+        return 2
+
     files = [p for p in git("ls-tree", "--name-only", "-r", ref, f"{BACKEND}/{PKG}").splitlines() if p.endswith(".py")]
     if not files:
         # "found nothing" and "did not look" must not print the same thing.
