@@ -33,6 +33,14 @@ Usage:
     python scripts/i18n_new_locale.py assemble et
     python scripts/i18n_new_locale.py verify   et
 
+`extract` is a ONE-TIME BOOTSTRAP. It writes the whole batch set fresh, with
+English in every value, so running it again on a locale under translation would
+rewrite finished work back to English - and `assemble` rebuilds the locale file
+from those batches, which is how English reaches the shipped .ts. It therefore
+refuses when any batch already holds a translated value, and `--force` is the
+only way past that. To pick up the next batch, open the batch_NNN.json the first
+extract already wrote; to take on keys that appeared since, use `delta`.
+
 `delta` catches a locale's corpus up when target_keys() has moved since
 extract() ran (new modules landed, or keys reached the shipped locales after
 this locale's own extraction) - writes exactly the new keys to
@@ -355,11 +363,65 @@ def cmd_plan(code: str) -> int:
     return 0
 
 
-def cmd_extract(code: str, batch_size: int) -> int:
+def translated_batch_files(out: Path, sources: dict[str, tuple[str, str]]) -> list[tuple[Path, int]]:
+    """Batch files under `out` that hold work, with how many keys each answers.
+
+    A batch file starts life holding the English source for every key, so a
+    value that still equals its source is a placeholder and a value that
+    differs is somebody's translation. Counting the difference is the only way
+    to tell the two apart: the files are the same shape either way, and their
+    timestamps say when they were written, not whether anyone wrote in them.
+
+    A file that cannot be parsed counts as holding work. A corrupt batch is a
+    reason to stop and look, never a reason to assume it was empty.
+    """
+    carrying: list[tuple[Path, int]] = []
+    for path in sorted(out.glob("batch_*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            carrying.append((path, -1))
+            continue
+        answered = sum(1 for k, v in payload.items() if v and v != sources.get(k, ("", ""))[0])
+        if answered:
+            carrying.append((path, answered))
+    return carrying
+
+
+def cmd_extract(code: str, batch_size: int, force: bool = False) -> int:
     ordered, _ = target_keys(code)
     sources = english_sources()
     out = WORK / code
     out.mkdir(parents=True, exist_ok=True)
+
+    # extract is a one-time bootstrap and the unlink below is unconditional, so
+    # a second run rewrites every batch back to English. That is silent: the
+    # command succeeds and prints a normal-looking batch count, and the damage
+    # only becomes visible at the next assemble, which rebuilds the locale file
+    # FROM these batches and would publish English over a finished translation.
+    #
+    # It has already happened once, to 65 uz batches. It was survivable only
+    # because assemble had not run yet, so the values could be resynced out of
+    # the live uz.ts. Once assemble runs there is nothing left to resync from.
+    #
+    # So refuse, and say what would be lost. Anyone who genuinely wants to
+    # re-bootstrap can pass --force; nobody reaches for that by accident while
+    # looking for the next batch to translate.
+    carrying = translated_batch_files(out, sources)
+    if carrying and not force:
+        answered = sum(n for _, n in carrying if n > 0)
+        unreadable = [p.name for p, n in carrying if n < 0]
+        print(f"REFUSING: {len(carrying)} batch file(s) under {out} already hold work.")
+        if answered:
+            print(f"  {answered} key(s) are translated and this would rewrite them to English.")
+        if unreadable:
+            print(f"  unreadable, treated as holding work: {', '.join(unreadable)}")
+        print("  extract is a one-time bootstrap. To pick up the next batch, open the")
+        print("  batch_NNN.json the first extract already wrote. To catch a moved corpus")
+        print(f"  up to new keys, run: {sys.argv[0]} delta {code}")
+        print("  Pass --force only if you mean to throw this translation away.")
+        return 1
+
     for stale in out.glob("batch_*.json"):
         stale.unlink()
 
@@ -518,7 +580,7 @@ def main() -> int:
         size = 400
         if "--batch-size" in sys.argv:
             size = int(sys.argv[sys.argv.index("--batch-size") + 1])
-        return cmd_extract(code, size)
+        return cmd_extract(code, size, force="--force" in sys.argv)
     if action == "delta":
         return cmd_delta(code)
     if action == "assemble":
