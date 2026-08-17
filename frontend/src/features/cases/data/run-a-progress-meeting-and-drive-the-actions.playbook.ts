@@ -61,7 +61,7 @@ const playbook: Playbook = {
       whyDefault:
         "A meeting with no written record gets re-argued next week, and a verbal decision does not hold up in a dispute.",
       moduleLabel: "Meetings",
-      moduleLabelKey: "nav.meetings",
+      moduleLabelKey: "meetings.title",
       to: "/projects/:projectId/meetings",
     },
     {
@@ -143,8 +143,8 @@ const playbook: Playbook = {
       whyKey: "cases.run_a_progress_meeting_and_drive_the_actions.step.rfi.why",
       whyDefault:
         "A question left in the notes stalls the works and gets forgotten. A formal RFI forces a dated answer on the record.",
-      moduleLabel: "RFI",
-      moduleLabelKey: "nav.rfi",
+      moduleLabel: "RFIs",
+      moduleLabelKey: "rfi.title",
       to: "/projects/:projectId/rfi",
     },
     {

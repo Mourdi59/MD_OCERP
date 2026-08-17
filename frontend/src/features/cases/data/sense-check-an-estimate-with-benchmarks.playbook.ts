@@ -57,8 +57,8 @@ const playbook: Playbook = {
       whyKey: "cases.sense_check_an_estimate_with_benchmarks.step.open.why",
       whyDefault:
         "You cannot judge whether a number is sensible until you can see how it breaks down. Getting the totals and the rate per square metre in front of you is the ground every later check stands on.",
-      moduleLabel: "BOQ",
-      moduleLabelKey: "nav.boq",
+      moduleLabel: "Bill of Quantities",
+      moduleLabelKey: "boq.title",
       to: "/boq",
     },
     {

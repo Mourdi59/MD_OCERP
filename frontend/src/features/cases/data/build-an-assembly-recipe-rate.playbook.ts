@@ -131,8 +131,8 @@ const playbook: Playbook = {
       whyKey: "cases.build_an_assembly_recipe_rate.step.apply.why",
       whyDefault:
         "A saved assembly makes repeated pricing fast and, more importantly, consistent across a large bill. Change a component rate once and every line built on it moves together, so a price rise cannot be applied in one place and forgotten in ten.",
-      moduleLabel: "BOQ",
-      moduleLabelKey: "nav.boq",
+      moduleLabel: "Bill of Quantities",
+      moduleLabelKey: "boq.title",
       to: "/boq",
     },
   ],

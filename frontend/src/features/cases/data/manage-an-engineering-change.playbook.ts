@@ -91,8 +91,8 @@ const playbook: Playbook = {
       whyKey: "cases.manage_an_engineering_change.step.questions.why",
       whyDefault:
         "A change built on an assumption is rework waiting to happen. Getting the answer on the record, from the person responsible for the design, is what stops the same question being argued again on site.",
-      moduleLabel: "RFI",
-      moduleLabelKey: "nav.rfi",
+      moduleLabel: "RFIs",
+      moduleLabelKey: "rfi.title",
       to: "/projects/:projectId/rfi",
     },
     {

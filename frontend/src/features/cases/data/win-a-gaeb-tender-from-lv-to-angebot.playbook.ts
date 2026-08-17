@@ -95,7 +95,7 @@ const playbook: Playbook = {
       whyDefault:
         "A rate whose origin you can name is a rate you can defend if the client asks you to explain it. Fixing the basis up front also stops the same work being priced two different ways inside one offer.",
       moduleLabel: "Cost Database",
-      moduleLabelKey: "nav.costs",
+      moduleLabelKey: "costs.title",
       to: "/costs",
     },
     {

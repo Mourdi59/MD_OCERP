@@ -87,8 +87,8 @@ const playbook: Playbook = {
       whyKey: "cases.import_a_gaeb_tender_into_a_priced_boq.step.price.why",
       whyDefault:
         "A rate pulled from a maintained catalog is defensible and fast. Reading the position text as you price it is where you catch the qualification hidden in a description that would otherwise cost you on site.",
-      moduleLabel: "Catalog",
-      moduleLabelKey: "nav.catalog",
+      moduleLabel: "Resource Catalog",
+      moduleLabelKey: "catalog.title",
       to: "/catalog",
     },
     {

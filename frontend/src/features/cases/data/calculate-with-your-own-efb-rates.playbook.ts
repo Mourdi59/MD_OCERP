@@ -94,7 +94,7 @@ const playbook: Playbook = {
       whyDefault:
         "Your own prices are what separates a calculation from a guess, because they are the prices you will really pay. When steel or diesel moves you correct one rate, and every recipe and position standing on it moves with it instead of being retyped line by line.",
       moduleLabel: "Resource Catalog",
-      moduleLabelKey: "nav.catalog",
+      moduleLabelKey: "catalog.title",
       to: "/catalog",
     },
     {

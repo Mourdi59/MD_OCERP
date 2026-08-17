@@ -54,7 +54,7 @@ const playbook: Playbook = {
       whyDefault:
         "A woolly question buys a woolly answer and a week of delay. A tight RFI carrying a real date is also what lets a slow reply be tied back to lost time if it comes to that.",
       moduleLabel: "RFIs",
-      moduleLabelKey: "nav.rfi",
+      moduleLabelKey: "rfi.title",
       to: "/projects/:projectId/rfi",
     },
     {

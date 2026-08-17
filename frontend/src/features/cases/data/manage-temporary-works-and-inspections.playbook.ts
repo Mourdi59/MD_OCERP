@@ -44,7 +44,7 @@ const playbook: Playbook = {
       whyDefault:
         "The item nobody registered is the one that gets loaded without a check. A complete register is what makes sure every load-bearing temporary structure has an owner and a design behind it.",
       moduleLabel: "Temporary Works",
-      moduleLabelKey: "nav.temporary_works",
+      moduleLabelKey: "temporary_works.title",
       to: "/projects/:projectId/temporary-works",
     },
     {
@@ -66,7 +66,7 @@ const playbook: Playbook = {
       whyDefault:
         "A design check is only worth something if it is recorded and holds the work back until it is done. Tying the sign-off to the item is what makes the check a real gate, not a formality.",
       moduleLabel: "Temporary Works",
-      moduleLabelKey: "nav.temporary_works",
+      moduleLabelKey: "temporary_works.title",
       to: "/projects/:projectId/temporary-works",
     },
     {

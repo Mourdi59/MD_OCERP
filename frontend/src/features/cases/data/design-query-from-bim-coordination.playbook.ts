@@ -103,7 +103,7 @@ const playbook: Playbook = {
       whyDefault:
         "A conflict mentioned in a meeting and never formalised gets forgotten by the next one. A dated, written query is what keeps it moving until it is actually resolved.",
       moduleLabel: "RFIs",
-      moduleLabelKey: "nav.rfi",
+      moduleLabelKey: "rfi.title",
       to: "/projects/:projectId/rfi",
     },
     {

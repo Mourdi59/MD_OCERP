@@ -192,7 +192,7 @@ const playbook: Playbook = {
       whyDefault:
         "Your own rate is the only number you can defend when the contractor asks how you got there. Reading the Langtext while you price is where you find the scaffold, the working hours or the tolerance that would otherwise be free work.",
       moduleLabel: "Resource Catalog",
-      moduleLabelKey: "nav.catalog",
+      moduleLabelKey: "catalog.title",
       to: "/catalog",
     },
     {

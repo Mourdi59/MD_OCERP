@@ -58,8 +58,8 @@ const playbook: Playbook = {
       whyKey: "cases.review_and_mitigate_project_risks.step.review.why",
       whyDefault:
         "A risk register nobody revisits just accumulates stale entries and hides the two or three that actually matter this month.",
-      moduleLabel: "Risk register",
-      moduleLabelKey: "nav.risks",
+      moduleLabel: "Risk Register",
+      moduleLabelKey: "nav.risk_register",
       to: "/risks",
     },
     {
@@ -97,8 +97,8 @@ const playbook: Playbook = {
       whyKey: "cases.review_and_mitigate_project_risks.step.mitigate.why",
       whyDefault:
         "A risk with no owner and no date is a risk that sits there until it happens. Assigning both is what actually reduces the chance it does.",
-      moduleLabel: "Risk register",
-      moduleLabelKey: "nav.risks",
+      moduleLabel: "Risk Register",
+      moduleLabelKey: "nav.risk_register",
       to: "/risks",
     },
     {

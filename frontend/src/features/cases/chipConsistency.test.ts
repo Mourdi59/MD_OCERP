@@ -89,25 +89,26 @@ const KEY_SPLIT_BASELINE: Record<string, string[]> = {
  * Routes whose chips agree on the key and disagree on the spelling of the
  * label. Source-only, no locale effect. Same shrink rule.
  *
- * These nine are two different things and the list says which, because a shrink
+ * These seven are two different things and the list says which, because a shrink
  * list that carries deliberate choices as debt earns a "why is this still here"
  * from every reader forever. The first group is slips: same word, different
  * capital or different number. The second group is different NAMES for one
  * screen, which may well be somebody's considered wording, and settling those
  * is a call for the catalogue owner rather than a tidy-up.
+ *
+ * `/projects/:projectId/rfi` and `/catalog` left this list when every chip moved
+ * onto the key the screen claims for itself, which settled the label with it.
  */
 const LABEL_SPLIT_BASELINE: Record<string, string[]> = {
   // Slips: one name, two spellings.
   '/bid-management': ['Bid Management', 'Bid management'],
   '/projects/:projectId/field-time': ['Field Time', 'Field time'],
-  '/projects/:projectId/rfi': ['RFI', 'RFIs'],
   '/punchlist': ['Punch List', 'Punch list'],
 
   // Different names for the same screen. Confirm the intent before collapsing.
   // `/labor-rates` is the interesting one: the split runs along US and UK
   // spelling, so it may be a market choice rather than an accident, and a
   // market choice does not belong on a chip that names a single screen.
-  '/catalog': ['Catalog', 'Resource Catalog'],
   '/labor-rates': ['Labor Rates', 'Labour Rates'],
   '/projects/:projectId/hse-advanced': ['HSE Advanced', 'HSE Management'],
   '/projects/:projectId/qms': ['QMS', 'Quality', 'Quality management'],

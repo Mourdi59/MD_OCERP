@@ -58,7 +58,7 @@ const playbook: Playbook = {
       whyDefault:
         "Most documents need filing and a handful need doing, and telling those apart is the whole job. It is also the job that gets skipped at four on a Friday, which is how a letter with a fourteen-day deadline gets read properly on day fifteen.",
       moduleLabel: "Correspondence",
-      moduleLabelKey: "nav.correspondence",
+      moduleLabelKey: "correspondence.title",
       to: "/correspondence",
     },
     {

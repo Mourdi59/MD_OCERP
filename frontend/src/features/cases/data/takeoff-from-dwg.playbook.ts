@@ -53,8 +53,8 @@ const playbook: Playbook = {
       whyKey: "cases.takeoff_from_dwg.step.open.why",
       whyDefault:
         "A scale that is out by even a few percent multiplies through every area and length you take off, and nobody notices until the concrete order comes back wrong. Calibrating once at the start is a two minute job that protects the whole take-off.",
-      moduleLabel: "DWG take-off",
-      moduleLabelKey: "onboarding.mod_dwg_takeoff",
+      moduleLabel: "DWG Takeoff",
+      moduleLabelKey: "nav.dwg_takeoff",
       to: "/dwg-takeoff",
     },
     {

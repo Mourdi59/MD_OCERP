@@ -56,8 +56,8 @@ const playbook: Playbook = {
       whyKey: "cases.review_ai_takeoff_proposals.step.read.why",
       whyDefault:
         "The read is cheap and the acceptance is not. Keeping proposals in a layer you can throw away means a badly scanned sheet costs you a rerun, rather than leaving you with quantities in a bill that you cannot account for a fortnight later.",
-      moduleLabel: "Takeoff",
-      moduleLabelKey: "nav.takeoff",
+      moduleLabel: "PDF Measurements",
+      moduleLabelKey: "nav.pdf_measurements",
       to: "/takeoff",
     },
     {
@@ -91,8 +91,8 @@ const playbook: Playbook = {
       whyKey: "cases.review_ai_takeoff_proposals.step.triage.why",
       whyDefault:
         "A bare percentage beside a suggestion is not a decision, because nobody can tell you whether sixty-two is good. A band means the same thing to you as it does to the machine that scored it. Accept all over a pile of weak proposals is how a plan read turns into an over-order that nobody notices until the material lands.",
-      moduleLabel: "Takeoff",
-      moduleLabelKey: "nav.takeoff",
+      moduleLabel: "PDF Measurements",
+      moduleLabelKey: "nav.pdf_measurements",
       to: "/takeoff",
     },
     {
@@ -126,8 +126,8 @@ const playbook: Playbook = {
       whyKey: "cases.review_ai_takeoff_proposals.step.scale.why",
       whyDefault:
         "A wrong scale never looks wrong. It looks like a plausible number that happens to be out by a factor, and it stays plausible all the way to an order. When a sheet does turn out to have been measured at the wrong ratio, provenance is what lets you pull exactly the rows that inherited the bad ratio instead of remeasuring the whole drawing.",
-      moduleLabel: "Takeoff",
-      moduleLabelKey: "nav.takeoff",
+      moduleLabel: "PDF Measurements",
+      moduleLabelKey: "nav.pdf_measurements",
       to: "/takeoff",
     },
     {
@@ -161,8 +161,8 @@ const playbook: Playbook = {
       whyKey: "cases.review_ai_takeoff_proposals.step.accept.why",
       whyDefault:
         "The bill is the point of no return, because from here a number goes to a client, a subcontractor or a purchase order. A quantity that got in unreviewed is indistinguishable from one you measured yourself, right up to the moment somebody asks you to prove it.",
-      moduleLabel: "BOQ",
-      moduleLabelKey: "nav.boq",
+      moduleLabel: "Bill of Quantities",
+      moduleLabelKey: "boq.title",
       to: "/boq",
     },
   ],

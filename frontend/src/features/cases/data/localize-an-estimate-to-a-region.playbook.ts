@@ -99,8 +99,8 @@ const playbook: Playbook = {
       whyKey: "cases.localize_an_estimate_to_a_region.step.apply.why",
       whyDefault:
         "Holding the quantities and changing only the rates keeps the two effects, scope and price, cleanly separate. That way you can see exactly how much of the new number is the region and how much is the design.",
-      moduleLabel: "BOQ",
-      moduleLabelKey: "nav.boq",
+      moduleLabel: "Bill of Quantities",
+      moduleLabelKey: "boq.title",
       to: "/boq",
     },
     {

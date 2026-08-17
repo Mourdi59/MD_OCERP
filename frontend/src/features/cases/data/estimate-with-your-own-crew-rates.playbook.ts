@@ -85,7 +85,7 @@ const playbook: Playbook = {
       // label is how the same chip starts reading differently in another
       // locale, which is exactly the divergence P-16 tracks.
       moduleLabel: "Cost Database",
-      moduleLabelKey: "nav.costs",
+      moduleLabelKey: "costs.title",
       to: "/costs",
     },
     {

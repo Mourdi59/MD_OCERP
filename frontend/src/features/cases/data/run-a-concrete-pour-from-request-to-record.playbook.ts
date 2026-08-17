@@ -89,7 +89,7 @@ const playbook: Playbook = {
       whyDefault:
         "The tickets and samples captured during the pour are the proof the right concrete went in. Reconstructed afterwards they are worthless, so they have to be taken as it happens.",
       moduleLabel: "Construction Control",
-      moduleLabelKey: "nav.construction_control",
+      moduleLabelKey: "construction_control.title",
       to: "/projects/:projectId/construction-control",
     },
     {
@@ -111,7 +111,7 @@ const playbook: Playbook = {
       whyDefault:
         "A pour is not finished when the concrete sets, it is finished when it is proven to strength on record. That record is what the structural sign-off and the eventual handover depend on.",
       moduleLabel: "Construction Control",
-      moduleLabelKey: "nav.construction_control",
+      moduleLabelKey: "construction_control.title",
       to: "/projects/:projectId/construction-control",
     },
   ],

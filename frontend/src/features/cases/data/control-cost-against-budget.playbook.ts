@@ -54,8 +54,8 @@ const playbook: Playbook = {
       whyKey: "cases.control_cost_against_budget.step.baseline.why",
       whyDefault:
         "You cannot control spend without a fixed line to control it against, and a budget that keeps drifting hides overruns as fast as they appear. Locking the baseline is what makes a variance mean something.",
-      moduleLabel: "BOQ",
-      moduleLabelKey: "nav.boq",
+      moduleLabel: "Bill of Quantities",
+      moduleLabelKey: "boq.title",
       to: "/boq",
     },
     {

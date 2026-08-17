@@ -93,8 +93,8 @@ const playbook: Playbook = {
       whyKey: "cases.estimate_from_cost_database.step.build.why",
       whyDefault:
         "The bill is where scope turns into money, so its structure has to survive scrutiny. Starting each line from a database item means it already carries a traceable source and a rate you can justify, rather than a number typed from memory.",
-      moduleLabel: "BOQ",
-      moduleLabelKey: "nav.boq",
+      moduleLabel: "Bill of Quantities",
+      moduleLabelKey: "boq.title",
       to: "/boq",
     },
     {

@@ -148,8 +148,8 @@ const playbook: Playbook = {
         "cases.draft_an_estimate_with_ai_element_matching.step.accept-boq.why",
       whyDefault:
         "The bill is what you actually price and submit. Getting the quantities right here is where the money is won or lost.",
-      moduleLabel: "BOQ",
-      moduleLabelKey: "nav.boq",
+      moduleLabel: "Bill of Quantities",
+      moduleLabelKey: "boq.title",
       to: "/boq",
     },
     {

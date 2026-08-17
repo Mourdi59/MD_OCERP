@@ -61,7 +61,7 @@ const playbook: Playbook = {
       whyDefault:
         "Enquiries arrive by phone and email and get lost. One clean contact record is who you chase and who signs.",
       moduleLabel: "Contacts",
-      moduleLabelKey: "nav.contacts",
+      moduleLabelKey: "contacts.title",
       to: "/contacts",
     },
     {

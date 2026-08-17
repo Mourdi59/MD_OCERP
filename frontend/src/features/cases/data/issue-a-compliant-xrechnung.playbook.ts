@@ -94,7 +94,7 @@ const playbook: Playbook = {
       whyDefault:
         "An invoice whose buyer has no postal address is rejected outright, and for XRechnung the town and the postcode are each a fatal finding of their own. Filling them once on the contact fixes every invoice you will ever send that client.",
       moduleLabel: "Contacts",
-      moduleLabelKey: "nav.contacts",
+      moduleLabelKey: "contacts.title",
       to: "/contacts",
     },
     {

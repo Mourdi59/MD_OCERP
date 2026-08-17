@@ -57,8 +57,8 @@ const playbook: Playbook = {
       whyKey: "cases.export_a_boq_to_fiebdc3.step.prepare.why",
       whyDefault:
         "BC3 carries a hierarchy, so a bill with orphaned positions or two items sharing a code arrives at the other end as a budget nobody can navigate. Sorting the tree out here takes minutes. Sorting it out after someone has started pricing in their own software is no longer your decision to make.",
-      moduleLabel: "BOQ",
-      moduleLabelKey: "nav.boq",
+      moduleLabel: "Bill of Quantities",
+      moduleLabelKey: "boq.title",
       to: "/boq",
     },
     {
@@ -92,8 +92,8 @@ const playbook: Playbook = {
       whyKey: "cases.export_a_boq_to_fiebdc3.step.export.why",
       whyDefault:
         "BC3 is what that market actually exchanges budgets in, and for Spanish public work it is not optional. Sending a spreadsheet instead means somebody at the other end retypes your bill, and a retyped bill of four hundred positions always loses a few.",
-      moduleLabel: "BOQ",
-      moduleLabelKey: "nav.boq",
+      moduleLabel: "Bill of Quantities",
+      moduleLabelKey: "boq.title",
       to: "/boq",
     },
     {
@@ -127,8 +127,8 @@ const playbook: Playbook = {
       whyKey: "cases.export_a_boq_to_fiebdc3.step.charset.why",
       whyDefault:
         "A mis-declared charset is the classic BC3 failure. The file opens, the numbers are all correct, and every accented character in the descriptions comes out as rubbish. It gets spotted late, usually by the client reading your descriptions, and it makes an otherwise careful submission look sloppy.",
-      moduleLabel: "BOQ",
-      moduleLabelKey: "nav.boq",
+      moduleLabel: "Bill of Quantities",
+      moduleLabelKey: "boq.title",
       to: "/boq",
     },
     {
@@ -162,8 +162,8 @@ const playbook: Playbook = {
       whyKey: "cases.export_a_boq_to_fiebdc3.step.roundtrip.why",
       whyDefault:
         "An export nobody has ever read back is a guess. Putting it through your own reader takes a minute and is the difference between believing the file is sound and knowing it, which matters most on the submission where you do not get a second go.",
-      moduleLabel: "BOQ",
-      moduleLabelKey: "nav.boq",
+      moduleLabel: "Bill of Quantities",
+      moduleLabelKey: "boq.title",
       to: "/boq",
     },
   ],

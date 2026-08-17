@@ -164,8 +164,8 @@ const playbook: Playbook = {
       whyKey: "cases.build_a_parametric_assembly.step.apply.why",
       whyDefault:
         "This is where the parametric version earns its keep over a fixed recipe. When the wall grows at the next design issue you change one input rather than eleven component quantities, and the two or three that would quietly have been forgotten move with the rest.",
-      moduleLabel: "BOQ",
-      moduleLabelKey: "nav.boq",
+      moduleLabel: "Bill of Quantities",
+      moduleLabelKey: "boq.title",
       to: "/boq",
     },
   ],

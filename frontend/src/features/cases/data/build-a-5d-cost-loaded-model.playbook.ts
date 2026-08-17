@@ -58,8 +58,8 @@ const playbook: Playbook = {
       whyKey: "cases.build_a_5d_cost_loaded_model.step.boq.why",
       whyDefault:
         "Cost-loading a model built on gaps just spreads those gaps across the programme. A complete priced bill is the foundation the whole cash curve stands on.",
-      moduleLabel: "BOQ",
-      moduleLabelKey: "nav.boq",
+      moduleLabel: "Bill of Quantities",
+      moduleLabelKey: "boq.title",
       to: "/boq",
     },
     {
