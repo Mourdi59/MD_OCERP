@@ -195,9 +195,12 @@ function HistogramTab({ projectId }: { projectId: string }) {
   });
 
   // Once the list loads, default the picker to the first resource so the
-  // histogram has something to show without an extra click.
-  const resolvedResourceId =
-    resourceId || (resourcesQ.data?.items.length ? resourcesQ.data.items[0]!.id : '');
+  // histogram has something to show without an extra click. Chained through
+  // rather than guarded on the length, because reading the first element after
+  // a length test asks the compiler to carry a narrowing across two separate
+  // reads of a property on the query result, and an empty page then resolves
+  // to '' either way.
+  const resolvedResourceId = resourceId || (resourcesQ.data?.items?.[0]?.id ?? '');
 
   const datesValid = !!start && !!end && start < end;
 
