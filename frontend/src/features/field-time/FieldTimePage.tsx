@@ -44,6 +44,7 @@ import { todayLocalISO } from '@/shared/lib/dates';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { TimesheetEditor } from './TimesheetEditor';
 import { OfflineDayRecorder } from './OfflineDayRecorder';
+import { WorkingTimeRecordPanel } from './WorkingTimeRecord';
 import {
   listTimesheets,
   fetchTimesheetSummary,
@@ -202,6 +203,11 @@ function FieldTimeContent() {
   const [statusFilter, setStatusFilter] = useState<TimesheetStatus | ''>('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  // Null means nobody has chosen on this screen yet, which is not the same as
+  // choosing none: with no choice the page follows what the project's own
+  // timesheets already say, so a site that records its working time keeps doing
+  // so without anybody re-ticking a box every morning.
+  const [regimeChoice, setRegimeChoice] = useState<string | null>(null);
 
   const listQ = useQuery({
     queryKey: ['field-time', 'list', projectId, statusFilter, dateFrom, dateTo],
@@ -221,8 +227,22 @@ function FieldTimeContent() {
     enabled: !!projectId,
   });
 
+  // What this project already does, read off the days it has recorded rather
+  // than kept in a second place that could disagree with them. A choice made in
+  // the panel below overrides it for the rest of the session.
+  const observedRegime = useMemo(
+    () => (listQ.data ?? []).find((ts) => ts.working_time_regime)?.working_time_regime ?? '',
+    [listQ.data],
+  );
+  const regime = regimeChoice ?? observedRegime;
+
   const createMut = useMutation({
-    mutationFn: () => createTimesheet({ project_id: projectId, date: todayLocalISO() }),
+    mutationFn: () =>
+      createTimesheet({
+        project_id: projectId,
+        date: todayLocalISO(),
+        working_time_regime: regime || null,
+      }),
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['field-time', 'list'] });
       queryClient.invalidateQueries({ queryKey: ['field-time', 'summary'] });
@@ -290,6 +310,15 @@ function FieldTimeContent() {
           void listQ.refetch();
           void summaryQ.refetch();
         }}
+      />
+
+      {/* Collapsed until somebody opens it, and empty of any obligation until
+          somebody chooses a regime inside it. A German legal duty must not
+          arrive on the screen of a foreman in Chile who did not ask for it. */}
+      <WorkingTimeRecordPanel
+        projectId={projectId}
+        regime={regime}
+        onRegimeChange={setRegimeChoice}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -388,6 +417,7 @@ function FieldTimeContent() {
         <TimesheetEditor
           timesheetId={selectedId}
           projectId={projectId}
+          workingTimeRegime={regime}
           onClose={() => setSelectedId(null)}
         />
       )}

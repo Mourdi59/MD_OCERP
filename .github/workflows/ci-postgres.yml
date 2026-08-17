@@ -880,6 +880,7 @@ jobs:
         src/features/dwg-takeoff/lib/__tests__/issue-426-render.test.ts
         src/features/dwg-takeoff/lib/__tests__/text-display-store.test.ts
         src/features/dwg-takeoff/lib/__tests__/viewport.test.ts
+        src/features/field-time/workingTime.test.ts
         src/features/file-manager/SheetsIndexPage.test.tsx
         src/features/file-manager/sheetsInsights.test.ts
         src/features/integrations/calendarFeed.test.ts

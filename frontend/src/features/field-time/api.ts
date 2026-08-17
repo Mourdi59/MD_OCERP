@@ -10,7 +10,7 @@
  * trailing slash.
  */
 
-import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
+import { API_BASE, apiGet, apiPost, apiPatch, apiDelete, downloadWithAuth } from '@/shared/lib/api';
 
 const BASE = '/v1/field-time/timesheets';
 
@@ -18,6 +18,12 @@ const BASE = '/v1/field-time/timesheets';
 
 export type TimesheetStatus = 'draft' | 'submitted' | 'approved' | 'reversed';
 export type LineKind = 'labour' | 'plant';
+
+/**
+ * Who employs the worker on a line. `null` means nobody said, which is the
+ * state of every line on a project that records no statutory working time.
+ */
+export type EmployerKind = 'own' | 'subcontractor';
 
 export interface FieldTimesheetLine {
   id: string;
@@ -33,6 +39,18 @@ export interface FieldTimesheetLine {
   note: string | null;
   /** Derived server-side: "labour" (a resource) or "plant" (equipment). */
   kind: LineKind;
+  /**
+   * Clock times, optional everywhere and null on every line booked by somebody
+   * who does not have to record them. When both are set the server derives
+   * `hours` from them less the break, so the two can never disagree.
+   */
+  started_at: string | null;
+  ended_at: string | null;
+  break_minutes: number | null;
+  employer_kind: EmployerKind | null;
+  employer_subcontractor_id: string | null;
+  /** True when `hours` came from the clock times rather than from a keyboard. */
+  hours_derived: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -50,11 +68,76 @@ export interface FieldTimesheet {
   reverses_id: string | null;
   note: string | null;
   metadata: Record<string, unknown>;
+  /** The statutory regime this day is recorded under, or null for most days. */
+  working_time_regime: string | null;
+  /** Null unless a regime is set. Never a refusal, only a statement. */
+  working_time: WorkingTimeStatus | null;
   lines: FieldTimesheetLine[];
   labour_hours: string;
   plant_hours: string;
   created_at: string;
   updated_at: string;
+}
+
+/** When one day's record was due, whether it made it, and how long it lives. */
+export interface WorkingTimeStatus {
+  regime: string;
+  provision: string;
+  deadline: string;
+  days_taken: number;
+  late: boolean;
+  retain_until: string;
+  within_retention: boolean;
+}
+
+export interface WorkingTimeRegime {
+  code: string;
+  label: string;
+  provision: string;
+  record_within_days: number;
+  retention_years: number;
+  summary: string;
+}
+
+/** One worker's working time on one day: the unit a labour inspection asks in. */
+export interface WorkingTimeWorkerDay {
+  date: string;
+  resource_id: string | null;
+  worker: string;
+  employer_kind: string;
+  employer_subcontractor_id: string | null;
+  employer: string;
+  started_at: string | null;
+  ended_at: string | null;
+  break_minutes: number;
+  duration_hours: string;
+  segments: number;
+  /** Bookings inside the day with hours but no clock times: the audit gap. */
+  segments_without_times: number;
+  references: string[];
+  status: string;
+  recorded_at: string | null;
+  days_taken: number | null;
+  late: boolean;
+  deadline: string | null;
+  retain_until: string | null;
+  within_retention: boolean;
+}
+
+export interface WorkingTimeRecord {
+  project_id: string;
+  date_from: string;
+  date_to: string;
+  regime: string | null;
+  provision: string;
+  generated_at: string;
+  days: WorkingTimeWorkerDay[];
+  workers: number;
+  total_hours: string;
+  late_days: number;
+  days_missing_times: number;
+  /** Reversed sheets and their reversals, left out of the fold and counted here. */
+  excluded_corrections: number;
 }
 
 export interface FieldTimeSummary {
@@ -99,12 +182,14 @@ export interface CreateTimesheetPayload {
   date: string;
   note?: string | null;
   metadata?: Record<string, unknown>;
+  working_time_regime?: string | null;
 }
 
 export interface UpdateTimesheetPayload {
   date?: string;
   note?: string | null;
   metadata?: Record<string, unknown>;
+  working_time_regime?: string | null;
 }
 
 export interface LineCreatePayload {
@@ -116,6 +201,12 @@ export interface LineCreatePayload {
   is_daywork?: boolean;
   variation_id?: string | null;
   note?: string | null;
+  /** Send both or neither: with both, they decide the hours. */
+  started_at?: string | null;
+  ended_at?: string | null;
+  break_minutes?: number | null;
+  employer_kind?: EmployerKind | null;
+  employer_subcontractor_id?: string | null;
 }
 
 export interface LineUpdatePayload {
@@ -127,6 +218,11 @@ export interface LineUpdatePayload {
   is_daywork?: boolean;
   variation_id?: string | null;
   note?: string | null;
+  started_at?: string | null;
+  ended_at?: string | null;
+  break_minutes?: number | null;
+  employer_kind?: EmployerKind | null;
+  employer_subcontractor_id?: string | null;
 }
 
 export interface ListTimesheetsFilters {
@@ -200,6 +296,44 @@ export function formatHours(raw: string | null | undefined): string {
   if (raw == null || raw === '') return '0';
   const n = Number(raw);
   return Number.isFinite(n) ? String(n) : raw;
+}
+
+/**
+ * The clock time of an instant, as a `<input type="time">` value in the
+ * reader's own timezone ("07:00"). Empty when there is no instant.
+ */
+export function timeOfDay(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '';
+  return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
+ * Turn a day plus a clock time into the instant it names, in the reader's own
+ * timezone. A foreman types "07:00" and means seven in the morning where they
+ * are standing, so the browser's own offset is what turns it into a moment; the
+ * server stores moments and never a wall-clock reading with no place attached.
+ *
+ * `notBefore` is the shift start when this is the end of one. An end that would
+ * land at or before it belongs to the next morning, which is how a night shift
+ * is written down without anybody having to type tomorrow's date.
+ */
+export function instantFromTime(
+  dayISO: string,
+  time: string,
+  notBefore?: string | null,
+): string | null {
+  if (!dayISO || !time) return null;
+  const at = new Date(`${dayISO}T${time}`);
+  if (Number.isNaN(at.getTime())) return null;
+  if (notBefore) {
+    const start = new Date(notBefore);
+    if (!Number.isNaN(start.getTime()) && at.getTime() < start.getTime()) {
+      at.setDate(at.getDate() + 1);
+    }
+  }
+  return at.toISOString();
 }
 
 /* -- Timesheets ----------------------------------------------------------- */
@@ -296,6 +430,58 @@ export async function withdrawOfflineEntry(
   data: OfflineWithdrawPayload,
 ): Promise<OfflineEntryResult> {
   return apiPost<OfflineEntryResult>(`${BASE}/offline/withdraw/`, data);
+}
+
+/* -- Statutory working-time record ---------------------------------------- */
+
+/** The regimes on offer. The vocabulary, not any project's choice. */
+export async function listWorkingTimeRegimes(): Promise<WorkingTimeRegime[]> {
+  const res = await apiGet<WorkingTimeRegime[]>(`${BASE}/working-time-regimes/`);
+  return Array.isArray(res) ? res : [];
+}
+
+function workingTimeQuery(
+  projectId: string,
+  dateFrom: string,
+  dateTo: string,
+  regime?: string | null,
+): string {
+  const params = new URLSearchParams({
+    project_id: projectId,
+    date_from: dateFrom,
+    date_to: dateTo,
+  });
+  if (regime) params.set('regime', regime);
+  return params.toString();
+}
+
+/** Who worked here over this period, and when each of them started and stopped. */
+export async function fetchWorkingTimeRecord(
+  projectId: string,
+  dateFrom: string,
+  dateTo: string,
+  regime?: string | null,
+): Promise<WorkingTimeRecord | null> {
+  if (!projectId || !dateFrom || !dateTo) return null;
+  return apiGet<WorkingTimeRecord>(
+    `${BASE}/working-time/?${workingTimeQuery(projectId, dateFrom, dateTo, regime)}`,
+  );
+}
+
+/**
+ * Hand the same record over as a CSV file. Goes through `downloadWithAuth` so a
+ * refusal arrives as a message rather than as a .csv full of JSON.
+ */
+export async function downloadWorkingTimeRecord(
+  projectId: string,
+  dateFrom: string,
+  dateTo: string,
+  regime?: string | null,
+): Promise<void> {
+  return downloadWithAuth(
+    `${API_BASE}${BASE}/working-time.csv?${workingTimeQuery(projectId, dateFrom, dateTo, regime)}`,
+    `working-time-${dateFrom}-${dateTo}.csv`,
+  );
 }
 
 /* -- Validation ----------------------------------------------------------- */

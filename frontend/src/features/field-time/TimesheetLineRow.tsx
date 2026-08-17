@@ -15,7 +15,14 @@ import clsx from 'clsx';
 import { Trash2, HardHat, Wrench } from 'lucide-react';
 import { Toggle } from '@/shared/ui/Toggle';
 import { CostCodeAssist } from './CostCodeAssist';
-import { formatHours, type FieldTimesheetLine, type LineUpdatePayload } from './api';
+import {
+  formatHours,
+  instantFromTime,
+  timeOfDay,
+  type EmployerKind,
+  type FieldTimesheetLine,
+  type LineUpdatePayload,
+} from './api';
 
 export interface PickOption {
   id: string;
@@ -32,6 +39,12 @@ export interface TimesheetLineRowProps {
   labour: PickOption[];
   plant: PickOption[];
   variations: PickOption[];
+  /** Subcontractors, for a line whose worker is employed by one. */
+  employers?: PickOption[];
+  /** Show the clock-time and employer fields (the sheet records working time). */
+  workingTime?: boolean;
+  /** The sheet's day, which is what a typed clock time is a time on. */
+  timesheetDate?: string;
   onUpdate: (lineId: string, payload: LineUpdatePayload) => void;
   onDelete: (lineId: string) => void;
   busy?: boolean;
@@ -44,6 +57,9 @@ export function TimesheetLineRow({
   labour,
   plant,
   variations,
+  employers = [],
+  workingTime = false,
+  timesheetDate = '',
   onUpdate,
   onDelete,
   busy,
@@ -53,6 +69,11 @@ export function TimesheetLineRow({
   const [costCode, setCostCode] = useState(line.cost_code);
   const [wbs, setWbs] = useState(line.wbs ?? '');
   const [note, setNote] = useState(line.note ?? '');
+  const [startTime, setStartTime] = useState(timeOfDay(line.started_at));
+  const [endTime, setEndTime] = useState(timeOfDay(line.ended_at));
+  const [breakMinutes, setBreakMinutes] = useState(
+    line.break_minutes == null ? '' : String(line.break_minutes),
+  );
 
   const isLabour = line.kind === 'labour';
   const options = isLabour ? labour : plant;
@@ -62,6 +83,24 @@ export function TimesheetLineRow({
   const commit = (payload: LineUpdatePayload) => {
     if (!editable) return;
     onUpdate(line.id, payload);
+  };
+
+  /**
+   * Send the clock times as a pair, because that is what the server accepts:
+   * a line records both or neither, so a half-typed pair waits here rather than
+   * going up to be refused. The times are moments, not wall-clock readings, so
+   * the sheet's day and the reader's own timezone turn them into one.
+   */
+  const commitTimes = (nextStart: string, nextEnd: string, nextBreak: string) => {
+    if (!editable) return;
+    if (!!nextStart !== !!nextEnd) return;
+    const startISO = nextStart ? instantFromTime(timesheetDate, nextStart) : null;
+    const minutes = nextBreak.trim() === '' ? null : Number(nextBreak);
+    commit({
+      started_at: startISO,
+      ended_at: nextEnd ? instantFromTime(timesheetDate, nextEnd, startISO) : null,
+      break_minutes: minutes != null && Number.isFinite(minutes) ? Math.max(0, minutes) : null,
+    });
   };
 
   return (
@@ -109,7 +148,8 @@ export function TimesheetLineRow({
         </select>
       </label>
 
-      {/* Hours */}
+      {/* Hours. Read-only once the line has clock times: the figure is derived
+          from them on every write, so an edit here would be undone silently. */}
       <label className="lg:col-span-1">
         <span className="mb-1 block text-2xs font-medium text-content-tertiary">
           {t('field_time.hours', { defaultValue: 'Hours' })}
@@ -119,7 +159,14 @@ export function TimesheetLineRow({
           min="0"
           step="0.25"
           value={hours}
-          disabled={!editable}
+          disabled={!editable || line.hours_derived}
+          title={
+            line.hours_derived
+              ? t('field_time.working_time.hours_derived', {
+                  defaultValue: 'Worked out from the start, the end and the break.',
+                })
+              : undefined
+          }
           className={clsx(fieldCls, 'tabular-nums')}
           onChange={(e) => setHours(e.target.value)}
           onBlur={() => {
@@ -228,6 +275,109 @@ export function TimesheetLineRow({
         )}
       </div>
       </div>
+
+      {/* Clock times and the employer, on labour lines of a sheet that records
+          working time. A machine has no working time and no employer, so a
+          plant line never grows these fields. */}
+      {workingTime && isLabour && (
+        <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border-light pt-2 lg:grid-cols-12 lg:items-end">
+          <label className="lg:col-span-2">
+            <span className="mb-1 block text-2xs font-medium text-content-tertiary">
+              {t('field_time.working_time.start', { defaultValue: 'Start' })}
+            </span>
+            <input
+              type="time"
+              value={startTime}
+              disabled={!editable}
+              className={clsx(fieldCls, 'tabular-nums')}
+              onChange={(e) => setStartTime(e.target.value)}
+              onBlur={() => commitTimes(startTime, endTime, breakMinutes)}
+            />
+          </label>
+          <label className="lg:col-span-2">
+            <span className="mb-1 block text-2xs font-medium text-content-tertiary">
+              {t('field_time.working_time.end', { defaultValue: 'End' })}
+            </span>
+            <input
+              type="time"
+              value={endTime}
+              disabled={!editable}
+              className={clsx(fieldCls, 'tabular-nums')}
+              onChange={(e) => setEndTime(e.target.value)}
+              onBlur={() => commitTimes(startTime, endTime, breakMinutes)}
+            />
+          </label>
+          <label className="lg:col-span-2">
+            <span className="mb-1 block text-2xs font-medium text-content-tertiary">
+              {t('field_time.working_time.break_minutes', { defaultValue: 'Break (min)' })}
+            </span>
+            <input
+              type="number"
+              min="0"
+              step="5"
+              value={breakMinutes}
+              disabled={!editable}
+              className={clsx(fieldCls, 'tabular-nums')}
+              onChange={(e) => setBreakMinutes(e.target.value)}
+              onBlur={() => commitTimes(startTime, endTime, breakMinutes)}
+            />
+          </label>
+          <label className="lg:col-span-3">
+            <span className="mb-1 block text-2xs font-medium text-content-tertiary">
+              {t('field_time.working_time.employer', { defaultValue: 'Employer' })}
+            </span>
+            <select
+              value={line.employer_kind ?? ''}
+              disabled={!editable}
+              className={fieldCls}
+              onChange={(e) => {
+                const kind = (e.target.value || null) as EmployerKind | null;
+                commit({
+                  employer_kind: kind,
+                  // Own staff cannot also name a subcontractor, and clearing
+                  // the employer clears whichever firm was named with it.
+                  employer_subcontractor_id:
+                    kind === 'subcontractor' ? line.employer_subcontractor_id : null,
+                });
+              }}
+            >
+              <option value="">
+                {t('field_time.working_time.employer_unstated', { defaultValue: 'Not stated' })}
+              </option>
+              <option value="own">
+                {t('field_time.working_time.employer_own', { defaultValue: 'Own staff' })}
+              </option>
+              <option value="subcontractor">
+                {t('field_time.working_time.employer_sub', { defaultValue: 'Subcontractor' })}
+              </option>
+            </select>
+          </label>
+          {line.employer_kind === 'subcontractor' && (
+            <label className="col-span-2 lg:col-span-3">
+              <span className="mb-1 block text-2xs font-medium text-content-tertiary">
+                {t('field_time.working_time.which_subcontractor', { defaultValue: 'Which firm' })}
+              </span>
+              <select
+                value={line.employer_subcontractor_id ?? ''}
+                disabled={!editable}
+                className={fieldCls}
+                onChange={(e) => commit({ employer_subcontractor_id: e.target.value || null })}
+              >
+                <option value="">
+                  {t('field_time.working_time.employer_unnamed', {
+                    defaultValue: 'Subcontractor, not named',
+                  })}
+                </option>
+                {employers.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+      )}
 
       {/* Note (full width) */}
       {editable ? (
