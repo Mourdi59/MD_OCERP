@@ -2499,8 +2499,11 @@ export function RFIPage() {
                      question and goes stale: this tested search and status
                      while `filtered` also narrows by priority and discipline,
                      so narrowing by either of those alone reached "No RFIs
-                     yet" on a project holding hundreds. What the register
-                     holds is the thing being denied, so ask that instead. */
+                     yet" on a project holding hundreds. The count on its own
+                     is no better, because the endpoint applies status and
+                     search before it counts, so it too can read zero on a
+                     full register. Only the disjunction above can deny the
+                     register, and only when nothing was filtered. */
                   registerMayHold
                   ? t('rfi.no_results', { defaultValue: 'No matching RFIs' })
                   : t('rfi.no_rfis', { defaultValue: 'No RFIs yet' })
