@@ -782,13 +782,21 @@ jobs:
     # token check and the IDOR job. The conclusion is unchanged, the cause is
     # not, and a wrong cause invites somebody to "fix the OOM" and expect this
     # job to become redundant.
-    # Recounted 2026-08-17: the include in vite.config.ts is
-    # src/**/*.test.{ts,tsx} plus tests/**/*.test.{ts,tsx}, which collects 590
-    # files under src and 2 under frontend/tests/pwa, so 592 in all. 32 are
-    # named below, so 560 of them gate nothing. Recount rather than trust that
+    # Recounted 2026-08-17 out of the commit: the include in vite.config.ts is
+    # src/**/*.test.{ts,tsx} plus tests/**/*.test.{ts,tsx}, which collects 587
+    # files under src and 2 under frontend/tests/pwa, so 589 in all. 34 are
+    # named below, so 555 of them gate nothing. Recount rather than trust that
     # sentence, and recount against that include rather than against the vitest
     # default: the default would also sweep up the Playwright specs, which this
     # job does not run and which were never part of this number.
+    #
+    # Count it out of the commit rather than out of a checkout. The 592 written
+    # here earlier the same day was measured on a working tree carrying nine
+    # test files that no commit held, and this job checks out a ref: it can run
+    # only what was committed. A number taken off a dirty tree reads as growth
+    # in the suite when it is really uncommitted work sitting on a disk, and it
+    # cannot be reproduced by the next person unless their tree is dirty in the
+    # same way.
     #
     # The previous recount said 536 files and 21 named, on 2026-08-07. Both
     # halves had drifted: the suite grew by 56 files and the list below had
@@ -799,7 +807,12 @@ jobs:
     #
     # That is not a hypothetical. Between writing "30" and writing "31" here,
     # two parallel sessions each added an entry, and the true figure was 32.
-    # Parse the list and count it, do not add one to the number above.
+    # Parse the list and count it, do not add one to the number above. Parse it
+    # as YAML and split the value, rather than matching indented lines with a
+    # regex: the block scalar ends at "steps:", which is itself an indented
+    # non-empty line, so a line-shaped pattern reads it as a thirty-fifth test
+    # file and overstates the list by one. That is how the figure above was
+    # briefly written as 35.
     #
     # Named files rather than the whole suite, and that is a measurement rather
     # than a preference. The whole suite came to somewhere between 55 and 95
@@ -892,6 +905,7 @@ jobs:
         src/features/schedule/ScheduleResourcePanel.test.tsx
         src/shared/lib/__tests__/formatCompactCurrency.test.ts
         src/shared/lib/__tests__/formattersReadTheLocalePerCall.test.ts
+        src/shared/lib/apiHelpers.fetchAllPages.test.ts
         src/shared/lib/i18nInterpolatedKeys.test.ts
     steps:
       - uses: actions/checkout@v7
