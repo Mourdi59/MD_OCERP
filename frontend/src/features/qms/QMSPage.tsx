@@ -593,23 +593,42 @@ export function QMSPage() {
         ) : loadError ? (
           <RecoveryCard error={loadError} onRetry={() => activeQuery.refetch()} />
         ) : tab === 'itp' ? (
+          /* `activeQuery` is this tab's own query, so its envelope total is the
+             size of the register the table is showing. The tables need it to
+             tell an empty register apart from a search that matched none of
+             the page, which is the same distinction the notice above draws. */
           <ITPTable
             rows={filteredItp}
+            registerTotal={activeQuery.data?.total ?? 0}
             onAction={() => setCreateOpen(true)}
             onSelect={(id) => setSelectedPlanId(id)}
           />
         ) : tab === 'inspections' ? (
           <InspectionTable
             rows={filteredInsp}
+            registerTotal={activeQuery.data?.total ?? 0}
             onSelect={(id) => setSelectedInspectionId(id)}
             onAction={() => setCreateOpen(true)}
           />
         ) : tab === 'ncrs' ? (
-          <NCRTable rows={filteredNcrs} onSelect={(id) => setSelectedNcrId(id)} onAction={() => setCreateOpen(true)} />
+          <NCRTable
+            rows={filteredNcrs}
+            registerTotal={activeQuery.data?.total ?? 0}
+            onSelect={(id) => setSelectedNcrId(id)}
+            onAction={() => setCreateOpen(true)}
+          />
         ) : tab === 'punch' ? (
-          <PunchTable rows={filteredPunch} onAction={() => setCreateOpen(true)} />
+          <PunchTable
+            rows={filteredPunch}
+            registerTotal={activeQuery.data?.total ?? 0}
+            onAction={() => setCreateOpen(true)}
+          />
         ) : (
-          <AuditTable rows={filteredAudits} onAction={() => setCreateOpen(true)} />
+          <AuditTable
+            rows={filteredAudits}
+            registerTotal={activeQuery.data?.total ?? 0}
+            onAction={() => setCreateOpen(true)}
+          />
         )}
       </Card>
 
@@ -799,10 +818,13 @@ function KvBlock({ label, value }: { label: React.ReactNode; value: React.ReactN
 
 function ITPTable({
   rows,
+  registerTotal,
   onAction,
   onSelect,
 }: {
   rows: ITPPlan[];
+  /** What the register holds, from the page envelope, not what survived the search box. */
+  registerTotal: number;
   onAction: () => void;
   onSelect: (id: string) => void;
 }) {
@@ -818,6 +840,18 @@ function ITPTable({
     onError: (e) => addToast({ type: 'error', title: getErrorMessage(e) }),
   });
   if (rows.length === 0) {
+    // Whether the register is empty is answered by the register, not by what
+    // is left after the search box has narrowed the loaded page. Reading it
+    // off `rows` prints "No ITP plans yet" directly under a notice saying how
+    // many the register holds, and offers to create the first one.
+    if (registerTotal > 0) {
+      return (
+        <EmptyState
+          icon={<FileCheck size={22} />}
+          title={t('common.no_results', { defaultValue: 'No results found' })}
+        />
+      );
+    }
     return (
       <EmptyState
         icon={<FileCheck size={22} />}
@@ -883,15 +917,26 @@ function ITPTable({
 
 function InspectionTable({
   rows,
+  registerTotal,
   onSelect,
   onAction,
 }: {
   rows: Inspection[];
+  /** What the register holds, from the page envelope, not what survived the search box. */
+  registerTotal: number;
   onSelect: (id: string) => void;
   onAction: () => void;
 }) {
   const { t } = useTranslation();
   if (rows.length === 0) {
+    if (registerTotal > 0) {
+      return (
+        <EmptyState
+          icon={<ClipboardCheck size={22} />}
+          title={t('common.no_results', { defaultValue: 'No results found' })}
+        />
+      );
+    }
     return (
       <EmptyState
         icon={<ClipboardCheck size={22} />}
@@ -945,15 +990,26 @@ function InspectionTable({
 
 function NCRTable({
   rows,
+  registerTotal,
   onSelect,
   onAction,
 }: {
   rows: NCR[];
+  /** What the register holds, from the page envelope, not what survived the search box. */
+  registerTotal: number;
   onSelect: (id: string) => void;
   onAction: () => void;
 }) {
   const { t } = useTranslation();
   if (rows.length === 0) {
+    if (registerTotal > 0) {
+      return (
+        <EmptyState
+          icon={<AlertOctagon size={22} />}
+          title={t('common.no_results', { defaultValue: 'No results found' })}
+        />
+      );
+    }
     return (
       <EmptyState
         icon={<AlertOctagon size={22} />}
@@ -1014,7 +1070,16 @@ function NCRTable({
   );
 }
 
-function PunchTable({ rows, onAction }: { rows: PunchItem[]; onAction: () => void }) {
+function PunchTable({
+  rows,
+  registerTotal,
+  onAction,
+}: {
+  rows: PunchItem[];
+  /** What the register holds, from the page envelope, not what survived the search box. */
+  registerTotal: number;
+  onAction: () => void;
+}) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
@@ -1027,6 +1092,14 @@ function PunchTable({ rows, onAction }: { rows: PunchItem[]; onAction: () => voi
     onError: (e) => addToast({ type: 'error', title: getErrorMessage(e) }),
   });
   if (rows.length === 0) {
+    if (registerTotal > 0) {
+      return (
+        <EmptyState
+          icon={<ListChecks size={22} />}
+          title={t('common.no_results', { defaultValue: 'No results found' })}
+        />
+      );
+    }
     return (
       <EmptyState
         icon={<ListChecks size={22} />}
@@ -1087,7 +1160,16 @@ function PunchTable({ rows, onAction }: { rows: PunchItem[]; onAction: () => voi
   );
 }
 
-function AuditTable({ rows, onAction }: { rows: Audit[]; onAction: () => void }) {
+function AuditTable({
+  rows,
+  registerTotal,
+  onAction,
+}: {
+  rows: Audit[];
+  /** What the register holds, from the page envelope, not what survived the search box. */
+  registerTotal: number;
+  onAction: () => void;
+}) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
@@ -1100,6 +1182,14 @@ function AuditTable({ rows, onAction }: { rows: Audit[]; onAction: () => void })
     onError: (e) => addToast({ type: 'error', title: getErrorMessage(e) }),
   });
   if (rows.length === 0) {
+    if (registerTotal > 0) {
+      return (
+        <EmptyState
+          icon={<Award size={22} />}
+          title={t('common.no_results', { defaultValue: 'No results found' })}
+        />
+      );
+    }
     return (
       <EmptyState
         icon={<Award size={22} />}

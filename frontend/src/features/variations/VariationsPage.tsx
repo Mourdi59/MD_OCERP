@@ -889,8 +889,13 @@ export function VariationsPage() {
             />
           </div>
         ) : tab === 'notices' ? (
+          /* `activeQuery` is this tab's own query, so its envelope total is
+             the size of the register the table is showing. The tables need it
+             to tell an empty register apart from a search that matched none of
+             the loaded page, the same distinction the notice above draws. */
           <NoticeTable
             rows={filteredNotices}
+            registerTotal={activeQuery.data?.total ?? 0}
             onSelect={(id) => setSelected({ kind: 'notices', id })}
             onEdit={(row) => setEditTarget({ kind: 'notices', row })}
             onDelete={(id) => void handleDelete('notices', id)}
@@ -899,6 +904,7 @@ export function VariationsPage() {
         ) : tab === 'requests' ? (
           <RequestTable
             rows={filteredRequests}
+            registerTotal={activeQuery.data?.total ?? 0}
             currency={currency}
             onSelect={(id) => setSelected({ kind: 'requests', id })}
             onEdit={(row) => setEditTarget({ kind: 'requests', row })}
@@ -908,6 +914,7 @@ export function VariationsPage() {
         ) : tab === 'orders' ? (
           <OrderTable
             rows={filteredOrders}
+            registerTotal={activeQuery.data?.total ?? 0}
             currency={currency}
             onSelect={(id) => setSelected({ kind: 'orders', id })}
             onEdit={(row) => setEditTarget({ kind: 'orders', row })}
@@ -917,6 +924,7 @@ export function VariationsPage() {
         ) : tab === 'daywork' ? (
           <DayworkTable
             rows={filteredDaywork}
+            registerTotal={activeQuery.data?.total ?? 0}
             currency={currency}
             onSelect={(id) => setSelected({ kind: 'daywork', id })}
             onEdit={(row) => setEditTarget({ kind: 'daywork', row })}
@@ -926,6 +934,7 @@ export function VariationsPage() {
         ) : (
           <EoTTable
             rows={filteredEot}
+            registerTotal={activeQuery.data?.total ?? 0}
             onSelect={(id) => setSelected({ kind: 'eot', id })}
             onEdit={(row) => setEditTarget({ kind: 'eot', row })}
             onDelete={(id) => void handleDelete('eot', id)}
@@ -980,12 +989,15 @@ export function VariationsPage() {
 
 function NoticeTable({
   rows,
+  registerTotal,
   onSelect,
   onEdit,
   onDelete,
   emptyAction,
 }: {
   rows: Notice[];
+  /** What the register holds, from the page envelope, not what survived the search box. */
+  registerTotal: number;
   onSelect: (id: string) => void;
   onEdit: (row: Notice) => void;
   onDelete: (id: string) => void;
@@ -993,6 +1005,18 @@ function NoticeTable({
 }) {
   const { t } = useTranslation();
   if (rows.length === 0) {
+    // Whether the register is empty is answered by the register, not by what
+    // survived the search box narrowing the loaded page. Reading it off `rows`
+    // prints "No notices yet" under a notice reporting how many the register
+    // holds, and invites the reader to raise the first one.
+    if (registerTotal > 0) {
+      return (
+        <EmptyState
+          icon={<Bell size={22} />}
+          title={t('common.no_results', { defaultValue: 'No results found' })}
+        />
+      );
+    }
     return (
       <EmptyState
         icon={<Bell size={22} />}
@@ -1066,6 +1090,7 @@ function NoticeTable({
 
 function RequestTable({
   rows,
+  registerTotal,
   currency,
   onSelect,
   onEdit,
@@ -1073,6 +1098,8 @@ function RequestTable({
   emptyAction,
 }: {
   rows: VariationRequest[];
+  /** What the register holds, from the page envelope, not what survived the search box. */
+  registerTotal: number;
   currency: string;
   onSelect: (id: string) => void;
   onEdit: (row: VariationRequest) => void;
@@ -1081,6 +1108,14 @@ function RequestTable({
 }) {
   const { t } = useTranslation();
   if (rows.length === 0) {
+    if (registerTotal > 0) {
+      return (
+        <EmptyState
+          icon={<FileText size={22} />}
+          title={t('common.no_results', { defaultValue: 'No results found' })}
+        />
+      );
+    }
     return (
       <EmptyState
         icon={<FileText size={22} />}
@@ -1159,6 +1194,7 @@ function RequestTable({
 
 function OrderTable({
   rows,
+  registerTotal,
   currency,
   onSelect,
   onEdit,
@@ -1166,6 +1202,8 @@ function OrderTable({
   emptyAction,
 }: {
   rows: VariationOrder[];
+  /** What the register holds, from the page envelope, not what survived the search box. */
+  registerTotal: number;
   currency: string;
   onSelect: (id: string) => void;
   onEdit: (row: VariationOrder) => void;
@@ -1174,6 +1212,14 @@ function OrderTable({
 }) {
   const { t } = useTranslation();
   if (rows.length === 0) {
+    if (registerTotal > 0) {
+      return (
+        <EmptyState
+          icon={<FileCheck2 size={22} />}
+          title={t('common.no_results', { defaultValue: 'No results found' })}
+        />
+      );
+    }
     return (
       <EmptyState
         icon={<FileCheck2 size={22} />}
@@ -1259,6 +1305,7 @@ function OrderTable({
 
 function DayworkTable({
   rows,
+  registerTotal,
   currency,
   onSelect,
   onEdit,
@@ -1266,6 +1313,8 @@ function DayworkTable({
   emptyAction,
 }: {
   rows: DayworkSheet[];
+  /** What the register holds, from the page envelope, not what survived the search box. */
+  registerTotal: number;
   currency: string;
   onSelect: (id: string) => void;
   onEdit: (row: DayworkSheet) => void;
@@ -1274,6 +1323,14 @@ function DayworkTable({
 }) {
   const { t } = useTranslation();
   if (rows.length === 0) {
+    if (registerTotal > 0) {
+      return (
+        <EmptyState
+          icon={<Hammer size={22} />}
+          title={t('common.no_results', { defaultValue: 'No results found' })}
+        />
+      );
+    }
     return (
       <EmptyState
         icon={<Hammer size={22} />}
@@ -1354,12 +1411,15 @@ function DayworkTable({
 
 function EoTTable({
   rows,
+  registerTotal,
   onSelect,
   onEdit,
   onDelete,
   emptyAction,
 }: {
   rows: ExtensionOfTimeClaim[];
+  /** What the register holds, from the page envelope, not what survived the search box. */
+  registerTotal: number;
   onSelect: (id: string) => void;
   onEdit: (row: ExtensionOfTimeClaim) => void;
   onDelete: (id: string) => void;
@@ -1367,6 +1427,14 @@ function EoTTable({
 }) {
   const { t } = useTranslation();
   if (rows.length === 0) {
+    if (registerTotal > 0) {
+      return (
+        <EmptyState
+          icon={<Clock size={22} />}
+          title={t('common.no_results', { defaultValue: 'No results found' })}
+        />
+      );
+    }
     return (
       <EmptyState
         icon={<Clock size={22} />}

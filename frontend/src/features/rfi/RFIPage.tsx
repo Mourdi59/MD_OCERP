@@ -2487,7 +2487,13 @@ export function RFIPage() {
                           ? 'You have not raised any RFIs yet'
                           : 'No overdue RFIs',
                   })
-                : searchQuery || statusFilter
+                : /* Naming the filters that were set answers the wrong
+                     question and goes stale: this tested search and status
+                     while `filtered` also narrows by priority and discipline,
+                     so narrowing by either of those alone reached "No RFIs
+                     yet" on a project holding hundreds. What the register
+                     holds is the thing being denied, so ask that instead. */
+                  rfiTotal > 0
                   ? t('rfi.no_results', { defaultValue: 'No matching RFIs' })
                   : t('rfi.no_rfis', { defaultValue: 'No RFIs yet' })
             }
@@ -2496,7 +2502,7 @@ export function RFIPage() {
                 ? t('rfi.no_quick_hint', {
                     defaultValue: 'Clear the quick filter to see all RFIs for this project.',
                   })
-                : searchQuery || statusFilter
+                : rfiTotal > 0
                   ? t('rfi.no_results_hint', {
                       defaultValue: 'Try adjusting your search or filters to find what you are looking for.',
                     })
@@ -2510,7 +2516,7 @@ export function RFIPage() {
                     label: t('rfi.quick_clear', { defaultValue: 'Show all RFIs' }),
                     onClick: () => setQuickView('all'),
                   }
-                : !searchQuery && !statusFilter
+                : rfiTotal === 0
                   ? {
                       label: t('rfi.new_rfi', { defaultValue: 'New RFI' }),
                       onClick: () => setShowCreateModal(true),
