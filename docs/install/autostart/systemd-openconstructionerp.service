@@ -17,6 +17,14 @@ ExecStart=/home/openconstructionerp/.venv/bin/openconstructionerp serve --host 0
 # Environment=DATABASE_URL=postgresql+asyncpg://oe:CHANGE_ME@localhost:5432/openestimate
 # Environment=ALLOWED_ORIGINS=https://erp.example.com
 # Environment=OE_OLLAMA_URL=http://localhost:11434/v1/chat/completions
+#
+# The semantic search encoder is roughly 500 MB and is NOT downloaded on a
+# server by default. It only becomes worth its disk on a box with the memory
+# to load it, so a small VPS is better off without it, and everything works
+# without it: semantic search says so out loud and lexical search answers.
+# Uncomment to switch it off outright, which also refuses the tick offered in
+# the setup wizard. Set it to 1 instead to have the server fetch it at boot.
+# Environment=OE_DOWNLOAD_EMBEDDING_MODEL=0
 
 # Restart policy
 Restart=on-failure
