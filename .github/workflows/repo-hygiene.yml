@@ -65,6 +65,22 @@ jobs:
       - name: Check every release version literal agrees
         run: python scripts/check_version_sync.py
 
+  head-imports:
+    name: Every import in the commit resolves inside the commit
+    runs-on: ubuntu-latest
+    # The commit has to be able to import itself. A router was once committed
+    # clean while the function it imported stayed in a working tree, so a fresh
+    # clone could not start the application at all, and every local run passed
+    # because every local run reads the working tree. This reads git blobs
+    # instead, which is the only place the difference is visible.
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check every intra-app import against the committed tree
+        run: python scripts/check_head_imports.py
+
   trailers:
     name: No forbidden commit trailers
     runs-on: ubuntu-latest
