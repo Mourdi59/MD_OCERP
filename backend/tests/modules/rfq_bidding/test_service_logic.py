@@ -125,7 +125,15 @@ class _FakeAwardRepo:
 
 
 def _rfq(**overrides: Any) -> RFQ:
-    """A published RFQ with no scope lines and no quotes yet."""
+    """A published RFQ with no scope lines and no quotes yet.
+
+    The deadline is relative to now on purpose. It used to be the literal
+    ``2026-08-15``, which read as "still open" while it was written and turned
+    into a closed RFQ on 16 August: the service refuses a quote past the
+    deadline before it ever looks at the quote, so every test here that expected
+    a different refusal started reporting 409 instead. A default that means
+    "open" has to be stated as a distance from today.
+    """
     values: dict[str, Any] = {
         "id": uuid4(),
         "project_id": uuid4(),
@@ -133,7 +141,7 @@ def _rfq(**overrides: Any) -> RFQ:
         "title": "Mechanical fit-out",
         "description": "Supply and install to levels 1-4",
         "scope_of_work": "Ductwork, AHU, commissioning",
-        "submission_deadline": "2026-08-15",
+        "submission_deadline": (datetime.now(UTC) + timedelta(days=30)).isoformat(),
         "currency_code": "EUR",
         "status": "published",
         "issued_to_contacts": ["alpha", "beta", "gamma"],
