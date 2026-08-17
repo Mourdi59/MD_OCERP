@@ -52,6 +52,14 @@ _REGEN = (
     "--extra semantic-encoder --torch-backend=cpu -o requirements-desktop.lock"
 )
 
+# Running it is not a minimal repair, which matters because every failure below
+# prints it as the fix. The command re-resolves every pin against the index as
+# it stands that day, so a regen taken to add one missing name also lands
+# whatever upstream published since the file was last compiled. Recompiling
+# this lock on 2026-08-17 with no dependency change at all moved 37 pins, three
+# of them across a major version: opencv-python-headless 4 to 5, trimesh 4 to
+# 5, reportlab 4 to 5. Read the diff before committing one.
+
 # Package-name prefixes that only appear when torch resolved its GPU build.
 # Kept as prefixes because the CUDA wheels are split across a dozen
 # differently-suffixed distributions (nvidia-cublas, nvidia-cudnn-cu13,
