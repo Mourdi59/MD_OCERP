@@ -37,12 +37,22 @@ import { isModuleI18nKey } from '@/modules/_i18n';
 /**
  * Map the English page titles passed from App.tsx routes to i18n keys.
  *
- * The keys mirror the labelKey the Sidebar uses for the same destination, so
- * the on-screen page heading, the browser tab title and the sidebar entry all
- * resolve through the same locale bundle and can never disagree. When a title
- * has no entry here the heading falls back to the English `defaultValue`
- * (current behaviour), so adding a route without a mapping degrades gracefully
- * rather than showing a raw key.
+ * An entry must name the same key the screen's own `<h1>` uses, so the top bar,
+ * the browser tab title and the page heading say one word. `titleKeyAgreement`
+ * in `Header.titleKeys.test.ts` checks every route and fails on a disagreement,
+ * on a route neither map knows, and on a stale exemption.
+ *
+ * This paragraph used to assert the three "can never disagree" and nothing
+ * measured it. Nine of them did: the top bar read "Site Mobilisation" over a
+ * page whose heading said "Site prep", and "PDF Takeoff" over "PDF
+ * Measurements". Because the h1 is `sr-only`, that shipped as one product for a
+ * sighted reader and a different one for a screen reader, and no reader saw
+ * both halves to notice. An invariant worth stating in prose is worth a test;
+ * without one this comment reads as verified and stops the next person looking.
+ *
+ * When a title has no entry here the heading falls back to the English
+ * `defaultValue`, so adding a route without a mapping degrades gracefully
+ * rather than showing a raw key. The test is what stops it staying that way.
  */
 export const TITLE_I18N_MAP: Record<string, string> = {
   // Overview
@@ -59,17 +69,17 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Match Elements': 'match_elements.title',
   'AI Quick Estimate': 'nav.ai_estimate',
   'New BOQ': 'boq.new_estimate',
-  'Bill of Quantities': 'nav.boq',
+  'Bill of Quantities': 'boq.title',
   'BOQ Editor': 'boq.editor',
   'BOQ Templates': 'nav.templates',
   // Catalogues
-  'Cost Database': 'nav.costs',
+  'Cost Database': 'costs.title',
   'Cost Explorer': 'nav.cost_explorer',
   'Import Cost Database': 'costs.import_title',
   // First-party module routes now state their title as a key, so these entries
   // only catch a module that still ships the English literal.
   'GAEB Exchange': 'nav.gaeb_exchange',
-  'Resource Catalog': 'nav.resource_catalog',
+  'Resource Catalog': 'catalog.title',
   'Assemblies': 'nav.assemblies',
   'New Assembly': 'assemblies.new_assembly',
   // No locale names the single-assembly editor, so it takes the module's own
@@ -79,7 +89,7 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Assembly Editor': 'assemblies.title',
   // Takeoff & CAD/BIM
   'Quantity Takeoff': 'nav.takeoff_overview',
-  'PDF Takeoff': 'nav.takeoff',
+  'PDF Takeoff': 'nav.pdf_measurements',
   'DWG Takeoff': 'nav.dwg_takeoff',
   'CAD/BIM Takeoff': 'nav.cad_takeoff',
   // #149: keyed on the <P title> App.tsx passes for /data-explorer. Both sides
@@ -221,7 +231,7 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Withholding Tax': 'nav.tax_withholding',
   'Authority Submissions': 'authority_submission.title',
   'Review Authority': 'review_authority.title',
-  'Interface Register': 'nav.interface_management',
+  'Interface Register': 'interface_management.title',
   'Management of Change': 'moc.title',
   'Event Reconciliation': 'nav.reconciliation',
   // Planning
@@ -229,17 +239,17 @@ export const TITLE_I18N_MAP: Record<string, string> = {
   'Capacity Planning': 'nav.capacity_planning',
   'Resource Leveling': 'nav.resource_leveling',
   'Progress': 'nav.progress',
-  'Construction Control': 'nav.construction_control',
+  'Construction Control': 'construction_control.title',
   // Field & site
   'Field Time': 'nav.field_time',
   'Labor Rates': 'nav.labor_rates',
   'Payroll': 'nav.payroll',
   'Certified Payroll': 'nav.certified_payroll',
   'Site Supervision': 'site_supervision.title',
-  'Site Mobilisation': 'nav.site_prep',
+  'Site Mobilisation': 'site_prep.title',
   'Site Logistics': 'nav.site_logistics',
-  'Site Inventory': 'nav.site_inventory',
-  'Temporary Works': 'nav.temporary_works',
+  'Site Inventory': 'site_inventory.title',
+  'Temporary Works': 'temporary_works.title',
   'Formwork': 'formwork.title',
   'Off-site / Prefab': 'nav.prefab',
   'Forms & checklists': 'nav.forms',

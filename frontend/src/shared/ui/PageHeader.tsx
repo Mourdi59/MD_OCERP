@@ -24,7 +24,19 @@ export interface PageHeaderProps {
   subtitle?: ReactNode;
   /** Primary action first, then secondary; rendered right-aligned. */
   actions?: ReactNode;
-  /** Accessible page heading for screen readers (visually the top bar shows it). */
+  /**
+   * Accessible page heading for screen readers. The top bar is meant to show
+   * the same words, and `Header.titleKeys.test.ts` is what holds the two
+   * together: it pairs this key with the route's `TITLE_I18N_MAP` entry and
+   * fails when they differ. Pass the key the module names itself by, normally
+   * `<module>.title`, not a `nav.*` variant of it.
+   *
+   * The parenthetical here once simply stated the top bar shows it, which was
+   * untrue on four screens: this heading said "Site prep", "Interface
+   * management", "RFIs", "Risk Register" while the bar above said "Site
+   * Mobilisation", "Interface Register", "RFI", "Risks". Since the element is
+   * `sr-only`, no one reader saw both, so it read as correct to everybody.
+   */
   srTitle?: string;
   className?: string;
 }
