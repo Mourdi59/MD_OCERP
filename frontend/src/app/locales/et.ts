@@ -10019,6 +10019,7 @@ const resource = {
     "costs.search_in_region": "Otsi asukohast {{name}}...",
     "costs.search_placeholder": "Otsi kirjelduse või koodi järgi...",
     "costs.semantic_placeholder": "Kirjelda, mida vajad (AI leiab sarnased)...",
+    "costs.semantic_unavailable": "Selles paigalduses pole AI-otsingut installitud, seega on need tekstiotsingu tulemused.",
     "costs.set_active": "Määra aktiivseks",
     "costs.showing": "Kuvatakse",
     "costs.showing_range": "{{from}}-{{to}} / {{total}}",

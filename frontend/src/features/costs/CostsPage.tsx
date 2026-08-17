@@ -34,11 +34,12 @@ import {
   Trash2,
   Pencil,
   AlertTriangle,
+  Info,
 } from 'lucide-react';
 import { Button, Card, Badge, EmptyState, SkeletonTable, CountryFlag, CountryFlagBackdrop, Breadcrumb, ConfirmDialog, DismissibleInfo, IntroRichText, ModuleGuideButton, RecoveryCard } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
-import { apiGet, apiPost, apiPatch, apiDelete, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
+import { ApiError, apiGet, apiPost, apiPatch, apiDelete, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
 import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { useToastStore } from '@/stores/useToastStore';
@@ -123,6 +124,12 @@ interface CostSearchResponse {
   total: number;
   limit: number;
   offset: number;
+  /**
+   * Set when the semantic toggle was on but the deployment has no embedding
+   * model, so these rows came from the text search instead. Without it the
+   * fallback is invisible and the reader believes the AI search answered.
+   */
+  semanticUnavailable?: boolean;
 }
 
 interface RegionStat {
@@ -845,7 +852,14 @@ export function CostsPage() {
           } as CostSearchResponse;
         } catch (err) {
           if (import.meta.env.DEV) console.error('Semantic search failed, falling back to regular search:', err);
-          // Fall back to regular search
+          // A 503 is the server saying it has no embedding model, which is a
+          // different thing from a search that ran and found nothing. Fall back
+          // to the text search either way, but carry the reason so the page can
+          // say which search these rows came from.
+          if (err instanceof ApiError && err.status === 503) {
+            const fallback = await apiGet<CostSearchResponse>(searchUrl);
+            return { ...fallback, semanticUnavailable: true };
+          }
         }
       }
       return apiGet<CostSearchResponse>(searchUrl);
@@ -1455,6 +1469,24 @@ export function CostsPage() {
               </span>
             </button>
           </div>
+
+          {/* The semantic toggle is on but this deployment has no embedding
+              model, so these rows came from the text search. Saying so is the
+              difference between a fallback and a wrong answer. */}
+          {semanticSearch && data?.semanticUnavailable && (
+            <div
+              role="status"
+              className="flex items-start gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400"
+            >
+              <Info size={14} className="mt-0.5 shrink-0" />
+              <span>
+                {t('costs.semantic_unavailable', {
+                  defaultValue:
+                    'AI search is not installed on this deployment, so these are text search results.',
+                })}
+              </span>
+            </div>
+          )}
 
           {/* Unit filter */}
           <div className="relative">

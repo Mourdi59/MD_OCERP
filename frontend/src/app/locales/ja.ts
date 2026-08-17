@@ -8600,6 +8600,7 @@ const resource = {
     "costs.what_is_cost_db": "材料、労務、機械の単価と複合単価です。モジュールから地域データベース（CWICR）をインポートするか、カスタム単価を追加してください。AIセマンティック検索をオンにすると自然言語クエリが可能です。",
     "costs.search_placeholder": "説明またはコードで検索...",
     "costs.semantic_placeholder": "必要なものを記述（AIが類似項目を検索）...",
+    "costs.semantic_unavailable": "この環境にはAI検索がインストールされていないため、これらはテキスト検索の結果です。",
     "costs.showing": "表示中",
     "costs.title": "単価データベース",
     "costs.yes_clear_all": "はい、すべてクリア",

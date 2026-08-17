@@ -162,6 +162,26 @@ def get_embedder():
     return None
 
 
+def embedder_status() -> dict[str, Any]:
+    """Report whether the embedding model can answer, and why not when it cannot.
+
+    Cheap on purpose: it never triggers a load, so a status page cannot pay the
+    multi-second download cascade that :func:`get_embedder` guards against. The
+    states are distinct because the remedies are: a missing library is an
+    install, a failed load is usually a model that has not been fetched yet or a
+    broken cache, and "not_loaded" simply means nothing has asked for a vector
+    since the process started.
+    """
+    name, dim = _resolve_active_model()
+    if _embedder_instance is not None:
+        return {"available": True, "state": "ready", "model": active_model_name(), "dimension": dim}
+    if not _has_module("sentence_transformers"):
+        return {"available": False, "state": "library_missing", "model": name, "dimension": dim}
+    if _embedder_tried:
+        return {"available": False, "state": "load_failed", "model": name, "dimension": dim}
+    return {"available": False, "state": "not_loaded", "model": name, "dimension": dim}
+
+
 def active_model_name() -> str:
     """Return the model name currently loaded into memory, or the configured
     name if nothing has been loaded yet.  Used by ``vector_status()`` and the

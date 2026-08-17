@@ -9465,6 +9465,7 @@ const resource = {
     "costs.search_in_region": "جست‌وجو در {{name}}...",
     "costs.search_placeholder": "جست‌وجو بر اساس شرح یا کد...",
     "costs.semantic_placeholder": "آنچه نیاز دارید را شرح دهید (هوش مصنوعی موارد مشابه را می‌یابد)...",
+    "costs.semantic_unavailable": "جستجوی هوش مصنوعی روی این نصب موجود نیست، بنابراین این نتایج جستجوی متنی هستند.",
     "costs.set_active": "تنظیم به‌عنوان فعال",
     "costs.showing": "نمایش",
     "costs.showing_range": "{{from}}-{{to}} از {{total}}",

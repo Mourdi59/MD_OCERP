@@ -10117,6 +10117,7 @@ const resource = {
     "costs.search_in_region": "ابحث في {{name}}...",
     "costs.search_placeholder": "البحث بالوصف أو الرمز...",
     "costs.semantic_placeholder": "صِف ما تحتاجه (الذكاء الاصطناعي يجد المشابه)...",
+    "costs.semantic_unavailable": "بحث الذكاء الاصطناعي غير مثبت على هذا النظام، لذا هذه نتائج البحث النصي.",
     "costs.set_active": "تعيين كنشط",
     "costs.showing": "عرض",
     "costs.showing_range": "{{from}}-{{to}} من {{total}}",

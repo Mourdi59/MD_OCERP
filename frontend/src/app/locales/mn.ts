@@ -9881,6 +9881,7 @@ const resource = {
     "costs.search_in_region": "Хайх -д {{name}}...",
     "costs.search_placeholder": "by тайлбар эсвэл код хайх...",
     "costs.semantic_placeholder": "Тайлбарлах юу та хэрэгцээ (AI finds төстэй)...",
+    "costs.semantic_unavailable": "Энэ суулгацад AI хайлт суулгаагүй тул эдгээр нь текст хайлтын үр дүн юм.",
     "costs.set_active": "Set болгон Идэвхтэй",
     "costs.showing": "Харуулж байна",
     "costs.showing_range": "{{from}}-{{to}} -н {{total}}",

@@ -8623,6 +8623,7 @@ const resource = {
     "costs.what_is_cost_db": "Tarif satuan dan harga komposit untuk material, tenaga kerja, dan peralatan. Impor database regional (CWICR) dari Modul atau tambahkan tarif kustom. Aktifkan Pencarian Semantik AI untuk kueri berbahasa alami.",
     "costs.search_placeholder": "Cari berdasarkan deskripsi atau kode...",
     "costs.semantic_placeholder": "Deskripsikan apa yang Anda butuhkan (AI menemukan yang serupa)...",
+    "costs.semantic_unavailable": "Pencarian AI tidak terpasang pada instalasi ini, jadi ini adalah hasil pencarian teks.",
     "costs.showing": "Menampilkan",
     "costs.title": "Database Biaya",
     "costs.no_variants_hint": "Harga tunggal",

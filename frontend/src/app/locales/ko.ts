@@ -8619,6 +8619,7 @@ const resource = {
     "costs.what_is_cost_db": "자재, 노무, 장비에 대한 단가 및 복합단가입니다. 모듈에서 지역 데이터베이스(CWICR)를 가져오거나 사용자 정의 단가를 추가합니다. AI 시맨틱 검색을 활성화하면 자연어 질의가 가능합니다.",
     "costs.search_placeholder": "설명 또는 코드로 검색...",
     "costs.semantic_placeholder": "필요한 것을 설명하세요 (AI가 유사 항목 검색)...",
+    "costs.semantic_unavailable": "이 배포에는 AI 검색이 설치되어 있지 않으므로 텍스트 검색 결과입니다.",
     "costs.showing": "표시 중",
     "costs.title": "단가 데이터베이스",
     "costs.yes_clear_all": "예, 전체 삭제",

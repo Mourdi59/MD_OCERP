@@ -9499,6 +9499,7 @@ const resource = {
     "costs.what_is_cost_db": "À-priser och sammansatta priser för material, arbetskraft och utrustning. Importera regionala databaser (CWICR) från Moduler eller lägg till egna priser. Aktivera AI-semantisk sökning för naturligt språk-frågor.",
     "costs.search_placeholder": "Sök på beskrivning eller kod...",
     "costs.semantic_placeholder": "Beskriv vad du behöver (AI hittar liknande)...",
+    "costs.semantic_unavailable": "AI-sökning är inte installerad i den här installationen, så det här är resultat från textsökningen.",
     "costs.showing": "Visar",
     "costs.title": "Kostnadsdatabas",
     "costs.no_variants_hint": "Enstaka pris",

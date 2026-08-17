@@ -8623,6 +8623,7 @@ const resource = {
     "costs.what_is_cost_db": "Đơn giá và giá tổng hợp cho vật liệu, nhân công và thiết bị. Nhập cơ sở dữ liệu khu vực (CWICR) từ Mô-đun hoặc thêm đơn giá tùy chỉnh. Bật Tìm kiếm ngữ nghĩa AI để truy vấn bằng ngôn ngữ tự nhiên.",
     "costs.search_placeholder": "Tìm kiếm theo mô tả hoặc mã...",
     "costs.semantic_placeholder": "Mô tả những gì bạn cần (AI tìm tương tự)...",
+    "costs.semantic_unavailable": "Tìm kiếm AI chưa được cài đặt trên bản triển khai này, nên đây là kết quả tìm kiếm văn bản.",
     "costs.showing": "Đang hiển thị",
     "costs.title": "Cơ sở dữ liệu chi phí",
     "costs.no_variants_hint": "Giá đơn lẻ",

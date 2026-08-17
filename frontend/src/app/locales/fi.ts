@@ -8589,6 +8589,7 @@ const resource = {
     "costs.what_is_cost_db": "Yksikköhintoja ja yhdistelmähintoja materiaaleille, työvoimalle ja kalustolle. Tuo alueellisia tietokantoja (CWICR) Moduuleista tai lisää mukautettuja hintoja. Ota käyttöön tekoälypohjainen semanttinen haku luonnollisen kielen kyselyille.",
     "costs.search_placeholder": "Hae…",
     "costs.semantic_placeholder": "Kuvaile mitä tarvitset (tekoäly etsii vastaavia)...",
+    "costs.semantic_unavailable": "Tekoälyhakua ei ole asennettu tähän asennukseen, joten nämä ovat tekstihaun tuloksia.",
     "costs.showing": "Näytetään",
     "costs.title": "Kustannustietokannat",
     "costs.yes_clear_all": "Kyllä, tyhjennä kaikki",

@@ -8645,6 +8645,7 @@ const resource = {
     "costs.what_is_cost_db": "Ceny jednostkowe i złożone stawki dla materiałów, robocizny i sprzętu. Importuj bazy regionalne (CWICR) z Modułów lub dodaj własne stawki. Włącz wyszukiwanie semantyczne AI dla zapytań w języku naturalnym.",
     "costs.search_placeholder": "Szukaj po opisie lub kodzie...",
     "costs.semantic_placeholder": "Opisz, czego potrzebujesz (AI znajdzie podobne)...",
+    "costs.semantic_unavailable": "Wyszukiwanie AI nie jest zainstalowane w tej instalacji, więc to są wyniki wyszukiwania tekstowego.",
     "costs.showing": "Wyświetlane",
     "costs.title": "Baza danych kosztów",
     "costs.yes_clear_all": "Tak, wyczyść wszystko",

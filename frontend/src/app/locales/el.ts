@@ -9465,6 +9465,7 @@ const resource = {
     "costs.search_in_region": "Αναζήτηση σε {{name}}...",
     "costs.search_placeholder": "Αναζήτηση κατά περιγραφή ή κωδικό...",
     "costs.semantic_placeholder": "Περιγράψτε τι χρειάζεστε (η AI βρίσκει παρόμοια)...",
+    "costs.semantic_unavailable": "Η αναζήτηση AI δεν είναι εγκατεστημένη σε αυτήν την εγκατάσταση, επομένως αυτά είναι αποτελέσματα αναζήτησης κειμένου.",
     "costs.set_active": "Ορισμός ως Ενεργό",
     "costs.showing": "Εμφάνιση",
     "costs.showing_range": "{{from}}-{{to}} από {{total}}",

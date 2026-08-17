@@ -8641,6 +8641,7 @@ const resource = {
     "costs.what_is_cost_db": "Jednotkové ceny a složené sazby pro materiály, práci a stroje. Importujte regionální databáze (CWICR) z Modulů nebo přidejte vlastní sazby. Zapněte AI sémantické vyhledávání pro dotazy v přirozeném jazyce.",
     "costs.search_placeholder": "Hledat podle popisu nebo kódu...",
     "costs.semantic_placeholder": "Popište, co potřebujete (AI najde podobné)...",
+    "costs.semantic_unavailable": "Vyhledávání s AI není v této instalaci nainstalováno, takže jde o výsledky textového vyhledávání.",
     "costs.showing": "Zobrazeno",
     "costs.title": "Databáze cen",
     "costs.yes_clear_all": "Ano, vymazat vše",

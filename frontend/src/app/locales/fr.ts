@@ -7544,6 +7544,7 @@ const resource = {
     "costs.what_is_cost_db": "Prix unitaires et prix composites pour les matériaux, la main-d'œuvre et l'équipement. Importez des bases de données régionales (CWICR) depuis les Modules ou ajoutez vos propres tarifs. Activez la recherche sémantique IA pour des requêtes en langage naturel.",
     "costs.search_placeholder": "Rechercher par description ou code...",
     "costs.semantic_placeholder": "Décrivez ce dont vous avez besoin (l'IA trouve les correspondances)...",
+    "costs.semantic_unavailable": "La recherche IA n'est pas installée sur cette instance, ces résultats proviennent donc de la recherche textuelle.",
     "costs.showing": "Affichage",
     "costs.title": "Base de données de coûts",
     "costs.yes_clear_all": "Oui, tout effacer",

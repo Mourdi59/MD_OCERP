@@ -7559,6 +7559,7 @@ const resource = {
     "costs.what_is_cost_db": "Eenheidsprijzen en samengestelde prijzen voor materialen, arbeid en materieel. Importeer regionale databases (CWICR) vanuit Modules of voeg eigen tarieven toe. Schakel AI Semantisch zoeken in voor zoekopdrachten in natuurlijke taal.",
     "costs.search_placeholder": "Zoeken op omschrijving of code...",
     "costs.semantic_placeholder": "Beschrijf wat u nodig heeft (AI zoekt vergelijkbare)...",
+    "costs.semantic_unavailable": "AI-zoeken is niet geïnstalleerd op deze installatie, dus dit zijn resultaten van de tekstzoekopdracht.",
     "costs.showing": "Toont",
     "costs.title": "Kostendatabase",
     "costs.yes_clear_all": "Ja, alles wissen",

@@ -8269,6 +8269,7 @@ const resource = {
     "costs.what_is_cost_db": "Einheitspreise und Mischpreise für Material, Arbeit und Geräte. Importieren Sie regionale Datenbanken (CWICR) über Module oder fügen Sie eigene Preise hinzu. Aktivieren Sie die KI-Semantiksuche für natürlichsprachige Abfragen.",
     "costs.search_placeholder": "Nach Beschreibung oder Code suchen...",
     "costs.semantic_placeholder": "Beschreiben Sie, was Sie brauchen (KI findet Ähnliches)...",
+    "costs.semantic_unavailable": "Die KI-Suche ist auf dieser Installation nicht installiert, daher stammen diese Treffer aus der Textsuche.",
     "costs.showing": "Zeige",
     "costs.title": "Kostendatenbank",
     "costs.yes_clear_all": "Ja, alles löschen",

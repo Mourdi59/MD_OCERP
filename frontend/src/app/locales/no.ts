@@ -9466,6 +9466,7 @@ const resource = {
     "costs.what_is_cost_db": "Enhetspriser og sammensatte priser for materialer, arbeidskraft og utstyr. Importer regionale databaser (CWICR) fra Moduler eller legg til egne priser. Sla pa AI-semantisk sok for sporsmal pa naturlig sprak.",
     "costs.search_placeholder": "Sok etter beskrivelse eller kode...",
     "costs.semantic_placeholder": "Beskriv hva du trenger (AI finner lignende)...",
+    "costs.semantic_unavailable": "AI-søk er ikke installert i denne installasjonen, så dette er resultater fra tekstsøket.",
     "costs.showing": "Viser",
     "costs.title": "Kostnadsdatabase",
     "costs.no_variants_hint": "Enkeltpris",

@@ -8626,6 +8626,7 @@ const resource = {
     "costs.what_is_cost_db": "Malzeme, işçilik ve ekipman için birim fiyatlar ve bileşik fiyatlar. Modüllerden bölgesel veritabanları (CWICR) içe aktarın veya özel birim fiyatlar ekleyin. Doğal dil sorguları için Yapay Zeka Anlamsal Aramayı etkinleştirin.",
     "costs.search_placeholder": "Açıklama veya koda göre ara...",
     "costs.semantic_placeholder": "Neye ihtiyacınız olduğunu tanımlayın (Yapay zeka benzerini bulur)...",
+    "costs.semantic_unavailable": "Bu kurulumda yapay zekâ araması yüklü değil, bu nedenle bunlar metin araması sonuçlarıdır.",
     "costs.showing": "Gösterilen",
     "costs.title": "Maliyet Veritabanı",
     "costs.yes_clear_all": "Evet, Tümünü Temizle",

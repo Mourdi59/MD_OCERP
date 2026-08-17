@@ -7589,6 +7589,7 @@ const resource = {
     "costs.what_is_cost_db": "Preços unitários e compostos para materiais, mão de obra e equipamentos. Importe bancos de dados regionais (CWICR) em Módulos ou adicione preços personalizados. Ative a Pesquisa Semântica com IA para consultas em linguagem natural.",
     "costs.search_placeholder": "Pesquisar por descrição ou código...",
     "costs.semantic_placeholder": "Descreva o que você precisa (IA encontra similares)...",
+    "costs.semantic_unavailable": "A pesquisa com IA não está instalada nesta instalação, por isso estes são resultados da pesquisa de texto.",
     "costs.showing": "Exibindo",
     "costs.title": "Banco de Dados de Custos",
     "costs.yes_clear_all": "Sim, Limpar Tudo",

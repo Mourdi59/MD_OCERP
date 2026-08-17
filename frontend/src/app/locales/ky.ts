@@ -4694,6 +4694,7 @@ const resource = {
     "costs.select_all": "Баарын тандоо",
     "costs.select_item": "Пунктту тандоо",
     "costs.semantic_placeholder": "Эмне керек экенин сүрөттөңүз (AI окшошторун табат)...",
+    "costs.semantic_unavailable": "Бул орнотууда AI издөө орнотулган эмес, ошондуктан булар текст издөөнүн натыйжалары.",
     "costs.showing": "Көрсөтүлүүдө",
     "costs.title": "Нарк базасы",
     "costs.no_variants_hint": "Жалгыз баа",

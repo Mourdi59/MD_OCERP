@@ -2597,11 +2597,17 @@ async def semantic_search(
     to the query, even if the exact words don't match.
     E.g. "concrete wall" finds "reinforced partition C30/37".
 
-    Degrades gracefully (NEW-B-105): when the optional ``[semantic]``
-    extra is not installed (no embedding model / no ``qdrant_client``)
-    the endpoint returns an empty result list with HTTP 200 instead of
-    leaking an ``ImportError`` / ``RuntimeError`` as a 500. The lexical
-    SQL search (``/costs/?q=``) remains the always-available path.
+    Degrades by saying so. When the optional ``[semantic]`` extra is not
+    installed, or no embedding model has been fetched, the endpoint answers 503
+    with a sentence the caller can show, the way the CWICR search above it
+    already does. It used to answer 200 with an empty list, which the grid drew
+    as "nothing matched your query": the reader was told their search had no
+    results when in truth it had never run. The lexical SQL search
+    (``/costs/?q=``) remains the always-available path and the client is
+    expected to fall back to it, but a fallback the reader is not told about is
+    a different answer wearing the same clothes.
+
+    The raw import text is still never echoed to the caller (NEW-B-105).
     """
     try:
         from app.core.vector import encode_texts, vector_search
@@ -2609,10 +2615,18 @@ async def semantic_search(
         query_vector = encode_texts([q])[0]
         return vector_search(query_vector, region=region, limit=limit)
     except (ImportError, ModuleNotFoundError, RuntimeError) as exc:
-        # Optional semantic stack absent / no embedding model loaded.
-        # Never surface the raw import text to the client.
-        logger.info("Semantic search unavailable, returning empty result: %s", exc)
-        return []
+        from app.core.vector import embedder_status
+
+        state = embedder_status()
+        logger.info("Semantic search unavailable (%s): %s", state["state"], exc)
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Semantic search is not available on this deployment. "
+                "Install the optional extra: pip install openconstructionerp[semantic]"
+            ),
+            headers={"X-Semantic-State": str(state["state"])},
+        ) from exc
 
 
 # ── Categories (distinct classification.collection values) ───────────────

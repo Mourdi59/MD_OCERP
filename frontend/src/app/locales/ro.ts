@@ -8692,6 +8692,7 @@ const resource = {
     "costs.what_is_cost_db": "Tarife unitare și prețuri compuse pentru materiale, manoperă și utilaje. Importați baze de date regionale (CWICR) din Module sau adăugați tarife personalizate. Activați Căutarea Semantică AI pentru interogări în limbaj natural.",
     "costs.search_placeholder": "Căutați după descriere sau cod...",
     "costs.semantic_placeholder": "Descrieți ce aveți nevoie (AI găsește similar)...",
+    "costs.semantic_unavailable": "Căutarea AI nu este instalată pe această instalare, deci acestea sunt rezultate ale căutării text.",
     "costs.showing": "Arată",
     "costs.title": "Baza de Date de Costuri",
     "costs.no_variants_hint": "Preț unic",

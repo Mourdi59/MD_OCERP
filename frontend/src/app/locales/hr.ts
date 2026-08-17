@@ -8656,6 +8656,7 @@ const resource = {
     "costs.what_is_cost_db": "Jedinične cijene i složene cijene za materijale, rad i opremu. Uvezite regionalne baze podataka (CWICR) iz Modula ili dodajte prilagođene cijene. Uključite AI semantičku pretragu za upite prirodnim jezikom.",
     "costs.search_placeholder": "Pretraži po opisu ili kodu...",
     "costs.semantic_placeholder": "Opišite što Vam je potrebno (AI pronalazi slično)...",
+    "costs.semantic_unavailable": "AI pretraživanje nije instalirano na ovoj instalaciji, pa su ovo rezultati tekstualnog pretraživanja.",
     "costs.showing": "Prikazuje",
     "costs.title": "Baza troškova",
     "costs.no_variants_hint": "Jednostruka cijena",

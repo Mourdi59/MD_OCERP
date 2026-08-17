@@ -8637,6 +8637,7 @@ const resource = {
     "costs.what_is_cost_db": "材料、人工和设备的单价及综合价格。从模块导入地区数据库（CWICR）或添加自定义费率。开启 AI 语义搜索可使用自然语言查询。",
     "costs.search_placeholder": "按描述或编码搜索...",
     "costs.semantic_placeholder": "描述您的需求（AI 查找相似项）...",
+    "costs.semantic_unavailable": "此部署未安装 AI 搜索，因此这些是文本搜索结果。",
     "costs.showing": "显示",
     "costs.title": "造价数据库",
     "costs.yes_clear_all": "是的，全部清除",

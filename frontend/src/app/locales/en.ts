@@ -4762,6 +4762,7 @@ const resource = {
     "costs.select_all": "Select all",
     "costs.select_item": "Select item",
     "costs.semantic_placeholder": "Describe what you need (AI finds similar)...",
+    "costs.semantic_unavailable": "AI search is not installed on this deployment, so these are text search results.",
     "costs.showing": "Showing",
     "costs.title": "Cost Database",
     "costs.no_variants_hint": "Single price",

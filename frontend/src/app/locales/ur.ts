@@ -9465,6 +9465,7 @@ const resource = {
     "costs.search_in_region": "{{name}} میں تلاش کریں...",
     "costs.search_placeholder": "تفصیل یا کوڈ سے تلاش کریں...",
     "costs.semantic_placeholder": "بیان کریں آپ کو کیا چاہیے (AI ملتے جلتے ڈھونڈتا ہے)...",
+    "costs.semantic_unavailable": "اس تنصیب پر AI تلاش نصب نہیں ہے، اس لیے یہ متن کی تلاش کے نتائج ہیں۔",
     "costs.set_active": "بطور فعال طے کریں",
     "costs.showing": "دکھایا جا رہا ہے",
     "costs.showing_range": "{{total}} میں سے {{from}}-{{to}}",

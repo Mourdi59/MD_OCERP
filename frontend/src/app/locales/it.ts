@@ -7590,6 +7590,7 @@ const resource = {
     "costs.what_is_cost_db": "Prezzi unitari e prezzi composti per materiali, manodopera e attrezzature. Importa database regionali (CWICR) dai Moduli o aggiungi tariffe personalizzate. Attiva la Ricerca semantica IA per interrogazioni in linguaggio naturale.",
     "costs.search_placeholder": "Cerca per descrizione o codice...",
     "costs.semantic_placeholder": "Descrivi ciò che ti serve (l'IA trova simili)...",
+    "costs.semantic_unavailable": "La ricerca IA non è installata su questa istanza, quindi questi sono risultati della ricerca testuale.",
     "costs.showing": "Visualizzati",
     "costs.title": "Database dei costi",
     "costs.yes_clear_all": "Sì, cancella tutto",

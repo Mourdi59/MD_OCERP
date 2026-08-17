@@ -9465,6 +9465,7 @@ const resource = {
     "costs.search_in_region": "{{name}} ішінде іздеу...",
     "costs.search_placeholder": "Сипаттама немесе код бойынша іздеу...",
     "costs.semantic_placeholder": "Не қажет екенін сипаттаңыз (ИИ ұқсастарын табады)...",
+    "costs.semantic_unavailable": "Бұл орнатуда AI іздеу орнатылмаған, сондықтан бұл мәтіндік іздеу нәтижелері.",
     "costs.set_active": "Белсенді ретінде орнату",
     "costs.showing": "Көрсетілуде",
     "costs.showing_range": "{{total}}-ден {{from}}-{{to}}",

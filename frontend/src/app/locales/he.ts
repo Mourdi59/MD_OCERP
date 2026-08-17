@@ -9469,6 +9469,7 @@ const resource = {
     "costs.search_in_region": "חיפוש ב{{name}}...",
     "costs.search_placeholder": "חיפוש לפי תיאור או קוד...",
     "costs.semantic_placeholder": "תארו מה אתם צריכים (בינה מלאכותית מוצאת דומים)...",
+    "costs.semantic_unavailable": "חיפוש AI אינו מותקן בהתקנה זו, ולכן אלו תוצאות של חיפוש טקסט.",
     "costs.set_active": "קביעה כפעיל",
     "costs.showing": "מוצג",
     "costs.showing_range": "{{from}}-{{to}} מתוך {{total}}",

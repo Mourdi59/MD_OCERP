@@ -9464,6 +9464,7 @@ const resource = {
     "costs.search_in_region": "Maghanap sa {{name}}...",
     "costs.search_placeholder": "Maghanap ayon sa paglalarawan o code...",
     "costs.semantic_placeholder": "Ilarawan ang kailangan mo (hahanapin ng AI ang katulad)...",
+    "costs.semantic_unavailable": "Hindi naka-install ang AI search sa deployment na ito, kaya mga resulta ito ng text search.",
     "costs.set_active": "Itakda bilang Aktibo",
     "costs.showing": "Ipinapakita",
     "costs.showing_range": "{{from}}-{{to}} sa {{total}}",

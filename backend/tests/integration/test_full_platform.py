@@ -669,9 +669,12 @@ def test_costs(api: API, suite: PlatformTestSuite) -> None:
     if d:
         suite.add("Vector DB connected", d.get("connected") is True)
 
-    # Vector search
+    # Vector search. A deployment without the optional semantic extra says so
+    # with 503 rather than answering an empty list, so both are a pass here and
+    # the suite records which one this stand gave.
     r = api.get("/api/v1/costs/vector/search", params={"q": "reinforced concrete", "limit": 3})
-    check(suite, "GET /costs/vector/search ('reinforced concrete')", r, 200)
+    check(suite, "GET /costs/vector/search ('reinforced concrete')", r, [200, 503])
+    suite.add("Semantic search answers or declines, never both", r.status_code in (200, 503))
 
 
 def test_assemblies(api: API, suite: PlatformTestSuite) -> None:
@@ -1137,7 +1140,7 @@ def test_cost_search_multilingual(api: API, suite: PlatformTestSuite) -> None:
     for q in semantic_queries:
         try:
             r = api.get("/api/v1/costs/vector/search", params={"q": q, "limit": 3})
-            check(suite, f"Semantic '{q[:30]}'", r, 200)
+            check(suite, f"Semantic '{q[:30]}'", r, [200, 503])
         except Exception:
             suite.add(f"Semantic '{q[:30]}'", False, detail="connection error")
 
