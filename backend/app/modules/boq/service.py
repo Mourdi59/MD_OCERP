@@ -21,6 +21,7 @@ import logging
 import math
 import re
 import uuid
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from types import SimpleNamespace
@@ -1507,6 +1508,8 @@ def _build_markup_response(markup: BOQMarkup) -> MarkupResponse:
         apply_to=markup.apply_to,
         sort_order=markup.sort_order,
         is_active=markup.is_active,
+        scope_position_id=markup.scope_position_id,
+        overrides_id=markup.overrides_id,
         metadata_=markup.metadata_,
         created_at=markup.created_at,
         updated_at=markup.updated_at,
@@ -1821,6 +1824,187 @@ def _calculate_markup_amounts(
         results.append((markup, amount))
 
     return results
+
+
+def _scope_chain(
+    position_id: uuid.UUID,
+    parent_of: dict[uuid.UUID, uuid.UUID | None],
+    scope_ids: set[uuid.UUID],
+) -> tuple[uuid.UUID, ...]:
+    """Return the scoping ancestors of a position, outermost first.
+
+    Walks from the position up to the root and keeps every ancestor (the
+    position itself included) that some markup line is scoped to. The result is
+    the bucket key: two leaves share a bucket exactly when the same set of
+    scoped lines applies to both, in the same nesting order.
+
+    Args:
+        position_id: The leaf position to place.
+        parent_of: ``{position id: parent id or None}`` for the whole bill.
+        scope_ids: Position ids that at least one active scoped markup names.
+
+    Returns:
+        A tuple of scoping ancestor ids ordered outermost to innermost. Empty
+        when nothing on the chain is scoped, which is the bill-wide bucket.
+    """
+    chain: list[uuid.UUID] = []
+    seen: set[uuid.UUID] = set()
+    current: uuid.UUID | None = position_id
+    # A corrupt tree can point a position at one of its own descendants. The
+    # ``seen`` guard stops the walk instead of spinning, matching how the
+    # section rollup in ``get_boq_structured`` handles the same hazard.
+    while current is not None and current not in seen:
+        seen.add(current)
+        if current in scope_ids:
+            chain.append(current)
+        current = parent_of.get(current)
+    chain.reverse()
+    return tuple(chain)
+
+
+def _effective_stack(
+    bill_wide: list[BOQMarkup],
+    overrides_by_scope: dict[uuid.UUID, list[BOQMarkup]],
+    chain: tuple[uuid.UUID, ...],
+) -> list[BOQMarkup]:
+    """Build the markup stack that applies inside one scope chain.
+
+    The bill-wide stack is the starting point. Every scope on the chain is then
+    applied in turn, outermost first, so a nearer scope wins on a line an outer
+    scope also overrode. A scoped line that names an ``overrides_id`` stands in
+    for that bill-wide line and inherits its place in the compounding order; a
+    scoped line that names nothing is an addition and takes its own
+    ``sort_order``.
+
+    Args:
+        bill_wide: Markup lines with no scope, in repository order.
+        overrides_by_scope: Scoped lines grouped by the position they name.
+        chain: Scoping ancestors, outermost first (see :func:`_scope_chain`).
+
+    Returns:
+        The ordered stack to hand to :func:`_calculate_markup_amounts`.
+    """
+    if not chain:
+        return list(bill_wide)
+
+    by_id = {m.id: m for m in bill_wide if m.id is not None}
+    replacement: dict[uuid.UUID, BOQMarkup] = {}
+    additions: list[BOQMarkup] = []
+
+    for scope_id in chain:
+        for scoped in overrides_by_scope.get(scope_id, []):
+            target = scoped.overrides_id
+            if target is not None and target in by_id:
+                # Nearer scope last, so it overwrites the outer one's choice.
+                replacement[target] = scoped
+            else:
+                # An override pointing at a line that is not bill-wide on this
+                # bill (deleted, or scoped itself) is treated as an addition
+                # rather than dropped. Money the estimator entered stays in the
+                # stack; the validation rules are where that gets flagged.
+                additions.append(scoped)
+
+    entries: list[tuple[int, int, BOQMarkup]] = []
+    for index, line in enumerate(bill_wide):
+        chosen = replacement.get(line.id) if line.id is not None else None
+        entries.append((line.sort_order, index, chosen or line))
+    for offset, extra in enumerate(additions):
+        entries.append((extra.sort_order, len(bill_wide) + offset, extra))
+
+    # Sorting on (sort_order, arrival index) reproduces the repository order
+    # exactly when there are no additions, so a bill whose overrides only
+    # change rates keeps the compounding order it had.
+    entries.sort(key=lambda entry: (entry[0], entry[1]))
+    return [entry[2] for entry in entries]
+
+
+def _calculate_markup_amounts_scoped(
+    direct_cost: Decimal,
+    markups: list[BOQMarkup],
+    positions: Sequence[Position] = (),
+    leaf_amount: Callable[[Position], Decimal] | None = None,
+) -> list[tuple[BOQMarkup, Decimal]]:
+    """Compute markup amounts honouring per-position and per-section overrides.
+
+    The bill-wide stack is the company standard. A markup line that names a
+    ``scope_position_id`` applies only inside that position's subtree, and when
+    it also names an ``overrides_id`` it stands in there for the bill-wide line
+    it points at. To price that, the direct cost is partitioned into buckets of
+    leaves that see the same set of overrides, and
+    :func:`_calculate_markup_amounts` is run once per bucket. Each line's
+    reported amount is the sum of what it earned across the buckets it applied
+    in, so a bill-wide line overridden in one section still reports the money it
+    made everywhere else.
+
+    The partition composes over the existing cascade rather than restating it.
+    That is the whole reason this lives in the BOQ module: a second markup
+    engine would either reimplement the compounding order, and drift the first
+    time one of the two is fixed, or reach into this module's internals.
+
+    A bill with no active scoped line takes a single call with the whole direct
+    cost and the whole stack, byte for byte what it took before the columns
+    existed. Every estimate stored today is in that case.
+
+    Args:
+        direct_cost: The bill's direct cost, as the caller computed it. This
+            figure is authoritative: the buckets are made to sum to it exactly,
+            with any difference against the walked tree landing in the
+            bill-wide bucket, so no rollup moves because of the partition.
+        markups: All markup lines of the bill in repository order, bill-wide
+            and scoped together.
+        positions: Every position of the bill, sections included. Needed to
+            resolve which leaf sits under which scope; ignored when no line is
+            scoped.
+        leaf_amount: The caller's own money function for one leaf position, so
+            an FX-converting rollup and a raw one each partition the figure
+            they actually reported. Defaults to the raw position total.
+
+    Returns:
+        List of (markup, computed_amount) tuples in the input order.
+    """
+    scope_ids: set[uuid.UUID] = {
+        m.scope_position_id for m in markups if m.scope_position_id is not None and m.is_active
+    }
+    if not scope_ids:
+        return _calculate_markup_amounts(direct_cost, markups)
+
+    bill_wide = [m for m in markups if m.scope_position_id is None]
+    overrides_by_scope: dict[uuid.UUID, list[BOQMarkup]] = {}
+    for markup in markups:
+        if markup.scope_position_id is not None and markup.is_active:
+            overrides_by_scope.setdefault(markup.scope_position_id, []).append(markup)
+
+    parent_of: dict[uuid.UUID, uuid.UUID | None] = {p.id: p.parent_id for p in positions}
+    amount_of = leaf_amount or (lambda p: Decimal(str(_str_to_float(p.total))))
+
+    buckets: dict[tuple[uuid.UUID, ...], Decimal] = {}
+    walked = Decimal("0")
+    for position in positions:
+        if _is_section(position):
+            continue
+        amount = amount_of(position)
+        key = _scope_chain(position.id, parent_of, scope_ids)  # type: ignore[arg-type]
+        buckets[key] = buckets.get(key, Decimal("0")) + amount
+        walked += amount
+
+    # The caller's direct cost wins over the tree walk. They can legitimately
+    # disagree (a caller that filtered positions, or one that has no tree at
+    # all), and when they do the remainder belongs to the bill-wide bucket:
+    # money nobody scoped is money the company standard prices.
+    residual = direct_cost - walked
+    if residual != 0 or not buckets:
+        buckets[()] = buckets.get((), Decimal("0")) + residual
+
+    # Keyed on object identity, not ``markup.id``: the same rows are shared
+    # across bucket stacks, and a caller may hand us lines that were never
+    # flushed and so have no id yet.
+    earned: dict[int, Decimal] = {id(m): Decimal("0") for m in markups}
+    for key, bucket_cost in buckets.items():
+        stack = _effective_stack(bill_wide, overrides_by_scope, key)
+        for markup, amount in _calculate_markup_amounts(bucket_cost, stack):
+            earned[id(markup)] = earned.get(id(markup), Decimal("0")) + amount
+
+    return [(m, earned.get(id(m), Decimal("0"))) for m in markups]
 
 
 # ── Issue #127: BOQ code reuse / linked positions ────────────────────────
@@ -2680,7 +2864,12 @@ class BOQService:
                 currencies.add(pos_code or base or "")
 
             markups = markups_by_boq.get(boq_id, [])
-            markup_results = _calculate_markup_amounts(direct_cost, markups)
+            markup_results = _calculate_markup_amounts_scoped(
+                direct_cost,
+                markups,
+                positions,
+                lambda pos, _fx=fx_map, _base=base: _leaf_total_base_with_resources(pos, _fx, _base),
+            )
             markup_total = sum((amount for _, amount in markup_results), Decimal("0"))
             grand_total = direct_cost + markup_total
 
@@ -5094,6 +5283,64 @@ class BOQService:
         """List all markups for a BOQ."""
         return await self.markup_repo.list_for_boq(boq_id)
 
+    async def _validate_markup_scope(
+        self,
+        boq_id: uuid.UUID,
+        scope_position_id: uuid.UUID | None,
+        overrides_id: uuid.UUID | None,
+        self_id: uuid.UUID | None = None,
+    ) -> None:
+        """Reject scope and override references that cannot mean anything.
+
+        The database keys guarantee the rows exist somewhere. What they cannot
+        say is that they belong to THIS bill, and a markup scoped to a position
+        on another BOQ would simply never match a leaf and would price at
+        nothing while looking like a live exception on the screen. So it is
+        refused at the door rather than accepted and silently ignored.
+
+        Args:
+            boq_id: The bill the markup belongs to.
+            scope_position_id: Proposed scope, or None for bill-wide.
+            overrides_id: Proposed override target, or None.
+            self_id: The markup being updated, so a row cannot override itself.
+
+        Raises:
+            HTTPException 422: If a reference is off this bill, if an override
+                names a line that is not bill-wide, if a line overrides itself,
+                or if an override is declared without a scope.
+        """
+        if overrides_id is not None and scope_position_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="A markup can only override another line inside a scope; set scope_position_id as well.",
+            )
+
+        if scope_position_id is not None:
+            position = await self.position_repo.get_by_id(scope_position_id)
+            if position is None or position.boq_id != boq_id:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="scope_position_id must name a position on this BOQ.",
+                )
+
+        if overrides_id is not None:
+            if self_id is not None and overrides_id == self_id:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="A markup cannot override itself.",
+                )
+            target = await self.markup_repo.get_by_id(overrides_id)
+            if target is None or target.boq_id != boq_id:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="overrides_id must name a markup on this BOQ.",
+                )
+            if target.scope_position_id is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Only a bill-wide markup can be overridden; that line is itself scoped.",
+                )
+
     async def add_markup(self, boq_id: uuid.UUID, data: MarkupCreate) -> BOQMarkup:
         """Add a markup/overhead line to a BOQ.
 
@@ -5107,8 +5354,11 @@ class BOQService:
         Raises:
             HTTPException 404 if the target BOQ doesn't exist.
             HTTPException 409 if the BOQ is locked.
+            HTTPException 422 if a scope or override reference names something
+                that is not on this BOQ, or is not a bill-wide line.
         """
         await self._ensure_not_locked(boq_id)
+        await self._validate_markup_scope(boq_id, data.scope_position_id, data.overrides_id)
 
         max_order = await self.markup_repo.get_max_sort_order(boq_id)
 
@@ -5122,6 +5372,8 @@ class BOQService:
             apply_to=data.apply_to,
             sort_order=data.sort_order if data.sort_order > 0 else max_order + 1,
             is_active=data.is_active,
+            scope_position_id=data.scope_position_id,
+            overrides_id=data.overrides_id,
             metadata_=data.metadata,
         )
         markup = await self.markup_repo.create(markup)
@@ -5152,6 +5404,8 @@ class BOQService:
         Raises:
             HTTPException 404 if markup not found.
             HTTPException 409 if the owning BOQ is locked.
+            HTTPException 422 if a scope or override reference names something
+                that is not on this BOQ, or is not a bill-wide line.
         """
         markup = await self.markup_repo.get_by_id(markup_id)
         if markup is None:
@@ -5162,6 +5416,17 @@ class BOQService:
         await self._ensure_not_locked(markup.boq_id)
 
         fields = data.model_dump(exclude_unset=True)
+
+        # Validate against the row as it will be, not as it was: a PATCH that
+        # only sets ``overrides_id`` still has to be checked against the scope
+        # already on the row.
+        if "scope_position_id" in fields or "overrides_id" in fields:
+            await self._validate_markup_scope(
+                markup.boq_id,
+                fields.get("scope_position_id", markup.scope_position_id),
+                fields.get("overrides_id", markup.overrides_id),
+                self_id=markup_id,
+            )
 
         # Convert float values to strings for storage
         if "percentage" in fields:
@@ -5253,7 +5518,12 @@ class BOQService:
             if not _is_section(pos):
                 direct_cost += _leaf_total_base_with_resources(pos, fx_map, base_ccy or "")
 
-        calculated = _calculate_markup_amounts(direct_cost, markups)
+        calculated = _calculate_markup_amounts_scoped(
+            direct_cost,
+            markups,
+            positions,
+            lambda pos: _leaf_total_base_with_resources(pos, fx_map, base_ccy or ""),
+        )
         return direct_cost, calculated
 
     async def apply_default_markups(self, boq_id: uuid.UUID, region: str) -> list[BOQMarkup]:
@@ -5518,10 +5788,16 @@ class BOQService:
             if cap["parent_id"] is not None and cap["parent_id"] in old_to_new:
                 await self.position_repo.update_fields(new_id, parent_id=old_to_new[cap["parent_id"]])
 
-        # Copy markups
+        # Copy markups. A scoped line has to point at the COPY of the position
+        # it was confined to, and an override at the COPY of the line it
+        # replaces. Carrying the source bill's ids over would leave the new
+        # bill quietly inheriting where the old one made an exception, which
+        # reads as a working copy and prices as a different job.
         markups = await self.markup_repo.list_for_boq(boq_id)
+        captured_markup_ids: list[uuid.UUID] = []
         new_markups: list[BOQMarkup] = []
         for markup in markups:
+            captured_markup_ids.append(markup.id)
             new_markup = BOQMarkup(
                 boq_id=new_boq_id,
                 name=markup.name,
@@ -5532,12 +5808,26 @@ class BOQService:
                 apply_to=markup.apply_to,
                 sort_order=markup.sort_order,
                 is_active=markup.is_active,
+                # ``old_to_new`` covers every position on the source bill, so a
+                # miss here means the scope pointed off-bill already. Dropping
+                # to NULL makes such a line bill-wide on the copy, which is the
+                # conservative reading: the company standard, not a silent
+                # dangling reference.
+                scope_position_id=old_to_new.get(markup.scope_position_id) if markup.scope_position_id else None,
+                overrides_id=None,  # remapped below, once the copies have ids
                 metadata_=dict(markup.metadata_) if markup.metadata_ else {},
             )
             new_markups.append(new_markup)
 
         if new_markups:
-            await self.markup_repo.bulk_create(new_markups)
+            created_markups = await self.markup_repo.bulk_create(new_markups)
+            markup_old_to_new = dict(zip(captured_markup_ids, [m.id for m in created_markups], strict=False))
+            for source, copy_id in zip(markups, [m.id for m in created_markups], strict=False):
+                if source.overrides_id is not None and source.overrides_id in markup_old_to_new:
+                    await self.markup_repo.update_fields(
+                        copy_id,
+                        overrides_id=markup_old_to_new[source.overrides_id],
+                    )
 
         await _safe_publish(
             "boq.boq.duplicated",
@@ -6405,7 +6695,7 @@ class BOQService:
 
         # Calculate markups
         markups_orm = await self.markup_repo.list_for_boq(boq_id)
-        markup_results = _calculate_markup_amounts(direct_cost, markups_orm)
+        markup_results = _calculate_markup_amounts_scoped(direct_cost, markups_orm, all_positions, _leaf_total_base)
 
         markups_calculated: list[MarkupCalculated] = []
         markup_total = Decimal("0")
@@ -6422,6 +6712,8 @@ class BOQService:
                     apply_to=markup_obj.apply_to,
                     sort_order=markup_obj.sort_order,
                     is_active=markup_obj.is_active,
+                    scope_position_id=markup_obj.scope_position_id,
+                    overrides_id=markup_obj.overrides_id,
                     metadata_=markup_obj.metadata_,
                     created_at=markup_obj.created_at,
                     updated_at=markup_obj.updated_at,
@@ -6615,7 +6907,17 @@ class BOQService:
         markup_total = Decimal("0")
 
         if markups_orm:
-            markup_results = _calculate_markup_amounts(Decimal(str(direct_cost_val)), markups_orm)
+            # ``direct_cost_val`` is a float sum built by the category loop
+            # above, and the scoped partition walks the same positions through
+            # the canonical resource-aware conversion. Where the two disagree
+            # by a rounding tail the difference lands in the bill-wide bucket,
+            # so this screen's total is the one it computed for itself.
+            markup_results = _calculate_markup_amounts_scoped(
+                Decimal(str(direct_cost_val)),
+                markups_orm,
+                all_positions,
+                lambda pos: _leaf_total_base_with_resources(pos, fx_map, base_currency),
+            )
             for markup_obj, amount in markup_results:
                 if markup_obj.is_active:
                     markup_lines.append(
@@ -6717,9 +7019,11 @@ class BOQService:
         completion_pct = (complete_count / item_count * 100.0) if item_count > 0 else 0.0
         classification_pct = (classified_count / item_count * 100.0) if item_count > 0 else 0.0
 
-        # Grand total (direct cost + markups)
+        # Grand total (direct cost + markups). The default leaf amount is the
+        # raw position total, which is exactly what ``direct_cost`` above sums,
+        # so the partition reproduces this rollup's own figure.
         markups_orm = await self.markup_repo.list_for_boq(boq_id)
-        markup_results = _calculate_markup_amounts(direct_cost, markups_orm)
+        markup_results = _calculate_markup_amounts_scoped(direct_cost, markups_orm, all_positions)
         markup_total = sum(amount for _, amount in markup_results)
         grand_total = float(direct_cost + markup_total)
 

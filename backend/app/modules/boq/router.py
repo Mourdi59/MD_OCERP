@@ -465,6 +465,8 @@ def _markup_to_response(markup: object) -> MarkupResponse:
         apply_to=markup.apply_to,  # type: ignore[attr-defined]
         sort_order=markup.sort_order,  # type: ignore[attr-defined]
         is_active=markup.is_active,  # type: ignore[attr-defined]
+        scope_position_id=getattr(markup, "scope_position_id", None),
+        overrides_id=getattr(markup, "overrides_id", None),
         metadata_=markup.metadata_,  # type: ignore[attr-defined]
         created_at=markup.created_at,  # type: ignore[attr-defined]
         updated_at=markup.updated_at,  # type: ignore[attr-defined]

@@ -866,6 +866,15 @@ class MarkupCreate(_MarkupBase):
       markup (cumulative, subtotal or direct_cost) in the same BOQ. This
       compounds profit-on-overhead-on-cost, the GAEB / DIN 276 default.
       Reorder markups by changing ``sort_order``; ties are stable by ``id``.
+
+    ``scope_position_id`` and ``overrides_id`` express inheritance with
+    override. Leaving both unset creates a bill-wide line, the company
+    standard, which is what every markup was before these existed. Naming a
+    position confines the line to that position and everything under it, and
+    naming ``overrides_id`` as well makes it stand in for that bill-wide line
+    inside its own subtree. An override keeps the place of the line it
+    replaces in the compounding order, so an exception changes the rate and
+    never the order.
     """
 
     model_config = ConfigDict(str_strip_whitespace=True)
@@ -885,6 +894,8 @@ class MarkupCreate(_MarkupBase):
     apply_to: str = Field(default="direct_cost", pattern=r"^(direct_cost|subtotal|cumulative)$")
     sort_order: int = Field(default=0, ge=0)
     is_active: bool = True
+    scope_position_id: UUID | None = None
+    overrides_id: UUID | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -904,6 +915,11 @@ class MarkupUpdate(_MarkupBase):
     apply_to: str | None = Field(default=None, pattern=r"^(direct_cost|subtotal|cumulative)$")
     sort_order: int | None = Field(default=None, ge=0)
     is_active: bool | None = None
+    # Sent explicitly as null these clear the scope, which is how a section
+    # exception is promoted back to a bill-wide line. Omitted, they are left
+    # alone like every other field on this partial update.
+    scope_position_id: UUID | None = None
+    overrides_id: UUID | None = None
     metadata: dict[str, Any] | None = None
 
 
@@ -922,6 +938,11 @@ class MarkupResponse(_MarkupBase):
     apply_to: str
     sort_order: int
     is_active: bool
+    # Null on both means bill-wide. The client needs them to tell an inherited
+    # line from an exception, which is the whole point of showing an override
+    # differently instead of as one more row of the same kind.
+    scope_position_id: UUID | None = None
+    overrides_id: UUID | None = None
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     created_at: datetime
     updated_at: datetime

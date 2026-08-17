@@ -241,6 +241,35 @@ class BOQMarkup(Base):
         apply_to - "direct_cost" (default) or "cumulative"
         sort_order - evaluation order (ascending)
         is_active - soft toggle
+        scope_position_id - NULL for a bill-wide line, otherwise the position
+            (usually a section) this line is confined to, descendants included
+        overrides_id - the bill-wide line a scoped line replaces, or NULL for a
+            scoped line that adds something the bill-wide stack does not have
+
+    Inheritance and override:
+        A row with ``scope_position_id`` NULL is the company standard: it
+        applies to the whole bill. A row that names a position applies only to
+        that position and everything below it, and if it also names an
+        ``overrides_id`` it stands in for that bill-wide line inside its own
+        subtree. Everywhere else the bill-wide line is still what applies. This
+        is what lets a standard carry a per-trade exception, which is the shape
+        a markup set could not express before: previously the only way to price
+        one section differently was to change the number for the whole bill.
+
+        The overriding line keeps the position of the line it replaces in the
+        compounding order, not its own ``sort_order``. Order is the company
+        standard's decision; the exception is about the rate, and letting an
+        override move a step would silently change what every later step
+        compounds on.
+
+        Overrides nest. A leaf takes every override on its chain of ancestors,
+        with the nearest one winning per line, so a trade-level exception
+        inside a phase-level exception behaves the way it reads.
+
+        ``is_active`` false on a scoped line means the line is simply not
+        there, so the bill-wide line is inherited again. To suppress a company
+        line for one section, override it at zero rather than deactivating the
+        override.
     """
 
     __tablename__ = "oe_boq_markup"
@@ -265,6 +294,25 @@ class BOQMarkup(Base):
     apply_to: Mapped[str] = mapped_column(String(50), nullable=False, default="direct_cost")
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Both nullable, both defaulting to NULL, so every markup row that exists
+    # today keeps the meaning it already had: bill-wide, inherited by
+    # everything, computed on the whole direct cost.
+    scope_position_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_boq_position.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    # Self-referential and deliberately ``SET NULL`` rather than ``CASCADE``:
+    # deleting the company line should leave the section's own number standing
+    # as an ordinary scoped line, not delete money the estimator entered by
+    # hand. The scoped line then simply stops replacing anything.
+    overrides_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_boq_markup.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
         JSON,
