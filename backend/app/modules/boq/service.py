@@ -1748,14 +1748,36 @@ def _calculate_markup_amounts(
 ) -> list[tuple[BOQMarkup, Decimal]]:
     """Compute the dollar amount for each active markup line.
 
-    This is the AUTHORITATIVE markup cascade. It is mirrored client-side by the
-    ``calcMap`` memo in ``frontend/src/features/boq/MarkupPanel.tsx``, which
-    needs a per-markup amount keyed by markup id (something the
-    ``/cost-breakdown/`` payload does not carry) and has to react to a toggle
-    before the round-trip lands. The two must stay in step: same running sum,
-    ``cumulative``/``subtotal`` based on direct cost + preceding markups,
-    ``fixed`` taking ``fixed_amount``, inactive lines contributing zero. When
-    they disagree, this one is right.
+    OWNERSHIP. This function is authoritative for the markup stack of a bill.
+    Every figure a bill puts its name to (the structured view, the cost
+    breakdown, the exports, the bulk list rollup) resolves its markup amounts
+    here, and :class:`~app.modules.boq.models.BOQMarkup` is the row it reads.
+    The platform has a second markup engine,
+    :func:`app.modules.methodology.cascade.compute_cascade`, and that one is
+    the reusable pricing methodology of a company or a project. It is not the
+    bill's stack. The bridge runs one way: a methodology may seed a bill's
+    markup lines, which is what the regional templates in this file already do
+    in spirit. Nothing computes a bill's total from a cascade. This paragraph
+    exists because neither engine said which was which, and a reader who found
+    the other one first had no way to tell.
+
+    ROUNDING. This cascade carries full ``Decimal`` precision through the whole
+    stack and is quantized once, by the caller, at the rollup. ``compute_cascade``
+    does the opposite: it quantizes every step immediately with ``ROUND_HALF_UP``
+    and feeds the already rounded amount forward. The two therefore disagree by
+    cents on the same numbers, deliberately and knowingly, and they are not
+    reconciled here. Reconciling them changes the total of every estimate
+    already stored in every customer database, so it is its own decision with
+    its own migration, not a side effect of a markup change. Do not "align" one
+    to the other while passing through.
+
+    The client mirrors this. The ``calcMap`` memo in
+    ``frontend/src/features/boq/MarkupPanel.tsx`` needs a per-markup amount
+    keyed by markup id (something the ``/cost-breakdown/`` payload does not
+    carry) and has to react to a toggle before the round-trip lands. The two
+    must stay in step: same running sum, ``cumulative``/``subtotal`` based on
+    direct cost + preceding markups, ``fixed`` taking ``fixed_amount``,
+    inactive lines contributing zero. When they disagree, this one is right.
 
     Args:
         direct_cost: Sum of all position totals.

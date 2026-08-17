@@ -198,6 +198,22 @@ def _coerce_decimal(value: object, what: str) -> Decimal:
 def compute_cascade(spec: CascadeSpec, bases: Mapping[str, Decimal]) -> CascadeResult:
     """Compute the ordered markup cascade for one scope.
 
+    OWNERSHIP. This is the reusable estimating methodology of a company or a
+    project. It is NOT the markup stack of a bill. A bill's markup lines are
+    :class:`~app.modules.boq.models.BOQMarkup` rows and their amounts come from
+    :func:`app.modules.boq.service._calculate_markup_amounts`, which is
+    authoritative for anything a bill puts its name to. The bridge runs one
+    way: a methodology may seed a bill's markup lines. Nothing here is summed
+    into a bill's total. Two engines with stated, different jobs is the
+    intended arrangement; two engines with the same job is what it avoids.
+
+    ROUNDING. Every step here is quantized immediately (see the module
+    docstring) and later steps consume the rounded amount. The bill's cascade
+    keeps full precision to the rollup and quantizes once. On the same inputs
+    the two differ by cents, deliberately. They are not reconciled, because
+    changing either moves the total of estimates already stored in customer
+    databases, which is its own decision with its own migration.
+
     Args:
         spec: The cascade specification (composites + ordered steps).
         bases: Leaf direct-cost amounts keyed by leaf base name. Values may be
