@@ -57,7 +57,7 @@ import uuid
 from contextvars import ContextVar
 from typing import Any
 
-from sqlalchemy import JSON, Index, String, Text, select
+from sqlalchemy import JSON, Index, String, Text, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -465,6 +465,33 @@ async def get_activity_for_entity(
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def count_activity_for_entity(
+    session: AsyncSession,
+    *,
+    entity_type: str,
+    entity_id: str | uuid.UUID,
+) -> int:
+    """How many journal rows exist for one entity row, ignoring paging.
+
+    The sibling of :func:`get_activity_for_entity`, filtering on exactly the
+    same two columns so the number describes the page that function returns.
+    A caller that renders a page of history without this cannot tell a
+    complete journal from the opening slice of a long one, and the journal is
+    ordered oldest first, so the part it silently drops is the recent part.
+
+    Separate from ``get_activity_for_entity`` rather than folded into it
+    because two live callers want the rows and not the count, and paying for
+    a ``COUNT(*)`` they discard on every read would be a cost with no reader.
+    """
+    stmt = (
+        select(func.count())
+        .select_from(ActivityLog)
+        .where(ActivityLog.entity_type == entity_type)
+        .where(ActivityLog.entity_id == str(entity_id))
+    )
+    return int((await session.execute(stmt)).scalar_one())
 
 
 async def get_recent_activity(
