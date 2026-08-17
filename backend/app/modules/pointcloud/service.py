@@ -970,6 +970,13 @@ class PointCloudService:
                     max_total_points=max_total_points,
                 )
             except PointDecodeUnavailable as exc:
+                # The advice goes through repair_hint because this message is a
+                # response detail a user reads, and the desktop build has no pip
+                # to act on it with. DESKTOP_NO_EXTRA rather than the repair
+                # wording: pye57 is not in requirements-desktop.lock, so a bundle
+                # without the reader is lean rather than damaged.
+                from app.core.self_upgrade import DESKTOP_NO_EXTRA, repair_hint  # noqa: PLC0415
+
                 raise HTTPException(
                     status_code=status.HTTP_501_NOT_IMPLEMENTED,
                     detail={
@@ -977,9 +984,12 @@ class PointCloudService:
                         "format": exc.fmt,
                         "message": (
                             f"Viewing {exc.fmt.upper()} scans needs the optional {exc.reader} "
-                            "reader. LAS, LAZ and COPC work out of the box; install the "
-                            "'pointcloud' extra (pip install openconstructionerp[pointcloud]) "
-                            "to add E57 support."
+                            "reader. LAS, LAZ and COPC work out of the box; "
+                            + repair_hint(
+                                "install the 'pointcloud' extra "
+                                "(pip install openconstructionerp[pointcloud]) to add E57 support.",
+                                DESKTOP_NO_EXTRA,
+                            )
                         ),
                     },
                 ) from exc
