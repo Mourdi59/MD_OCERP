@@ -10,17 +10,20 @@ is happy and `npm run build` is happy.
 
 The call site still renders, because `t(key, {defaultValue})` falls back to
 the defaultValue when the key resolves nowhere. So the string reaches every
-one of the 29 languages in English, and every gate we own reports green.
-#175 shipped exactly this way: service.sla_breached and service.sla_late
-were converted from English literals into keys, the keys were never added to
-any locale file, and the SLA chip read in English in all 29 languages
-through a full release with three hygiene gates passing on it.
+language in English, and every gate we own reports green. #175 shipped
+exactly this way: service.sla_breached and service.sla_late were converted
+from English literals into keys, the keys were never added to any locale
+file, and the SLA chip read in English in every language through a full
+release with three hygiene gates passing on it.
 
 This guard closes that hole. It reads every `t(key, {..., defaultValue, ...})`
-call site under frontend/src, resolves each key against all 29 bundles, and
-fails on any key fewer than all of them can answer.
+call site under frontend/src, resolves each key against every bundle, and
+fails on any key fewer than all of them can answer. The locale count is
+never written down here: it is whatever LOCALE_GLOB finds, because the count
+has grown four times since this was written and a number in a comment is a
+claim nobody re-checks.
 
-Three things worth knowing about how it counts:
+Four things worth knowing about how it counts:
 
   * Plural forms. i18next resolves a counted key through its CLDR category,
     so `meetings.attachment_n` need never exist as a bare key if
@@ -31,6 +34,13 @@ Three things worth knowing about how it counts:
     `_other` counts as reachable here, because "reachable at all" and "has
     every form this language needs" are different questions and conflating
     them would let this guard fail for a reason its message does not state.
+
+  * Regional variants. es-MX, es-CL, es-CO, pt-BR and en-US carry only the
+    words that differ from their base language, by design, so a key they do
+    not declare is answered by es, pt or en and the reader sees their own
+    language rather than a fallback. Those are not holes and counting them
+    as holes made one 1499-key overlay print 25280 errors. A variant is only
+    missing a key when its base is missing it too.
 
   * Scope. Keys called WITHOUT a defaultValue are out of scope. A missing
     one of those renders the raw key on screen, which is loud, self-reporting
@@ -77,6 +87,24 @@ _KEY_LINE = re.compile(r'^\s*"([A-Za-z0-9_.\-]+)"\s*:', re.MULTILINE)
 _CALL_HEAD = re.compile(r"""\bt\(\s*(['"])([A-Za-z0-9_][A-Za-z0-9_.\-]*)\1\s*,\s*\{""")
 
 _CLDR_SUFFIXES = ("_zero", "_one", "_two", "_few", "_many", "_other")
+
+
+def _base_of(stem: str, by_locale: dict[str, set[str]]) -> str | None:
+    """The language file a regional variant resolves through, if there is one.
+
+    i18next expands a two-part code into ``['es-MX', 'es', ...]`` on its own,
+    before it ever consults the fallback map in ``frontend/src/app/i18n.ts``,
+    so this is derived from the code rather than mirrored from that map. A
+    mirrored table is a second copy of a decision, and the copy is the one
+    that goes stale: en-US was added to the app and this guard did not know.
+
+    ``zh-TW`` with no ``zh.ts`` beside it would resolve straight to English
+    and therefore has no base as far as this guard is concerned.
+    """
+    if "-" not in stem:
+        return None
+    base = stem.split("-", 1)[0]
+    return base if base in by_locale else None
 
 
 def _options_body(text: str, brace_index: int) -> str | None:
@@ -130,6 +158,22 @@ def _reach(key: str, by_locale: dict[str, set[str]]) -> set[str]:
     return {stem for stem, keys in by_locale.items() if any(f in keys for f in forms)}
 
 
+def missing_locales(
+    key: str, by_locale: dict[str, set[str]], bases: dict[str, str | None]
+) -> list[str]:
+    """Locales whose reader would see this key's English default.
+
+    A regional variant is answered by its base language, so it counts as
+    covered when the base declares the key even though the variant file does
+    not. Falling back to the base is the designed behaviour; falling back past
+    it into English is the defect this guard exists to catch.
+    """
+    reach = _reach(key, by_locale)
+    return sorted(
+        stem for stem in by_locale if stem not in reach and bases[stem] not in reach
+    )
+
+
 def main() -> int:
     by_locale = _read_locales()
     if not by_locale:
@@ -159,12 +203,20 @@ def main() -> int:
         baseline: dict[str, dict[str, object]] = json.load(fh)
 
     all_locales = set(by_locale)
+    # A regional variant carries only the words that actually differ from its
+    # base language, so a key it does not declare is not a hole: the reader
+    # gets Spanish on a Chilean screen, or English on an American one, which
+    # is the right answer in both cases. Counting those as missing turned one
+    # deliberate 1499-key overlay into 25280 errors and would have pushed
+    # whoever met it into pasting a full copy of English into en-US.ts.
+    bases = {stem: _base_of(stem, by_locale) for stem in all_locales}
+    variants = {stem: base for stem, base in bases.items() if base}
     new_gaps: list[tuple[str, str, list[str]]] = []
     widened: list[tuple[str, list[str]]] = []
     healed: list[str] = []
 
     for key, first_file in sorted(sites.items()):
-        missing = sorted(all_locales - _reach(key, by_locale))
+        missing = missing_locales(key, by_locale, bases)
         entry = baseline.get(key)
         declared = sorted(entry["missing_locales"]) if entry else []  # type: ignore[index,arg-type]
         if not missing:
@@ -208,9 +260,21 @@ def main() -> int:
         f"i18n orphan keys OK: {len(sites)} keys called with a defaultValue "
         f"across {len(by_locale)} locales, {len(baseline)} in the baseline"
     )
+    # Printed rather than assumed: if the derivation ever stops finding a base,
+    # this guard silently starts demanding a full keyspace of every variant,
+    # and the message it prints would still read like an ordinary gap.
+    print(
+        "  regional variants resolving through a base language: "
+        + (
+            ", ".join(f"{stem} via {base}" for stem, base in sorted(variants.items()))
+            or "none"
+        )
+    )
     if healed:
+        shown = ", ".join(healed[:12])
+        more = f", and {len(healed) - 12} more" if len(healed) > 12 else ""
         print(
-            f"  {len(healed)} baseline key(s) now fully answered, drop them: {', '.join(healed)}"
+            f"  {len(healed)} baseline key(s) now fully answered, drop them: {shown}{more}"
         )
     return 0
 
