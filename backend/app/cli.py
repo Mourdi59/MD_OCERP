@@ -389,6 +389,20 @@ def check_frontend_bundled() -> Check:
         # per-check guard, so an ImportError escaping here would not degrade one
         # line, it would abort the whole report - on exactly the broken install
         # the report exists to explain.
+        #
+        # That guard is covered by unit tests and deliberately not by a frozen
+        # build: fastapi and starlette are collected into the bundle alongside
+        # everything else, so this import resolves there by construction. Making
+        # it fail would mean excluding fastapi from the spec, and the resulting
+        # sidecar would not start at all - measuring a build nobody could ship
+        # rather than the guard working. The anchor question above is the
+        # opposite case and was settled on a real artefact, which reported the
+        # UI at <bundle>/app/_frontend_dist.
+        #
+        # One change would make a frozen test worth its cost: if cli_static ever
+        # gains a conditional module-level import (a platform-gated or optional
+        # dependency at the top of that file), then this import can fail inside
+        # a healthy bundle and the frozen path stops being unreachable.
         from app.cli_static import get_frontend_dir
 
         return Check("Frontend bundle", "ok", f"bundled React UI ready at {get_frontend_dir()}")
