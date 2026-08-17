@@ -34,6 +34,36 @@ from app.modules.compliance_docs.service import (
     recompute_status,
 )
 
+
+@pytest.fixture(autouse=True)
+def _restore_event_bus():
+    """Undo the ``event_bus.clear()`` the tests below start from.
+
+    Four tests here clear the process-global bus so their own recorder is the
+    only subscriber. Nothing put it back, so every module that had subscribed by
+    then - the vector-indexing handlers behind RFI / submittals /
+    correspondence, the cross-module notification handlers - stayed unsubscribed
+    for the rest of the process. The damage lands in another file:
+    ``test_doc_assistant_wiring.py`` re-imports its events modules to assert the
+    wiring, the import is a no-op because the module is already in
+    ``sys.modules``, and it fails on a bus this file emptied. Alone it passed,
+    which is the worst shape a failure can take.
+
+    A test that clears a process-global registry owns putting it back. Snapshot
+    both registries and restore them verbatim, the same way
+    ``test_boq_events.py`` does.
+    """
+    saved = {name: list(handlers) for name, handlers in event_bus._handlers.items()}
+    saved_wildcard = list(event_bus._wildcard_handlers)
+    try:
+        yield
+    finally:
+        event_bus._handlers.clear()
+        for name, handlers in saved.items():
+            event_bus._handlers[name] = handlers
+        event_bus._wildcard_handlers[:] = saved_wildcard
+
+
 # ── Helpers / stubs ───────────────────────────────────────────────────────
 
 

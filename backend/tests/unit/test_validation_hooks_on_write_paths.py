@@ -369,6 +369,11 @@ async def test_submitting_a_complete_submittal_adds_no_finding_keys(
 
 _MESSAGE_SECTIONS = {"subcontract", "submittal", "rfq"}
 _RULE_SETS = ("subcontract", "submittal", "rfq_issue", "rfq_award")
+#: Rules defined here render their findings through ``translate`` and the
+#: message files. A module may register rules of its own into the same sets
+#: (``rfq_bidding`` registers nine) that build their text in code instead; those
+#: are a different mechanism and have no message keys to pin.
+_CORE_RULES_MODULE = "app.core.validation.rules"
 
 
 def test_every_rule_id_resolves_in_all_four_locales() -> None:
@@ -385,14 +390,28 @@ def test_every_rule_id_resolves_in_all_four_locales() -> None:
     Reads the message files directly rather than asserting on rendered output,
     because a humanised fallback is a plausible-looking English sentence and
     cannot be told apart from a real one by inspection.
+
+    The rule registry is process-global and a rule set is open: whoever else has
+    started by now is in it. Registering the built-ins here rather than
+    inheriting them, and counting only the rules this file defines, keeps the
+    count a claim about the core rule file. Taking the length of the rule set
+    instead made the pin depend on run order - 25 alone, 34 once anything had
+    called ``register_rfq_validation_rules``.
     """
     from app.core.validation.engine import validation_engine
+    from app.core.validation.rules import register_builtin_rules
+
+    register_builtin_rules()
 
     rule_ids: set[str] = set()
     for rule_set in _RULE_SETS:
-        rule_ids |= {rule.rule_id for rule in validation_engine.registry.get_rules_for_sets([rule_set])}
+        rule_ids |= {
+            rule.rule_id
+            for rule in validation_engine.registry.get_rules_for_sets([rule_set])
+            if type(rule).__module__ == _CORE_RULES_MODULE
+        }
     rule_ids = {rid for rid in rule_ids if rid.split(".")[0] in _MESSAGE_SECTIONS}
-    assert len(rule_ids) == 25, f"expected 25 rules across {_RULE_SETS}, found {len(rule_ids)}"
+    assert len(rule_ids) == 25, f"expected 25 core rules across {_RULE_SETS}, found {len(rule_ids)}"
 
     base = pathlib.Path(__file__).resolve().parents[2] / "app" / "core" / "validation" / "messages"
     docs = {loc: json.loads((base / f"{loc}.json").read_text(encoding="utf-8")) for loc in ("en", "de", "es", "ru")}

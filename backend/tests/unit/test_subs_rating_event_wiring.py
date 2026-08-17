@@ -26,6 +26,7 @@ import uuid
 
 from app.core.events import Event, event_bus
 from app.modules.subcontractors.events import (
+    _SUBSCRIPTIONS,
     _resolve_sub_id,
     register_subcontractor_rating_subscribers,
 )
@@ -53,23 +54,47 @@ def test_rating_subscribers_registered_for_all_three_events() -> None:
         )
 
 
+def _own_handler_counts() -> dict[str, int]:
+    """How many copies of *our* handler each rating event carries.
+
+    Counted by identity against ``_SUBSCRIPTIONS`` rather than by taking the
+    length of the handler list. The bus is a process-global singleton and these
+    are ordinary application events: ``ncr.created`` also carries the core
+    notification handler once the application lifespan has run, and any module
+    loaded later may add its own. A total is therefore a claim about the whole
+    process, which no single test can own - run inside the full suite it read 8
+    where it expected 1, and run alone it read 1, which is how a green file and
+    a red suite disagreed about the same code.
+
+    What this module *can* own is its own contribution, and that is the number
+    the duplicate-subscription bug would change.
+    """
+    bound = {ev: event_bus._handlers.get(ev, []) for ev in _RATING_EVENTS}
+    return {
+        event_name: sum(1 for bound_handler in bound[event_name] if bound_handler is handler)
+        for event_name, handler in _SUBSCRIPTIONS
+        if event_name in _RATING_EVENTS
+    }
+
+
 def test_rating_subscribers_registration_is_idempotent() -> None:
     """A second registration pass does not double-bind the handlers.
 
     The module registers on import; calling the registrar again (as the
     module loader might on a reload) must not stack duplicate handlers - the
-    bus dedupes by handler identity.
+    registrar goes through ``subscribe_once``, which dedupes by handler.
     """
     register_subcontractor_rating_subscribers()
-    before = {ev: len(event_bus.list_handlers().get(ev, [])) for ev in _RATING_EVENTS}
+    before = _own_handler_counts()
     register_subcontractor_rating_subscribers()
     register_subcontractor_rating_subscribers()
-    after = {ev: len(event_bus.list_handlers().get(ev, [])) for ev in _RATING_EVENTS}
+    after = _own_handler_counts()
     assert before == after
-    # Exactly one bound handler each - a stacked duplicate would fire the
+    # Exactly one copy of our handler each - a stacked duplicate would fire the
     # rating bump twice per event (double-counting NCR / HSE / slips).
+    assert set(after) == set(_RATING_EVENTS)
     for ev in _RATING_EVENTS:
-        assert after[ev] == 1, f"{ev} has {after[ev]} handlers, expected 1"
+        assert after[ev] == 1, f"{ev} carries {after[ev]} copies of our handler, expected 1"
 
 
 # ── _resolve_sub_id ────────────────────────────────────────────────────────
