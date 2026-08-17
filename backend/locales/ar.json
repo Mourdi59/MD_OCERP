@@ -72,11 +72,7 @@
     "export": "تصدير",
     "mvp": {
       "title": "اختيار المواد",
-      "subtitle_zero": "لا توجد موارد تحتاج إلى اختيار",
       "subtitle_one": "موردٌ واحد يحتاج إلى اختيار",
-      "subtitle_two": "موردان يحتاجان إلى اختيار",
-      "subtitle_few": "{{count}} موارد تحتاج إلى اختيار",
-      "subtitle_many": "{{count}} موردًا تحتاج إلى اختيار",
       "subtitle_other": "{{count}} مورد يحتاج إلى اختيار",
       "bulk_label": "تعبئة سريعة:",
       "bulk_median": "الوسيط للكل",
@@ -92,11 +88,7 @@
       "subtotal_label": "سعر البند",
       "apply": "تطبيق وإضافة إلى جدول الكميات",
       "batch_progress": "العنصر {{current}} من {{total}}",
-      "toast_applied_zero": "لم يتم اختيار أي بديل",
       "toast_applied_one": "تم اختيار بديل واحد",
-      "toast_applied_two": "تم اختيار بديلين",
-      "toast_applied_few": "تم اختيار {{count}} بدائل",
-      "toast_applied_many": "تم اختيار {{count}} بديلاً",
       "toast_applied_other": "تم اختيار {{count}} بديل"
     }
   },
@@ -196,11 +188,7 @@
     "step_create_project": "إنشاء مشروع",
     "step_create_project_desc": "ابدأ أول مشروع تقدير تكاليف البناء",
     "step_build_boq": "إنشاء جدول الكميات",
-    "step_build_boq_desc": "أنشئ جدول كميات بمساعدة الذكاء الاصطناعي",
-    "new_project": "مشروع جديد",
-    "create_boq": "إنشاء جدول كميات",
-    "add_api_keys": "إضافة مفاتيح API",
-    "load_database": "تحميل قاعدة البيانات"
+    "step_build_boq_desc": "أنشئ جدول كميات بمساعدة الذكاء الاصطناعي"
   },
   "units": {
     "m": "م",

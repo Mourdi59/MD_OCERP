@@ -74,8 +74,6 @@
       "title": "Выбор материалов",
       "subtitle_one": "{{count}} ресурс требует выбора",
       "subtitle_other": "{{count}} ресурса требует выбора",
-      "subtitle_few": "{{count}} ресурса требуют выбора",
-      "subtitle_many": "{{count}} ресурсов требуют выбора",
       "bulk_label": "Быстрая заливка:",
       "bulk_median": "Медиана для всех",
       "bulk_mean": "Среднее для всех",
@@ -91,9 +89,7 @@
       "apply": "Применить и добавить в смету",
       "batch_progress": "Элемент {{current}} из {{total}}",
       "toast_applied_one": "Выбран {{count}} вариант",
-      "toast_applied_other": "Выбрано {{count}} варианта",
-      "toast_applied_few": "Выбрано {{count}} варианта",
-      "toast_applied_many": "Выбрано {{count}} вариантов"
+      "toast_applied_other": "Выбрано {{count}} варианта"
     }
   },
   "costs": {
