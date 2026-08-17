@@ -239,6 +239,25 @@ jobs:
       - name: Check every consumer of a migrated endpoint moved with it
         run: python scripts/check_page_envelope_consumers.py
 
+  no-new-bare-list-endpoints:
+    name: No new collection endpoint answers with a bare array
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # The other half of the job above. That one stops a migrated endpoint
+      # leaving a caller behind; this one stops the tree adding bare-list
+      # routes faster than the waves remove them. Only the waves were ever
+      # counted, so the census could fall while the debt grew and the numbers
+      # would look identical either way. The allowlist here IS the census: its
+      # size prints on every green run, an entry that no longer names a live
+      # route fails rather than lingering, and the number therefore only goes
+      # down by someone doing the work.
+      - name: Check no new GET route answers with a bare array
+        run: python scripts/check_no_new_bare_list_endpoints.py
+
   migration-data-rewrites:
     name: Every migration touching pre-existing data carries an acknowledgement
     runs-on: ubuntu-latest

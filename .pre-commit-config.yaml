@@ -243,6 +243,19 @@ repos:
         pass_filenames: false
         files: ^(frontend/src/.*\.tsx?|scripts/check_page_envelope_consumers\.py)$
 
+      # The other half: the hook above keeps a migrated endpoint's callers in
+      # step, this one keeps the backlog from growing underneath the waves. A
+      # new module used to ship its registers as bare arrays and nothing said
+      # so, so the census could fall while the debt rose. The allowlist is the
+      # census, it is checked in both directions, and its size prints on every
+      # pass so the number is visible falling.
+      - id: no-new-bare-list-endpoints
+        name: Gate new collection endpoints that answer with a bare array
+        entry: python scripts/check_no_new_bare_list_endpoints.py
+        language: system
+        pass_filenames: false
+        files: ^(backend/app/modules/.*\.py|scripts/check_no_new_bare_list_endpoints\.py)$
+
       # Grew out of #126: a migration that rewrote a 1724 MB table inside the
       # single transaction Alembic wraps a whole upgrade() in died with
       # DiskFull on a real box. Rewriting pre-existing data is not forbidden -
