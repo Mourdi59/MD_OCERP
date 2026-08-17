@@ -2,8 +2,13 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """Internationalization system.
 
-24 languages built into core. Zero hardcoded strings.
-New language = add a JSON file to locales/.
+28 languages built into core. Zero hardcoded strings.
+New language = add a JSON file to locales/ AND an entry in both lists below.
+A file without a list entry is unreachable, because every caller that picks a
+locale (the Accept-Language middleware, the /i18n routes) gates on
+SUPPORTED_LOCALES; a list entry without a file is a language offered by
+get_available_locales() that silently serves English. tests/unit/
+test_backend_locale_catalogue.py holds the two sides equal.
 
 Backend: returns translation keys or resolved strings.
 Frontend: loads locale JSON, resolves client-side.
@@ -47,12 +52,19 @@ SUPPORTED_LOCALES = [
     "zh",  # Chinese Simplified (简体中文)
     "ja",  # Japanese (日本語)
     "ko",  # Korean (한국어)
-    "mn",  # Mongolian, endonym Монгол
     "hi",  # Hindi (हिन्दी)
     "sv",  # Swedish (Svenska)
     "no",  # Norwegian (Norsk)
     "da",  # Danish (Dansk)
     "fi",  # Finnish (Suomi)
+    "bg",  # Bulgarian (Български)
+    "hr",  # Croatian (Hrvatski)
+    "id",  # Indonesian (Bahasa Indonesia)
+    "ro",  # Romanian (Română)
+    "th",  # Thai (ไทย)
+    "vi",  # Vietnamese (Tiếng Việt)
+    "uk",  # Ukrainian (Українська)
+    "uz",  # Uzbek (Oʻzbekcha), Latin script since 1993
 ]
 
 LOCALE_NAMES = {
@@ -71,12 +83,21 @@ LOCALE_NAMES = {
     "zh": "简体中文",
     "ja": "日本語",
     "ko": "한국어",
-    "mn": "Монгол",  # Mongolian endonym
     "hi": "हिन्दी",
     "sv": "Svenska",
     "no": "Norsk",
     "da": "Dansk",
     "fi": "Suomi",
+    "bg": "Български",
+    "hr": "Hrvatski",
+    "id": "Bahasa Indonesia",
+    "ro": "Română",
+    "th": "ไทย",
+    "vi": "Tiếng Việt",
+    "uk": "Українська",
+    # U+02BB MODIFIER LETTER TURNED COMMA, not an ASCII apostrophe: in Uzbek
+    # the mark is a letter, and O' spells a different sound from Oʻ.
+    "uz": "Oʻzbekcha",
 }
 
 LOCALES_DIR = Path(__file__).parent.parent.parent / "locales"
@@ -171,7 +192,15 @@ def get_available_locales() -> list[dict[str, object]]:
 
 
 def _generate_default_locales(locales_dir: Path) -> None:
-    """Generate complete locale files for all 20 supported languages."""
+    """Write bootstrap locale files for 20 of the 28 supported languages.
+
+    This is a recovery path, not the shipped catalogue: load_translations()
+    calls it only when ``locales/`` is missing entirely. The catalogue that
+    reaches users lives in ``backend/locales/*.json`` and is force-included
+    into the wheel by pyproject.toml, so the eight languages absent here
+    (bg, hr, id, ro, th, vi, uk, uz) ship normally. The gap only shows if the
+    directory is deleted, and it writes an older, smaller key set besides.
+    """
     # -------------------------------------------------------------------------
     # English - master locale. All keys defined here.
     # -------------------------------------------------------------------------

@@ -23,9 +23,10 @@ from app.core.i18n import (
 
 
 class TestSupportedLocales:
-    def test_21_locales_defined(self):
-        # 20 originals + Mongolian (mn, country-pack wave).
-        assert len(SUPPORTED_LOCALES) == 21
+    def test_28_locales_defined(self):
+        # One entry per JSON file in backend/locales; the equality itself is
+        # asserted by tests/unit/test_backend_locale_catalogue.py.
+        assert len(SUPPORTED_LOCALES) == 28
 
     def test_en_is_first(self):
         assert SUPPORTED_LOCALES[0] == "en"
