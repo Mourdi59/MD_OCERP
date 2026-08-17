@@ -96,6 +96,7 @@ SCRIPTS: dict[str, tuple[str, ...]] = {
     "de": (),
     "el": ("greek",),
     "en": (),
+    "en-US": (),
     "es": (),
     "es-CO": (),
     "es-CL": (),
