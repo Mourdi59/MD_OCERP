@@ -155,6 +155,16 @@ datas.append((str(BACKEND / "app"), "app"))
 # openconstructionerp version happens to be pip-installed on the build
 # machine instead of the real product version. Landing it at the bundle root
 # (one level above app/) is exactly where _read_pyproject_version walks to.
+#
+# Stronger than that, and the reason not to tidy this away as redundant: this
+# spec calls copy_metadata nowhere, so a frozen bundle carries dist-info only
+# for whatever an upstream hook pulls in on its own. importlib.metadata is a
+# source-install instrument and answers no for openconstructionerp here, which
+# means the fallback this line feeds is the only branch that can answer at all.
+# It also covers a second reader by accident: sarif_exporter walks
+# parents[3] / "pyproject.toml", which is backend/pyproject.toml in the source
+# tree and the bundle root here, because app/ sits at the root. That coincidence
+# breaks the day app/ moves one level down, so move the two together.
 _pyproject = BACKEND / "pyproject.toml"
 if _pyproject.is_file():
     datas.append((str(_pyproject), "."))
