@@ -168,18 +168,33 @@ vector = [
 #   ~/.openestimator/cwicr, and nothing ships or downloads that file (the
 #   snapshot loader restores Qdrant collections, not parquet). Weight no code
 #   path on a stock install would reach.
-# * lancedb - added here first, then removed on measurement. It is not a light
-#   client: 157 MB on Linux and 196 MB on Windows, almost all of it one
-#   unstripped Rust extension, against 21 MB for qdrant-client and its gRPC
-#   stack. It would also not have bought the feature it looks like it buys,
-#   because core/vector.py's get_embedder() only tries sentence-transformers
-#   and nothing in the tree imports fastembed, so the generic semantic store
-#   has no encoder either way. It stays in [vector]. Deploy targets do set
-#   VECTOR_BACKEND=lancedb against an uninstalled backend; that mismatch
-#   predates this extra and is a separate decision, not something to paper
-#   over by shipping 157 MB.
+# * fastembed - an ONNX encoder nothing in the tree imports. core/vector.py's
+#   get_embedder() only ever tries sentence-transformers, so fastembed is
+#   weight with no reachable caller. It stays in [vector] with no reader,
+#   which is why [vector] cannot simply be installed wholesale by a deploy
+#   that only wants the store.
+#
+# lancedb was in this list too, then removed on measurement: 157 MB on Linux and
+# 196 MB on Windows, against 21 MB for qdrant-client. Three things have changed
+# and all three were re-measured rather than recalled.
+#
+# The weight is now 62 MB on Linux, 68 MB on Windows and 56 MB on macOS, for
+# lancedb 0.37.1 and the five small packages it pulls. That is under half what
+# the old figure said, so the number above is kept only to show what it was
+# compared against. Re-measure before citing either.
+#
+# The second argument was that the generic semantic store has no encoder, so
+# installing the backend would buy nothing. That was true while the encoder was
+# excluded everywhere; the desktop now ships one through [semantic-encoder].
+#
+# The third was that VECTOR_BACKEND=lancedb pointing at an uninstalled backend
+# was a separate decision. It has now been taken, the other way round: the
+# default in deploy/docker/.env.example stays and the backend gets installed,
+# because a shipped default nobody installed does not save the megabytes, it
+# moves the failure from build time to the user's first query.
 semantic-clients = [
     "qdrant-client>=1.12.0",
+    "lancedb>=0.17.0",
 ]
 # The vector-store client plus a local encoder, and nothing else. This is what
 # the desktop build installs, and it exists because the encoder download became
