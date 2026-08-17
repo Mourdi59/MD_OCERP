@@ -1226,8 +1226,17 @@ function CycleDetailPanel({ cycleId }: { cycleId: string }) {
                   )
                 }
               >
-                {t(`review_authority.move_to_${s}`, {
-                  defaultValue: `Move to ${CYCLE_STATUS_LABELS[s]}`,
+                {/* One key with the status interpolated, not nine keys with the status
+                    welded into the key name. A language that inflects the status after
+                    this preposition cannot reach it once the sentence arrives assembled,
+                    and nine keys would freeze that shape in all 29 locales at once. The
+                    status word is itself translated, through the same cycle_status_ keys
+                    the badge above uses, so the two never disagree. */}
+                {t('review_authority.move_to', {
+                  defaultValue: 'Move to {{status}}',
+                  status: t(`review_authority.cycle_status_${s}`, {
+                    defaultValue: CYCLE_STATUS_LABELS[s],
+                  }),
                 })}
               </Button>
             ))}

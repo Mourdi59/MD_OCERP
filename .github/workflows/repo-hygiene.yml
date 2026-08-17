@@ -113,6 +113,17 @@ jobs:
       - name: Check for t() keys no locale file can answer
         run: python scripts/check_i18n_orphan_keys.py
 
+  i18n-computed-keys:
+    name: Every t() key built at runtime has a family in en.ts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check computed t() keys against the English bundle
+        run: python scripts/check_i18n_computed_keys.py
+
   module-display-names:
     name: Every module name a user reads can be translated
     runs-on: ubuntu-latest
