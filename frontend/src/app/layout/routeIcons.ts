@@ -205,6 +205,7 @@ const EXTRA_ROUTE_ICONS: Record<string, LucideIcon> = {
   '/equipment': Truck,
   '/resources': Users,
   '/payroll': Wallet,
+  '/certified-payroll': FileCheck,
   '/assets': Package,
   // ── 12. Quality ───────────────────────────────────────────────────
   '/validation': ShieldCheck,

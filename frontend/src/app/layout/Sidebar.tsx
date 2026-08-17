@@ -206,6 +206,7 @@ const ROUTE_BACKEND_MODULE: Record<string, string> = {
   '/equipment': 'oe_equipment',
   '/resources': 'oe_resources',
   '/payroll': 'oe_payroll',
+  '/certified-payroll': 'oe_certified_payroll',
   '/service': 'oe_service',
   '/portal': 'oe_portal',
   // Quality

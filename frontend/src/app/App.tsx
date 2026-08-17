@@ -365,6 +365,9 @@ const EquipmentPage = lazy(() =>
   import('@/features/equipment').then((m) => ({ default: m.EquipmentPage }))
 );
 const PayrollPage = lazy(() => import('@/features/payroll/PayrollPage'));
+const CertifiedPayrollPage = lazy(
+  () => import('@/features/certified-payroll/CertifiedPayrollPage')
+);
 const PortalPage = lazy(() =>
   import('@/features/portal').then((m) => ({ default: m.PortalPage }))
 );
@@ -1414,6 +1417,8 @@ export default function App() {
         <Route path="/projects/:projectId/equipment" element={<Navigate to="/equipment" replace />} />
         <Route path="/payroll" element={<P title="Payroll"><PayrollPage /></P>} />
         <Route path="/projects/:projectId/payroll" element={<P title="Payroll"><PayrollPage /></P>} />
+        <Route path="/certified-payroll" element={<P title="Certified Payroll"><CertifiedPayrollPage /></P>} />
+        <Route path="/projects/:projectId/certified-payroll" element={<P title="Certified Payroll"><CertifiedPayrollPage /></P>} />
         <Route path="/daily-diary" element={<P title="Daily Diary"><DailyDiaryPage /></P>} />
         <Route path="/projects/:projectId/daily-diary" element={<P title="Daily Diary"><DailyDiaryPage /></P>} />
         <Route path="/field-time" element={<P title="Field Time"><FieldTimePage /></P>} />

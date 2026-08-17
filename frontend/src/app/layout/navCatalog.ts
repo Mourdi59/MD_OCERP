@@ -591,6 +591,14 @@ export const navGroups: NavGroup[] = [
         advancedOnly: true,
       },
       { labelKey: 'nav.payroll', to: '/payroll', icon: Wallet, advancedOnly: true },
+      // The weekly payroll a public works contract has to be certified with.
+      // It sits beside payroll because it is built from the same hours.
+      {
+        labelKey: 'nav.certified_payroll',
+        to: '/certified-payroll',
+        icon: FileCheck,
+        advancedOnly: true,
+      },
       { labelKey: 'nav.assets', to: '/assets', icon: Package },
       // Off-site / prefab production sits with resources (it is a production
       // resource surface). Moved out of Model Coordination while it is being
