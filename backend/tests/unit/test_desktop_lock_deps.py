@@ -240,12 +240,17 @@ def test_no_locked_dependency_is_excluded_by_the_spec() -> None:
     sidecar frozen from this spec with torch and scipy put back in excludes
     still carries sentence_transformers, 167 modules of it, because PyInstaller
     reads the imports inside function bodies too. It carries no torch and no
-    scipy at all. Its own ``doctor`` then prints "Semantic search [semantic]:
-    sentence-transformers installed", because that check asks find_spec and
-    find_spec is satisfied by what is in the archive. Nothing fails until
-    something imports the package for real, which pulls torch, scipy and
-    sklearn at module level, and by then the desktop build has already told the
-    user the feature is there.
+    scipy at all, so the first import that runs for real fails, pulling torch,
+    scipy and sklearn at module level.
+
+    That build also claimed the feature it could not deliver. Until 58c2c9f7c
+    ``doctor`` answered "Semantic search [semantic]: sentence-transformers
+    installed" from a find_spec lookup, and a lookup is satisfied by what sits
+    in the archive whether or not it can load. That check imports for real now
+    and says so when the import fails, which removes the false claim but not
+    the cost: it is a report from a build that has already been made, and on
+    the desktop channel, shipped. This test reaches the same conclusion from
+    two files at commit time.
 
     The comparison is by distribution name, which is the same as the import name
     for every name currently in either list. It would not catch a distribution
