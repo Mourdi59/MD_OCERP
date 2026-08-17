@@ -101,6 +101,8 @@ import {
   fetchOnboardingStatus,
   type OnboardingJobState,
 } from './onboardingApi';
+import { SemanticModelCard } from './SemanticModelCard';
+import { aiEstimatorApi } from '@/features/ai-estimator/api';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -3293,6 +3295,21 @@ function StepDataSetup({
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
 
+  // ── Semantic search model state ──
+  // Pre-ticked, then corrected to whatever this deployment does by default:
+  // a local install fetches the encoder, a server deploy does not need it.
+  // Seeding the tick from the server rather than hardcoding `true` is what
+  // keeps a click-through of the wizard on a server from starting a download
+  // nobody asked for. Shares its query key with the card below, so the two
+  // read one cache entry and not two requests.
+  const { data: semanticStatus } = useQuery({
+    queryKey: ['embedding-model-status'],
+    queryFn: aiEstimatorApi.embeddingModelStatus,
+    retry: false,
+  });
+  const [semanticChoice, setSemanticChoice] = useState<boolean | null>(null);
+  const installSemanticModel = semanticChoice ?? semanticStatus?.enabled ?? true;
+
   // ── Country Pack state ──
   // Default-select the pack whose region matches the language-suggested
   // region (e.g. picking French in step 1 pre-selects the France pack); fall
@@ -3629,12 +3646,22 @@ function StepDataSetup({
       // Advanced manual path: install the toggled built-in demo project.
       handleInstallDemo();
     }
+    // Ask for the semantic search model if the user left it ticked and nothing
+    // has fetched it yet. Deliberately not awaited and deliberately not
+    // reported: the server answers as soon as the transfer is scheduled, a
+    // failure here costs the user nothing, and this must never be the reason
+    // the wizard does not finish.
+    if (installSemanticModel && semanticStatus?.state === 'not_requested') {
+      void aiEstimatorApi.installEmbeddingModel().catch(() => undefined);
+    }
     // Save AI key if provided
     if (apiKey.trim()) {
       saveMutation.mutate();
     }
     onNext();
   }, [
+    installSemanticModel,
+    semanticStatus,
     backgroundLoad,
     selectedRegion,
     loadedDb,
@@ -3821,6 +3848,14 @@ function StepDataSetup({
             </div>
           </div>
         </div>
+
+        {/* Card 2b: Semantic search model - an optional background download.
+            It never gates Continue: the request below is fired and forgotten,
+            and the card renders whatever state the server reports. */}
+        <SemanticModelCard
+          enabled={installSemanticModel}
+          onToggle={setSemanticChoice}
+        />
 
         {/* Card 3: AI Provider — collapsible */}
         <div className="rounded-2xl bg-surface-elevated shadow-sm shadow-black/[0.04]">
