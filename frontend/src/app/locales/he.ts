@@ -1263,7 +1263,7 @@ const resource = {
     "interface_management.stat_overdue": "באיחור",
     "interface_management.stat_total": "סה״כ",
     "interface_management.subtitle": "מעקב אחר הממשקים בין חבילות עבודה וקבלנים, והנעת כל אחד מהם לכדי הסכמה",
-    "interface_management.title": "ניהול ממשקים",
+    "interface_management.title": "מרשם ממשקים",
     "interface_management.title_placeholder": "לדוגמה, חדירת תעלה דרך קיר ליבה בקומה 3",
     "interface_management.title_required": "כותרת היא שדה חובה",
     "interface_management.type_none": "ללא סוג",

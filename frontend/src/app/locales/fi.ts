@@ -1820,7 +1820,7 @@ const resource = {
     "interface_management.stat_overdue": "Myohassa",
     "interface_management.stat_total": "Yhteensa",
     "interface_management.subtitle": "Seuraa tyopakettien ja urakoitsijoiden valisia rajapintoja ja vie jokainen sopimukseen",
-    "interface_management.title": "Rajapintojen hallinta",
+    "interface_management.title": "Liitäntärekisteri",
     "interface_management.title_placeholder": "esim. Kanavan lapivienti ydinseinan lapi kerroksessa 3",
     "interface_management.title_required": "Otsikko on pakollinen",
     "interface_management.type_none": "Ei tyyppia",
