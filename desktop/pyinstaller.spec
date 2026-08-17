@@ -138,7 +138,14 @@ datas = []
 if FRONTEND_DIST.is_dir():
     datas.append((str(FRONTEND_DIST), "app/_frontend_dist"))
 
-# Translation files, validation rules, etc. from backend
+# Translation files, validation rules, etc. from backend.
+#
+# This ships the app package directory as it stands on the machine doing the
+# building, so anything sitting in backend/app at that moment is baked into the
+# artefact. A local build was measured carrying app/_frontend_dist_prev, 700
+# files and 14.9 MB of gitignored leftover, which no release has ever contained
+# because CI checks out clean. That is also why it has never been visible.
+# Build from a clean tree before weighing an artefact or quoting what it holds.
 datas.append((str(BACKEND / "app"), "app"))
 
 # Ship pyproject.toml next to the bundled app package. _detect_version()
