@@ -82,14 +82,15 @@ hidden_imports = [
 ]
 
 # The CWICR vector-store client, in the lock since the [semantic-clients] extra
-# landed. It is imported inside a function body (qdrant_adapter._get_client) so
-# the static graph never sees it, and naming the top-level package alone is not
-# enough: the submodules the code reaches for are themselves lazy
-# (qdrant_client.http.models, qdrant_client.local for the embedded on-disk
-# store). collect_submodules walks the whole package so the frozen sidecar
-# carries the same client the wheel does. Without this the lock would ship the
-# wheel into the build and PyInstaller would drop it again, leaving the desktop
-# channel on the broken behaviour the extra just fixed.
+# landed. It is imported inside a function body (qdrant_adapter._get_client),
+# which the static graph does follow, so the top-level package would arrive on
+# its own. What would not arrive is what the code then reaches for: those
+# submodules are themselves lazy (qdrant_client.http.models, and
+# qdrant_client.local for the embedded on-disk store), named nowhere
+# modulegraph can read. collect_submodules walks the whole package so the
+# frozen sidecar carries the same client the wheel does. Without it the build
+# keeps a client that cannot open a store, which is the behaviour the extra
+# just fixed, wearing the shape of a working install.
 hidden_imports += collect_submodules("qdrant_client")
 
 # The local encoder, in the lock since the [semantic-encoder] extra landed.
