@@ -167,6 +167,31 @@ CLUSTER_SNAPSHOT_PATH = "scripts/i18n_leak_cluster_snapshot.json"
 THRESHOLD = 24  # of 28 non-en locales
 CLUSTER_MIN_KEYS = 3  # locale-set coherence detector: >=N keys sharing one exact set
 
+# A locale part-way through its first translation pass, and the number of keys
+# it still held byte-identical to en when it was entered here, measured by this
+# file's own parser so the number means what this file means by it.
+#
+# Such a locale is majority-identical to en by construction rather than by any
+# leak mechanism, and it breaks the coherence detector in a way that has nothing
+# to do with the locale itself: that detector matches on the EXACT frozenset of
+# locales sharing en's value, so one new half-translated locale joins the set of
+# ~18k keys at once and every previously accepted cluster reads as brand new. uz
+# arriving turned 92 reviewed clusters into 92 unrecognised ones covering 18289
+# keys. Baselining those would have declared 18289 cells permanent debt to
+# silence an artefact of set identity.
+#
+# So the coherence detector, and only that detector, computes its sets without
+# these locales. The threshold detector still sees them, because a key identical
+# to en in 24 of 28 locales is worth reading whoever is in the set.
+#
+# The recorded count is a ratchet: it may fall as the translation lands and must
+# never rise. That makes the exemption self-limiting without anyone having to
+# remember it - it can only move toward zero, and at zero the entry comes out.
+# It is not a licence to add English to an exempt file.
+UNDER_TRANSLATION: dict[str, int] = {
+    "uz": 18605,
+}
+
 import re
 
 _PAIR = re.compile(r'^\s*"([a-zA-Z0-9_.\-]+)":\s*"((?:[^"\\]|\\.)*)"', re.MULTILINE)
@@ -236,11 +261,12 @@ def _compute_clusters(
     time (see i18n_leak_cluster_snapshot.json and the module docstring),
     not by recomputing a size or content rule on every run.
     """
+    scanned = [s for s in non_en if s not in UNDER_TRANSLATION]
     by_set: dict[frozenset[str], list[str]] = {}
     for key, en_val in en_pairs.items():
         if key in known_keys:
             continue
-        identical = frozenset(s for s in non_en if pairs_by_locale[s].get(key) == en_val)
+        identical = frozenset(s for s in scanned if pairs_by_locale[s].get(key) == en_val)
         if not identical:
             continue
         by_set.setdefault(identical, []).append(key)
@@ -261,6 +287,37 @@ def main() -> int:  # noqa: PLR0912, PLR0915 - one linear check, splitting it hi
         return 1
     en_pairs = pairs_by_locale["en"]
     non_en = [s for s in pairs_by_locale if s != "en"]
+
+    # The ratchet on every locale exempted from the coherence detector. It is
+    # allowed to be mostly English today; it is not allowed to become more
+    # English than it was when the exemption was written. Checked before
+    # anything else, so an exemption that has started going backwards is the
+    # first thing reported rather than something found after the detectors it
+    # was meant to quieten.
+    ratchet_failures: list[str] = []
+    for locale, recorded in sorted(UNDER_TRANSLATION.items()):
+        if locale not in pairs_by_locale:
+            ratchet_failures.append(
+                f"{locale} is named in UNDER_TRANSLATION but has no locale file; "
+                f"remove the entry, an exemption for a file that is not here exempts nothing"
+            )
+            continue
+        now = sum(1 for key, en_val in en_pairs.items() if pairs_by_locale[locale].get(key) == en_val)
+        if now > recorded:
+            ratchet_failures.append(
+                f"{locale} now holds {now} key(s) identical to en.ts, up from the {recorded} recorded when it "
+                f"was exempted. An in-progress locale may only become less English, never more."
+            )
+        elif now == 0:
+            ratchet_failures.append(
+                f"{locale} no longer holds any key identical to en.ts, so its translation pass is done; "
+                f"remove it from UNDER_TRANSLATION so the coherence detector covers it again"
+            )
+    if ratchet_failures:
+        print(f"ERROR: {len(ratchet_failures)} locale(s) exempted from the coherence detector are out of step:")
+        for f in ratchet_failures:
+            print(f"    {f}")
+        return 1
 
     # --- parser parity guard: within each file, not across locales ------
     # Cross-locale count comparison would false-positive on legitimate CLDR

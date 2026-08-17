@@ -189,6 +189,11 @@
     "note": "acronym of the International Sustainability Standards Board, the standards body itself; identical in all 28 locales including ru, ja, zh and ar",
     "reason_category": "standard_code"
   },
+  "cases.card.minutes_short": {
+    "en_value": "{{count}} min",
+    "note": "unit abbreviation for minute; identical across the Latin-script locales that abbreviate it the same way, while ru/uk/kk/ja/zh and the other non-Latin locales write it in their own script",
+    "reason_category": "abbreviation"
+  },
   "catalog.source_cwicr": {
     "en_value": "CWICR",
     "note": "brand/service name, functional interop reference",
@@ -499,6 +504,16 @@
     "note": "bare technical/business acronym or initialism",
     "reason_category": "abbreviation"
   },
+  "field_time.working_time.minutes_one": {
+    "en_value": "{{count}} min",
+    "note": "unit abbreviation for minute; identical across the Latin-script locales that abbreviate it the same way, while ru/uk/kk/ja/zh and the other non-Latin locales write it in their own script",
+    "reason_category": "abbreviation"
+  },
+  "field_time.working_time.minutes_other": {
+    "en_value": "{{count}} min",
+    "note": "unit abbreviation for minute; identical across the Latin-script locales that abbreviate it the same way, while ru/uk/kk/ja/zh and the other non-Latin locales write it in their own script",
+    "reason_category": "abbreviation"
+  },
   "fieldreports.file_types": {
     "en_value": ".xlsx, .csv",
     "note": "File extension list, not linguistic content. ru adds «max 10MB» content not present in en - ru content drift, not a translation of the English source. Same finding independently made by loc-he for he.ts on this identical key.",
@@ -662,6 +677,11 @@
   "match_elements.pipeline.llm_badge": {
     "en_value": "LLM",
     "note": "bare technical/business acronym or initialism",
+    "reason_category": "abbreviation"
+  },
+  "meetings.agenda_item_duration": {
+    "en_value": "{{count}} min",
+    "note": "unit abbreviation for minute; identical across the Latin-script locales that abbreviate it the same way, while ru/uk/kk/ja/zh and the other non-Latin locales write it in their own script",
     "reason_category": "abbreviation"
   },
   "methodology.editor.export_excel": {
