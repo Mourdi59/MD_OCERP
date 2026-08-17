@@ -86,7 +86,25 @@ import { FleetOptimizationPanel } from './components/FleetOptimizationPanel';
 import { equipmentGuide } from './equipmentGuide';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildEquipmentInsights } from './equipmentInsights';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
+
+// English fallbacks for the computed `equipment.ownership_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const EQUIPMENT_OWNERSHIP_LABELS: Record<string, string> = {
+  owned: 'Owned', rented: 'Rented', leased: 'Leased'
+};
+
+// English fallbacks for the computed `equipment.status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const EQUIPMENT_STATUS_LABELS: Record<string, string> = {
+  active: 'Active', under_maintenance: 'Under maintenance', decommissioned: 'Decommissioned',
+  reserved: 'Reserved'
+};
+
 
 type DrawerTab =
   | 'utilization'
@@ -331,6 +349,27 @@ export function EquipmentPage() {
     );
   }, [eqQ.data, search]);
 
+  /* `total` counts the rows the query matched, and the status and ownership
+     selects are sent to the server, which applies them before it counts. So
+     while either is set the number describes that query rather than the fleet,
+     and an answer to a question nobody asked cannot be used to say the fleet
+     is empty. The search box is deliberately not part of this test: it filters
+     the loaded page here rather than travelling to the server, so it leaves
+     `total` alone, and a zero total with neither select set really does mean
+     an empty register. */
+  const registerMayHold =
+    (eqQ.data?.total ?? 0) > 0 || Boolean(statusFilter) || Boolean(ownershipFilter);
+
+  /* Wider than the test above, on purpose. Anything that narrowed what reached
+     the screen is worth offering to undo, including the search that left
+     `total` untouched. */
+  const filtersActive = Boolean(search.trim() || statusFilter || ownershipFilter);
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('');
+    setOwnershipFilter('');
+  };
+
   // Module Insights - reads the loaded fleet register (charts, KPIs). Kept
   // among the top hooks, above every conditional render, so hook order is
   // stable no matter which tab or drawer is open.
@@ -550,12 +589,24 @@ export function EquipmentPage() {
              units the server withheld past that page, both leave `filtered`
              empty while the register holds hundreds: the invitation to register
              a first asset then sits directly beneath a notice reading 200 of
-             340. The register's own count is what separates the two cases, so
-             ask it rather than read emptiness off the rows in hand. */
-          (eqQ.data?.total ?? 0) > 0 ? (
+             340. The count alone is no better, because the two selects are
+             applied by the server before it counts and so can drive it to zero
+             on a full fleet. Only `registerMayHold` separates the cases, and it
+             says why. */
+          registerMayHold ? (
             <EmptyState
               icon={<Truck size={22} />}
               title={t('common.no_results', { defaultValue: 'No results found' })}
+              action={
+                filtersActive
+                  ? {
+                      label: t('common.clear_filters', {
+                        defaultValue: 'Clear filters',
+                      }),
+                      onClick: clearFilters,
+                    }
+                  : undefined
+              }
             />
           ) : (
             <EmptyState
@@ -662,14 +713,14 @@ function AssetTable({
                 r.location_lng !== undefined ? (
                   <span className="inline-flex items-center gap-1">
                     <MapPin size={11} className="text-content-tertiary" />
-                    {r.location_lat.toFixed(2)}, {r.location_lng.toFixed(2)}
+                    {fmtFixed(r.location_lat, 2)}, {fmtFixed(r.location_lng, 2)}
                   </span>
                 ) : (
                   '—'
                 )}
               </td>
               <td className="px-4 py-2 text-right text-xs tabular-nums">
-                {toNum(r.hour_meter).toFixed(0)} h
+                {fmtFixed(toNum(r.hour_meter), 0)} h
               </td>
             </tr>
           ))}
@@ -928,7 +979,7 @@ function DetailDrawer({ id, onClose }: { id: string; onClose: () => void }) {
               />
               <KV
                 label={t('equipment.col_hours', { defaultValue: 'Hours' })}
-                value={`${toNum(eq.hour_meter).toFixed(0)} h`}
+                value={`${fmtFixed(toNum(eq.hour_meter), 0)} h`}
               />
             </div>
 
@@ -1269,7 +1320,7 @@ function UtilizationTab({
             {t('equipment.hour_meter', { defaultValue: 'Hour meter' })}
           </p>
           <p className="mt-1 text-lg font-semibold tabular-nums">
-            {toNum(equipment.hour_meter).toFixed(0)} h
+            {fmtFixed(toNum(equipment.hour_meter), 0)} h
           </p>
         </Card>
         <Card padding="sm">
@@ -1277,7 +1328,7 @@ function UtilizationTab({
             {t('equipment.odometer', { defaultValue: 'Odometer' })}
           </p>
           <p className="mt-1 text-lg font-semibold tabular-nums">
-            {toNum(equipment.odometer_km).toFixed(0)} km
+            {fmtFixed(toNum(equipment.odometer_km), 0)} km
           </p>
         </Card>
         <Card padding="sm">
@@ -1335,12 +1386,12 @@ function UtilizationTab({
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {r.hour_meter !== null && r.hour_meter !== undefined
-                      ? toNum(r.hour_meter).toFixed(0)
+                      ? fmtFixed(toNum(r.hour_meter), 0)
                       : '—'}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {r.odometer_km !== null && r.odometer_km !== undefined
-                      ? toNum(r.odometer_km).toFixed(0)
+                      ? fmtFixed(toNum(r.odometer_km), 0)
                       : '—'}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">
@@ -2646,7 +2697,7 @@ function EquipmentFormModal({
                   {(['owned', 'rented', 'leased'] as Ownership[]).map((o) => (
                     <option key={o} value={o}>
                       {t(`equipment.ownership_${o}`, {
-                        defaultValue: o,
+                        defaultValue: EQUIPMENT_OWNERSHIP_LABELS[o] ?? o,
                       })}
                     </option>
                   ))}
@@ -2673,7 +2724,7 @@ function EquipmentFormModal({
                   ).map((s) => (
                     <option key={s} value={s}>
                       {t(`equipment.status_${s}`, {
-                        defaultValue: s,
+                        defaultValue: EQUIPMENT_STATUS_LABELS[s] ?? s,
                       })}
                     </option>
                   ))}
