@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import logging
 import random
+import re
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from typing import Iterable, Sequence
@@ -212,9 +213,31 @@ def _weighted(rng: random.Random, weights: Sequence[tuple[str, int]]) -> str:
     return rng.choices(values, weights=[weight for _, weight in weights], k=1)[0]
 
 
+_ENUM_TOKEN = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
+
+
 def _package_label(trade: str) -> str:
-    """Turn a trade category key into the work-package name people write."""
-    return trade.replace("_", " ").strip().title()
+    """Turn a trade category key into the work-package name people write.
+
+    Only a key gets recased. A trade category arrives from two places: the
+    lowercase snake_case pool above, where "fire_protection" has to become
+    "Fire Protection" for anyone to read it, and the ``trade_categories``
+    column of a real subcontractor row, which holds whatever text the register
+    was set up with. The demo writes a section title into that column, so the
+    second kind reaches here as "LV 01 - Baustelleneinrichtung und
+    Gemeinkosten", and ``str.title()`` lowercases the tail of every word it
+    touches. The register printed "Lv 01".
+
+    An initialism cannot be recovered once it has been folded, and no caser can
+    be told which tokens are initialisms, so the rule is not to recase text that
+    was already written for a reader. Anything that is not a bare snake_case
+    token is passed through as it stands. The casing of the keys is left exactly
+    as it was, so the twenty work packages that were already right stay right.
+    """
+    trade = trade.strip()
+    if not _ENUM_TOKEN.match(trade):
+        return trade
+    return trade.replace("_", " ").title()
 
 
 async def _subcontractor_parties(session: AsyncSession) -> list[_Party]:
