@@ -187,12 +187,24 @@ describe('#200 counted keys carry every plural form their own language uses', ()
 
   for (const [locale, text] of localeFiles) {
     const categories = new Intl.PluralRules(locale).resolvedOptions().pluralCategories;
+    // A regional code may leave a form to its own base language. i18next
+    // resolves `en-US` through ['en-US', 'en'], and `en-US.ts` is deliberately
+    // an overlay of the words American English says differently rather than a
+    // locale in its own right, so requiring every plural form of it asks it to
+    // stop being an overlay. The failure this checks for is a counted key with
+    // no form the reader's own language uses, and the base language answers in
+    // that same language; falling back ACROSS languages is a different defect
+    // and other suites catch it.
+    const dash = locale.indexOf('-');
+    const base = dash > 0 ? locale.slice(0, dash) : null;
+    const inherited = base ? (localeFiles.find(([code]) => code === base)?.[1] ?? '') : '';
 
     it(`${locale} has ${categories.join(', ')} for each counted key`, () => {
       for (const key of COUNTED_KEYS) {
         for (const category of categories) {
           const form = `"${key}_${category}"`;
-          expect(text.includes(form), `${locale} is missing ${form}`).toBe(true);
+          const carried = text.includes(form) || inherited.includes(form);
+          expect(carried, `${locale} is missing ${form}`).toBe(true);
         }
       }
     });

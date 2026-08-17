@@ -63,6 +63,28 @@ function localeText(code: string): string {
   return readFileSync(resolve(LOCALES_DIR as string, `${code}.ts`), 'utf8');
 }
 
+/**
+ * The base language a regional code falls back to, or null if there is none.
+ *
+ * The defect this suite catches is a reader seeing another language, which is
+ * what happens when `de` has no key and i18next reaches `en`. A regional code
+ * reaching its own base is a different thing: i18next resolves `en-US` through
+ * ['en-US', 'en'], so the American reader gets English either way, and
+ * `en-US.ts` is deliberately an overlay of about fifteen hundred words that
+ * differ rather than a locale in its own right (see
+ * `enUSFallsBackToEnglish.test.ts`). Requiring the full vocabulary of it asks
+ * it to stop being an overlay.
+ *
+ * So the same-language hop is allowed and the cross-language one is not. That
+ * also covers es-MX, es-CL, es-CO and pt-BR, which do carry the whole set
+ * today: were one of them to lose a key, the reader would still be reading
+ * Spanish or Portuguese, and that is not what this file is for.
+ */
+function baseLanguageOf(code: string): string | null {
+  const dash = code.indexOf('-');
+  return dash > 0 ? code.slice(0, dash) : null;
+}
+
 describe('the clash triage vocabulary is complete in every locale', () => {
   const codes = localeCodes();
 
@@ -78,7 +100,11 @@ describe('the clash triage vocabulary is complete in every locale', () => {
   for (const code of codes) {
     it(`${code} names every value its screens build a key from`, () => {
       const text = localeText(code);
-      const missing = KEYS.filter((key) => !text.includes(`"${key}"`));
+      const base = baseLanguageOf(code);
+      const inherited = base && codes.includes(base) ? localeText(base) : '';
+      const missing = KEYS.filter(
+        (key) => !text.includes(`"${key}"`) && !inherited.includes(`"${key}"`),
+      );
       expect(missing, `${code} has no key for ${missing.join(', ')}`).toEqual([]);
     });
   }
