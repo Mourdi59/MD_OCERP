@@ -51,53 +51,6 @@
 # extras here, not in a RUN line.
 ARG OE_EXTRAS=server,semantic-clients
 
-# --- Stage: frontend build (used by the unified target only) ---------------
-# node 22 because rollup-plugin-visualizer 7.x already emits an EBADENGINE
-# warning on node:20 and 8.x requires node>=22 outright (BUG-B04). The tag is
-# pinned to a minor instead of the floating `22-alpine`, which silently changes
-# the bundled npm underneath us. Two reports of the same build failure months
-# apart were not running the same installer, and there was no way to tell from
-# the Dockerfile.
-FROM node:22.23-alpine AS frontend-build
-
-WORKDIR /build
-COPY frontend/package.json frontend/package-lock.json ./
-# Installed with Node's default heap on purpose: the ceiling further down
-# belongs to the Vite/Rollup build, and as a stage-wide ENV it would reach this
-# line too, promising V8 8 GB inside a container that may not have it.
-#
-# On the "Exit handler never called!" failure in issue #404. An earlier reading
-# of this blamed the kernel reaping npm for memory. That reading is wrong: the
-# message comes from npm's own `process.on('exit')` handler, so npm reached exit
-# and ran code there, whereas a process killed by the OOM killer takes SIGKILL
-# and prints nothing at all. It has since also been reported from a host with
-# 125 GiB of memory. The failure is npm exiting while still awaiting something
-# that never settled, which is a hang, not a shortage.
-#
-# It does not reproduce here, so the step is hardened against the causes that
-# fit that shape rather than against one guess. `--no-audit --no-fund` drops the
-# two registry round trips npm makes AFTER the tree is already written, which
-# are the requests most likely to be left hanging by a proxy or a firewall; the
-# fetch settings bound the rest; the retry absorbs a transient stall. The log
-# dump matters as much as the fix: the next report of this arrives with npm's
-# own debug log instead of one line of signature.
-RUN npm config set fetch-retries 5 \
- && npm config set fetch-retry-maxtimeout 120000 \
- && npm config set fetch-timeout 600000 \
- && { npm ci --ignore-scripts --no-audit --no-fund \
-      || { echo "npm ci failed, retrying once with a clean cache"; \
-           tail -n 60 /root/.npm/_logs/*-debug-0.log 2>/dev/null || true; \
-           npm cache clean --force; \
-           npm ci --ignore-scripts --no-audit --no-fund \
-             || { echo "npm ci failed twice, npm debug log follows"; \
-                  tail -n 60 /root/.npm/_logs/*-debug-0.log 2>/dev/null || true; \
-                  exit 1; }; }; }
-COPY frontend/ .
-# The Vite/Rollup build genuinely exceeds Node's default ~4 GB heap and aborts
-# with exit 134 ("JavaScript heap out of memory"), so the ceiling is raised for
-# this one command rather than for the whole stage.
-RUN NODE_OPTIONS=--max-old-space-size=8192 npm run build
-
 # --- Stage: shared backend base --------------------------------------------
 # Everything both images need that does not depend on whether a frontend is
 # present: system packages, the service user, the source tree and the data
@@ -159,6 +112,59 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')" || exit 1
 
 CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+
+# --- Stage: frontend build (used by the unified target only) ---------------
+# Deliberately placed AFTER the api stage and before unified. BuildKit only
+# builds the stages a target depends on, so under it this position makes no
+# difference. The classic builder (DOCKER_BUILDKIT=0, and older engines) walks
+# the file top to bottom and builds everything up to the target, so with this
+# stage above api an API-only build would run npm ci and an 8 GB-heap Vite
+# build it has no use for. It still has to precede the COPY --from below.
+# node 22 because rollup-plugin-visualizer 7.x already emits an EBADENGINE
+# warning on node:20 and 8.x requires node>=22 outright (BUG-B04). The tag is
+# pinned to a minor instead of the floating `22-alpine`, which silently changes
+# the bundled npm underneath us. Two reports of the same build failure months
+# apart were not running the same installer, and there was no way to tell from
+# the Dockerfile.
+FROM node:22.23-alpine AS frontend-build
+
+WORKDIR /build
+COPY frontend/package.json frontend/package-lock.json ./
+# Installed with Node's default heap on purpose: the ceiling further down
+# belongs to the Vite/Rollup build, and as a stage-wide ENV it would reach this
+# line too, promising V8 8 GB inside a container that may not have it.
+#
+# On the "Exit handler never called!" failure in issue #404. An earlier reading
+# of this blamed the kernel reaping npm for memory. That reading is wrong: the
+# message comes from npm's own `process.on('exit')` handler, so npm reached exit
+# and ran code there, whereas a process killed by the OOM killer takes SIGKILL
+# and prints nothing at all. It has since also been reported from a host with
+# 125 GiB of memory. The failure is npm exiting while still awaiting something
+# that never settled, which is a hang, not a shortage.
+#
+# It does not reproduce here, so the step is hardened against the causes that
+# fit that shape rather than against one guess. `--no-audit --no-fund` drops the
+# two registry round trips npm makes AFTER the tree is already written, which
+# are the requests most likely to be left hanging by a proxy or a firewall; the
+# fetch settings bound the rest; the retry absorbs a transient stall. The log
+# dump matters as much as the fix: the next report of this arrives with npm's
+# own debug log instead of one line of signature.
+RUN npm config set fetch-retries 5 \
+ && npm config set fetch-retry-maxtimeout 120000 \
+ && npm config set fetch-timeout 600000 \
+ && { npm ci --ignore-scripts --no-audit --no-fund \
+      || { echo "npm ci failed, retrying once with a clean cache"; \
+           tail -n 60 /root/.npm/_logs/*-debug-0.log 2>/dev/null || true; \
+           npm cache clean --force; \
+           npm ci --ignore-scripts --no-audit --no-fund \
+             || { echo "npm ci failed twice, npm debug log follows"; \
+                  tail -n 60 /root/.npm/_logs/*-debug-0.log 2>/dev/null || true; \
+                  exit 1; }; }; }
+COPY frontend/ .
+# The Vite/Rollup build genuinely exceeds Node's default ~4 GB heap and aborts
+# with exit 134 ("JavaScript heap out of memory"), so the ceiling is raised for
+# this one command rather than for the whole stage.
+RUN NODE_OPTIONS=--max-old-space-size=8192 npm run build
 
 # --- Stage: unified (all-in-one, port 8080) --------------------------------
 # Last on purpose. deploy/railway/railway.toml, deploy/render/render.yaml and
