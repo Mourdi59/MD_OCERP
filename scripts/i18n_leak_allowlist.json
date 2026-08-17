@@ -1194,6 +1194,11 @@
     "note": "single common noun kept as-is by several unrelated languages (de/da/no/sv/nl/id/... all use \"Status\" unchanged); confirmed cs/ja/ru hold real distinct translations",
     "reason_category": "abbreviation"
   },
+  "tendering.award_record.download": {
+    "en_value": "PDF",
+    "note": "named open data / interchange standard or format code (CLAUDE.md: not translated)",
+    "reason_category": "standard_code"
+  },
   "tendering.export_gaeb": {
     "en_value": "GAEB X83",
     "note": "named open data / interchange standard or format code (CLAUDE.md: not translated)",
