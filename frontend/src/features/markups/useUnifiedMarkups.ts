@@ -16,7 +16,7 @@
 import { useMemo } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
-import { apiGet } from '@/shared/lib/api';
+import { apiGet, type Page } from '@/shared/lib/api';
 import { fetchMarkups } from './api';
 import { fetchDrawings, fetchAnnotations } from '@/features/dwg-takeoff/api';
 import { takeoffApi, type MeasurementResponse } from '@/features/takeoff/api';
@@ -72,7 +72,7 @@ export function useUnifiedMarkups(projectId: string | null | undefined): UseUnif
   // Documents lookup — lets us show friendly names instead of UUID prefixes.
   const documentsQuery = useQuery({
     queryKey: [...UNIFIED_MARKUPS_QUERY_KEY, projectId, 'documents'],
-    queryFn: () => apiGet<DocItem[]>(`/v1/documents/?project_id=${projectId}`),
+    queryFn: () => apiGet<Page<DocItem>>(`/v1/documents/?project_id=${projectId}`),
     enabled: !!projectId,
     staleTime: 60_000,
   });
@@ -121,7 +121,7 @@ export function useUnifiedMarkups(projectId: string | null | undefined): UseUnif
 
   const { items, summary } = useMemo(() => {
     const docNameById = new Map<string, string>();
-    for (const d of documentsQuery.data ?? []) docNameById.set(d.id, d.name);
+    for (const d of documentsQuery.data?.items ?? []) docNameById.set(d.id, d.name);
 
     const drawingById = new Map<string, DwgDrawing>();
     for (const d of drawingsQuery.data ?? []) drawingById.set(d.id, d);

@@ -34,6 +34,7 @@ import {
   ModuleGuideButton,
 } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { projectsApi } from '@/features/projects/api';
 import { fetchDocuments } from '@/features/documents/api';
 import { listTickets } from '@/features/service/api';
@@ -1604,12 +1605,15 @@ function GrantAccessModal({
                       })
                     : `— ${t('common.select', { defaultValue: 'Select' })} —`}
                 </option>
-                {(documentsQ.data ?? []).map((d) => (
+                {(documentsQ.data?.items ?? []).map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
                   </option>
                 ))}
               </select>
+              {/* A dropdown cannot page, so a document past the first page is
+                  simply not grantable and nothing would say so. */}
+              {documentsQ.data ? <TruncationNotice page={documentsQ.data} className="mt-1" /> : null}
             </WideModalField>
           </>
         ) : form.resource_type === 'bim' ? (

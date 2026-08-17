@@ -166,7 +166,7 @@ async def test_documents_search_ocr_and_sheet(
             headers=auth_headers,
         )
         assert r.status_code == 200, r.text
-        return [row["id"] for row in r.json()]
+        return [row["id"] for row in r.json()["items"]]
 
     # name match — should still work after our extension.
     ids = await search("electrical")
@@ -252,7 +252,11 @@ async def test_documents_activity_rename_event(
         headers=auth_headers,
     )
     assert resp.status_code == 200, resp.text
-    rows = resp.json()
+    page = resp.json()
+    rows = page["items"]
+    assert page["total"] == len(rows), (
+        f"the whole timeline fits in one page here, so total must equal the rows shown: {page}"
+    )
     actions = [r["action"] for r in rows]
 
     assert "uploaded" in actions, f"expected 'uploaded' in {actions}"
@@ -318,7 +322,7 @@ async def test_documents_activity_dedupe_within_1s(
         headers=auth_headers,
     )
     assert resp.status_code == 200
-    rows = resp.json()
+    rows = resp.json()["items"]
     rename_rows = [r for r in rows if r["action"] == "renamed"]
     assert len(rename_rows) == 1, (
         f"Two PATCHes within 1 s must collapse to a single 'renamed' "

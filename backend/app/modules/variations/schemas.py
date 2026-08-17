@@ -841,3 +841,78 @@ class DayworkBillingResponse(BaseModel):
     currency: str = ""
     signed_at: str | None = None
     line_count: int = 0
+
+
+# ── Page envelopes ────────────────────────────────────────────────────────
+#
+# One per list route. Each route already received a total from its repository
+# and discarded it, so the register answered with the first fifty rows and no
+# way for the reader to know there were more. These carry it.
+#
+# They live together at the end rather than beside their entity because the
+# seven are one decision, not seven: same fields, same defaults, same reason.
+# ``limit`` defaults to 50 because that is what the routes default to; a
+# response that reports a limit the route did not use is worse than silence.
+
+
+class NoticeListResponse(BaseModel):
+    """A page of variation notices, with the project's full notice count."""
+
+    items: list[NoticeResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class VariationRequestListResponse(BaseModel):
+    """A page of variation requests, with the project's full request count."""
+
+    items: list[VariationRequestResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class VariationOrderListResponse(BaseModel):
+    """A page of variation orders, with the project's full order count."""
+
+    items: list[VariationOrderResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class SiteMeasurementListResponse(BaseModel):
+    """A page of site measurements, with the project's full measurement count."""
+
+    items: list[SiteMeasurementResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class DayworkSheetListResponse(BaseModel):
+    """A page of daywork sheets, with the project's full sheet count."""
+
+    items: list[DayworkSheetResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class DisruptionClaimListResponse(BaseModel):
+    """A page of disruption claims, with the project's full claim count."""
+
+    items: list[DisruptionClaimResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
+class ExtensionOfTimeClaimListResponse(BaseModel):
+    """A page of EOT claims, with the project's full claim count."""
+
+    items: list[ExtensionOfTimeClaimResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50

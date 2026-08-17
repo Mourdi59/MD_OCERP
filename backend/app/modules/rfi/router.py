@@ -25,7 +25,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
 
-from app.core.audit_log import get_activity_for_entity
+from app.core.audit_log import count_activity_for_entity, get_activity_for_entity
 from app.core.bulk_ops import BulkDeleteRequest, BulkStatusRequest
 from app.core.file_signature import (
     SIGNATURE_BYTES_REQUIRED,
@@ -48,9 +48,11 @@ from app.modules.approval_routes.schemas import (
 from app.modules.approval_routes.service import ApprovalRouteService
 from app.modules.rfi.schemas import (
     RFIActivityEntry,
+    RFIActivityListResponse,
     RFIBatchDeleteResponse,
     RFIBatchStatusResponse,
     RFICreate,
+    RFIListResponse,
     RFIRespondRequest,
     RFIResponse,
     RFIStatsResponse,
@@ -166,7 +168,7 @@ def _to_response(item: object) -> RFIResponse:
 
 @router.get(
     "/",
-    response_model=list[RFIResponse],
+    response_model=RFIListResponse,
     dependencies=[Depends(RequirePermission("rfi.read"))],
 )
 async def list_rfis(
@@ -190,21 +192,30 @@ async def list_rfis(
         description="Free-text search across subject, question, response, and RFI number.",
     ),
     service: RFIService = Depends(_get_service),
-) -> list[RFIResponse]:
-    """List RFIs for a project."""
+) -> RFIListResponse:
+    """List RFIs for a project, with the size of the whole filtered set.
+
+    The COUNT this runs was deliberately switched off here once, on the
+    grounds that a bare list threw the total away anyway. It is back on
+    because the register cannot otherwise tell a reader that fifty of three
+    hundred open questions are on screen. It is one extra scan over the same
+    predicate per page, and the search-filtered case is where it costs most.
+    """
     await verify_project_access(project_id, user_id, session)
-    # PERF: this endpoint returns a bare ``list[RFIResponse]`` and discards
-    # the total, so skip the extra ``COUNT(*)`` scan the repository would
-    # otherwise run over the same (search-filtered) predicate on every page.
-    rfis, _ = await service.list_rfis(
+    rfis, total = await service.list_rfis(
         project_id,
         offset=offset,
         limit=limit,
         status_filter=status_filter,
         search=search,
-        with_total=False,
+        with_total=True,
     )
-    return [_to_response(r) for r in rfis]
+    return RFIListResponse(
+        items=[_to_response(r) for r in rfis],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/", response_model=RFIResponse, status_code=201)
@@ -781,7 +792,7 @@ async def get_rfi_approval(
 
 @router.get(
     "/{rfi_id}/activity/",
-    response_model=list[RFIActivityEntry],
+    response_model=RFIActivityListResponse,
     dependencies=[Depends(RequirePermission("rfi.read"))],
 )
 async def get_rfi_activity(
@@ -791,7 +802,7 @@ async def get_rfi_activity(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     service: RFIService = Depends(_get_service),
-) -> list[RFIActivityEntry]:
+) -> RFIActivityListResponse:
     """Return the activity journal for one RFI (chronological, oldest first).
 
     Reuses the generic ``get_activity_for_entity`` helper over the shared
@@ -804,6 +815,11 @@ async def get_rfi_activity(
     ``rfi.read`` + ``verify_project_access`` guard the other RFI read endpoints
     use: the RFI's own project decides access (IDOR-safe), so a caller who
     cannot see the project cannot read its journal by guessing the UUID.
+
+    ``total`` is the length of the whole journal. Because the rows come back
+    oldest first, a page that stops short hides the RECENT transitions, which
+    is the opposite of what a reader of a lifecycle timeline assumes they are
+    missing. The count at least lets the timeline say there is more.
     """
     existing = await service.get_rfi(rfi_id)
     await verify_project_access(existing.project_id, str(user_id), session)
@@ -814,7 +830,13 @@ async def get_rfi_activity(
         limit=limit,
         offset=offset,
     )
-    return [RFIActivityEntry.model_validate(r) for r in rows]
+    total = await count_activity_for_entity(session, entity_type="rfi", entity_id=rfi_id)
+    return RFIActivityListResponse(
+        items=[RFIActivityEntry.model_validate(r) for r in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 # ── Attachments (R5 / BUG-RFI-ATT) ─────────────────────────────────────────

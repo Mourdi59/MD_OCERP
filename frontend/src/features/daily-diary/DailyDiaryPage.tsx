@@ -125,6 +125,7 @@ import {
 import { PublishRecordModal } from '@/features/record-publishing/PublishRecordModal';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildDailyDiaryInsights } from './dailyDiaryInsights';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 type Tab = 'diaries' | 'today' | 'archive';
 
@@ -2387,7 +2388,7 @@ function DroneSection({
                 const a = q.convert(Number(s.area_m2), 'm²');
                 return (
                   <p className="mt-0.5 text-xs text-content-secondary">
-                    {Number.isFinite(a.value) ? a.value.toLocaleString() : String(s.area_m2)} {a.unit}
+                    {Number.isFinite(a.value) ? a.value.toLocaleString(getIntlLocale()) : String(s.area_m2)} {a.unit}
                   </p>
                 );
               })()}
@@ -2466,7 +2467,7 @@ function RealitySection({
               </div>
               {c.point_count_estimate && (
                 <p className="mt-0.5 text-xs text-content-secondary">
-                  {c.point_count_estimate.toLocaleString()} pts
+                  {c.point_count_estimate.toLocaleString(getIntlLocale())} pts
                 </p>
               )}
             </li>
@@ -3134,7 +3135,7 @@ function ExistingFilePicker({
   const assets = useMemo<ExistingAsset[]>(() => {
     const out: ExistingAsset[] = [];
     const seen = new Set<string>();
-    for (const p of (photosQ.data ?? []) as SitePhoto[]) {
+    for (const p of (photosQ.data?.items ?? []) as SitePhoto[]) {
       out.push({
         key: `photo:${p.id}`,
         file_url: getPhotoFileUrl(p.id),
@@ -3146,7 +3147,7 @@ function ExistingFilePicker({
       // it below so the same image isn't offered twice.
       if (p.document_id) seen.add(p.document_id);
     }
-    for (const d of (docsQ.data ?? []) as DocumentItem[]) {
+    for (const d of (docsQ.data?.items ?? []) as DocumentItem[]) {
       if (seen.has(d.id)) continue;
       if ((d.category ?? '').toLowerCase() === 'photo') continue; // twin row
       const isImage =
@@ -3168,6 +3169,19 @@ function ExistingFilePicker({
     if (!q) return assets;
     return assets.filter((a) => a.label.toLowerCase().includes(q));
   }, [assets, search]);
+
+  // The picker draws from two registers, photos and documents, and offers a
+  // page of each. The notice is built from what the SERVER returned, not from
+  // the thumbnails below: those are the image rows that survived the twin-row
+  // and extension filters, and a count taken from them would describe neither
+  // register. The search box is client-side over the same two pages.
+  const sourcePage = useMemo(
+    () => ({
+      items: [...(photosQ.data?.items ?? []), ...(docsQ.data?.items ?? [])],
+      total: (photosQ.data?.total ?? 0) + (docsQ.data?.total ?? 0),
+    }),
+    [photosQ.data, docsQ.data],
+  );
 
   const loading = photosQ.isLoading || docsQ.isLoading;
   const selectedList = Object.values(selected);
@@ -3198,6 +3212,8 @@ function ExistingFilePicker({
           className={clsx(inputCls, 'pl-9')}
         />
       </div>
+
+      {!loading && <TruncationNotice page={sourcePage} />}
 
       {loading ? (
         <SkeletonTable rows={2} columns={4} />

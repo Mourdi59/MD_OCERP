@@ -24,6 +24,7 @@ from app.modules.risk.schemas import (
     RiskCreate,
     RiskEscalationSweepRequest,
     RiskEscalationSweepResult,
+    RiskListResponse,
     RiskMatrixCell,
     RiskMatrixResponse,
     RiskResponse,
@@ -176,7 +177,7 @@ async def create_risk(
 
 @router.get(
     "/",
-    response_model=list[RiskResponse],
+    response_model=RiskListResponse,
     dependencies=[Depends(RequirePermission("risk.read"))],
 )
 async def list_risks(
@@ -191,10 +192,15 @@ async def list_risks(
     sort_by: str | None = Query(default=None, description="Sort field: risk_score, probability, created_at"),
     sort_order: str = Query(default="desc", pattern="^(asc|desc)$"),
     service: RiskService = Depends(_get_service),
-) -> list[RiskResponse]:
-    """List risk items for a project."""
+) -> RiskListResponse:
+    """List risk items for a project, with the size of the whole filtered set.
+
+    The service has always returned the count and this route has always
+    dropped it on the floor, so the register showed fifty rows and let the
+    reader assume that was the register.
+    """
     await verify_project_access(project_id, user_id, session)
-    items, _ = await service.list_risks(
+    items, total = await service.list_risks(
         project_id,
         offset=offset,
         limit=limit,
@@ -204,7 +210,12 @@ async def list_risks(
         sort_by=sort_by,
         sort_order=sort_order,
     )
-    return [_risk_to_response(i) for i in items]
+    return RiskListResponse(
+        items=[_risk_to_response(i) for i in items],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 # ── Monte Carlo simulation (v3.11 - T1) ──────────────────────────────────

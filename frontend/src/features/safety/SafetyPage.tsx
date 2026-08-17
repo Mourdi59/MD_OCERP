@@ -394,7 +394,7 @@ function QualityDashboardSummary({
     queryFn: async () =>
       (
         await fetchAllPages<{ status: string }>((offset, limit) =>
-          apiGet<{ status: string }[]>(
+          apiGet<Page<{ status: string }>>(
             `/v1/ncr/?project_id=${projectId}&limit=${limit}&offset=${offset}`,
           ),
         )

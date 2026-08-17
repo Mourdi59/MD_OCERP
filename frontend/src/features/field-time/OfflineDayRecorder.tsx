@@ -104,11 +104,11 @@ export function OfflineDayRecorder({ projectId, onRecorded }: OfflineDayRecorder
     [resourcesQ.data],
   );
   const plant: PickOption[] = useMemo(
-    () => (equipmentQ.data ?? []).map((e) => ({ id: e.id, label: joinLabel(e.code, e.name) || e.id })),
+    () => (equipmentQ.data?.items ?? []).map((e) => ({ id: e.id, label: joinLabel(e.code, e.name) || e.id })),
     [equipmentQ.data],
   );
   const variations: PickOption[] = useMemo(
-    () => (variationsQ.data ?? []).map((v) => ({ id: v.id, label: joinLabel(v.code, v.title) || v.id })),
+    () => (variationsQ.data?.items ?? []).map((v) => ({ id: v.id, label: joinLabel(v.code, v.title) || v.id })),
     [variationsQ.data],
   );
 

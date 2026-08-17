@@ -28,12 +28,14 @@ import {
 } from '@/shared/ui';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
-import { apiGet } from '@/shared/lib/api';
+import { apiGet, type Page } from '@/shared/lib/api';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { splitPdfIntoSheets } from './api';
 import { SheetDetailDrawer } from './SheetDetailDrawer';
 import { buildSheetsInsights } from './sheetsInsights';
 import type { SheetRow } from './types';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── API types ────────────────────────────────────────────────────────
    `SheetRow` mirrors SheetResponse and lives in ./types so the detail
@@ -229,14 +231,17 @@ export function SheetsIndexPage() {
   const projectId = routeProjectId || activeProjectId || projects[0]?.id || '';
   const projectName = projects.find((p) => p.id === projectId)?.name || '';
 
-  const { data: sheets = [], isLoading } = useQuery({
+  const { data: sheetPage, isLoading } = useQuery({
     queryKey: ['sheets', projectId],
     queryFn: () =>
-      apiGet<SheetRow[]>(
+      apiGet<Page<SheetRow>>(
         `/v1/documents/sheets/?project_id=${encodeURIComponent(projectId)}&limit=500`,
       ),
     enabled: !!projectId,
   });
+  // The register asks for the maximum the route allows, so a drawing set past
+  // 500 sheets arrives cut. `total` is what lets the page below say so.
+  const sheets = useMemo(() => sheetPage?.items ?? [], [sheetPage]);
 
   const { data: disciplines = [] } = useQuery({
     queryKey: ['sheet-disciplines', projectId],
@@ -520,6 +525,10 @@ export function SheetsIndexPage() {
                   count: filtered.length,
                 })}
               </p>
+              {/* The line above counts the rows the filters left on screen.
+                  This one is about the register behind them, so it is fed the
+                  server page and never the filtered array. */}
+              {sheetPage ? <TruncationNotice page={sheetPage} className="-mt-2 mb-3" /> : null}
 
               <Card padding="none" className="overflow-x-auto">
                 <table className="w-full text-sm border-collapse">
@@ -596,7 +605,7 @@ export function SheetsIndexPage() {
                         <td className="px-4 py-3 text-content-secondary">
                           {s.revision_date ? (
                             <span
-                              title={new Date(s.revision_date).toLocaleString()}
+                              title={new Date(s.revision_date).toLocaleString(getIntlLocale())}
                             >
                               <DateDisplay value={s.revision_date} format="relative" />
                             </span>

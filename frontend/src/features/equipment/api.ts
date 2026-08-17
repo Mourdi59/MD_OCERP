@@ -6,7 +6,7 @@
  * Backed by /api/v1/equipment/ — see backend/app/modules/equipment/router.py
  */
 
-import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete, type Page } from '@/shared/lib/api';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -313,7 +313,7 @@ export function listEquipment(params?: {
   status?: string;
   type?: string;
   ownership?: string;
-}): Promise<Equipment[]> {
+}): Promise<Page<Equipment>> {
   const qs = new URLSearchParams();
   if (params?.offset !== undefined) qs.set('offset', String(params.offset));
   if (params?.limit !== undefined) qs.set('limit', String(params.limit));
@@ -321,7 +321,14 @@ export function listEquipment(params?: {
   if (params?.type) qs.set('type', params.type);
   if (params?.ownership) qs.set('ownership', params.ownership);
   const q = qs.toString();
-  return apiGet<Equipment[]>(`/v1/equipment/equipment/${q ? `?${q}` : ''}`);
+  /* The `?` is inside the template on purpose, rather than the usual
+     `${q ? `?${q}` : ''}` suffix. That idiom puts a space inside the string
+     literal, and the URL scan in scripts/check_page_envelope_consumers.py
+     stops at the first whitespace, so the route becomes invisible to it and
+     this endpoint could go half migrated with the gate reporting nothing. A
+     trailing `?` with an empty query is a valid URL and parses as no query at
+     all, and no caller here omits `limit` anyway. */
+  return apiGet<Page<Equipment>>(`/v1/equipment/equipment/?${q}`);
 }
 
 export function getEquipment(id: string): Promise<Equipment> {
@@ -376,8 +383,15 @@ export function getFleetOptimization(params?: {
 
 /* ── Equipment Types ──────────────────────────────────────────────────── */
 
-export function listTypes(): Promise<EquipmentType[]> {
-  return apiGet<EquipmentType[]>('/v1/equipment/types/');
+/**
+ * The whole equipment-type taxonomy.
+ *
+ * The route takes no offset or limit and never truncates, so `total`
+ * always equals `items.length` here. It is a page for shape only, so a
+ * caller does not have to remember which list routes are enveloped.
+ */
+export function listTypes(): Promise<Page<EquipmentType>> {
+  return apiGet<Page<EquipmentType>>('/v1/equipment/types/');
 }
 
 export function createType(

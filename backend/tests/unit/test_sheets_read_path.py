@@ -290,9 +290,11 @@ async def test_list_sheets_reports_the_match_count_a_capped_page_cannot_show(
 ) -> None:
     """A truncated page carries the number of matches behind it.
 
-    The register asks for the maximum the route allows and gets an array. Short
-    of the count, a full page and a cut-off one look the same, and the register
-    is the only thing that could tell the reader sheets are missing.
+    The register asks for the maximum the route allows. Short of the count, a
+    full page and a cut-off one look the same, and the register is the only
+    thing that could tell the reader sheets are missing. The count is asserted
+    in the body, where the register reads it, and in the header, which older
+    scripted callers still read.
     """
     user_id, project_id = await _seed_project_for_user(db_session)
     stamp = datetime(2026, 3, 1, 9, 0, tzinfo=UTC)
@@ -320,12 +322,14 @@ async def test_list_sheets_reports_the_match_count_a_capped_page_cannot_show(
         )
 
     assert page.status_code == 200
-    assert len(page.json()) == 2
+    assert len(page.json()["items"]) == 2
+    assert page.json()["total"] == 3
     assert page.headers["X-Total-Count"] == "3"
 
     # The count answers for the filter the caller sent, not for the project.
     assert filtered.status_code == 200
-    assert len(filtered.json()) == 1
+    assert len(filtered.json()["items"]) == 1
+    assert filtered.json()["total"] == 2
     assert filtered.headers["X-Total-Count"] == "2"
 
 

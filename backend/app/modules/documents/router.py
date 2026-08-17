@@ -13,8 +13,7 @@ Endpoints:
 
     POST   /photos/upload           - Upload a photo
     GET    /photos?project_id=X     - List photos with filters
-    GET    /photos/gallery          - Gallery data
-    GET    /photos/timeline         - Photos grouped by date
+    GET    /photos/timeline         - Photos for the gallery and timeline views
     GET    /photos/{id}             - Get photo metadata
     GET    /photos/{id}/file        - Serve photo file
     PATCH  /photos/{id}             - Update photo metadata
@@ -44,15 +43,17 @@ from app.dependencies import (
     verify_project_access,
 )
 from app.modules.documents.schemas import (
+    DocumentActivityListResponse,
     DocumentActivityResponse,
     DocumentBIMLinkCreate,
     DocumentBIMLinkListResponse,
     DocumentBIMLinkResponse,
+    DocumentListResponse,
     DocumentResponse,
     DocumentSummary,
     DocumentUpdate,
+    PhotoListResponse,
     PhotoResponse,
-    PhotoTimelineGroup,
     PhotoUpdate,
     RecentPhotoResponse,
     ShareLinkAccessRequest,
@@ -63,6 +64,7 @@ from app.modules.documents.schemas import (
     ShareLinkResponse,
     SheetCompletenessRequest,
     SheetCompletenessResponse,
+    SheetListResponse,
     SheetResponse,
     SheetUpdate,
     SheetVersionHistory,
@@ -257,7 +259,7 @@ async def upload_document(
 # ── List ─────────────────────────────────────────────────────────────────────
 
 
-@router.get("/", response_model=list[DocumentResponse])
+@router.get("/", response_model=DocumentListResponse)
 async def list_documents(
     session: SessionDep,
     project_id: uuid.UUID = Query(...),
@@ -269,7 +271,7 @@ async def list_documents(
     sort_by: str | None = Query(default=None, description="Sort field: name, created_at, category"),
     sort_order: str = Query(default="desc", pattern="^(asc|desc)$"),
     service: DocumentService = Depends(_get_service),
-) -> list[DocumentResponse]:
+) -> DocumentListResponse:
     """List documents for a project, honoring folder permissions.
 
     Project owners (and admins) see everything. Project members see:
@@ -284,9 +286,52 @@ async def list_documents(
     - knowing the project exists and being told "no files" is the
     expected surface for a member who hasn't been granted a folder
     yet.
+
+    ``total`` counts the documents this caller may read, which is why the
+    permission decision is taken before the query rather than after it. The
+    page is still filtered row by row below, unchanged: that loop is the
+    access control and it stays where it is. What the decision buys the count
+    is that "showing 43 of 90" describes the register the member can open,
+    not the one the owner can.
+
+    A member's page can come back shorter than ``limit`` even when more
+    readable documents exist, because the row filter runs after the database
+    applied the limit. That is older than this envelope and is not fixed
+    here; ``total`` at least makes it visible.
     """
     await _verify_project_membership_or_404(project_id, user_id, session)
-    docs, _ = await service.list_documents(
+
+    # Owners and admins bypass folder filtering entirely.
+    from app.modules.documents.folder_permissions_service import (
+        effective_permissions_for,
+        is_project_owner,
+        kind_and_path_for_document,
+        readable_document_scopes,
+        restricted_scopes_for_project,
+    )
+
+    user_uuid = uuid.UUID(str(user_id))
+    filtered = False
+    grants: dict[tuple[str, str | None], str] = {}
+    restricted: set[tuple[str, str | None]] = set()
+    visible_categories: frozenset[str | None] | None = None
+    if not await is_project_owner(session, project_id, user_uuid):
+        # Admin bypass - _verify_project_membership_or_404 already let them
+        # through, but we still need to skip filtering for them.
+        from app.modules.users.repository import UserRepository
+
+        user = await UserRepository(session).get_by_id(user_uuid)
+        if user is None or getattr(user, "role", "") != "admin":
+            filtered = True
+            grants = await effective_permissions_for(
+                session,
+                project_id=project_id,
+                user_id=user_uuid,
+            )
+            restricted = await restricted_scopes_for_project(session, project_id)
+            visible_categories = frozenset(readable_document_scopes(grants=grants, restricted=restricted))
+
+    docs, total = await service.list_documents(
         project_id,
         offset=offset,
         limit=limit,
@@ -294,48 +339,29 @@ async def list_documents(
         search=search,
         sort_by=sort_by,
         sort_order=sort_order,
+        visible_categories=visible_categories,
     )
 
-    # Owners and admins bypass folder filtering entirely.
-    from app.modules.documents.folder_permissions_service import (
-        effective_permissions_for,
-        is_project_owner,
-        kind_and_path_for_document,
-        restricted_scopes_for_project,
+    if filtered:
+        visible: list = []
+        for doc in docs:
+            kind, path = kind_and_path_for_document(doc.category)
+            # If the folder has any grant, only show docs the user has
+            # an explicit grant on (exact scope OR wildcard for the kind).
+            is_restricted = (kind, path) in restricted or (kind, None) in restricted
+            if not is_restricted:
+                visible.append(doc)
+                continue
+            if (kind, path) in grants or (kind, None) in grants:
+                visible.append(doc)
+        docs = visible
+
+    return DocumentListResponse(
+        items=[_doc_to_response(d) for d in docs],
+        total=total,
+        offset=offset,
+        limit=limit,
     )
-
-    user_uuid = uuid.UUID(str(user_id))
-    if await is_project_owner(session, project_id, user_uuid):
-        return [_doc_to_response(d) for d in docs]
-
-    # Admin bypass - _verify_project_membership_or_404 already let them
-    # through, but we still need to skip filtering for them.
-    from app.modules.users.repository import UserRepository
-
-    user = await UserRepository(session).get_by_id(user_uuid)
-    if user is not None and getattr(user, "role", "") == "admin":
-        return [_doc_to_response(d) for d in docs]
-
-    grants = await effective_permissions_for(
-        session,
-        project_id=project_id,
-        user_id=user_uuid,
-    )
-    restricted = await restricted_scopes_for_project(session, project_id)
-
-    visible: list = []
-    for doc in docs:
-        kind, path = kind_and_path_for_document(doc.category)
-        # If the folder has any grant, only show docs the user has
-        # an explicit grant on (exact scope OR wildcard for the kind).
-        is_restricted = (kind, path) in restricted or (kind, None) in restricted
-        if not is_restricted:
-            visible.append(doc)
-            continue
-        if (kind, path) in grants or (kind, None) in grants:
-            visible.append(doc)
-
-    return [_doc_to_response(d) for d in visible]
 
 
 @router.get("/file-types-by-project/")
@@ -482,7 +508,7 @@ async def upload_photo(
 # ── List photos ─────────────────────────────────────────────────────────
 
 
-@router.get("/photos/", response_model=list[PhotoResponse])
+@router.get("/photos/", response_model=PhotoListResponse)
 async def list_photos(
     session: SessionDep,
     project_id: uuid.UUID = Query(...),
@@ -495,8 +521,18 @@ async def list_photos(
     limit: int = Query(default=100, ge=1, le=500),
     user_id: CurrentUserId = None,  # type: ignore[assignment]
     service: PhotoService = Depends(_get_photo_service),
-) -> list[PhotoResponse]:
-    """List photos for a project with optional filters."""
+) -> PhotoListResponse:
+    """List photos for a project with optional filters.
+
+    ``total`` counts what the SQL filters matched. ``tag`` is the exception:
+    ``ProjectPhoto.tags`` is a JSON column with no containment operator that
+    works on both SQLite and PostgreSQL, so the service narrows the page by
+    tag in Python after reading it. A tagged request therefore returns a page
+    the tag narrowed and a total it did not, and paging past the first page
+    of a tagged query skips rows. No caller sends ``tag`` today - the gallery
+    filters by category and search only - so this is recorded rather than
+    worked around; the fix is a tag filter the database can run.
+    """
     await verify_project_access(project_id, user_id, session)
     parsed_date_from: datetime | None = None
     parsed_date_to: datetime | None = None
@@ -511,7 +547,7 @@ async def list_photos(
         except ValueError:
             pass
 
-    photos, _ = await service.list_photos(
+    photos, total = await service.list_photos(
         project_id,
         offset=offset,
         limit=limit,
@@ -521,45 +557,60 @@ async def list_photos(
         date_to=parsed_date_to,
         search=search,
     )
-    return [_photo_to_response(p) for p in photos]
-
-
-# ── Gallery ─────────────────────────────────────────────────────────────
-
-
-@router.get("/photos/gallery/", response_model=list[PhotoResponse])
-async def get_gallery(
-    session: SessionDep,
-    project_id: uuid.UUID = Query(...),
-    user_id: CurrentUserId = None,  # type: ignore[assignment]
-    service: PhotoService = Depends(_get_photo_service),
-) -> list[PhotoResponse]:
-    """Get all photos for gallery view."""
-    await verify_project_access(project_id, user_id, session)
-    photos = await service.get_gallery(project_id)
-    return [_photo_to_response(p) for p in photos]
+    return PhotoListResponse(
+        items=[_photo_to_response(p) for p in photos],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 # ── Timeline ────────────────────────────────────────────────────────────
 
 
-@router.get("/photos/timeline/", response_model=list[PhotoTimelineGroup])
+GALLERY_LIMIT = 500
+"""How many photos the timeline view reads in one go.
+
+It is a "show me everything" surface with no paging control, so this cap is
+the only thing between a long-running project and a response carrying every
+photo it ever took. The number is not new, it has always been in the service.
+What is new is that the caller is told about it.
+
+There used to be a second route here, ``GET /photos/gallery/``, whose body was
+character for character the same as ``get_timeline`` below: same service call,
+same limit, same envelope. Two URLs for one payload is a question every
+future reader has to answer again ("which do I call, and how do they differ?"),
+so it was retired once nothing called it. The name survives on this constant
+because both surfaces read the same cap.
+"""
+
+
+@router.get("/photos/timeline/", response_model=PhotoListResponse)
 async def get_timeline(
     session: SessionDep,
     project_id: uuid.UUID = Query(...),
     user_id: CurrentUserId = None,  # type: ignore[assignment]
     service: PhotoService = Depends(_get_photo_service),
-) -> list[PhotoTimelineGroup]:
-    """Get photos grouped by date for timeline view."""
+) -> PhotoListResponse:
+    """Read the project's photos for the timeline view, newest first.
+
+    This used to answer with date groups, and a group list cannot carry an
+    honest page size: truncating at ``GALLERY_LIMIT`` photos leaves a count of
+    days, and a reader comparing that to a photo total is told a slice is a
+    whole. The route now answers with the same photo page the gallery reads
+    and the client groups by capture date, which is presentation. Grouping is
+    a pure function of the rows, the date key being the leading ten characters
+    of ``taken_at`` falling back to ``created_at``, so it moves to the client
+    without changing what any day contains.
+    """
     await verify_project_access(project_id, user_id, session)
-    groups = await service.get_timeline(project_id)
-    return [
-        PhotoTimelineGroup(
-            date=g["date"],
-            photos=[_photo_to_response(p) for p in g["photos"]],
-        )
-        for g in groups
-    ]
+    photos, total = await service.get_gallery(project_id, limit=GALLERY_LIMIT)
+    return PhotoListResponse(
+        items=[_photo_to_response(p) for p in photos],
+        total=total,
+        offset=0,
+        limit=GALLERY_LIMIT,
+    )
 
 
 # ── Recent photos across the caller's projects ──────────────────────────
@@ -901,7 +952,7 @@ def _sheet_to_response(sheet: object) -> SheetResponse:
 # ── List sheets ────────────────────────────────────────────────────────
 
 
-@router.get("/sheets/", response_model=list[SheetResponse])
+@router.get("/sheets/", response_model=SheetListResponse)
 async def list_sheets(
     session: SessionDep,
     response: Response,
@@ -914,13 +965,14 @@ async def list_sheets(
     limit: int = Query(default=100, ge=1, le=500),
     user_id: CurrentUserId = None,  # type: ignore[assignment]
     service: SheetService = Depends(_get_sheet_service),
-) -> list[SheetResponse]:
+) -> SheetListResponse:
     """List sheets for a project with optional filters.
 
-    The body stays a bare array, matching every other list in this module, and
-    the number of sheets the filters matched is returned in ``X-Total-Count``.
-    ``limit`` caps at 500 and the register asks for exactly that, so without the
-    count a truncated page and a whole one are the same response.
+    ``limit`` caps at 500 and the register asks for exactly that, so without
+    the count a truncated page and a whole one are the same response. The
+    count now travels in the body as ``total``. ``X-Total-Count`` is still
+    sent, carrying the same number, because a header costs nothing and
+    anything scripted against this route already reads it.
     """
     await verify_project_access(project_id, user_id, session)
     sheets, total = await service.list_sheets(
@@ -933,7 +985,12 @@ async def list_sheets(
         current_only=current_only,
     )
     response.headers["X-Total-Count"] = str(total)
-    return [_sheet_to_response(s) for s in sheets]
+    return SheetListResponse(
+        items=[_sheet_to_response(s) for s in sheets],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 # ── Distinct disciplines ───────────────────────────────────────────────
@@ -1876,7 +1933,7 @@ async def delete_document(
 
 @router.get(
     "/{document_id}/activity/",
-    response_model=list[DocumentActivityResponse],
+    response_model=DocumentActivityListResponse,
 )
 async def list_document_activity(
     document_id: uuid.UUID,
@@ -1884,20 +1941,28 @@ async def list_document_activity(
     session: SessionDep,
     limit: int = Query(default=20, ge=1, le=100),
     service: DocumentService = Depends(_get_service),
-) -> list[DocumentActivityResponse]:
+) -> DocumentActivityListResponse:
     """Return the newest-first audit timeline for a document.
 
     Used by the file-preview pane to render "X uploaded this on T;
     renamed by Y on T+1; …". Returns 404 when the document is missing
     or the caller has no access to its project (mirrors the cross-module
     secret-by-id convention from :func:`verify_project_access`).
+
+    ``total`` is every event on the document, so a drawer showing the newest
+    20 of 200 can say which of the two it is.
     """
     from app.modules.documents.activity_service import list_activity
 
     existing = await service.get_document(document_id)
     await verify_project_access(existing.project_id, user_id, session)
-    rows = await list_activity(session, document_id, limit=limit)
-    return [DocumentActivityResponse.model_validate(r) for r in rows]
+    rows, total = await list_activity(session, document_id, limit=limit)
+    return DocumentActivityListResponse(
+        items=[DocumentActivityResponse.model_validate(r) for r in rows],
+        total=total,
+        offset=0,
+        limit=limit,
+    )
 
 
 # ── Share-link management (owner-only) ──────────────────────────────────

@@ -76,11 +76,13 @@ from app.modules.equipment.schemas import (
     DamageReportUpdate,
     EquipmentCreate,
     EquipmentDashboardResponse,
+    EquipmentFleetListResponse,
     EquipmentRentalCreate,
     EquipmentRentalResponse,
     EquipmentRentalUpdate,
     EquipmentResponse,
     EquipmentTypeCreate,
+    EquipmentTypeListResponse,
     EquipmentTypeResponse,
     EquipmentTypeUpdate,
     EquipmentUpdate,
@@ -118,13 +120,21 @@ def _get_service(session: SessionDep) -> EquipmentService:
 # ── Equipment Types ──────────────────────────────────────────────────────
 
 
-@router.get("/types/", response_model=list[EquipmentTypeResponse])
+@router.get("/types/", response_model=EquipmentTypeListResponse)
 async def list_types(
     _perm: None = Depends(RequirePermission("equipment.read")),
     service: EquipmentService = Depends(_get_service),
-) -> list[EquipmentTypeResponse]:
+) -> EquipmentTypeListResponse:
+    """Every equipment type the tenant has defined.
+
+    The whole taxonomy, not a page of it: ``EquipmentTypeRepository.list_all``
+    takes no offset or limit. No paging is introduced here, because adding one
+    would turn a list that always answered in full into one that quietly stops
+    at a default, and the type picker on the equipment form reads this route.
+    """
     types = await service.list_types()
-    return [EquipmentTypeResponse.model_validate(t) for t in types]
+    items = [EquipmentTypeResponse.model_validate(t) for t in types]
+    return EquipmentTypeListResponse(items=items, total=len(items), offset=0, limit=len(items))
 
 
 @router.post("/types/", response_model=EquipmentTypeResponse, status_code=201)
@@ -169,7 +179,7 @@ async def delete_type(
 # ── Equipment CRUD ───────────────────────────────────────────────────────
 
 
-@router.get("/equipment/", response_model=list[EquipmentResponse])
+@router.get("/equipment/", response_model=EquipmentFleetListResponse)
 async def list_equipment(
     _perm: None = Depends(RequirePermission("equipment.read")),
     offset: int = Query(default=0, ge=0),
@@ -178,15 +188,28 @@ async def list_equipment(
     type_filter: str | None = Query(default=None, alias="type"),
     ownership: str | None = Query(default=None),
     service: EquipmentService = Depends(_get_service),
-) -> list[EquipmentResponse]:
-    items, _ = await service.equipment_repo.list_(
+) -> EquipmentFleetListResponse:
+    """A page of the fleet register, and how big the fleet is.
+
+    The repository has always returned the total alongside the rows and this
+    route used to drop it on the floor, so a yard of 340 units answered with 50
+    and said nothing about the other 290. ``total`` counts the units matching
+    ``status``, ``type`` and ``ownership``, not the page, so a filtered view
+    reports the size of what it filtered to.
+    """
+    items, total = await service.equipment_repo.list_(
         offset=offset,
         limit=limit,
         status=status_filter,
         type_code=type_filter,
         ownership=ownership,
     )
-    return [EquipmentResponse.model_validate(i) for i in items]
+    return EquipmentFleetListResponse(
+        items=[EquipmentResponse.model_validate(i) for i in items],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/equipment/", response_model=EquipmentResponse, status_code=201)

@@ -17,7 +17,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.documents.activity_models import DocumentActivity
@@ -117,11 +117,22 @@ async def list_activity(
     document_id: uuid.UUID,
     *,
     limit: int = 20,
-) -> list[DocumentActivity]:
-    """Return the newest-first activity rows for a document.
+) -> tuple[list[DocumentActivity], int]:
+    """Return the newest-first activity rows for a document, and how many exist.
 
     The endpoint caps ``limit`` at 100 so an attacker can't pull the
-    entire audit table through a single query string.
+    entire audit table through a single query string. That cap is also why
+    the count is worth a second query: a document with a long revision
+    history answers with its most recent events, and without the count the
+    drawer cannot tell a complete timeline from the head of a long one.
+
+    Args:
+        session: Active database session.
+        document_id: Document whose timeline is being read.
+        limit: Maximum number of rows to return, newest first.
+
+    Returns:
+        The page of rows and the total number of events on the document.
     """
     stmt = (
         select(DocumentActivity)
@@ -130,4 +141,10 @@ async def list_activity(
         .limit(limit)
     )
     result = await session.execute(stmt)
-    return list(result.scalars().all())
+    rows = list(result.scalars().all())
+
+    count_stmt = select(func.count()).select_from(
+        select(DocumentActivity.id).where(DocumentActivity.document_id == document_id).subquery()
+    )
+    total = (await session.execute(count_stmt)).scalar_one()
+    return rows, total

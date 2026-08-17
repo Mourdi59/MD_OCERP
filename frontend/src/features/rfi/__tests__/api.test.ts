@@ -12,6 +12,9 @@
  *   - ``fetchRFIs`` must omit empty / whitespace-only filters from the query
  *     string (an empty ``?status=`` would 422 against the enum-validated
  *     param) and only include offset/limit when they are real numbers.
+ *   - ``fetchRFIs`` must hand back the page envelope rather than unwrapping
+ *     it to ``items``. The register is capped at 100 rows a page, so a caller
+ *     that never sees ``total`` cannot say how much of it is on screen.
  *
  * We mock the shared HTTP layer so these are pure URL-assembly assertions
  * with no network and no coupling to the auth/toast/offline stores.
@@ -120,8 +123,26 @@ describe('fetchRFIStats', () => {
 
 describe('fetchRFIs query-string assembly', () => {
   it('returns the bare collection root when no filters are supplied', async () => {
-    await fetchRFIs();
+    apiGet.mockResolvedValueOnce({ items: [], total: 0, offset: 0, limit: 50 });
+    const page = await fetchRFIs();
     expect(nthArg(apiGet, 0, 0)).toBe('/v1/rfi/');
+    expect(page.items).toEqual([]);
+  });
+
+  it('hands back the page envelope whole, total included', async () => {
+    // The register endpoint caps `limit` at 100, so on a busy project the
+    // rows are always a slice. Collapsing the reply to `items` here would
+    // put every caller back to guessing how much of the register it holds.
+    apiGet.mockResolvedValueOnce({
+      items: [{ id: 'r1' }, { id: 'r2' }],
+      total: 341,
+      offset: 0,
+      limit: 100,
+    });
+    const page = await fetchRFIs({ project_id: 'p1', limit: 100 });
+    expect(page.items.map((r) => r.id)).toEqual(['r1', 'r2']);
+    expect(page.total).toBe(341);
+    expect(page.limit).toBe(100);
   });
 
   it('omits empty status and whitespace-only search', async () => {

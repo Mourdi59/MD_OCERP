@@ -47,7 +47,8 @@ import { PageHeader } from '@/shared/ui/PageHeader';
 import { UserSearchInput } from '@/shared/ui/UserSearchInput';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useCreateShortcut } from '@/shared/hooks/useCreateShortcut';
-import { apiGet, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
+import { apiGet, triggerDownload, extractErrorMessageFromBody, type Page } from '@/shared/lib/api';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -427,12 +428,16 @@ function normalizeDocRow(raw: DocumentsApiRow): DocumentPickerRow {
 
 function DocumentPickerModal({
   documents,
+  documentsTotal,
   isLoading,
   selected,
   onClose,
   onApply,
 }: {
   documents: DocumentPickerRow[];
+  /** How many documents the project holds, which is not `documents.length`:
+   *  the route caps the catalogue at 200 and the picker cannot page. */
+  documentsTotal: number;
   isLoading: boolean;
   selected: string[];
   onClose: () => void;
@@ -568,6 +573,12 @@ function DocumentPickerModal({
               })}
             </ul>
           )}
+          {/* Gated on the server page, not on the search-filtered rows: past
+              the cap a drawing simply cannot be attached to this RFI. */}
+          <TruncationNotice
+            page={{ items: documents, total: documentsTotal }}
+            className="px-3 pt-2"
+          />
         </div>
 
         <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-border-light">
@@ -629,16 +640,18 @@ export function CreateRFIModal({
    * attached. Fetched lazily so the create modal does not pay the cost
    * unless the user opens the dialog.
    */
-  const { data: documents = [], isLoading: docsLoading } = useQuery({
+  const { data: documentPage, isLoading: docsLoading } = useQuery({
     queryKey: ['rfi-doc-picker', projectId],
     queryFn: async () => {
       const params = new URLSearchParams({ project_id: projectId, limit: '200' });
-      const rows = await apiGet<DocumentsApiRow[]>(`/v1/documents/?${params.toString()}`);
-      return rows.map(normalizeDocRow);
+      const page = await apiGet<Page<DocumentsApiRow>>(`/v1/documents/?${params.toString()}`);
+      return { ...page, items: page.items.map(normalizeDocRow) };
     },
     enabled: Boolean(projectId),
     staleTime: 60_000,
   });
+
+  const documents = useMemo(() => documentPage?.items ?? [], [documentPage]);
 
   const docById = useMemo(() => {
     const map = new Map<string, DocumentPickerRow>();
@@ -808,6 +821,7 @@ export function CreateRFIModal({
       {showDocPicker && (
         <DocumentPickerModal
           documents={documents}
+          documentsTotal={documentPage?.total ?? documents.length}
           isLoading={docsLoading}
           selected={form.linked_drawing_ids}
           onClose={() => setShowDocPicker(false)}
@@ -1828,7 +1842,7 @@ export function RFIPage() {
     projects.find((p) => p.id === selectedProjectId)?.name || '';
 
   const {
-    data: rfis = [],
+    data: rfiPage,
     isLoading,
     isError,
     error,
@@ -1844,6 +1858,10 @@ export function RFIPage() {
       }),
     enabled: !!projectId,
   });
+  /* The endpoint caps `limit` at 100, so a busy project's register arrives
+     one page at a time and `total` is the only thing that says so. */
+  const rfis = rfiPage?.items ?? [];
+  const rfiTotal = rfiPage?.total ?? rfis.length;
 
   /* Server already filters by ?status= / ?search= but priority + discipline
      are filtered client-side for now — the column list endpoint does not
@@ -2444,6 +2462,14 @@ export function RFIPage() {
 
       {/* Table */}
       <div>
+        {/* Gated on the server page, not on the client-filtered rows, and
+            deliberately outside the empty-state branch: a quick filter that
+            matches nothing on this page still has to say the page is a
+            slice, or the reader concludes the project has no such RFI. */}
+        <TruncationNotice
+          page={{ items: rfis, total: rfiTotal }}
+          className="mb-3"
+        />
         {isLoading ? (
           <SkeletonTable rows={5} columns={6} />
         ) : isError ? (

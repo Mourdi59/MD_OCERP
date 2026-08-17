@@ -4,11 +4,10 @@
  * ActivityDrawer — right-edge slide-over showing the full audit trail
  * for a single document.
  *
- * Backed by ``GET /v1/documents/{id}/activity/?limit=N``. The endpoint
- * currently returns a bare array; we tolerate both the bare-list shape
- * and a future ``{items, total}`` envelope so the drawer keeps working
- * across backend versions (mirrors the legacy-shape tolerance from
- * ``NotificationBell.tsx``).
+ * Backed by ``GET /v1/documents/{id}/activity/?limit=N``, which answers
+ * with ``{items, total, offset, limit}``. The drawer asks for the route's
+ * maximum and still shows `total`, because a file busy enough to overrun
+ * that maximum is exactly the file whose reader needs to be told.
  *
  * UX notes:
  *   - 360px wide right-anchored panel (vs FilePreviewPane's 320px)
@@ -39,8 +38,10 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-import { apiGet } from '@/shared/lib/api';
+import { apiGet, type Page } from '@/shared/lib/api';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -54,14 +55,6 @@ export interface ActivityEvent {
   meta: Record<string, unknown>;
   created_at: string;
 }
-
-/**
- * Tolerated response envelope. The backend currently returns a plain
- * array (see ``backend/app/modules/documents/router.py::list_document_activity``).
- * The future envelope ``{items, total}`` is also accepted in case the
- * backend is upgraded ahead of the frontend.
- */
-type ActivityResponse = ActivityEvent[] | { items: ActivityEvent[]; total: number };
 
 interface ActivityDrawerProps {
   /** Document id whose timeline we should fetch. ``null`` keeps the drawer closed. */
@@ -91,6 +84,12 @@ const ACTION_CHIP: Record<string, string> = {
   deleted: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300',
   cde_state_changed: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
 };
+
+/* The route's maximum page. It belongs in the query key as well as the
+   URL: the preview pane reads the same endpoint for the same document at
+   a limit of 20, and while the key omitted the limit the two shared one
+   cache entry, so whichever mounted first decided what the other saw. */
+const DRAWER_ACTIVITY_LIMIT = 100;
 
 // ── Bucketing ────────────────────────────────────────────────────────
 
@@ -160,9 +159,13 @@ export function ActivityDrawer({
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ['document-activity', documentId],
+    queryKey: ['document-activity', documentId, DRAWER_ACTIVITY_LIMIT],
+    // The route answers with a page, and the drawer asks for its maximum.
+    // `total` is how many events the document really has, which is the only
+    // way a long history can announce itself. Spelled out rather than hidden
+    // behind a type alias: the envelope gate reads the call, not the file.
     queryFn: () =>
-      apiGet<ActivityResponse>(`/v1/documents/${documentId}/activity/?limit=100`),
+      apiGet<Page<ActivityEvent>>(`/v1/documents/${documentId}/activity/?limit=${DRAWER_ACTIVITY_LIMIT}`),
     /* Only run when we actually have a document id AND the drawer is
        open. Keeps the React Query cache from filling with stale entries
        when the user merely browses files without opening the drawer. */
@@ -171,12 +174,7 @@ export function ActivityDrawer({
     retry: false,
   });
 
-  /* Tolerate both bare-array and {items,total} envelope shapes. */
-  const events: ActivityEvent[] = useMemo(() => {
-    if (!data) return [];
-    if (Array.isArray(data)) return data;
-    return data.items ?? [];
-  }, [data]);
+  const events: ActivityEvent[] = useMemo(() => data?.items ?? [], [data]);
 
   /* Group newest-first into Today / Yesterday / Earlier. Bucket order
      is preserved by walking the keys in declaration order. */
@@ -190,8 +188,10 @@ export function ActivityDrawer({
     return buckets;
   }, [events]);
 
-  const totalCount =
-    data && !Array.isArray(data) ? data.total : events.length;
+  // The document's event count, from the server. On a file with more events
+  // than one request carries this is larger than the list below, which is
+  // what the notice at the end of the list is there to say.
+  const totalCount = data?.total ?? events.length;
 
   // Escape-to-close.
   useEffect(() => {
@@ -321,6 +321,9 @@ export function ActivityDrawer({
               );
             })
           )}
+          {/* The drawer asks for the route's maximum and cannot page, so a
+              file with a long revision history shows only its recent events. */}
+          {data ? <TruncationNotice page={data} className="px-4 py-3" /> : null}
         </div>
       </aside>
     </>
@@ -351,7 +354,7 @@ function ActivityRow({
   // the wrapping <li>.
   const absolute = (() => {
     try {
-      return new Date(event.created_at).toLocaleString();
+      return new Date(event.created_at).toLocaleString(getIntlLocale());
     } catch {
       return event.created_at;
     }

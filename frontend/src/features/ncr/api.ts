@@ -6,7 +6,7 @@
  * All endpoints are prefixed with /v1/ncr/.
  */
 
-import { apiGet, apiPatch, apiPost } from '@/shared/lib/api';
+import { apiGet, apiPatch, apiPost, type Page } from '@/shared/lib/api';
 
 /* -- Types ----------------------------------------------------------------- */
 
@@ -47,6 +47,10 @@ export interface NCRFilters {
   project_id?: string;
   status?: NCRStatus | '';
   severity?: NCRSeverity | '';
+  /** Row to start from. The route defaults to 0. */
+  offset?: number;
+  /** Rows to read. The route defaults to 50 and refuses more than 100. */
+  limit?: number;
 }
 
 export interface CreateNCRPayload {
@@ -128,14 +132,24 @@ function normaliseNCR(raw: NCRWire): NCR {
 
 /* -- API Functions --------------------------------------------------------- */
 
-export async function fetchNCRs(filters?: NCRFilters): Promise<NCR[]> {
+/**
+ * One page of the NCR register, with `total` counting everything the filters
+ * matched. The route caps `limit` at 100 and defaults to 50, and quality
+ * records accumulate for the life of a project, so the rows are a slice and
+ * `total` is the only thing that says by how much.
+ */
+export async function fetchNCRs(filters?: NCRFilters): Promise<Page<NCR>> {
   const params = new URLSearchParams();
   if (filters?.project_id) params.set('project_id', filters.project_id);
   if (filters?.status) params.set('status', filters.status);
   if (filters?.severity) params.set('severity', filters.severity);
+  // Written as a typeof test rather than a truthiness one: offset 0 is the
+  // first page and must survive.
+  if (typeof filters?.offset === 'number') params.set('offset', String(filters.offset));
+  if (typeof filters?.limit === 'number') params.set('limit', String(filters.limit));
   const qs = params.toString();
-  const rows = await apiGet<NCRWire[]>(`/v1/ncr/${qs ? `?${qs}` : ''}`);
-  return rows.map(normaliseNCR);
+  const page = await apiGet<Page<NCRWire>>(`/v1/ncr/${qs ? `?${qs}` : ''}`);
+  return { ...page, items: page.items.map(normaliseNCR) };
 }
 
 export async function createNCR(data: CreateNCRPayload): Promise<NCR> {

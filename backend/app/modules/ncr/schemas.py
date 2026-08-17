@@ -98,3 +98,19 @@ class NCRResponse(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     created_at: datetime
     updated_at: datetime
+
+
+class NCRListResponse(BaseModel):
+    """One page of a project's NCR register plus the size of the whole set.
+
+    ``total`` counts the reports the type, status and severity filters
+    matched, not the length of ``items``. Non-conformance reports are quality
+    evidence that accumulates for the life of a project and is never pruned,
+    so this is a register that grows without bound and a page of it says
+    nothing about the register unless it carries the count.
+    """
+
+    items: list[NCRResponse] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50

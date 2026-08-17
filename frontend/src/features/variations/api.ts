@@ -7,7 +7,7 @@
  * backend/app/modules/variations/router.py
  */
 
-import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete, type Page } from '@/shared/lib/api';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -272,12 +272,12 @@ export function listNotices(params: {
   project_id: string;
   status?: string;
   limit?: number;
-}): Promise<Notice[]> {
+}): Promise<Page<Notice>> {
   const qs = new URLSearchParams();
   qs.set('project_id', params.project_id);
   if (params.status) qs.set('status', params.status);
   if (params.limit !== undefined) qs.set('limit', String(params.limit));
-  return apiGet<Notice[]>(`/v1/variations/notices/?${qs.toString()}`);
+  return apiGet<Page<Notice>>(`/v1/variations/notices/?${qs.toString()}`);
 }
 
 export function createNotice(data: CreateNoticePayload): Promise<Notice> {
@@ -315,12 +315,12 @@ export function listVariationRequests(params: {
   project_id: string;
   status?: string;
   limit?: number;
-}): Promise<VariationRequest[]> {
+}): Promise<Page<VariationRequest>> {
   const qs = new URLSearchParams();
   qs.set('project_id', params.project_id);
   if (params.status) qs.set('status', params.status);
   if (params.limit !== undefined) qs.set('limit', String(params.limit));
-  return apiGet<VariationRequest[]>(`/v1/variations/variation-requests/?${qs.toString()}`);
+  return apiGet<Page<VariationRequest>>(`/v1/variations/variation-requests/?${qs.toString()}`);
 }
 
 export function createVR(data: CreateVRPayload): Promise<VariationRequest> {
@@ -384,12 +384,12 @@ export function listVariationOrders(params: {
   project_id: string;
   status?: string;
   limit?: number;
-}): Promise<VariationOrder[]> {
+}): Promise<Page<VariationOrder>> {
   const qs = new URLSearchParams();
   qs.set('project_id', params.project_id);
   if (params.status) qs.set('status', params.status);
   if (params.limit !== undefined) qs.set('limit', String(params.limit));
-  return apiGet<VariationOrder[]>(`/v1/variations/variation-orders/?${qs.toString()}`);
+  return apiGet<Page<VariationOrder>>(`/v1/variations/variation-orders/?${qs.toString()}`);
 }
 
 export function createVO(data: CreateVOPayload): Promise<VariationOrder> {
@@ -428,12 +428,12 @@ export function listDaywork(params: {
   project_id: string;
   status?: string;
   limit?: number;
-}): Promise<DayworkSheet[]> {
+}): Promise<Page<DayworkSheet>> {
   const qs = new URLSearchParams();
   qs.set('project_id', params.project_id);
   if (params.status) qs.set('status', params.status);
   if (params.limit !== undefined) qs.set('limit', String(params.limit));
-  return apiGet<DayworkSheet[]>(`/v1/variations/daywork-sheets/?${qs.toString()}`);
+  return apiGet<Page<DayworkSheet>>(`/v1/variations/daywork-sheets/?${qs.toString()}`);
 }
 
 export function createDaywork(data: CreateDayworkPayload): Promise<DayworkSheet> {
@@ -469,12 +469,12 @@ export function listEoTClaims(params: {
   project_id: string;
   status?: string;
   limit?: number;
-}): Promise<ExtensionOfTimeClaim[]> {
+}): Promise<Page<ExtensionOfTimeClaim>> {
   const qs = new URLSearchParams();
   qs.set('project_id', params.project_id);
   if (params.status) qs.set('status', params.status);
   if (params.limit !== undefined) qs.set('limit', String(params.limit));
-  return apiGet<ExtensionOfTimeClaim[]>(`/v1/variations/eot-claims/?${qs.toString()}`);
+  return apiGet<Page<ExtensionOfTimeClaim>>(`/v1/variations/eot-claims/?${qs.toString()}`);
 }
 
 export function createEoT(data: CreateEoTPayload): Promise<ExtensionOfTimeClaim> {

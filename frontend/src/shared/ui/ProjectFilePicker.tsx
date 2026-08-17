@@ -47,6 +47,7 @@ import {
 } from '@/features/documents/api';
 import { fetchFileList } from '@/features/file-manager/api';
 import type { FileKind, FileRow } from '@/features/file-manager/types';
+import type { Page } from '@/shared/lib/api';
 import { formatFileSize } from '@/shared/lib/formatters';
 import {
   acceptedFormatLabel,
@@ -207,10 +208,17 @@ export function ProjectFilePicker(props: ProjectFilePickerProps) {
 
   const documentsQuery = useQuery({
     queryKey: ['documents', projectId],
-    queryFn: () => fetchDocuments(projectId),
+    // The return type is spelled out because this query holds a page, not a
+    // list. Three surfaces cache under ['documents', projectId] and React
+    // Query will hand any of them what another put there.
+    queryFn: (): Promise<Page<DocumentItem>> => fetchDocuments(projectId),
     enabled: open && !federated && Boolean(projectId),
     staleTime: 15_000,
   });
+  const documentItems = useMemo<DocumentItem[]>(
+    () => documentsQuery.data?.items ?? [],
+    [documentsQuery.data],
+  );
 
   // Its own cache key, never shared with the Files page: the same endpoint
   // under different filters is a different answer, and React Query hands a
@@ -242,7 +250,7 @@ export function ProjectFilePicker(props: ProjectFilePickerProps) {
       // Newest first: the drawing a user wants to open is almost always the
       // one just filed. Sorting here (not in the matcher) keeps the filter
       // pure. The federated listing is already sorted by the server.
-      const sorted = [...(documentsQuery.data ?? [])].sort((a, b) =>
+      const sorted = [...documentItems].sort((a, b) =>
         (b.created_at ?? '').localeCompare(a.created_at ?? ''),
       );
       const onPickDocument = props.onPick;
@@ -296,7 +304,7 @@ export function ProjectFilePicker(props: ProjectFilePickerProps) {
       });
     }
     return out;
-  }, [props.moduleKinds, props.onPick, federatedItems, documentsQuery.data, accepted, search]);
+  }, [props.moduleKinds, props.onPick, federatedItems, documentItems, accepted, search]);
 
   // Rows grouped by the store they came from, in the order the caller listed
   // the stores, so the group a user is looking for does not move around.
@@ -315,8 +323,8 @@ export function ProjectFilePicker(props: ProjectFilePickerProps) {
    */
   const totalOpenable = useMemo(() => {
     if (federated) return search.trim() ? 1 : rows.length;
-    return filterProjectFiles(documentsQuery.data ?? [], accepted).length;
-  }, [federated, search, rows.length, documentsQuery.data, accepted]);
+    return filterProjectFiles(documentItems, accepted).length;
+  }, [federated, search, rows.length, documentItems, accepted]);
 
   const formatList = useMemo(() => acceptedFormatLabel(accepted), [accepted]);
   const loading = federated ? federatedQuery.isLoading : documentsQuery.isLoading;
@@ -490,6 +498,12 @@ export function ProjectFilePicker(props: ProjectFilePickerProps) {
         {federated && federatedQuery.data ? (
           <TruncationNotice
             page={{ items: federatedItems, total: federatedQuery.data.total }}
+            className="px-1"
+          />
+        ) : null}
+        {!federated && documentsQuery.data ? (
+          <TruncationNotice
+            page={{ items: documentItems, total: documentsQuery.data.total }}
             className="px-1"
           />
         ) : null}

@@ -13,7 +13,8 @@ database, in the same monkeypatch / transient-ORM-object style as
    the RFI, runs the project-scope (IDOR) guard against the RFI's OWN
    project, asks the helper for THIS RFI's journal (``entity_type="rfi"``,
    ``entity_id=<rfi_id>``), and serialises the rows through
-   ``RFIActivityEntry`` (never the raw ORM row).
+   ``RFIActivityEntry`` (never the raw ORM row) inside a page envelope whose
+   ``total`` is counted over the same two filters as the page.
 
 #. ``test_rfi_activity_entry_maps_metadata_alias`` - the response schema maps
    the ``metadata_`` column to the wire field ``metadata`` (the subtle alias
@@ -34,7 +35,7 @@ import pytest
 
 from app.core.audit_log import ActivityLog
 from app.modules.rfi import router as rfi_router
-from app.modules.rfi.schemas import RFIActivityEntry
+from app.modules.rfi.schemas import RFIActivityEntry, RFIActivityListResponse
 
 
 def _activity_row(
@@ -115,8 +116,16 @@ async def test_get_rfi_activity_is_scoped_and_serialised(monkeypatch) -> None:
             ),
         ]
 
+    async def _fake_count(session: Any, *, entity_type: str, entity_id: Any) -> int:
+        # The count has to be filtered exactly like the page above, or the
+        # envelope describes a different set of rows than it carries.
+        captured["count_entity_type"] = entity_type
+        captured["count_entity_id"] = entity_id
+        return 7
+
     monkeypatch.setattr(rfi_router, "verify_project_access", _fake_verify)
     monkeypatch.setattr(rfi_router, "get_activity_for_entity", _fake_activity)
+    monkeypatch.setattr(rfi_router, "count_activity_for_entity", _fake_count)
 
     service = _StubService(project_id)
     result = await rfi_router.get_rfi_activity(
@@ -139,16 +148,27 @@ async def test_get_rfi_activity_is_scoped_and_serialised(monkeypatch) -> None:
     assert captured["limit"] == 50
     assert captured["offset"] == 0
 
-    # Rows come back typed (not raw ORM) with the fields the timeline needs.
-    assert len(result) == 2
-    assert all(isinstance(r, RFIActivityEntry) for r in result)
-    first = result[0]
+    # The count is asked for the SAME journal as the page, not a wider one.
+    assert captured["count_entity_type"] == "rfi"
+    assert str(captured["count_entity_id"]) == str(rfi_id)
+
+    # Rows come back typed (not raw ORM) with the fields the timeline needs,
+    # inside an envelope stating how long the journal actually is. Two of
+    # seven here: the endpoint returns the OLDEST entries first, so what the
+    # reader is missing is the recent history rather than the ancient part.
+    assert isinstance(result, RFIActivityListResponse)
+    assert result.total == 7
+    assert result.offset == 0
+    assert result.limit == 50
+    assert len(result.items) == 2
+    assert all(isinstance(r, RFIActivityEntry) for r in result.items)
+    first = result.items[0]
     assert first.from_status == "open"
     assert first.to_status == "answered"
     assert str(first.actor_id) == str(actor_id)
     assert first.metadata == {"rfi_number": "RFI-001"}
     # Null actor (background row) survives serialisation.
-    assert result[1].actor_id is None
+    assert result.items[1].actor_id is None
 
 
 def test_rfi_activity_entry_maps_metadata_alias() -> None:

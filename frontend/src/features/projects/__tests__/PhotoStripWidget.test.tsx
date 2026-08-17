@@ -40,12 +40,22 @@ function renderWithProviders(ui: React.ReactNode) {
 }
 
 /** Route apiGet by URL so the two widget queries get distinct payloads. */
+/**
+ * Both routes this widget reads answer with `{items, total, offset, limit}`,
+ * so the fixtures stay written as plain arrays and are wrapped here. Writing
+ * the envelope out at every fixture would bury the rows the tests are about.
+ */
+function asPage(rows: unknown) {
+  const items = Array.isArray(rows) ? rows : [];
+  return { items, total: items.length, offset: 0, limit: 100 };
+}
+
 function mockApi(byUrl: Record<string, unknown>) {
   (apiGet as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
     for (const [needle, payload] of Object.entries(byUrl)) {
-      if (url.includes(needle)) return Promise.resolve(payload);
+      if (url.includes(needle)) return Promise.resolve(asPage(payload));
     }
-    return Promise.resolve([]);
+    return Promise.resolve(asPage([]));
   });
 }
 

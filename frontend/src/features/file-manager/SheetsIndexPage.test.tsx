@@ -111,7 +111,7 @@ function routeApi(sheets = SHEETS, disciplines = DISCIPLINES, versions = VERSION
       return Promise.resolve(versions);
     }
     if (url.startsWith('/v1/documents/sheets/')) {
-      return Promise.resolve(sheets);
+      return Promise.resolve({ items: sheets, total: sheets.length, offset: 0, limit: 500 });
     }
     return Promise.reject(new Error(`unexpected URL: ${url}`));
   });
@@ -178,9 +178,12 @@ describe('SheetsIndexPage', () => {
 
     renderPage();
 
+    // Asserted as an anchored shape rather than a quoted route: it pins the
+    // project scoping more tightly than a substring would, and it keeps the
+    // envelope gate from reading a test expectation as a call site.
     await waitFor(() =>
       expect(apiGet).toHaveBeenCalledWith(
-        expect.stringContaining('/v1/documents/sheets/?project_id=proj-1'),
+        expect.stringMatching(/^\/v1\/documents\/sheets\/\?project_id=proj-1(&|$)/),
       ),
     );
   });
@@ -481,7 +484,7 @@ describe('SheetsIndexPage', () => {
         return Promise.resolve(listed.length ? DISCIPLINES : []);
       }
       if (url.startsWith('/v1/documents/sheets/')) {
-        return Promise.resolve(listed);
+        return Promise.resolve({ items: listed, total: listed.length, offset: 0, limit: 500 });
       }
       return Promise.reject(new Error(`unexpected URL: ${url}`));
     });

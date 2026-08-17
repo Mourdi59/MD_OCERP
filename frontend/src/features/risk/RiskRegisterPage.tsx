@@ -17,7 +17,7 @@ import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { PlanningCrossLinks } from '@/features/schedule/PlanningCrossLinks';
 import SimilarItemsPanel from '@/shared/ui/SimilarItemsPanel';
 import { UserSearchInput } from '@/shared/ui/UserSearchInput';
-import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete, type Page } from '@/shared/lib/api';
 import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -699,7 +699,7 @@ export function RiskRegisterPage() {
     queryKey: ['risks', projectId],
     queryFn: () =>
       fetchAllPages<RiskItem>((offset, limit) =>
-        apiGet<RiskItem[]>(`/v1/risk/?project_id=${projectId}&limit=${limit}&offset=${offset}`),
+        apiGet<Page<RiskItem>>(`/v1/risk/?project_id=${projectId}&limit=${limit}&offset=${offset}`),
       ),
     enabled: !!projectId,
   });

@@ -56,7 +56,99 @@ MIGRATED_ENDPOINTS: dict[str, str] = {
     "/v1/daily-diary/diaries/": "daily diary list",
     "/v1/daily-diary/diaries/{}/entries": "daily diary entries",
     "/v1/daily-diary/photos/": "daily diary photos",
+    # Wave 4, the documents module. The register is the widest-read list in
+    # the product: sixteen call sites, most of them file pickers in other
+    # modules rather than the register page itself.
+    "/v1/documents/": "documents register",
+    "/v1/documents/photos/": "site photos",
+    # Timeline used to answer with date groups; grouping moved to the client,
+    # because a list of days cannot say how many photos it left out.
+    #
+    # There is deliberately no "/v1/documents/photos/gallery/" entry here any
+    # more. That route returned the same body as this one from a body that was
+    # identical line for line, and the helper calling it was never called, so
+    # both were retired rather than enveloped twice. An entry naming a route
+    # that no longer exists would print "0 call sites, 0 migrated" forever,
+    # which is the decorative entry this guard is not allowed to grow.
+    "/v1/documents/photos/timeline/": "site photo timeline",
+    "/v1/documents/sheets/": "drawing sheets",
+    # Two readers at two different limits, 100 in the drawer and 20 in the
+    # preview pane. See the shared-key note on "document-activity" below.
+    "/v1/documents/{}/activity/": "document activity",
+    # Wave 5, the question-and-defect registers: rfi, risk, ncr. All three
+    # backends already computed the total and threw it away, and the rfi one
+    # had gone further and switched the COUNT off on the grounds that a bare
+    # list could not carry it.
+    #
+    # This entry is thinner than its name suggests and the count below will
+    # not say so. The register's own client writes
+    # `/v1/rfi/${qs ? `?${qs}` : ''}`, and this scan does not see that line AT
+    # ALL: the URL pattern's character class excludes whitespace, so it stops
+    # dead at the space before the `?` and no route is extracted. (An earlier
+    # version of this note said the shape collapsed to `/v1/rfi/{}` and
+    # collided with `getRFI`. Wrong mechanism, same conclusion, and measured:
+    # 105 URL literals across 45 files use that suffix idiom and are invisible
+    # here. Widening the pattern is a tree-wide change, because the idiom puts
+    # a `?` INSIDE the interpolation and `url_shape` splits on `?` before it
+    # collapses `${...}`. Worth doing, not worth doing mid-wave.)
+    # What this entry sees is the three pickers and widgets that write the
+    # route out in full. The register client is covered by the "rfis" cache
+    # key below instead, which is where a wrapper caller can be caught.
+    "/v1/rfi/": "rfi register",
+    "/v1/rfi/{}/activity/": "rfi activity",
+    "/v1/risk/": "risk register",
+    # Same collapsing idiom as rfi, so this sees only the safety dashboard's
+    # rollup. The register client is covered by the "ncrs" key below.
+    "/v1/ncr/": "ncr register",
+    # Wave 6, the contract-change registers. All seven list routes in the
+    # variations module wrote `rows, _ = await <repo>.list_for_project(...)`,
+    # discarding a total the repository had already counted over the filtered
+    # set. Unlike rfi and ncr these need no cache-key entry: the api layer
+    # writes `/v1/variations/notices/?${qs}` and `url_shape` cuts at the `?`,
+    # so the register and the single-item read are two distinct shapes. The
+    # note at the end of SHARED_QUERY_KEYS explains why reaching for that dict
+    # here would not work.
+    "/v1/variations/notices/": "variation notices",
+    "/v1/variations/variation-requests/": "variation requests",
+    "/v1/variations/variation-orders/": "variation orders",
+    "/v1/variations/daywork-sheets/": "daywork sheets",
+    "/v1/variations/eot-claims/": "eot claims",
+    #
+    # Two of the seven are enveloped in the router and deliberately absent
+    # here: `/v1/variations/site-measurements/` and
+    # `/v1/variations/disruption-claims/`. Nothing in the app reads either
+    # one, so an entry would report "0 call sites, 0 migrated" and pass
+    # without reading anything - the decorative entry this guard refuses to
+    # grow. Add them the day a caller appears, not before.
+    #
+    # Not a register at all: the equipment taxonomy is read whole, by a
+    # repository method that takes no offset or limit, so its `total` can
+    # never exceed its `items`. It is enveloped and listed anyway so callers
+    # do not have to carry a mental list of which routes describe themselves.
+    "/v1/equipment/types/": "equipment types",
+    # The fleet register, which is a register: the repository counted the yard
+    # on every call and the route dropped the number.
+    #
+    # One call site, and one is the right number. Every reader goes through
+    # `listEquipment` in features/equipment/api.ts, so the wrapper's return
+    # type is what binds them and tsc enforces the rest. That wrapper had to
+    # stop writing its query suffix as `${q ? `?${q}` : ''}` to be seen here at
+    # all - see the rfi note above for why. The cache key cannot carry this
+    # one: all three readers key ['equipment', 'list', ...], but so does
+    # ['equipment', 'detail', id], a single-unit apiGet<Equipment> that carries
+    # no envelope, and QUERY_KEY_RE anchors the first element only. Listing
+    # "equipment" would report the detail drawer UNMIGRATED forever. Renaming
+    # the list key to escape that would be worse than useless: three mutations
+    # invalidate the bare prefix ['equipment'], and React Query prefix-matches,
+    # so a renamed key stops refreshing the register after create and delete.
+    "/v1/equipment/equipment/": "equipment fleet",
 }
+
+# Left bare on purpose in wave 4: `/v1/documents/photos/recent/`. It is a
+# dashboard feed of the twelve newest photos across every project the caller
+# can open, hard-capped at 48 by the route signature, and its heading says
+# "Latest site photos". A feed that names itself a sample is not claiming to
+# be a register, so there is no truncation for the envelope to disclose.
 
 # Wave 2 measured five more enveloped endpoints - file_comments,
 # file_distribution, file_references, file_saved_views, file_trash - and
@@ -136,6 +228,59 @@ SHARED_QUERY_KEYS: dict[str, str] = {
     # the entry would report every one of them UNMIGRATED and no edit to a
     # correct file could clear it. Its three list endpoints are covered by
     # the URL scan above instead, which does see them.
+    #
+    # Wave 4. Four surfaces cache the document register under ['documents',
+    # <project>, ...]: the register page, the shared file picker, the
+    # dashboard upload card and the map placer. Nothing under that first
+    # element is a single-document read, so the entry is clearable - which is
+    # the check the punchlist note above says to run before listing a key.
+    "documents": "/v1/documents/",
+    # One reader each, the gallery grid and the timeline. A one-reader key
+    # cannot disagree with itself today; it is listed for the same reason
+    # "correspondence" is, being the key the next reader will copy.
+    "photos": "/v1/documents/photos/",
+    "photos-timeline": "/v1/documents/photos/timeline/",
+    # The sharpest case in this wave: the file drawer and the preview pane
+    # cached one document's history under the identical key while asking the
+    # server for different amounts of it, 100 events against 20. React Query
+    # handed whichever landed first to both, so the pane could render a page
+    # whose `limit` it never requested. Both keys now carry the limit as a
+    # third element, so the two are separate cache entries. The first element
+    # is unchanged, which is why this listing still matches both call sites:
+    # QUERY_KEY_RE anchors the first element only. Putting a page size in the
+    # URL and not in the key is the general form of that bug - if you add a
+    # second reader of a paged endpoint at a different limit, key the limit.
+    "document-activity": "/v1/documents/{}/activity/",
+    # Wave 5. These four carry the weight the URL scan cannot: rfi and ncr
+    # both build their register URL with an interpolated query suffix, so the
+    # route the scan sees is `{}` rather than the collection, and the only
+    # readers it would otherwise judge are pickers in other modules.
+    #
+    # Clearable, which is the check the punchlist note above says to run
+    # first. Nothing under ['rfis'] or ['ncrs'] is a single-item read - those
+    # live under ['rfi', id] and there is no ['ncrs', id] - and the neighbours
+    # that look related are separate cache entries: ['rfi', 'stats'],
+    # ['rfi-stats'], ['ncrs-summary'], ['risk', id], ['risk-summary'],
+    # ['risk-matrix']. QUERY_KEY_RE anchors the closing quote, so 'ncrs' does
+    # not match 'ncrs-summary'.
+    "rfis": "/v1/rfi/",
+    "rfi-activity": "/v1/rfi/{}/activity/",
+    "risks": "/v1/risk/",
+    "ncrs": "/v1/ncr/",
+    # NOT listable, on purpose: "variations". Reach for this dict when you
+    # migrate that module and it will look like the obvious move, because all
+    # five of its register queries are keyed ['variations', <thing>, ...]. It
+    # is the "daily-diary" trap above wearing different clothes: the same
+    # first element also covers ['variations', 'projects'] and ['variations',
+    # 'dashboard', <project>], which are not pages and never will be, so the
+    # entry would report them UNMIGRATED forever.
+    #
+    # It is also unnecessary there. The URL scan already covers that module
+    # cleanly, which is what makes variations unlike rfi and ncr above:
+    # url_shape() cuts at the `?`, so the register reads as
+    # `/v1/variations/notices/` and the single-item read as
+    # `/v1/variations/notices/{}`. Two different shapes, no collision, so the
+    # list endpoint can be named in MIGRATED_ENDPOINTS on its own.
 }
 
 QUERY_KEY_RE = r"queryKey:\s*\[\s*['\"`]{key}['\"`]"
@@ -273,10 +418,14 @@ def report(root: Path) -> int:
         for p in sorted(set(bad)):
             print(f"  UNMIGRATED  {p.relative_to(REPO)}")
             failed = True
+    # One tree walk for every key, not one walk per key: this used to sit
+    # inside the loop, so each key added to the dict above cost another full
+    # pass over frontend/src and the guard grew slower every wave.
+    by_key = scan_query_keys(root)
     for key, endpoint in SHARED_QUERY_KEYS.items():
         if endpoint not in MIGRATED_ENDPOINTS:
             continue
-        reads, bad = scan_query_keys(root)[key]
+        reads, bad = by_key[key]
         print(
             f"queryKey ['{key}']: {len(reads)} reading call sites, {len(reads) - len(bad)} migrated"
         )

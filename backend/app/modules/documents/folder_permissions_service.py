@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Container
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
@@ -50,6 +51,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.documents.folder_permissions_models import (
     FOLDER_ROLE_RANK,
     FOLDER_ROLES,
+    FOLDER_SCOPED_CATEGORIES,
     FolderPermission,
     role_satisfies,
 )
@@ -393,6 +395,41 @@ def kind_and_path_for_document(category: str | None) -> tuple[str, str | None]:
     # as the umbrella kind so the OWNER-only management modal lists
     # one folder per FileKind. Sub-categories live in ``scope_path``.
     kind = "document"
-    if category in {"drawing", "contract", "specification", "photo", "correspondence", "other"}:
+    if category in FOLDER_SCOPED_CATEGORIES:
         return kind, category
     return kind, None
+
+
+def readable_document_scopes(
+    *,
+    grants: Container[tuple[str, str | None]],
+    restricted: Container[tuple[str, str | None]],
+) -> set[str | None]:
+    """Return the folder scope paths a member may read documents from.
+
+    The listing endpoint filters its page row by row after the query, which is
+    correct but cannot tell the reader how many rows the register holds: a
+    count taken before the filter includes folders the member is not in.
+
+    The scope path of a document is a pure function of its category (see
+    :func:`kind_and_path_for_document`) over a closed set, so the same
+    per-document decision can be taken once for the whole domain and handed to
+    the count query. ``None`` in the returned set means "documents whose
+    category is not folder-scoped", which is the wildcard scope.
+
+    Args:
+        grants: Effective grants for this user, keyed ``(kind, path)``.
+        restricted: Scopes that have ever been granted on the project.
+
+    Returns:
+        The readable subset of ``FOLDER_SCOPED_CATEGORIES | {None}``.
+    """
+    kind = "document"
+    wildcard_restricted = (kind, None) in restricted
+    wildcard_granted = (kind, None) in grants
+    readable: set[str | None] = set()
+    for path in (*FOLDER_SCOPED_CATEGORIES, None):
+        is_restricted = (kind, path) in restricted or wildcard_restricted
+        if not is_restricted or (kind, path) in grants or wildcard_granted:
+            readable.add(path)
+    return readable

@@ -24,13 +24,16 @@ from app.modules.variations.schemas import (
     DayworkSheetLineCreate,
     DayworkSheetLineResponse,
     DayworkSheetLineUpdate,
+    DayworkSheetListResponse,
     DayworkSheetResponse,
     DayworkSheetUpdate,
     DisruptionClaimCreate,
+    DisruptionClaimListResponse,
     DisruptionClaimResponse,
     DisruptionClaimUpdate,
     EOTTIARecordRequest,
     ExtensionOfTimeClaimCreate,
+    ExtensionOfTimeClaimListResponse,
     ExtensionOfTimeClaimResponse,
     ExtensionOfTimeClaimUpdate,
     FinalAccountCreate,
@@ -38,9 +41,11 @@ from app.modules.variations.schemas import (
     FinalAccountUpdate,
     NEC4TimerStatusResponse,
     NoticeCreate,
+    NoticeListResponse,
     NoticeResponse,
     NoticeUpdate,
     SiteMeasurementCreate,
+    SiteMeasurementListResponse,
     SiteMeasurementResponse,
     SiteMeasurementUpdate,
     VariationCostImpactCreate,
@@ -48,9 +53,11 @@ from app.modules.variations.schemas import (
     VariationCostImpactUpdate,
     VariationDashboardResponse,
     VariationOrderCreate,
+    VariationOrderListResponse,
     VariationOrderResponse,
     VariationOrderUpdate,
     VariationRequestCreate,
+    VariationRequestListResponse,
     VariationRequestResponse,
     VariationRequestUpdate,
     VariationScheduleImpactCreate,
@@ -97,7 +104,7 @@ class _ConvertVOBody(BaseModel):
 # ── Notices ────────────────────────────────────────────────────────────────
 
 
-@router.get("/notices/", response_model=list[NoticeResponse])
+@router.get("/notices/", response_model=NoticeListResponse)
 async def list_notices(
     session: SessionDep,
     project_id: uuid.UUID = Query(...),
@@ -107,15 +114,25 @@ async def list_notices(
     status: str | None = Query(default=None),
     _perm: None = Depends(RequirePermission("variations.read")),
     service: VariationsService = Depends(_get_service),
-) -> list[NoticeResponse]:
+) -> NoticeListResponse:
+    """A page of the project's variation notices, and how many there are.
+
+    ``total`` counts the notices matching ``status``, not the page, so a
+    filtered register reports the size of what it filtered to.
+    """
     await verify_project_access(project_id, user_id, session)
-    rows, _ = await service.notice_repo.list_for_project(
+    rows, total = await service.notice_repo.list_for_project(
         project_id,
         offset=offset,
         limit=limit,
         status=status,
     )
-    return [NoticeResponse.model_validate(r) for r in rows]
+    return NoticeListResponse(
+        items=[NoticeResponse.model_validate(r) for r in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/notices/", response_model=NoticeResponse, status_code=201)
@@ -223,7 +240,7 @@ async def close_notice(
 # ── Variation requests ─────────────────────────────────────────────────────
 
 
-@router.get("/variation-requests/", response_model=list[VariationRequestResponse])
+@router.get("/variation-requests/", response_model=VariationRequestListResponse)
 async def list_variation_requests(
     session: SessionDep,
     project_id: uuid.UUID = Query(...),
@@ -233,15 +250,24 @@ async def list_variation_requests(
     status: str | None = Query(default=None),
     _perm: None = Depends(RequirePermission("variations.read")),
     service: VariationsService = Depends(_get_service),
-) -> list[VariationRequestResponse]:
+) -> VariationRequestListResponse:
+    """A page of the project's variation requests, and how many there are.
+
+    ``total`` counts the requests matching ``status``, not the page.
+    """
     await verify_project_access(project_id, user_id, session)
-    rows, _ = await service.vr_repo.list_for_project(
+    rows, total = await service.vr_repo.list_for_project(
         project_id,
         offset=offset,
         limit=limit,
         status=status,
     )
-    return [VariationRequestResponse.model_validate(r) for r in rows]
+    return VariationRequestListResponse(
+        items=[VariationRequestResponse.model_validate(r) for r in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/variation-requests/", response_model=VariationRequestResponse, status_code=201)
@@ -393,7 +419,7 @@ async def convert_vr_to_vo(
 # ── Variation orders ───────────────────────────────────────────────────────
 
 
-@router.get("/variation-orders/", response_model=list[VariationOrderResponse])
+@router.get("/variation-orders/", response_model=VariationOrderListResponse)
 async def list_variation_orders(
     session: SessionDep,
     project_id: uuid.UUID = Query(...),
@@ -403,15 +429,24 @@ async def list_variation_orders(
     status: str | None = Query(default=None),
     _perm: None = Depends(RequirePermission("variations.read")),
     service: VariationsService = Depends(_get_service),
-) -> list[VariationOrderResponse]:
+) -> VariationOrderListResponse:
+    """A page of the project's variation orders, and how many there are.
+
+    ``total`` counts the orders matching ``status``, not the page.
+    """
     await verify_project_access(project_id, user_id, session)
-    rows, _ = await service.vo_repo.list_for_project(
+    rows, total = await service.vo_repo.list_for_project(
         project_id,
         offset=offset,
         limit=limit,
         status=status,
     )
-    return [VariationOrderResponse.model_validate(r) for r in rows]
+    return VariationOrderListResponse(
+        items=[VariationOrderResponse.model_validate(r) for r in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/variation-orders/", response_model=VariationOrderResponse, status_code=201)
@@ -644,7 +679,7 @@ async def delete_schedule_impact(
 # ── Site measurements ─────────────────────────────────────────────────────
 
 
-@router.get("/site-measurements/", response_model=list[SiteMeasurementResponse])
+@router.get("/site-measurements/", response_model=SiteMeasurementListResponse)
 async def list_site_measurements(
     session: SessionDep,
     project_id: uuid.UUID = Query(...),
@@ -653,14 +688,24 @@ async def list_site_measurements(
     limit: int = Query(default=50, ge=1, le=200),
     _perm: None = Depends(RequirePermission("variations.read")),
     service: VariationsService = Depends(_get_service),
-) -> list[SiteMeasurementResponse]:
+) -> SiteMeasurementListResponse:
+    """A page of the project's site measurements, and how many there are.
+
+    This route takes no status filter, so ``total`` is the project's whole
+    measurement count.
+    """
     await verify_project_access(project_id, user_id, session)
-    rows, _ = await service.site_measurement_repo.list_for_project(
+    rows, total = await service.site_measurement_repo.list_for_project(
         project_id,
         offset=offset,
         limit=limit,
     )
-    return [SiteMeasurementResponse.model_validate(r) for r in rows]
+    return SiteMeasurementListResponse(
+        items=[SiteMeasurementResponse.model_validate(r) for r in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post(
@@ -731,7 +776,7 @@ async def agree_site_measurement(
 # ── Daywork sheets ────────────────────────────────────────────────────────
 
 
-@router.get("/daywork-sheets/", response_model=list[DayworkSheetResponse])
+@router.get("/daywork-sheets/", response_model=DayworkSheetListResponse)
 async def list_daywork_sheets(
     session: SessionDep,
     project_id: uuid.UUID = Query(...),
@@ -741,15 +786,24 @@ async def list_daywork_sheets(
     status: str | None = Query(default=None),
     _perm: None = Depends(RequirePermission("variations.read")),
     service: VariationsService = Depends(_get_service),
-) -> list[DayworkSheetResponse]:
+) -> DayworkSheetListResponse:
+    """A page of the project's daywork sheets, and how many there are.
+
+    ``total`` counts the sheets matching ``status``, not the page.
+    """
     await verify_project_access(project_id, user_id, session)
-    rows, _ = await service.daywork_repo.list_for_project(
+    rows, total = await service.daywork_repo.list_for_project(
         project_id,
         offset=offset,
         limit=limit,
         status=status,
     )
-    return [DayworkSheetResponse.model_validate(r) for r in rows]
+    return DayworkSheetListResponse(
+        items=[DayworkSheetResponse.model_validate(r) for r in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/daywork-sheets/", response_model=DayworkSheetResponse, status_code=201)
@@ -906,7 +960,7 @@ async def bulk_daywork_lines(
 # ── Disruption claims ─────────────────────────────────────────────────────
 
 
-@router.get("/disruption-claims/", response_model=list[DisruptionClaimResponse])
+@router.get("/disruption-claims/", response_model=DisruptionClaimListResponse)
 async def list_disruption_claims(
     session: SessionDep,
     project_id: uuid.UUID = Query(...),
@@ -916,15 +970,24 @@ async def list_disruption_claims(
     status: str | None = Query(default=None),
     _perm: None = Depends(RequirePermission("variations.read")),
     service: VariationsService = Depends(_get_service),
-) -> list[DisruptionClaimResponse]:
+) -> DisruptionClaimListResponse:
+    """A page of the project's disruption claims, and how many there are.
+
+    ``total`` counts the claims matching ``status``, not the page.
+    """
     await verify_project_access(project_id, user_id, session)
-    rows, _ = await service.disruption_repo.list_for_project(
+    rows, total = await service.disruption_repo.list_for_project(
         project_id,
         offset=offset,
         limit=limit,
         status=status,
     )
-    return [DisruptionClaimResponse.model_validate(r) for r in rows]
+    return DisruptionClaimListResponse(
+        items=[DisruptionClaimResponse.model_validate(r) for r in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post(
@@ -1035,7 +1098,7 @@ async def decide_disruption_claim(
 # ── EOT claims ────────────────────────────────────────────────────────────
 
 
-@router.get("/eot-claims/", response_model=list[ExtensionOfTimeClaimResponse])
+@router.get("/eot-claims/", response_model=ExtensionOfTimeClaimListResponse)
 async def list_eot_claims(
     session: SessionDep,
     project_id: uuid.UUID = Query(...),
@@ -1045,15 +1108,24 @@ async def list_eot_claims(
     status: str | None = Query(default=None),
     _perm: None = Depends(RequirePermission("variations.read")),
     service: VariationsService = Depends(_get_service),
-) -> list[ExtensionOfTimeClaimResponse]:
+) -> ExtensionOfTimeClaimListResponse:
+    """A page of the project's EOT claims, and how many there are.
+
+    ``total`` counts the claims matching ``status``, not the page.
+    """
     await verify_project_access(project_id, user_id, session)
-    rows, _ = await service.eot_repo.list_for_project(
+    rows, total = await service.eot_repo.list_for_project(
         project_id,
         offset=offset,
         limit=limit,
         status=status,
     )
-    return [ExtensionOfTimeClaimResponse.model_validate(r) for r in rows]
+    return ExtensionOfTimeClaimListResponse(
+        items=[ExtensionOfTimeClaimResponse.model_validate(r) for r in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post(

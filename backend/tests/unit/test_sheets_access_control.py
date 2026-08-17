@@ -253,7 +253,7 @@ async def test_the_owner_can_list_the_same_register(sheets_app: Any, db_session:
         resp = await client.get(f"{SHEETS_BASE}/", params={"project_id": str(project_id)})
 
     assert resp.status_code == 200, resp.text
-    assert len(resp.json()) == 1
+    assert len(resp.json()["items"]) == 1
 
 
 async def test_reading_a_foreign_sheet_is_404(sheets_app: Any, db_session: AsyncSession) -> None:

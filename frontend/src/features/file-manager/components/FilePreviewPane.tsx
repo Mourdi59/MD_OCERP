@@ -11,7 +11,8 @@ import clsx from 'clsx';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
-import { apiGet } from '@/shared/lib/api';
+import { apiGet, type Page } from '@/shared/lib/api';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import type { FileRow, FileKind } from '../types';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { AuthImage } from '@/shared/ui';
@@ -812,13 +813,19 @@ const ACTIVITY_BACKED_KINDS: ReadonlySet<FileKind> = new Set<FileKind>([
   'photo',
 ]);
 
+/* How many events the pane asks for. It is part of the query key below,
+   not just the URL: the drawer reads the same endpoint for the same
+   document at a different limit, and a key that omits the limit lets
+   whichever mounted first serve its page to the other. */
+const PREVIEW_ACTIVITY_LIMIT = 20;
+
 function ActivityLogSection({ documentId, kind }: { documentId: string; kind: FileKind }) {
   const { t } = useTranslation();
   const enabled = ACTIVITY_BACKED_KINDS.has(kind);
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['document-activity', documentId],
+    queryKey: ['document-activity', documentId, PREVIEW_ACTIVITY_LIMIT],
     queryFn: () =>
-      apiGet<ActivityEvent[]>(`/v1/documents/${documentId}/activity/?limit=20`),
+      apiGet<Page<ActivityEvent>>(`/v1/documents/${documentId}/activity/?limit=${PREVIEW_ACTIVITY_LIMIT}`),
     staleTime: 30_000,
     retry: false,
     enabled,
@@ -828,15 +835,19 @@ function ActivityLogSection({ documentId, kind }: { documentId: string; kind: Fi
   /* 404 / 5xx must never break the pane — the endpoint is new and may
      legitimately be missing on an un-migrated backend. */
   if (isError) return null;
-  const events = data ?? [];
+  const events = data?.items ?? [];
   if (!isLoading && events.length === 0) return null;
   return (
     <div className="border-t border-border-light pt-3">
       <h4 className="flex items-center gap-1.5 text-2xs font-medium uppercase tracking-wider text-content-tertiary mb-2">
         <Activity size={11} strokeWidth={2} />
         {t('files.detail.activity', { defaultValue: 'Activity' })}
+        {/* The file's event count, from the server. The list below holds the
+            newest twenty of them, and the notice under it says so. */}
         {events.length > 0 && (
-          <span className="ms-1 text-content-quaternary tabular-nums">({events.length})</span>
+          <span className="ms-1 text-content-quaternary tabular-nums">
+            ({data?.total ?? events.length})
+          </span>
         )}
       </h4>
       {isLoading ? (
@@ -886,6 +897,9 @@ function ActivityLogSection({ documentId, kind }: { documentId: string; kind: Fi
           })}
         </ol>
       )}
+      {/* The pane shows the newest twenty events. On a file that has been
+          revised many times the rest are simply not here. */}
+      {data ? <TruncationNotice page={data} className="mt-2" /> : null}
     </div>
   );
 }

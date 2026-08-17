@@ -6,7 +6,7 @@
  * All endpoints are prefixed with /v1/rfi/.
  */
 
-import { apiGet, apiPost, apiPatch } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, type Page } from '@/shared/lib/api';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -187,7 +187,13 @@ export async function getRFI(id: string): Promise<RFI> {
   return apiGet<RFI>(`/v1/rfi/${id}`);
 }
 
-export async function fetchRFIs(filters?: RFIFilters): Promise<RFI[]> {
+/**
+ * One page of the RFI register, with `total` counting everything the
+ * filters matched. The endpoint caps `limit` at 100, so a register with
+ * three hundred open questions always answers with a slice and the caller
+ * has to read `total` to know that.
+ */
+export async function fetchRFIs(filters?: RFIFilters): Promise<Page<RFI>> {
   const params = new URLSearchParams();
   if (filters?.project_id) params.set('project_id', filters.project_id);
   if (filters?.status) params.set('status', filters.status);
@@ -195,7 +201,7 @@ export async function fetchRFIs(filters?: RFIFilters): Promise<RFI[]> {
   if (typeof filters?.offset === 'number') params.set('offset', String(filters.offset));
   if (typeof filters?.limit === 'number') params.set('limit', String(filters.limit));
   const qs = params.toString();
-  return apiGet<RFI[]>(`/v1/rfi/${qs ? `?${qs}` : ''}`);
+  return apiGet<Page<RFI>>(`/v1/rfi/${qs ? `?${qs}` : ''}`);
 }
 
 export async function fetchRFIStats(projectId: string): Promise<RFIStats> {
@@ -226,9 +232,10 @@ export async function createVariationFromRFI(id: string): Promise<CreateVariatio
   return apiPost<CreateVariationResponse>(`/v1/rfi/${id}/create-variation/`, {});
 }
 
-export async function fetchRFIActivity(id: string, limit = 50): Promise<RFIActivityEntry[]> {
+export async function fetchRFIActivity(id: string, limit = 50): Promise<Page<RFIActivityEntry>> {
   // Route is GET /{rfi_id}/activity/ WITH a trailing slash (router.py); with
   // redirect_slashes=False the no-slash form 404s. Returns the RFI's activity
-  // journal oldest-first.
-  return apiGet<RFIActivityEntry[]>(`/v1/rfi/${id}/activity/?limit=${limit}`);
+  // journal oldest-first, so `total` is what tells the caller that the entries
+  // it is missing are the RECENT ones rather than the old ones.
+  return apiGet<Page<RFIActivityEntry>>(`/v1/rfi/${id}/activity/?limit=${limit}`);
 }

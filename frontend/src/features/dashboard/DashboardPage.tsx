@@ -1810,9 +1810,12 @@ function QuickUploadCard({ projects }: { projects?: ProjectSummary[] }) {
     (uploadProjectId === activeProjectId ? activeProjectName : '') ||
     '';
 
-  const { data: documents } = useQuery({
+  const { data: documentPage } = useQuery({
     queryKey: ['documents', uploadProjectId],
-    queryFn: () => fetchDocuments(uploadProjectId ?? ''),
+    // Spelled out because this query holds a page, not a list: three surfaces
+    // cache under ['documents', <project>] and React Query will hand any of
+    // them what another put there.
+    queryFn: (): Promise<Page<DocumentItem>> => fetchDocuments(uploadProjectId ?? ''),
     enabled: !!uploadProjectId,
     staleTime: 30_000,
   });
@@ -1899,7 +1902,9 @@ function QuickUploadCard({ projects }: { projects?: ProjectSummary[] }) {
     setDragOver(false);
   }, []);
 
-  const documentCount = (documents as DocumentItem[] | undefined)?.length ?? 0;
+  // The project's document count, not the page's. The link says "N documents"
+  // and used to say how many the first page held.
+  const documentCount = documentPage?.total ?? 0;
   const hasProject = !!uploadProjectId;
   const hasProjects = selectableProjects.length > 0;
 
@@ -2385,7 +2390,7 @@ function DashboardPageInner() {
           )}
           {lastBoq.grandTotal > 0 && (
             <span className="text-xs font-semibold text-content-primary tabular-nums">
-              {lastBoq.currency} {lastBoq.grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              {lastBoq.currency} {lastBoq.grandTotal.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })}
             </span>
           )}
           <ArrowRight size={16} className="text-content-tertiary group-hover:text-oe-blue group-hover:translate-x-0.5 transition-all" />

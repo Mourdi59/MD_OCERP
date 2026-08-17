@@ -762,7 +762,7 @@ export function AiEstimatorPage() {
                   bimModelsLoading={modelsQ.isLoading}
                   selectedModelId={selectedModelId}
                   onSelectModel={setSelectedModelId}
-                  documents={docsQ.data ?? []}
+                  documents={docsQ.data ?? { items: [], total: 0, offset: 0, limit: 0 }}
                   selectedDocIds={selectedDocIds}
                   onToggleDoc={(id) =>
                     setSelectedDocIds((prev) =>

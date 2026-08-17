@@ -122,6 +122,22 @@ class DocumentResponse(BaseModel):
     discipline: str | None = None
 
 
+class DocumentListResponse(BaseModel):
+    """One page of the document register plus the size of the whole set.
+
+    ``total`` is the number of documents the filters matched and the caller is
+    allowed to see, not the length of ``items``. The register is where a
+    project's drawings, contracts and specifications are looked up, so a client
+    that renders ``items`` without reading ``total`` shows a slice of the
+    register and cannot tell the reader that it did.
+    """
+
+    items: list[DocumentResponse] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50
+
+
 # ── Summary schema ───────────────────────────────────────────────────────
 
 
@@ -183,11 +199,20 @@ class PhotoResponse(BaseModel):
     has_thumbnail: bool = False
 
 
-class PhotoTimelineGroup(BaseModel):
-    """Photos grouped by date for timeline view."""
+class PhotoListResponse(BaseModel):
+    """One page of site photos plus the size of the whole set.
 
-    date: str
-    photos: list[PhotoResponse]
+    ``total`` counts the photos matching the query's SQL filters. The ``tag``
+    filter is applied in Python after the page is read, because ``tags`` is a
+    JSON column with no portable containment operator, so a tagged query
+    returns a page the tag narrowed and a total it did not. That combination
+    is documented on the route rather than hidden here.
+    """
+
+    items: list[PhotoResponse] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 100
 
 
 class RecentPhotoResponse(BaseModel):
@@ -254,6 +279,23 @@ class SheetResponse(BaseModel):
     created_by: str = ""
     created_at: datetime
     updated_at: datetime
+
+
+class SheetListResponse(BaseModel):
+    """One page of the sheet index plus the size of the whole set.
+
+    The route used to answer with a bare array and an ``X-Total-Count`` header.
+    A header is invisible to a caller that reads the body, and the drawing
+    index asks for the maximum page the route allows, so the response that
+    holds every sheet and the response that holds the first 500 of them looked
+    identical. ``total`` moves that count into the body where the register
+    reads it.
+    """
+
+    items: list[SheetResponse] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 100
 
 
 class SheetVersionHistory(BaseModel):
@@ -439,6 +481,20 @@ class DocumentActivityResponse(BaseModel):
     action: str
     meta: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
+
+
+class DocumentActivityListResponse(BaseModel):
+    """One page of a document's timeline plus the number of events behind it.
+
+    The timeline is newest-first and the route caps ``limit`` at 100, so a
+    document that has been through many revisions shows its recent history and
+    silently drops the rest. ``total`` is what lets the drawer say so.
+    """
+
+    items: list[DocumentActivityResponse] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 20
 
 
 # ── Share links ──────────────────────────────────────────────────────────

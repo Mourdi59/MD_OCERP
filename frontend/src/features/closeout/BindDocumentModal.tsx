@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { Search, FileText, Link2, Loader2 } from 'lucide-react';
 import { Button, Input, WideModal, Badge } from '@/shared/ui';
-import { apiGet } from '@/shared/lib/api';
+import { apiGet, type Page } from '@/shared/lib/api';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import type { CloseoutSlot } from './api';
 
 interface DocumentItem {
@@ -61,11 +62,11 @@ export default function BindDocumentModal({
     queryFn: () => {
       const params = new URLSearchParams({ project_id: projectId, limit: '50' });
       if (debouncedSearch) params.set('search', debouncedSearch);
-      return apiGet<DocumentItem[]>(`/v1/documents/?${params.toString()}`);
+      return apiGet<Page<DocumentItem>>(`/v1/documents/?${params.toString()}`);
     },
     enabled: open && !!projectId,
   });
-  const docs = docsQuery.data ?? [];
+  const docs = docsQuery.data?.items ?? [];
 
   const filtered = useMemo(() => {
     // Soft-rank documents whose category / discipline matches the slot. The
@@ -174,6 +175,9 @@ export default function BindDocumentModal({
               ))
             )}
           </div>
+          {/* The search runs on the server and the route caps the answer, so
+              the list can be a slice even after a narrow search. */}
+          {docsQuery.data ? <TruncationNotice page={docsQuery.data} className="pt-1.5" /> : null}
         </div>
 
         <div>

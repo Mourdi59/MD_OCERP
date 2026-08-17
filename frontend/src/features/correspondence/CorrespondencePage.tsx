@@ -454,7 +454,7 @@ function CreateCorrespondenceModal({
   // lists (the section still renders with a "nothing to link yet" note).
   const docsQuery = useQuery({
     queryKey: ['correspondence-link-docs', projectId],
-    queryFn: () => apiGet<PickerDocument[]>(`/v1/documents/?project_id=${projectId}`),
+    queryFn: () => apiGet<Page<PickerDocument>>(`/v1/documents/?project_id=${projectId}`),
     enabled: !!projectId,
     staleTime: 60_000,
   });
@@ -469,15 +469,17 @@ function CreateCorrespondenceModal({
   });
   const rfisQuery = useQuery({
     queryKey: ['correspondence-link-rfis', projectId],
-    queryFn: () => apiGet<PickerRFI[]>(`/v1/rfi/?project_id=${projectId}`),
+    queryFn: () => apiGet<Page<PickerRFI>>(`/v1/rfi/?project_id=${projectId}`),
     enabled: !!projectId,
     staleTime: 60_000,
   });
 
-  const documents = docsQuery.data ?? [];
+  const documentPage = docsQuery.data;
+  const documents = documentPage?.items ?? [];
   const transmittalPage = transmittalsQuery.data;
   const transmittals = transmittalPage?.items ?? [];
-  const rfis = rfisQuery.data ?? [];
+  const rfiPage = rfisQuery.data;
+  const rfis = rfiPage?.items ?? [];
 
   const toggleDocument = (id: string) =>
     setForm((prev) => ({
@@ -896,6 +898,9 @@ function CreateCorrespondenceModal({
               </option>
             ))}
           </select>
+          {/* Same reason as the transmittal dropdown above: an RFI past the
+              first page is not in this list and cannot be scrolled to. */}
+          {rfiPage && <TruncationNotice page={rfiPage} className="mt-1.5" />}
         </WideModalField>
 
         <WideModalField
@@ -935,6 +940,9 @@ function CreateCorrespondenceModal({
               })}
             </div>
           )}
+          {/* The picker cannot page, so a document past the first page cannot
+              be linked to this letter and nothing else would say so. */}
+          {documentPage ? <TruncationNotice page={documentPage} className="pt-1" /> : null}
         </WideModalField>
       </WideModalSection>
     </WideModal>

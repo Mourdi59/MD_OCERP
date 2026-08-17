@@ -36,7 +36,7 @@ import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { useToastStore } from '@/stores/useToastStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
-import { apiGet, apiPost, extractErrorMessageFromBody, triggerDownload } from '@/shared/lib/api';
+import { apiGet, apiPost, extractErrorMessageFromBody, triggerDownload, type Page } from '@/shared/lib/api';
 import { fetchAllPages } from '@/shared/lib/apiHelpers';
 import { projectsApi, type Project } from '@/features/projects/api';
 import { boqApi } from '@/features/boq/api';
@@ -761,7 +761,7 @@ async function downloadRiskRegisterReport(
   // it produced a clean-looking report asserting zero risks and zero exposure.
   // The caller already converts a throw into a "failed to generate" toast.
   const { items: risks, truncated, ceiling } = await fetchAllPages<RiskRow>((offset, limit) =>
-    apiGet<RiskRow[]>(`/v1/risk/?project_id=${projectId}&limit=${limit}&offset=${offset}`),
+    apiGet<Page<RiskRow>>(`/v1/risk/?project_id=${projectId}&limit=${limit}&offset=${offset}`),
   );
 
   // Refuse rather than ship a register that is quietly missing rows. The
@@ -936,7 +936,12 @@ async function downloadProgressReport(
 
   // Risk highlights
   try {
-    const risks = await apiGet<Array<{ code: string; title: string; risk_score: number; impact_severity: string }>>(`/v1/risk/?project_id=${projectId}&limit=5`);
+    // A five-row sample under a "Top Risks" heading, with no count and no
+    // aggregate printed off it, so the page envelope is read for its rows
+    // only. (The route is asked for five without a sort, so these are five
+    // risks rather than the five highest - a separate defect, noted not
+    // fixed here.)
+    const risks = (await apiGet<Page<{ code: string; title: string; risk_score: number; impact_severity: string }>>(`/v1/risk/?project_id=${projectId}&limit=5`)).items;
     if (risks.length > 0) {
       htmlParts.push(`<h2>${esc(t('reports.html_top_risks', { defaultValue: 'Top Risks' }))}</h2>`);
       htmlParts.push(`<table><thead><tr><th>${esc(t('reports.html_col_code', { defaultValue: 'Code' }))}</th><th>${esc(t('reports.html_col_risk', { defaultValue: 'Risk' }))}</th><th>${esc(t('reports.html_col_severity', { defaultValue: 'Severity' }))}</th><th>${esc(t('reports.html_col_score', { defaultValue: 'Score' }))}</th></tr></thead><tbody>`);
@@ -1472,7 +1477,22 @@ export function ReportsPage() {
               if (sections.includes('risk')) {
                 htmlParts.push(`<h2>${esc(t('reports.section_risk', { defaultValue: 'Risk Summary' }))}</h2>`);
                 try {
-                  const risks = await apiGet<Array<{ id: string; code: string; title: string; probability: number; impact_cost: number; impact_severity: string; risk_score: number; status: string }>>(`/v1/risk/?project_id=${selectedProjectId}&limit=50`);
+                  // Read the whole register, the way the CSV export above
+                  // already does. This section prints Total Risks and Total
+                  // Exposure, and both were reduced over whatever the first
+                  // fifty rows happened to be: a project with three hundred
+                  // risks got a confident, wrong pair of figures inside a
+                  // document the reader treats as the record. A throw here
+                  // lands in the catch below and the section says it has no
+                  // risk data, which is the honest answer when it cannot
+                  // stand behind the numbers.
+                  type ReportRiskRow = { id: string; code: string; title: string; probability: number; impact_cost: number; impact_severity: string; risk_score: number; status: string };
+                  const { items: risks, truncated: risksTruncated, ceiling: riskCeiling } = await fetchAllPages<ReportRiskRow>((offset, limit) =>
+                    apiGet<Page<ReportRiskRow>>(`/v1/risk/?project_id=${selectedProjectId}&limit=${limit}&offset=${offset}`),
+                  );
+                  if (risksTruncated) {
+                    throw new Error(`The risk register exceeds the ${riskCeiling} row report ceiling.`);
+                  }
                   if (risks.length === 0) {
                     htmlParts.push(`<p>${esc(t('reports.html_no_risks', { defaultValue: 'No risks registered.' }))}</p>`);
                   } else {

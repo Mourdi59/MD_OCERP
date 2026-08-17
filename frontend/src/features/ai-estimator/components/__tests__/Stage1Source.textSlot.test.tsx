@@ -32,7 +32,7 @@ function makeProps(overrides: Partial<Stage1IntakeProps> = {}): Stage1IntakeProp
     bimModelsLoading: false,
     selectedModelId: null,
     onSelectModel: vi.fn(),
-    documents: [],
+    documents: { items: [], total: 0, offset: 0, limit: 50 },
     selectedDocIds: [],
     onToggleDoc: vi.fn(),
     canStart: true,

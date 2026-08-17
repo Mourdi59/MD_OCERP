@@ -588,8 +588,12 @@ class TestRFIFlow:
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert isinstance(data, list)
-        assert len(data) >= 1
+        # The register answers with a page envelope, not a bare array, so the
+        # reader can tell how much of the register they are looking at.
+        assert isinstance(data, dict)
+        assert len(data["items"]) >= 1
+        assert data["total"] >= len(data["items"])
+        assert data["offset"] == 0
 
     async def test_get_single_rfi(
         self,

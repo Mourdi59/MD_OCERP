@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { Button, Card } from '@/shared/ui';
 import { BIMModelPicker } from '@/shared/ui/BIMModelPicker';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
+import type { Page } from '@/shared/lib/api';
 import { scoreColor, scorePercent } from '../helpers';
 import { useScoreThresholds } from '../meta';
 import {
@@ -78,7 +80,12 @@ export interface Stage1IntakeProps {
   bimModelsLoading: boolean;
   selectedModelId: string | null;
   onSelectModel: (id: string) => void;
-  documents: ProjectDoc[];
+  /**
+   * One page of the project's document register, not the register. The list
+   * below has no paging of its own, so it also has to say when it is a slice
+   * - a document past the page simply cannot be picked as a source.
+   */
+  documents: Page<ProjectDoc>;
   selectedDocIds: string[];
   onToggleDoc: (id: string) => void;
   canStart: boolean;
@@ -262,7 +269,7 @@ export function Stage1Intake(props: Stage1IntakeProps) {
 
         {sourceKind === 'documents' && (
           <div className="rounded-xl border border-border-light">
-            {documents.length === 0 ? (
+            {documents.items.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-content-tertiary">
                 {t('aiest.intake.no_documents', {
                   defaultValue: 'No documents in this project.',
@@ -273,7 +280,7 @@ export function Stage1Intake(props: Stage1IntakeProps) {
               </p>
             ) : (
               <ul className="max-h-64 divide-y divide-border-light overflow-y-auto">
-                {documents.map((d) => {
+                {documents.items.map((d) => {
                   const checked = selectedDocIds.includes(d.id);
                   return (
                     <li key={d.id}>
@@ -292,6 +299,7 @@ export function Stage1Intake(props: Stage1IntakeProps) {
                 })}
               </ul>
             )}
+            <TruncationNotice page={documents} className="px-3 pb-2" />
           </div>
         )}
       </div>

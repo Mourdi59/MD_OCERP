@@ -14,7 +14,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { X, Search, FileText, Link2, Loader2 } from 'lucide-react';
-import { apiGet } from '@/shared/lib/api';
+import { apiGet, type Page } from '@/shared/lib/api';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { createDocumentBIMLink } from './api';
 import type { BIMElementData } from '@/shared/ui/BIMViewer';
 import { useToastStore } from '@/stores/useToastStore';
@@ -58,12 +59,12 @@ export default function LinkDocumentToBIMModal({
   const docsQuery = useQuery({
     queryKey: ['documents-for-bim-link', projectId],
     queryFn: () =>
-      apiGet<DocumentItem[]>(
+      apiGet<Page<DocumentItem>>(
         `/v1/documents/?project_id=${encodeURIComponent(projectId)}`,
       ),
     enabled: !!projectId,
   });
-  const docs = docsQuery.data ?? [];
+  const docs = docsQuery.data?.items ?? [];
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -231,6 +232,9 @@ export default function LinkDocumentToBIMModal({
               ))}
             </ul>
           )}
+          {/* A picker cannot page. Gated on the server page, not on the
+              search-filtered rows: the sentence is about the register. */}
+          {docsQuery.data ? <TruncationNotice page={docsQuery.data} className="pt-2" /> : null}
         </div>
 
         {/* Footer */}

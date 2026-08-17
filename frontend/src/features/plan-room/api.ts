@@ -19,7 +19,7 @@
  * PlanRoomViewer for how each is projected onto the canvas).
  */
 
-import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiDelete, type Page } from '@/shared/lib/api';
 
 /* ── Overlay composite (read) ──────────────────────────────────────────── */
 
@@ -178,10 +178,10 @@ export interface PlanRoomDrawing {
  */
 export async function fetchPlanRoomDrawings(projectId: string): Promise<PlanRoomDrawing[]> {
   if (!projectId) return [];
-  const rows = await apiGet<{ id: string; filename?: string; name?: string }[]>(
+  const page = await apiGet<Page<{ id: string; filename?: string; name?: string }>>(
     `/v1/documents/?project_id=${projectId}&limit=500`,
   );
-  return (Array.isArray(rows) ? rows : []).map((r) => ({
+  return page.items.map((r) => ({
     id: r.id,
     filename: r.filename ?? r.name ?? '',
   }));

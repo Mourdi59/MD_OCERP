@@ -59,6 +59,24 @@ class EquipmentTypeResponse(BaseModel):
     description: str | None = None
 
 
+class EquipmentTypeListResponse(BaseModel):
+    """Every equipment type, and the count of them.
+
+    Unlike the registers, this route takes no offset or limit: the repository
+    reads the whole taxonomy in one query, so ``total`` always equals
+    ``len(items)`` and ``limit`` reports the count rather than a cap. That is
+    the honest answer for a list that cannot truncate, and it is why a reader
+    of this endpoint will never see a truncation notice. It is enveloped for
+    the same reason the registers are, so no caller has to know which list
+    routes describe themselves and which do not.
+    """
+
+    items: list[EquipmentTypeResponse]
+    total: int
+    offset: int = 0
+    limit: int
+
+
 # ── Equipment ────────────────────────────────────────────────────────────
 
 
@@ -154,6 +172,28 @@ class EquipmentResponse(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     created_at: datetime
     updated_at: datetime
+
+
+class EquipmentFleetListResponse(BaseModel):
+    """A page of the fleet, and how many units match the filters.
+
+    Named for the fleet rather than for ``Equipment`` because the module also
+    has an ``EquipmentTypeListResponse`` and the two are easy to confuse: that
+    one is the taxonomy and never truncates, this one is the register and does.
+    ``total`` counts the units matching ``status``, ``type`` and ``ownership``,
+    so a filtered view reports the size of what it filtered to rather than the
+    size of the yard.
+
+    It sits after ``EquipmentResponse`` rather than beside its sibling on
+    purpose. ``from __future__ import annotations`` makes the field annotation
+    a string, so declaring it earlier still parses, and Pydantic then fails to
+    resolve the name when it builds the model.
+    """
+
+    items: list[EquipmentResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
 
 
 # ── TelemetryReading ─────────────────────────────────────────────────────

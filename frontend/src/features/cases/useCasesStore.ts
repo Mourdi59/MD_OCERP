@@ -184,11 +184,7 @@ function toggleId<T extends string>(list: readonly T[], id: T): T[] {
   return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
 }
 
-/** Whitelist a persisted role id must be in to survive a reload. Hand-kept
- *  rather than derived from `ROLE_META`, which would pull lucide-react into
- *  this store's chunk; `cases.test.ts` pins it against `ROLE_META` instead,
- *  because a role missing here loses the user's pick silently on reload. */
-export const VALID_ROLES: readonly ProfessionalRole[] = [
+const VALID_ROLES: readonly ProfessionalRole[] = [
   'estimator',
   'quantity-surveyor',
   'site-manager',
@@ -200,9 +196,6 @@ export const VALID_ROLES: readonly ProfessionalRole[] = [
   'design-lead',
   'document-controller',
   'commercial-manager',
-  'accountant',
-  'contract-administrator',
-  'finance-manager',
   'foreman',
 ];
 

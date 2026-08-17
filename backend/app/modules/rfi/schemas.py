@@ -202,6 +202,25 @@ class RFIResponse(BaseModel):
     )
 
 
+class RFIListResponse(BaseModel):
+    """One page of a project's RFI register plus the size of the whole set.
+
+    ``total`` counts the RFIs the status filter and the search term matched,
+    not the length of ``items``. An RFI register is read to answer "what is
+    still waiting on us", so a client that renders ``items`` alone shows the
+    first fifty questions and gives the reader no way to tell that the
+    hundredth one exists.
+
+    Distinct from :class:`RFIStatsResponse`, whose ``total`` is a project-wide
+    count that ignores paging and the filters entirely.
+    """
+
+    items: list[RFIResponse] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50
+
+
 class RFIStatsResponse(BaseModel):
     """Summary statistics for RFIs in a project."""
 
@@ -279,3 +298,18 @@ class RFIActivityEntry(BaseModel):
     module: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     created_at: datetime
+
+
+class RFIActivityListResponse(BaseModel):
+    """One page of an RFI's activity journal plus the length of the journal.
+
+    The journal is ordered oldest first, so a truncated page is the START of
+    the RFI's life and the recent transitions are the ones left out. ``total``
+    is what lets the timeline say so rather than presenting the opening
+    entries as the whole history.
+    """
+
+    items: list[RFIActivityEntry] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50

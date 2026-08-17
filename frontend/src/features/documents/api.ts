@@ -6,7 +6,7 @@
  * All photo endpoints are prefixed with /v1/documents/photos/.
  */
 
-import { apiGet, apiPatch, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPatch, apiDelete, type Page } from '@/shared/lib/api';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -34,9 +34,38 @@ export interface PhotoItem {
   has_thumbnail?: boolean;
 }
 
+/**
+ * A day of site photos, as the timeline view renders it.
+ *
+ * Built on the client by {@link groupPhotosByDay} from the photo page the
+ * timeline route returns. The server used to group, which left it answering
+ * with a list of days that could not say how many photos it had cut.
+ */
 export interface PhotoTimelineGroup {
+  /** `YYYY-MM-DD`, the capture day (upload day when EXIF carried none). */
   date: string;
   photos: PhotoItem[];
+}
+
+/**
+ * Group a photo page into days, newest day first.
+ *
+ * The key is the leading ten characters of `taken_at`, falling back to
+ * `created_at` - a string cut, not a `Date`, so a timestamp the server wrote
+ * without a zone cannot be re-read in the browser's zone and land on the day
+ * before. Photos keep the order they arrived in inside their day.
+ */
+export function groupPhotosByDay(photos: PhotoItem[]): PhotoTimelineGroup[] {
+  const byDay = new Map<string, PhotoItem[]>();
+  for (const photo of photos) {
+    const day = (photo.taken_at ?? photo.created_at ?? '').slice(0, 10);
+    const bucket = byDay.get(day);
+    if (bucket) bucket.push(photo);
+    else byDay.set(day, [photo]);
+  }
+  return [...byDay.entries()]
+    .sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0))
+    .map(([date, dayPhotos]) => ({ date, photos: dayPhotos }));
 }
 
 export type DefectSeverity = 'low' | 'medium' | 'high';
@@ -108,28 +137,45 @@ export interface PhotoUpdatePayload {
 
 /* ── API Functions ─────────────────────────────────────────────────────── */
 
+/**
+ * One page of the project's site photos.
+ *
+ * The server default is 100 photos and a job site produces more than that in
+ * a week, so the envelope travels to the caller: `total` is how many photos
+ * the filters matched, `items` is the page. See the route's own note on
+ * `tag`, which it narrows in Python after counting.
+ */
 export async function fetchPhotos(
   projectId: string,
   filters?: PhotoFilters,
-): Promise<PhotoItem[]> {
-  if (!projectId) return [];
+): Promise<Page<PhotoItem>> {
+  if (!projectId) return { items: [], total: 0, offset: 0, limit: 0 };
   const params = new URLSearchParams({ project_id: projectId });
   if (filters?.category) params.set('category', filters.category);
   if (filters?.tag) params.set('tag', filters.tag);
   if (filters?.date_from) params.set('date_from', filters.date_from);
   if (filters?.date_to) params.set('date_to', filters.date_to);
   if (filters?.search) params.set('search', filters.search);
-  return apiGet<PhotoItem[]>(`/v1/documents/photos/?${params.toString()}`);
+  return apiGet<Page<PhotoItem>>(`/v1/documents/photos/?${params.toString()}`);
 }
 
-export async function fetchPhotoGallery(projectId: string): Promise<PhotoItem[]> {
-  if (!projectId) return [];
-  return apiGet<PhotoItem[]>(`/v1/documents/photos/gallery/?project_id=${projectId}`);
-}
+/*
+ * `fetchPhotoGallery` used to sit here, reading GET /v1/documents/photos/gallery/.
+ * That route answered with character-for-character the same body as the
+ * timeline one below, and nothing in this app ever called this helper. Both
+ * are gone; use `fetchPhotoTimeline` for either surface.
+ */
 
-export async function fetchPhotoTimeline(projectId: string): Promise<PhotoTimelineGroup[]> {
-  if (!projectId) return [];
-  return apiGet<PhotoTimelineGroup[]>(`/v1/documents/photos/timeline/?project_id=${projectId}`);
+/**
+ * The photos behind the timeline view, newest first.
+ *
+ * Same page shape as the gallery: the route stopped grouping by day, because
+ * a list of days cannot report how many photos it left out. Group it with
+ * {@link groupPhotosByDay}.
+ */
+export async function fetchPhotoTimeline(projectId: string): Promise<Page<PhotoItem>> {
+  if (!projectId) return { items: [], total: 0, offset: 0, limit: 0 };
+  return apiGet<Page<PhotoItem>>(`/v1/documents/photos/timeline/?project_id=${projectId}`);
 }
 
 export async function fetchPhoto(id: string): Promise<PhotoItem> {
@@ -230,9 +276,22 @@ export interface DocumentItem {
   updated_at: string;
 }
 
-export async function fetchDocuments(projectId: string): Promise<DocumentItem[]> {
-  if (!projectId) return [];
-  return apiGet<DocumentItem[]>(`/v1/documents/?project_id=${projectId}`);
+/**
+ * One page of the project's document register.
+ *
+ * Returns the envelope rather than the rows because the server answers with
+ * its first 50 documents by default, and a caller handed an array of 50 has
+ * no way to find out whether that is the register or the start of it. Callers
+ * that only need the rows read `.items`, but then they own the notice: mount
+ * `TruncationNotice` with this page so the reader is told what they are
+ * looking at.
+ *
+ * An empty project id yields an empty page rather than a request, which is
+ * what the old array-returning version did too.
+ */
+export async function fetchDocuments(projectId: string): Promise<Page<DocumentItem>> {
+  if (!projectId) return { items: [], total: 0, offset: 0, limit: 0 };
+  return apiGet<Page<DocumentItem>>(`/v1/documents/?project_id=${projectId}`);
 }
 
 export async function uploadDocument(

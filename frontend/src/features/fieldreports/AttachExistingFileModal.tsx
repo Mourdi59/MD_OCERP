@@ -18,7 +18,8 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { X, Search, FileText, Image as ImageIcon, Check, Loader2, Paperclip } from 'lucide-react';
-import { apiGet } from '@/shared/lib/api';
+import { apiGet, type Page } from '@/shared/lib/api';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { useToastStore } from '@/stores/useToastStore';
 import { linkReportDocuments } from './api';
 
@@ -58,10 +59,10 @@ export default function AttachExistingFileModal({
   const docsQuery = useQuery({
     queryKey: ['fieldreports', 'project-documents', projectId],
     queryFn: () =>
-      apiGet<ProjectDocument[]>(`/v1/documents/?project_id=${encodeURIComponent(projectId)}`),
+      apiGet<Page<ProjectDocument>>(`/v1/documents/?project_id=${encodeURIComponent(projectId)}`),
     enabled: !!projectId,
   });
-  const docs = docsQuery.data ?? [];
+  const docs = docsQuery.data?.items ?? [];
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -231,6 +232,9 @@ export default function AttachExistingFileModal({
               })}
             </ul>
           )}
+          {/* A picker cannot page. Gated on the server page, not on the
+              search-filtered rows: the sentence is about the register. */}
+          {docsQuery.data ? <TruncationNotice page={docsQuery.data} className="pt-2" /> : null}
         </div>
 
         {/* Footer */}

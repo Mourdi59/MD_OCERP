@@ -77,6 +77,10 @@ const CLASH_LIMIT = 200;
 // this one cannot match its siblings. It used to send no limit at all and
 // silently took the server default of 50.
 const PUNCH_LIMIT = 100;
+// The NCR route has the same 100 ceiling, and this slot was the one still
+// sending no limit at all: the hub's "ncr" chip counted the server default
+// of 50 and called it the backlog.
+const NCR_LIMIT = 100;
 
 /** Minimal read view of a react-query result, enough to build source state. */
 interface ResultLike {
@@ -130,7 +134,7 @@ export function useAllIssues(
       },
       {
         queryKey: ['issues-hub', 'ncr', projectId],
-        queryFn: () => fetchNCRs({ project_id: projectId }),
+        queryFn: () => fetchNCRs({ project_id: projectId, limit: NCR_LIMIT }),
         enabled,
         staleTime: 30_000,
       },
@@ -160,7 +164,7 @@ export function useAllIssues(
     // Each mapEach isolates per-item failures; a bad row is dropped alone.
     const markups = mapEach(markupRes?.data, mapMarkup);
     const punch = mapEach(punchRes?.data?.items, mapPunch);
-    const ncr = mapEach(ncrRes?.data, mapNcr);
+    const ncr = mapEach(ncrRes?.data?.items, mapNcr);
     const clash = mapEach(clashRes?.data?.items, mapClashIssue);
     const bcf = bcfSourceAvailable ? mapEach(bcfRes?.data, mapBcfTopic) : [];
 

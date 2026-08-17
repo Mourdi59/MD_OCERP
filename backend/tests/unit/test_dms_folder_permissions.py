@@ -34,6 +34,7 @@ from app.modules.documents.folder_permissions_models import (
     FOLDER_ROLE_OWNER,
     FOLDER_ROLE_VIEWER,
     FOLDER_ROLES,
+    FOLDER_SCOPED_CATEGORIES,
     role_satisfies,
 )
 from app.modules.documents.folder_permissions_service import (
@@ -41,6 +42,8 @@ from app.modules.documents.folder_permissions_service import (
     can_write,
     effective_permissions_for,
     folder_access_for,
+    kind_and_path_for_document,
+    readable_document_scopes,
     require_read,
 )
 
@@ -493,3 +496,70 @@ def test_folder_roles_contains_all_three() -> None:
 
 def test_folder_roles_are_distinct() -> None:
     assert len(set(FOLDER_ROLES)) == len(FOLDER_ROLES)
+
+
+# ── 11. The count filter agrees with the row filter ──────────────────────
+#
+# ``list_documents`` filters its page row by row and counts the register in
+# SQL. Those are two expressions of one decision, and if they disagree the
+# register prints a sentence like "showing 3 of 9" where the 9 counts folders
+# the reader is not in. ``readable_document_scopes`` is the shared decision;
+# these tests pin it against the row filter's own branches.
+
+
+def _row_filter_admits(
+    category: str | None,
+    *,
+    grants: set[tuple[str, str | None]],
+    restricted: set[tuple[str, str | None]],
+) -> bool:
+    """Replay the router's per-row test, written out longhand."""
+    kind, path = kind_and_path_for_document(category)
+    is_restricted = (kind, path) in restricted or (kind, None) in restricted
+    if not is_restricted:
+        return True
+    return (kind, path) in grants or (kind, None) in grants
+
+
+@pytest.mark.parametrize(
+    ("grants", "restricted"),
+    [
+        (set(), set()),
+        (set(), {("document", "drawing")}),
+        ({("document", "drawing")}, {("document", "drawing")}),
+        ({("document", "contract")}, {("document", "drawing"), ("document", "contract")}),
+        (set(), {("document", None)}),
+        ({("document", None)}, {("document", None)}),
+        ({("document", "photo")}, {("document", None)}),
+    ],
+)
+def test_readable_scopes_match_the_row_filter_on_every_category(
+    grants: set[tuple[str, str | None]],
+    restricted: set[tuple[str, str | None]],
+) -> None:
+    """Same verdict for every category, including ones no scope names."""
+    readable = readable_document_scopes(grants=grants, restricted=restricted)
+    # ``None`` stands for every category outside the folder-scoped set, so an
+    # invented one has to be tested through it.
+    for category in (*FOLDER_SCOPED_CATEGORIES, None, "invoice"):
+        _, path = kind_and_path_for_document(category)
+        assert (path in readable) is _row_filter_admits(category, grants=grants, restricted=restricted), (
+            f"category={category!r} grants={grants} restricted={restricted}"
+        )
+
+
+def test_readable_scopes_is_everything_when_no_folder_was_ever_scoped() -> None:
+    """The common project: no grants exist, so the count excludes nothing."""
+    readable = readable_document_scopes(grants=set(), restricted=set())
+    assert readable == {*FOLDER_SCOPED_CATEGORIES, None}
+
+
+def test_a_restricted_folder_without_a_grant_drops_out_of_the_count() -> None:
+    """The case the row filter already handles, now visible to the count."""
+    readable = readable_document_scopes(
+        grants=set(),
+        restricted={("document", "drawing")},
+    )
+    assert "drawing" not in readable
+    assert "contract" in readable
+    assert None in readable

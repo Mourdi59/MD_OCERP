@@ -43,7 +43,8 @@ import { PageHeader } from '@/shared/ui/PageHeader';
 import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { RequiresProject } from '@/shared/auth/RequiresProject';
-import { apiGet } from '@/shared/lib/api';
+import { apiGet, type Page } from '@/shared/lib/api';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { fetchUsers, type User as AssigneeUser } from '@/features/users/api';
@@ -84,6 +85,7 @@ import { ApprovalInstanceCard } from '@/features/approval-routes';
 // Read-only cross-module import: promoting a markup into a tracked site issue
 // reuses the punch-list create endpoint. We never mutate punch-list files.
 import { createPunchItem, type CreatePunchPayload, type PunchPriority } from '@/features/punchlist/api';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
@@ -282,7 +284,7 @@ function DueChip({ due, overdue }: { due: string; overdue: boolean }) {
   const formatted = useMemo(() => {
     const ms = Date.parse(`${due}T00:00:00`);
     if (!Number.isFinite(ms)) return due;
-    return new Date(ms).toLocaleDateString(undefined, {
+    return new Date(ms).toLocaleDateString(getIntlLocale(), {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -1091,7 +1093,7 @@ function MarkupGridCard({
 
   const formattedDate = useMemo(() => {
     try {
-      return new Date(markup.created_at).toLocaleDateString(undefined, {
+      return new Date(markup.created_at).toLocaleDateString(getIntlLocale(), {
         month: 'short',
         day: 'numeric',
       });
@@ -1261,7 +1263,7 @@ function MarkupTableRow({
 
   const formattedDate = useMemo(() => {
     try {
-      return new Date(markup.created_at).toLocaleDateString(undefined, {
+      return new Date(markup.created_at).toLocaleDateString(getIntlLocale(), {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
@@ -1531,17 +1533,18 @@ export function MarkupsPage() {
     return m;
   }, [users]);
 
-  const { data: documents = [] } = useQuery({
+  const { data: documentPage } = useQuery({
     // Share the queryKey with ``useUnifiedMarkups`` (mounted by the
     // ``UnifiedMarkupsList`` tab on this same page) so React Query dedupes
     // the GET /v1/documents/ request — without this both queries fire
     // their own copy. ``staleTime`` matches the hook so the cache window
     // covers re-mounts cleanly.
     queryKey: ['unified-markups', projectId, 'documents'],
-    queryFn: () => apiGet<DocItem[]>(`/v1/documents/?project_id=${projectId}`),
+    queryFn: () => apiGet<Page<DocItem>>(`/v1/documents/?project_id=${projectId}`),
     enabled: !!projectId,
     staleTime: 60_000,
   });
+  const documents = useMemo(() => documentPage?.items ?? [], [documentPage]);
 
   // When no filters are set the request body is identical to the
   // ``useUnifiedMarkups`` hub query (mounted by the sibling Unified tab).
@@ -2071,6 +2074,12 @@ export function MarkupsPage() {
           </>
         }
       />
+
+      {/* The document filter above, and the document names on the rows below,
+          both come from one page of the register. Past that page a markup
+          shows a bare id and its document cannot be selected in the filter,
+          so the page says how much of the register it holds. */}
+      {documentPage ? <TruncationNotice page={documentPage} className="mb-2" /> : null}
 
       {/* Module Insights panel - toggled by the header button. Placed high,
           outside the project gate, so its charts are visible the moment the

@@ -59,6 +59,14 @@ function makeDoc(id: string, name: string, mime: string | null = null) {
   };
 }
 
+/** Wrap rows in the envelope the register really answers with.
+ *
+ *  ``total`` defaults to the number of rows handed in, which is the complete
+ *  case; a test about truncation passes a bigger one. */
+function docPage(items: ReturnType<typeof makeDoc>[], total = items.length) {
+  return { items, total, offset: 0, limit: 50 };
+}
+
 /** Overrides for the documents-only shape of the picker. Spelled out rather
  *  than derived from the component's props, which are a union since federation
  *  landed and would distribute into a shape TypeScript cannot spread. */
@@ -96,12 +104,14 @@ describe('ProjectFilePicker', () => {
     /* The whole point of the feature: a DWG module must show the project's
      * drawings and hide its PDFs and spreadsheets, so the user is never
      * offered a file that would fail to load. */
-    fetchDocumentsMock.mockResolvedValue([
-      makeDoc('1', 'A-101.rev2.dwg'),
-      makeDoc('2', 'Specification.pdf'),
-      makeDoc('3', 'Costs.xlsx'),
-      makeDoc('4', 'Site-plan.DXF'),
-    ]);
+    fetchDocumentsMock.mockResolvedValue(
+      docPage([
+        makeDoc('1', 'A-101.rev2.dwg'),
+        makeDoc('2', 'Specification.pdf'),
+        makeDoc('3', 'Costs.xlsx'),
+        makeDoc('4', 'Site-plan.DXF'),
+      ]),
+    );
     renderPicker();
 
     await waitFor(() => expect(screen.getByText('A-101.rev2.dwg')).toBeTruthy());
@@ -116,7 +126,7 @@ describe('ProjectFilePicker', () => {
      * module decides. If this stopped firing, every wired module would look
      * fine and quietly do nothing on click. */
     const onPick = vi.fn();
-    fetchDocumentsMock.mockResolvedValue([makeDoc('1', 'A-101.dwg')]);
+    fetchDocumentsMock.mockResolvedValue(docPage([makeDoc('1', 'A-101.dwg')]));
     renderPicker({ onPick });
 
     await waitFor(() => expect(screen.getByText('A-101.dwg')).toBeTruthy());
@@ -132,7 +142,7 @@ describe('ProjectFilePicker', () => {
     /* Two different dead ends need two different messages. A project holding
      * only PDFs must be told to add a DWG in Files - telling it "no match for
      * your search" when the search box is empty would be nonsense. */
-    fetchDocumentsMock.mockResolvedValue([makeDoc('1', 'Specification.pdf')]);
+    fetchDocumentsMock.mockResolvedValue(docPage([makeDoc('1', 'Specification.pdf')]));
     renderPicker();
 
     await waitFor(() =>
@@ -146,7 +156,7 @@ describe('ProjectFilePicker', () => {
   it('shows the search empty state when a compatible file exists but is filtered out', async () => {
     /* The mirror case. Here the project DOES hold an openable file, so the
      * fix is to clear the search - not to go and upload something. */
-    fetchDocumentsMock.mockResolvedValue([makeDoc('1', 'A-101.dwg')]);
+    fetchDocumentsMock.mockResolvedValue(docPage([makeDoc('1', 'A-101.dwg')]));
     renderPicker();
 
     await waitFor(() => expect(screen.getByText('A-101.dwg')).toBeTruthy());
@@ -161,7 +171,7 @@ describe('ProjectFilePicker', () => {
      * the DDC cad2data conversion. The row must say so. A silent offer here
      * would be the exact "do not offer a file that will fail to open"
      * failure the feature was asked to avoid. */
-    fetchDocumentsMock.mockResolvedValue([makeDoc('1', 'Tower.ifc')]);
+    fetchDocumentsMock.mockResolvedValue(docPage([makeDoc('1', 'Tower.ifc')]));
     renderPicker({ accepted: BIM_VIEWER_FORMATS });
 
     await waitFor(() => expect(screen.getByText('Tower.ifc')).toBeTruthy());
@@ -172,17 +182,38 @@ describe('ProjectFilePicker', () => {
     /* The BIM viewer forwards DWG to DWG takeoff rather than opening it as a
      * 3D model. Saying so is more honest than a bare row that appears to
      * promise a 3D view. */
-    fetchDocumentsMock.mockResolvedValue([makeDoc('1', 'Level-02.dwg')]);
+    fetchDocumentsMock.mockResolvedValue(docPage([makeDoc('1', 'Level-02.dwg')]));
     renderPicker({ accepted: BIM_VIEWER_FORMATS });
 
     await waitFor(() => expect(screen.getByText('Level-02.dwg')).toBeTruthy());
     expect(screen.getByText('Opens in another module')).toBeTruthy();
   });
 
+  it('says how much of the register it is showing when the page is cut', async () => {
+    /* A picker cannot page, so the file the user came for may simply not be
+     * on the list. Before the envelope the modal looked identical whether it
+     * held the whole project or its first 50 files. */
+    fetchDocumentsMock.mockResolvedValue(docPage([makeDoc('1', 'A-101.dwg')], 340));
+    renderPicker();
+
+    await waitFor(() => expect(screen.getByText('A-101.dwg')).toBeTruthy());
+    expect(screen.getByTestId('truncation-notice').textContent).toContain('340');
+  });
+
+  it('stays silent when the page holds the whole register', async () => {
+    /* The other half of the claim above: the notice must not appear on a
+     * complete list, or it stops meaning anything. */
+    fetchDocumentsMock.mockResolvedValue(docPage([makeDoc('1', 'A-101.dwg')]));
+    renderPicker();
+
+    await waitFor(() => expect(screen.getByText('A-101.dwg')).toBeTruthy());
+    expect(screen.queryByTestId('truncation-notice')).toBeNull();
+  });
+
   it('does not query the documents API while closed', async () => {
     /* The picker is mounted permanently by its callers, so an unconditional
      * query would fire a documents request on every viewer page load. */
-    fetchDocumentsMock.mockResolvedValue([]);
+    fetchDocumentsMock.mockResolvedValue(docPage([]));
     renderPicker({ open: false });
     expect(fetchDocumentsMock).not.toHaveBeenCalled();
   });

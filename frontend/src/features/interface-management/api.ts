@@ -355,8 +355,8 @@ interface ActivityPickerRow {
  * "nothing to link" note) rather than breaking the interface modal.
  */
 export async function fetchRfiOptions(projectId: string): Promise<LinkOption[]> {
-  const rows = await apiGet<RfiPickerRow[]>(`/v1/rfi/?project_id=${projectId}`);
-  return (rows ?? []).map((r) => ({
+  const page = await apiGet<Page<RfiPickerRow>>(`/v1/rfi/?project_id=${projectId}`);
+  return (page?.items ?? []).map((r) => ({
     id: r.id,
     label: [r.rfi_number, r.subject].filter(Boolean).join(' - ') || r.id,
   }));

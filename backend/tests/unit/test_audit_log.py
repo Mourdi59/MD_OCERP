@@ -4,6 +4,7 @@ Coverage:
     * ``log_activity`` flushes a row with the expected columns.
     * ``actor_id`` / ``tenant_id`` coerce both str and UUID inputs.
     * ``get_activity_for_entity`` returns the chronological history.
+    * ``count_activity_for_entity`` counts the same rows, ignoring paging.
     * ``get_recent_activity`` honours entity_type / action / actor filters.
     * Multiple rows for the same entity are queryable in insertion order.
 """
@@ -17,6 +18,7 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit_log import (
+    count_activity_for_entity,
     get_activity_for_entity,
     get_recent_activity,
     log_activity,
@@ -151,6 +153,50 @@ async def test_get_activity_filters_by_entity(session: AsyncSession) -> None:
     rows = await get_activity_for_entity(session, entity_type="boq", entity_id=eid1)
     assert len(rows) == 1
     assert rows[0].entity_id == eid1
+
+
+@pytest.mark.asyncio
+async def test_count_activity_ignores_paging_and_matches_the_page(session: AsyncSession) -> None:
+    """The count has to describe the same rows the page is a slice of.
+
+    A journal page that reports its own length as the total says nothing, and
+    a count filtered differently from the page is worse than none: it makes a
+    complete history look truncated or the reverse.
+    """
+    eid = str(uuid.uuid4())
+    other = str(uuid.uuid4())
+    for status in ("draft", "final", "archived"):
+        await log_activity(
+            session,
+            actor_id=None,
+            entity_type="boq",
+            entity_id=eid,
+            action="status_changed",
+            to_status=status,
+        )
+    # A row on another entity, and one on another entity type under the same
+    # id, so a count that dropped either filter would show up here.
+    await log_activity(session, actor_id=None, entity_type="boq", entity_id=other, action="status_changed")
+    await log_activity(session, actor_id=None, entity_type="rfi", entity_id=eid, action="status_changed")
+
+    page = await get_activity_for_entity(session, entity_type="boq", entity_id=eid, limit=2)
+    total = await count_activity_for_entity(session, entity_type="boq", entity_id=eid)
+
+    assert len(page) == 2
+    assert total == 3
+    # An offset past the end still counts the whole journal.
+    assert await count_activity_for_entity(session, entity_type="boq", entity_id=eid) == 3
+    assert await count_activity_for_entity(session, entity_type="boq", entity_id=uuid.uuid4()) == 0
+
+
+@pytest.mark.asyncio
+async def test_count_activity_accepts_a_uuid_the_way_the_reader_does(session: AsyncSession) -> None:
+    """``entity_id`` arrives as a UUID from the routes and str from services."""
+    eid = uuid.uuid4()
+    await log_activity(session, actor_id=None, entity_type="rfi", entity_id=str(eid), action="status_changed")
+
+    assert await count_activity_for_entity(session, entity_type="rfi", entity_id=eid) == 1
+    assert await count_activity_for_entity(session, entity_type="rfi", entity_id=str(eid)) == 1
 
 
 @pytest.mark.asyncio

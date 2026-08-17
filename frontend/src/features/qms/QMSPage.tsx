@@ -1185,11 +1185,16 @@ function NCRDrawer({
     queryFn: () => listNCRActions(id),
   });
 
+  // The route caps at 200 and defaults to 50. This picker sent no limit,
+  // so a project past its fiftieth variation order silently stopped
+  // offering the rest and an NCR could not be escalated against them.
+  const VO_PICKER_LIMIT = 200;
+
   // Open variation orders the NCR can be escalated against. The QMS module
   // never fabricates a variation, so escalation is gated on a real VO id.
   const variationsQ = useQuery({
     queryKey: ['qms', 'ncr-variations', ncr?.project_id],
-    queryFn: () => listVariationOrders({ project_id: ncr!.project_id }),
+    queryFn: () => listVariationOrders({ project_id: ncr!.project_id, limit: VO_PICKER_LIMIT }),
     enabled: !!ncr?.project_id,
   });
 
@@ -1401,13 +1406,13 @@ function NCRDrawer({
                   <option value="">
                     {t('qms.select_variation', { defaultValue: 'Select a variation order…' })}
                   </option>
-                  {(variationsQ.data ?? []).map((vo) => (
+                  {(variationsQ.data?.items ?? []).map((vo) => (
                     <option key={vo.id} value={vo.id}>
                       {vo.code} — {vo.title}
                     </option>
                   ))}
                 </select>
-                {(variationsQ.data ?? []).length === 0 && !variationsQ.isLoading && (
+                {(variationsQ.data?.items ?? []).length === 0 && !variationsQ.isLoading && (
                   <p className="text-2xs text-content-tertiary">
                     {t('qms.no_variations', {
                       defaultValue: 'No variation orders exist for this project yet. Create one in Variations first.',

@@ -9,12 +9,13 @@ No business logic - pure data access.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, cast, func, or_, select, update
+from sqlalchemy import String, cast, false, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm.util import identity_key
 from sqlalchemy.sql.elements import ClauseElement
 
+from app.modules.documents.folder_permissions_models import FOLDER_SCOPED_CATEGORIES
 from app.modules.documents.models import Document, ProjectPhoto, Sheet
 
 # Columns a client is allowed to sort the document list by. Everything
@@ -48,6 +49,7 @@ class DocumentRepository:
         search: str | None = None,
         sort_by: str | None = None,
         sort_order: str = "desc",
+        visible_categories: frozenset[str | None] | None = None,
     ) -> tuple[list[Document], int]:
         """List documents for a project with pagination and filters.
 
@@ -64,6 +66,16 @@ class DocumentRepository:
 
         ``DISTINCT`` is applied so a document with multiple matching sheets
         appears once in the result set.
+
+        ``visible_categories`` narrows the COUNT only, never the page. The
+        route hands folder permissions to the page as a row-by-row filter it
+        applies after this query, and that filter is left exactly where it is:
+        it is the access control, and a rewrite of it into SQL that got one
+        wildcard branch wrong would leak documents rather than miscount them.
+        The count has no such stake, so it takes the same decision expressed
+        as a set of readable categories - which is what makes ``total``
+        describe the register the caller can actually see. ``None`` inside the
+        set stands for documents whose category is not folder-scoped.
         """
         base = select(Document).where(Document.project_id == project_id)
         if category is not None:
@@ -96,7 +108,26 @@ class DocumentRepository:
                 )
             ).distinct()
 
-        count_stmt = select(func.count()).select_from(base.subquery())
+        counted = base
+        if visible_categories is not None:
+            readable = [c for c in visible_categories if c is not None]
+            clauses: list[ClauseElement] = []
+            if readable:
+                clauses.append(Document.category.in_(sorted(readable)))
+            if None in visible_categories:
+                # The unscoped folder: NULL, or a category outside the set the
+                # permission model knows about. ``notin_`` alone would drop the
+                # NULL rows - a NULL comparison is NULL, not true - so the
+                # ``is_(None)`` arm has to be spelled out.
+                clauses.append(
+                    or_(
+                        Document.category.is_(None),
+                        Document.category.notin_(sorted(FOLDER_SCOPED_CATEGORIES)),
+                    )
+                )
+            counted = counted.where(or_(*clauses)) if clauses else counted.where(false())
+
+        count_stmt = select(func.count()).select_from(counted.subquery())
         total = (await self.session.execute(count_stmt)).scalar_one()
 
         # Sorting - only a documented whitelist of columns is honoured.

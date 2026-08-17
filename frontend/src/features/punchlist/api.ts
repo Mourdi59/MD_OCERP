@@ -285,10 +285,10 @@ export interface PunchDocument {
  */
 export async function fetchPunchPhotoDocuments(projectId: string): Promise<PunchDocument[]> {
   if (!projectId) return [];
-  const rows = await apiGet<PunchDocument[] | { items: PunchDocument[] }>(
+  const page = await apiGet<Page<PunchDocument>>(
     `/v1/documents/?project_id=${projectId}&category=photo&limit=500`,
   );
-  return Array.isArray(rows) ? rows : rows.items ?? [];
+  return page.items;
 }
 
 /** A drawing/document option for the pin board and pin picker. */
@@ -300,10 +300,10 @@ export interface PunchDrawing {
 /** List the project documents that can be used as pin-board drawings. */
 export async function fetchPunchDrawings(projectId: string): Promise<PunchDrawing[]> {
   if (!projectId) return [];
-  const rows = await apiGet<{ id: string; filename?: string; name?: string }[]>(
+  const page = await apiGet<Page<{ id: string; filename?: string; name?: string }>>(
     `/v1/documents/?project_id=${projectId}&limit=500`,
   );
-  return (Array.isArray(rows) ? rows : []).map((r) => ({
+  return page.items.map((r) => ({
     id: r.id,
     filename: r.filename ?? r.name ?? '',
   }));

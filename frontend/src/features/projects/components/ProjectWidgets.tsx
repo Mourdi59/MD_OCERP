@@ -264,14 +264,20 @@ export function RFIInboxWidget({ projectId }: { projectId: string }) {
   // Fall back to the per-widget query if the provider isn't mounted —
   // some surfaces (storybook, ad-hoc embeds) render the widget standalone.
   const rollup = useRollupSlice('project_rfi_inbox');
-  const fallback = useGracefulQuery<RFIItem[]>(
+  // The route answers with a page envelope. Nothing in TypeScript would have
+  // caught this call reading it as an array: the type argument is written by
+  // hand here, so the compiler believes whatever this line claims.
+  const fallback = useGracefulQuery<Page<RFIItem>>(
     ['proj-widget-rfi', projectId],
     `/v1/rfi/?project_id=${projectId}&status=open&limit=5`,
     !rollup.hasProvider,
   );
+  // No truncation notice: the widget asks for five, is headed "Latest open
+  // requests" and carries a "View all" link to the register. A feed that
+  // names itself a sample is not claiming to be the whole set.
   const data: RFIItem[] | null | undefined = rollup.hasProvider
     ? (rollup.data?.items as RFIItem[] | undefined) ?? null
-    : fallback.data;
+    : fallback.data?.items ?? null;
   const isLoading = rollup.hasProvider ? rollup.isLoadingFromRollup : fallback.isLoading;
 
   const title = t('project.widget.rfi-inbox.title', { defaultValue: 'RFI inbox' });
@@ -833,10 +839,14 @@ function fmtBytes(bytes?: number): string {
 export function RecentFilesWidget({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data, isLoading } = useGracefulQuery<FileItem[]>(
+  // Deliberately a "latest five" card, not a register: the page it reads is
+  // sliced to five below and the card carries a "view all" link, so it is the
+  // one shape in this wave that needs no truncation notice.
+  const { data: filePage, isLoading } = useGracefulQuery<Page<FileItem>>(
     ['proj-widget-files', projectId],
     `/v1/documents/?project_id=${projectId}`,
   );
+  const data = filePage?.items ?? null;
 
   const title = t('project.widget.recent-files.title', { defaultValue: 'Recent files' });
   const subtitle = t('project.widget.recent-files.card_subtitle', {
@@ -964,18 +974,18 @@ export function PhotoStripWidget({ projectId }: { projectId: string }) {
   //     field (a ``field`` tag) - see ``isFieldImageDocument``. The twin
   //     ``category === 'photo'`` rows mirrored beside every photo upload are
   //     skipped here so a site photo appears exactly once.
-  const photos = useGracefulQuery<PhotoItem[]>(
+  const photos = useGracefulQuery<Page<PhotoItem>>(
     ['proj-widget-photos', projectId],
     `/v1/documents/photos/?project_id=${projectId}`,
   );
-  const docs = useGracefulQuery<DocImageItem[]>(
+  const docs = useGracefulQuery<Page<DocImageItem>>(
     ['proj-widget-photo-docs', projectId],
     `/v1/documents/?project_id=${projectId}`,
   );
 
   const images = useMemo<StripImage[]>(() => {
     const out: StripImage[] = [];
-    for (const p of photos.data ?? []) {
+    for (const p of photos.data?.items ?? []) {
       out.push({
         key: `photo:${p.id}`,
         // Photo thumbnails are bearer-protected; <AuthImage> fetches them
@@ -985,7 +995,7 @@ export function PhotoStripWidget({ projectId }: { projectId: string }) {
         href: `/projects/${projectId}?tab=photos`,
       });
     }
-    for (const d of docs.data ?? []) {
+    for (const d of docs.data?.items ?? []) {
       // Only field-tagged images (never office renders, never the photo
       // twin rows) join the dedicated site photos above.
       if (!isFieldImageDocument(d)) continue;

@@ -84,6 +84,20 @@ def role_satisfies(actual: str, required: str) -> bool:
     return FOLDER_ROLE_RANK.get(actual, -1) >= FOLDER_ROLE_RANK.get(required, 99)
 
 
+# The ``Document.category`` values that map onto a folder ``scope_path``.
+# Anything else - including NULL - belongs to the wildcard scope
+# ``("document", None)``.
+#
+# Lives in the models module so both the permission mapper
+# (``kind_and_path_for_document``) and the repository's count filter read the
+# same set. Two copies would drift, and the drift would be invisible: a
+# category missing from one copy still renders, it only gets counted into the
+# wrong folder.
+FOLDER_SCOPED_CATEGORIES: frozenset[str] = frozenset(
+    {"drawing", "contract", "specification", "photo", "correspondence", "other"}
+)
+
+
 class FolderPermission(Base):
     """Per-folder grant scoped to a project member.
 

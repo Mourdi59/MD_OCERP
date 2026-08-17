@@ -184,7 +184,11 @@ async def test_viewer_can_list_and_get_but_not_write(
     # Member can list (sees the doc)
     listing = await client.get(f"/api/v1/documents/?project_id={project_id}", headers=member_h)
     assert listing.status_code == 200, listing.text
-    assert any(d["id"] == doc_id for d in listing.json()), listing.json()
+    page = listing.json()
+    assert any(d["id"] == doc_id for d in page["items"]), page
+    assert page["total"] == len(page["items"]), (
+        f"the granted member sees every document that exists here, so the count must agree: {page}"
+    )
 
     # Member can get the doc
     one = await client.get(f"/api/v1/documents/{doc_id}", headers=member_h)
@@ -283,7 +287,13 @@ async def test_revoke_restores_404(
 
     listing = await client.get(f"/api/v1/documents/?project_id={project_id}", headers=member_h)
     assert listing.status_code == 200
-    assert not any(d["id"] == doc_id for d in listing.json())
+    page = listing.json()
+    assert not any(d["id"] == doc_id for d in page["items"])
+    # The count has to agree with the filter. A total taken before folder
+    # permissions were applied would say 1 here, and the register would tell
+    # the member "showing 0 of 1" about a document they are not allowed to
+    # know exists.
+    assert page["total"] == 0, f"total must count only what this member may read: {page}"
 
 
 # ── 4. Non-owner cannot grant → 403 ────────────────────────────────────────
@@ -376,7 +386,11 @@ async def test_unscoped_folder_visible_to_all_members(
     # everyone with project access can read.
     listing = await client.get(f"/api/v1/documents/?project_id={project_id}", headers=member_h)
     assert listing.status_code == 200, listing.text
-    assert any(d["id"] == doc_id for d in listing.json()), listing.json()
+    page = listing.json()
+    assert any(d["id"] == doc_id for d in page["items"]), page
+    # Nothing on this project is scoped, so the exclusion the count applies
+    # must be empty rather than "everything a grant does not name".
+    assert page["total"] == len(page["items"]), page
 
     one = await client.get(f"/api/v1/documents/{doc_id}", headers=member_h)
     assert one.status_code == 200, one.text

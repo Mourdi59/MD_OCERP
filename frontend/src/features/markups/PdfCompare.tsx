@@ -48,7 +48,8 @@ import { Slider } from '@/shared/ui/Slider';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
-import { apiGet } from '@/shared/lib/api';
+import { apiGet, type Page } from '@/shared/lib/api';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -785,12 +786,13 @@ export function PdfComparePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, zoom, page]);
 
-  const { data: documents = [], isLoading: loadingDocs } = useQuery<DocItem[]>({
+  const { data: documentPage, isLoading: loadingDocs } = useQuery<Page<DocItem>>({
     queryKey: ['documents-for-compare', activeProjectId],
-    queryFn: () => apiGet<DocItem[]>(`/v1/documents/?project_id=${activeProjectId}`),
+    queryFn: () => apiGet<Page<DocItem>>(`/v1/documents/?project_id=${activeProjectId}`),
     enabled: !!activeProjectId,
     staleTime: 60_000,
   });
+  const documents = useMemo(() => documentPage?.items ?? [], [documentPage]);
 
   // Only PDF documents
   const pdfDocs = useMemo(
@@ -1091,6 +1093,13 @@ export function PdfComparePage() {
           <Maximize2 size={14} />
         </button>
       </div>
+
+      {/* Both revision pickers above are filled from one page of the
+          register, so a drawing past that page cannot be compared at all.
+          Gated on the server page, not on the PDFs left after filtering. */}
+      {documentPage ? (
+        <TruncationNotice page={documentPage} className="shrink-0 px-4 py-1" />
+      ) : null}
 
       {/* ── Overlay opacity slider (only in overlay mode) ──────────────── */}
       {mode === 'overlay' && (

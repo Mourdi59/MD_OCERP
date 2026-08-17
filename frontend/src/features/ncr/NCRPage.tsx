@@ -40,6 +40,7 @@ import { SectionIntro } from '@/features/validation';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { apiGet, apiPost } from '@/shared/lib/api';
+import { fetchAllPages } from '@/shared/lib/apiHelpers';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import {
@@ -1174,8 +1175,14 @@ export function NCRPage() {
   const breadcrumbProjectName =
     projects.find((p) => p.id === selectedProjectId)?.name || '';
 
+  // Read every page rather than the first one. The route caps `limit` at 100
+  // and defaults to 50, and the four tiles below are reduced over whatever
+  // came back - the first of them is labelled "Total". On a project past the
+  // cap that tile stated the page size and called it the register. The same
+  // rows also feed the Insights panel, so a short read would have understated
+  // every chart on the page with nothing on screen saying so.
   const {
-    data: ncrs = [],
+    data: ncrsPage,
     isLoading,
     isError: ncrsError,
     error: ncrsErrorValue,
@@ -1183,12 +1190,12 @@ export function NCRPage() {
   } = useQuery({
     queryKey: ['ncrs', projectId, statusFilter],
     queryFn: () =>
-      fetchNCRs({
-        project_id: projectId,
-        status: statusFilter || undefined,
-      }),
+      fetchAllPages<NCR>((offset, limit) =>
+        fetchNCRs({ project_id: projectId, status: statusFilter || undefined, offset, limit }),
+      ),
     enabled: !!projectId,
   });
+  const ncrs = useMemo(() => ncrsPage?.items ?? [], [ncrsPage]);
 
   // Client-side search
   const filtered = useMemo(() => {

@@ -53,6 +53,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { PageHeader } from '@/shared/ui/PageHeader';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { apiGet, getErrorMessage } from '@/shared/lib/api';
 import { onlyChangedFields } from '@/shared/lib/apiHelpers';
 import { useToastStore } from '@/stores/useToastStore';
@@ -515,7 +516,7 @@ export function VariationsPage() {
   });
 
   const filteredNotices = useMemo(() => {
-    const items = noticesQ.data ?? [];
+    const items = noticesQ.data?.items ?? [];
     if (!search.trim()) return items;
     const s = search.toLowerCase();
     return items.filter(
@@ -527,7 +528,7 @@ export function VariationsPage() {
   }, [noticesQ.data, search]);
 
   const filteredRequests = useMemo(() => {
-    const items = requestsQ.data ?? [];
+    const items = requestsQ.data?.items ?? [];
     if (!search.trim()) return items;
     const s = search.toLowerCase();
     return items.filter(
@@ -539,7 +540,7 @@ export function VariationsPage() {
   }, [requestsQ.data, search]);
 
   const filteredOrders = useMemo(() => {
-    const items = ordersQ.data ?? [];
+    const items = ordersQ.data?.items ?? [];
     if (!search.trim()) return items;
     const s = search.toLowerCase();
     return items.filter(
@@ -549,7 +550,7 @@ export function VariationsPage() {
   }, [ordersQ.data, search]);
 
   const filteredDaywork = useMemo(() => {
-    const items = dayworkQ.data ?? [];
+    const items = dayworkQ.data?.items ?? [];
     if (!search.trim()) return items;
     const s = search.toLowerCase();
     return items.filter(
@@ -560,7 +561,7 @@ export function VariationsPage() {
   }, [dayworkQ.data, search]);
 
   const filteredEot = useMemo(() => {
-    const items = eotQ.data ?? [];
+    const items = eotQ.data?.items ?? [];
     if (!search.trim()) return items;
     const s = search.toLowerCase();
     return items.filter((e) => (e.description || '').toLowerCase().includes(s));
@@ -573,7 +574,7 @@ export function VariationsPage() {
   // the no-project early return below so the hook order stays stable.
   const insights = useModuleInsights('variations', { defaultOpen: true });
   const { datasets: insightDatasets, builtins: insightBuiltins } = useMemo(
-    () => buildVariationsInsights(requestsQ.data ?? [], currency, t),
+    () => buildVariationsInsights(requestsQ.data?.items ?? [], currency, t),
     [requestsQ.data, currency, t],
   );
 
@@ -869,6 +870,11 @@ export function VariationsPage() {
       </div>
 
       <Card padding="none">
+        {/* Driven by the SERVER page for the active tab, not by the filtered
+            rows below it. The search box narrows what is on screen and cannot
+            reach the rows the server withheld, so a search that finds nothing
+            still has to say the register was only partly read. */}
+        {activeQuery.data && <TruncationNotice page={activeQuery.data} className="px-4 pt-3" />}
         {isLoading ? (
           <div className="p-4">
             <SkeletonTable rows={8} columns={5} />
@@ -932,11 +938,11 @@ export function VariationsPage() {
         <DetailDrawer
           selected={selected}
           projectId={projectId}
-          notices={noticesQ.data ?? []}
-          requests={requestsQ.data ?? []}
-          orders={ordersQ.data ?? []}
-          daywork={dayworkQ.data ?? []}
-          eot={eotQ.data ?? []}
+          notices={noticesQ.data?.items ?? []}
+          requests={requestsQ.data?.items ?? []}
+          orders={ordersQ.data?.items ?? []}
+          daywork={dayworkQ.data?.items ?? []}
+          eot={eotQ.data?.items ?? []}
           currency={currency}
           onClose={() => setSelected(null)}
         />
@@ -947,8 +953,8 @@ export function VariationsPage() {
           kind={tab}
           projectId={projectId}
           currency={currency}
-          notices={noticesQ.data ?? []}
-          requests={requestsQ.data ?? []}
+          notices={noticesQ.data?.items ?? []}
+          requests={requestsQ.data?.items ?? []}
           onClose={() => setCreateOpen(false)}
         />
       )}
@@ -958,8 +964,8 @@ export function VariationsPage() {
           kind={editTarget.kind}
           projectId={projectId}
           currency={currency}
-          notices={noticesQ.data ?? []}
-          requests={requestsQ.data ?? []}
+          notices={noticesQ.data?.items ?? []}
+          requests={requestsQ.data?.items ?? []}
           editTarget={editTarget}
           onClose={() => setEditTarget(null)}
         />

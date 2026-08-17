@@ -237,6 +237,25 @@ class RiskResponse(BaseModel):
         return _serialise_money(v)
 
 
+class RiskListResponse(BaseModel):
+    """One page of a project's risk register plus the size of the whole set.
+
+    ``total`` counts the risks the status, category and severity filters
+    matched, not the length of ``items``. The register is sorted by score by
+    default, so a truncated page hides the tail of the register - which is
+    where the accepted and monitored risks sit, and exactly what a reviewer
+    scrolls for when they ask whether anything has been left unowned.
+
+    Distinct from :class:`RiskSummary`, which aggregates the whole project and
+    never pages.
+    """
+
+    items: list[RiskResponse] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50
+
+
 # ── Summary schema ───────────────────────────────────────────────────────
 
 

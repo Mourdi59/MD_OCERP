@@ -43,6 +43,7 @@ import {
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { PageHeader } from '@/shared/ui/PageHeader';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage } from '@/shared/lib/api';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
@@ -299,7 +300,7 @@ export function EquipmentPage() {
   // currency among loaded units so the Fleet Intelligence money cells render
   // in something meaningful rather than an em-dash.
   const fleetCurrency = useMemo(() => {
-    const items = eqQ.data ?? [];
+    const items = eqQ.data?.items ?? [];
     const counts = new Map<string, number>();
     for (const it of items) {
       const c = (it.currency || '').trim();
@@ -317,7 +318,7 @@ export function EquipmentPage() {
   }, [eqQ.data]);
 
   const filtered = useMemo(() => {
-    const items = eqQ.data ?? [];
+    const items = eqQ.data?.items ?? [];
     const s = search.toLowerCase();
     if (!s) return items;
     return items.filter(
@@ -335,7 +336,7 @@ export function EquipmentPage() {
   // stable no matter which tab or drawer is open.
   const insights = useModuleInsights('equipment', { defaultOpen: true });
   const { datasets: insightDatasets, builtins: insightBuiltins } = useMemo(
-    () => buildEquipmentInsights(eqQ.data ?? [], fleetCurrency || '', t),
+    () => buildEquipmentInsights(eqQ.data?.items ?? [], fleetCurrency || '', t),
     [eqQ.data, fleetCurrency, t],
   );
 
@@ -519,6 +520,12 @@ export function EquipmentPage() {
       </div>
 
       <Card padding="none">
+        {/* Driven by the SERVER page, not by `filtered`. The search box narrows
+            what is on screen and cannot reach the units the server withheld, so
+            a search that finds nothing in the first 200 still has to say the
+            register was only partly read. The status and ownership selects do
+            travel to the server, and `total` counts what they filtered to. */}
+        {eqQ.data && <TruncationNotice page={eqQ.data} className="px-4 pt-3" />}
         {eqQ.isLoading ? (
           <div className="p-4">
             <SkeletonTable rows={8} columns={5} />
@@ -2090,7 +2097,9 @@ function TypesPage() {
     }
   };
 
-  const rows = typesQ.data ?? [];
+  /* No truncation notice here on purpose: the route reads the whole taxonomy
+     in one query, so `total` can never exceed what `items` already holds. */
+  const rows = typesQ.data?.items ?? [];
 
   return (
     <div className="space-y-3">
