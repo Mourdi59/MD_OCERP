@@ -37554,6 +37554,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: pominięto wszystkie rekordy w liczbie {{skipped}}, więc tej kolekcji nie można jeszcze przeszukiwać. Zwykle oznacza to, że model osadzania jest niedostępny.",
     "vector_status.reindex_empty": "Nie ma czego indeksować",
     "vector_status.reindex_empty_msg": "{{collection}} nie ma jeszcze rekordów do zindeksowania.",
+    "schedule_advanced.rnc.changes": "Zmiany",
+    "schedule_advanced.rnc.equipment": "Sprzęt",
+    "schedule_advanced.rnc.info": "Informacja",
+    "schedule_advanced.rnc.manpower": "Siła robocza",
+    "schedule_advanced.rnc.material": "Materiał",
+    "schedule_advanced.rnc.other": "Inne",
+    "schedule_advanced.rnc.predecessor": "Poprzednik niezakończony",
+    "schedule_advanced.rnc.quality": "Jakość",
+    "schedule_advanced.rnc.weather": "Pogoda",
   }
 } as { translation: Record<string, string> };
 

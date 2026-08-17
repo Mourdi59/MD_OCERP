@@ -37415,6 +37415,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: παραλείφθηκαν και οι {{skipped}} εγγραφές, οπότε αυτή η συλλογή δεν είναι ακόμη αναζητήσιμη. Αυτό συνήθως σημαίνει ότι το μοντέλο embedding δεν είναι διαθέσιμο.",
     "vector_status.reindex_empty": "Δεν υπάρχει τίποτα προς ευρετηρίαση",
     "vector_status.reindex_empty_msg": "Η {{collection}} δεν έχει ακόμη εγγραφές προς ευρετηρίαση.",
+    "schedule_advanced.rnc.changes": "Μεταβολές",
+    "schedule_advanced.rnc.equipment": "Μηχάνημα",
+    "schedule_advanced.rnc.info": "Πληροφορία",
+    "schedule_advanced.rnc.manpower": "Προσωπικό",
+    "schedule_advanced.rnc.material": "Υλικό",
+    "schedule_advanced.rnc.other": "Άλλο",
+    "schedule_advanced.rnc.predecessor": "Προκάτοχος ανοιχτός",
+    "schedule_advanced.rnc.quality": "Ποιότητα",
+    "schedule_advanced.rnc.weather": "Καιρός",
   }
 } as { translation: Record<string, string> };
 

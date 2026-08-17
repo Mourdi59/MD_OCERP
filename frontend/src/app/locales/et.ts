@@ -37404,6 +37404,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: kõik {{skipped}} kirjet jäeti vahele, seega ei ole see kollektsioon veel otsitav. Tavaliselt tähendab see, et embeddingu mudel ei ole saadaval.",
     "vector_status.reindex_empty": "Pole midagi indekseerida",
     "vector_status.reindex_empty_msg": "{{collection}} ei sisalda veel ühtegi indekseeritavat kirjet.",
+    "schedule_advanced.rnc.changes": "Muudatused",
+    "schedule_advanced.rnc.equipment": "Tehnika",
+    "schedule_advanced.rnc.info": "Informatsioon",
+    "schedule_advanced.rnc.manpower": "Tööjõud",
+    "schedule_advanced.rnc.material": "Materjal",
+    "schedule_advanced.rnc.other": "Muu",
+    "schedule_advanced.rnc.predecessor": "Eelnev tegevus lõpetamata",
+    "schedule_advanced.rnc.quality": "Kvaliteet",
+    "schedule_advanced.rnc.weather": "Ilm",
   }
 } as { translation: Record<string, string> };
 

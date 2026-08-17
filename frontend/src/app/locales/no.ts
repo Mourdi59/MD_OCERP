@@ -37417,6 +37417,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: alle {{skipped}} poster ble hoppet over, så denne samlingen kan ennå ikke søkes i. Det betyr vanligvis at innebyggingsmodellen ikke er tilgjengelig.",
     "vector_status.reindex_empty": "Ingenting å indeksere",
     "vector_status.reindex_empty_msg": "{{collection}} har ennå ingen poster å indeksere.",
+    "schedule_advanced.rnc.changes": "Endringer",
+    "schedule_advanced.rnc.equipment": "Maskiner",
+    "schedule_advanced.rnc.info": "Informasjon",
+    "schedule_advanced.rnc.manpower": "Mannskap",
+    "schedule_advanced.rnc.material": "Materialer",
+    "schedule_advanced.rnc.other": "Annet",
+    "schedule_advanced.rnc.predecessor": "Forgjenger åpen",
+    "schedule_advanced.rnc.quality": "Kvalitet",
+    "schedule_advanced.rnc.weather": "Vær",
   }
 } as { translation: Record<string, string> };
 

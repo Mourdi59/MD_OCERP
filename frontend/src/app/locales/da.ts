@@ -37416,6 +37416,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: alle {{skipped}} poster blev sprunget over, så denne samling kan endnu ikke søges. Det betyder som regel, at embedding modellen ikke er tilgængelig.",
     "vector_status.reindex_empty": "Intet at indeksere",
     "vector_status.reindex_empty_msg": "{{collection}} har endnu ingen poster at indeksere.",
+    "schedule_advanced.rnc.changes": "Ændringer",
+    "schedule_advanced.rnc.equipment": "Maskiner",
+    "schedule_advanced.rnc.info": "Information",
+    "schedule_advanced.rnc.manpower": "Mandskab",
+    "schedule_advanced.rnc.material": "Materiale",
+    "schedule_advanced.rnc.other": "Andet",
+    "schedule_advanced.rnc.predecessor": "Forgænger ikke afsluttet",
+    "schedule_advanced.rnc.quality": "Kvalitet",
+    "schedule_advanced.rnc.weather": "Vejr",
   }
 } as { translation: Record<string, string> };
 

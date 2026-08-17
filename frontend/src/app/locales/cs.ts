@@ -37546,6 +37546,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: všech {{skipped}} záznamů bylo přeskočeno, takže tato sbírka zatím není prohledatelná. Obvykle to znamená, že model vkládání není dostupný.",
     "vector_status.reindex_empty": "Není co indexovat",
     "vector_status.reindex_empty_msg": "{{collection}} zatím nemá žádné záznamy k indexování.",
+    "schedule_advanced.rnc.changes": "Změny",
+    "schedule_advanced.rnc.equipment": "Stroje",
+    "schedule_advanced.rnc.info": "Informace",
+    "schedule_advanced.rnc.manpower": "Pracovní síla",
+    "schedule_advanced.rnc.material": "Materiál",
+    "schedule_advanced.rnc.other": "Jiné",
+    "schedule_advanced.rnc.predecessor": "Předchůdce nedokončen",
+    "schedule_advanced.rnc.quality": "Kvalita",
+    "schedule_advanced.rnc.weather": "Počasí",
   }
 } as { translation: Record<string, string> };
 

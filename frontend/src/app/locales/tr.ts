@@ -37422,6 +37422,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: {{skipped}} kaydın tamamı atlandı, bu nedenle bu koleksiyonda henüz arama yapılamıyor. Bu genellikle gömme modelinin kullanılamadığı anlamına gelir.",
     "vector_status.reindex_empty": "İndekslenecek bir şey yok",
     "vector_status.reindex_empty_msg": "{{collection}} içinde henüz indekslenecek kayıt yok.",
+    "schedule_advanced.rnc.changes": "Değişiklikler",
+    "schedule_advanced.rnc.equipment": "Makine",
+    "schedule_advanced.rnc.info": "Bilgi",
+    "schedule_advanced.rnc.manpower": "İşçilik",
+    "schedule_advanced.rnc.material": "Malzeme",
+    "schedule_advanced.rnc.other": "Diğer",
+    "schedule_advanced.rnc.predecessor": "Öncül tamamlanmadı",
+    "schedule_advanced.rnc.quality": "Kalite",
+    "schedule_advanced.rnc.weather": "Hava Durumu",
   }
 } as { translation: Record<string, string> };
 

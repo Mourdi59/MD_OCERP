@@ -37415,6 +37415,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: барлық {{skipped}} жазба өткізіліп жіберілді, сондықтан бұл жинақтан әзірге іздеу мүмкін емес. Әдетте бұл енгізу моделі қолжетімсіз екенін білдіреді.",
     "vector_status.reindex_empty": "Индекстейтін ештеңе жоқ",
     "vector_status.reindex_empty_msg": "{{collection}} жинағында индекстейтін жазба әзірге жоқ.",
+    "schedule_advanced.rnc.changes": "Өзгерістер",
+    "schedule_advanced.rnc.equipment": "Техника",
+    "schedule_advanced.rnc.info": "Ақпарат",
+    "schedule_advanced.rnc.manpower": "Жұмыс күші",
+    "schedule_advanced.rnc.material": "Материал",
+    "schedule_advanced.rnc.other": "Басқа",
+    "schedule_advanced.rnc.predecessor": "Алдыңғы аяқталмаған",
+    "schedule_advanced.rnc.quality": "Сапа",
+    "schedule_advanced.rnc.weather": "Ауа райы",
   }
 } as { translation: Record<string, string> };
 

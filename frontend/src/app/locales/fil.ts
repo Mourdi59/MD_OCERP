@@ -37415,6 +37415,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: nilaktawan ang lahat ng {{skipped}} record, kaya hindi pa masesearch ang collection na ito. Karaniwang ibig sabihin nito ay hindi available ang embedding model.",
     "vector_status.reindex_empty": "Walang i-index",
     "vector_status.reindex_empty_msg": "Wala pang record na maii-index ang {{collection}}.",
+    "schedule_advanced.rnc.changes": "Mga Pagbabago",
+    "schedule_advanced.rnc.equipment": "Kagamitan",
+    "schedule_advanced.rnc.info": "Impormasyon",
+    "schedule_advanced.rnc.manpower": "Lakas-paggawa",
+    "schedule_advanced.rnc.material": "Materyales",
+    "schedule_advanced.rnc.other": "Iba pa",
+    "schedule_advanced.rnc.predecessor": "Nauna hindi tapos",
+    "schedule_advanced.rnc.quality": "Kalidad",
+    "schedule_advanced.rnc.weather": "Panahon",
   }
 } as { translation: Record<string, string> };
 

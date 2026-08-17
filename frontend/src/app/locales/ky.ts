@@ -37530,6 +37530,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: бардык {{skipped}} жазуу өткөрүлүп жиберилди, ошондуктан бул коллекциядан азырынча издөө мүмкүн эмес. Адатта бул embedding модели жеткиликсиз экенин билдирет.",
     "vector_status.reindex_empty": "Индекстей турган эч нерсе жок",
     "vector_status.reindex_empty_msg": "{{collection}} коллекциясында индекстей турган жазуу азырынча жок.",
+    "schedule_advanced.rnc.changes": "Өзгөртүүлөр",
+    "schedule_advanced.rnc.equipment": "Техника",
+    "schedule_advanced.rnc.info": "Маалымат",
+    "schedule_advanced.rnc.manpower": "Жумушчу күч",
+    "schedule_advanced.rnc.material": "Материал",
+    "schedule_advanced.rnc.other": "Башка",
+    "schedule_advanced.rnc.predecessor": "Мурунку аяктала элек",
+    "schedule_advanced.rnc.quality": "Сапаты",
+    "schedule_advanced.rnc.weather": "Аба ырайы",
   }
 } as { translation: Record<string, string> };
 

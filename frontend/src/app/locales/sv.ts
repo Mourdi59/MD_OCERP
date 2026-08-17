@@ -37418,6 +37418,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: alla {{skipped}} poster hoppades över, så den här samlingen går ännu inte att söka i. Det betyder oftast att inbäddningsmodellen inte är tillgänglig.",
     "vector_status.reindex_empty": "Inget att indexera",
     "vector_status.reindex_empty_msg": "{{collection}} har ännu inga poster att indexera.",
+    "schedule_advanced.rnc.changes": "Ändringar",
+    "schedule_advanced.rnc.equipment": "Maskiner",
+    "schedule_advanced.rnc.info": "Information",
+    "schedule_advanced.rnc.manpower": "Personal",
+    "schedule_advanced.rnc.material": "Material",
+    "schedule_advanced.rnc.other": "Annat",
+    "schedule_advanced.rnc.predecessor": "Föregångare ej klar",
+    "schedule_advanced.rnc.quality": "Kvalitet",
+    "schedule_advanced.rnc.weather": "Väder",
   }
 } as { translation: Record<string, string> };
 

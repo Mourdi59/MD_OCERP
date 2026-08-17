@@ -37623,6 +37623,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: пропущены все записи в количестве {{skipped}}, поэтому по этой коллекции пока нельзя искать. Обычно это означает, что модель встраивания недоступна.",
     "vector_status.reindex_empty": "Индексировать нечего",
     "vector_status.reindex_empty_msg": "В коллекции {{collection}} пока нет записей для индексации.",
+    "schedule_advanced.rnc.changes": "Изменения",
+    "schedule_advanced.rnc.equipment": "Техника",
+    "schedule_advanced.rnc.info": "Информация",
+    "schedule_advanced.rnc.manpower": "Персонал",
+    "schedule_advanced.rnc.material": "Материалы",
+    "schedule_advanced.rnc.other": "Прочее",
+    "schedule_advanced.rnc.predecessor": "Предшественник не закрыт",
+    "schedule_advanced.rnc.quality": "Качество",
+    "schedule_advanced.rnc.weather": "Погода",
   }
 } as { translation: Record<string, string> };
 

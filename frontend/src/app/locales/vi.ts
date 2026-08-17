@@ -37395,6 +37395,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: cả {{skipped}} bản ghi đều bị bỏ qua, nên bộ sưu tập này chưa thể tìm kiếm được. Điều này thường có nghĩa là mô hình nhúng không khả dụng.",
     "vector_status.reindex_empty": "Không có gì để lập chỉ mục",
     "vector_status.reindex_empty_msg": "{{collection}} chưa có bản ghi nào để lập chỉ mục.",
+    "schedule_advanced.rnc.changes": "Thay đổi",
+    "schedule_advanced.rnc.equipment": "Máy",
+    "schedule_advanced.rnc.info": "Thông tin",
+    "schedule_advanced.rnc.manpower": "Nhân công",
+    "schedule_advanced.rnc.material": "Vật liệu",
+    "schedule_advanced.rnc.other": "Khác",
+    "schedule_advanced.rnc.predecessor": "Việc trước chưa xong",
+    "schedule_advanced.rnc.quality": "Chất lượng",
+    "schedule_advanced.rnc.weather": "Thời tiết",
   }
 } as { translation: Record<string, string> };
 

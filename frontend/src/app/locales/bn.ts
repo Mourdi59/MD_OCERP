@@ -37415,6 +37415,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: সব {{skipped}}টি রেকর্ড বাদ দেওয়া হয়েছে, তাই এই কালেকশনে এখনও খোঁজা যাবে না। সাধারণত এর মানে এমবেডিং মডেল পাওয়া যাচ্ছে না।",
     "vector_status.reindex_empty": "ইনডেক্স করার কিছু নেই",
     "vector_status.reindex_empty_msg": "{{collection}}-এ ইনডেক্স করার মতো কোনো রেকর্ড এখনও নেই।",
+    "schedule_advanced.rnc.changes": "পরিবর্তন",
+    "schedule_advanced.rnc.equipment": "যন্ত্রপাতি",
+    "schedule_advanced.rnc.info": "তথ্য",
+    "schedule_advanced.rnc.manpower": "জনবল",
+    "schedule_advanced.rnc.material": "উপকরণ",
+    "schedule_advanced.rnc.other": "অন্যান্য",
+    "schedule_advanced.rnc.predecessor": "পূর্ববর্তী কাজ অসম্পূর্ণ",
+    "schedule_advanced.rnc.quality": "গুণমান",
+    "schedule_advanced.rnc.weather": "আবহাওয়া",
   }
 } as { translation: Record<string, string> };
 

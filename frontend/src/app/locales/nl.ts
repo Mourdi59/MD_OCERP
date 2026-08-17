@@ -37415,6 +37415,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: alle {{skipped}} records zijn overgeslagen, dus deze verzameling is nog niet doorzoekbaar. Dat betekent meestal dat het insluitingsmodel niet beschikbaar is.",
     "vector_status.reindex_empty": "Niets te indexeren",
     "vector_status.reindex_empty_msg": "{{collection}} heeft nog geen records om te indexeren.",
+    "schedule_advanced.rnc.changes": "Wijzigingen",
+    "schedule_advanced.rnc.equipment": "Materieel",
+    "schedule_advanced.rnc.info": "Informatie",
+    "schedule_advanced.rnc.manpower": "Personeel",
+    "schedule_advanced.rnc.material": "Materiaal",
+    "schedule_advanced.rnc.other": "Overige",
+    "schedule_advanced.rnc.predecessor": "Voorganger open",
+    "schedule_advanced.rnc.quality": "Kwaliteit",
+    "schedule_advanced.rnc.weather": "Weer",
   }
 } as { translation: Record<string, string> };
 

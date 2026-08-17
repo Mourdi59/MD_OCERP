@@ -37415,6 +37415,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: هر {{skipped}} رکورد نادیده گرفته شد، بنابراین این مجموعه هنوز قابل جستجو نیست. معمولاً یعنی مدل embedding در دسترس نیست.",
     "vector_status.reindex_empty": "چیزی برای نمایهسازی نیست",
     "vector_status.reindex_empty_msg": "{{collection}} هنوز رکوردی برای نمایهسازی ندارد.",
+    "schedule_advanced.rnc.changes": "تغییرات",
+    "schedule_advanced.rnc.equipment": "ماشین‌آلات",
+    "schedule_advanced.rnc.info": "اطلاعات",
+    "schedule_advanced.rnc.manpower": "نیروی کار",
+    "schedule_advanced.rnc.material": "مصالح",
+    "schedule_advanced.rnc.other": "سایر",
+    "schedule_advanced.rnc.predecessor": "پیش‌نیاز ناتمام",
+    "schedule_advanced.rnc.quality": "کیفیت",
+    "schedule_advanced.rnc.weather": "آب و هوا",
   }
 } as { translation: Record<string, string> };
 

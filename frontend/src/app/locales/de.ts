@@ -38120,6 +38120,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: alle {{skipped}} Datensätze wurden übersprungen, daher ist diese Sammlung noch nicht durchsuchbar. Das bedeutet in der Regel, dass das Embedding-Modell nicht verfügbar ist.",
     "vector_status.reindex_empty": "Nichts zu indizieren",
     "vector_status.reindex_empty_msg": "{{collection}} hat noch keine Datensätze zum Indizieren.",
+    "schedule_advanced.rnc.changes": "Änderungen",
+    "schedule_advanced.rnc.equipment": "Gerät",
+    "schedule_advanced.rnc.info": "Information",
+    "schedule_advanced.rnc.manpower": "Personal",
+    "schedule_advanced.rnc.material": "Material",
+    "schedule_advanced.rnc.other": "Sonstiges",
+    "schedule_advanced.rnc.predecessor": "Vorgänger offen",
+    "schedule_advanced.rnc.quality": "Qualität",
+    "schedule_advanced.rnc.weather": "Wetter",
   }
 } as { translation: Record<string, string> };
 

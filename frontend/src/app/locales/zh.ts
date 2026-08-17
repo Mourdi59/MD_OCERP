@@ -37389,6 +37389,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}：全部 {{skipped}} 条记录都被跳过，因此该集合尚不可检索。这通常意味着嵌入模型不可用。",
     "vector_status.reindex_empty": "没有可索引的内容",
     "vector_status.reindex_empty_msg": "{{collection}} 尚无可索引的记录。",
+    "schedule_advanced.rnc.changes": "变更",
+    "schedule_advanced.rnc.equipment": "机械",
+    "schedule_advanced.rnc.info": "信息",
+    "schedule_advanced.rnc.manpower": "人力",
+    "schedule_advanced.rnc.material": "材料",
+    "schedule_advanced.rnc.other": "其他",
+    "schedule_advanced.rnc.predecessor": "前置任务未完成",
+    "schedule_advanced.rnc.quality": "质量",
+    "schedule_advanced.rnc.weather": "天气",
   }
 } as { translation: Record<string, string> };
 

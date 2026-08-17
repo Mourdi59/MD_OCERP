@@ -37488,6 +37488,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: toate cele {{skipped}} înregistrări au fost omise, deci această colecție nu poate fi încă căutată. De obicei aceasta înseamnă că modelul de încorporare nu este disponibil.",
     "vector_status.reindex_empty": "Nu este nimic de indexat",
     "vector_status.reindex_empty_msg": "{{collection}} nu are încă înregistrări de indexat.",
+    "schedule_advanced.rnc.changes": "Modificări",
+    "schedule_advanced.rnc.equipment": "Utilaje",
+    "schedule_advanced.rnc.info": "Informație",
+    "schedule_advanced.rnc.manpower": "Manoperă",
+    "schedule_advanced.rnc.material": "Material",
+    "schedule_advanced.rnc.other": "Altele",
+    "schedule_advanced.rnc.predecessor": "Predecesor neterminat",
+    "schedule_advanced.rnc.quality": "Calitate",
+    "schedule_advanced.rnc.weather": "Vreme",
   }
 } as { translation: Record<string, string> };
 

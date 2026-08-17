@@ -37423,6 +37423,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: kaikki {{skipped}} tietuetta ohitettiin, joten tätä kokoelmaa ei voi vielä hakea. Yleensä tämä tarkoittaa, että upotusmalli ei ole käytettävissä.",
     "vector_status.reindex_empty": "Ei mitään indeksoitavaa",
     "vector_status.reindex_empty_msg": "Kokoelmassa {{collection}} ei ole vielä indeksoitavia tietueita.",
+    "schedule_advanced.rnc.changes": "Muutokset",
+    "schedule_advanced.rnc.equipment": "Kalusto",
+    "schedule_advanced.rnc.info": "Tieto",
+    "schedule_advanced.rnc.manpower": "Työvoima",
+    "schedule_advanced.rnc.material": "Materiaali",
+    "schedule_advanced.rnc.other": "Muu",
+    "schedule_advanced.rnc.predecessor": "Edeltäjä kesken",
+    "schedule_advanced.rnc.quality": "Laatu",
+    "schedule_advanced.rnc.weather": "Sää",
   }
 } as { translation: Record<string, string> };
 

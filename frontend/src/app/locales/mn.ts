@@ -37407,6 +37407,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: бүх {{skipped}} бичлэгийг алгассан тул энэ цуглуулгаас хараахан хайх боломжгүй. Ихэвчлэн энэ нь суулгалтын загвар боломжгүй байгааг илтгэнэ.",
     "vector_status.reindex_empty": "Индекслэх зүйл алга",
     "vector_status.reindex_empty_msg": "{{collection}}-д индекслэх бичлэг хараахан алга.",
+    "schedule_advanced.rnc.changes": "Өөрчлөлт",
+    "schedule_advanced.rnc.equipment": "Техник",
+    "schedule_advanced.rnc.info": "Мэдээлэл",
+    "schedule_advanced.rnc.manpower": "Хүн хүч",
+    "schedule_advanced.rnc.material": "Материал",
+    "schedule_advanced.rnc.other": "Бусад",
+    "schedule_advanced.rnc.predecessor": "Урьдын ажил дуусаагүй",
+    "schedule_advanced.rnc.quality": "Чанар",
+    "schedule_advanced.rnc.weather": "Цаг агаар",
   }
 } as { translation: Record<string, string> };
 

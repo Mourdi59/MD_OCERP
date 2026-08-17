@@ -38489,6 +38489,15 @@ const resource = {
     "tendering.award_record.open_points_many": "{{count}} пунктів ще відкриті на цьому етапі",
     "tendering.award_record.superseded_count_few": "{{count}} попередні заяви",
     "tendering.award_record.superseded_count_many": "{{count}} попередніх заяв",
+    "schedule_advanced.rnc.changes": "Зміни",
+    "schedule_advanced.rnc.equipment": "Техніка",
+    "schedule_advanced.rnc.info": "Інформація",
+    "schedule_advanced.rnc.manpower": "Робоча сила",
+    "schedule_advanced.rnc.material": "Матеріали",
+    "schedule_advanced.rnc.other": "Інше",
+    "schedule_advanced.rnc.predecessor": "Попередник не завершений",
+    "schedule_advanced.rnc.quality": "Якість",
+    "schedule_advanced.rnc.weather": "Погода",
   }
 } as { translation: Record<string, string> };
 

@@ -37389,6 +37389,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: {{skipped}}件のレコードがすべてスキップされたため、このコレクションはまだ検索できません。通常は埋め込みモデルが利用できないことを意味します。",
     "vector_status.reindex_empty": "インデックスする対象がありません",
     "vector_status.reindex_empty_msg": "{{collection}} にはインデックスするレコードがまだありません。",
+    "schedule_advanced.rnc.changes": "変更",
+    "schedule_advanced.rnc.equipment": "機械",
+    "schedule_advanced.rnc.info": "情報",
+    "schedule_advanced.rnc.manpower": "人員",
+    "schedule_advanced.rnc.material": "材料",
+    "schedule_advanced.rnc.other": "その他",
+    "schedule_advanced.rnc.predecessor": "先行タスク未完了",
+    "schedule_advanced.rnc.quality": "品質",
+    "schedule_advanced.rnc.weather": "天候",
   }
 } as { translation: Record<string, string> };
 

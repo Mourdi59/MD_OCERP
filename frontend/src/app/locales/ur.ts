@@ -37415,6 +37415,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: تمام {{skipped}} ریکارڈ چھوڑ دیے گئے، اس لیے اس collection میں ابھی تلاش نہیں کی جا سکتی۔ عام طور پر اس کا مطلب ہے کہ embedding ماڈل دستیاب نہیں ہے۔",
     "vector_status.reindex_empty": "index کرنے کے لیے کچھ نہیں",
     "vector_status.reindex_empty_msg": "{{collection}} میں ابھی index کرنے کے لیے کوئی ریکارڈ نہیں ہے۔",
+    "schedule_advanced.rnc.changes": "تبدیلیاں",
+    "schedule_advanced.rnc.equipment": "آلات",
+    "schedule_advanced.rnc.info": "معلومات",
+    "schedule_advanced.rnc.manpower": "افرادی قوت",
+    "schedule_advanced.rnc.material": "مواد",
+    "schedule_advanced.rnc.other": "دیگر",
+    "schedule_advanced.rnc.predecessor": "پیشرو مکمل نہیں",
+    "schedule_advanced.rnc.quality": "کوالٹی",
+    "schedule_advanced.rnc.weather": "موسم",
   }
 } as { translation: Record<string, string> };
 

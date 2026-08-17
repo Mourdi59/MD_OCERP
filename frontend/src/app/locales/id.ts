@@ -37385,6 +37385,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: semua {{skipped}} catatan dilewati, jadi koleksi ini belum dapat dicari. Ini biasanya berarti model penyematan tidak tersedia.",
     "vector_status.reindex_empty": "Tidak ada yang perlu diindeks",
     "vector_status.reindex_empty_msg": "{{collection}} belum memiliki catatan untuk diindeks.",
+    "schedule_advanced.rnc.changes": "Perubahan",
+    "schedule_advanced.rnc.equipment": "Alat",
+    "schedule_advanced.rnc.info": "Informasi",
+    "schedule_advanced.rnc.manpower": "Tenaga kerja",
+    "schedule_advanced.rnc.material": "Material",
+    "schedule_advanced.rnc.other": "Lainnya",
+    "schedule_advanced.rnc.predecessor": "Pendahulu belum selesai",
+    "schedule_advanced.rnc.quality": "Kualitas",
+    "schedule_advanced.rnc.weather": "Cuaca",
   }
 } as { translation: Record<string, string> };
 

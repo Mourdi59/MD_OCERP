@@ -37496,6 +37496,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: svih {{skipped}} zapisa je preskočeno, pa ova kolekcija još nije pretraživa. To obično znači da model ugrađivanja nije dostupan.",
     "vector_status.reindex_empty": "Nema što indeksirati",
     "vector_status.reindex_empty_msg": "{{collection}} još nema zapisa za indeksiranje.",
+    "schedule_advanced.rnc.changes": "Izmjene",
+    "schedule_advanced.rnc.equipment": "Strojevi",
+    "schedule_advanced.rnc.info": "Informacija",
+    "schedule_advanced.rnc.manpower": "Radna snaga",
+    "schedule_advanced.rnc.material": "Materijal",
+    "schedule_advanced.rnc.other": "Ostalo",
+    "schedule_advanced.rnc.predecessor": "Prethodnica nezavršena",
+    "schedule_advanced.rnc.quality": "Kvaliteta",
+    "schedule_advanced.rnc.weather": "Vrijeme",
   }
 } as { translation: Record<string, string> };
 

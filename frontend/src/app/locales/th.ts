@@ -37384,6 +37384,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: ข้ามรายการทั้งหมด {{skipped}} รายการ คอลเลกชันนี้จึงยังค้นหาไม่ได้ โดยทั่วไปหมายความว่าแบบจำลองการฝังตัวไม่พร้อมใช้งาน",
     "vector_status.reindex_empty": "ไม่มีสิ่งใดให้สร้างดัชนี",
     "vector_status.reindex_empty_msg": "{{collection}} ยังไม่มีรายการให้สร้างดัชนี",
+    "schedule_advanced.rnc.changes": "การเปลี่ยนแปลง",
+    "schedule_advanced.rnc.equipment": "เครื่องจักร",
+    "schedule_advanced.rnc.info": "ข้อมูล",
+    "schedule_advanced.rnc.manpower": "แรงงาน",
+    "schedule_advanced.rnc.material": "วัสดุ",
+    "schedule_advanced.rnc.other": "อื่นๆ",
+    "schedule_advanced.rnc.predecessor": "งานก่อนหน้ายังไม่เสร็จ",
+    "schedule_advanced.rnc.quality": "คุณภาพ",
+    "schedule_advanced.rnc.weather": "สภาพอากาศ",
   }
 } as { translation: Record<string, string> };
 

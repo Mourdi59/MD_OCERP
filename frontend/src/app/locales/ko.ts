@@ -37389,6 +37389,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: {{skipped}}개 레코드가 모두 건너뛰어져 이 컬렉션은 아직 검색할 수 없습니다. 보통 임베딩 모델을 사용할 수 없다는 뜻입니다.",
     "vector_status.reindex_empty": "인덱싱할 항목이 없습니다",
     "vector_status.reindex_empty_msg": "{{collection}}에는 아직 인덱싱할 레코드가 없습니다.",
+    "schedule_advanced.rnc.changes": "변경",
+    "schedule_advanced.rnc.equipment": "장비",
+    "schedule_advanced.rnc.info": "정보",
+    "schedule_advanced.rnc.manpower": "인력",
+    "schedule_advanced.rnc.material": "자재",
+    "schedule_advanced.rnc.other": "기타",
+    "schedule_advanced.rnc.predecessor": "선행 작업 미완료",
+    "schedule_advanced.rnc.quality": "품질",
+    "schedule_advanced.rnc.weather": "날씨",
   }
 } as { translation: Record<string, string> };
 

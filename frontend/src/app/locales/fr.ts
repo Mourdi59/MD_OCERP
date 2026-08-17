@@ -37488,6 +37488,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}} : les {{skipped}} enregistrements ont tous été ignorés, cette collection n'est donc pas encore interrogeable. Cela signifie en général que le modèle d'intégration n'est pas disponible.",
     "vector_status.reindex_empty": "Rien à indexer",
     "vector_status.reindex_empty_msg": "{{collection}} n'a encore aucun enregistrement à indexer.",
+    "schedule_advanced.rnc.changes": "Changements",
+    "schedule_advanced.rnc.equipment": "Matériel",
+    "schedule_advanced.rnc.info": "Information",
+    "schedule_advanced.rnc.manpower": "Main-d'oeuvre",
+    "schedule_advanced.rnc.material": "Matériau",
+    "schedule_advanced.rnc.other": "Autre",
+    "schedule_advanced.rnc.predecessor": "Prédécesseur ouvert",
+    "schedule_advanced.rnc.quality": "Qualité",
+    "schedule_advanced.rnc.weather": "Météo",
   }
 } as { translation: Record<string, string> };
 

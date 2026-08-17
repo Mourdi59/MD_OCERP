@@ -37688,6 +37688,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: تم تخطي جميع السجلات البالغ عددها {{skipped}}، لذلك لا يمكن البحث في هذه المجموعة بعد. يعني هذا عادة أن نموذج التضمين غير متاح.",
     "vector_status.reindex_empty": "لا يوجد ما يمكن فهرسته",
     "vector_status.reindex_empty_msg": "لا توجد في {{collection}} أي سجلات لفهرستها بعد.",
+    "schedule_advanced.rnc.changes": "التغييرات",
+    "schedule_advanced.rnc.equipment": "معدات",
+    "schedule_advanced.rnc.info": "معلومات",
+    "schedule_advanced.rnc.manpower": "عمالة",
+    "schedule_advanced.rnc.material": "مواد",
+    "schedule_advanced.rnc.other": "أخرى",
+    "schedule_advanced.rnc.predecessor": "السلف لم يكتمل",
+    "schedule_advanced.rnc.quality": "الجودة",
+    "schedule_advanced.rnc.weather": "الطقس",
   }
 } as { translation: Record<string, string> };
 

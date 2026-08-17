@@ -37478,6 +37478,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: כל {{skipped}} הרשומות דולגו, ולכן האוסף הזה עדיין אינו ניתן לחיפוש. בדרך כלל פירוש הדבר שמודל ההטמעה אינו זמין.",
     "vector_status.reindex_empty": "אין מה להוסיף לאינדקס",
     "vector_status.reindex_empty_msg": "לאוסף {{collection}} אין עדיין רשומות להוספה לאינדקס.",
+    "schedule_advanced.rnc.changes": "שינויים",
+    "schedule_advanced.rnc.equipment": "ציוד",
+    "schedule_advanced.rnc.info": "מידע",
+    "schedule_advanced.rnc.manpower": "כוח אדם",
+    "schedule_advanced.rnc.material": "חומר",
+    "schedule_advanced.rnc.other": "אחר",
+    "schedule_advanced.rnc.predecessor": "קודמת לא הושלמה",
+    "schedule_advanced.rnc.quality": "איכות",
+    "schedule_advanced.rnc.weather": "מזג אוויר",
   }
 } as { translation: Record<string, string> };
 

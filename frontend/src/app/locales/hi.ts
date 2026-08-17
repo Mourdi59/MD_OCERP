@@ -37420,6 +37420,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: सभी {{skipped}} रिकॉर्ड छोड़ दिए गए, इसलिए यह संग्रह अभी खोजा नहीं जा सकता। आमतौर पर इसका अर्थ है कि एम्बेडिंग मॉडल उपलब्ध नहीं है।",
     "vector_status.reindex_empty": "अनुक्रमित करने के लिए कुछ नहीं",
     "vector_status.reindex_empty_msg": "{{collection}} में अनुक्रमित करने के लिए अभी कोई रिकॉर्ड नहीं है।",
+    "schedule_advanced.rnc.changes": "परिवर्तन",
+    "schedule_advanced.rnc.equipment": "मशीनरी",
+    "schedule_advanced.rnc.info": "जानकारी",
+    "schedule_advanced.rnc.manpower": "जनशक्ति",
+    "schedule_advanced.rnc.material": "सामग्री",
+    "schedule_advanced.rnc.other": "अन्य",
+    "schedule_advanced.rnc.predecessor": "पूर्ववर्ती अधूरा",
+    "schedule_advanced.rnc.quality": "गुणवत्ता",
+    "schedule_advanced.rnc.weather": "मौसम",
   }
 } as { translation: Record<string, string> };
 

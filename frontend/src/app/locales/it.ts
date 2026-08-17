@@ -37486,6 +37486,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: tutti i {{skipped}} record sono stati saltati, quindi questa raccolta non è ancora ricercabile. Di solito significa che il modello di incorporamento non è disponibile.",
     "vector_status.reindex_empty": "Niente da indicizzare",
     "vector_status.reindex_empty_msg": "{{collection}} non ha ancora record da indicizzare.",
+    "schedule_advanced.rnc.changes": "Varianti",
+    "schedule_advanced.rnc.equipment": "Mezzi",
+    "schedule_advanced.rnc.info": "Informazione",
+    "schedule_advanced.rnc.manpower": "Manodopera",
+    "schedule_advanced.rnc.material": "Materiale",
+    "schedule_advanced.rnc.other": "Altro",
+    "schedule_advanced.rnc.predecessor": "Predecessore aperto",
+    "schedule_advanced.rnc.quality": "Qualità",
+    "schedule_advanced.rnc.weather": "Meteo",
   }
 } as { translation: Record<string, string> };
 

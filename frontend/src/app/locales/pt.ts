@@ -37481,6 +37481,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: todos os {{skipped}} registos foram ignorados, por isso esta coleção ainda não é pesquisável. Normalmente significa que o modelo de incorporação não está disponível.",
     "vector_status.reindex_empty": "Nada para indexar",
     "vector_status.reindex_empty_msg": "{{collection}} ainda não tem registos para indexar.",
+    "schedule_advanced.rnc.changes": "Alterações",
+    "schedule_advanced.rnc.equipment": "Equipamento",
+    "schedule_advanced.rnc.info": "Informação",
+    "schedule_advanced.rnc.manpower": "Mão de obra",
+    "schedule_advanced.rnc.material": "Material",
+    "schedule_advanced.rnc.other": "Outro",
+    "schedule_advanced.rnc.predecessor": "Predecessor em aberto",
+    "schedule_advanced.rnc.quality": "Qualidade",
+    "schedule_advanced.rnc.weather": "Clima",
   }
 } as { translation: Record<string, string> };
 

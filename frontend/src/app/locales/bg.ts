@@ -37421,6 +37421,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: всички {{skipped}} записа бяха пропуснати, така че тази колекция още не може да се търси. Това обикновено означава, че моделът на вграждане не е достъпен.",
     "vector_status.reindex_empty": "Няма какво да се индексира",
     "vector_status.reindex_empty_msg": "{{collection}} още няма записи за индексиране.",
+    "schedule_advanced.rnc.changes": "Промени",
+    "schedule_advanced.rnc.equipment": "Механизация",
+    "schedule_advanced.rnc.info": "Информация",
+    "schedule_advanced.rnc.manpower": "Работна ръка",
+    "schedule_advanced.rnc.material": "Материал",
+    "schedule_advanced.rnc.other": "Друго",
+    "schedule_advanced.rnc.predecessor": "Предшественик не е завършен",
+    "schedule_advanced.rnc.quality": "Качество",
+    "schedule_advanced.rnc.weather": "Метео",
   }
 } as { translation: Record<string, string> };
 

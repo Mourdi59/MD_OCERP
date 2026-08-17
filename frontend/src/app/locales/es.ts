@@ -37488,6 +37488,15 @@ const resource = {
     "vector_status.reindex_nothing_msg": "{{collection}}: se omitieron los {{skipped}} registros, por lo que esta colección aún no se puede buscar. Normalmente esto significa que el modelo de incrustación no está disponible.",
     "vector_status.reindex_empty": "No hay nada que indexar",
     "vector_status.reindex_empty_msg": "{{collection}} todavía no tiene registros que indexar.",
+    "schedule_advanced.rnc.changes": "Cambios",
+    "schedule_advanced.rnc.equipment": "Maquinaria",
+    "schedule_advanced.rnc.info": "Información",
+    "schedule_advanced.rnc.manpower": "Mano de obra",
+    "schedule_advanced.rnc.material": "Material",
+    "schedule_advanced.rnc.other": "Otro",
+    "schedule_advanced.rnc.predecessor": "Predecesor sin terminar",
+    "schedule_advanced.rnc.quality": "Calidad",
+    "schedule_advanced.rnc.weather": "Clima",
   }
 } as { translation: Record<string, string> };
 
