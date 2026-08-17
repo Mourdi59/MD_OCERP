@@ -342,7 +342,7 @@ TEMPLATE = DemoTemplate(
         (
             "Erd- und Verbauarbeiten (Earthworks & shoring)",
             "Aushub, Trägerbohlwand, Wasserhaltung",
-            "open",
+            "collecting",
             [
                 ("Emil Rauthner GmbH", "tiefbau@rauthner.example", 0.98),
                 ("Brentwald GmbH & Co. KG", "erdbau@brentwald.example", 1.04),

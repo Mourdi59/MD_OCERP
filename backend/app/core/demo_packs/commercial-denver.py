@@ -395,7 +395,7 @@ TEMPLATE = DemoTemplate(
         (
             "Interior Finishes & Tenant Fit-Out",
             "Drywall, ceilings, flooring, painting, doors/hardware, millwork, specialties",
-            "open",
+            "collecting",
             [
                 ("KP Larriman Construction", "bids@larriman.example", 0.98),
                 ("Thornebay Builders", "preconstruction@thornebay.example", 1.04),
