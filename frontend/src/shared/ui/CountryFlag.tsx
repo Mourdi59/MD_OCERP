@@ -170,6 +170,11 @@ const FLAGS: Record<string, string> = {
   // IL — Israel (white field, blue horizontal stripes near top/bottom,
   // blue Star of David centered)
   il: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20"><rect width="30" height="20" fill="#fff"/><rect y="2.2" width="30" height="2.4" fill="#0038b8"/><rect y="15.4" width="30" height="2.4" fill="#0038b8"/><g fill="none" stroke="#0038b8" stroke-width="0.7"><polygon points="15,6 11.5,12.5 18.5,12.5"/><polygon points="15,15 11.5,8.5 18.5,8.5"/></g></svg>`,
+  ua: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20"><rect width="30" height="10" fill="#0057B7"/><rect y="10" width="30" height="10" fill="#FFD700"/></svg>`,
+  // The twelve stars are drawn as dots in three rows of three, four and five.
+  // At thirty by twenty a five-pointed star is a smudge, and the count is the
+  // part a reader can actually recognise.
+  uz: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 20"><rect width="30" height="6.8" fill="#0099B5"/><rect y="6.4" width="30" height="6.8" fill="#CE1126"/><rect y="6.8" width="30" height="6" fill="#fff"/><rect y="13.2" width="30" height="6.8" fill="#CE1126"/><rect y="13.6" width="30" height="6.4" fill="#1EB53A"/><g fill="#fff"><circle cx="4" cy="3.2" r="2"/><circle cx="10.4" cy="1.7" r="0.38"/><circle cx="11.8" cy="1.7" r="0.38"/><circle cx="13.2" cy="1.7" r="0.38"/><circle cx="9" cy="3.2" r="0.38"/><circle cx="10.4" cy="3.2" r="0.38"/><circle cx="11.8" cy="3.2" r="0.38"/><circle cx="13.2" cy="3.2" r="0.38"/><circle cx="7.6" cy="4.7" r="0.38"/><circle cx="9" cy="4.7" r="0.38"/><circle cx="10.4" cy="4.7" r="0.38"/><circle cx="11.8" cy="4.7" r="0.38"/><circle cx="13.2" cy="4.7" r="0.38"/></g><circle cx="4.8" cy="3.2" r="1.7" fill="#0099B5"/></svg>`,
 };
 
 /** Fallback emoji map for unknown codes. Covers everything that lands in
