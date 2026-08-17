@@ -69,6 +69,7 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Header, HTTPException, Query, UploadFile, status
 from fastapi.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.demo_placeholders import materialize_placeholder
@@ -2374,9 +2375,18 @@ async def upload_cad_file(
         # Cross-link: create Document record so BIM files appear in Documents hub.
         # Uses the ORM model directly (NOT raw SQL) so timestamps + defaults are
         # filled by SQLAlchemy / Base mixin and the row stays in sync with the
-        # rest of the documents module if its schema evolves.  Failures are
-        # swallowed because the cross-link is convenience-only - the BIM model
-        # itself is already saved by the time we get here.
+        # rest of the documents module if its schema evolves.
+        #
+        # The cross-link is convenience-only, the BIM model itself is already
+        # saved by the time we get here, so a failure here must not fail the
+        # upload. Making that true takes the SAVEPOINT below, not just the
+        # `except`: a failed `flush()` marks the whole session for rollback, so
+        # catching the error and carrying on leaves every later statement on
+        # this request raising about a transaction that cannot continue. The
+        # request still dies, several frames from here, describing something
+        # other than what went wrong. With `begin_nested()` only the cross-link
+        # is rolled back and the session survives, which is what the comment
+        # above always claimed.
         try:
             from app.modules.documents.models import Document
 
@@ -2396,11 +2406,20 @@ async def upload_cad_file(
                     "source_id": str(model_id),
                 },
             )
-            service.session.add(doc)
-            await service.session.flush()
+            async with service.session.begin_nested():
+                service.session.add(doc)
+                await service.session.flush()
             logger.info("Cross-linked BIM model %s → document %s", model_id, doc.id)
-        except Exception as exc:
-            logger.warning("Failed to cross-link BIM to documents hub: %s", exc)
+        except SQLAlchemyError:
+            # Narrower than `except Exception` on purpose: a NameError or a
+            # TypeError in the block above is a defect in this code, not a
+            # database saying no, and swallowing those hides it forever.
+            # Logged with both ids so the orphaned model can be found.
+            logger.exception(
+                "Failed to cross-link BIM model %s (project %s) into the documents hub",
+                model_id,
+                project_id,
+            )
 
     # Schedule processing OUT of the request path: the upload endpoint now
     # returns 201 + status="processing" in milliseconds, and the actual DDC
