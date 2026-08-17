@@ -56,6 +56,30 @@ Known debt lives in the baseline file and may only shrink. The prop-shaped
 class had no findings when this was written, so it contributes nothing to the
 baseline and any new break of that shape fails on arrival.
 
+The baseline arrived at 118 entries. It passed through 188 while the families
+were being worked, but that intermediate never existed on main, so the seventy
+reasons taken off it are not recoverable from history and would have to be
+re-derived from the call sites. Each remaining entry carries its reason because
+a bare list of prefixes decays into a list nobody can audit: the reason is the
+only thing that tells a later reader whether a family may come off.
+
+This script, that baseline and the repo-hygiene job that runs it are one change
+and cannot be split into three. The job names this file by path, and both this
+file and the baseline arrived untracked, so any commit carrying the workflow
+without them is red the moment it lands.
+
+One thing to know before correcting English anywhere this guard points. Once a
+family has members in en.ts, i18next never reaches its defaultValue, so the
+label table at the call site stops being what anyone reads and becomes the
+fallback for values outside the declared set. Fixing wording in that table alone
+therefore changes the code and not the screen, which is exactly what happened to
+the ROM reconciliation band: the table was corrected, the keys had landed hours
+earlier, and the panel went on showing the older wording. Worse, the test over
+that panel mocks react-i18next, so t() hands back the defaultValue and the
+assertions are about the table. It was green throughout. A test written that way
+proves the fallback correct and says nothing at all about what renders, so the
+place to check a string this guard has landed is en.ts.
+
 Parser desync is a failure, not a pass, on the same reasoning as the sibling
 guards: en.ts parsing to zero keys, or a source tree yielding no call sites,
 exits 2 rather than reporting a clean scan of nothing.
