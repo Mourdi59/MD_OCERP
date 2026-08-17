@@ -38,6 +38,8 @@ import random
 import uuid
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from functools import cache
+from itertools import combinations
 from typing import Iterable, Sequence
 
 from sqlalchemy import select
@@ -58,18 +60,26 @@ _CONTINGENCY = "contingency"
 
 # How many allowances a project's register holds, indexed by the project's
 # position in the seeding call rather than drawn from its id, so two demo
-# projects opened side by side are not the same length. Past the end of the
-# tuple the position wraps and a whole span is added, which keeps the mapping
-# injective the way the field-time history length does. The growth is capped by
-# ``_MAX_REGISTER``, below the catalogue.
-_REGISTER_SIZES = (13, 10, 16, 11)
-_SIZE_SPAN = max(_REGISTER_SIZES) - min(_REGISTER_SIZES) + 1
+# projects opened side by side are not the same length. Six sizes rather than
+# four, every one of them at or below ``_MAX_REGISTER``: an earlier version grew
+# the size with each wrap and clamped the result at the ceiling, which meant
+# eight of the estate's eleven demo projects asked for the same length. What
+# separates two registers of the same length is chosen further down, in
+# ``_select_specs``; the length is only what makes the difference obvious.
+_REGISTER_SIZES = (13, 10, 15, 11, 14, 12)
 
 # Estimate total assumed for a project whose BOQ carries no parseable money, so
 # the register still reads as a register. Scaled per project by the same
 # position that sizes it, so the fallback is not identical everywhere either.
 _FALLBACK_ESTIMATE = Decimal("2400000")
-_FALLBACK_SCALES = (Decimal("1"), Decimal("2.4"), Decimal("0.55"), Decimal("4.1"))
+_FALLBACK_SCALES = (
+    Decimal("1"),
+    Decimal("2.4"),
+    Decimal("0.55"),
+    Decimal("4.1"),
+    Decimal("1.7"),
+    Decimal("0.85"),
+)
 
 # Line items scanned when totalling the estimate. The same ceiling the basis of
 # estimate uses; a register scaled off the first 20k lines is already in
@@ -300,11 +310,18 @@ _CORE_SPECS = tuple(s for s in _CATALOGUE if s.core)
 _OPTIONAL_SPECS = tuple(s for s in _CATALOGUE if not s.core)
 
 # The ceiling on a register, and the reason there is one: a project that asks
-# for the whole catalogue stops sampling it. The rotation grows past eighteen by
-# the fifth project, and without this every project from the fifth on would show
-# the same eighteen labels and differ only in the money. Holding three back
-# means each project leaves out a different three.
+# for the whole catalogue stops sampling it, and every project past that point
+# would show the same eighteen labels and differ only in the money. Holding
+# three back means each project leaves out a different three.
 _MAX_REGISTER = len(_CATALOGUE) - 3
+
+# Seed for the order the registers are handed out in. Fixed, so the estate is
+# reproducible, and separate from the per-project money seed because it decides
+# something else: combinations come out of the enumeration in lexicographic
+# order, where neighbours differ by one line, and two demo projects opened one
+# after the other have to read as different registers rather than as one
+# register with a line swapped.
+_ORDER_SEED = 6704
 
 # A stable display order for the register: type first, then the catalogue's own
 # order within a type, so a re-seed of one project reproduces the same screen.
@@ -396,12 +413,47 @@ async def _estimate_total(session: AsyncSession, project_id: uuid.UUID) -> Decim
     return total
 
 
-def _select_specs(rng: random.Random, size: int) -> list[_Spec]:
-    """Choose the register's allowances: every core spec plus a filled remainder."""
+@cache
+def _optional_registers(count: int) -> tuple[tuple[_Spec, ...], ...]:
+    """Every selection of ``count`` optional specs a register is allowed to carry.
+
+    Enumerated rather than sampled. A sample makes a repeat unlikely and the
+    registers have to differ, not probably differ: the widest register takes ten
+    of the thirteen optional specs, which is 286 registers to draw from, and the
+    demo estate asks for a register eleven times.
+
+    Selections in which every optional spec carries releases are dropped here.
+    Every core spec is drawn against, so such a register would show nothing
+    untouched, which is not what a live register looks like, and the module's
+    untouched state would never be on screen. Dropped rather than left to chance
+    because the enumeration is walked deterministically: an unwanted combination
+    would be a permanent register, not an occasional one.
+
+    Shuffled once, under a fixed seed, so the estate is reproducible and the
+    project handed the next index is not handed the previous register with one
+    line changed.
+    """
+    pool = [combo for combo in combinations(_OPTIONAL_SPECS, count) if any(not spec.draws for spec in combo)]
+    random.Random(f"{_ORDER_SEED}:{count}").shuffle(pool)
+    return tuple(pool)
+
+
+def _select_specs(ordinal: int, size: int) -> list[_Spec]:
+    """Choose the register's allowances: every core spec plus a filled remainder.
+
+    The remainder is the combination sitting at this project's own position, so
+    two projects in one seeding call cannot be handed the same register rather
+    than being unlikely to be. Two projects of the same size hold different
+    positions: sizes cycle over a pool of six, so two projects share a size only
+    when their positions differ by a multiple of six, and a combination comes
+    round again only after the whole enumeration, which is 286 registers at the
+    widest size and over a thousand at every other one.
+    """
     chosen = list(_CORE_SPECS)
-    remaining = max(0, size - len(chosen))
-    if remaining:
-        chosen.extend(rng.sample(_OPTIONAL_SPECS, k=min(remaining, len(_OPTIONAL_SPECS))))
+    count = max(0, min(size - len(chosen), len(_OPTIONAL_SPECS)))
+    if count:
+        registers = _optional_registers(count)
+        chosen.extend(registers[ordinal % len(registers)])
     chosen.sort(key=lambda spec: (_TYPE_ORDER.get(spec.allowance_type, 9), _CATALOGUE_ORDER[spec.key]))
     return chosen
 
@@ -473,13 +525,13 @@ async def _seed_project(
 
     rng = _rng_for(project_id)
     slot = ordinal % len(_REGISTER_SIZES)
-    size = min(_REGISTER_SIZES[slot] + (ordinal // len(_REGISTER_SIZES)) * _SIZE_SPAN, _MAX_REGISTER)
+    size = min(_REGISTER_SIZES[slot], _MAX_REGISTER)
 
     estimate_total = await _estimate_total(session, project_id)
     if estimate_total <= 0:
         estimate_total = _FALLBACK_ESTIMATE * _FALLBACK_SCALES[slot % len(_FALLBACK_SCALES)]
 
-    specs = _select_specs(rng, size)
+    specs = _select_specs(ordinal, size)
     overdraw_key, overdraw_pct = _overdraw_choice(rng, specs)
 
     service = AllowanceService(session)
@@ -527,8 +579,10 @@ async def seed_allowances_demo(
     at least one is settled to exactly zero remaining, and exactly one carries the
     "Over-drawn" badge - so the per-currency roll-up at the top of the screen has
     something to total and the advisory state is visible rather than theoretical.
-    No two projects list the same allowances: the register is a sample of the
-    catalogue rather than the whole of it.
+    No two projects list the same allowances: every register is a different part
+    of the catalogue rather than the whole of it, and which part is decided by
+    the project's position in the call rather than drawn at random, so the demo
+    estate cannot land on the same register twice.
 
     Args:
         session: Async DB session. The caller commits.
