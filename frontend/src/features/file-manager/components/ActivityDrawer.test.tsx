@@ -23,12 +23,22 @@ import React from 'react';
 
 // Mock apiGet BEFORE importing the component under test so the module
 // graph picks up the mock instead of the real implementation.
-vi.mock('@/shared/lib/api', () => ({
-  apiGet: vi.fn(),
-  apiPost: vi.fn(),
-  apiPatch: vi.fn(),
-  apiDelete: vi.fn(),
-}));
+vi.mock('@/shared/lib/api', async (importOriginal) => {
+  /* Spread the real module first: only the network-touching exports need
+     stubbing, and listing them exhaustively meant that the first pure
+     helper a child component reached for (`isTruncated`, via the shared
+     TruncationNotice at the end of the list) blew up inside render with a
+     mocking error rather than a test failure that named the missing
+     behaviour. Same trap, same fix as `NotificationBell.test.tsx`. */
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    apiGet: vi.fn(),
+    apiPost: vi.fn(),
+    apiPatch: vi.fn(),
+    apiDelete: vi.fn(),
+  };
+});
 
 import { apiGet } from '@/shared/lib/api';
 import { ActivityDrawer, type ActivityEvent } from './ActivityDrawer';
@@ -87,6 +97,15 @@ const SAMPLE_EVENTS: ActivityEvent[] = [
   },
 ];
 
+/* The route answers with a page envelope, never a bare array: the pagination
+   programme moved every list route to `{items, total, offset, limit}`, and the
+   drawer reads `items` off it and shows `total` so a long history can say so.
+   Fixtures speak that shape, otherwise a green test only proves the drawer
+   handles a response the endpoint has stopped sending. */
+function pageOf(items: ActivityEvent[]) {
+  return { items, total: items.length, offset: 0, limit: 100 };
+}
+
 /* ── Helper ────────────────────────────────────────────────────────── */
 
 function renderDrawer(overrides: { open?: boolean; documentId?: string | null } = {}) {
@@ -117,7 +136,7 @@ afterEach(() => {
 
 describe('ActivityDrawer', () => {
   it('loads and renders the audit list with bucket sections', async () => {
-    (apiGet as ReturnType<typeof vi.fn>).mockResolvedValueOnce(SAMPLE_EVENTS);
+    (apiGet as ReturnType<typeof vi.fn>).mockResolvedValueOnce(pageOf(SAMPLE_EVENTS));
     renderDrawer();
 
     // All three rows from the fixture should be present after load.
@@ -131,7 +150,7 @@ describe('ActivityDrawer', () => {
   });
 
   it('renders the empty state when the API returns no events', async () => {
-    (apiGet as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
+    (apiGet as ReturnType<typeof vi.fn>).mockResolvedValueOnce(pageOf([]));
     renderDrawer();
 
     expect(await screen.findByTestId('activity-empty')).toBeInTheDocument();
@@ -142,7 +161,7 @@ describe('ActivityDrawer', () => {
     // re-fire the request and surface the success branch.
     (apiGet as ReturnType<typeof vi.fn>)
       .mockRejectedValueOnce(new Error('boom'))
-      .mockResolvedValueOnce(SAMPLE_EVENTS);
+      .mockResolvedValueOnce(pageOf(SAMPLE_EVENTS));
 
     renderDrawer();
 
