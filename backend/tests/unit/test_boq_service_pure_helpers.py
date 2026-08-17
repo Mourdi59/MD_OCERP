@@ -16,7 +16,8 @@ endpoints depend on for correctness:
   mismatch warning recorded when a catalogue rate is applied (BUG-B-013).
 * ``_calculate_markup_amounts`` - the ``fixed`` / inactive / ``per_unit``
   branches not covered by the existing ``apply_to='subtotal'`` remediation
-  test.
+  test, plus the base each line of a regional default template is computed
+  on and which regions charge contingency a profit margin on purpose.
 * ``_compute_total`` / ``_str_to_float`` / ``_coerce_audit_value`` - the
   precision-preserving total, the section-detection float coercion, and the
   JSON-safe audit-value coercion.
@@ -42,6 +43,7 @@ from app.modules.boq.models import BOQMarkup
 from app.modules.boq.service import (
     _AACE_CLASSES,
     _DUPLICATE_WARNING_PREFIX,
+    DEFAULT_MARKUP_TEMPLATES,
     _apply_duplicate_warning,
     _build_classification,
     _calculate_markup_amounts,
@@ -314,12 +316,13 @@ def _mk(
     apply_to: str = "direct_cost",
     is_active: bool = True,
     sort_order: int = 0,
+    category: str = "overhead",
 ) -> BOQMarkup:
     return BOQMarkup(
         boq_id=None,
         name=name,
         markup_type=markup_type,
-        category="overhead",
+        category=category,
         percentage=percentage,
         fixed_amount=fixed_amount,
         apply_to=apply_to,
@@ -395,6 +398,124 @@ def test_markup_order_is_preserved() -> None:
     markups = [_mk("A", percentage="1"), _mk("B", percentage="2"), _mk("C", percentage="3")]
     results = _calculate_markup_amounts(dc, markups)
     assert [m.name for m, _ in results] == ["A", "B", "C"]
+
+
+# ── Regional templates: which base each markup line is computed on ───────
+#
+# These assert the BASE per line, not just the grand total. A stack can reach
+# the right total from two wrong lines that cancel, so a total-only assertion
+# cannot tell a corrected template from a broken one.
+
+
+def _from_template(region: str) -> list[BOQMarkup]:
+    """Build the ORM markup lines a region's default template would create."""
+    return [
+        _mk(
+            str(line["name"]),
+            percentage=str(line.get("percentage", "0")),
+            apply_to=str(line.get("apply_to", "direct_cost")),
+            sort_order=int(line.get("sort_order", 0)),  # type: ignore[arg-type]
+            category=str(line.get("category", "overhead")),
+        )
+        for line in sorted(DEFAULT_MARKUP_TEMPLATES[region], key=lambda d: d.get("sort_order", 0))  # type: ignore[arg-type,return-value]
+    ]
+
+
+def test_us_template_contingency_is_not_charged_a_profit_margin() -> None:
+    """The US default must not compute contingency on a base holding profit.
+
+    Charging the general contractor's 5 % profit on a contingency inflates the
+    bid by a margin on money nobody expects to spend. The base of every line is
+    asserted explicitly, including the bond's, which stays on the full contract
+    sum and must not move as a side effect of correcting the contingencies.
+    """
+    dc = Decimal("1000000")
+    results = _calculate_markup_amounts(dc, _from_template("US"))
+    amounts = {m.name: amt for m, amt in results}
+
+    # (base the line is computed on, rate applied to that base).
+    expected: dict[str, tuple[Decimal, Decimal]] = {
+        "General Conditions (Div. 01)": (dc, Decimal("8.0")),
+        "General Contractor Overhead": (dc, Decimal("7.0")),
+        "General Contractor Profit": (dc, Decimal("5.0")),
+        "General Liability Insurance": (dc, Decimal("1.0")),
+        # Contract sum: direct cost + general conditions + overhead + profit
+        # + insurance. Deliberately cumulative, and unchanged by this fix.
+        "Performance & Payment Bond": (Decimal("1210000"), Decimal("1.5")),
+        # Direct cost only. Were cumulative, which put profit in the base.
+        "Design Contingency": (dc, Decimal("5.0")),
+        "Construction Contingency": (dc, Decimal("3.0")),
+    }
+    for name, (base, rate) in expected.items():
+        assert amounts[name] == base * rate / Decimal("100"), f"{name} computed on the wrong base"
+
+    # The profit line is not inside either contingency base: both equal the
+    # bare direct cost, which the per-line assertions above already pin.
+    assert amounts["Design Contingency"] == Decimal("50000")
+    assert amounts["Construction Contingency"] == Decimal("30000")
+    assert sum(amounts.values()) == Decimal("308150")
+
+
+def test_default_template_contingency_is_not_charged_a_profit_margin() -> None:
+    """DEFAULT is the fallback for every unmatched region and has no national
+    standard method to appeal to, so the general rule applies to it."""
+    dc = Decimal("1000")
+    results = _calculate_markup_amounts(dc, _from_template("DEFAULT"))
+    amounts = {m.name: amt for m, amt in results}
+
+    assert amounts["Site Overhead"] == dc * Decimal("10.0") / Decimal("100")
+    assert amounts["Head Office Overhead"] == dc * Decimal("5.0") / Decimal("100")
+    assert amounts["Profit"] == dc * Decimal("5.0") / Decimal("100")
+    # Direct cost, not direct cost + 20 % of preceding lines.
+    assert amounts["Contingency"] == dc * Decimal("5.0") / Decimal("100")
+
+
+# Regions whose contingency lines are computed on a base containing profit ON
+# PURPOSE, because the market's own standard method orders them that way. Any
+# region NOT listed here must keep contingency off profit; any region listed
+# must actually do it. A new template gets a deliberate decision recorded here
+# rather than inheriting whichever shape was copied.
+CONTINGENCY_ON_PROFIT_BY_DESIGN: dict[str, set[str]] = {
+    # NRM1 builds works cost -> main contractor's overheads and profit -> risk
+    # allowances, so risk legitimately carries the contractor's margin.
+    "UK": {"Design Development Risk", "Construction Contingency"},
+    # Unforeseen costs are taken on the chapter total, which already includes
+    # the overhead and profit lines above it.
+    "RU": {"Непредвиденные расходы"},
+    # UNRATIFIED, recorded to keep this test honest rather than to endorse the
+    # shape: no ordering source was confirmed for either market.
+    "IN": {"Contingency"},
+    "AU": {"Design Contingency", "Construction Contingency", "Escalation Allowance"},
+}
+
+
+@pytest.mark.parametrize("region", sorted(DEFAULT_MARKUP_TEMPLATES))
+def test_contingency_compounds_onto_profit_only_where_declared(region: str) -> None:
+    """Every regional template's contingency shape matches its declared intent.
+
+    A ``cumulative`` line is computed on direct cost plus every preceding line,
+    so a contingency ordered after the profit line earns margin on its own
+    allowance. That is right in some markets and wrong in others, and this test
+    is what makes the difference deliberate instead of accidental.
+    """
+    lines = sorted(DEFAULT_MARKUP_TEMPLATES[region], key=lambda d: d.get("sort_order", 0))  # type: ignore[arg-type,return-value]
+    profit_orders = [
+        int(d.get("sort_order", 0))  # type: ignore[arg-type]
+        for d in lines
+        if str(d.get("category", "")).lower() == "profit"
+    ]
+    compounding = {
+        str(d["name"])
+        for d in lines
+        if str(d.get("category", "")).lower() == "contingency"
+        and str(d.get("apply_to", "direct_cost")).lower() in ("cumulative", "subtotal")
+        and any(p < int(d.get("sort_order", 0)) for p in profit_orders)  # type: ignore[arg-type]
+    }
+    assert compounding == CONTINGENCY_ON_PROFIT_BY_DESIGN.get(region, set()), (
+        f"{region}: contingency-on-profit lines changed. If this is intended, add the line to "
+        f"CONTINGENCY_ON_PROFIT_BY_DESIGN with the standard method that orders it that way; "
+        f"otherwise set apply_to='direct_cost' so profit stays out of the contingency base."
+    )
 
 
 # ── _compute_total: precision-preserving q x r ───────────────────────────

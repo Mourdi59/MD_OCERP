@@ -326,6 +326,23 @@ logger = logging.getLogger(__name__)
 # Percentages applied to direct cost unless noted; tax items are cumulative.
 # Sources: VOB/HOAI, NRM1/RICS, US cost index/AIA, BATIPRIX, FIDIC, CPWD, AIQS,
 # MLIT, TCU/SINAPI, Byggakademin, ГЭСН/МДС, 建标[2013]44号, 조달청.
+#
+# ``apply_to`` is NOT a stylistic choice and these templates deliberately do not
+# agree on it. ``cumulative`` means direct cost plus EVERY preceding line, so a
+# ``cumulative`` line placed after the profit line earns the contractor a margin
+# on its own allowance. Whether that is right depends on the market:
+#
+#   * A bond or a tax is levied on the contract value the client actually signs,
+#     which does include overhead and profit. ``cumulative`` is correct there.
+#   * A contingency is an allowance against cost risk. Charging profit on it
+#     inflates the bid by a margin on money nobody expects to spend, so it must
+#     NOT sit on a base containing profit - unless the market's own standard
+#     method says otherwise, which for UK and RU it does (see those blocks).
+#
+# Before you normalise these six-line stacks to one shape, read the per-region
+# note. ``tests/unit/test_boq_service_pure_helpers.py`` pins the intent of every
+# region, so a new template that compounds contingency onto profit fails until
+# its entry there is updated deliberately.
 
 DEFAULT_MARKUP_TEMPLATES: dict[str, list[dict[str, object]]] = {
     # ── Germany / Austria / Switzerland ─────────────────────────────────
@@ -369,6 +386,11 @@ DEFAULT_MARKUP_TEMPLATES: dict[str, list[dict[str, object]]] = {
     ],
     # ── United Kingdom ──────────────────────────────────────────────────
     # RICS NRM1/NRM2, UK cost index Elemental Standard Form
+    # The two risk lines are ``cumulative`` after profit ON PURPOSE. NRM1 builds
+    # the cost plan as works cost estimate, then main contractor's overheads and
+    # profit, and only then risk allowances, so under that method the risk base
+    # legitimately contains the contractor's margin. This is the opposite of the
+    # US block below and both are correct in their own market.
     "UK": [
         {
             "name": "Main Contractor's Preliminaries",
@@ -444,6 +466,9 @@ DEFAULT_MARKUP_TEMPLATES: dict[str, list[dict[str, object]]] = {
             "apply_to": "direct_cost",
             "sort_order": 3,
         },
+        # ``cumulative`` is deliberate and correct here: a payment and
+        # performance bond is written against the contract sum, so the premium
+        # base includes general conditions, overhead, profit and insurance.
         {
             "name": "Performance & Payment Bond",
             "category": "bond",
@@ -451,18 +476,24 @@ DEFAULT_MARKUP_TEMPLATES: dict[str, list[dict[str, object]]] = {
             "apply_to": "cumulative",
             "sort_order": 4,
         },
+        # Both contingencies are ``direct_cost`` and must stay that way. They
+        # were ``cumulative``, which put the general contractor's profit line
+        # (sort_order 2) inside the contingency base and charged a 5 % margin on
+        # an allowance that exists precisely because the money may never be
+        # spent. US practice carries contingency in the cost of work, under the
+        # fee, not on top of it. Do not "tidy" these to match the bond above.
         {
             "name": "Design Contingency",
             "category": "contingency",
             "percentage": "5.0",
-            "apply_to": "cumulative",
+            "apply_to": "direct_cost",
             "sort_order": 5,
         },
         {
             "name": "Construction Contingency",
             "category": "contingency",
             "percentage": "3.0",
-            "apply_to": "cumulative",
+            "apply_to": "direct_cost",
             "sort_order": 6,
         },
     ],
@@ -545,6 +576,9 @@ DEFAULT_MARKUP_TEMPLATES: dict[str, list[dict[str, object]]] = {
         },
     ],
     # ── India ───────────────────────────────────────────────────────────
+    # UNRATIFIED: the contingency line is ``cumulative`` after profit, the shape
+    # corrected in the US block. Left as written because no ordering source was
+    # confirmed either way, not because it was checked and endorsed.
     # CPWD Works Manual 2019, DSR, IS:7272
     "IN": [
         {
@@ -591,6 +625,12 @@ DEFAULT_MARKUP_TEMPLATES: dict[str, list[dict[str, object]]] = {
         },
     ],
     # ── Australia ───────────────────────────────────────────────────────
+    # UNRATIFIED: three ``cumulative`` allowances sit after the margin line, so
+    # they carry contractor margin the way the US block no longer does. Left as
+    # written because no ordering source was confirmed, not because it is known
+    # to be right. The "Escalation Allowance" here is also a flat percentage
+    # standing in for time-based escalation; the price-index module holds the
+    # real date-to-date arithmetic.
     # AIQS ACMM, AS 4000
     "AU": [
         {
@@ -768,6 +808,9 @@ DEFAULT_MARKUP_TEMPLATES: dict[str, list[dict[str, object]]] = {
         },
     ],
     # ── Russia / CIS ────────────────────────────────────────────────────
+    # The contingency line is ``cumulative`` after profit ON PURPOSE: the
+    # summary estimate calculation takes unforeseen costs on the total of the
+    # preceding chapters, which already carry the overhead and profit lines.
     # МДС 81-35.2004, Приказ Минстроя 812/пр, 774/пр
     # НР/СП norms applied to ФОТ; effective % of direct costs shown here.
     "RU": [
@@ -886,6 +929,9 @@ DEFAULT_MARKUP_TEMPLATES: dict[str, list[dict[str, object]]] = {
         },
     ],
     # ── Default (generic international) ─────────────────────────────────
+    # The fallback for every region without a template of its own, so it can
+    # appeal to no national standard method and follows the general rule: the
+    # contingency stays off any base that contains profit.
     "DEFAULT": [
         {
             "name": "Site Overhead",
@@ -912,7 +958,7 @@ DEFAULT_MARKUP_TEMPLATES: dict[str, list[dict[str, object]]] = {
             "name": "Contingency",
             "category": "contingency",
             "percentage": "5.0",
-            "apply_to": "cumulative",
+            "apply_to": "direct_cost",
             "sort_order": 3,
         },
     ],
