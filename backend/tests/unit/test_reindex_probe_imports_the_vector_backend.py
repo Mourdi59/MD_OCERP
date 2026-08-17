@@ -19,11 +19,13 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import sys
-from types import ModuleType
+import threading
+from types import ModuleType, SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
 
+import app.modules.admin.router as admin_router
 from app.core import self_upgrade
 from app.modules.admin.router import require_vector_backend
 
@@ -101,6 +103,50 @@ class TestTheOtherTwoStatesAreUnchanged:
         _lancedb(monkeypatch, present=True, loads=True)
 
         require_vector_backend()
+
+
+class TestTheProbeIsNotRunOnTheEventLoop:
+    """Importing a Rust extension is not something to do on the loop.
+
+    Answering by importing is what makes this probe honest, and it is also what
+    makes it slow: a first lancedb load takes real time, and a damaged one can
+    take a great deal of it. This handler is ``async def``, so an import inline
+    holds the event loop for that whole duration and a single-worker deployment
+    answers nothing at all meanwhile. That is not hypothetical here, it is the
+    failure this codebase already recorded once, and the desktop sidecar is
+    exactly the single-worker case.
+
+    Measured by thread identity rather than by reading the source, so the
+    property survives the call being rewritten in any other form that still
+    keeps the import off the loop.
+    """
+
+    async def test_the_handler_hands_the_probe_to_a_worker_thread(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        loop_thread = threading.current_thread()
+        ran_on: list[threading.Thread] = []
+
+        def recording_probe() -> None:
+            ran_on.append(threading.current_thread())
+            # Raise so the handler stops here. Which thread this ran on is the
+            # whole question; everything after it belongs to other tests.
+            raise HTTPException(status_code=503, detail={"code": "vector_extra_missing", "message": "stub"})
+
+        monkeypatch.setattr(admin_router, "check_gates", lambda **kwargs: None)
+        monkeypatch.setattr(admin_router, "require_vector_backend", recording_probe)
+
+        with pytest.raises(HTTPException):
+            await admin_router.cost_vector_reindex(
+                body=SimpleNamespace(confirm_token="unused, the gate is stubbed"),
+                request=SimpleNamespace(url=SimpleNamespace(hostname="localhost")),
+                background_tasks=None,
+                session=None,
+            )
+
+        assert ran_on, "the probe was never reached, so this test measured nothing"
+        assert ran_on[0] is not loop_thread, (
+            "the vector backend was imported on the event loop, so the server stops "
+            "answering every other request for as long as the import takes"
+        )
 
 
 class TestTheAdviceSuitsTheInstallReadingIt:

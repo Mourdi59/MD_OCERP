@@ -16,6 +16,7 @@ import time
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
@@ -276,8 +277,12 @@ def require_vector_backend() -> None:
     round a loop, and in the broken case the load error itself is the part they
     need to see.
 
-    The import cost is paid by the reindex a moment later anyway, and only on
-    this admin route, so nothing hot pays for it.
+    Deliberately sync, and deliberately not awaited from the handler directly.
+    Loading a Rust extension takes real time and can take a lot of it when the
+    install is damaged, and this server runs single-worker in the desktop
+    sidecar, so an import on the event loop stops every other request for its
+    whole duration. Callers hand it to a worker thread. The cost itself is fine
+    to pay: the reindex pays it a moment later anyway, and only on this route.
 
     Raises:
         HTTPException: 503 when lancedb is absent or will not load.
@@ -352,8 +357,12 @@ async def cost_vector_reindex(
             detail={"code": exc.code, "message": exc.message},
         ) from exc
 
+    # In a worker thread, never inline: the probe imports a Rust extension, and
+    # this handler is async, so importing here would hold the event loop for
+    # however long that takes. Single-worker deployments answer nothing at all
+    # while it runs, which is the failure this route was already fixed for once.
     try:
-        require_vector_backend()
+        await run_in_threadpool(require_vector_backend)
     except HTTPException:
         raise
     except Exception:
