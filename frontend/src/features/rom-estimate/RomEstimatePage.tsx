@@ -27,7 +27,28 @@ import {
   type RomEstimateRecord,
   type RomReconciliation,
 } from './api';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+
+// English fallbacks for the computed `romEstimate.reconcile.desc_*` keys. No locale
+// carries those keys yet, so this table is what every reader sees, English
+// included. The wording is the panel's own vocabulary (concept, conceptual
+// budget), not the enum token. Unknown values still fall through to the
+// defaults spelled out at the call site.
+const RECONCILE_DESC_LABELS: Record<string, string> = {
+  no_baseline:
+    'No conceptual baseline is saved for this project yet. Save a conceptual estimate to track the detailed design against it.',
+  on_track: 'The detailed estimate is tracking the conceptual budget.',
+  over: 'The detailed estimate is running above the conceptual budget.',
+  under: 'The detailed estimate is below the conceptual budget.'
+};
+
+// English fallbacks for the computed `romEstimate.reconcile.status_*` keys. Same
+// contract as the descriptions above: these are the strings on screen, so they
+// read against the concept the panel compares to, not against the estimate.
+const RECONCILE_STATUS_LABELS: Record<string, string> = {
+  no_baseline: 'No baseline', on_track: 'On track', over: 'Over concept', under: 'Under concept'
+};
+
 
 /**
  * Conceptual (ROM) estimate page.
@@ -385,7 +406,7 @@ function RomResultView({
 
   const gfaLabel = useMemo(() => {
     const n = toNum(result.gfa_canonical_m2);
-    return n.toLocaleString();
+    return n.toLocaleString(getIntlLocale());
   }, [result.gfa_canonical_m2]);
 
   return (
@@ -692,7 +713,7 @@ function RomReconciliationView({ rec }: { rec: RomReconciliation }) {
   const hasBaseline = rec.status !== 'no_baseline' && rec.conceptual_total !== null;
 
   const statusLabel = t(`romEstimate.reconcile.status_${rec.status}`, {
-    defaultValue: {
+    defaultValue: RECONCILE_STATUS_LABELS[rec.status] ?? {
       on_track: 'On track',
       over: 'Over concept',
       under: 'Under concept',
@@ -700,7 +721,7 @@ function RomReconciliationView({ rec }: { rec: RomReconciliation }) {
     }[rec.status],
   });
   const statusDesc = t(`romEstimate.reconcile.desc_${rec.status}`, {
-    defaultValue: {
+    defaultValue: RECONCILE_DESC_LABELS[rec.status] ?? {
       on_track: 'The detailed estimate is tracking the conceptual budget.',
       over: 'The detailed estimate is running above the conceptual budget.',
       under: 'The detailed estimate is below the conceptual budget.',
@@ -771,7 +792,7 @@ function RomReconciliationView({ rec }: { rec: RomReconciliation }) {
               <span className="text-content-tertiary">
                 {t('romEstimate.reconcile.tolerance', {
                   defaultValue: 'vs concept (band ±{{pct}}%)',
-                  pct: toNum(rec.tolerance_pct).toFixed(0),
+                  pct: fmtFixed(toNum(rec.tolerance_pct), 0),
                 })}
               </span>
             </div>
@@ -800,7 +821,7 @@ function RomReconciliationView({ rec }: { rec: RomReconciliation }) {
 function shortDate(value: string | null): string {
   if (!value) return '';
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString();
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(getIntlLocale());
 }
 
 /**
