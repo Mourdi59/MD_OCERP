@@ -507,7 +507,7 @@ def check_optional_extras() -> list[Check]:
             return False
 
     def _import_error(mod: str) -> str | None:
-        """Import ``mod`` the same way the upload path will import it.
+        """Import ``mod`` the same way the code that needs it will import it.
 
         Returns None when the import succeeds, otherwise the last line of the
         failure. Normally a child process is used, for two reasons: it is where
@@ -520,7 +520,10 @@ def check_optional_extras() -> list[Check]:
         is exactly why the upload path parses in-process on desktop. Probing
         with a child there would report every healthy desktop install as a
         broken PDF reader, so the check follows the parser and imports in this
-        process instead.
+        process instead. The helper is named for the PDF readers because they
+        were the first caller, but both reasons hold for any module with a
+        native extension, which is why the vector and encoder checks below use
+        it too.
         """
         import subprocess
 
@@ -546,36 +549,64 @@ def check_optional_extras() -> list[Check]:
         last = err.splitlines()[-1] if err else f"exit {proc.returncode}"
         return last[:200]
 
+    def _extra_check(label: str, mod: str, extra: str, ok_msg: str, missing_msg: str) -> Check:
+        """Report an optional extra as one of three states rather than two.
+
+        ``find_spec`` answers "is it on disk", which is the wrong question for a
+        module that is mostly a compiled extension. lancedb is almost entirely
+        one Rust library and sentence-transformers imports torch, a pile of
+        native shared objects, so either can resolve perfectly and still fail to
+        load. Calling that "installed" is precisely the class of lie this
+        command exists to catch, and it is not hypothetical: a frozen build was
+        measured reporting the encoder as installed while carrying 167
+        sentence-transformers modules and no torch whatsoever.
+
+        Absent stays a warning, because a stock server is meant not to carry
+        these. Present but unimportable is an error, because something did ship
+        it and it does not work, and the operator needs to know those are
+        different problems with different fixes. The cheap lookup runs first, so
+        the import cost is only paid when there is something to prove: on the
+        common install that simply lacks the extra, this costs what it did
+        before.
+        """
+        if not _present(mod):
+            return Check(label, "warn", missing_msg, f"pip install 'openconstructionerp[{extra}]'")
+        err = _import_error(mod)
+        if err is None:
+            return Check(label, "ok", ok_msg)
+        return Check(
+            label,
+            "error",
+            f"present but will not import: {err}",
+            f"pip install --force-reinstall 'openconstructionerp[{extra}]'",
+        )
+
     out: list[Check] = []
 
     # Embedded vector search (LanceDB) - used by the local semantic search
     # path for cost-database matching. Optional: code falls back to keyword
     # match when missing.
-    if _present("lancedb"):
-        out.append(Check("Vector search [vector]", "ok", "lancedb installed"))
-    else:
-        out.append(
-            Check(
-                "Vector search [vector]",
-                "warn",
-                "not installed (LanceDB semantic search disabled)",
-                "pip install 'openconstructionerp[vector]'",
-            )
+    out.append(
+        _extra_check(
+            "Vector search [vector]",
+            "lancedb",
+            "vector",
+            "lancedb imports cleanly",
+            "not installed (LanceDB semantic search disabled)",
         )
+    )
 
     # Semantic embeddings (sentence-transformers + Qdrant client).
     # Renamed from `[ai]` in v1.3.14 - the old extra is still an alias.
-    if _present("sentence_transformers"):
-        out.append(Check("Semantic search [semantic]", "ok", "sentence-transformers installed"))
-    else:
-        out.append(
-            Check(
-                "Semantic search [semantic]",
-                "warn",
-                "not installed (RAG / embedding search disabled)",
-                "pip install 'openconstructionerp[semantic]'",
-            )
+    out.append(
+        _extra_check(
+            "Semantic search [semantic]",
+            "sentence_transformers",
+            "semantic",
+            "sentence-transformers imports cleanly",
+            "not installed (RAG / embedding search disabled)",
         )
+    )
 
     # PDF takeoff. This one is checked by importing, not by locating: find_spec
     # resolves a module without executing it, so a wheel whose native extension
