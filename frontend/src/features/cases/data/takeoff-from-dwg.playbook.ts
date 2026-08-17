@@ -88,8 +88,8 @@ const playbook: Playbook = {
       whyKey: "cases.takeoff_from_dwg.step.measure.why",
       whyDefault:
         "Measurements kept in tidy groups price without untangling and audit in seconds. When a figure looks high, you click the group and see the exact shape that produced it, instead of defending a number you cannot explain.",
-      moduleLabel: "Take-off",
-      moduleLabelKey: "nav.takeoff_overview",
+      moduleLabel: "PDF Measurements",
+      moduleLabelKey: "nav.pdf_measurements",
       to: "/takeoff?tab=measurements",
     },
     {
