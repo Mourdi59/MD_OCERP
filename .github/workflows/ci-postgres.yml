@@ -688,6 +688,82 @@ jobs:
       # exists at all.
       - name: Run tenant isolation
         run: pytest tests/integration/test_tenant_isolation.py -q -p no:cacheprovider
+      # Registers that answer with a page envelope, checked end to end. The
+      # pagination waves moved these endpoints from a bare array to {items,
+      # total, offset, limit} and moved every caller with them, and nothing
+      # that blocks a merge collected any of it. These are integration tests,
+      # and tests/integration is reached by exactly one filtered step, in the
+      # CI workflow, which is red often enough that a failure there stops
+      # nobody. The lane coverage guard still records that tree as
+      # PUSH_FILTERED, because it ranks by continue-on-error rather than by
+      # whether anyone acts on the result, so the classification is true on
+      # paper and buys nothing. Worth knowing before reading this step as
+      # redundant with it, and worth knowing that adding these names cannot
+      # improve that recorded class either: naming files ranks below filtering
+      # a tree, so the guard keeps reporting the number the red lane supplies.
+      #
+      # Here rather than on backend-postgres, which is where it was written
+      # first and where it does not fit. Summing the costs those step comments
+      # state gives about 21 minutes against a 30 minute ceiling, and two of
+      # its steps state no cost at all, so the true figure is higher than that
+      # and unknown. This job was measured at 10.3 minutes against the same
+      # ceiling. That makes the job name narrower than its contents, which is
+      # the price of the move and is cheaper than the alternatives: crowding a
+      # lane already near its ceiling, or paying a fresh install and cluster
+      # boot for three files. One of the three is test_folder_permissions.py,
+      # so the fit is not as poor as the heading suggests.
+      #
+      # The 21 minutes is worth someone's attention on its own. That job's
+      # ceiling comment still reasons from "the suite finishes in about ten",
+      # which was true of tests/pg alone and has not been true of the job for
+      # a while. Nothing tracks that, and the failure mode when it arrives is
+      # an anonymous kill at the wall clock rather than a named test.
+      #
+      # Cost, measured rather than guessed, and measured badly. 29 tests, 0
+      # failed and 0 skipped in 636 seconds under OE_TEST_DB=pg on a Windows
+      # box that had two other sessions running pytest at the same time. Nearly
+      # all of that is fixture setup rather than test bodies: 137 seconds for
+      # the first cluster boot and about 18 for each per-test database clone
+      # after it, which is a property of the conftest every file in this job
+      # shares. So the number describes this box, not these files, and the
+      # runner cost is unmeasured. For shape, this job was observed doing 502
+      # tests in 10.3 minutes, near 1.2 seconds a test against the 18 here.
+      # That ratio belongs to contention and to Windows filesystem behaviour,
+      # so do not divide the local figure by it and record the result as a
+      # measurement.
+      #
+      # test_critical_flows.py was a candidate and was dropped rather than
+      # deferred. It asserts on envelope keys in seven places, which is what put
+      # it on the list, but it is a platform smoke suite rather than a register
+      # test, and it carries 50 of the 79 tests the four would have cost. Worst
+      # fit for the rule and most of the bill is enough to drop it; the rule is
+      # that a file belongs here when it exercises a register this programme
+      # moved to the envelope.
+      #
+      # This is a patch and not the fix. Counted with a glob on 2026-08-17,
+      # tests/integration holds 203 files directly and 221 including its six
+      # subdirectories; 23 were named by a blocking step before this and these
+      # three make 26. Everything else there still runs nowhere that stops a
+      # merge. The fix is a nightly run of the whole tree that is allowed to
+      # finish, together with a status check that fails closed when no result
+      # arrives, and neither exists yet. Naming files one at a time is how this
+      # file already works and it plainly does not scale to the remainder; it
+      # is chosen here because the alternative is waiting for the nightly while
+      # the registers ship uncovered.
+      #
+      # The failing-closed half is the part that is easy to leave for later and
+      # is the reason a nightly on its own would not be enough. A cancelled
+      # shard reports exactly what a shard that ran and had nothing to say
+      # reports: no annotations, no failures, a green summary. So a nightly
+      # cancelled every night of a quiet week reads identically to a week with
+      # no regressions, and which one it was gets settled by the regression
+      # shipping.
+      - name: Run paged register integration tests
+        run: >-
+          pytest tests/integration/test_documents_remediation_backlog.py
+          tests/integration/test_documents_search_and_activity.py
+          tests/integration/test_folder_permissions.py
+          -q -p no:cacheprovider --timeout=300 --timeout-method=thread
 
   frontend-tests:
     name: Frontend tests that block a merge
