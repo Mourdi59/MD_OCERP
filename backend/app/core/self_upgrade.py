@@ -61,6 +61,49 @@ FROZEN_REFUSAL = (
     "projects and settings stay where they are."
 )
 
+#: Repairing a bundle that shipped something broken.
+DESKTOP_REPAIR = (
+    "This is the desktop build and it carries no pip. Repair it by reinstalling "
+    f"the app from its installer ({RELEASES_URL}), which replaces the whole "
+    "application and leaves your projects and settings where they are."
+)
+
+#: Adding something the bundle never carried in the first place.
+DESKTOP_NO_EXTRA = (
+    "This is the desktop build. It ships a fixed set of packages and has no pip "
+    "to add to them, so this cannot be switched on here. It needs either a build "
+    "that carries it or the server install."
+)
+
+
+def repair_hint(pip_advice: str, frozen_advice: str = DESKTOP_REPAIR) -> str:
+    """Give advice the reader can carry out where they are standing.
+
+    Remedies across this codebase are written for a pip install, which is where
+    most of them are read. In the bundle they are not merely awkward, they are
+    impossible: ``sys.executable`` is the app binary, so a pip command feeds its
+    own tokens back into this application's CLI. Somebody who follows one learns
+    only that the tool which found the fault cannot fix it either, and the next
+    message they are shown gets less trust than it deserves.
+
+    Here rather than at each call site for the reason this module already gives
+    about the upgrade refusal: two places wording the same decision drift, and
+    the second one is always written by somebody who has not read the first.
+
+    ``is_frozen_build`` and not :func:`app.config.desktop_mode`: the question is
+    the mechanical one, whether ``sys.executable`` can run ``-m pip``. The
+    Windows installer builds are desktop too and run a real interpreter out of a
+    private venv, so pip advice is right for them.
+
+    Args:
+        pip_advice: What to say where pip exists, which is most installs.
+        frozen_advice: What to say inside a bundle. Defaults to repairing a
+            damaged install; pass :data:`DESKTOP_NO_EXTRA` when the thing was
+            never carried, because telling somebody to reinstall in that case
+            sends them round a loop that changes nothing.
+    """
+    return frozen_advice if is_frozen_build() else pip_advice
+
 
 def is_frozen_build() -> bool:
     """True when running inside a PyInstaller bundle.

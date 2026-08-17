@@ -26,6 +26,7 @@ import sys
 import pytest
 
 from app import cli
+from app.core import self_upgrade
 
 #: Advice that cannot be followed from inside a bundle. Matched
 #: case-insensitively against the rendered hint.
@@ -153,13 +154,18 @@ class TestNoRemedyAsksAFrozenBuildToRunPip:
     ) -> None:
         """A green guard is worth what it would have caught.
 
-        Every hint used to be the pip text unconditionally, which is what
-        ``_repair_hint`` returning its first argument reproduces. If the sweep
-        above cannot see offenders in that state then it is passing on the
+        Every hint used to be the pip text unconditionally, which is what both
+        helpers returning their first argument reproduces. If the sweep above
+        cannot see offenders in that state then it is passing on the
         arrangement of the test rather than on the code, and would go on
         passing if the routing were removed tomorrow.
+
+        Both helpers, not one: stubbing only ``_repair_hint`` would leave the
+        no-extra sites routed and still find offenders elsewhere, so the test
+        would go green while covering less than it claims.
         """
         monkeypatch.setattr(cli, "_repair_hint", lambda pip_advice, frozen_advice=None: pip_advice)
+        monkeypatch.setattr(cli, "_no_extra_hint", lambda pip_advice: pip_advice)
         offenders = [
             c.name
             for c in doctor_on_a_bundle(absent=True)
@@ -176,9 +182,7 @@ class TestNoRemedyAsksAFrozenBuildToRunPip:
         the helper rather than inferred from the text.
         """
         monkey = "Install a paddlepaddle build for this platform"
-        assert cli._repair_hint(monkey, cli._DESKTOP_NO_EXTRA) == monkey, (
-            "outside a bundle the original advice must survive untouched"
-        )
+        assert cli._no_extra_hint(monkey) == monkey, "outside a bundle the original advice must survive untouched"
 
 
 class TestTheServerInstallStillGetsPipAdvice:
@@ -197,8 +201,12 @@ class TestTheServerInstallStillGetsPipAdvice:
 
     def test_the_bundle_gets_the_bundle_answer(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(sys, "frozen", True, raising=False)
-        assert cli._repair_hint("pip install x") == cli._DESKTOP_REPAIR
-        assert cli._repair_hint("pip install x", cli._DESKTOP_NO_EXTRA) == cli._DESKTOP_NO_EXTRA
+        assert cli._repair_hint("pip install x") == self_upgrade.DESKTOP_REPAIR
+        assert cli._no_extra_hint("pip install x") == self_upgrade.DESKTOP_NO_EXTRA
+        assert self_upgrade.DESKTOP_REPAIR != self_upgrade.DESKTOP_NO_EXTRA, (
+            "a bundle that shipped something broken and a bundle that never carried it "
+            "need different answers, and one of them is a loop if given to the other"
+        )
 
     def test_a_windows_installer_build_is_not_treated_as_frozen(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """OE_DESKTOP is the wrong question and must not be the one asked.

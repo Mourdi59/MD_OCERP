@@ -30,6 +30,7 @@ from types import ModuleType
 import pytest
 
 from app import cli
+from app.core import self_upgrade
 
 VECTOR = "Vector search [vector]"
 SEMANTIC = "Semantic search [semantic]"
@@ -218,7 +219,7 @@ class TestTheOtherTwoStatesStillBehave:
         # of packages and has no pip to add to it, which is a different true
         # answer rather than a missing one. The pip wording for this branch is
         # asserted unfrozen below.
-        assert check.hint == cli._DESKTOP_NO_EXTRA, f"a bundle was told to run pip: {check.hint!r}"
+        assert check.hint == self_upgrade.DESKTOP_NO_EXTRA, f"a bundle was told to run pip: {check.hint!r}"
 
     def test_absent_on_a_pip_install_names_the_extra(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _fake_child(monkeypatch, fails=set())

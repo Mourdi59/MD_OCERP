@@ -260,6 +260,60 @@ async def _run_cost_reindex(*, batch_size: int, force: bool, task_id: str | None
         raise
 
 
+def require_vector_backend() -> None:
+    """Refuse a reindex the vector backend cannot actually perform.
+
+    Asked by importing rather than by locating. ``find_spec`` resolves a module
+    without executing it, and lancedb is almost entirely one Rust extension: it
+    can sit on disk, resolve perfectly, and still fail to load. Such a build
+    passed the old probe and then failed inside the reindex, turning a clean
+    503 that names the fault into a 500 that does not. The same blind spot was
+    removed from ``doctor``; this is the copy that answers a user rather than an
+    operator.
+
+    Absent and broken get different codes because they need different fixes.
+    Telling somebody to install a package that is already there sends them
+    round a loop, and in the broken case the load error itself is the part they
+    need to see.
+
+    The import cost is paid by the reindex a moment later anyway, and only on
+    this admin route, so nothing hot pays for it.
+
+    Raises:
+        HTTPException: 503 when lancedb is absent or will not load.
+    """
+    import importlib  # noqa: PLC0415
+    import importlib.util  # noqa: PLC0415
+
+    # repair_hint and not a literal pip string: this route runs inside the
+    # desktop sidecar too, where there is no pip to act on the advice with.
+    # Both branches take the repair wording rather than the no-extra one,
+    # because lancedb is in requirements-desktop.lock, so a bundle without a
+    # working one is damaged rather than merely lean.
+    from app.core.self_upgrade import repair_hint  # noqa: PLC0415
+
+    if importlib.util.find_spec("lancedb") is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "vector_extra_missing",
+                "message": "lancedb not installed. "
+                + repair_hint("Install the [vector] extra: pip install openconstructionerp[vector]."),
+            },
+        )
+    try:
+        importlib.import_module("lancedb")
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": "vector_extra_broken",
+                "message": f"lancedb is installed but will not load: {type(exc).__name__}: {exc}. "
+                + repair_hint("Reinstall it: pip install --force-reinstall openconstructionerp[vector]."),
+            },
+        ) from exc
+
+
 @router.post(
     "/cost-vector-reindex",
     response_model=CostVectorReindexResponse,
@@ -298,21 +352,8 @@ async def cost_vector_reindex(
             detail={"code": exc.code, "message": exc.message},
         ) from exc
 
-    # Vector backend probe - fail fast if the optional extra is missing
-    # so the operator gets a clear error instead of a silent zero-op.
     try:
-        import importlib.util  # noqa: PLC0415
-
-        if importlib.util.find_spec("lancedb") is None:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail={
-                    "code": "vector_extra_missing",
-                    "message": (
-                        "lancedb not installed; install the [vector] extra (pip install openconstructionerp[vector])."
-                    ),
-                },
-            )
+        require_vector_backend()
     except HTTPException:
         raise
     except Exception:
