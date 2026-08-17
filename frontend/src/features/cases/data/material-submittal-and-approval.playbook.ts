@@ -99,7 +99,7 @@ const playbook: Playbook = {
       whyKey: "cases.material_submittal_and_approval.step.review.why",
       whyDefault:
         "A checked submittal is the moment a substitution is caught before it is built in, not after. The recorded decision is what protects you when the client asks why the installed product differs from the drawings.",
-      moduleLabel: "Quality management",
+      moduleLabel: "Quality Management",
       moduleLabelKey: "nav.qms",
       to: "/projects/:projectId/qms",
     },

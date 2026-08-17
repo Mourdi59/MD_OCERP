@@ -146,7 +146,7 @@ const playbook: Playbook = {
         "cases.prepare_a_method_statement_and_risk_assessment.step.responsibilities.why",
       whyDefault:
         "A control with no name against it is a control nobody does. Assigning responsibility is what turns the paperwork into something that actually happens on site.",
-      moduleLabel: "QMS",
+      moduleLabel: "Quality Management",
       moduleLabelKey: "nav.qms",
       to: "/projects/:projectId/qms",
     },

@@ -109,7 +109,7 @@ const playbook: Playbook = {
       whyKey: "cases.prepare_an_interim_payment_application.step.value.why",
       whyDefault:
         "Agreed variations belong in the application the month they are agreed, not months later. Rolling them in as they land is what keeps cash coming in level with the work and the changes you have carried.",
-      moduleLabel: "Value",
+      moduleLabel: "Value Realized",
       moduleLabelKey: "nav.value",
       to: "/projects/:projectId/value",
     },
@@ -245,7 +245,7 @@ const playbook: Playbook = {
       whyKey: "cases.prepare_an_interim_payment_application.step.reconcile.why",
       whyDefault:
         "A quiet under-certification left unchallenged carries forward every month. Reconciling each cycle is what keeps small cuts from compounding into a real shortfall by the final account.",
-      moduleLabel: "Reconciliation",
+      moduleLabel: "Event Reconciliation",
       moduleLabelKey: "nav.reconciliation",
       to: "/projects/:projectId/reconciliation",
     },

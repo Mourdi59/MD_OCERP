@@ -60,7 +60,7 @@ const playbook: Playbook = {
       whyKey: "cases.witness_and_record_mep_commissioning.step.plan.why",
       whyDefault:
         "A commissioning check with no agreed pass mark is an argument waiting to happen. Setting the criteria up front is what lets the witness say pass or fail on the day instead of debating it.",
-      moduleLabel: "QMS",
+      moduleLabel: "Quality Management",
       moduleLabelKey: "nav.qms",
       to: "/projects/:projectId/qms",
     },

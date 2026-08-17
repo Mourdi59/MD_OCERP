@@ -42,7 +42,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_site_quality_checks_with_digital_forms.step.build.why",
       whyDefault:
         "A checklist that mirrors the specification is a checklist that catches real defects. One made up from memory misses the clause that matters and passes work that should have failed.",
-      moduleLabel: "Forms",
+      moduleLabel: "Forms & checklists",
       moduleLabelKey: "nav.forms",
       to: "/forms",
     },
@@ -85,7 +85,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_site_quality_checks_with_digital_forms.step.flag.why",
       whyDefault:
         "A failed check with no follow-up is worse than no check, because it records that you knew. Turning fails into tracked actions is what closes the loop between finding a defect and fixing it.",
-      moduleLabel: "Quality",
+      moduleLabel: "Quality Management",
       moduleLabelKey: "nav.qms",
       to: "/projects/:projectId/qms",
     },
@@ -106,7 +106,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_site_quality_checks_with_digital_forms.step.record.why",
       whyDefault:
         "Quality records assembled as you go are complete and cheap. The same records reconstructed at handover are full of holes and cost weeks of chasing signatures for work long since covered.",
-      moduleLabel: "Quality",
+      moduleLabel: "Quality Management",
       moduleLabelKey: "nav.qms",
       to: "/projects/:projectId/qms",
     },

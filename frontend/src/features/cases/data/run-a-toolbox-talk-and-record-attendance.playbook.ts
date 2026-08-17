@@ -144,7 +144,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_a_toolbox_talk_and_record_attendance.step.deliver.why",
       whyDefault:
         "Attendance is the proof. If an incident is investigated later, the record of who was briefed on what protects both the worker and the site.",
-      moduleLabel: "Field time",
+      moduleLabel: "Field Time",
       moduleLabelKey: "nav.field_time",
       to: "/projects/:projectId/field-time",
     },
@@ -184,7 +184,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_a_toolbox_talk_and_record_attendance.step.file.why",
       whyDefault:
         "A briefing that lives only in someone, memory did not happen as far as anyone else is concerned. Filing it in the daily record makes it part of the permanent, auditable history of the project.",
-      moduleLabel: "Daily diary",
+      moduleLabel: "Daily Diary",
       moduleLabelKey: "nav.daily_diary",
       to: "/projects/:projectId/daily-diary",
     },

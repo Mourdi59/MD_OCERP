@@ -101,7 +101,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_a_handover_acceptance_inspection.step.defects.why",
       whyDefault:
         "The defect list is the exact distance between practically complete and truly accepted, and the client feels every open item. Driving it to zero is usually what releases acceptance and the payment tied to it.",
-      moduleLabel: "Punch list",
+      moduleLabel: "Punch List",
       moduleLabelKey: "nav.punchlist",
       to: "/punchlist",
     },

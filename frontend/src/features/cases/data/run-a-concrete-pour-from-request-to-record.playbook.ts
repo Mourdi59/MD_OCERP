@@ -43,7 +43,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_a_concrete_pour_from_request_to_record.step.request.why",
       whyDefault:
         "A pour called at short notice is a pour that skips checks. Requesting it properly gives the inspection its window and the batching plant its lead time, so nothing is rushed on the day.",
-      moduleLabel: "Forms",
+      moduleLabel: "Forms & checklists",
       moduleLabelKey: "nav.forms",
       to: "/forms",
     },

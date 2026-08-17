@@ -60,7 +60,7 @@ const playbook: Playbook = {
         "cases.set_up_bim_requirements_and_coordination.step.requirements.why",
       whyDefault:
         "A model handed over without the properties someone needs is a pretty picture, not an asset. Writing the requirement down first is what makes it something you can hold a designer to.",
-      moduleLabel: "Requirements matrix",
+      moduleLabel: "EIR Matrix (ISO 19650)",
       moduleLabelKey: "nav.eir_matrix",
       to: "/requirements/matrix",
     },
@@ -102,7 +102,7 @@ const playbook: Playbook = {
         "cases.set_up_bim_requirements_and_coordination.step.coordinate.why",
       whyDefault:
         "Coordination that happens when someone remembers to do it happens too late. A fixed cadence tied to the requirements keeps the disciplines in step instead of colliding on site.",
-      moduleLabel: "Coordination",
+      moduleLabel: "Coordination Hub",
       moduleLabelKey: "nav.coordination_hub",
       to: "/coordination",
     },
@@ -143,7 +143,7 @@ const playbook: Playbook = {
       whyKey: "cases.set_up_bim_requirements_and_coordination.step.confirm.why",
       whyDefault:
         "The requirement only means something if you check against it. Catching a model short on properties at delivery is a re-issue; catching it at handover is a scramble to rebuild data nobody kept.",
-      moduleLabel: "BIM viewer",
+      moduleLabel: "BIM",
       moduleLabelKey: "nav.bim",
       to: "/projects/:projectId/bim",
     },

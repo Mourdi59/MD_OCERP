@@ -64,7 +64,7 @@ const playbook: Playbook = {
         "cases.plan_preventive_maintenance_from_the_asset_register.step.register.why",
       whyDefault:
         "The register is the only complete list of what you actually own to maintain. Starting the plan from it, rather than memory, is what stops a critical unit being missed until it breaks.",
-      moduleLabel: "Assets",
+      moduleLabel: "Building Assets (FM)",
       moduleLabelKey: "nav.assets",
       to: "/assets",
     },
@@ -106,7 +106,7 @@ const playbook: Playbook = {
         "cases.plan_preventive_maintenance_from_the_asset_register.step.schedule.why",
       whyDefault:
         "A frequency in a manual does nothing until it is a task with an owner and a date. Turning the intervals into a live schedule is what actually gets the filter changed and the belt checked on time.",
-      moduleLabel: "Service",
+      moduleLabel: "Service & Maintenance",
       moduleLabelKey: "nav.service",
       to: "/projects/:projectId/service",
     },

@@ -65,7 +65,7 @@ const playbook: Playbook = {
       whyKey: "cases.build_a_4d_construction_sequence.step.link.why",
       whyDefault:
         "The link is what turns a static model and a flat programme into a moving picture. It also flushes out the elements nobody scheduled and the activities with nothing to build.",
-      moduleLabel: "Schedule",
+      moduleLabel: "4D Schedule",
       moduleLabelKey: "schedule.title",
       to: "/schedule",
     },
@@ -87,7 +87,7 @@ const playbook: Playbook = {
       whyKey: "cases.build_a_4d_construction_sequence.step.sequence.why",
       whyDefault:
         "Finding an out-of-sequence pour or a blocked access on screen costs an hour. Finding it on site costs a week and a standing crew. The 4D review is where that saving is made.",
-      moduleLabel: "Schedule",
+      moduleLabel: "4D Schedule",
       moduleLabelKey: "schedule.title",
       to: "/schedule",
     },

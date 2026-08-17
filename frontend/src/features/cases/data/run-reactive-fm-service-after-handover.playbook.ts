@@ -63,7 +63,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_reactive_fm_service_after_handover.step.request.why",
       whyDefault:
         "A fault that is not logged against the asset is one nobody can trend or prove was fixed. Tying it to the asset from the first call is what later tells you which units keep failing and whether the response target was met.",
-      moduleLabel: "Service",
+      moduleLabel: "Service & Maintenance",
       moduleLabelKey: "nav.service",
       to: "/projects/:projectId/service",
     },
@@ -107,7 +107,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_reactive_fm_service_after_handover.step.asset.why",
       whyDefault:
         "Fixing a unit that is still under warranty out of your own pocket is money straight out the door. The asset record is what tells the engineer, before they start, who pays and how the maker says to fix it.",
-      moduleLabel: "Assets",
+      moduleLabel: "Building Assets (FM)",
       moduleLabelKey: "nav.assets",
       to: "/assets",
     },

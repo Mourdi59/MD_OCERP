@@ -53,7 +53,7 @@ const playbook: Playbook = {
       whyKey: "cases.issue_a_permit_to_work.step.raise-permit.why",
       whyDefault:
         "High-risk work without a live permit and clear controls is how people get hurt and how the job gets shut down. The window keeps it valid only while the controls hold.",
-      moduleLabel: "HSE Advanced",
+      moduleLabel: "HSE Management",
       moduleLabelKey: "nav.hse_advanced",
       to: "/projects/:projectId/hse-advanced",
     },

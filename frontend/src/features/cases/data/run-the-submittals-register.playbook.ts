@@ -91,7 +91,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_the_submittals_register.step.attach-spec.why",
       whyDefault:
         "A reviewer needs the spec next to the submittal, or the approval is just an opinion. It also settles later arguments about what was actually specified.",
-      moduleLabel: "QMS",
+      moduleLabel: "Quality Management",
       moduleLabelKey: "nav.qms",
       to: "/projects/:projectId/qms",
     },

@@ -123,7 +123,7 @@ const playbook: Playbook = {
       whyKey: "cases.validate_estimate.step.report.why",
       whyDefault:
         "A report backed by a passed validation is one you can stand behind under questioning. It shows the client not just the total but that the total was checked against rules before it was sent.",
-      moduleLabel: "Reports",
+      moduleLabel: "Reporting",
       moduleLabelKey: "nav.reporting",
       to: "/reports",
     },

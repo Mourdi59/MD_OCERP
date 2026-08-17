@@ -132,7 +132,7 @@ const playbook: Playbook = {
       whyKey: "cases.project_end_to_end.step.schedule.why",
       whyDefault:
         "A schedule converts a priced scope into dated work fronts. It tells the site team what comes next and surfaces a slip while there is still float to absorb it.",
-      moduleLabel: "Schedule",
+      moduleLabel: "4D Schedule",
       moduleLabelKey: "nav.schedule",
       to: "/schedule",
     },
@@ -202,7 +202,7 @@ const playbook: Playbook = {
       whyKey: "cases.project_end_to_end.step.handover.why",
       whyDefault:
         "A tidy handover closes the job cleanly. The client walks away with a finished, documented building and you keep a full record of how it was delivered, snags and all.",
-      moduleLabel: "Handover",
+      moduleLabel: "Handover & Closeout",
       moduleLabelKey: "closeout.title",
       to: "/closeout",
     },

@@ -85,7 +85,7 @@ const playbook: Playbook = {
       whyKey: "cases.import_a_programme_and_set_the_baseline.step.baseline.why",
       whyDefault:
         "The baseline is the promise. Without a frozen one there is nothing to compare progress to, and every slippage argument becomes a matter of opinion instead of a matter of record.",
-      moduleLabel: "Schedule",
+      moduleLabel: "4D Schedule",
       moduleLabelKey: "schedule.title",
       to: "/schedule",
     },

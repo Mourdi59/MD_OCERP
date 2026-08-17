@@ -98,7 +98,7 @@ const playbook: Playbook = {
       whyKey: "cases.track_a_design_change_to_site_record.step.instruct.why",
       whyDefault:
         "Tying the instruction to the exact revision is what stops a dispute later over which version of the change was actually agreed.",
-      moduleLabel: "Change orders",
+      moduleLabel: "Change Orders",
       moduleLabelKey: "nav.change_orders",
       to: "/change-orders",
     },

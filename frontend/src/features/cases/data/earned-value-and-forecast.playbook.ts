@@ -57,7 +57,7 @@ const playbook: Playbook = {
       whyKey: "cases.earned_value_and_forecast.step.update.why",
       whyDefault:
         "Earned value inherits every optimistic progress claim you feed it. A disciplined cut-off, with no work counted before it is truly done, is the only thing that makes the indices worth reading.",
-      moduleLabel: "Schedule",
+      moduleLabel: "4D Schedule",
       moduleLabelKey: "schedule.title",
       to: "/schedule",
     },
@@ -96,7 +96,7 @@ const playbook: Playbook = {
       whyKey: "cases.earned_value_and_forecast.step.measure.why",
       whyDefault:
         "A superintendent who says the job feels behind is guessing; an SPI of 0.9 is a measurement. Anything under one on cost or schedule means the gap is trending wider, not sitting still.",
-      moduleLabel: "Value",
+      moduleLabel: "Value Realized",
       moduleLabelKey: "nav.value",
       to: "/projects/:projectId/value",
     },

@@ -53,7 +53,7 @@ const playbook: Playbook = {
       whyKey: "cases.forecast_project_cash_flow.step.phase.why",
       whyDefault:
         "A total tells you what the job costs but not when the money leaves, and construction lives or dies on timing. Spreading cost over the programme turns the budget into the profile a cash forecast can be built on.",
-      moduleLabel: "Schedule",
+      moduleLabel: "4D Schedule",
       moduleLabelKey: "nav.schedule",
       to: "/schedule",
     },

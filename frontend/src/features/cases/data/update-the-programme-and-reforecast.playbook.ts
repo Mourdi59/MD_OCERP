@@ -59,7 +59,7 @@ const playbook: Playbook = {
       whyKey: "cases.update_the_programme_and_reforecast.step.collect.why",
       whyDefault:
         "A reforecast is only as honest as the numbers going into it. Taking progress straight from field time and the diary is what stops the update becoming wishful thinking.",
-      moduleLabel: "Field time",
+      moduleLabel: "Field Time",
       moduleLabelKey: "nav.field_time",
       to: "/projects/:projectId/field-time",
     },
@@ -98,7 +98,7 @@ const playbook: Playbook = {
       whyKey: "cases.update_the_programme_and_reforecast.step.mark.why",
       whyDefault:
         "Rounding a job up to done when it is at eighty percent is how programmes drift and everyone stops trusting them. Marking progress honestly is what keeps the schedule worth reading.",
-      moduleLabel: "Schedule",
+      moduleLabel: "4D Schedule",
       moduleLabelKey: "nav.schedule",
       to: "/schedule",
     },
@@ -138,7 +138,7 @@ const playbook: Playbook = {
       whyKey: "cases.update_the_programme_and_reforecast.step.reforecast.why",
       whyDefault:
         "The value of a live programme is that it tells you where you will land, not just where you have been. Reforecasting off real progress is what turns last week numbers into a decision you can act on.",
-      moduleLabel: "Advanced schedule",
+      moduleLabel: "Advanced Schedule",
       moduleLabelKey: "nav.schedule_advanced",
       to: "/schedule-advanced",
     },
@@ -177,7 +177,7 @@ const playbook: Playbook = {
       whyKey: "cases.update_the_programme_and_reforecast.step.slippage.why",
       whyDefault:
         "Knowing you are late is not enough, you have to know why and whose account it sits on. Tying slippage back to changes is what protects an extension of time claim before the delay is forgotten.",
-      moduleLabel: "Change intelligence",
+      moduleLabel: "Change Intelligence",
       moduleLabelKey: "nav.change_intelligence",
       to: "/change-intelligence",
     },

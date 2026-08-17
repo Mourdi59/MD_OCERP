@@ -184,7 +184,7 @@ const playbook: Playbook = {
       whyKey: "cases.issue_a_procurement_and_buying_schedule.step.order.why",
       whyDefault:
         "A price agreed but not ordered is not a delivery. Placing the order is the point the supplier is bound to the date, and the point your committed cost becomes real and trackable.",
-      moduleLabel: "Subcontractors",
+      moduleLabel: "Subcontractor Directory",
       moduleLabelKey: "nav.subcontractors",
       to: "/projects/:projectId/subcontractors",
     },

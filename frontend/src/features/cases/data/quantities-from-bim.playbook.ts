@@ -53,7 +53,7 @@ const playbook: Playbook = {
       whyKey: "cases.quantities_from_bim.step.import.why",
       whyDefault:
         "A quantity read from the model ties back to a specific element you can select and inspect. When the design moves, you re-read the geometry instead of measuring the whole thing again.",
-      moduleLabel: "BIM",
+      moduleLabel: "BIM 3D Takeoff",
       moduleLabelKey: "nav.bim_viewer",
       to: "/projects/:projectId/bim",
     },

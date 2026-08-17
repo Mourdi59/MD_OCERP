@@ -58,7 +58,7 @@ const playbook: Playbook = {
       whyKey: "cases.capture_daywork_and_time_and_materials.step.record.why",
       whyDefault:
         "Daywork paid on records reconstructed at month end always comes up short, because nobody remembers the exact hours. Captured live, against the instruction, it is a claim built on fact rather than memory.",
-      moduleLabel: "Field time",
+      moduleLabel: "Field Time",
       moduleLabelKey: "nav.field_time",
       to: "/projects/:projectId/field-time",
     },

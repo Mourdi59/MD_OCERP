@@ -85,7 +85,7 @@ const playbook: Playbook = {
       whyKey: "cases.reconcile_a_supplier_statement.step.resolve.why",
       whyDefault:
         "An unresolved difference does not go away, it compounds into next month's statement. Clearing each one at source keeps the account clean and stops small errors becoming a tangled dispute.",
-      moduleLabel: "Reconciliation",
+      moduleLabel: "Event Reconciliation",
       moduleLabelKey: "nav.reconciliation",
       to: "/projects/:projectId/reconciliation",
     },

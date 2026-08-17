@@ -92,7 +92,7 @@ const playbook: Playbook = {
       whyKey: "cases.inspect_and_close_ncr.step.ncr.why",
       whyDefault:
         "An NCR converts a loose complaint into a tracked action with a named owner and a due date. A defect mentioned in passing gets built over and buried, while a defect on the register gets chased until it is corrected.",
-      moduleLabel: "NCR",
+      moduleLabel: "NCRs",
       moduleLabelKey: "ncr.title",
       to: "/projects/:projectId/ncr",
     },

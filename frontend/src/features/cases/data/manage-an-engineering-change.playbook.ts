@@ -53,7 +53,7 @@ const playbook: Playbook = {
       whyKey: "cases.manage_an_engineering_change.step.raise.why",
       whyDefault:
         "Engineering changes that skip a control step are how a well-meant fix ends up unsafe or non-compliant. The record is the proof the risk was looked at and the change was authorised, not just done.",
-      moduleLabel: "Management of change",
+      moduleLabel: "Management of Change",
       moduleLabelKey: "moc.title",
       to: "/projects/:projectId/moc",
     },
@@ -126,7 +126,7 @@ const playbook: Playbook = {
       whyKey: "cases.manage_an_engineering_change.step.impact.why",
       whyDefault:
         "The engineering side can be closed and still leave the money open. A change order is what turns an authorised change into an agreed cost and a moved date, before it quietly becomes your problem.",
-      moduleLabel: "Change orders",
+      moduleLabel: "Change Orders",
       moduleLabelKey: "nav.change_orders",
       to: "/change-orders",
     },

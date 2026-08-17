@@ -159,7 +159,7 @@ const playbook: Playbook = {
         "cases.build_a_delay_and_disruption_claim_with_evidence.step.link.why",
       whyDefault:
         "A big number with nothing behind it invites a fight. Linking each day of delay back to the change that caused it is what turns a round figure into a substantiated cause and effect.",
-      moduleLabel: "Change intelligence",
+      moduleLabel: "Change Intelligence",
       moduleLabelKey: "nav.change_intelligence",
       to: "/change-intelligence",
     },

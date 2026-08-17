@@ -111,7 +111,7 @@ const playbook: Playbook = {
         "cases.balance_the_portfolio_and_level_resources.step.capacity.why",
       whyDefault:
         "A week where four projects all want the same gang is a week something slips, whether you planned for it or not. Naming the overload early turns it into a decision instead of a surprise.",
-      moduleLabel: "Capacity planning",
+      moduleLabel: "Capacity Planning",
       moduleLabelKey: "nav.capacity_planning",
       to: "/portfolio/capacity",
     },
@@ -157,7 +157,7 @@ const playbook: Playbook = {
       whyKey: "cases.balance_the_portfolio_and_level_resources.step.level.why",
       whyDefault:
         "Chasing a peak with hired plant and agency labour is the most expensive way to build. Leveling the work across the portfolio first spends your own resources before you pay a premium for someone else.",
-      moduleLabel: "Resource leveling",
+      moduleLabel: "Resource Leveling",
       moduleLabelKey: "nav.resource_leveling",
       to: "/portfolio/leveling",
     },

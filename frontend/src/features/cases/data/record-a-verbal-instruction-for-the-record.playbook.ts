@@ -58,7 +58,7 @@ const playbook: Playbook = {
       whyKey: "cases.record_a_verbal_instruction_for_the_record.step.log.why",
       whyDefault:
         "A fortnight on, nobody agrees what was said on the phone. A dated log written the same hour is the difference between a fact and your word against theirs.",
-      moduleLabel: "Phone log",
+      moduleLabel: "Phone Log",
       moduleLabelKey: "nav.phone_log",
       to: "/projects/:projectId/phone-log",
     },
@@ -142,7 +142,7 @@ const playbook: Playbook = {
         "cases.record_a_verbal_instruction_for_the_record.step.record.why",
       whyDefault:
         "Work done first and papered afterwards is the work that never gets paid. Starting the change record before you act is what keeps a verbal instruction from turning into free scope.",
-      moduleLabel: "Change orders",
+      moduleLabel: "Change Orders",
       moduleLabelKey: "nav.change_orders",
       to: "/change-orders",
     },

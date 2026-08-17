@@ -56,7 +56,7 @@ const playbook: Playbook = {
       whyKey: "cases.handover_and_closeout.step.punch.why",
       whyDefault:
         "The punch list is the distance between practically complete and genuinely complete, and the client feels every open item. A short list driven to zero is usually what releases the final certificate and the last payment.",
-      moduleLabel: "Punch list",
+      moduleLabel: "Punch List",
       moduleLabelKey: "nav.punchlist",
       to: "/punchlist",
     },

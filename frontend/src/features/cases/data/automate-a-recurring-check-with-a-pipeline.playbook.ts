@@ -57,7 +57,7 @@ const playbook: Playbook = {
       whyKey: "cases.automate_a_recurring_check_with_a_pipeline.step.template.why",
       whyDefault:
         "An empty canvas is where most automation ideas die, because the first hour goes on working out which port feeds which. Starting from a graph that runs on the first click means you begin by reading logic that works, and change it, rather than guessing at logic that does not.",
-      moduleLabel: "Pipelines",
+      moduleLabel: "Pipeline Builder",
       moduleLabelKey: "nav.pipelines",
       to: "/pipelines",
     },
@@ -92,7 +92,7 @@ const playbook: Playbook = {
       whyKey: "cases.automate_a_recurring_check_with_a_pipeline.step.wire.why",
       whyDefault:
         "A template carries the logic, never your project's numbers. A ceiling left at the demo figure passes everything you feed it, which is worse than having no guard at all, because the run goes green and everyone believes a check was done.",
-      moduleLabel: "Pipelines",
+      moduleLabel: "Pipeline Builder",
       moduleLabelKey: "nav.pipelines",
       to: "/pipelines",
     },
@@ -127,7 +127,7 @@ const playbook: Playbook = {
       whyKey: "cases.automate_a_recurring_check_with_a_pipeline.step.lint.why",
       whyDefault:
         "A step wired to nothing does not fail. It simply never runs, and the pipeline reports success while doing less than the canvas makes it look like it does. That is the failure worth hunting, because a green run is precisely what stops anyone looking again.",
-      moduleLabel: "Pipelines",
+      moduleLabel: "Pipeline Builder",
       moduleLabelKey: "nav.pipelines",
       to: "/pipelines",
     },

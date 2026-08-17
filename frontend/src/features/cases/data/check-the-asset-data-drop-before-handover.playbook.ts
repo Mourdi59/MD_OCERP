@@ -102,7 +102,7 @@ const playbook: Playbook = {
       whyKey: "cases.check_the_asset_data_drop_before_handover.step.check.why",
       whyDefault:
         "Handover is the last moment you have leverage to get the data fixed for free. A defect list raised now is corrected by the delivery team; the same gap found next month is your problem to chase and fund.",
-      moduleLabel: "QMS",
+      moduleLabel: "Quality Management",
       moduleLabelKey: "nav.qms",
       to: "/projects/:projectId/qms",
     },
@@ -144,7 +144,7 @@ const playbook: Playbook = {
         "cases.check_the_asset_data_drop_before_handover.step.register.why",
       whyDefault:
         "The register is what the whole FM operation runs off, so a bad record there spreads into every work order and report. Loading only the passing data keeps the single source of truth actually trustworthy.",
-      moduleLabel: "Assets",
+      moduleLabel: "Building Assets (FM)",
       moduleLabelKey: "nav.assets",
       to: "/assets",
     },

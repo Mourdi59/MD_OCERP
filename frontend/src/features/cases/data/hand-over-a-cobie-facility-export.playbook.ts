@@ -62,7 +62,7 @@ const playbook: Playbook = {
       whyKey: "cases.hand_over_a_cobie_facility_export.step.complete.why",
       whyDefault:
         "The workbook is a projection of the register, not a document you write separately, so the sheets are only as complete as the rows behind them. A blank storey does not leave one empty cell, it removes a whole Floor row the receiving system was expecting to hang the asset on.",
-      moduleLabel: "Assets",
+      moduleLabel: "Building Assets (FM)",
       moduleLabelKey: "nav.assets",
       to: "/assets",
     },
@@ -100,7 +100,7 @@ const playbook: Playbook = {
       whyKey: "cases.hand_over_a_cobie_facility_export.step.gaps.why",
       whyDefault:
         "The export falls back to n/a rather than failing, so a workbook full of holes still downloads cleanly and still looks finished. Nobody finds out until the operator tries to raise a work order against a pump with no serial and no system, by which time the fitters have long gone.",
-      moduleLabel: "Assets",
+      moduleLabel: "Building Assets (FM)",
       moduleLabelKey: "nav.assets",
       to: "/assets",
     },
@@ -138,7 +138,7 @@ const playbook: Playbook = {
       whyKey: "cases.hand_over_a_cobie_facility_export.step.build.why",
       whyDefault:
         "A workbook generated from the model matches the building; a workbook typed into a template matches whatever the typist had in front of them that week. Exporting per model as each one is signed off also keeps the register current, instead of leaving the whole job to the fortnight before handover.",
-      moduleLabel: "Assets",
+      moduleLabel: "Building Assets (FM)",
       moduleLabelKey: "nav.assets",
       to: "/assets",
     },

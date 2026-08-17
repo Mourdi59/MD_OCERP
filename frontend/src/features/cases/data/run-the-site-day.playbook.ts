@@ -57,7 +57,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_the_site_day.step.diary.why",
       whyDefault:
         "A diary entry made on the day carries evidential weight that a reconstruction written months later never will. When a delay claim or a dispute lands, this is the first record the commercial team reaches for.",
-      moduleLabel: "Site diary",
+      moduleLabel: "Daily Diary",
       moduleLabelKey: "onboarding.mod_daily_diary",
       to: "/projects/:projectId/daily-diary",
     },
@@ -96,7 +96,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_the_site_day.step.hours.why",
       whyDefault:
         "Hours captured while the shift is fresh are hours you can bill, cost against the budget and check against output. Reconstructed at month end they turn into guesswork, and guesswork on labour is where margin quietly disappears.",
-      moduleLabel: "Field time",
+      moduleLabel: "Field Time",
       moduleLabelKey: "nav.field_time",
       to: "/projects/:projectId/field-time",
     },

@@ -65,7 +65,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_a_soft_landings_performance_handover.step.aftercare.why",
       whyDefault:
         "The occupier learns a new building slowly and hits problems the delivery team can fix in minutes. A named aftercare contact is what stops small niggles turning into a soured relationship.",
-      moduleLabel: "Handover",
+      moduleLabel: "Close-out",
       moduleLabelKey: "nav.closeout",
       to: "/closeout",
     },
@@ -87,7 +87,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_a_soft_landings_performance_handover.step.tune.why",
       whyDefault:
         "Systems commissioned to an empty building are wrong the day it fills up. Tuning them against real occupancy is where most of the promised energy and comfort performance is actually won.",
-      moduleLabel: "Service",
+      moduleLabel: "Service & Maintenance",
       moduleLabelKey: "nav.service",
       to: "/projects/:projectId/service",
     },
@@ -109,7 +109,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_a_soft_landings_performance_handover.step.review.why",
       whyDefault:
         "Measuring performance in use closes the loop that most projects leave open. It proves the building does what was promised and turns one job's hard lessons into the next one's better design.",
-      moduleLabel: "Handover",
+      moduleLabel: "Close-out",
       moduleLabelKey: "nav.closeout",
       to: "/closeout",
     },

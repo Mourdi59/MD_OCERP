@@ -97,7 +97,7 @@ const playbook: Playbook = {
       whyKey: "cases.build_the_baseline_programme.step.durations.why",
       whyDefault:
         "Durations without links give you a wish list, not a programme. It is the logic between activities that lets the schedule show what a delay really costs downstream.",
-      moduleLabel: "Schedule",
+      moduleLabel: "4D Schedule",
       moduleLabelKey: "nav.schedule",
       to: "/schedule",
     },
@@ -136,7 +136,7 @@ const playbook: Playbook = {
       whyKey: "cases.build_the_baseline_programme.step.milestones.why",
       whyDefault:
         "Milestones are the dates the client and the contract care about, and calendars are what stop the programme promising work on days no one is on site. Without them the finish date is fiction.",
-      moduleLabel: "Advanced schedule",
+      moduleLabel: "Advanced Schedule",
       moduleLabelKey: "nav.schedule_advanced",
       to: "/schedule-advanced",
     },
@@ -175,7 +175,7 @@ const playbook: Playbook = {
       whyKey: "cases.build_the_baseline_programme.step.critical-path.why",
       whyDefault:
         "A critical path that does not match how the job will really run will send you chasing the wrong activities the moment things slip. Sanity-checking it before you baseline is cheaper than finding out on site.",
-      moduleLabel: "Advanced schedule",
+      moduleLabel: "Advanced Schedule",
       moduleLabelKey: "nav.schedule_advanced",
       to: "/schedule-advanced",
     },

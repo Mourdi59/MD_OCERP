@@ -139,7 +139,7 @@ const playbook: Playbook = {
       whyKey: "cases.issue_an_electronic_invoice.step.track.why",
       whyDefault:
         "An issued invoice is not money until it is paid, and a short payment slips by unnoticed unless you match it back. Tracking every one to settlement is how the cash you earned actually reaches the account.",
-      moduleLabel: "Reconciliation",
+      moduleLabel: "Event Reconciliation",
       moduleLabelKey: "nav.reconciliation",
       to: "/projects/:projectId/reconciliation",
     },

@@ -101,7 +101,7 @@ const playbook: Playbook = {
       whyKey: "cases.compare_bids_and_award.step.level.why",
       whyDefault:
         "The lowest headline number often belongs to whoever forgot the most. Once the missing builders work and the daywork assumptions go back in, the genuinely keen bid is usually a different one.",
-      moduleLabel: "Bid management",
+      moduleLabel: "Bid Management",
       moduleLabelKey: "nav.bid_management",
       to: "/bid-management",
     },

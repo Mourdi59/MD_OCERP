@@ -57,7 +57,7 @@ const playbook: Playbook = {
       whyKey: "cases.defects_liability_period_tracking.step.log.why",
       whyDefault:
         "A defect reported to a caretaker by phone and never written down is a defect that never gets fixed. One list keeps every claim against the liability period visible.",
-      moduleLabel: "Punch list",
+      moduleLabel: "Punch List",
       moduleLabelKey: "nav.punchlist",
       to: "/punchlist",
     },
@@ -96,7 +96,7 @@ const playbook: Playbook = {
       whyKey: "cases.defects_liability_period_tracking.step.assign.why",
       whyDefault:
         "The liability period has a hard end date, and a defect still open when it closes becomes a cost the owner absorbs. Assigning and dating each one is what keeps the obligation enforceable.",
-      moduleLabel: "Punch list",
+      moduleLabel: "Punch List",
       moduleLabelKey: "nav.punchlist",
       to: "/punchlist",
     },

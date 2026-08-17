@@ -60,7 +60,7 @@ const playbook: Playbook = {
         "cases.plan_repetitive_work_with_takt_and_line_of_balance.step.zones.why",
       whyDefault:
         "Repetitive work only flows when the zones are even and the sequence is the same everywhere. This is the groundwork for a takt plan.",
-      moduleLabel: "Schedule",
+      moduleLabel: "4D Schedule",
       moduleLabelKey: "nav.schedule",
       to: "/schedule",
     },
@@ -102,7 +102,7 @@ const playbook: Playbook = {
         "cases.plan_repetitive_work_with_takt_and_line_of_balance.step.takt-time.why",
       whyDefault:
         "A steady takt beat stops trades tripping over each other, and it makes a slip obvious the day it happens, not a month later.",
-      moduleLabel: "Takt",
+      moduleLabel: "Takt Planning",
       moduleLabelKey: "nav.takt",
       to: "/takt",
     },
@@ -144,7 +144,7 @@ const playbook: Playbook = {
         "cases.plan_repetitive_work_with_takt_and_line_of_balance.step.level-crews.why",
       whyDefault:
         "If one crew cannot hold the beat, the whole train stalls behind it. Levelling early is cheaper than chasing labour on site.",
-      moduleLabel: "Resources",
+      moduleLabel: "Resources & Crew",
       moduleLabelKey: "nav.resources",
       to: "/projects/:projectId/resources",
     },

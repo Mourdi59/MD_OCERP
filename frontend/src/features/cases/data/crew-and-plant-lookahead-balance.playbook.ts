@@ -102,7 +102,7 @@ const playbook: Playbook = {
       whyKey: "cases.crew_and_plant_lookahead_balance.step.check.why",
       whyDefault:
         "Booked hours are the ground truth of what will really turn up on site. Catching a shortfall a week out is a phone call; catching it on the day is a stalled gang.",
-      moduleLabel: "Field time",
+      moduleLabel: "Field Time",
       moduleLabelKey: "nav.field_time",
       to: "/projects/:projectId/field-time",
     },

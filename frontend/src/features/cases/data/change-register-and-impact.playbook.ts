@@ -59,7 +59,7 @@ const playbook: Playbook = {
       whyKey: "cases.change_register_and_impact.step.register.why",
       whyDefault:
         "A change that never made the register is a change you will not get paid for. One shared list is what turns a scatter of verbal instructions and site memos into a claimable, auditable position.",
-      moduleLabel: "Change orders",
+      moduleLabel: "Change Orders",
       moduleLabelKey: "nav.change_orders",
       to: "/change-orders",
     },
@@ -94,7 +94,7 @@ const playbook: Playbook = {
       whyKey: "cases.change_register_and_impact.step.impact.why",
       whyDefault:
         "Twenty small variations feel harmless right up until they add up to the one that blows the budget. Scoring impact against real spend is what surfaces the drift while there is still room to act.",
-      moduleLabel: "Change intelligence",
+      moduleLabel: "Change Intelligence",
       moduleLabelKey: "nav.change_intelligence",
       to: "/change-intelligence",
     },

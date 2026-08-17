@@ -104,7 +104,7 @@ const playbook: Playbook = {
         "cases.value_engineer_a_design_to_the_target_cost.step.options.why",
       whyDefault:
         "A saving that wrecks the maintenance cost or the look of the building is not a saving. Scoring options on value, not just first cost, is what stops value engineering turning into value destruction.",
-      moduleLabel: "Value",
+      moduleLabel: "Value Realized",
       moduleLabelKey: "nav.value",
       to: "/projects/:projectId/value",
     },

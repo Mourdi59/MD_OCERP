@@ -58,7 +58,7 @@ const playbook: Playbook = {
       whyKey: "cases.appraise_a_development_scheme.step.scheme.why",
       whyDefault:
         "The land value is only ever as good as the scheme behind it. Getting the mix and the areas right is what separates a real appraisal from a number pulled off a comparable.",
-      moduleLabel: "Property development",
+      moduleLabel: "Property Development",
       moduleLabelKey: "nav.property_dev",
       to: "/property-dev",
     },

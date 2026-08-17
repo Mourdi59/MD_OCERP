@@ -154,7 +154,7 @@ const playbook: Playbook = {
       whyKey: "cases.payment_application_and_reconciliation.step.reconcile.why",
       whyDefault:
         "A few percent shaved off each valuation vanishes quietly and never returns by itself. Reconciling every cycle, while the backup is still to hand, is how that money finds its way home.",
-      moduleLabel: "Reconciliation",
+      moduleLabel: "Event Reconciliation",
       moduleLabelKey: "nav.reconciliation",
       to: "/projects/:projectId/reconciliation",
     },

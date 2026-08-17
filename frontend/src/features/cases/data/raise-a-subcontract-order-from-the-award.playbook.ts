@@ -86,7 +86,7 @@ const playbook: Playbook = {
       whyKey: "cases.raise_a_subcontract_order_from_the_award.step.terms.why",
       whyDefault:
         "A price with no dates and no terms is where disputes start. Pinning the programme and the payment mechanism to the order now saves the argument later.",
-      moduleLabel: "Subcontractors",
+      moduleLabel: "Subcontractor Directory",
       moduleLabelKey: "nav.subcontractors",
       to: "/projects/:projectId/subcontractors",
     },

@@ -62,7 +62,7 @@ const playbook: Playbook = {
       whyKey: "cases.assess_and_price_a_variation.step.capture.why",
       whyDefault:
         "A change that is worked on site but never written down is the one that gets argued about later. Logging it at the instruction is what makes the claim provable instead of a memory.",
-      moduleLabel: "Change orders",
+      moduleLabel: "Change Orders",
       moduleLabelKey: "nav.change_orders",
       to: "/change-orders",
     },
@@ -144,7 +144,7 @@ const playbook: Playbook = {
       whyKey: "cases.assess_and_price_a_variation.step.impact.why",
       whyDefault:
         "A change costs more than its own line when it delays other trades. Pricing the money and flagging the time together is what stops a paid variation quietly causing an unpaid delay.",
-      moduleLabel: "Value",
+      moduleLabel: "Value Realized",
       moduleLabelKey: "nav.value",
       to: "/projects/:projectId/value",
     },

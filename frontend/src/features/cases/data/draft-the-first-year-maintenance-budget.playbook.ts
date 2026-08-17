@@ -60,7 +60,7 @@ const playbook: Playbook = {
       whyKey: "cases.draft_the_first_year_maintenance_budget.step.assets.why",
       whyDefault:
         "A budget built without the asset list is a guess. Starting from what you actually have to maintain is what makes the number defensible rather than a finger in the air.",
-      moduleLabel: "Assets",
+      moduleLabel: "Building Assets (FM)",
       moduleLabelKey: "nav.assets",
       to: "/assets",
     },

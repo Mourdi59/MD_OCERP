@@ -88,7 +88,7 @@ const playbook: Playbook = {
       whyKey: "cases.cost_value_reconciliation.step.value.why",
       whyDefault:
         "Cost and value only tell the truth when they are cut on the exact same date. Value the work straight, and the margin you read is one you can stand behind, not a number you have to explain away.",
-      moduleLabel: "Value",
+      moduleLabel: "Value Realized",
       moduleLabelKey: "nav.value",
       to: "/projects/:projectId/value",
     },

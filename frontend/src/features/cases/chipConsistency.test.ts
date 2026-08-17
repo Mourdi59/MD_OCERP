@@ -99,49 +99,21 @@ const KEY_SPLIT_BASELINE: Record<string, string[]> = {
  * Routes whose chips agree on the key and disagree on the spelling of the
  * label. Source-only, no locale effect. Same shrink rule.
  *
- * These seven are two different things and the list says which, because a shrink
- * list that carries deliberate choices as debt earns a "why is this still here"
- * from every reader forever. The first group is slips: same word, different
- * capital or different number. The second group is different NAMES for one
- * screen, which may well be somebody's considered wording, and settling those
- * is a call for the catalogue owner rather than a tidy-up.
+ * Thirteen routes left this list at once on 2026-08-18, when every chip moved
+ * onto the English value of its own key. Settling the value settles the
+ * spelling with it: two chips that both render the key's value cannot disagree
+ * about how it is written, so this list mostly empties as a side effect of the
+ * check below rather than by anyone editing spellings by hand.
+ * `/projects/:projectId/rfi` and `/catalog` had left the same way earlier.
  *
- * `/projects/:projectId/rfi` and `/catalog` left this list when every chip moved
- * onto the key the screen claims for itself, which settled the label with it.
+ * The one that remains is the one nobody is allowed to settle yet. "BOQ" and
+ * "Bill of Quantities" are two names for one document, and which a chip should
+ * carry depends on an unsettled question about what that document is called per
+ * country. It is deferred by ruling rather than overlooked, which is why it can
+ * sit here alone without reading as neglect.
  */
 const LABEL_SPLIT_BASELINE: Record<string, string[]> = {
-  // Slips: one name, two spellings.
-  '/bid-management': ['Bid Management', 'Bid management'],
-  '/projects/:projectId/field-time': ['Field Time', 'Field time'],
-  '/punchlist': ['Punch List', 'Punch list'],
-
-  // Different names for the same screen. Confirm the intent before collapsing.
-  // `/labor-rates` is the interesting one: the split runs along US and UK
-  // spelling, so it may be a market choice rather than an accident, and a
-  // market choice does not belong on a chip that names a single screen.
-  '/labor-rates': ['Labor Rates', 'Labour Rates'],
-  '/projects/:projectId/hse-advanced': ['HSE Advanced', 'HSE Management'],
-  '/projects/:projectId/qms': ['QMS', 'Quality', 'Quality management'],
-  '/requirements/matrix': ['EIR Matrix', 'Requirements matrix'],
-
-  // These seven were invisible until the key-split exemption came out of the
-  // check below. Every one of them is a route that also carries more than one
-  // key, and skipping such routes meant a second name for the screen went
-  // unreported for as long as the first defect stayed on the list. They are
-  // recorded here rather than fixed in the same pass so that the exemption
-  // removal is reviewable on its own.
-  //
-  // `/projects/:projectId/boq` is the one to read first: it is the case the
-  // exemption was hiding, and it stays deferred by ruling because the
-  // abbreviation depends on an unsettled question about what this document is
-  // called per country.
-  '/closeout': ['Close-out', 'Handover', 'Handover & Closeout'],
-  '/projects/:projectId/bim': ['3D model', 'BIM', 'BIM viewer'],
   '/projects/:projectId/boq': ['BOQ', 'Bill of Quantities'],
-  '/projects/:projectId/daily-diary': ['Daily Diary', 'Daily diary'],
-  '/projects/:projectId/ncr': ['NCR', 'Non-conformance'],
-  '/schedule': ['4D Schedule', 'Schedule'],
-  '/schedule-advanced': ['Advanced Schedule', 'Advanced schedule', 'Schedule Advanced'],
 };
 
 /**
@@ -152,7 +124,7 @@ const LABEL_SPLIT_BASELINE: Record<string, string[]> = {
  * `moduleLabelKey` in `types.ts` had nothing defending it, and 170 divergences
  * accumulated under a green suite.
  *
- * Why it matters that the label is not dead code: every one of these 47 keys
+ * Why it matters that the label is not dead code: every one of these keys
  * exists in `en.ts`, so `defaultValue` never fires and the label never reaches
  * the app. It reaches the public case pages, which take `moduleLabel` raw from
  * `playbookModules`. So each entry here is one screen that the site and the
@@ -166,7 +138,16 @@ const LABEL_SPLIT_BASELINE: Record<string, string[]> = {
  * baseline of opaque keys hardens into permission while a baseline of reasons
  * stays a worklist.
  *
- * Ordered by how many chips carry the pair, biggest first.
+ * 139 chips across 49 pairs moved onto their key's value on 2026-08-18, and
+ * those rows left this list. What remains is five rows of three kinds, and the
+ * kinds matter more than the count: one deferral, two approved exceptions where
+ * the literal really is the better chip text, and two entries that are not
+ * label defects at all.
+ *
+ * That last kind is here to stay visible, not to be fixed. Each one is a
+ * finding about the chip's key or its route, and moving the label would settle
+ * the wording while leaving the actual defect in place and no longer reported.
+ * A defect that has been made to look tidy stops being counted.
  */
 const LABEL_VALUE_BASELINE: readonly (readonly [key: string, label: string, reason: string])[] = [
   // Deferred by ruling, not an exception. The abbreviation sits on top of an
@@ -175,82 +156,31 @@ const LABEL_VALUE_BASELINE: readonly (readonly [key: string, label: string, reas
   // the `/projects/:projectId/boq` row of KEY_SPLIT_BASELINE all stay as they are.
   ['boq.title', 'BOQ', 'deferred by ruling: per-country naming of this document is unsettled'],
 
-  // Shortenings. The key carries a qualifier the label drops, and the qualifier
-  // is exactly what a case-page reader needs, having no sidebar to give context.
-  ['nav.qms', 'Quality', 'shortening, drops the discipline'],
-  ['nav.qms', 'QMS', 'acronym, unexpanded for a first-time reader'],
-  ['nav.schedule', 'Schedule', 'shortening, drops the 4D that separates this from the advanced schedule'],
-  ['schedule.title', 'Schedule', 'shortening, same screen as nav.schedule'],
-  ['nav.assets', 'Assets', 'shortening, drops the facilities-management scope'],
-  ['nav.reconciliation', 'Reconciliation', 'shortening, drops what is reconciled'],
-  ['nav.value', 'Value', 'shortening, drops the realised'],
-  ['cde.title', 'CDE', 'acronym, the expansion is what an unfamiliar reader needs'],
-  ['nav.service', 'Service', 'shortening, drops maintenance'],
-  ['nav.carbon', 'Carbon', 'shortening, drops ESG'],
-  ['nav.pipelines', 'Pipelines', 'shortening, drops builder'],
-  ['nav.eir_matrix', 'EIR Matrix', 'shortening, drops the ISO 19650 reference'],
-  ['nav.coordination_hub', 'Coordination', 'shortening, drops hub'],
-  ['nav.subcontractors', 'Subcontractors', 'shortening, drops directory'],
-  ['nav.resources', 'Resources', 'shortening, drops crew'],
-  ['closeout.title', 'Close-out', 'shortening, drops handover'],
-  ['closeout.title', 'Handover', 'shortening, drops close-out'],
-  ['nav.allowances', 'Allowances', 'shortening, drops contingency'],
-  ['nav.equipment', 'Equipment', 'shortening, drops fleet'],
-  ['nav.forms', 'Forms', 'shortening, drops checklists'],
-  ['nav.portal', 'Portal', 'shortening, drops who the portal is for'],
-  ['quantities.title', 'Quantities', 'shortening, drops takeoff'],
-  ['nav.takt', 'Takt', 'shortening, drops planning'],
-  ['nav.bim_viewer', 'BIM', 'shortening, and the fuller key name is the right one on a case page'],
-  ['nav.reporting', 'Reports', 'shortening, and /reports carries a second key, see the duplicate-key note'],
-
-  // Capitalisation only. One name, two shapes, no decision behind it.
-  ['nav.field_time', 'Field time', 'capitalisation only'],
-  ['nav.change_orders', 'Change orders', 'capitalisation only'],
-  ['nav.schedule_advanced', 'Advanced schedule', 'capitalisation only'],
-  ['nav.punchlist', 'Punch list', 'capitalisation only'],
-  ['nav.change_intelligence', 'Change intelligence', 'capitalisation only'],
-  ['nav.bid_management', 'Bid management', 'capitalisation only'],
-  ['nav.property_dev', 'Property development', 'capitalisation only'],
-  ['nav.capacity_planning', 'Capacity planning', 'capitalisation only'],
-  ['nav.resource_leveling', 'Resource leveling', 'capitalisation only'],
-  ['nav.daily_diary', 'Daily diary', 'capitalisation only'],
-  ['moc.title', 'Management of change', 'capitalisation only'],
-  ['nav.qms', 'Quality management', 'capitalisation only'],
-  ['nav.phone_log', 'Phone log', 'capitalisation only'],
-
-  // A different name for the same screen. Someone typed a second name by hand.
-  ['nav.closeout', 'Handover', 'a second name for the screen'],
-  ['nav.bim', '3D model', 'a second name for the screen'],
-  ['nav.bim', 'BIM viewer', 'a second name, and /bim carries three keys, see the duplicate-key note'],
-  ['nav.eir_matrix', 'Requirements matrix', 'a second name for the screen'],
-  ['ncr.title', 'NCR', 'singular acronym against a plural key'],
-  ['ncr.title', 'Non-conformance', 'singular against a plural key'],
-  ['nav.ai_estimator', 'AI Estimator', 'a second word order for the screen'],
-  ['onboarding.mod_daily_diary', 'Site diary', 'a second name for the screen'],
-  [
-    'onboarding.mod_schedule_advanced',
-    'Advanced scheduling',
-    'a second name, and this key reads worse than nav.schedule_advanced on the same route',
-  ],
-  ['nav.schedule_advanced', 'Schedule Advanced', 'the onboarding word order leaking into a chip'],
-  ['nav.hse_advanced', 'HSE Advanced', 'the label is the worse English of the two here'],
-  ['nav.labor_rates', 'Labour Rates', 'British spelling against an American key, a locale decision rather than a chip one'],
-
-  // Proposed exceptions: the two where the literal is the better chip text.
+  // Approved exceptions. The literal is the better chip text, and both survive
+  // the same question: what does the reader need at the moment they read it?
   [
     'nav.match_elements',
     'Match Elements',
-    'exception proposed: the key value carries an arrow, a nav affordance that reads as broken punctuation inline',
+    'approved exception: the key value carries an arrow, a nav affordance that reads as broken punctuation inline',
   ],
   [
     'nav.clash_detection',
     'Clash Profiles',
-    'exception proposed: the chip walks to /clash/profiles and the label names that sub-screen, not the module',
+    'approved exception: the chip walks to /clash/profiles and the label names that sub-screen, not the module',
   ],
+
+  // Not label defects. Both name something wrong with the chip's key or its
+  // route, and aligning the label would tidy the words while leaving the defect
+  // in place and unreported. They are stated here so they keep being counted.
   [
     'nav.ncr',
     'Non-conformances',
     'not a label defect: the chip walks to /inspections while keying the NCR module, so route and key disagree',
+  ],
+  [
+    'onboarding.mod_schedule_advanced',
+    'Advanced scheduling',
+    'not a label defect: the chip keys the onboarding label, whose value is "Schedule Advanced", so aligning would put a second name on a route that already reads "Advanced Schedule"',
   ],
 ];
 
@@ -438,9 +368,18 @@ describe('module chips name one route one way', () => {
             (baseline ? ` Baselined as [${baseline.join(', ')}]; a new spelling appeared.` : ''),
         );
       } else if (baseline) {
+        // Report the labels the route actually carries rather than `spellings[0]`.
+        // When a route collapses completely, `spellings` is empty and that index
+        // is undefined: the message then read `one spelling ("undefined")`, which
+        // looks like a broken check rather than a route that got fixed. Thirteen
+        // routes hit exactly that on 2026-08-18.
+        const now = [...labels.keys()]
+          .sort()
+          .map((s) => `"${s}"`)
+          .join(' and ');
         failures.push(
-          `${route} now has one spelling ("${spellings[0]}") but is still listed in ` +
-            'LABEL_SPLIT_BASELINE. Delete the entry.',
+          `${route} is no longer written two ways under one key (it now reads ${now}) but is ` +
+            'still listed in LABEL_SPLIT_BASELINE. Delete the entry.',
         );
       }
     }

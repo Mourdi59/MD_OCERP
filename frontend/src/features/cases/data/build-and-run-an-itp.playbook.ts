@@ -53,7 +53,7 @@ const playbook: Playbook = {
       whyKey: "cases.build_and_run_an_itp.step.plan.why",
       whyDefault:
         "Agreeing the checkpoints before the first pour means everyone knows where the work must stop for sign-off, so nothing critical gets covered up in a rush. It turns quality from a hope into a planned sequence.",
-      moduleLabel: "Quality management",
+      moduleLabel: "Quality Management",
       moduleLabelKey: "nav.qms",
       to: "/projects/:projectId/qms",
     },

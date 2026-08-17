@@ -152,7 +152,7 @@ const playbook: Playbook = {
       whyKey: "cases.coordinate_and_resolve_model_clashes.step.triage.why",
       whyDefault:
         "A raw clash count of thousands helps nobody. The value is in a short, owned list where every item is a real conflict with a name against it, so the coordination meeting is about decisions, not sorting.",
-      moduleLabel: "3D model",
+      moduleLabel: "BIM",
       moduleLabelKey: "nav.bim",
       to: "/projects/:projectId/bim",
     },

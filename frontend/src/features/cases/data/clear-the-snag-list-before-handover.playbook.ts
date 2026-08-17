@@ -60,7 +60,7 @@ const playbook: Playbook = {
       whyKey: "cases.clear_the_snag_list_before_handover.step.snags.why",
       whyDefault:
         "A snag with no owner and no date is a snag that does not get fixed. Assigning and dating each one is what turns a stale list into work that actually closes before the handover date.",
-      moduleLabel: "Punch list",
+      moduleLabel: "Punch List",
       moduleLabelKey: "nav.punchlist",
       to: "/punchlist",
     },
@@ -138,7 +138,7 @@ const playbook: Playbook = {
       whyKey: "cases.clear_the_snag_list_before_handover.step.signoff.why",
       whyDefault:
         "Handing over on a promise to close snags later is how a defects list becomes a dispute. Gating closeout on a clean, verified list is what protects your retention and your reputation with the client.",
-      moduleLabel: "Close-out",
+      moduleLabel: "Handover & Closeout",
       moduleLabelKey: "closeout.title",
       to: "/closeout",
     },

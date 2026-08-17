@@ -135,7 +135,7 @@ const playbook: Playbook = {
       whyKey: "cases.set_up_a_new_project.step.schedule.why",
       whyDefault:
         "Even a coarse programme turns a priced scope into dated work fronts and shows at once whether the end date is achievable. It gives the team a shared picture of the job long before the detail is filled in.",
-      moduleLabel: "Schedule",
+      moduleLabel: "4D Schedule",
       moduleLabelKey: "nav.schedule",
       to: "/schedule",
     },

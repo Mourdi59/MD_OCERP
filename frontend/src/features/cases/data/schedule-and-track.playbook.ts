@@ -53,7 +53,7 @@ const playbook: Playbook = {
       whyKey: "cases.schedule_and_track.step.plan.why",
       whyDefault:
         "The programme is your promise on when the job finishes. A clear critical path separates the delays that genuinely push the finish date from the ones that only eat float.",
-      moduleLabel: "Schedule",
+      moduleLabel: "4D Schedule",
       moduleLabelKey: "schedule.title",
       to: "/schedule",
     },
@@ -123,7 +123,7 @@ const playbook: Playbook = {
       whyKey: "cases.schedule_and_track.step.actuals.why",
       whyDefault:
         "A programme nobody updates is fiction by the second week. Feeding site data back is the only thing that keeps the forecast honest and the completion date believable.",
-      moduleLabel: "Field time",
+      moduleLabel: "Field Time",
       moduleLabelKey: "nav.field_time",
       to: "/projects/:projectId/field-time",
     },

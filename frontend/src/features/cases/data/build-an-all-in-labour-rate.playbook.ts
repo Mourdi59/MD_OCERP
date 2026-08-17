@@ -43,7 +43,7 @@ const playbook: Playbook = {
       whyKey: "cases.build_an_all_in_labour_rate.step.base.why",
       whyDefault:
         "Starting from the real agreed wage is what makes everything above it defensible. A rate built on an invented base is wrong no matter how careful the on-costs are.",
-      moduleLabel: "Labour Rates",
+      moduleLabel: "Labor Rates",
       moduleLabelKey: "nav.labor_rates",
       to: "/labor-rates",
     },
@@ -65,7 +65,7 @@ const playbook: Playbook = {
       whyKey: "cases.build_an_all_in_labour_rate.step.oncosts.why",
       whyDefault:
         "These on-costs commonly add a third or more to the wage. Leaving any of them out understates the cost of every hour of labour in every rate you build on top.",
-      moduleLabel: "Labour Rates",
+      moduleLabel: "Labor Rates",
       moduleLabelKey: "nav.labor_rates",
       to: "/labor-rates",
     },
@@ -87,7 +87,7 @@ const playbook: Playbook = {
       whyKey: "cases.build_an_all_in_labour_rate.step.productive.why",
       whyDefault:
         "You pay for the whole year but only sell the productive hours. Dividing by paid hours instead of productive hours is the subtle error that leaves margin on the table on every job.",
-      moduleLabel: "Labour Rates",
+      moduleLabel: "Labor Rates",
       moduleLabelKey: "nav.labor_rates",
       to: "/labor-rates",
     },

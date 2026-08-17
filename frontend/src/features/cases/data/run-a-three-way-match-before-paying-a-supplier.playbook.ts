@@ -104,7 +104,7 @@ const playbook: Playbook = {
         "cases.run_a_three_way_match_before_paying_a_supplier.step.match.why",
       whyDefault:
         "A three-way match is the check that catches the invoice for forty units when thirty arrived. Doing it before payment is far cheaper than clawing money back from a supplier afterwards.",
-      moduleLabel: "Reconciliation",
+      moduleLabel: "Event Reconciliation",
       moduleLabelKey: "nav.reconciliation",
       to: "/projects/:projectId/reconciliation",
     },

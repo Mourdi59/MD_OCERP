@@ -95,7 +95,7 @@ const playbook: Playbook = {
       whyKey: "cases.carbon_from_bim_6d.step.inventory.why",
       whyDefault:
         "Boundary choice drives the whole result, so pin it down before any entry lands. Two footprints only compare when they cover the same stages, and the inventory is the one place every material line adds up.",
-      moduleLabel: "Carbon",
+      moduleLabel: "Carbon & ESG",
       moduleLabelKey: "nav.carbon",
       to: "/projects/:projectId/carbon",
     },
@@ -134,7 +134,7 @@ const playbook: Playbook = {
       whyKey: "cases.carbon_from_bim_6d.step.enrich.why",
       whyDefault:
         "This is where 6D earns its keep. Rather than keying concrete, steel and insulation one line at a time, you get a full embodied list from the model in seconds, and every row shows how sure the match is.",
-      moduleLabel: "Carbon",
+      moduleLabel: "Carbon & ESG",
       moduleLabelKey: "nav.carbon",
       to: "/projects/:projectId/carbon",
     },
@@ -169,7 +169,7 @@ const playbook: Playbook = {
       whyKey: "cases.carbon_from_bim_6d.step.review.why",
       whyDefault:
         "The tool suggests, the estimator signs off. A generic factor on a specialist product can swing the total by tonnes, so the confidence flag tells you exactly which rows deserve a second look.",
-      moduleLabel: "Carbon",
+      moduleLabel: "Carbon & ESG",
       moduleLabelKey: "nav.carbon",
       to: "/projects/:projectId/carbon",
     },
@@ -204,7 +204,7 @@ const playbook: Playbook = {
       whyKey: "cases.carbon_from_bim_6d.step.target.why",
       whyDefault:
         "A raw carbon figure convinces no one on its own. A target draws the line you are trying to beat, and the exported report turns the footprint into a dated record you can put in front of an assessor or a planning officer.",
-      moduleLabel: "Carbon",
+      moduleLabel: "Carbon & ESG",
       moduleLabelKey: "nav.carbon",
       to: "/projects/:projectId/carbon",
     },

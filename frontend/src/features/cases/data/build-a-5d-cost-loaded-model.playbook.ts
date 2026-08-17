@@ -136,7 +136,7 @@ const playbook: Playbook = {
       whyKey: "cases.build_a_5d_cost_loaded_model.step.schedule.why",
       whyDefault:
         "A cash curve driven by the actual programme tells the client and the bank when the money is really needed. When the programme slips, the forecast spend moves with it instead of lying to everyone.",
-      moduleLabel: "Schedule",
+      moduleLabel: "4D Schedule",
       moduleLabelKey: "nav.schedule",
       to: "/schedule",
     },

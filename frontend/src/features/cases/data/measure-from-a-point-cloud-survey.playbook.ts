@@ -85,7 +85,7 @@ const playbook: Playbook = {
       whyKey: "cases.measure_from_a_point_cloud_survey.step.quantities.why",
       whyDefault:
         "A quantity that traces back to a point on the survey is defensible. When someone questions a figure, you can open the cloud and show the measurement it came from.",
-      moduleLabel: "Quantities",
+      moduleLabel: "Quantity Takeoff",
       moduleLabelKey: "quantities.title",
       to: "/quantities",
     },

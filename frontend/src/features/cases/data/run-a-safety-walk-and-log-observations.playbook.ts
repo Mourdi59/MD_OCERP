@@ -98,7 +98,7 @@ const playbook: Playbook = {
       whyKey: "cases.run_a_safety_walk_and_log_observations.step.raise.why",
       whyDefault:
         "An observed hazard with no owner and no date is one that is still there next week. Raising it as a tracked action is what actually gets the guard rail fixed and gives you proof you acted.",
-      moduleLabel: "Non-conformance",
+      moduleLabel: "NCRs",
       moduleLabelKey: "ncr.title",
       to: "/projects/:projectId/ncr",
     },

@@ -59,7 +59,7 @@ const playbook: Playbook = {
       whyKey: "cases.manage_the_plant_and_equipment_register.step.register.why",
       whyDefault:
         "Plant that is not on a register gets hired twice or serviced late. One list is the base for both cost and maintenance.",
-      moduleLabel: "Equipment",
+      moduleLabel: "Equipment & Fleet",
       moduleLabelKey: "nav.equipment",
       to: "/equipment",
     },
@@ -143,7 +143,7 @@ const playbook: Playbook = {
         "cases.manage_the_plant_and_equipment_register.step.maintenance.why",
       whyDefault:
         "An uninspected lift or a machine past service is a stop-work and a safety risk. Flagging early keeps plant legal and running.",
-      moduleLabel: "Equipment",
+      moduleLabel: "Equipment & Fleet",
       moduleLabelKey: "nav.equipment",
       to: "/projects/:projectId/equipment",
     },

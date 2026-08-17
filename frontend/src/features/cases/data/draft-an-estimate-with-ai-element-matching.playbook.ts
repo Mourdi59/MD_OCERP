@@ -106,7 +106,7 @@ const playbook: Playbook = {
         "cases.draft_an_estimate_with_ai_element_matching.step.ai-price.why",
       whyDefault:
         "A first-pass priced draft in minutes saves hours, but a number only goes in the bid once a person has signed it off.",
-      moduleLabel: "AI Estimator",
+      moduleLabel: "Estimate Builder (AI)",
       moduleLabelKey: "nav.ai_estimator",
       to: "/ai-estimator",
     },

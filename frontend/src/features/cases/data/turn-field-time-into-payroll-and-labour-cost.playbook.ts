@@ -60,7 +60,7 @@ const playbook: Playbook = {
         "cases.turn_field_time_into_payroll_and_labour_cost.step.collect.why",
       whyDefault:
         "A payroll run off unapproved hours pays for time nobody signed for. Approved timesheets are the one clean source both the wage and the job cost are built on.",
-      moduleLabel: "Field time",
+      moduleLabel: "Field Time",
       moduleLabelKey: "nav.field_time",
       to: "/projects/:projectId/field-time",
     },

@@ -43,7 +43,7 @@ const playbook: Playbook = {
       whyKey: "cases.build_a_milestone_payment_schedule.step.milestones.why",
       whyDefault:
         "Payment on a verifiable event removes the monthly haggle over percentage complete. Choosing unambiguous milestones is what keeps the cash flowing without a dispute each cycle.",
-      moduleLabel: "Schedule",
+      moduleLabel: "4D Schedule",
       moduleLabelKey: "schedule.title",
       to: "/schedule",
     },

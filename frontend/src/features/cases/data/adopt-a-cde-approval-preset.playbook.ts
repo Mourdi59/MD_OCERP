@@ -50,7 +50,7 @@ const playbook: Playbook = {
       whyKey: "cases.adopt_a_cde_approval_preset.step.run-wizard.why",
       whyDefault:
         "The wizard is resumable and saves as you go, so a half-finished setup never loses progress. Fixing who holds each role first is what makes the gate a step later mean something.",
-      moduleLabel: "CDE",
+      moduleLabel: "Common Data Environment",
       moduleLabelKey: "cde.title",
       to: "/projects/:projectId/cde",
     },
@@ -77,7 +77,7 @@ const playbook: Playbook = {
       whyKey: "cases.adopt_a_cde_approval_preset.step.adopt-preset.why",
       whyDefault:
         "The tenant-wide preset stays read-only and reusable by every other project; adopting makes your own copy the one you can actually change, without anyone else's flow moving under them.",
-      moduleLabel: "CDE",
+      moduleLabel: "Common Data Environment",
       moduleLabelKey: "cde.title",
       to: "/projects/:projectId/cde",
     },
@@ -131,7 +131,7 @@ const playbook: Playbook = {
       whyKey: "cases.adopt_a_cde_approval_preset.step.confirm-gate.why",
       whyDefault:
         "A CDE that looks configured but has never moved a container through its gates is a showroom, not a working environment. The gate is what stops a team finding that out the hard way.",
-      moduleLabel: "CDE",
+      moduleLabel: "Common Data Environment",
       moduleLabelKey: "cde.title",
       to: "/projects/:projectId/cde",
     },

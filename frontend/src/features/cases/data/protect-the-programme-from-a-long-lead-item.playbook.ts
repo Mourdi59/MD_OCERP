@@ -104,7 +104,7 @@ const playbook: Playbook = {
         "cases.protect_the_programme_from_a_long_lead_item.step.schedule.why",
       whyDefault:
         "A required-on-site date on its own does not tell procurement when to buy. Backing the lead time onto the programme is what turns a delivery need into an order-by milestone somebody is accountable for.",
-      moduleLabel: "Advanced schedule",
+      moduleLabel: "Advanced Schedule",
       moduleLabelKey: "nav.schedule_advanced",
       to: "/schedule-advanced",
     },
