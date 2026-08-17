@@ -9,6 +9,8 @@ import logging
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from app.core.i18n import (
     LOCALE_NAMES,
     SUPPORTED_LOCALES,
@@ -215,6 +217,24 @@ class TestLoadTranslations:
         finally:
             _translations.clear()
             _translations.update(saved)
+
+    def test_missing_directory_raises_instead_of_regenerating(self):
+        """A missing locales/ used to be silently refilled from an embedded copy.
+
+        That copy knew 20 of the 28 languages and a much smaller key set, so the
+        recovery succeeded and left the platform serving a catalogue missing most
+        of its strings, with every file present and internally consistent. Losing
+        the directory is now an error the operator sees.
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            gone = Path(tmpdir) / "definitely-not-here"
+            with pytest.raises(FileNotFoundError) as excinfo:
+                load_translations(gone)
+
+        message = str(excinfo.value)
+        assert str(gone) in message, "the error did not say which directory was missing"
+        assert "git checkout" in message, "the error did not say how to restore it"
+        assert not gone.exists(), "load_translations created the directory it should have refused"
 
 
 class TestSetAndGetLocale:

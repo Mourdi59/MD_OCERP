@@ -2578,7 +2578,7 @@ def create_app() -> FastAPI:
             if "localhost" in settings.database_url:
                 logger.warning("DATABASE_URL points to localhost in production")
 
-        # Load translations (24 languages)
+        # Load translations (28 languages)
         _section("i18n")
         from app.core.i18n import load_translations
 
@@ -2997,11 +2997,40 @@ def create_app() -> FastAPI:
             # load itself is CPU/IO-blocking, so the task hands it to a
             # worker thread via ``asyncio.to_thread`` - same detached pattern
             # as ``_auto_backfill_vector_collections`` below.
+            # Fetch the encoder weights, if this deployment wants them. Runs on
+            # its own daemon thread, is a no-op on a server deploy, and cannot
+            # raise here - see app/core/embedding_installer.py. Started before
+            # the prime below so a desktop first boot has the download already
+            # moving while the prime decides there is nothing to load yet.
+            try:
+                from app.core.embedding_installer import start_background_download
+
+                if start_background_download():
+                    logger.info("Encoder weights are downloading in the background - startup does not wait for them")
+            except Exception:  # noqa: BLE001 - an optional extra can never break startup
+                logger.debug("Could not start the encoder download", exc_info=True)
+
             async def _prime_embedder_background() -> None:
                 import asyncio as _asyncio_emb
 
                 try:
+                    # Priming a model that is not on disk is itself a download,
+                    # and on a server deploy that is the download the platform
+                    # was told not to do. So the prime runs when the weights are
+                    # already installed (warm start, unchanged behaviour) or
+                    # when this deployment asked for them; otherwise it stands
+                    # down and the first caller that genuinely needs a vector
+                    # loads the model lazily, exactly as it does today.
+                    from app.core.embedding_installer import download_enabled, find_installed_model
                     from app.core.vector import get_embedder as _ge
+
+                    if find_installed_model() is None and not download_enabled():
+                        logger.info(
+                            "Embedder prime skipped: no encoder installed and the background "
+                            "download is off for this deployment (set OE_DOWNLOAD_EMBEDDING_MODEL=1 "
+                            "to fetch it). Semantic search reports its state honestly meanwhile."
+                        )
+                        return
 
                     embedder = await _asyncio_emb.to_thread(_ge)
                     if embedder is not None:

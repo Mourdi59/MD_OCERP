@@ -312,11 +312,13 @@ exclude = ["**/_*.md", "**/_*.txt"]
 # directory that sits NEXT TO the installed ``app`` package (site-packages/
 # locales), not inside it. Living outside every packaged directory, it is not
 # picked up by the ``app`` package walk, so without this line a ``pip install``
-# wheel ships none of them: load_translations() then finds the directory
-# missing and regenerates only the 20 languages hard-coded in
-# _generate_default_locales, silently dropping the six that exist solely as
-# JSON here (bg, hr, id, ro, th, vi). Force-including the folder at the same
-# top-level ``locales`` path the runtime looks up ships all 26. Unlike the
+# wheel ships none of them and load_translations() raises FileNotFoundError on
+# a directory it cannot find. It used to regenerate the catalogue from an
+# embedded copy instead, which was worse: the copy carried 20 of the languages
+# and a much smaller key set, so a wheel built without this line started
+# cleanly and served a catalogue missing most of its strings. Force-including
+# the folder at the same top-level ``locales`` path the runtime looks up ships
+# all 28, and a wheel that misses it now fails at startup. Unlike the
 # flagship assets noted below, this path is OUTSIDE the ``app`` tree, so it is
 # not also added by the package walk and does not trip the double-add guard.
 "locales" = "locales"
