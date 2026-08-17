@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openconstructionerp-us-california"
+version = "0.1.0"
+description = "California state pack for OpenConstructionERP: district sales tax and the materials versus fixtures split, the state prevailing wage regime, the public and private retention caps, and the statutory payment and mechanics lien clocks."
+readme = "README.md"
+license = { text = "AGPL-3.0-or-later" }
+requires-python = ">=3.11"
+authors = [
+    { name = "OpenConstructionERP", email = "info@datadrivenconstruction.io" },
+]
+keywords = [
+    "openconstructionerp",
+    "ocerp",
+    "partner-pack",
+    "usa",
+    "california",
+    "sales-tax",
+    "prevailing-wage",
+    "retention",
+    "prompt-payment",
+    "mechanics-lien",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Other Audience",
+    "Intended Audience :: Manufacturing",
+    "Topic :: Office/Business",
+    "Topic :: Office/Business :: Financial",
+    "Natural Language :: English",
+]
+dependencies = [
+    "openconstructionerp>=5.5.0",
+]
+
+[project.urls]
+Source = "https://github.com/DataDrivenConstruction/openconstructionerp"
+
+[project.entry-points."openconstructionerp.partner_packs"]
+us-california = "openconstructionerp_us_california:MANIFEST"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+openconstructionerp_us_california = [
+    "logo.svg",
+    "onboarding.yaml",
+    "locales/*.json",
+    "rule_packs/*.json",
+]

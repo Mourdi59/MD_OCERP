@@ -2285,6 +2285,15 @@ PACK_DEMO_PROJECT: dict[str, str] = {
     "south-africa": "mixed-use-johannesburg",
     "uk-jct": "commercial-london",
     "us-costdata": "commercial-denver",
+    # Texas gets the medical centre because that project is actually in
+    # Houston. California has no demo of its own yet, so it points at the
+    # Denver project as a placeholder; that is the one earmarked to be
+    # relocated, and this mapping becomes true if it lands in California and
+    # wants re-pointing if it lands elsewhere. A pack is not installable
+    # without an entry here, so the placeholder is what keeps the gate honest
+    # rather than a claim about where the project sits.
+    "us-texas": "medical-us",
+    "us-california": "commercial-denver",
 }
 
 # Country-name → ISO 3166-1 alpha-2, for catalog rows auto-derived from a

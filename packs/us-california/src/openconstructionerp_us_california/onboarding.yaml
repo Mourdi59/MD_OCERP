@@ -1,0 +1,84 @@
+# California Construction Pack - first-login onboarding wizard.
+# Streamed by /api/v1/partner-pack/onboarding-script and rendered by
+# the OnboardingWizard React component in place of the default steps.
+#
+# The questions are the ones whose answers change a California number. The
+# jobsite address decides the tax rate; whether an installed item is a material
+# or a fixture decides the measure of tax; public or private decides the wage
+# regime, the retention cap and the payment clock; and the agreement date
+# decides whether the private retention cap applies at all.
+
+version: 1
+pack: us-california
+locale: en-US
+estimated_minutes: 7
+title: "Welcome to OpenConstructionERP, California edition"
+subtitle: "Six steps: licence and registration, the district tax stack, materials against fixtures, prevailing wage, retention caps, and the payment and lien clocks."
+
+steps:
+  - id: company_profile
+    title: "Licence and registration"
+    body: "California licenses contractors at state level and a licence is required to bid. Public works work needs a second, separate registration with the state labour department before you may bid or be listed. They are different things and holding one does not give you the other."
+    fields:
+      - { key: company_name,          label: "Company name",                    type: text,   required: true }
+      - { key: federal_ein,           label: "Federal EIN (Tax ID)",            type: text,   required: false, placeholder: "XX-XXXXXXX" }
+      - { key: contractor_licence_number, label: "State contractor licence number", type: text, required: false }
+      - { key: licence_classifications, label: "Licence classifications held",  type: text,   required: false,
+          help: "For example B general building, or the C classifications for your trades." }
+      - { key: public_works_registration_number, label: "Public works registration number", type: text, required: false,
+          help: "Separate from the licence. Required to bid or be listed on public works." }
+      - { key: seller_permit_number,  label: "Seller's permit number",          type: text,   required: false,
+          help: "You need one because installing fixtures makes you a retailer of them." }
+
+  - id: sales_tax_position
+    title: "Sales tax: your rate and your split"
+    body: "Two separate things decide California tax. The rate is a property of the jobsite address and the billing quarter, because district taxes stack on the 7.25 percent statewide base and the tables are republished four times a year. The measure is decided by what you installed: you are the consumer of materials, taxed on what you paid, and the retailer of fixtures, taxed on the selling price."
+    fields:
+      - { key: primary_county,        label: "County you mostly work in",       type: text,   required: false }
+      - { key: resolve_rate_per_site, label: "Resolve the tax rate per jobsite address rather than using one company rate", type: checkbox, default: true }
+      - { key: warn_on_base_rate_quoted, label: "Warn when an estimate prices the 7.25 percent statewide base as if it were the final rate", type: checkbox, default: true }
+      - { key: classify_installed_items, label: "Require every installed item to be classified as material or fixture", type: checkbox, default: true }
+      - { key: default_contract_form, label: "Usual contract form", type: radio, required: true, default: "Lump sum",
+          options: ["Lump sum", "Time and material", "Decide per project"],
+          help: "Under a lump sum contract the fixture is measured on your cost price rather than a stated selling price." }
+
+  - id: prevailing_wage
+    title: "Prevailing wage"
+    body: "California's regime is its own, made by the state labour department, and it is not the federal one. It bites above 1,000 dollars. Where a job carries both regimes the higher rate governs, so a federal determination alone does not answer California."
+    fields:
+      - { key: bids_public_works, label: "Do you bid California public works?", type: checkbox, default: true }
+      - { key: warn_federal_substituted, label: "Warn when a federal wage determination is attached to a California public work with no state determination", type: checkbox, default: true }
+      - { key: apply_higher_of_state_and_federal, label: "Apply the higher of the state and federal rate on jobs carrying both", type: checkbox, default: true }
+      - { key: awarding_body_has_lcp, label: "Do the bodies you work for run approved labour compliance programmes?", type: select, required: false, default: "Sometimes",
+          options: ["Yes", "No", "Sometimes", "Not sure"],
+          help: "Only an approved programme lets an awarding body elect the 25,000 and 15,000 dollar exemptions." }
+      - { key: track_certified_payroll, label: "Track certified payroll records on public works projects", type: checkbox, default: true }
+
+  - id: retention
+    title: "Retention caps"
+    body: "Public work has been capped at 5 percent since 2012, and may go higher only where the agency made a substantially complex finding before the bid and put the basis and the amount in the bid documents. Private work is capped at 5 percent too now, for construction agreements entered into on or after 1 January 2026, so the agreement date decides whether the cap applies."
+    fields:
+      - { key: enforce_public_retention_cap, label: "Enforce the 5 percent public works cap", type: checkbox, default: true }
+      - { key: require_complex_finding, label: "Require a recorded substantially complex finding before allowing retention above 5 percent", type: checkbox, default: true }
+      - { key: enforce_private_retention_cap, label: "Enforce the private 5 percent cap on agreements dated 1 January 2026 or later", type: checkbox, default: true }
+      - { key: warn_residential_exclusion, label: "Flag purely residential buildings of four storeys or fewer as outside the private cap", type: checkbox, default: true }
+      - { key: track_retention_release, label: "Track retention release, 60 days public and 45 days private, with the 7 day pass-through", type: checkbox, default: true }
+
+  - id: payment_and_lien
+    title: "Payment and lien clocks"
+    body: "Public and private progress payments both run on 30 days, but for different reasons and with different interest. The lien deadlines are the ones that catch people out: a recorded notice of completion cuts the recording window from 90 days to 30 for anyone who is not the direct contractor, and none of it can be tolled."
+    fields:
+      - { key: enable_payment_clock, label: "Track statutory payment deadlines on California projects", type: checkbox, default: true }
+      - { key: default_payment_regime, label: "Default regime for new California projects", type: select, required: true, default: "Private, Civil Code section 8800",
+          options: ["Private, Civil Code section 8800", "Public, Public Contract Code section 20104.50", "Ask per project"] }
+      - { key: track_preliminary_notice, label: "Track the 20 day preliminary notice", type: checkbox, default: true }
+      - { key: watch_notice_of_completion, label: "Recompute lien deadlines when a notice of completion is recorded", type: checkbox, default: true }
+      - { key: lien_reminder_days, label: "Remind me this many days before a lien deadline", type: number, required: false, min: 1, max: 90, default: 14 }
+
+  - id: units_and_output
+    title: "Units and printed output"
+    body: "California practice is imperial and US Letter. Change it here if your clients ask for something else."
+    fields:
+      - { key: measurement_system, label: "Measurement system", type: radio, required: true, default: "Imperial", options: ["Imperial", "Metric"] }
+      - { key: paper_size, label: "Paper size", type: radio, required: true, default: "Letter", options: ["Letter", "A4"] }
+      - { key: currency, label: "Currency", type: select, required: true, default: "USD", options: ["USD"] }

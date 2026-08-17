@@ -1,0 +1,23 @@
+{
+  "rule_pack_id": "ca_sales_tax_contractors",
+  "name": "California sales and use tax for construction contractors",
+  "standard": "18 California Code of Regulations § 1521; California Revenue and Taxation Code Parts 1, 1.5 and 1.6",
+  "jurisdiction": "US-CA",
+  "edition": "Regulation 1521 as in force at pack release",
+  "description": "Enables the checks that keep a California estimate honest about the two tax treatments inside one invoice. The contractor is the consumer of the materials it furnishes and installs, owing tax on its own purchase price and charging the customer none, but is the retailer of the fixtures it furnishes and installs, owing tax on the retail selling price, which under a lump sum contract is the contractor's cost price of the fixture. Construction labor is outside the tax base. Separately, the rate is a property of the jobsite address and the billing quarter: district taxes stack on the 7.25 percent statewide base and the rate tables are republished on 1 January, 1 April, 1 July and 1 October. The rules check that every installed item is classified as material or fixture, that the measure of tax matches that classification, and that the rate applied was resolved for the site rather than taken as the statewide base. No district rate table ships with this pack.",
+  "issuer": "California Department of Tax and Fee Administration",
+  "rates_referenced": "Statewide base 7.25 percent (6.00 state, 1.00 local jurisdiction, 0.25 local transportation fund), plus stacked district taxes",
+  "enables_rule_ids": [
+    "ca_tax.installed_item_classified_material_or_fixture",
+    "ca_tax.material_taxed_on_contractor_purchase_price",
+    "ca_tax.fixture_taxed_on_retail_selling_price",
+    "ca_tax.fixture_lump_sum_measured_on_cost_price",
+    "ca_tax.labor_excluded_from_tax_base",
+    "ca_tax.jobsite_address_resolved_for_rate",
+    "ca_tax.district_tax_applied_not_only_statewide_base",
+    "ca_tax.rate_quarter_matches_billing_period",
+    "ca_tax.statewide_base_not_quoted_as_final_rate",
+    "ca_tax.machinery_and_equipment_treated_as_sale",
+    "ca_tax.use_tax_on_out_of_state_purchases"
+  ]
+}

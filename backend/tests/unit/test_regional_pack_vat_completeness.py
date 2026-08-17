@@ -26,7 +26,9 @@ from app.modules.middle_east_pack.config import PACK_CONFIG as ME_CFG
 from app.modules.russia_pack.config import PACK_CONFIG as RU_CFG
 from app.modules.sa_pack.config import PACK_CONFIG as SA_CFG
 from app.modules.uk_pack.config import PACK_CONFIG as UK_CFG
+from app.modules.us_ca_pack.config import PACK_CONFIG as US_CA_CFG
 from app.modules.us_pack.config import PACK_CONFIG as US_CFG
+from app.modules.us_tx_pack.config import PACK_CONFIG as US_TX_CFG
 
 # ── Registry of all packs ─────────────────────────────────────────────────────
 
@@ -40,6 +42,9 @@ _PACKS: list[tuple[str, dict[str, Any]]] = [
     ("LATAM", LATAM_CFG),
     ("RU", RU_CFG),
     ("ZA_PACK", SA_CFG),
+    # State packs sit on top of the US pack and inherit its no-VAT position.
+    ("US_TX", US_TX_CFG),
+    ("US_CA", US_CA_CFG),
 ]
 
 # Expected countries per pack — used to check coverage is not accidentally
@@ -54,10 +59,12 @@ _EXPECTED_COUNTRIES: dict[str, set[str]] = {
     "LATAM": {"MX", "AR", "CL", "CO", "PE"},
     "RU": {"RU"},
     "ZA_PACK": {"ZA"},
+    "US_TX": set(),  # No federal VAT — vat_rates is empty
+    "US_CA": set(),  # No federal VAT — vat_rates is empty
 }
 
 # Packs where vat_rates is intentionally empty (no federal VAT)
-_PACKS_WITH_NO_VAT = {"US"}
+_PACKS_WITH_NO_VAT = {"US", "US_TX", "US_CA"}
 
 _MAX_RATE = Decimal("0.50")  # Sanity ceiling — no known jurisdiction above 50 %
 _MIN_RATE = Decimal("0.00")

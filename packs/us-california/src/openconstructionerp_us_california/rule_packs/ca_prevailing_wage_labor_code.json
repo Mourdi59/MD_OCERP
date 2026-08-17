@@ -1,0 +1,24 @@
+{
+  "rule_pack_id": "ca_prevailing_wage_labor_code",
+  "name": "California prevailing wage on public works",
+  "standard": "California Labor Code §§ 1720 to 1861, in particular §§ 1771, 1771.5, 1773, 1725.5 and 1776",
+  "jurisdiction": "US-CA",
+  "edition": "Labor Code Part 7 as in force at pack release",
+  "description": "Enables the checks for California public works, where the state runs its own prevailing wage regime distinct from the federal one and the state labour department makes the determinations. The duty attaches above 1,000 dollars. An awarding body with an approved labour compliance programme may elect an exemption at 25,000 dollars or less for construction work, or 15,000 or less for alteration, demolition, repair or maintenance, but only with that approved programme in place. Contractors and subcontractors must register with the state labour department to bid or be listed on public works, which is separate from the contractor licence, and certified payroll records must be furnished. Where a job carries both the state and the federal regime the higher rate governs, so the rules check that a federal determination has not been treated as satisfying California.",
+  "issuer": "California Department of Industrial Relations",
+  "thresholds_referenced": "1,000 US dollars general threshold; 25,000 and 15,000 US dollar labour compliance programme exemptions",
+  "enables_rule_ids": [
+    "ca_wage.public_works_flagged",
+    "ca_wage.project_value_above_threshold_checked",
+    "ca_wage.state_determination_attached",
+    "ca_wage.state_regime_not_substituted_by_federal",
+    "ca_wage.higher_of_state_and_federal_applied",
+    "ca_wage.craft_classification_mapped_to_determination",
+    "ca_wage.county_matches_project_site",
+    "ca_wage.labour_compliance_programme_exemption_evidenced",
+    "ca_wage.contractor_registration_recorded",
+    "ca_wage.subcontractor_registration_recorded",
+    "ca_wage.certified_payroll_furnished",
+    "ca_wage.apprentice_ratio_recorded"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "rule_pack_id": "ca_payment_and_lien_clocks",
+  "name": "California payment and mechanics lien deadlines",
+  "standard": "California Public Contract Code § 20104.50; California Civil Code §§ 8200, 8412, 8414, 8460, 8800 and 8812; Business and Professions Code § 7108.5",
+  "jurisdiction": "US-CA",
+  "edition": "As in force at pack release",
+  "description": "Enables the deadline checks for California payment and lien rights. A local agency owes interest at the legal rate on judgments if it does not pay a progress payment within 30 days of an undisputed and properly submitted request, and must return an improper request within 7 days, with every day over that coming off its own 30. On private work the owner pays within 30 days of the contractual notice demanding payment, though that period is a default the owner and direct contractor may vary in writing, and wrongful withholding runs at 2 percent a month in place of interest. Down the chain a prime pays a subcontractor within 7 days of receipt at the same 2 percent a month, with disputed withholding capped at 150 percent of the amount in dispute. On the lien side the preliminary notice reaches back only 20 days, the claim of lien is recorded within 90 days of completion unless a notice of completion cuts that to 60 days for the direct contractor and 30 for every other claimant, and suit follows within 90 days of recording. None of the lien deadlines can be tolled, so the rules treat a recorded notice of completion as an event that shortens live deadlines rather than as a document to file.",
+  "issuer": "California Legislature",
+  "payment_clock_regimes": [
+    "us_ca_public_20104",
+    "us_ca_private_8800"
+  ],
+  "enables_rule_ids": [
+    "ca_clock.public_or_private_declared",
+    "ca_clock.public_progress_payment_within_thirty_days",
+    "ca_clock.public_improper_request_returned_within_seven_days",
+    "ca_clock.public_window_reduced_by_late_rejection",
+    "ca_clock.public_interest_at_legal_rate_applied",
+    "ca_clock.private_owner_payment_within_thirty_days",
+    "ca_clock.private_written_variation_recorded",
+    "ca_clock.disputed_withholding_within_one_fifty_percent",
+    "ca_clock.subcontractor_paid_within_seven_days",
+    "ca_clock.late_payment_penalty_two_percent_monthly",
+    "ca_clock.preliminary_notice_served_within_twenty_days",
+    "ca_clock.lien_recorded_within_ninety_days_of_completion",
+    "ca_clock.notice_of_completion_shortens_recording_window",
+    "ca_clock.direct_contractor_sixty_day_window_applied",
+    "ca_clock.other_claimant_thirty_day_window_applied",
+    "ca_clock.lien_enforcement_suit_within_ninety_days"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "rule_pack_id": "tx_payment_and_lien_clocks",
+  "name": "Texas payment and lien deadlines",
+  "standard": "Texas Government Code Chapter 2251; Texas Property Code Chapters 28 and 53",
+  "jurisdiction": "US-TX",
+  "edition": "Chapter 53 as amended by Acts 2021, 87th Legislature, H.B. 2237, effective 1 January 2022",
+  "description": "Enables the deadline checks for Texas payment and lien rights. On public work the governmental entity's payment is overdue on the 31st day after the later of delivery and invoice, or the 46th where the governing body meets monthly or less, and the prime must pass a subcontractor's share on by the 10th day. On private work the owner pays by the 35th day after receiving the written payment request and the contractor pays its subcontractor by the 7th day after being paid, at one and a half percent a month, and the chapter cannot be waived. The lien affidavit falls on the 15th day of the third month after the month the work ended for residential and the fourth month for nonresidential, which is a day of a month rather than a count of days, and suit follows within a year of that last day. The 2022 amendments apply only to liens arising from an original contract executed on or after 1 January 2022, so the rules check the contract date before applying them.",
+  "issuer": "Texas Legislature",
+  "payment_clock_regimes": [
+    "us_tx_public_2251",
+    "us_tx_private_ch28"
+  ],
+  "enables_rule_ids": [
+    "tx_clock.public_or_private_declared",
+    "tx_clock.public_payment_due_within_thirty_days",
+    "tx_clock.public_infrequent_governing_body_period_applied",
+    "tx_clock.public_subcontractor_paid_within_ten_days",
+    "tx_clock.public_interest_margin_over_prime_applied",
+    "tx_clock.private_owner_payment_within_thirty_five_days",
+    "tx_clock.private_subcontractor_paid_within_seven_days",
+    "tx_clock.private_interest_one_and_a_half_percent_monthly",
+    "tx_clock.private_waiver_clause_rejected",
+    "tx_clock.lien_affidavit_month_day_deadline_computed",
+    "tx_clock.lien_residential_versus_nonresidential_classified",
+    "tx_clock.lien_suit_within_one_year_of_last_filing_day",
+    "tx_clock.lien_extension_agreement_recorded_in_time",
+    "tx_clock.original_contract_date_checked_against_2022_amendments"
+  ]
+}

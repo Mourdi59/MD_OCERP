@@ -437,6 +437,168 @@ PAYMENT_REGIMES: tuple[dict[str, Any], ...] = (
             "condition this module cannot compute from a date alone."
         ),
     },
+    # The four United States regimes below are split public/private per state,
+    # because that is where American prompt payment law actually divides: the
+    # public duty is owed by a governmental entity under one statute and the
+    # private duty is owed by an owner under another, with different periods and
+    # different interest. The state pack configs
+    # (``app.modules.us_tx_pack.config`` and ``app.modules.us_ca_pack.config``)
+    # name these codes under ``payment_clock_regimes`` and carry the same
+    # provisions as reference data; the deadline arithmetic is written down here
+    # and nowhere else. None of the four has a notice sequence, so every one of
+    # them takes the application date as the due date and the statutory period as
+    # the final date for payment, the convention set out at the top of this file.
+    {
+        "code": "us_tx_public_2251",
+        "jurisdiction": "Texas, United States (public)",
+        "country_code": "US",
+        "statute": "Texas Prompt Payment Act, Government Code Chapter 2251",
+        "statute_reference": "sections 2251.021, 2251.022 and 2251.025",
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "due_date",
+        "payment_notice_days": None,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 30,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "reference_rate_plus_margin",
+        "interest_reference_rate": "Wall Street Journal prime rate",
+        "interest_margin_percent": Decimal("1.000"),
+        "interest_fixed_percent": None,
+        "interest_statute": "Texas Government Code § 2251.025",
+        "notes": (
+            "The clock for a payment owed by a governmental entity on public work. The payment becomes "
+            "overdue on the 31st day after the later of the date the entity received the goods or the "
+            "services were completed and the date it received the invoice, which is the 30 days written "
+            "here; enter the later of those two dates as the application date. A political subdivision "
+            "whose governing body meets only once a month or less often has until the 46th day instead, so "
+            "state the final date for payment on the application for those bodies rather than using the "
+            "computed one. The statute has no payment notice and no pay-less notice, so silence has no "
+            "preclusive effect. Interest is one percent above the Wall Street Journal prime rate; the rate "
+            "is fixed on 1 September for the whole fiscal year from the prime rate published on the first "
+            "business day of the preceding July, is simple rather than compounded, and stops on the date "
+            "the payment is sent. A prime contractor paid under this chapter must pass the appropriate "
+            "share to each subcontractor by the 10th day after it receives the payment (§ 2251.022), which "
+            "is a second clock this regime does not compute."
+        ),
+    },
+    {
+        "code": "us_tx_private_ch28",
+        "jurisdiction": "Texas, United States (private)",
+        "country_code": "US",
+        "statute": "Texas Prompt Payment to Contractors and Subcontractors Act, Property Code Chapter 28",
+        "statute_reference": "sections 28.002, 28.004 and 28.006",
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "due_date",
+        "payment_notice_days": None,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 35,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "fixed_rate",
+        "interest_reference_rate": "",
+        "interest_margin_percent": None,
+        "interest_fixed_percent": Decimal("18.000"),
+        "interest_statute": "Texas Property Code § 28.004(b)",
+        "notes": (
+            "The clock for private work in Texas. The owner must pay by the 35th day after it receives the "
+            "contractor's written request for payment, so enter the date the owner received the request as "
+            "the application date. The contractor must then pay its subcontractor by the seventh day after "
+            "it receives the owner's payment (§ 28.002(b)), a downstream clock this regime does not "
+            "compute. The statute states the interest monthly, at one and a half percent each month, which "
+            "is the 18 percent a year written here. There is no notice sequence. An attempted waiver of the "
+            "chapter is void under § 28.006, with a limited exception for certain single-family residential "
+            "contracts, so a subcontract clause purporting to lengthen these periods generally does not."
+        ),
+    },
+    {
+        "code": "us_ca_public_20104",
+        "jurisdiction": "California, United States (public)",
+        "country_code": "US",
+        "statute": "California Public Contract Code § 20104.50 (Local Agency Public Construction Act)",
+        "statute_reference": "section 20104.50; legal rate under Code of Civil Procedure § 685.010(a)",
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "application_date",
+        "payment_notice_days": 7,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 30,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "fixed_rate",
+        "interest_reference_rate": "",
+        "interest_margin_percent": None,
+        "interest_fixed_percent": Decimal("10.000"),
+        "interest_statute": "Public Contract Code § 20104.50, applying Code of Civil Procedure § 685.010(a)",
+        "notes": (
+            "The clock for a progress payment owed by a Californian local agency, which includes a city, a "
+            "charter city, a county, and a city and county. The agency owes interest if it fails to pay "
+            "within 30 days of receiving an undisputed and properly submitted payment request. A progress "
+            "payment here means everything due except the portion of the final payment the contract "
+            "designates as retention, so retention release runs on its own clock under Public Contract Code "
+            "§ 7107 (60 days after completion, then 7 days to pass a subcontractor's share on) and is not "
+            "computed by this regime. The seven days recorded as the payment notice deadline are the "
+            "agency's own: it must return an improper payment request as soon as practicable and no later "
+            "than the seventh day after receipt. Missing that does not make the applied sum payable, which "
+            "is why the no-notice effect is none; instead the 30 day window shrinks by however many days "
+            "the agency ran over the seven, an adjustment this module does not apply, so reduce the final "
+            "date by hand where a request came back late. Interest runs at the legal rate on judgments, "
+            "10 percent a year for these claims."
+        ),
+    },
+    {
+        "code": "us_ca_private_8800",
+        "jurisdiction": "California, United States (private)",
+        "country_code": "US",
+        "statute": "California prompt payment on private works, Civil Code § 8800",
+        "statute_reference": "Civil Code §§ 8800 and 8812; Business and Professions Code § 7108.5",
+        "due_date_basis": "application_date",
+        "due_date_days": 0,
+        "due_date_day_basis": "calendar",
+        "payment_notice_basis": "due_date",
+        "payment_notice_days": None,
+        "payment_notice_day_basis": "calendar",
+        "final_date_basis": "application_date",
+        "final_date_days": 30,
+        "final_date_day_basis": "calendar",
+        "pay_less_days": None,
+        "pay_less_day_basis": "calendar",
+        "no_notice_effect": "none",
+        "interest_basis": "fixed_rate",
+        "interest_reference_rate": "",
+        "interest_margin_percent": None,
+        "interest_fixed_percent": Decimal("24.000"),
+        "interest_statute": "California Civil Code § 8800",
+        "notes": (
+            "The clock for private work in California. The owner must pay a progress payment within 30 days "
+            "after notice demanding payment is given under the contract, so enter the date that notice was "
+            "given as the application date. This period is a default rather than a floor: § 8800 opens with "
+            "an exception for what the owner and the direct contractor agree in writing, so a contract may "
+            "lengthen it, and where it does the agreed final date should be stated on the application. Where "
+            "there is a good faith dispute the owner may withhold up to 150 percent of the disputed amount "
+            "and the rest still has to be paid. What § 8800 imposes is a penalty rather than interest, two "
+            "percent a month on the amount wrongfully withheld in place of any interest otherwise due, "
+            "written here as the 24 percent a year it comes to; the prevailing party in an action to collect "
+            "it recovers costs and a reasonable attorney's fee. Downstream, a prime must pay a subcontractor "
+            "within seven days of receiving a progress payment under Business and Professions Code § 7108.5 "
+            "at the same two percent a month, and retention on private work is released within 45 days of "
+            "completion under § 8812; neither is computed by this regime."
+        ),
+    },
 )
 
 REGIME_CODES: tuple[str, ...] = tuple(regime["code"] for regime in PAYMENT_REGIMES)

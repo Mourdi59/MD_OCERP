@@ -1,0 +1,78 @@
+# Texas Construction Pack - first-login onboarding wizard.
+# Streamed by /api/v1/partner-pack/onboarding-script and rendered by
+# the OnboardingWizard React component in place of the default steps.
+#
+# The questions are the ones whose answers change a Texas number. Contract
+# form and work character decide who owes sales tax on materials; contract
+# value decides the retainage cap; public or private decides the payment
+# clock. Nothing here asks for something the pack does not then use.
+
+version: 1
+pack: us-texas
+locale: en-US
+estimated_minutes: 6
+title: "Welcome to OpenConstructionERP, Texas edition"
+subtitle: "Five questions that change what Texas costs you: contract form, work character, public or private, contract value, and where the job sits."
+
+steps:
+  - id: company_profile
+    title: "Company profile"
+    body: "Texas issues no state general-contractor licence. Electrical, plumbing and HVAC are licensed at state level, and general contracting is licensed by the city where it is licensed at all, so tell us the municipality as well as the state."
+    fields:
+      - { key: company_name,        label: "Company name",                     type: text,   required: true }
+      - { key: federal_ein,         label: "Federal EIN (Tax ID)",             type: text,   required: false, placeholder: "XX-XXXXXXX" }
+      - { key: texas_taxpayer_number, label: "Texas taxpayer number",          type: text,   required: false,
+          help: "The 11-digit number the comptroller issues for sales and use tax. Needed to buy materials for resale under a separated contract." }
+      - { key: primary_municipality, label: "Primary municipality",            type: text,   required: false,
+          help: "Houston, Dallas, San Antonio, Austin and Fort Worth each run their own contractor and permit rules." }
+      - { key: trade_licences,      label: "State trade licences held",        type: multiselect, required: false,
+          options: ["Electrical", "Plumbing", "HVAC / air conditioning", "Irrigation", "Fire protection", "None"] }
+
+  - id: sales_tax_position
+    title: "Sales tax: how you contract"
+    body: "This is the Texas question that moves the most money. Under a lump sum contract you are the consumer of your materials, you pay tax to your supplier and you charge your customer none. Under a separated contract you are the seller of them: you buy tax free for resale and collect tax from the customer on the materials charge, while new-construction labor stays untaxed. Repair and remodeling of nonresidential property reverses all of it and taxes the whole invoice, labor included."
+    fields:
+      - key: default_contract_form
+        label: "Default contract form"
+        type: radio
+        required: true
+        default: "Lump sum"
+        options:
+          - "Lump sum"
+          - "Separated (materials and labor stated separately)"
+          - "Decide per project"
+      - { key: typical_work_character, label: "Work you mostly do", type: select, required: true, default: "New construction",
+          options: ["New construction", "Nonresidential repair, remodeling or restoration", "Residential repair, remodeling or restoration", "A mix"] }
+      - { key: combined_sales_tax_rate, label: "Combined state and local sales tax rate at your usual jobsites (%)", type: number, required: false, min: 6.25, max: 8.25, default: 8.25,
+          help: "State is 6.25 percent and local adds up to 2 percent, so 8.25 is the ceiling. Set the rate per project where your sites differ." }
+      - { key: warn_on_contract_form_mismatch, label: "Warn when the tax treatment priced does not match the contract form and work character", type: checkbox, default: true }
+
+  - id: public_work
+    title: "Public work: wage and retainage"
+    body: "Texas publishes no state wage schedule. The public body awarding the contract sets the rate itself, by its own local survey or by adopting the federal determination, so the rate has to come out of the contract documents. Retainage is capped at 10 percent below a 5 million dollar contract price and 5 percent at or above it."
+    fields:
+      - { key: bids_public_work, label: "Do you bid public work in Texas?", type: checkbox, default: true }
+      - { key: prevailing_wage_source, label: "Where your wage determinations usually come from", type: select, required: false, default: "Federal determination adopted by the awarding body",
+          options: ["Federal determination adopted by the awarding body", "The awarding body's own local survey", "Both, depending on the body"] }
+      - { key: warn_no_wage_determination_attached, label: "Warn when a public project has no wage determination attached", type: checkbox, default: true }
+      - { key: enforce_retainage_cap, label: "Enforce the retainage cap for the contract value band", type: checkbox, default: true }
+      - { key: warn_retainage_interest_account, label: "Remind me that retainage above 5 percent of periodic payments must sit in an interest-bearing account", type: checkbox, default: true }
+
+  - id: payment_clocks
+    title: "Payment and lien clocks"
+    body: "Public and private work run on different statutes. Public payment is overdue on the 31st day, or the 46th where the governing body meets monthly or less. Private payment is due on the 35th day after the owner receives your written request, and that chapter cannot be contracted away."
+    fields:
+      - { key: enable_payment_clock, label: "Track statutory payment deadlines on Texas projects", type: checkbox, default: true }
+      - { key: default_payment_regime, label: "Default regime for new Texas projects", type: select, required: true, default: "Private, Property Code Chapter 28",
+          options: ["Private, Property Code Chapter 28", "Public, Government Code Chapter 2251", "Ask per project"] }
+      - { key: track_lien_deadlines, label: "Track lien affidavit and foreclosure deadlines", type: checkbox, default: true }
+      - { key: lien_reminder_days, label: "Remind me this many days before a lien deadline", type: number, required: false, min: 1, max: 90, default: 21,
+          help: "The affidavit deadline is the 15th day of a later month, not a count of days from the work, so it arrives sooner than people expect." }
+
+  - id: units_and_output
+    title: "Units and printed output"
+    body: "Texas practice is imperial and US Letter. Change it here if your clients ask for something else."
+    fields:
+      - { key: measurement_system, label: "Measurement system", type: radio, required: true, default: "Imperial", options: ["Imperial", "Metric"] }
+      - { key: paper_size, label: "Paper size", type: radio, required: true, default: "Letter", options: ["Letter", "A4"] }
+      - { key: currency, label: "Currency", type: select, required: true, default: "USD", options: ["USD"] }

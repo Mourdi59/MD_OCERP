@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="California Construction Pack">
+  <title>California Construction Pack</title>
+  <defs>
+    <linearGradient id="ca_bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1d4e89"/>
+      <stop offset="1" stop-color="#123256"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="url(#ca_bg)"/>
+  <path d="M8 46 L18 26 L26 36 L34 18 L44 40 L56 22" fill="none" stroke="#ffb81c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="34" cy="18" r="5" fill="#ffb81c"/>
+  <rect x="8" y="52" width="48" height="4" rx="2" fill="#ffffff" opacity="0.35"/>
+</svg>
