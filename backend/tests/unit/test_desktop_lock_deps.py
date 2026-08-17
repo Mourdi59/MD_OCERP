@@ -73,11 +73,19 @@ _REQUIRED_BASE_DEPS = (
 # Vector-store clients from the [semantic-clients] extra. qdrant-client opens
 # the CWICR match store, and it is imported inside a function body, so a lock
 # without it produces a sidecar that answers an empty 200 from /match-elements
-# instead of failing loudly. lancedb is deliberately absent: it is 157 MB for a
-# generic semantic store, so it stays in [vector]. Absent, not forbidden - it is
-# a client, not an embedder, and an operator who installs [vector] on top is
-# doing nothing wrong.
-_REQUIRED_CLIENT_DEPS = ("qdrant-client",)
+# instead of failing loudly. lancedb is the generic store that
+# VECTOR_BACKEND=lancedb selects, and that default already ships, so leaving the
+# backend out did not save the megabytes: it moved the failure from the build to
+# the user's first query.
+#
+# lancedb sat in this comment as deliberately absent, on a measurement of 157 MB
+# that stopped being true. Version 0.37.1 and the three distributions it adds to
+# this lock (deprecation, lance-namespace, lance-namespace-urllib3-client) weigh
+# 62 MB on Linux, 68 MB on Windows and 56 MB on macOS, well under half the old
+# figure. The decision and both numbers are recorded next to the extra in
+# pyproject.toml; this file only enforces the outcome. Re-measure before citing
+# either figure again.
+_REQUIRED_CLIENT_DEPS = ("qdrant-client", "lancedb")
 
 # The local encoder, and the two libraries it cannot load weights without.
 # sentence-transformers is what core/vector.py and costs/matcher.py import;
@@ -145,9 +153,10 @@ def test_vector_clients_present_in_desktop_lock() -> None:
     versions = _lock_versions()
     missing = [dep for dep in _REQUIRED_CLIENT_DEPS if dep.lower() not in versions]
     assert not missing, (
-        f"requirements-desktop.lock is missing the [semantic-clients] vector-store client: {missing}. "
-        "A lock compiled without the extra looks healthy but ships a sidecar "
-        f"whose /match-elements returns nothing. Regenerate with: {_REGEN}"
+        f"requirements-desktop.lock is missing [semantic-clients] vector-store clients: {missing}. "
+        "A lock compiled without the extra looks healthy but ships a sidecar whose /match-elements "
+        "returns nothing and whose configured lancedb backend has no store to open. "
+        f"Regenerate with: {_REGEN}"
     )
 
 
