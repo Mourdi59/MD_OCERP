@@ -167,7 +167,16 @@ def t(key: str, locale: str | None = None, **kwargs: Any) -> str:
     if kwargs:
         try:
             return template.format(**kwargs)
-        except (KeyError, ValueError):
+        except (KeyError, ValueError, IndexError) as exc:
+            # The braces in a locale value are code, and a translation pass is
+            # where they get eaten. A renamed field raises KeyError and an
+            # unbalanced brace ValueError, both of which fell back here, but a
+            # positional {0} or a bare {} raises IndexError, which did not:
+            # rendering any route that reached such a value returned a 500.
+            # None of the three is worth failing a request over, and none of
+            # them should be silent either, or a locale can serve half-rendered
+            # text for as long as nobody reads that screen closely.
+            logger.warning("Interpolation failed for %r in locale %r: %s", key, loc, exc)
             return template
 
     return template

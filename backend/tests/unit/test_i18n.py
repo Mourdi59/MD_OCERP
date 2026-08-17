@@ -5,6 +5,7 @@ function including fallback and interpolation behavior.
 """
 
 import json
+import logging
 import tempfile
 from pathlib import Path
 
@@ -128,6 +129,10 @@ class TestTranslationFunction:
             "farewell": "Goodbye",
             "welcome": "Welcome, {name}!",
             "count": "You have {count} items",
+            # A translator or a translation tool can leave either of these
+            # behind. Both have to degrade to the template, not raise.
+            "positional": "Item {0} is broken",
+            "empty_field": "Item {} is broken",
         }
         _translations["de"] = {
             "greeting": "Hallo",
@@ -174,6 +179,20 @@ class TestTranslationFunction:
     def test_unknown_locale_falls_back_to_english(self):
         result = t("greeting", locale="xx")
         assert result == "Hello"
+
+    def test_positional_placeholder_returns_template(self):
+        """A stray {0} used to raise IndexError straight out of t() and 500 the route."""
+        assert t("positional", locale="en", position="01.02") == "Item {0} is broken"
+
+    def test_empty_placeholder_returns_template(self):
+        """Same for a bare pair of braces, which str.format also reads positionally."""
+        assert t("empty_field", locale="en", position="01.02") == "Item {} is broken"
+
+    def test_failed_interpolation_is_logged(self, caplog):
+        """A silent fallback is indistinguishable from a correct render in production."""
+        with caplog.at_level(logging.WARNING, logger="app.core.i18n"):
+            t("welcome", locale="en", wrong_key="value")
+        assert "welcome" in caplog.text, "the swallowed interpolation failure named no key"
 
 
 # ── load_translations / set_locale / get_locale ──────────────────────────────
