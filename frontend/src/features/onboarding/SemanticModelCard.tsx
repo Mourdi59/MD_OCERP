@@ -18,6 +18,18 @@
 // Nothing here can hold the wizard up. The status query is a plain poll with no
 // blocking states, the toggle only records an intention, and the request that
 // acts on it is fired without being awaited.
+//
+// Note for anyone translating or shortening these strings. The reassurance
+// clauses are load-bearing, not padding: "Search works without it" on the
+// header, "Everything else works without it" on library_missing, and the
+// equivalent on the failed state. They are the only place in the wizard that
+// tells a user this download is optional. Drop them and the failure states read
+// as a broken install, which is the reaction the card was built to prevent, and
+// users retry a download that was never required. Keep the clause even where a
+// language needs more words for it than English does.
+//
+// Two variables, {{done}} and {{total}}, must both survive and must stay
+// reorderable - languages put the count and the total in the opposite order.
 
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
