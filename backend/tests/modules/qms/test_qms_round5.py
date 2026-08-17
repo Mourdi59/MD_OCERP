@@ -500,7 +500,10 @@ async def test_list_ncrs_accepts_known_severity(
             params={"project_id": str(project_id), "severity": "major"},
         )
     assert resp.status_code == 200, resp.text
-    assert resp.json() == []
+    # The register answers with a page envelope, so "nothing matched" is an
+    # empty `items` next to a zero `total`, not an empty body. Asserting both
+    # keeps this a sanity check on the filter rather than on the shape.
+    assert resp.json() == {"items": [], "total": 0, "offset": 0, "limit": 50}
 
 
 # ── R7 additions: magic-byte upload gate ─────────────────────────────────

@@ -143,6 +143,25 @@ MIGRATED_ENDPOINTS: dict[str, str] = {
     # so a renamed key stops refreshing the register after create and delete.
     "/v1/equipment/equipment/": "equipment fleet",
     "/v1/resources/resources/": "resources register",
+    # The quality module. Five registers the page browses and three child
+    # lists it opens underneath them. All five registers cap at 200 in the
+    # route signature and the page asks for exactly 200, so every one of them
+    # could hand back a full page and say nothing.
+    #
+    # The three child lists take no offset or limit and are uncapped in the
+    # repository, so they report length as total and the notice never draws.
+    # They are listed anyway, unlike the decorative entries the notes above
+    # ban, because each has a real reader whose type argument this scan
+    # checks: the gallery, the NCR drawer and the ITP drawer all decode these
+    # bodies by hand and nothing else would catch one drifting back.
+    "/v1/qms/itp-plans": "qms itp plans",
+    "/v1/qms/itp-plans/{}/items": "qms itp items",
+    "/v1/qms/inspections": "qms inspections",
+    "/v1/qms/inspections/{}/evidence": "qms inspection evidence",
+    "/v1/qms/ncrs": "qms ncr register",
+    "/v1/qms/ncrs/{}/actions": "qms ncr actions",
+    "/v1/qms/punch-items": "qms punch items",
+    "/v1/qms/audits": "qms audits",
 }
 
 # Left bare on purpose in wave 4: `/v1/documents/photos/recent/`. It is a

@@ -6,7 +6,7 @@
  * Backed by /api/v1/qms/ — see backend/app/modules/qms/router.py
  */
 
-import { apiGet, apiPost, apiPatch } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, type Page } from '@/shared/lib/api';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -373,12 +373,27 @@ export interface CreateAuditFindingPayload {
 
 /* ── Helpers ───────────────────────────────────────────────────────────── */
 
-function buildQs(params: Record<string, string | number | undefined>): string {
+// The query string without its leading `?`.
+//
+// The paged registers below interpolate this after a `?` written inside the
+// template rather than calling buildQs, and that is not a style choice. The
+// envelope consumer gate reads route literals out of this file and collapses
+// every `${...}` to `{}` after cutting at the first `?`, so a URL that hides
+// its `?` inside the interpolation reads as `/v1/qms/ncrs{}` and matches no
+// route at all. The endpoint would then be invisible to the gate, which is
+// the one failure mode that lets a half-migrated register report as done.
+// Every one of these callers always passes project_id, so the `?` is never
+// left dangling.
+function qsBody(params: Record<string, string | number | undefined>): string {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== '' && v !== null) qs.set(k, String(v));
   }
-  const s = qs.toString();
+  return qs.toString();
+}
+
+function buildQs(params: Record<string, string | number | undefined>): string {
+  const s = qsBody(params);
   return s ? `?${s}` : '';
 }
 
@@ -389,16 +404,16 @@ export function listITPPlans(params: {
   status?: string;
   offset?: number;
   limit?: number;
-}): Promise<ITPPlan[]> {
-  return apiGet<ITPPlan[]>(`/v1/qms/itp-plans${buildQs(params)}`);
+}): Promise<Page<ITPPlan>> {
+  return apiGet<Page<ITPPlan>>(`/v1/qms/itp-plans?${qsBody(params)}`);
 }
 
 export function createITPPlan(data: CreateITPPlanPayload): Promise<ITPPlan> {
   return apiPost<ITPPlan>('/v1/qms/itp-plans', data);
 }
 
-export function listITPItems(planId: string): Promise<ITPItem[]> {
-  return apiGet<ITPItem[]>(`/v1/qms/itp-plans/${planId}/items`);
+export function listITPItems(planId: string): Promise<Page<ITPItem>> {
+  return apiGet<Page<ITPItem>>(`/v1/qms/itp-plans/${planId}/items`);
 }
 
 export function addITPItem(
@@ -430,8 +445,8 @@ export function listInspections(params: {
   status?: string;
   offset?: number;
   limit?: number;
-}): Promise<Inspection[]> {
-  return apiGet<Inspection[]>(`/v1/qms/inspections${buildQs(params)}`);
+}): Promise<Page<Inspection>> {
+  return apiGet<Page<Inspection>>(`/v1/qms/inspections?${qsBody(params)}`);
 }
 
 export function createInspection(
@@ -495,8 +510,8 @@ export function checkHoldPointStatus(
 
 export function listInspectionEvidence(
   inspectionId: string,
-): Promise<InspectionAttachment[]> {
-  return apiGet<InspectionAttachment[]>(
+): Promise<Page<InspectionAttachment>> {
+  return apiGet<Page<InspectionAttachment>>(
     `/v1/qms/inspections/${inspectionId}/evidence`,
   );
 }
@@ -642,8 +657,8 @@ export function listNCRs(params: {
   severity?: string;
   offset?: number;
   limit?: number;
-}): Promise<NCR[]> {
-  return apiGet<NCR[]>(`/v1/qms/ncrs${buildQs(params)}`);
+}): Promise<Page<NCR>> {
+  return apiGet<Page<NCR>>(`/v1/qms/ncrs?${qsBody(params)}`);
 }
 
 export function createNCR(data: CreateNCRPayload): Promise<NCR> {
@@ -661,8 +676,8 @@ export function addNCRAction(
   return apiPost<NCRAction>(`/v1/qms/ncrs/${ncrId}/actions`, data);
 }
 
-export function listNCRActions(ncrId: string): Promise<NCRAction[]> {
-  return apiGet<NCRAction[]>(`/v1/qms/ncrs/${ncrId}/actions`);
+export function listNCRActions(ncrId: string): Promise<Page<NCRAction>> {
+  return apiGet<Page<NCRAction>>(`/v1/qms/ncrs/${ncrId}/actions`);
 }
 
 export function verifyNCRAction(
@@ -696,8 +711,8 @@ export function listPunchItems(params: {
   status?: string;
   offset?: number;
   limit?: number;
-}): Promise<PunchItem[]> {
-  return apiGet<PunchItem[]>(`/v1/qms/punch-items${buildQs(params)}`);
+}): Promise<Page<PunchItem>> {
+  return apiGet<Page<PunchItem>>(`/v1/qms/punch-items?${qsBody(params)}`);
 }
 
 export function createPunchItem(
@@ -727,8 +742,8 @@ export function listAudits(params: {
   status?: string;
   offset?: number;
   limit?: number;
-}): Promise<Audit[]> {
-  return apiGet<Audit[]>(`/v1/qms/audits${buildQs(params)}`);
+}): Promise<Page<Audit>> {
+  return apiGet<Page<Audit>>(`/v1/qms/audits?${qsBody(params)}`);
 }
 
 export function createAudit(data: CreateAuditPayload): Promise<Audit> {

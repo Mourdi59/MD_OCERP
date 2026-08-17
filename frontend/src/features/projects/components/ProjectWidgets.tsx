@@ -1148,14 +1148,23 @@ export function QualityNCRWidget({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const rollup = useRollupSlice('project_quality_ncr');
-  const fallback = useGracefulQuery<NCRItem[]>(
+  // The route answers with a page envelope, same as the RFI widget above.
+  const fallback = useGracefulQuery<Page<NCRItem>>(
     ['proj-widget-ncr', projectId],
     `/v1/qms/ncrs?project_id=${projectId}&limit=50`,
     !rollup.hasProvider,
   );
+  // Unlike the RFI feed, this widget does not show the rows it fetched: it
+  // counts them and presents the counts as the project's NCR position. On
+  // the fallback path those counts are therefore taken over 50 rows and not
+  // over the register, so a project with more than 50 reports too few open
+  // and too few major. The rollup path does not have the problem, because
+  // the provider counts server side. Fixing the fallback needs a sentence
+  // that says a number was computed over part of the set, which is not a
+  // string this codebase has yet, so it is reported rather than invented.
   const data: NCRItem[] | null | undefined = rollup.hasProvider
     ? (rollup.data?.items as NCRItem[] | undefined) ?? null
-    : fallback.data;
+    : fallback.data?.items ?? null;
   const isLoading = rollup.hasProvider ? rollup.isLoadingFromRollup : fallback.isLoading;
 
   const counts = useMemo(() => {

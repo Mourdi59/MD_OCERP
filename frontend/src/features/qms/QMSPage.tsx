@@ -45,6 +45,7 @@ import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { SectionIntro } from '@/features/validation';
 import { apiGet, getAuthToken, getErrorMessage, triggerDownload } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
@@ -351,29 +352,29 @@ export function QMSPage() {
   });
   const insights = useModuleInsights('qms', { defaultOpen: true });
   const { datasets: insightDatasets, builtins: insightBuiltins } = useMemo(
-    () => buildQMSInsights(insightsPunchQ.data ?? [], '', t),
+    () => buildQMSInsights(insightsPunchQ.data?.items ?? [], '', t),
     [insightsPunchQ.data, t],
   );
 
   const filteredItp = useMemo(
-    () => filterByText(itpQ.data ?? [], search, (r) => `${r.name} ${r.work_type} ${r.wbs_ref ?? ''}`),
+    () => filterByText(itpQ.data?.items ?? [], search, (r) => `${r.name} ${r.work_type} ${r.wbs_ref ?? ''}`),
     [itpQ.data, search],
   );
   const filteredInsp = useMemo(
-    () => filterByText(inspQ.data ?? [], search, (r) => `${r.location_ref ?? ''} ${r.notes ?? ''}`),
+    () => filterByText(inspQ.data?.items ?? [], search, (r) => `${r.location_ref ?? ''} ${r.notes ?? ''}`),
     [inspQ.data, search],
   );
   const filteredNcrs = useMemo(
-    () => filterByText(ncrQ.data ?? [], search, (r) => `${r.title} ${r.description}`),
+    () => filterByText(ncrQ.data?.items ?? [], search, (r) => `${r.title} ${r.description}`),
     [ncrQ.data, search],
   );
   const filteredPunch = useMemo(() => {
-    const base = punchQ.data ?? [];
+    const base = punchQ.data?.items ?? [];
     const list = categoryFilter ? base.filter((p) => p.category === categoryFilter) : base;
     return filterByText(list, search, (r) => `${r.title} ${r.description ?? ''} ${r.room_ref ?? ''}`);
   }, [punchQ.data, search, categoryFilter]);
   const filteredAudits = useMemo(
-    () => filterByText(auditQ.data ?? [], search, (r) => `${r.audit_type} ${r.audit_scope ?? ''} ${r.standard_ref ?? ''}`),
+    () => filterByText(auditQ.data?.items ?? [], search, (r) => `${r.audit_type} ${r.audit_scope ?? ''} ${r.standard_ref ?? ''}`),
     [auditQ.data, search],
   );
 
@@ -571,6 +572,15 @@ export function QMSPage() {
         )}
       </div>
 
+      {/* Bound to activeQuery, so it always describes the register the open
+          tab is showing rather than whichever one happens to be cached. It
+          stays up while a search or a status filter is applied, on purpose:
+          the filtering below runs over the rows that arrived, so a search
+          that finds nothing on a truncated register has not searched the
+          rest of it, and this line is the only thing on the page that says
+          so. */}
+      {activeQuery.data && <TruncationNotice page={activeQuery.data} className="mb-2" />}
+
       <Card padding="none">
         {!projectId ? (
           <RequiresProject
@@ -607,8 +617,8 @@ export function QMSPage() {
         <CreateModal
           kind={tab}
           projectId={projectId}
-          itpPlans={itpQ.data ?? []}
-          inspections={inspQ.data ?? []}
+          itpPlans={itpQ.data?.items ?? []}
+          inspections={inspQ.data?.items ?? []}
           prefillInspectionId={ncrPrefillInspectionId}
           onClose={() => {
             setCreateOpen(false);
@@ -620,7 +630,7 @@ export function QMSPage() {
       {selectedNcrId && (
         <NCRDrawer
           id={selectedNcrId}
-          ncrs={ncrQ.data ?? []}
+          ncrs={ncrQ.data?.items ?? []}
           onClose={() => setSelectedNcrId(null)}
         />
       )}
@@ -628,7 +638,7 @@ export function QMSPage() {
       {selectedInspectionId && (
         <InspectionDrawer
           id={selectedInspectionId}
-          inspections={inspQ.data ?? []}
+          inspections={inspQ.data?.items ?? []}
           onClose={() => setSelectedInspectionId(null)}
           onRaiseNcr={(inspectionId) => {
             setSelectedInspectionId(null);
@@ -645,7 +655,7 @@ export function QMSPage() {
       {selectedPlanId && (
         <ITPPlanDrawer
           planId={selectedPlanId}
-          plan={(itpQ.data ?? []).find((p) => p.id === selectedPlanId) ?? null}
+          plan={(itpQ.data?.items ?? []).find((p) => p.id === selectedPlanId) ?? null}
           projectId={projectId}
           onClose={() => setSelectedPlanId(null)}
         />
@@ -1251,7 +1261,7 @@ function NCRDrawer({
 
   if (!ncr) return null;
 
-  const actions = actionsQ.data ?? [];
+  const actions = actionsQ.data?.items ?? [];
   const canEscalate = ncr.status !== 'closed' && ncr.status !== 'cancelled';
 
   return (
@@ -1512,7 +1522,7 @@ function ITPPlanDrawer({
 
   useEscapeToClose(onClose);
 
-  const items = itemsQ.data ?? [];
+  const items = itemsQ.data?.items ?? [];
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
@@ -1568,7 +1578,7 @@ function ITPPlanDrawer({
                 {t('common.loading', { defaultValue: 'Loading…' })}
               </div>
             ) : (
-              <HoldPointDependencyTree items={items} inspections={inspQ.data ?? []} />
+              <HoldPointDependencyTree items={items} inspections={inspQ.data?.items ?? []} />
             )}
           </div>
 
@@ -2301,7 +2311,7 @@ function CreateModal({
                     ? t('common.loading', { defaultValue: 'Loading…' })
                     : '—'}
               </option>
-              {(itpItemsQ.data ?? []).map((it: ITPItem) => (
+              {(itpItemsQ.data?.items ?? []).map((it: ITPItem) => (
                 <option key={it.id} value={it.id}>
                   {it.sequence}. {it.control_point_name}
                   {it.signatories_required > 1

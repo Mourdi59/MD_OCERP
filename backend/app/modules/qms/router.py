@@ -57,6 +57,7 @@ from app.modules.qms.schemas import (
     AuditCreate,
     AuditFindingCreate,
     AuditFindingRead,
+    AuditListResponse,
     AuditRead,
     AuditUpdate,
     CalibrationCreate,
@@ -71,8 +72,10 @@ from app.modules.qms.schemas import (
     HoldPointReleaseRead,
     HoldPointStatus,
     InspectionAttachmentCreate,
+    InspectionAttachmentListResponse,
     InspectionAttachmentRead,
     InspectionCreate,
+    InspectionListResponse,
     InspectionRead,
     InspectionSignatureCreate,
     InspectionSignatureRead,
@@ -80,8 +83,10 @@ from app.modules.qms.schemas import (
     InspectionUpdate,
     ITPItemCreate,
     ITPItemLinkSpec,
+    ITPItemListResponse,
     ITPItemRead,
     ITPPlanCreate,
+    ITPPlanListResponse,
     ITPPlanRead,
     ITPTemplateCloneRequest,
     ITPTemplateCreate,
@@ -90,11 +95,14 @@ from app.modules.qms.schemas import (
     ManagementReviewReport,
     ManagementReviewRequest,
     NCRActionCreate,
+    NCRActionListResponse,
     NCRActionRead,
     NCRCreate,
+    NCRListResponse,
     NCRRead,
     NCRUpdate,
     PunchItemCreate,
+    PunchItemListResponse,
     PunchItemRead,
     PunchItemUpdate,
     SupplierAuditLink,
@@ -140,7 +148,7 @@ def _client_ip(request: Request) -> str | None:
 # ── ITP Plans ─────────────────────────────────────────────────────────────
 
 
-@router.get("/itp-plans", response_model=list[ITPPlanRead])
+@router.get("/itp-plans", response_model=ITPPlanListResponse)
 async def list_itp_plans(
     session: SessionDep,
     user_id: CurrentUserId,
@@ -154,16 +162,21 @@ async def list_itp_plans(
     ),
     _perm: None = Depends(RequirePermission("qms.itp.read")),
     service: QMSService = Depends(_get_service),
-) -> list[ITPPlanRead]:
+) -> ITPPlanListResponse:
     """List ITP plans for a project."""
     await verify_project_access(project_id, user_id, session)
-    plans, _ = await service.repo.list_itp_plans(
+    plans, total = await service.repo.list_itp_plans(
         project_id,
         offset=offset,
         limit=limit,
         status=status_filter,
     )
-    return [ITPPlanRead.model_validate(p) for p in plans]
+    return ITPPlanListResponse(
+        items=[ITPPlanRead.model_validate(p) for p in plans],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/itp-plans", response_model=ITPPlanRead, status_code=201)
@@ -182,21 +195,28 @@ async def create_itp_plan(
     return ITPPlanRead.model_validate(plan)
 
 
-@router.get("/itp-plans/{plan_id}/items", response_model=list[ITPItemRead])
+@router.get("/itp-plans/{plan_id}/items", response_model=ITPItemListResponse)
 async def list_itp_items(
     plan_id: uuid.UUID,
     user_id: CurrentUserId,
     session: SessionDep,
     _perm: None = Depends(RequirePermission("qms.itp.read")),
     service: QMSService = Depends(_get_service),
-) -> list[ITPItemRead]:
-    """List the control-point items of an ITP plan (IDOR-gated)."""
+) -> ITPItemListResponse:
+    """List the control-point items of an ITP plan (IDOR-gated).
+
+    The query takes no offset or limit and the repository caps nothing, so
+    the envelope reports the length as both the total and the limit: this
+    really is all of them, and saying so is what lets the reader tell this
+    apart from a page that stopped early.
+    """
     plan = await service.repo.get_itp_plan(plan_id)
     if plan is None:
         raise _not_found("ITP plan not found")
     await verify_project_access(plan.project_id, user_id, session)
     items = await service.repo.list_itp_items(plan_id)
-    return [ITPItemRead.model_validate(i) for i in items]
+    rows = [ITPItemRead.model_validate(i) for i in items]
+    return ITPItemListResponse(items=rows, total=len(rows), offset=0, limit=len(rows))
 
 
 @router.post("/itp-plans/{plan_id}/items", response_model=ITPItemRead, status_code=201)
@@ -273,7 +293,7 @@ async def activate_itp_plan(
 # ── Inspections ───────────────────────────────────────────────────────────
 
 
-@router.get("/inspections", response_model=list[InspectionRead])
+@router.get("/inspections", response_model=InspectionListResponse)
 async def list_inspections(
     session: SessionDep,
     user_id: CurrentUserId,
@@ -287,15 +307,20 @@ async def list_inspections(
     ),
     _perm: None = Depends(RequirePermission("qms.inspection.read")),
     service: QMSService = Depends(_get_service),
-) -> list[InspectionRead]:
+) -> InspectionListResponse:
     await verify_project_access(project_id, user_id, session)
-    rows, _ = await service.repo.list_inspections(
+    rows, total = await service.repo.list_inspections(
         project_id,
         offset=offset,
         limit=limit,
         status=status_filter,
     )
-    return [InspectionRead.model_validate(r) for r in rows]
+    return InspectionListResponse(
+        items=[InspectionRead.model_validate(r) for r in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/inspections", response_model=InspectionRead, status_code=201)
@@ -565,7 +590,7 @@ async def attach_inspection_evidence(
 
 @router.get(
     "/inspections/{inspection_id}/evidence",
-    response_model=list[InspectionAttachmentRead],
+    response_model=InspectionAttachmentListResponse,
 )
 async def list_inspection_evidence(
     inspection_id: uuid.UUID,
@@ -573,14 +598,20 @@ async def list_inspection_evidence(
     session: SessionDep,
     _perm: None = Depends(RequirePermission("qms.inspection.read")),
     service: QMSService = Depends(_get_service),
-) -> list[InspectionAttachmentRead]:
-    """List evidence attachments for an inspection (IDOR-gated)."""
+) -> InspectionAttachmentListResponse:
+    """List evidence attachments for an inspection (IDOR-gated).
+
+    Unpaged and uncapped in the repository, so the length is the total. On a
+    gallery of evidence that matters: a viewer showing four photographs of
+    six, with no way to know, is evidence of the wrong thing.
+    """
     inspection = await service.repo.get_inspection(inspection_id)
     if inspection is None:
         raise _not_found("Inspection not found")
     await verify_project_access(inspection.project_id, user_id, session)
     rows = await service.list_inspection_attachments(inspection_id)
-    return [InspectionAttachmentRead.model_validate(r) for r in rows]
+    items = [InspectionAttachmentRead.model_validate(r) for r in rows]
+    return InspectionAttachmentListResponse(items=items, total=len(items), offset=0, limit=len(items))
 
 
 @router.get(
@@ -832,7 +863,7 @@ async def plan_compliance_export(
 # ── NCRs ──────────────────────────────────────────────────────────────────
 
 
-@router.get("/ncrs", response_model=list[NCRRead])
+@router.get("/ncrs", response_model=NCRListResponse)
 async def list_ncrs(
     session: SessionDep,
     user_id: CurrentUserId,
@@ -850,16 +881,21 @@ async def list_ncrs(
     ),
     _perm: None = Depends(RequirePermission("qms.ncr.read")),
     service: QMSService = Depends(_get_service),
-) -> list[NCRRead]:
+) -> NCRListResponse:
     await verify_project_access(project_id, user_id, session)
-    rows, _ = await service.repo.list_ncrs(
+    rows, total = await service.repo.list_ncrs(
         project_id,
         offset=offset,
         limit=limit,
         status=status_filter,
         severity=severity,
     )
-    return [NCRRead.model_validate(r) for r in rows]
+    return NCRListResponse(
+        items=[NCRRead.model_validate(r) for r in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/ncrs", response_model=NCRRead, status_code=201)
@@ -918,21 +954,27 @@ async def add_ncr_action(
     return NCRActionRead.model_validate(action)
 
 
-@router.get("/ncrs/{ncr_id}/actions", response_model=list[NCRActionRead])
+@router.get("/ncrs/{ncr_id}/actions", response_model=NCRActionListResponse)
 async def list_ncr_actions(
     ncr_id: uuid.UUID,
     user_id: CurrentUserId,
     session: SessionDep,
     _perm: None = Depends(RequirePermission("qms.ncr.read")),
     service: QMSService = Depends(_get_service),
-) -> list[NCRActionRead]:
-    """List corrective actions for an NCR (IDOR-gated by project)."""
+) -> NCRActionListResponse:
+    """List corrective actions for an NCR (IDOR-gated by project).
+
+    Unpaged and uncapped in the repository, so the length is the total. An
+    NCR is closed on the strength of its actions, so a caller has to be able
+    to tell a short list from a truncated one.
+    """
     ncr = await service.repo.get_ncr(ncr_id)
     if ncr is None:
         raise _not_found("NCR not found")
     await verify_project_access(ncr.project_id, user_id, session)
     actions = await service.repo.list_ncr_actions(ncr_id)
-    return [NCRActionRead.model_validate(a) for a in actions]
+    items = [NCRActionRead.model_validate(a) for a in actions]
+    return NCRActionListResponse(items=items, total=len(items), offset=0, limit=len(items))
 
 
 @router.post(
@@ -1106,7 +1148,7 @@ async def upload_ncr_attachment(
 # ── Punch items ───────────────────────────────────────────────────────────
 
 
-@router.get("/punch-items", response_model=list[PunchItemRead])
+@router.get("/punch-items", response_model=PunchItemListResponse)
 async def list_punch_items(
     session: SessionDep,
     user_id: CurrentUserId,
@@ -1120,15 +1162,20 @@ async def list_punch_items(
     ),
     _perm: None = Depends(RequirePermission("qms.punch.read")),
     service: QMSService = Depends(_get_service),
-) -> list[PunchItemRead]:
+) -> PunchItemListResponse:
     await verify_project_access(project_id, user_id, session)
-    rows, _ = await service.repo.list_punch(
+    rows, total = await service.repo.list_punch(
         project_id,
         offset=offset,
         limit=limit,
         status=status_filter,
     )
-    return [PunchItemRead.model_validate(r) for r in rows]
+    return PunchItemListResponse(
+        items=[PunchItemRead.model_validate(r) for r in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/punch-items", response_model=PunchItemRead, status_code=201)
@@ -1209,7 +1256,7 @@ async def close_punch_item(
 # ── Audits ────────────────────────────────────────────────────────────────
 
 
-@router.get("/audits", response_model=list[AuditRead])
+@router.get("/audits", response_model=AuditListResponse)
 async def list_audits(
     session: SessionDep,
     user_id: CurrentUserId,
@@ -1223,15 +1270,20 @@ async def list_audits(
     ),
     _perm: None = Depends(RequirePermission("qms.audit.read")),
     service: QMSService = Depends(_get_service),
-) -> list[AuditRead]:
+) -> AuditListResponse:
     await verify_project_access(project_id, user_id, session)
-    rows, _ = await service.repo.list_audits(
+    rows, total = await service.repo.list_audits(
         project_id,
         offset=offset,
         limit=limit,
         status=status_filter,
     )
-    return [AuditRead.model_validate(r) for r in rows]
+    return AuditListResponse(
+        items=[AuditRead.model_validate(r) for r in rows],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/audits", response_model=AuditRead, status_code=201)

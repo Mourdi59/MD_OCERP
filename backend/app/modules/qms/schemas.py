@@ -964,3 +964,99 @@ class SupplierAuditLink(BaseModel):
         le=5,
         description="Adjustment to the subcontractor's quality rating (-5..+5)",
     )
+
+
+# ── Paged list envelopes ─────────────────────────────────────────────────
+#
+# `total` is the count that matched the filter, never the length of `items`.
+#
+# Five of these registers cap at 200 rows and the quality page asks for
+# exactly 200, so a project past that ceiling was handed a full page with
+# nothing to say it was one. An NCR register that stops at 200 and reads as
+# complete is the shape that matters most here: closing out a project against
+# a list of nonconformities that quietly omits the rest is how a defect
+# survives handover.
+#
+# Grouped at the end of the module rather than next to each row class,
+# because this file imports annotations from __future__: every envelope
+# resolving after every row it names removes the ordering question rather
+# than answering it eight times.
+#
+# ITPItemListResponse, NCRActionListResponse and InspectionAttachmentListResponse
+# describe queries that take no offset or limit and are not capped in the
+# repository, so their routes report `total` and `limit` as the length of what
+# they returned. That is a true claim of completeness rather than a default
+# carried over from a paged sibling, and it is the reason those three have no
+# meaningful class-level default to declare.
+
+
+class ITPPlanListResponse(BaseModel):
+    """One page of ITP plans plus the size of the whole set."""
+
+    items: list[ITPPlanRead] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50
+
+
+class ITPItemListResponse(BaseModel):
+    """Every control point of one ITP plan. Unpaged, so `total` is the count."""
+
+    items: list[ITPItemRead] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 0
+
+
+class InspectionListResponse(BaseModel):
+    """One page of inspections plus the size of the whole set."""
+
+    items: list[InspectionRead] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50
+
+
+class InspectionAttachmentListResponse(BaseModel):
+    """Every evidence attachment of one inspection. Unpaged."""
+
+    items: list[InspectionAttachmentRead] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 0
+
+
+class NCRListResponse(BaseModel):
+    """One page of nonconformity reports plus the size of the whole set."""
+
+    items: list[NCRRead] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50
+
+
+class NCRActionListResponse(BaseModel):
+    """Every corrective action of one NCR. Unpaged, so `total` is the count."""
+
+    items: list[NCRActionRead] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 0
+
+
+class PunchItemListResponse(BaseModel):
+    """One page of punch items plus the size of the whole set."""
+
+    items: list[PunchItemRead] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50
+
+
+class AuditListResponse(BaseModel):
+    """One page of quality audits plus the size of the whole set."""
+
+    items: list[AuditRead] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50

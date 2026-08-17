@@ -394,17 +394,13 @@ ALLOWED: frozenset[str] = frozenset(
         "property_dev/router.py::list_warranty_claims",
         "property_dev/router.py::portal_list_my_snags",
         "property_dev/router.py::portal_list_my_warranty_claims",
-        "qms/router.py::list_audits",
+        # The three left here have no frontend caller at all, which is why
+        # they stayed behind while the other eight moved: no wrapper means no
+        # census of who reads them, and backend tests do, so the readers would
+        # have to be enumerated before the shape changes under them.
         "qms/router.py::list_calibrations",
         "qms/router.py::list_expiring_calibrations",
-        "qms/router.py::list_inspection_evidence",
-        "qms/router.py::list_inspections",
-        "qms/router.py::list_itp_items",
-        "qms/router.py::list_itp_plans",
         "qms/router.py::list_itp_templates",
-        "qms/router.py::list_ncr_actions",
-        "qms/router.py::list_ncrs",
-        "qms/router.py::list_punch_items",
         "reconciliation/router.py::list_project_record_links",
         "reporting/router.py::list_kpi_history",
         "reporting/router.py::list_reports",

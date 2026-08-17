@@ -67,7 +67,7 @@ export function AttachmentEvidenceGallery({
     onError: (e) => addToast({ type: 'error', title: getErrorMessage(e) }),
   });
 
-  const rows = evidenceQ.data ?? [];
+  const rows = evidenceQ.data?.items ?? [];
   const hashValid = /^[0-9a-fA-F]{64}$/.test(hash.trim());
 
   return (
