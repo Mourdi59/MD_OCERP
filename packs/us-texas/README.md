@@ -83,7 +83,7 @@ the licensing position can be answered.
 ## Where the numbers live
 
 Every figure above is served by the `oe_us_tx_pack` backend module at
-`/api/v1/us_tx_pack/rules/`, and every rule there carries the statute it comes
+`/api/v1/us-tx-pack/rules/`, and every rule there carries the statute it comes
 from. Nothing in this pack states a rule without a citation. The statutory
 payment periods are also seeded into the payment clock as the regimes
 `us_tx_public_2251` and `us_tx_private_ch28`, so the clock computes real dates

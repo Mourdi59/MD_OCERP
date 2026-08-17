@@ -394,4 +394,8 @@ def test_state_packs_declare_their_parent() -> None:
     for state, cfg, _rules, _slug in _STATES:
         assert cfg["parent_pack"] == "oe_us_pack", f"{state} does not name the national pack as its parent"
         assert cfg["countries"] == ["US"]
-        assert cfg["region_code"] == cfg["subdivision_code"]
+        # The two codes say the same thing in two vocabularies and must not
+        # drift apart: region_code is the internal underscore form the other
+        # packs use, subdivision_code is ISO 3166-2.
+        assert cfg["region_code"] == f"US_{state}", f"{state} region_code is not the house underscore form"
+        assert cfg["subdivision_code"] == f"US-{state}", f"{state} subdivision_code is not the ISO 3166-2 code"

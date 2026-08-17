@@ -445,7 +445,10 @@ STATE_RULES: dict[str, list[dict[str, Any]]] = {
 
 PACK_CONFIG: dict[str, Any] = {
     # ── Identity ─────────────────────────────────────────────────────────────
-    "region_code": "US-TX",
+    # region_code follows the house form the other packs use (MX_MEXICO,
+    # ZA_JOHANNESBURG); subdivision_code carries the ISO 3166-2 code, which is
+    # what an external consumer matching on a standard will be looking for.
+    "region_code": "US_TX",
     "subdivision_code": "US-TX",
     "subdivision_name": "Texas",
     "countries": ["US"],

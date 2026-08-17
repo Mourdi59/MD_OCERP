@@ -90,7 +90,7 @@ bid. Public works work needs the separate registration mentioned above as well.
 ## Where the numbers live
 
 Every figure above is served by the `oe_us_ca_pack` backend module at
-`/api/v1/us_ca_pack/rules/`, and every rule there carries the statute it comes
+`/api/v1/us-ca-pack/rules/`, and every rule there carries the statute it comes
 from. Nothing in this pack states a rule without a citation. The statutory
 payment periods are also seeded into the payment clock as the regimes
 `us_ca_public_20104` and `us_ca_private_8800`, so the clock computes real dates
