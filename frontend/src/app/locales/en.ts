@@ -8056,6 +8056,8 @@ const resource = {
     "tendering.contact_email": "Contact Email",
     "tendering.create_package": "Create Package",
     "tendering.deadline": "Deadline",
+    "tendering.scope_derived_hint": "This package records the lines it covers rather than the sections, so the sections are read from those lines.",
+    "tendering.scope_partial": "Covers part of the bill: {{sections}} ({{included}} of {{total}} positions)",
     "tendering.description": "Description",
     "tendering.description_placeholder": "Brief description of the package scope...",
     "tendering.empty_title": "Select a project",

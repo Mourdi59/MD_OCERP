@@ -12053,6 +12053,8 @@ const resource = {
     "tendering.contact_email": "Kontakt-e-post",
     "tendering.create_package": "Opprett pakke",
     "tendering.deadline": "Frist",
+    "tendering.scope_derived_hint": "Denne pakken registrerer linjene den dekker, ikke kapitlene, så kapitlene er utledet av linjene.",
+    "tendering.scope_partial": "Dekker en del av mengdebeskrivelsen: {{sections}} ({{included}} av {{total}} poster)",
     "tendering.description": "Beskrivelse",
     "tendering.description_placeholder": "Kort beskrivelse av pakkens omfang...",
     "tendering.empty_title": "Velg et prosjekt",

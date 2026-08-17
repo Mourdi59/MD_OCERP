@@ -10071,6 +10071,8 @@ const resource = {
     "tendering.contact_email": "연락처 이메일",
     "tendering.create_package": "패키지 생성",
     "tendering.deadline": "마감일",
+    "tendering.scope_derived_hint": "이 패키지는 섹션이 아니라 포함하는 항목을 기록하므로 섹션은 해당 항목에서 추론했습니다.",
+    "tendering.scope_partial": "내역서의 일부만 포함합니다: {{sections}} ({{total}}개 중 {{included}}개 항목)",
     "tendering.description": "설명",
     "tendering.description_placeholder": "패키지 범위에 대한 간략한 설명...",
     "tendering.empty_title": "프로젝트를 선택하세요",

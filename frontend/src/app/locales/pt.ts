@@ -9125,6 +9125,8 @@ const resource = {
     "tendering.contact_email": "E-mail de Contacto",
     "tendering.create_package": "Criar Pacote",
     "tendering.deadline": "Prazo",
+    "tendering.scope_derived_hint": "Este pacote regista as linhas que cobre em vez dos capítulos, por isso os capítulos são deduzidos dessas linhas.",
+    "tendering.scope_partial": "Cobre parte do mapa de quantidades: {{sections}} ({{included}} de {{total}} itens)",
     "tendering.description": "Descrição",
     "tendering.description_placeholder": "Breve descrição do escopo do pacote...",
     "tendering.empty_title": "Selecione um projeto",

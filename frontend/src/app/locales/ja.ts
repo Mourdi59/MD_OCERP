@@ -10053,6 +10053,8 @@ const resource = {
     "tendering.contact_email": "連絡先メール",
     "tendering.create_package": "パッケージを作成",
     "tendering.deadline": "期限",
+    "tendering.scope_derived_hint": "このパッケージは区分ではなく対象の明細行を記録しているため、区分は明細行から導いています。",
+    "tendering.scope_partial": "内訳書の一部が対象です: {{sections}} ({{total}} 項目中 {{included}} 項目)",
     "tendering.description": "説明",
     "tendering.description_placeholder": "パッケージの対象範囲の簡単な説明...",
     "tendering.empty_title": "プロジェクトを選択",

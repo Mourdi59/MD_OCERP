@@ -13496,6 +13496,8 @@ const resource = {
     "tendering.contact_email": "Kontakt-e-post",
     "tendering.create_package": "Loo pakett",
     "tendering.deadline": "Tähtaeg",
+    "tendering.scope_derived_hint": "See pakett salvestab kaetud read, mitte jaotised, seega on jaotised nendest ridadest tuletatud.",
+    "tendering.scope_partial": "Katab osa hinnakirjast: {{sections}} ({{included}} / {{total}} positsiooni)",
     "tendering.description": "Kirjeldus",
     "tendering.description_placeholder": "Lühike kirjeldus paketi ulatusest...",
     "tendering.empty_title": "Valige projekt",

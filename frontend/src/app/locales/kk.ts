@@ -12942,6 +12942,8 @@ const resource = {
     "tendering.contact_email": "Байланыс Электрондық Поштасы",
     "tendering.create_package": "Пакет Құру",
     "tendering.deadline": "Мерзімі",
+    "tendering.scope_derived_hint": "Бұл пакет бөлімдерді емес, қамтитын жолдарды жазады, сондықтан бөлімдер сол жолдардан алынған.",
+    "tendering.scope_partial": "Тізімнің бір бөлігін қамтиды: {{sections}} ({{total}} позицияның {{included}})",
     "tendering.description": "Сипаттама",
     "tendering.description_placeholder": "Пакет ауқымының қысқаша сипаттамасы...",
     "tendering.empty_title": "Жобаны таңдаңыз",

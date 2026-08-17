@@ -13180,6 +13180,8 @@ const resource = {
     "tendering.contact_email": "Холбоо барих имэйл",
     "tendering.create_package": "Багц үүсгэх",
     "tendering.deadline": "Эцсийн хугацаа",
+    "tendering.scope_derived_hint": "Энэ багц нь хэсгүүдийг биш, хамрах мөрүүдийг бүртгэдэг тул хэсгүүдийг тэдгээр мөрөөс тодорхойлсон.",
+    "tendering.scope_partial": "Тооцооны нэг хэсгийг хамарна: {{sections}} ({{total}}-аас {{included}} мөр)",
     "tendering.description": "Тайлбар",
     "tendering.description_placeholder": "Brief тайлбар -н package хүрээ...",
     "tendering.empty_title": "Төсөл сонгоно уу",

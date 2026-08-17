@@ -12941,6 +12941,8 @@ const resource = {
     "tendering.contact_email": "যোগাযোগের ইমেইল",
     "tendering.create_package": "প্যাকেজ তৈরি করুন",
     "tendering.deadline": "সময়সীমা",
+    "tendering.scope_derived_hint": "এই প্যাকেজটি বিভাগের বদলে যে লাইনগুলি কভার করে তা রেকর্ড করে, তাই বিভাগগুলি সেই লাইন থেকে নেওয়া হয়েছে।",
+    "tendering.scope_partial": "বিলের অংশ কভার করে: {{sections}} ({{total}}টির মধ্যে {{included}}টি পজিশন)",
     "tendering.description": "বিবরণ",
     "tendering.description_placeholder": "প্যাকেজ স্কোপের সংক্ষিপ্ত বিবরণ...",
     "tendering.empty_title": "একটি প্রকল্প বেছে নিন",

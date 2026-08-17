@@ -10475,6 +10475,8 @@ const resource = {
     "tendering.contact_email": "Kontaktna e-pošta",
     "tendering.create_package": "Kreiraj paket",
     "tendering.deadline": "Rok",
+    "tendering.scope_derived_hint": "Ovaj paket bilježi stavke koje pokriva, a ne dijelove, pa su dijelovi izvedeni iz tih stavki.",
+    "tendering.scope_partial": "Pokriva dio troškovnika: {{sections}} ({{included}} od {{total}} stavki)",
     "tendering.description": "Opis",
     "tendering.description_placeholder": "Kratki opis opsega paketa...",
     "tendering.empty_title": "Odaberite projekt",

@@ -10580,6 +10580,8 @@ const resource = {
     "tendering.contact_email": "Email liên hệ",
     "tendering.create_package": "Tạo gói thầu",
     "tendering.deadline": "Hạn nộp thầu",
+    "tendering.scope_derived_hint": "Gói này ghi lại các dòng nó bao gồm thay vì các phần, nên các phần được suy ra từ những dòng đó.",
+    "tendering.scope_partial": "Bao gồm một phần bảng khối lượng: {{sections}} ({{included}} trên {{total}} hạng mục)",
     "tendering.description": "Mô tả",
     "tendering.description_placeholder": "Mô tả ngắn về phạm vi gói thầu...",
     "tendering.empty_title": "Chọn một dự án",

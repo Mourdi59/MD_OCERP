@@ -10041,6 +10041,8 @@ const resource = {
     "tendering.contact_email": "Yhteyssähköposti",
     "tendering.create_package": "Luo tarjouspaketti",
     "tendering.deadline": "Määräaika",
+    "tendering.scope_derived_hint": "Tämä paketti tallentaa kattamansa rivit eikä osioita, joten osiot on johdettu näistä riveistä.",
+    "tendering.scope_partial": "Kattaa osan määräluettelosta: {{sections}} ({{included}} / {{total}} nimikettä)",
     "tendering.description": "Kuvaus",
     "tendering.description_placeholder": "Lyhyt kuvaus paketin laajuudesta...",
     "tendering.empty_title": "Valitse projekti",

@@ -10580,6 +10580,8 @@ const resource = {
     "tendering.contact_email": "Email Kontak",
     "tendering.create_package": "Buat Paket",
     "tendering.deadline": "Batas Waktu",
+    "tendering.scope_derived_hint": "Paket ini mencatat baris yang dicakupnya, bukan bagiannya, jadi bagian diturunkan dari baris tersebut.",
+    "tendering.scope_partial": "Mencakup sebagian bill: {{sections}} ({{included}} dari {{total}} posisi)",
     "tendering.description": "Deskripsi",
     "tendering.description_placeholder": "Deskripsi singkat lingkup paket...",
     "tendering.empty_title": "Pilih proyek",

@@ -10078,6 +10078,8 @@ const resource = {
     "tendering.contact_email": "İletişim E-postası",
     "tendering.create_package": "Paket Oluştur",
     "tendering.deadline": "Son Tarih",
+    "tendering.scope_derived_hint": "Bu paket bölümleri değil kapsadığı satırları kaydeder, bu yüzden bölümler o satırlardan çıkarılmıştır.",
+    "tendering.scope_partial": "Metrajın bir bölümünü kapsar: {{sections}} ({{total}} kalemden {{included}} tanesi)",
     "tendering.description": "Açıklama",
     "tendering.description_placeholder": "Paket kapsamının kısa açıklaması...",
     "tendering.empty_title": "Bir proje seçin",

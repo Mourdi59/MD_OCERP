@@ -12112,6 +12112,8 @@ const resource = {
     "tendering.contact_email": "Kontakt-e-mail",
     "tendering.create_package": "Opret pakke",
     "tendering.deadline": "Frist",
+    "tendering.scope_derived_hint": "Denne pakke registrerer de linjer, den dækker, ikke afsnittene, så afsnittene er udledt af linjerne.",
+    "tendering.scope_partial": "Dækker en del af tilbudslisten: {{sections}} ({{included}} af {{total}} poster)",
     "tendering.description": "Beskrivelse",
     "tendering.description_placeholder": "Kort beskrivelse af pakkens omfang...",
     "tendering.empty_title": "Vælg et projekt",

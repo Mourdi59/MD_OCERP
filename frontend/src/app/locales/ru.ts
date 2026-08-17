@@ -10243,6 +10243,8 @@ const resource = {
     "tendering.contact_email": "Контактный email",
     "tendering.create_package": "Создать пакет",
     "tendering.deadline": "Срок",
+    "tendering.scope_derived_hint": "Этот пакет хранит охваченные строки, а не разделы, поэтому разделы выведены из этих строк.",
+    "tendering.scope_partial": "Охватывает часть сметы: {{sections}} ({{included}} из {{total}} позиций)",
     "tendering.description": "Описание",
     "tendering.description_placeholder": "Краткое описание состава работ пакета...",
     "tendering.empty_title": "Выберите проект",

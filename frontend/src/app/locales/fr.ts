@@ -9050,6 +9050,8 @@ const resource = {
     "tendering.contact_email": "E-mail de contact",
     "tendering.create_package": "Créer un lot",
     "tendering.deadline": "Date limite",
+    "tendering.scope_derived_hint": "Ce lot enregistre les lignes qu'il couvre plutôt que les chapitres, les chapitres sont donc déduits de ces lignes.",
+    "tendering.scope_partial": "Couvre une partie du bordereau : {{sections}} ({{included}} sur {{total}} postes)",
     "tendering.description": "Description",
     "tendering.description_placeholder": "Brève description du périmètre du lot...",
     "tendering.empty_title": "Sélectionnez un projet",

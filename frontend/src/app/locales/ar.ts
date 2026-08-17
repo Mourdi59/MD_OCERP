@@ -13601,6 +13601,8 @@ const resource = {
     "tendering.contact_email": "البريد الإلكتروني للتواصل",
     "tendering.create_package": "إنشاء حزمة",
     "tendering.deadline": "الموعد النهائي",
+    "tendering.scope_derived_hint": "يسجل هذا الملف البنود التي يغطيها بدلاً من الأقسام، لذا تُستنتج الأقسام من تلك البنود.",
+    "tendering.scope_partial": "يغطي جزءًا من جدول الكميات: {{sections}} ({{included}} من {{total}} بندًا)",
     "tendering.description": "الوصف",
     "tendering.description_placeholder": "وصف موجز لنطاق الحزمة...",
     "tendering.empty_title": "اختر مشروعًا",

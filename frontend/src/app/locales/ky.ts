@@ -7974,6 +7974,8 @@ const resource = {
     "tendering.contact_email": "Байланыш email'и",
     "tendering.create_package": "Пакет түзүү",
     "tendering.deadline": "Мөөнөтү",
+    "tendering.scope_derived_hint": "Бул пакет бөлүмдөрдү эмес, камтылган саптарды жазат, ошондуктан бөлүмдөр ошол саптардан алынган.",
+    "tendering.scope_partial": "Тизменин бир бөлүгүн камтыйт: {{sections}} ({{total}} позициянын {{included}})",
     "tendering.description": "Сүрөттөмө",
     "tendering.description_placeholder": "Пакет чөйрөсүнүн кыскача сүрөттөмөсү...",
     "tendering.empty_title": "Долбоорду тандаңыз",

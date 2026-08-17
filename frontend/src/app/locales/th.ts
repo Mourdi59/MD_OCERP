@@ -10607,6 +10607,8 @@ const resource = {
     "tendering.contact_email": "อีเมลติดต่อ",
     "tendering.create_package": "สร้างชุดงาน",
     "tendering.deadline": "กำหนดเวลา",
+    "tendering.scope_derived_hint": "แพ็กเกจนี้บันทึกรายการที่ครอบคลุมแทนที่จะเป็นหมวด จึงอนุมานหมวดจากรายการเหล่านั้น",
+    "tendering.scope_partial": "ครอบคลุมบางส่วนของบัญชีปริมาณงาน: {{sections}} ({{included}} จาก {{total}} รายการ)",
     "tendering.description": "รายละเอียด",
     "tendering.description_placeholder": "คำอธิบายโดยย่อของขอบเขตชุดงาน...",
     "tendering.empty_title": "เลือกโครงการ",

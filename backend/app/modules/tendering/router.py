@@ -46,6 +46,7 @@ from app.modules.tendering.schemas import (
     LevelingMatrixResponse,
     PackageCreate,
     PackageResponse,
+    PackageScopeResponse,
     PackageUpdate,
     PackageWithBidsResponse,
     RecipientCreate,
@@ -343,6 +344,24 @@ async def get_package(
     """Get a tender package with all bids."""
     package = await _verify_package_owner(service, session, package_id, user_id, payload)
     return _package_with_bids(package)
+
+
+@router.get("/packages/{package_id}/scope", response_model=PackageScopeResponse)
+async def get_package_scope(
+    package_id: uuid.UUID,
+    user_id: CurrentUserId,
+    payload: CurrentUserPayload,
+    session: SessionDep,
+    service: TenderingService = Depends(_get_service),
+    _perm: None = Depends(RequirePermission("tendering.read")),
+) -> PackageScopeResponse:
+    """Report which sections of the bill this package was raised over.
+
+    The comparison and levelling screens already narrow to that scope, so this
+    is the fact they compute made readable rather than a new one.
+    """
+    await _verify_package_owner(service, session, package_id, user_id, payload)
+    return await service.package_scope(package_id)
 
 
 @router.patch("/packages/{package_id}", response_model=PackageResponse)

@@ -10104,6 +10104,8 @@ const resource = {
     "tendering.contact_email": "E-mail kontaktowy",
     "tendering.create_package": "Utwórz pakiet",
     "tendering.deadline": "Termin",
+    "tendering.scope_derived_hint": "Ten pakiet zapisuje pozycje, które obejmuje, a nie działy, więc działy wynikają z tych pozycji.",
+    "tendering.scope_partial": "Obejmuje część przedmiaru: {{sections}} ({{included}} z {{total}} pozycji)",
     "tendering.description": "Opis",
     "tendering.description_placeholder": "Krótki opis zakresu pakietu...",
     "tendering.empty_title": "Wybierz projekt",

@@ -12942,6 +12942,8 @@ const resource = {
     "tendering.contact_email": "Email Επικοινωνίας",
     "tendering.create_package": "Δημιουργία Πακέτου",
     "tendering.deadline": "Προθεσμία",
+    "tendering.scope_derived_hint": "Αυτό το πακέτο καταγράφει τις γραμμές που καλύπτει και όχι τα τμήματα, επομένως τα τμήματα προκύπτουν από τις γραμμές.",
+    "tendering.scope_partial": "Καλύπτει μέρος του προϋπολογισμού: {{sections}} ({{included}} από {{total}} θέσεις)",
     "tendering.description": "Περιγραφή",
     "tendering.description_placeholder": "Σύντομη περιγραφή του αντικειμένου του πακέτου...",
     "tendering.empty_title": "Επιλέξτε ένα έργο",

@@ -10092,6 +10092,8 @@ const resource = {
     "tendering.contact_email": "संपर्क ईमेल",
     "tendering.create_package": "पैकेज बनाएँ",
     "tendering.deadline": "समय सीमा",
+    "tendering.scope_derived_hint": "यह पैकेज अनुभागों के बजाय उन पंक्तियों को दर्ज करता है जिन्हें वह कवर करता है, इसलिए अनुभाग उन्हीं पंक्तियों से लिए गए हैं।",
+    "tendering.scope_partial": "बिल के एक हिस्से को कवर करता है: {{sections}} ({{total}} में से {{included}} मदें)",
     "tendering.description": "विवरण",
     "tendering.description_placeholder": "पैकेज दायरे का संक्षिप्त विवरण...",
     "tendering.empty_title": "परियोजना चुनें",

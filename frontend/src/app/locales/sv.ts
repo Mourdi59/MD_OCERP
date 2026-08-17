@@ -12114,6 +12114,8 @@ const resource = {
     "tendering.contact_email": "Kontakt-e-post",
     "tendering.create_package": "Skapa paket",
     "tendering.deadline": "Sista dag",
+    "tendering.scope_derived_hint": "Det här paketet registrerar de rader det täcker i stället för avsnitten, så avsnitten härleds ur raderna.",
+    "tendering.scope_partial": "Täcker en del av mängdförteckningen: {{sections}} ({{included}} av {{total}} poster)",
     "tendering.description": "Beskrivning",
     "tendering.description_placeholder": "Kort beskrivning av paketets omfattning...",
     "tendering.empty_title": "Välj ett projekt",

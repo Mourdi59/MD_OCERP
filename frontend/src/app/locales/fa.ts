@@ -12942,6 +12942,8 @@ const resource = {
     "tendering.contact_email": "ایمیل تماس",
     "tendering.create_package": "ایجاد بسته",
     "tendering.deadline": "مهلت",
+    "tendering.scope_derived_hint": "این بسته به جای بخش‌ها، ردیف‌های تحت پوشش را ثبت می‌کند، بنابراین بخش‌ها از همان ردیف‌ها استنتاج شده‌اند.",
+    "tendering.scope_partial": "بخشی از فهرست مقادیر را پوشش می‌دهد: {{sections}} ({{included}} از {{total}} ردیف)",
     "tendering.description": "شرح",
     "tendering.description_placeholder": "شرح مختصر دامنه بسته...",
     "tendering.empty_title": "یک پروژه انتخاب کنید",

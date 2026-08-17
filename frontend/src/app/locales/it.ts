@@ -9121,6 +9121,8 @@ const resource = {
     "tendering.contact_email": "Email di contatto",
     "tendering.create_package": "Crea pacchetto",
     "tendering.deadline": "Scadenza",
+    "tendering.scope_derived_hint": "Questo pacchetto registra le righe che copre anziché i capitoli, quindi i capitoli sono dedotti da quelle righe.",
+    "tendering.scope_partial": "Copre una parte del computo: {{sections}} ({{included}} di {{total}} voci)",
     "tendering.description": "Descrizione",
     "tendering.description_placeholder": "Breve descrizione dell'ambito del pacchetto...",
     "tendering.empty_title": "Seleziona un progetto",

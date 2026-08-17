@@ -12942,6 +12942,8 @@ const resource = {
     "tendering.contact_email": "رابطہ ای میل",
     "tendering.create_package": "پیکج بنائیں",
     "tendering.deadline": "آخری تاریخ",
+    "tendering.scope_derived_hint": "یہ پیکیج سیکشنز کے بجائے اُن سطروں کو محفوظ کرتا ہے جن کا وہ احاطہ کرتا ہے، اس لیے سیکشنز انہی سطروں سے اخذ کیے گئے ہیں۔",
+    "tendering.scope_partial": "بل کے ایک حصے کا احاطہ کرتا ہے: {{sections}} ({{total}} میں سے {{included}} مدات)",
     "tendering.description": "تفصیل",
     "tendering.description_placeholder": "پیکج دائرہ کار کی مختصر تفصیل...",
     "tendering.empty_title": "ایک پروجیکٹ منتخب کریں",

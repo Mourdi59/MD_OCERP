@@ -310,6 +310,41 @@ class CreatePackageFromBOQData(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class PackageScopeSection(BaseModel):
+    """One bill section a package was raised over."""
+
+    id: UUID
+    ordinal: str = ""
+    description: str = ""
+    position_count: int = 0
+
+
+class PackageScopeResponse(BaseModel):
+    """What part of the bill a package actually covers.
+
+    ``create_from_boq`` has always recorded the chosen sections in the package
+    metadata as ``source_section_ids``, and nothing has ever read them back, so
+    a package over a quarter of a bill looked exactly like a package over all
+    of it. Comparison and levelling already narrow to the scope; this is the
+    same fact told to the reader rather than only used in the arithmetic.
+
+    ``sections_recorded`` is false when the package predates that metadata or
+    came from the demo installer, which records the scope as a flat position
+    list. The sections are then derived by walking each in-scope position up to
+    its top-level ancestor, which gives the same answer whenever the scope was
+    built from whole sections and an honest approximation when it was not.
+    """
+
+    package_id: UUID
+    boq_id: UUID | None = None
+    boq_name: str = ""
+    covers_whole_bill: bool = True
+    sections_recorded: bool = False
+    included_position_count: int = 0
+    boq_position_count: int = 0
+    sections: list[PackageScopeSection] = Field(default_factory=list)
+
+
 # ── Distribution (issue the package to subcontractors) ───────────────────────
 # Recipients live in the package ``metadata_`` JSON store under the
 # ``recipients`` key - the same extensible-per-package pattern used for addenda

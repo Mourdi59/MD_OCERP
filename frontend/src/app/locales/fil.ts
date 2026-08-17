@@ -12941,6 +12941,8 @@ const resource = {
     "tendering.contact_email": "Email ng Kontak",
     "tendering.create_package": "Gumawa ng Package",
     "tendering.deadline": "Takdang Petsa",
+    "tendering.scope_derived_hint": "Ang pakete na ito ay nagtatala ng mga linyang saklaw nito sa halip na mga seksyon, kaya hinango ang mga seksyon mula sa mga linyang iyon.",
+    "tendering.scope_partial": "Sakop ang bahagi ng bill: {{sections}} ({{included}} sa {{total}} na posisyon)",
     "tendering.description": "Paglalarawan",
     "tendering.description_placeholder": "Maikling paglalarawan ng saklaw ng package...",
     "tendering.empty_title": "Pumili ng proyekto",

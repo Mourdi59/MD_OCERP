@@ -140,6 +140,36 @@ export function getLevelingMatrix(packageId: string): Promise<LevelingMatrix> {
   );
 }
 
+/* ── Package scope ────────────────────────────────────────────────────── */
+
+export interface PackageScopeSection {
+  id: string;
+  ordinal: string;
+  description: string;
+  position_count: number;
+}
+
+/**
+ * Which part of the bill a package was raised over. Levelling already narrows
+ * to this scope, so the number a bidder is measured against depends on it;
+ * `sections_recorded` is false when the sections had to be derived from a flat
+ * position list rather than read from the package's own metadata.
+ */
+export interface PackageScope {
+  package_id: string;
+  boq_id: string | null;
+  boq_name: string;
+  covers_whole_bill: boolean;
+  sections_recorded: boolean;
+  included_position_count: number;
+  boq_position_count: number;
+  sections: PackageScopeSection[];
+}
+
+export function getPackageScope(packageId: string): Promise<PackageScope> {
+  return apiGet<PackageScope>(`/v1/tendering/packages/${packageId}/scope`);
+}
+
 /* ── Distribution ─────────────────────────────────────────────────────── */
 
 export interface Recipient {

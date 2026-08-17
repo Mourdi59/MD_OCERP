@@ -54,6 +54,7 @@ import {
   addRecipient,
   removeRecipient,
   distributePackage,
+  getPackageScope,
   type Recipient,
   type DistributeResponse,
 } from './api';
@@ -1324,6 +1325,14 @@ function PackageDetail({
     queryFn: () => apiGet<PackageWithBids>(`/v1/tendering/packages/${packageId}`),
   });
 
+  // Which part of the bill this package was raised over. Levelling already
+  // narrows to it, so a reader comparing bids is comparing them over this
+  // scope whether or not anyone told them what it is.
+  const { data: scope } = useQuery({
+    queryKey: ['tendering-package-scope', packageId],
+    queryFn: () => getPackageScope(packageId),
+  });
+
   // Fetch comparison
   const {
     data: comparison,
@@ -1558,6 +1567,32 @@ function PackageDetail({
               )}
               <span>{t('tendering.bid_count', { defaultValue: '{{count}} bids', count: pkg.bids.length })}</span>
             </div>
+            {/* A package over one trade is compared against that trade, not
+                against the whole bill. That was already true of the numbers
+                and invisible on the screen. */}
+            {scope && !scope.covers_whole_bill && scope.sections.length > 0 && (
+              <p
+                className="mt-2 text-xs text-content-tertiary"
+                title={
+                  scope.sections_recorded
+                    ? undefined
+                    : t('tendering.scope_derived_hint', {
+                        defaultValue:
+                          'This package records the lines it covers rather than the sections, so the sections are read from those lines.',
+                      })
+                }
+              >
+                {t('tendering.scope_partial', {
+                  defaultValue:
+                    'Covers part of the bill: {{sections}} ({{included}} of {{total}} positions)',
+                  sections: scope.sections
+                    .map((s) => [s.ordinal, s.description].filter(Boolean).join(' '))
+                    .join(', '),
+                  included: scope.included_position_count,
+                  total: scope.boq_position_count,
+                })}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button

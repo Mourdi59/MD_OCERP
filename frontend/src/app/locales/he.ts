@@ -12947,6 +12947,8 @@ const resource = {
     "tendering.contact_email": "אימייל ליצירת קשר",
     "tendering.create_package": "יצירת חבילה",
     "tendering.deadline": "מועד אחרון",
+    "tendering.scope_derived_hint": "החבילה הזו רושמת את השורות שהיא מכסה ולא את הפרקים, ולכן הפרקים נגזרים מאותן שורות.",
+    "tendering.scope_partial": "מכסה חלק מכתב הכמויות: {{sections}} ({{included}} מתוך {{total}} סעיפים)",
     "tendering.description": "תיאור",
     "tendering.description_placeholder": "תיאור קצר של היקף החבילה...",
     "tendering.empty_title": "בחרו פרויקט",

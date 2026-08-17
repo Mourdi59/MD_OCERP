@@ -10094,6 +10094,8 @@ const resource = {
     "tendering.contact_email": "联系邮箱",
     "tendering.create_package": "创建招标包",
     "tendering.deadline": "截止日期",
+    "tendering.scope_derived_hint": "该标包记录的是其涵盖的条目而非章节，因此章节是从这些条目推断出来的。",
+    "tendering.scope_partial": "仅涵盖清单的一部分：{{sections}}（{{total}} 项中的 {{included}} 项）",
     "tendering.description": "描述",
     "tendering.description_placeholder": "招标包范围的简要描述...",
     "tendering.empty_title": "请选择项目",

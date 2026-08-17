@@ -10108,6 +10108,8 @@ const resource = {
     "tendering.contact_email": "Kontakt-E-Mail",
     "tendering.create_package": "Paket erstellen",
     "tendering.deadline": "Frist",
+    "tendering.scope_derived_hint": "Dieses Paket hält die abgedeckten Zeilen fest, nicht die Titel, daher sind die Titel aus diesen Zeilen abgeleitet.",
+    "tendering.scope_partial": "Deckt einen Teil des LV ab: {{sections}} ({{included}} von {{total}} Positionen)",
     "tendering.description": "Beschreibung",
     "tendering.description_placeholder": "Kurze Beschreibung des Leistungsumfangs...",
     "tendering.empty_title": "Projekt auswählen",

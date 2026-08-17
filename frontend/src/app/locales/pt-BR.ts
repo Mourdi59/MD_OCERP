@@ -9131,6 +9131,8 @@ const resource = {
     "tendering.contact_email": "E-mail de Contato",
     "tendering.create_package": "Criar Pacote",
     "tendering.deadline": "Prazo",
+    "tendering.scope_derived_hint": "Este pacote registra as linhas que cobre em vez dos capítulos, então os capítulos são deduzidos dessas linhas.",
+    "tendering.scope_partial": "Cobre parte da planilha: {{sections}} ({{included}} de {{total}} itens)",
     "tendering.description": "Descrição",
     "tendering.description_placeholder": "Breve descrição do escopo do pacote...",
     "tendering.empty_title": "Selecione um projeto",

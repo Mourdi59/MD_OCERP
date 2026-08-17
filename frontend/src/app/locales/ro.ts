@@ -10511,6 +10511,8 @@ const resource = {
     "tendering.contact_email": "E-mail de contact",
     "tendering.create_package": "Creați pachet",
     "tendering.deadline": "Termen-limită",
+    "tendering.scope_derived_hint": "Acest pachet înregistrează liniile pe care le acoperă, nu secțiunile, deci secțiunile sunt deduse din acele linii.",
+    "tendering.scope_partial": "Acoperă o parte din listă: {{sections}} ({{included}} din {{total}} poziții)",
     "tendering.description": "Descriere",
     "tendering.description_placeholder": "Scurtă descriere a domeniului de aplicare al pachetului...",
     "tendering.empty_title": "Selectați un proiect",

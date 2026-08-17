@@ -10071,6 +10071,8 @@ const resource = {
     "tendering.contact_email": "Имейл за контакт",
     "tendering.create_package": "Създай пакет",
     "tendering.deadline": "Краен срок",
+    "tendering.scope_derived_hint": "Този пакет записва позициите, които покрива, а не разделите, затова разделите се извеждат от тези позиции.",
+    "tendering.scope_partial": "Покрива част от сметката: {{sections}} ({{included}} от {{total}} позиции)",
     "tendering.description": "Описание",
     "tendering.description_placeholder": "Кратко описание на обхвата на пакета...",
     "tendering.empty_title": "Изберете проект",

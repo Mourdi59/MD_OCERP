@@ -9084,6 +9084,8 @@ const resource = {
     "tendering.contact_email": "Contact e-mail",
     "tendering.create_package": "Pakket aanmaken",
     "tendering.deadline": "Deadline",
+    "tendering.scope_derived_hint": "Dit pakket legt de regels vast die het dekt in plaats van de hoofdstukken, dus de hoofdstukken zijn uit die regels afgeleid.",
+    "tendering.scope_partial": "Dekt een deel van het bestek: {{sections}} ({{included}} van {{total}} posten)",
     "tendering.description": "Omschrijving",
     "tendering.description_placeholder": "Korte omschrijving van de pakketscope...",
     "tendering.empty_title": "Selecteer een project",

@@ -10100,6 +10100,8 @@ const resource = {
     "tendering.contact_email": "Kontaktní e-mail",
     "tendering.create_package": "Vytvořit balíček",
     "tendering.deadline": "Termín",
+    "tendering.scope_derived_hint": "Tento balíček zaznamenává položky, které pokrývá, nikoli oddíly, takže oddíly jsou odvozeny z těchto položek.",
+    "tendering.scope_partial": "Pokrývá část výkazu výměr: {{sections}} ({{included}} z {{total}} položek)",
     "tendering.description": "Popis",
     "tendering.description_placeholder": "Stručný popis rozsahu balíčku...",
     "tendering.empty_title": "Vyberte projekt",
