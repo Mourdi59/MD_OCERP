@@ -26,6 +26,7 @@ import { Card, CardHeader, CardContent, Button } from '@/shared/ui';
 import { apiPost } from '@/shared/lib/api';
 import { fetchSearchStatus, type SearchStatusCollection } from '@/features/search/api';
 import { useToastStore } from '@/stores/useToastStore';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /** Map of collection name → backend reindex endpoint path.
  *
@@ -73,18 +74,56 @@ export default function VectorStatusCard() {
       return apiPost<ReindexResult>(url, {});
     },
     onSuccess: (result, collection) => {
-      addToast({
-        type: 'success',
-        title: t('vector_status.reindex_done', {
-          defaultValue: 'Reindex complete',
-        }),
-        message: t('vector_status.reindex_summary', {
-          defaultValue: '{{collection}}: {{indexed}} indexed, {{skipped}} skipped',
-          collection,
-          indexed: result.indexed,
-          skipped: result.skipped,
-        }),
-      });
+      // A 200 means the request completed, not that anything was indexed.
+      // index_many() drops a row whose text will not encode and only logs it
+      // at debug, so an unreachable or missing encoder returns every row as
+      // "skipped" with a perfectly healthy status code. Reporting that in
+      // green under "Reindex complete" tells the operator the collection is
+      // searchable when nothing was written to it at all, which is the same
+      // dishonesty the 503 contract removed from semantic search itself.
+      //
+      // Partial skipping stays a success on purpose: rows with no indexable
+      // text are ordinary and always skipped, so warning on them would cry
+      // wolf on every healthy run. Indexing nothing is the case that is
+      // never ordinary.
+      if (result.indexed === 0 && result.skipped > 0) {
+        addToast({
+          type: 'warning',
+          title: t('vector_status.reindex_nothing', {
+            defaultValue: 'Nothing was indexed',
+          }),
+          message: t('vector_status.reindex_nothing_msg', {
+            defaultValue:
+              '{{collection}}: all {{skipped}} records were skipped, so this collection is not searchable yet. This usually means the embedding model is unavailable.',
+            collection,
+            skipped: result.skipped,
+          }),
+        });
+      } else if (result.indexed === 0) {
+        addToast({
+          type: 'info',
+          title: t('vector_status.reindex_empty', {
+            defaultValue: 'Nothing to index',
+          }),
+          message: t('vector_status.reindex_empty_msg', {
+            defaultValue: '{{collection}} has no records to index yet.',
+            collection,
+          }),
+        });
+      } else {
+        addToast({
+          type: 'success',
+          title: t('vector_status.reindex_done', {
+            defaultValue: 'Reindex complete',
+          }),
+          message: t('vector_status.reindex_summary', {
+            defaultValue: '{{collection}}: {{indexed}} indexed, {{skipped}} skipped',
+            collection,
+            indexed: result.indexed,
+            skipped: result.skipped,
+          }),
+        });
+      }
       qc.invalidateQueries({ queryKey: ['vector-search-status'] });
     },
     onError: (err: Error, collection) => {
@@ -147,7 +186,7 @@ export default function VectorStatusCard() {
               <div className="inline-flex items-center gap-1.5">
                 <span className="text-content-tertiary">total indexed:</span>
                 <span className="font-mono font-semibold tabular-nums">
-                  {totalIndexed.toLocaleString()}
+                  {totalIndexed.toLocaleString(getIntlLocale())}
                 </span>
               </div>
               {statusQuery.data.connected ? (
@@ -196,7 +235,7 @@ export default function VectorStatusCard() {
                           {col.collection}
                           {' • '}
                           <span className="tabular-nums">
-                            {col.vectors_count.toLocaleString()}
+                            {col.vectors_count.toLocaleString(getIntlLocale())}
                           </span>{' '}
                           vectors
                         </div>
