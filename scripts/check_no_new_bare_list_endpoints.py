@@ -50,6 +50,13 @@ MIN_FILES_SCANNED = 500
 # Every bare-list GET route in backend/app/modules when this guard was written,
 # as "<path under modules>::<function>". Regenerate with --dump after a
 # migration wave, and let the diff show the routes that left.
+#
+# Regenerate from a clean checkout, not from the working tree. This repository
+# is worked by several sessions at once, so the tree on disk holds routes that
+# are not committed yet. The first draft of this list was taken from the tree
+# and picked up one such route; CI reads the commit, found no such route, and
+# the guard would have arrived red through no fault of the tree. A census of
+# what is committed is the only census the gate can hold itself to.
 ALLOWED: frozenset[str] = frozenset(
     {
         "accommodation/router.py::list_accommodations",
@@ -242,7 +249,6 @@ ALLOWED: frozenset[str] = frozenset(
         "field_diary/router.py::list_schedule_activities",
         "field_diary/router.py::sync_ops",
         "field_time/router.py::list_timesheets",
-        "field_time/router.py::list_working_time_regimes",
         "fieldreports/router.py::get_calendar",
         "fieldreports/router.py::get_linked_documents",
         "fieldreports/router.py::list_equipment_logs",
