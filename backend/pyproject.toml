@@ -149,7 +149,10 @@ vector = [
 # ImportError, the hybrid search failed, the ranker's encoder-free metadata
 # fallback called _get_client() too and raised again, and both failures were
 # logged and swallowed into an empty candidate list. It lives in its own extra
-# so the image and the desktop lock can carry the client without torch.
+# so the docker image can carry the client without torch, which matters on a
+# 2 GB VPS. The desktop lock used to resolve this extra for the same reason and
+# now resolves [semantic-encoder] instead, so torch is no longer what separates
+# the two; the model is.
 #
 # Deliberately NOT here, each measured or traced rather than assumed:
 #
