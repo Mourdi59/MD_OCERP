@@ -1806,37 +1806,43 @@ def register_event_handlers() -> None:
     """Register all cross-module event handlers with the global event bus.
 
     Call this at startup after all modules are loaded.
+
+    Idempotent by way of :meth:`EventBus.subscribe_once`. The lifespan that
+    calls this runs once per process in production but more than once wherever
+    the app is started again in place, and a plain ``subscribe`` would stack a
+    second copy of every handler below: the same notification delivered twice,
+    the same event pushed to every outgoing webhook twice.
     """
     # Original cross-module dataflow handlers (1–15)
-    event_bus.subscribe("meeting.action_item.created", _handle_meeting_action_item_created)
-    event_bus.subscribe("safety.observation.high_risk", _handle_safety_observation_high_risk)
-    event_bus.subscribe("safety.incident.created", _handle_safety_incident_created)
-    event_bus.subscribe("inspection.completed.failed", _handle_inspection_completed_failed)
-    event_bus.subscribe("rfi.response.design_change", _handle_rfi_response_design_change)
-    event_bus.subscribe("ncr.cost_impact", _handle_ncr_cost_impact)
-    event_bus.subscribe("document.revision.created", _handle_document_revision_created)
-    event_bus.subscribe("invoice.paid", _handle_invoice_paid)
-    event_bus.subscribe("po.issued", _handle_po_issued)
-    event_bus.subscribe("estimate.approved", _handle_estimate_approved)
-    event_bus.subscribe("schedule.progress_updated", _handle_schedule_progress)
-    event_bus.subscribe("bim_model.ready", _handle_bim_model_ready)
-    event_bus.subscribe("bim_model.new_version", _handle_bim_model_new_version)
-    event_bus.subscribe("variation.approved", _handle_variation_approved)
-    event_bus.subscribe("transmittal.issued", _handle_transmittal_issued)
-    event_bus.subscribe("cde.container.promoted", _handle_cde_container_promoted)
-    event_bus.subscribe("commissioning.system.commissioned", _handle_system_commissioned)
+    event_bus.subscribe_once("meeting.action_item.created", _handle_meeting_action_item_created)
+    event_bus.subscribe_once("safety.observation.high_risk", _handle_safety_observation_high_risk)
+    event_bus.subscribe_once("safety.incident.created", _handle_safety_incident_created)
+    event_bus.subscribe_once("inspection.completed.failed", _handle_inspection_completed_failed)
+    event_bus.subscribe_once("rfi.response.design_change", _handle_rfi_response_design_change)
+    event_bus.subscribe_once("ncr.cost_impact", _handle_ncr_cost_impact)
+    event_bus.subscribe_once("document.revision.created", _handle_document_revision_created)
+    event_bus.subscribe_once("invoice.paid", _handle_invoice_paid)
+    event_bus.subscribe_once("po.issued", _handle_po_issued)
+    event_bus.subscribe_once("estimate.approved", _handle_estimate_approved)
+    event_bus.subscribe_once("schedule.progress_updated", _handle_schedule_progress)
+    event_bus.subscribe_once("bim_model.ready", _handle_bim_model_ready)
+    event_bus.subscribe_once("bim_model.new_version", _handle_bim_model_new_version)
+    event_bus.subscribe_once("variation.approved", _handle_variation_approved)
+    event_bus.subscribe_once("transmittal.issued", _handle_transmittal_issued)
+    event_bus.subscribe_once("cde.container.promoted", _handle_cde_container_promoted)
+    event_bus.subscribe_once("commissioning.system.commissioned", _handle_system_commissioned)
 
     # Smart notification triggers (16–23)
-    event_bus.subscribe("rfi.assigned", _notify_rfi_assigned)
-    event_bus.subscribe("task.assigned", _notify_task_assigned)
-    event_bus.subscribe("invoice.approved", _notify_invoice_approved)
-    event_bus.subscribe("inspection.scheduled", _notify_inspection_due)
-    event_bus.subscribe("submittal.status_changed", _notify_submittal_status_changed)
-    event_bus.subscribe("meeting.scheduled", _notify_meeting_scheduled)
-    event_bus.subscribe("ncr.created", _notify_ncr_created)
-    event_bus.subscribe("document.uploaded", _notify_document_uploaded)
+    event_bus.subscribe_once("rfi.assigned", _notify_rfi_assigned)
+    event_bus.subscribe_once("task.assigned", _notify_task_assigned)
+    event_bus.subscribe_once("invoice.approved", _notify_invoice_approved)
+    event_bus.subscribe_once("inspection.scheduled", _notify_inspection_due)
+    event_bus.subscribe_once("submittal.status_changed", _notify_submittal_status_changed)
+    event_bus.subscribe_once("meeting.scheduled", _notify_meeting_scheduled)
+    event_bus.subscribe_once("ncr.created", _notify_ncr_created)
+    event_bus.subscribe_once("document.uploaded", _notify_document_uploaded)
 
     # 24. Outgoing webhooks - wildcard handler forwards all events
-    event_bus.subscribe("*", _dispatch_to_webhooks)
+    event_bus.subscribe_once("*", _dispatch_to_webhooks)
 
     logger.info("Registered %d cross-module event handlers", _HANDLER_COUNT)

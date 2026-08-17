@@ -154,6 +154,30 @@ class EventBus:
         else:
             self._handlers[event_name].append(handler)
 
+    def subscribe_once(self, event_name: str, handler: EventHandler) -> bool:
+        """Register *handler* for *event_name* unless it is already registered.
+
+        :meth:`subscribe` appends blindly, which is right for a caller binding a
+        fresh closure and wrong for a registrar that runs from application
+        startup. Starting the app twice inside one process - the test suite, an
+        embedded desktop restart, an ASGI app remounted in place - stacks a
+        second copy of every handler, and from then on each event is handled
+        twice: two notifications, two outgoing webhooks, two rating bumps per
+        NCR. The guard lives here rather than in each of the thirty-odd
+        registrars so there is one implementation to test.
+
+        Handlers are compared with ``==``, so a bound method re-derived from the
+        same instance counts as already registered.
+
+        Returns:
+            True if the handler was added, False if it was already bound.
+        """
+        existing = self._wildcard_handlers if event_name == "*" else self._handlers.get(event_name, [])
+        if handler in existing:
+            return False
+        self.subscribe(event_name, handler)
+        return True
+
     def unsubscribe(self, event_name: str, handler: EventHandler) -> None:
         """Remove a handler."""
         if event_name == "*":

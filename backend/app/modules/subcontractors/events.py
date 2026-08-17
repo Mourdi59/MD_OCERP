@@ -154,16 +154,13 @@ async def compute_all_monthly_ratings(period: str | None = None) -> int:
 def register_subcontractor_rating_subscribers() -> None:
     """Wire NCR/HSE/Schedule events into the rating engine.
 
-    Idempotent - re-registering does not stack duplicate handlers. The
-    :class:`EventBus` itself appends blindly (``subscribe`` has no dedup), so
-    a second call (module reload, or the eager import below combined with a
-    loader-driven call) would otherwise double-bind every handler and make
-    each event fire the rating bump twice. We guard by handler identity here.
+    Idempotent - re-registering does not stack duplicate handlers. Plain
+    ``subscribe`` appends blindly, so a second call (module reload, or the eager
+    import below combined with a loader-driven call) would double-bind every
+    handler and make each event fire the rating bump twice.
     """
     for event_name, handler in _SUBSCRIPTIONS:
-        existing = event_bus._handlers.get(event_name, [])  # noqa: SLF001 - identity check
-        if handler not in existing:
-            event_bus.subscribe(event_name, handler)  # type: ignore[arg-type]
+        event_bus.subscribe_once(event_name, handler)  # type: ignore[arg-type]
     logger.info(
         "Subcontractors: subscribed to %d rating-driving event(s)",
         len(_SUBSCRIPTIONS),
