@@ -128,6 +128,7 @@ class TestTheOcrExtraAnswersInBothDirections:
         engine_imports: bool = True,
         engine_distribution: str | None = None,
         unreadable_distribution: bool = False,
+        sibling_distributions: tuple[str, ...] = (),
     ) -> list:
         """Run the extras report with the OCR wheels' state forced.
 
@@ -194,6 +195,7 @@ class TestTheOcrExtraAnswersInBothDirections:
             entries.append(_Dist("openconstructionerp"))
             if engine_distribution:
                 entries.append(_Dist(engine_distribution))
+            entries.extend(_Dist(name) for name in sibling_distributions)
             return iter(entries)
 
         monkeypatch.setattr(importlib_util, "find_spec", fake_find_spec)
@@ -282,6 +284,35 @@ class TestTheOcrExtraAnswersInBothDirections:
         found = self._cv_check(monkeypatch, engine=False, engine_imports=False, engine_distribution="paddlepaddle")
         assert found[0].status == "ok"
         assert "will not import" not in found[0].message
+
+    def test_the_engine_is_not_found_in_its_own_frontends_distribution_name(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The prefix has to stay long enough to exclude the frontend.
+
+        Measured in a real environment rather than reasoned about: installing
+        paddleocr next to the engine leaves three distributions whose names
+        begin with "paddle" - paddleocr, paddlepaddle and paddlex. The lookup
+        matches on "paddlepaddle", which is correct and also picks up the -gpu
+        build. Shortened to "paddle" it would answer present whenever the
+        frontend is present, and this check could never report the one state it
+        exists for: a frontend installed with no engine behind it.
+
+        So this is the environment where the engine really is absent and its
+        neighbours really are not, and the answer must still be an error.
+        """
+        found = self._cv_check(
+            monkeypatch,
+            engine=False,
+            engine_distribution=None,
+            sibling_distributions=("paddleocr", "paddlex"),
+        )
+        assert len(found) == 1
+        assert found[0].status == "error", (
+            "a frontend with no engine was reported as working, so the distribution "
+            f"lookup matched a neighbour rather than the engine: {found[0].message}"
+        )
+        assert "paddlepaddle" in found[0].message
 
     def test_one_damaged_dist_info_does_not_answer_for_every_other_one(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """One bad entry must not decide the question for the whole environment.
