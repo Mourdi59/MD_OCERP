@@ -92,6 +92,27 @@ hidden_imports = [
 # channel on the broken behaviour the extra just fixed.
 hidden_imports += collect_submodules("qdrant_client")
 
+# The local encoder, in the lock since the [semantic-encoder] extra landed. Same
+# lazy shape as the client above and the same consequence if it is missed: every
+# import of it sits inside a function body (core/vector.py get_embedder,
+# costs/matcher.py), so the static graph never sees it.
+#
+# It has to be named here for a second reason that has nothing to do with
+# imports. embedding_installer.start_background_download() asks
+# semantic_library_available() before it fetches anything, and that answers by
+# looking up a sentence_transformers spec. A frozen sidecar that carries the
+# weights-downloader but not the library would find no spec, decline to start
+# the download, and log a single INFO line - the desktop build advertising an
+# encoder it had already decided not to fetch.
+#
+# torch and transformers arrive on their own as module-level imports of
+# sentence_transformers, and their binary payloads are collected by the
+# pyinstaller-hooks-contrib hooks once the packages are in the graph. They are
+# named anyway, because what drags them in is one import statement inside
+# somebody else's package and that is a thin thread to hang a gigabyte on.
+hidden_imports += collect_submodules("sentence_transformers")
+hidden_imports += ["torch", "transformers"]
+
 # Auto-discover modules
 if modules_dir.is_dir():
     for mod_dir in sorted(modules_dir.iterdir()):
@@ -142,19 +163,45 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     # numpy / pandas / openpyxl / pyarrow are base runtime deps (cost-DB
-    # Excel/CSV/Parquet import), so they must NOT be excluded. Only the
-    # genuinely-unused heavy science / GUI stacks are dropped to slim the build.
-    # The Qt bindings are excluded because the sidecar is a headless HTTP
-    # server with no GUI; they are never imported at runtime. The exclusion
+    # Excel/CSV/Parquet import), so they must NOT be excluded. What is left here
+    # is dropped because nothing in the sidecar imports it, and that is the only
+    # thing this list is allowed to mean.
+    #
+    # torch and scipy used to sit here, and the comment above them called the
+    # whole list genuinely unused. That was true when it was written and stopped
+    # being true when the encoder download went default-on for desktop_mode: the
+    # feature ships an embedding model, the model is loaded through
+    # sentence_transformers, and sentence_transformers imports torch at module
+    # level and pulls scipy through scikit-learn. Excluding them did not slim a
+    # build that used them, it removed a feature the same release advertises,
+    # and it removed it only on the desktop channel, where nobody installing a
+    # wheel would ever see it. Both names are now in requirements-desktop.lock
+    # and both are gone from this list.
+    #
+    # It costs what a machine-learning runtime costs. Measured against PyPI for
+    # the pinned versions, the encoder closure adds roughly 190 MB of compressed
+    # wheels on Windows and 174 MB on macOS. Linux is far worse, about 2.7 GB,
+    # because torch's Linux wheels declare the whole nvidia CUDA stack while the
+    # Windows and macOS wheels are CPU-only. That asymmetry is not something
+    # this file can fix; see the note on --torch-backend in the lock's history.
+    # It matters more than a download counter, because the EXE below is a
+    # onefile build that unpacks its entire payload to a temporary directory on
+    # every launch.
+    #
+    # The Qt bindings stay excluded because the sidecar is a headless HTTP
+    # server with no GUI; they are never imported at runtime. That exclusion
     # also avoids PyInstaller's hard abort when a build machine happens to have
     # more than one Qt binding installed (it refuses to bundle both PyQt and
     # PySide), which would otherwise break the build on developer machines that
     # carry a full scientific Python stack.
+    #
+    # Nothing here may also appear in requirements-desktop.lock. A name in both
+    # files is the exact shape of the bug above: a dependency deliberately
+    # installed and then deliberately thrown away. That pairing is checked by
+    # backend/tests/unit/test_desktop_lock_deps.py.
     excludes=[
         "tkinter",
         "matplotlib",
-        "scipy",
-        "torch",
         "tensorflow",
         "PyQt5",
         "PyQt6",

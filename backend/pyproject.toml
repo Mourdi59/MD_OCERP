@@ -153,8 +153,14 @@ vector = [
 #
 # Deliberately NOT here, each measured or traced rather than assumed:
 #
-# * FlagEmbedding / sentence-transformers - gigabytes of torch. The PyInstaller
-#   spec excludes torch outright, so they could never reach the desktop build.
+# * FlagEmbedding - the CWICR bge-m3 stack. It is the encoder for the 30
+#   cwicr_<lang> collections and it needs a ~700 MB model nothing downloads on
+#   a stock install, so shipping the library alone buys nothing. The local
+#   encoder the desktop actually loads is sentence-transformers, and that now
+#   has its own extra, [semantic-encoder], below. sentence-transformers used to
+#   be listed here as unreachable on the grounds that the PyInstaller spec
+#   excluded torch outright; that stopped being a reason and became a bug once
+#   the encoder download went default-on, see [semantic-encoder].
 # * polars - only reads an operator-supplied CWICR rate parquet from
 #   ~/.openestimator/cwicr, and nothing ships or downloads that file (the
 #   snapshot loader restores Qdrant collections, not parquet). Weight no code
@@ -172,6 +178,31 @@ vector = [
 semantic-clients = [
     "qdrant-client>=1.12.0",
 ]
+# The vector-store client plus a local encoder, and nothing else. This is what
+# the desktop build installs, and it exists because the encoder download became
+# default-on for desktop_mode while the library that loads the weights was not
+# shipped anywhere near it.
+#
+# The failure was quiet in both directions. start_background_download() asks
+# semantic_library_available() first, that asks for a sentence_transformers
+# spec, the frozen sidecar had none, so the download it advertises never even
+# started: the desktop install logged one INFO line and behaved exactly like a
+# build with the feature switched off. Adding the weights without the loader
+# would have been the mirror image of the same bug.
+#
+# FlagEmbedding and polars stay out. They serve the CWICR bge-m3 store, whose
+# model is a separate ~700 MB asset no desktop install downloads, so they would
+# be weight with no reachable code path. The encoder this extra exists for is
+# intfloat/multilingual-e5-small, fetched by app/core/embedding_installer.py and
+# loaded through sentence_transformers.SentenceTransformer in core/vector.py.
+#
+# It costs real gigabytes, mostly torch, and the desktop lock is the only place
+# that consumes it. Do not fold it into [semantic-clients]: the docker image and
+# the 2 GB VPS resolve that one, and they must keep resolving it without torch.
+semantic-encoder = [
+    "openconstructionerp[semantic-clients]",
+    "sentence-transformers>=3.3.0",
+]
 # Semantic search: Qdrant vector DB + sentence-transformers embeddings.
 # Used by the cost-database semantic-match endpoints and the RAG layer.
 #
@@ -181,8 +212,7 @@ semantic-clients = [
 # of dead wheels on the user's disk. API keys live in the database and
 # `~/.openestimate/config.json`, not in SDK clients.
 semantic = [
-    "openconstructionerp[semantic-clients]",
-    "sentence-transformers>=3.3.0",
+    "openconstructionerp[semantic-encoder]",
     # BAAI/bge-m3 multilingual encoder — 1024-dim dense + sparse + colbert
     # in one forward pass, MIT license, 100+ languages. Powers the CWICR
     # 30-collection Qdrant store (cwicr_<lang>) where every point holds

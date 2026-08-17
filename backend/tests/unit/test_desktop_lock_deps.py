@@ -9,29 +9,44 @@ below 3.0 - silently breaking those features on the desktop channel only, while
 the wheel kept working. This test fails fast if the lock drifts away from the
 declared base dependencies again.
 
-The lock is now compiled with one extra, ``[semantic-clients]``, so the checks
-run in both directions: the vector-store clients it exists to ship must be
-present, and the heavy embedding stacks must not be. Both failures are silent
-at build time - a lock missing the clients still builds a working-looking
-installer, and a lock that pulled torch still builds, just gigabytes larger.
+The lock is compiled with one extra, ``[semantic-encoder]``, which pulls
+``[semantic-clients]`` behind it. That replaced a narrower ``[semantic-clients]``
+compile once the encoder download became default-on for desktop_mode. Under the
+old lock the desktop build shipped a downloader with nothing that could load
+what it downloaded: ``start_background_download`` asks
+``semantic_library_available()`` first, that looks for a ``sentence_transformers``
+spec, the frozen sidecar had none, and the advertised download quietly never
+began. So the checks run in both directions - the client and the encoder that
+the desktop build exists to carry must be present, and the CWICR bge-m3 stack,
+which needs a separate ~700 MB model no desktop install ever fetches, must not
+be.
+
+The last test in this file compares two files rather than one. A name can be
+pinned in the lock and excluded in ``desktop/pyinstaller.spec`` at the same
+time, and when that happens the build installs a dependency and then throws it
+away. That is not hypothetical: it is precisely what ``torch`` and ``scipy``
+did, and it is invisible at build time because PyInstaller reports no error for
+excluding something it was going to bundle.
 
 It is a pure file-parsing test (no application import), so it runs anywhere the
 test suite is collected.
 """
 
+import ast
 import re
 from pathlib import Path
 
 _BACKEND = Path(__file__).resolve().parents[2]
 _LOCK = _BACKEND / "requirements-desktop.lock"
+_SPEC = _BACKEND.parent / "desktop" / "pyinstaller.spec"
 
-# The command that regenerates the lock. It carries ``--extra
-# semantic-clients``: without it uv resolves the base dependencies only and
-# silently drops the vector-store clients below, which is the exact drift this
-# file exists to catch.
+# The command that regenerates the lock. It carries ``--extra semantic-encoder``:
+# without it uv resolves the base dependencies only and silently drops both the
+# vector-store client and the encoder below, which is the exact drift this file
+# exists to catch.
 _REGEN = (
     "uv pip compile pyproject.toml --universal --python-version 3.12 "
-    "--extra semantic-clients -o requirements-desktop.lock"
+    "--extra semantic-encoder -o requirements-desktop.lock"
 )
 
 # Base deps whose absence silently breaks a desktop-only feature. Each is an
@@ -50,20 +65,33 @@ _REQUIRED_BASE_DEPS = (
 # the CWICR match store, and it is imported inside a function body, so a lock
 # without it produces a sidecar that answers an empty 200 from /match-elements
 # instead of failing loudly. lancedb is deliberately absent: it is 157 MB for a
-# generic semantic store that has no encoder in a stock install anyway, so it
-# stays in [vector]. Absent, not forbidden - it is a client, not an embedder,
-# and an operator who installs [vector] on top is doing nothing wrong.
+# generic semantic store, so it stays in [vector]. Absent, not forbidden - it is
+# a client, not an embedder, and an operator who installs [vector] on top is
+# doing nothing wrong.
 _REQUIRED_CLIENT_DEPS = ("qdrant-client",)
 
-# The other half of the same decision: the clients ship, the encoders do not.
-# FlagEmbedding and sentence-transformers pull torch, which the PyInstaller
-# spec excludes outright and which would add gigabytes to every installer.
-# Anything that drags one of these into the lock has resolved an extra it
-# should not have.
-_FORBIDDEN_HEAVY_DEPS = (
-    "torch",
-    "flagembedding",
+# The local encoder, and the two libraries it cannot load weights without.
+# sentence-transformers is what core/vector.py and costs/matcher.py import;
+# torch is its runtime; scipy arrives through scikit-learn and is listed here
+# because it was one of the two names the PyInstaller spec used to exclude, so
+# a regression that dropped it would look like a resolver hiccup rather than the
+# feature removal it is.
+_REQUIRED_ENCODER_DEPS = (
     "sentence-transformers",
+    "torch",
+    "transformers",
+    "scipy",
+)
+
+# The CWICR bge-m3 half of [semantic], which the desktop build deliberately does
+# not carry. FlagEmbedding encodes the 30 cwicr_<lang> collections and needs a
+# ~700 MB model that no desktop install downloads; polars reads an
+# operator-supplied rate parquet that nothing ships. Both would be weight with
+# no reachable code path. Anything that drags one of these into the lock has
+# resolved [semantic] or [all] where it meant [semantic-encoder].
+_FORBIDDEN_CWICR_DEPS = (
+    "flagembedding",
+    "polars",
 )
 
 
@@ -75,6 +103,25 @@ def _lock_versions() -> dict[str, str]:
         if match:
             versions[match.group(1).lower()] = match.group(2)
     return versions
+
+
+def _spec_excludes() -> list[str]:
+    """The ``excludes=[...]`` argument of the spec's ``Analysis(...)`` call.
+
+    Parsed rather than pattern-matched. A regex over the spec text would also
+    match the word inside the long comment above the list, which is where these
+    names are discussed at length.
+    """
+    tree = ast.parse(_SPEC.read_text(encoding="utf-8"), filename=str(_SPEC))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not (isinstance(node.func, ast.Name) and node.func.id == "Analysis"):
+            continue
+        for keyword in node.keywords:
+            if keyword.arg == "excludes" and isinstance(keyword.value, ast.List):
+                return [elt.value for elt in keyword.value.elts if isinstance(elt, ast.Constant)]
+    return []
 
 
 def test_required_base_deps_present_in_desktop_lock() -> None:
@@ -90,19 +137,30 @@ def test_vector_clients_present_in_desktop_lock() -> None:
     missing = [dep for dep in _REQUIRED_CLIENT_DEPS if dep.lower() not in versions]
     assert not missing, (
         f"requirements-desktop.lock is missing the [semantic-clients] vector-store client: {missing}. "
-        "A lock compiled without --extra semantic-clients looks healthy but ships a sidecar "
+        "A lock compiled without the extra looks healthy but ships a sidecar "
         f"whose /match-elements returns nothing. Regenerate with: {_REGEN}"
     )
 
 
-def test_heavy_embedders_absent_from_desktop_lock() -> None:
+def test_local_encoder_present_in_desktop_lock() -> None:
     versions = _lock_versions()
-    present = [dep for dep in _FORBIDDEN_HEAVY_DEPS if dep.lower() in versions]
+    missing = [dep for dep in _REQUIRED_ENCODER_DEPS if dep.lower() not in versions]
+    assert not missing, (
+        f"requirements-desktop.lock is missing the local encoder stack: {missing}. Without it the "
+        "frozen sidecar downloads embedding weights it has nothing to load, or - worse - "
+        "semantic_library_available() answers False and the default-on download never starts at "
+        f"all, so the desktop build behaves as if the feature were switched off. Regenerate with: {_REGEN}"
+    )
+
+
+def test_cwicr_embedder_absent_from_desktop_lock() -> None:
+    versions = _lock_versions()
+    present = [dep for dep in _FORBIDDEN_CWICR_DEPS if dep.lower() in versions]
     assert not present, (
-        f"requirements-desktop.lock resolved heavy embedding deps: {present}. Only "
-        "the [semantic-clients] extra belongs in the desktop build; [semantic] and "
-        "[all] pull torch, which the PyInstaller spec excludes and which would add "
-        f"gigabytes to every installer. Regenerate with: {_REGEN}"
+        f"requirements-desktop.lock resolved the CWICR bge-m3 stack: {present}. The desktop build "
+        "carries [semantic-encoder], not [semantic]: FlagEmbedding needs a ~700 MB model no desktop "
+        "install downloads and polars reads a parquet nothing ships, so both are weight with no "
+        f"reachable code path. Regenerate with: {_REGEN}"
     )
 
 
@@ -115,4 +173,40 @@ def test_pandas_pinned_below_3_in_desktop_lock() -> None:
         f"requirements-desktop.lock pins pandas {pandas_version}; pyproject.toml "
         "caps it <3 (pandas 3.0 changed string-column type inference). Regenerate "
         "the lock so it respects the cap."
+    )
+
+
+def test_no_locked_dependency_is_excluded_by_the_spec() -> None:
+    """Installing a dependency and then telling PyInstaller to drop it.
+
+    The two files are edited for different reasons months apart, and nothing
+    else compares them. When ``[semantic-encoder]`` was added to the lock, torch
+    and scipy were still in the spec's excludes, so the build would have
+    downloaded 190 MB of encoder on Windows and then frozen a sidecar without
+    it. PyInstaller says nothing about excluding a package it was going to
+    bundle, and the failure only shows up as a missing feature on the desktop
+    channel.
+
+    The comparison is by distribution name, which is the same as the import name
+    for every name currently in either list. It would not catch a distribution
+    whose import name differs from its package name (opencv-python-headless
+    imports as cv2), so this is a floor rather than a proof.
+    """
+    versions = _lock_versions()
+    excludes = _spec_excludes()
+
+    # A scanner that compared nothing would pass. Both sides have to be real
+    # before the intersection below means anything.
+    assert versions, f"parsed no pins from {_LOCK}; the lock format changed and this guard went blind"
+    assert excludes, (
+        f"parsed no excludes from {_SPEC}; the Analysis(excludes=[...]) call moved and this guard went blind"
+    )
+
+    clash = sorted({name for name in excludes if name.lower() in versions})
+    print(f"compared {len(versions)} locked distributions against {len(excludes)} spec excludes: {len(clash)} clash")
+    assert not clash, (
+        f"desktop/pyinstaller.spec excludes {clash}, which requirements-desktop.lock installs. "
+        "The desktop build would download these and then freeze a sidecar without them. Either "
+        "drop the name from the spec's excludes list or drop the dependency that pulls it into "
+        "the lock, but do not do both."
     )
