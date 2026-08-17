@@ -137,11 +137,19 @@ def test_locale_declares_no_key_english_lacks(code: str) -> None:
     supports something it does not.
 
     Two kinds turned up when this was first measured. Plural variants (_few,
-    _many, _two, _zero) are inert here because backend t() is a flat dictionary
-    lookup with no plural resolution at all, so nothing can select them; four
-    form correctness belongs in the frontend, which has a plural engine. And
-    keys copied in from the frontend catalogue, which is a separate and much
-    larger key set that this side never renders.
+    _many, _two, _zero), and keys copied in from the frontend catalogue, which
+    is a separate and much larger key set that this side never renders.
+
+    The plural case needs stating carefully, because the obvious argument is
+    too strong. Backend t() is a flat dictionary lookup with no plural
+    resolution, so t() itself can never select a _few. But t() is not the only
+    reader: app/core/i18n_router.py serves this catalogue over GET
+    /i18n/{locale}, shaped for an i18next-style client, and i18next does
+    resolve plurals. So the forms are unreachable because no such consumer
+    exists - this product's frontend carries its own boq.mvp keys and does not
+    fetch that route - and not because the shape is meaningless. If an external
+    i18next client ever becomes a real consumer, the deleted Arabic and Russian
+    forms are the ones you would want back; they are in history at 87e8c161c.
     """
     extra = sorted(set(_load_locale(code)) - set(_load_locale("en")))
     assert not extra, (
