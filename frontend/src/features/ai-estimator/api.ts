@@ -763,7 +763,56 @@ export const aiEstimatorApi = {
   getMeta: () => call<EstimatorMeta>('/meta'),
 
   qdrantHealth: () => call<QdrantHealth>('/qdrant/health'),
+
+  /** Whether the semantic-search encoder is here, on its way, or absent. */
+  embeddingModelStatus: () => call<EmbeddingModelStatus>('/embedding-model/status'),
+
+  /** Ask for the encoder weights. Returns immediately - the transfer runs in
+   *  the background on the server and this never waits for it. */
+  installEmbeddingModel: () =>
+    call<EmbeddingModelStatus>('/embedding-model/install', { method: 'POST' }),
 };
+
+// ── Semantic-search encoder ───────────────────────────────────────────
+
+/**
+ * The five situations the encoder can be in. They are five and not fewer
+ * because the reader's next move differs in each: install the extra, wait,
+ * retry, use it, turn it on.
+ */
+export type EmbeddingModelState =
+  | 'library_missing'
+  | 'downloading'
+  | 'failed'
+  | 'ready'
+  | 'not_requested';
+
+export interface EmbeddingModelStatus {
+  state: EmbeddingModelState;
+  /** Whether this deployment fetches the encoder without being asked. */
+  enabled: boolean;
+  model: string;
+  installed: boolean;
+  /** Share of FILES transferred, not of bytes - see files_done/files_total. */
+  percent: number;
+  files_done: number;
+  files_total: number;
+  downloaded_bytes: number;
+  error: string;
+  library_installed: boolean;
+  /** Name of the environment variable that overrides the default. */
+  env_var: string;
+  /**
+   * An operator has switched the download off deployment-wide. Distinct from
+   * merely defaulting to off, which still honours a click in the wizard, so
+   * the UI must not offer a toggle that cannot act.
+   */
+  locked: boolean;
+  message: string;
+  /** True when this call started a transfer (install endpoint only). */
+  started?: boolean;
+  [k: string]: unknown;
+}
 
 // ── Qdrant health envelope (shared probe) ─────────────────────────────
 

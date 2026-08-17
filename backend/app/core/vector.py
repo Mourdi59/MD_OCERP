@@ -99,6 +99,54 @@ def _resolve_active_model() -> tuple[str, int]:
 _active_model_name: str | None = None
 
 
+def reset_embedder() -> None:
+    """Clear the failure latch so the next ``get_embedder`` call retries.
+
+    :func:`get_embedder` latches its failure for the lifetime of the process on
+    purpose (see its docstring - a stuck retry loop once starved the request
+    path of the GIL). That latch is correct while nothing changes underneath
+    it, and wrong the moment something does: a first boot with no weights on
+    disk fails the load, sets the latch, and then the background download
+    finishes into a process that will never look again. Semantic search would
+    stay unavailable until a restart, which makes the download decorative.
+
+    So the installer calls this the instant weights land, exactly as
+    ``reset_qdrant_client`` exists for the client the first boot-time probe
+    latched to ``None``.
+
+    A *working* embedder is deliberately left alone. Clearing one would send
+    the next request that needs it into a cold model load - tens of seconds,
+    inside a request thread, at a moment the user did not ask for and cannot
+    see. That is precisely the blocking this whole feature promises never to
+    do, and the prize for paying it is at most a better model than the one
+    already answering. It gets picked up on the next restart instead.
+    """
+    global _embedder_instance, _embedder_tried, _active_model_name
+    if _embedder_instance is not None:
+        return
+    _embedder_tried = False
+    _active_model_name = None
+
+
+def _candidate_sources(name: str) -> list[str]:
+    """Return what to hand ``SentenceTransformer`` for the model ``name``.
+
+    A locally installed copy comes first: the installer puts complete weights
+    under the platform's data directory, and loading from that path works with
+    no network at all, which is the whole point of having downloaded them.
+    The bare hub id stays as the second candidate so an installation that
+    never ran the installer behaves exactly as it did before - the loader
+    resolves it through its own cache, and downloads it if it must.
+    """
+    try:
+        from app.core.embedding_installer import find_installed_model
+
+        local = find_installed_model(name)
+    except Exception:  # noqa: BLE001 - a missing installer is not a reason to stop loading
+        local = None
+    return [str(local), name] if local is not None else [name]
+
+
 def get_embedder():
     """Get singleton embedding model.
 
@@ -144,18 +192,23 @@ def get_embedder():
         pass
 
     for candidate in (primary, fallback_name):
-        try:
-            _embedder_instance = SentenceTransformer(candidate)
-            _active_model_name = candidate
-            logger.info(
-                "Loaded sentence-transformers model: %s (~%dd)",
-                candidate,
-                dim,
-            )
-            return _embedder_instance
-        except Exception as exc:
-            logger.warning("Failed to load embedding model %s: %s", candidate, exc)
-            continue
+        # A locally installed copy is tried before the bare hub id. The name we
+        # record stays the hub id either way, so status pages keep naming the
+        # model rather than a directory on someone's disk.
+        for source in _candidate_sources(candidate):
+            try:
+                _embedder_instance = SentenceTransformer(source)
+                _active_model_name = candidate
+                logger.info(
+                    "Loaded sentence-transformers model: %s from %s (~%dd)",
+                    candidate,
+                    source,
+                    dim,
+                )
+                return _embedder_instance
+            except Exception as exc:
+                logger.warning("Failed to load embedding model %s from %s: %s", candidate, source, exc)
+                continue
 
     logger.warning("No embedding model could be loaded (tried %s, %s)", primary, fallback_name)
     _embedder_tried = True
