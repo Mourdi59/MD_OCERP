@@ -731,16 +731,39 @@ def check_optional_extras() -> list[Check]:
         "engine missing" is the worst result this check can produce. It tells
         an operator to install what they already have, and a check that cries
         wolf once is the check nobody reads the next time.
+
+        A source-install instrument, not a frozen one: a PyInstaller bundle
+        carries dist-info only for what its spec ran ``copy_metadata`` on, so
+        this question answers "no" inside the desktop build regardless of what
+        is bundled. That costs nothing today, because the lock carries no
+        paddle at all and the first branch answers long before this one. It
+        stops being free the day OCR ships to desktop.
         """
         try:
             from importlib.metadata import distributions
 
-            return any((d.metadata["Name"] or "").lower().startswith("paddlepaddle") for d in distributions())
+            found = distributions()
         except Exception:
-            # A broken metadata directory must not take the diagnostic down.
-            # It only costs the second opinion, which the caller then reads as
-            # "not found here" and falls back to the import name's answer.
+            # A metadata directory that cannot even be listed must not take the
+            # diagnostic down. It costs only the second opinion, which the
+            # caller then reads as "not found here".
             return False
+
+        for dist in found:
+            # Guarded per entry, never per sweep. One unreadable dist-info
+            # anywhere in site-packages would otherwise raise mid-iteration and
+            # throw away the answer for every OTHER distribution, printing the
+            # false "engine missing" this whole helper exists to prevent - and
+            # doing it by iteration order, since a short-circuiting scan says
+            # yes or no depending on whether the engine was reached before the
+            # broken entry or after it.
+            try:
+                name = (dist.metadata["Name"] or "").lower()
+            except Exception:
+                continue
+            if name.startswith("paddlepaddle"):
+                return True
+        return False
 
     cv_label = "PDF dimension OCR [cv]"
     if not _present("paddleocr"):

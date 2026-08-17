@@ -127,16 +127,17 @@ class TestTheOcrExtraAnswersInBothDirections:
         engine: bool = True,
         engine_imports: bool = True,
         engine_distribution: str | None = None,
+        unreadable_distribution: bool = False,
     ) -> list:
         """Run the extras report with the OCR wheels' state forced.
 
-        Five dials rather than two, because the states that matter in the field
+        Six dials rather than two, because the states that matter in the field
         cannot be expressed with booleans over one question. Frontend present
-        and importable with no engine behind it needs three of them, and an
-        engine visible only under its distribution name needs the fifth: that
-        one exists because `paddle` is the import name this check assumes, and
-        the failure mode of assuming wrong is an error printed at an install
-        that works.
+        and importable with no engine behind it needs three of them. The last
+        two exist because `paddle` is an import name this check assumes rather
+        than measures: one puts the engine under its distribution name only,
+        the other damages an unrelated dist-info. Both describe environments
+        where a careless answer prints an error at an install that works.
         """
         import importlib.metadata as importlib_metadata
         import importlib.util as importlib_util
@@ -178,8 +179,22 @@ class TestTheOcrExtraAnswersInBothDirections:
             def __init__(self, name: str) -> None:
                 self.metadata = {"Name": name}
 
+        class _UnreadableDist:
+            """A dist-info that raises when read, as a damaged one does."""
+
+            @property
+            def metadata(self):
+                raise UnicodeDecodeError("utf-8", b"", 0, 1, "invalid start byte")
+
         def fake_distributions():
-            return iter([_Dist("openconstructionerp")] + ([_Dist(engine_distribution)] if engine_distribution else []))
+            # The damaged entry goes FIRST, ahead of the engine. A scan that
+            # short-circuits will otherwise pass or fail on iteration order
+            # rather than on the code being right.
+            entries = [_UnreadableDist()] if unreadable_distribution else []
+            entries.append(_Dist("openconstructionerp"))
+            if engine_distribution:
+                entries.append(_Dist(engine_distribution))
+            return iter(entries)
 
         monkeypatch.setattr(importlib_util, "find_spec", fake_find_spec)
         monkeypatch.setattr(importlib_metadata, "distributions", fake_distributions)
@@ -267,6 +282,27 @@ class TestTheOcrExtraAnswersInBothDirections:
         found = self._cv_check(monkeypatch, engine=False, engine_imports=False, engine_distribution="paddlepaddle")
         assert found[0].status == "ok"
         assert "will not import" not in found[0].message
+
+    def test_one_damaged_dist_info_does_not_answer_for_every_other_one(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """One bad entry must not decide the question for the whole environment.
+
+        A single unreadable dist-info anywhere in site-packages, from a half
+        written install or a bad encoding, raises mid-iteration. Guarded around
+        the sweep instead of around the entry, that throws away the answer for
+        every other distribution and prints the false "engine missing" this
+        helper exists to prevent - and prints it by iteration order, since the
+        scan stops at the first match and the damaged entry may come before the
+        engine or after it. Same shape as one malformed row failing every row.
+        """
+        found = self._cv_check(
+            monkeypatch,
+            engine=False,
+            engine_distribution="paddlepaddle",
+            unreadable_distribution=True,
+        )
+        assert found[0].status == "ok", (
+            f"a damaged dist-info hid an installed engine: {found[0].status} - {found[0].message}"
+        )
 
     def test_a_plain_install_without_the_extra_is_still_only_a_warning(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Absent stays non-fatal: a stock install is meant not to carry this."""
