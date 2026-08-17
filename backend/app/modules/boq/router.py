@@ -2543,10 +2543,22 @@ async def list_markups(
     session: SessionDep,
     service: BOQService = Depends(_get_service),
 ) -> MarkupListResponse:
-    """List all markups for a BOQ."""
+    """List all markups for a BOQ, with any escalation factor resolved.
+
+    The factor is attached here rather than left to the client because the
+    browser holds no cost-index series. Resolving it once on the way out keeps
+    the date-to-date arithmetic in the price-index module and still lets the
+    markup panel mirror the cascade locally.
+    """
     await _verify_boq_owner(session, boq_id, user_id, payload)
     markups = await service.list_markups(boq_id)
-    return MarkupListResponse(markups=[_markup_to_response(m) for m in markups])
+    factors = await service.escalation_factors(markups)
+    rows: list[MarkupResponse] = []
+    for markup in markups:
+        row = _markup_to_response(markup)
+        row.escalation_factor = factors.get(markup.id)
+        rows.append(row)
+    return MarkupListResponse(markups=rows)
 
 
 @router.post(

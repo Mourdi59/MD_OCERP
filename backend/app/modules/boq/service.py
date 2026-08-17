@@ -5411,6 +5411,20 @@ class BOQService:
         """List all markups for a BOQ."""
         return await self.markup_repo.list_for_boq(boq_id)
 
+    async def escalation_factors(self, markups: Sequence[BOQMarkup]) -> dict[uuid.UUID, Decimal]:
+        """Public reader for the resolved index factor of each escalation line.
+
+        The markups list endpoint attaches these to its rows so the editor can
+        mirror the cascade without holding an index series of its own.
+
+        Args:
+            markups: The bill's markup lines.
+
+        Returns:
+            ``{markup id: factor}`` for every escalation line that resolved.
+        """
+        return await self._resolve_escalation_factors(markups)
+
     @staticmethod
     def _validate_markup_shape(markup_type: str, metadata: dict[str, Any] | None) -> None:
         """Refuse a banded or escalation line that carries no configuration.

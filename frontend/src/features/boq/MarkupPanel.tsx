@@ -46,6 +46,65 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const CATEGORIES = ['overhead', 'profit', 'tax', 'contingency', 'insurance', 'bond', 'other'] as const;
 
+/**
+ * Charge each tranche of `base` at its own band rate and add them up.
+ *
+ * Mirrors `_banded_amount` in `backend/app/modules/boq/service.py`, which is
+ * the authority. Progressive, not flat: a base of 1,500,000 against "first
+ * 1,000,000 at 2.5 %, rest at 1 %" pays 25,000 on the first million and 5,000
+ * on the remainder. A base sitting exactly on a band edge belongs entirely to
+ * the lower band, the way a card that says "up to" reads.
+ *
+ * The card is user data arriving as JSON, so an entry this cannot read is
+ * dropped rather than allowed to make the whole panel render nothing.
+ */
+export function bandedAmount(base: number, metadata: unknown): number {
+  if (!metadata || typeof metadata !== 'object') return 0;
+  const raw = (metadata as Record<string, unknown>).bands;
+  if (!Array.isArray(raw)) return 0;
+
+  // Bands arrive as JSON of unknown shape, so numbers are read defensively
+  // rather than through ``toNum``, which is typed for wire money fields.
+  const num = (v: unknown): number | null => {
+    const n = typeof v === 'number' ? v : Number(String(v));
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const bands: { ceiling: number | null; rate: number }[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const row = entry as Record<string, unknown>;
+    const rate = num(row.percentage ?? 0);
+    if (rate === null) continue;
+    const rawCeiling = row.up_to;
+    if (rawCeiling === null || rawCeiling === undefined || String(rawCeiling).trim() === '') {
+      bands.push({ ceiling: null, rate });
+      continue;
+    }
+    const ceiling = num(rawCeiling);
+    if (ceiling === null) continue;
+    bands.push({ ceiling, rate });
+  }
+
+  // Ceilings ascending, the open-ended band last however it was written.
+  bands.sort((a, b) => {
+    if (a.ceiling === null) return b.ceiling === null ? 0 : 1;
+    if (b.ceiling === null) return -1;
+    return a.ceiling - b.ceiling;
+  });
+
+  let total = 0;
+  let lower = 0;
+  for (const { ceiling, rate } of bands) {
+    const top = ceiling === null ? base : Math.min(base, ceiling);
+    if (top <= lower) continue;
+    total += ((top - lower) * rate) / 100;
+    lower = top;
+    if (lower >= base) break;
+  }
+  return total;
+}
+
 interface MarkupPanelProps {
   boqId: string;
   markups: Markup[];
@@ -154,6 +213,14 @@ export function MarkupPanel({ boqId, markups, directCost, currencySymbol, curren
   // the toggle flash has to react before the round-trip lands. Change one, and
   // change the other.
   //
+  // Two of the four markup types are mirrored with local arithmetic and two
+  // are not, and the difference is about what the browser can honestly know.
+  // ``percentage`` and ``fixed`` are reproduced outright. ``banded`` is too,
+  // because the rate card travels on the row. ``escalation`` is NOT: the
+  // factor comes from a cost-index series the browser does not hold, so the
+  // server resolves it once and sends it on the row as ``escalation_factor``
+  // and this block multiplies. Do not add a period lookup here.
+  //
   // The cascade matches; the INPUT need not. ``directCost`` here is the
   // editor's live sum (``resourceAwareTotalInBase``, which trusts a position's
   // stored ``total`` whenever its resources are all base-currency), while the
@@ -175,11 +242,25 @@ export function MarkupPanel({ boqId, markups, directCost, currencySymbol, curren
       .map((m) => {
         let amount = 0;
         const pct = typeof m.percentage === 'number' && Number.isFinite(m.percentage) ? m.percentage : 0;
+        const base = m.apply_to === 'cumulative' || m.apply_to === 'subtotal' ? running : directCost;
         if (m.markup_type === 'fixed') {
           // fixed_amount arrives as a Decimal-as-string ("500.00"), so a
           // ``typeof === 'number'`` guard rejected it and rendered every fixed
           // markup as 0. Coerce through the shared money primitive instead.
           amount = toNum(m.fixed_amount);
+        } else if (m.markup_type === 'banded') {
+          // A bond's rate card, charged tranche by tranche. This one IS mirrored
+          // locally because the card is on the row: no server round-trip and no
+          // date arithmetic involved, just the same progressive sum.
+          amount = bandedAmount(base, m.metadata);
+        } else if (m.markup_type === 'escalation') {
+          // The factor is resolved server-side from the cost-index series and
+          // arrives on the row. The browser must NOT work one out: it holds no
+          // series, and a second implementation of the period lookup is exactly
+          // what the backend went out of its way not to have. A line with no
+          // factor is worth nothing here, which is what the server reports too.
+          const factor = toNum(m.escalation_factor ?? 0);
+          amount = factor > 0 ? base * (factor - 1) : 0;
         } else if (m.apply_to === 'cumulative' || m.apply_to === 'subtotal') {
           // The backend treats 'subtotal' identically to 'cumulative' (base =
           // direct cost + the markups before it); GAEB import persists tax
@@ -215,6 +296,11 @@ export function MarkupPanel({ boqId, markups, directCost, currencySymbol, curren
         if (markup.markup_type === 'fixed') {
           // Decimal-as-string wire value; coerce instead of a typeof guard.
           impact = toNum(markup.fixed_amount);
+        } else if (markup.markup_type === 'banded') {
+          impact = bandedAmount(directCost, markup.metadata);
+        } else if (markup.markup_type === 'escalation') {
+          const factor = toNum(markup.escalation_factor ?? 0);
+          impact = factor > 0 ? directCost * (factor - 1) : 0;
         } else {
           const pct = markup.percentage ?? 0;
           impact = directCost * (pct / 100);
@@ -287,6 +373,30 @@ export function MarkupPanel({ boqId, markups, directCost, currencySymbol, curren
   const categoryLabel = (cat: string) => {
     const key = `boq.markup_${cat}`;
     return t(key, { defaultValue: cat.charAt(0).toUpperCase() + cat.slice(1) });
+  };
+
+  /**
+   * What goes in the rate column for a line that has no single percentage.
+   *
+   * An escalation shows what the index actually did, because that is the
+   * number an estimator wants to see and it is not one they can type. A banded
+   * line shows how many tranches its card has, since no single figure is
+   * honest for it. A fixed line has a rate of nothing at all.
+   */
+  const rateLabel = (markup: Markup): string => {
+    if (markup.markup_type === 'escalation') {
+      const factor = toNum(markup.escalation_factor ?? 0);
+      if (!(factor > 0)) return t('boq.markup_escalation_unresolved', { defaultValue: 'no index' });
+      const movement = (factor - 1) * 100;
+      return `${movement >= 0 ? '+' : ''}${fmt.format(movement)}%`;
+    }
+    if (markup.markup_type === 'banded') {
+      const bands = Array.isArray((markup.metadata as Record<string, unknown> | undefined)?.bands)
+        ? ((markup.metadata as Record<string, unknown>).bands as unknown[]).length
+        : 0;
+      return t('boq.markup_band_count', { count: bands, defaultValue: '{{count}} bands' });
+    }
+    return '—';
   };
 
   return (
@@ -426,11 +536,38 @@ export function MarkupPanel({ boqId, markups, directCost, currencySymbol, curren
                               className="w-full rounded border border-oe-blue px-1.5 py-0.5 text-sm bg-surface-primary outline-none"
                             />
                           ) : (
-                            <span
-                              className="cursor-pointer hover:text-oe-blue transition-colors"
-                              onClick={() => handleStartEdit(markup.id, 'name', markup.name)}
-                            >
-                              {markup.name}
+                            <span className="flex items-center gap-1.5 min-w-0">
+                              <span
+                                className="cursor-pointer hover:text-oe-blue transition-colors truncate"
+                                onClick={() => handleStartEdit(markup.id, 'name', markup.name)}
+                              >
+                                {markup.name}
+                              </span>
+                              {/* A scoped line is an exception to the company
+                                  standard and has to read as one. Without this
+                                  it is just another row, and an estimator
+                                  scanning the stack cannot tell which numbers
+                                  apply to the whole bill and which to one
+                                  section. */}
+                              {markup.scope_position_id && (
+                                <span
+                                  data-testid="markup-scope-badge"
+                                  title={
+                                    markup.overrides_id
+                                      ? t('boq.markup_override_hint', {
+                                          defaultValue: 'Replaces a bill-wide line inside one section',
+                                        })
+                                      : t('boq.markup_section_only_hint', {
+                                          defaultValue: 'Applies to one section only',
+                                        })
+                                  }
+                                  className="shrink-0 rounded-full border border-oe-blue/40 bg-oe-blue/10 px-1.5 py-0.5 text-2xs font-medium text-oe-blue"
+                                >
+                                  {markup.overrides_id
+                                    ? t('boq.markup_override', { defaultValue: 'Override' })
+                                    : t('boq.markup_section_only', { defaultValue: 'Section only' })}
+                                </span>
+                              )}
                             </span>
                           )}
                         </td>
@@ -466,7 +603,12 @@ export function MarkupPanel({ boqId, markups, directCost, currencySymbol, curren
                           )}
                         </td>
 
-                        {/* Percentage */}
+                        {/* Percentage. Only a percentage line has one to edit:
+                            a fixed line carries an amount, a banded line a rate
+                            card, and an escalation line a factor the index
+                            decided. Offering an editable percentage on those
+                            would take a number the estimator typed and price
+                            nothing with it. */}
                         <td className="px-3 py-2 text-right">
                           {isEditing && editState.field === 'percentage' ? (
                             <input
@@ -481,13 +623,15 @@ export function MarkupPanel({ boqId, markups, directCost, currencySymbol, curren
                               onKeyDown={handleKeyDown}
                               className="w-16 rounded border border-oe-blue px-1.5 py-0.5 text-sm text-right bg-surface-primary outline-none"
                             />
-                          ) : (
+                          ) : markup.markup_type === 'percentage' ? (
                             <span
                               className="cursor-pointer hover:text-oe-blue transition-colors tabular-nums"
                               onClick={() => handleStartEdit(markup.id, 'percentage', String(markup.percentage))}
                             >
-                              {markup.markup_type === 'fixed' ? '\u2014' : `${fmt.format(markup.percentage)}%`}
+                              {`${fmt.format(markup.percentage)}%`}
                             </span>
+                          ) : (
+                            <span className="tabular-nums text-content-secondary">{rateLabel(markup)}</span>
                           )}
                         </td>
 
@@ -550,7 +694,12 @@ export function MarkupPanel({ boqId, markups, directCost, currencySymbol, curren
                 if (!m) return null;
                 return (
                   <div key={c.id} className="flex items-center justify-between gap-4 text-sm mt-1">
-                    <span className="text-content-tertiary min-w-0 truncate">+ {m.name} ({fmt.format(m.percentage)}%)</span>
+                    {/* A fixed, banded or escalation line has no single
+                        percentage, and printing ``0%`` beside a real amount
+                        made the summary contradict the row above it. */}
+                    <span className="text-content-tertiary min-w-0 truncate">
+                      + {m.name} ({m.markup_type === 'percentage' ? `${fmt.format(m.percentage)}%` : rateLabel(m)})
+                    </span>
                     <span className="tabular-nums text-content-secondary whitespace-nowrap shrink-0">{fmtWithCurrency(c.amount, locale, currencyCode)}</span>
                   </div>
                 );

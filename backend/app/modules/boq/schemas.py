@@ -951,6 +951,20 @@ class MarkupResponse(_MarkupBase):
     # differently instead of as one more row of the same kind.
     scope_position_id: UUID | None = None
     overrides_id: UUID | None = None
+    # Set only on an ``escalation`` line, and only by the list endpoint, which
+    # resolves it against the stored index series. The markup panel mirrors the
+    # cascade client-side so a toggle reacts before the round-trip lands, and it
+    # cannot resolve a factor of its own: the browser holds no index series.
+    # Handing it the resolved ratio lets it multiply, which keeps the date
+    # arithmetic in exactly one place instead of growing a second copy in
+    # TypeScript. Null on every other type, and on an escalation line whose
+    # series or periods could not be resolved.
+    escalation_factor: Decimal | None = None
+
+    @field_serializer("escalation_factor", when_used="json")
+    def _ser_escalation_factor(self, v: Decimal | None) -> str | None:
+        return None if v is None else str(v)
+
     metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
     created_at: datetime
     updated_at: datetime

@@ -166,7 +166,13 @@ export interface Markup {
   id: string;
   boq_id: string;
   name: string;
-  markup_type: 'percentage' | 'fixed';
+  /**
+   * ``banded`` charges each tranche of its base at its own rate off a card in
+   * ``metadata.bands`` (a surety's quote for a bond). ``escalation`` indexes
+   * its base from one month to another and carries no percentage of its own;
+   * the ratio arrives as ``escalation_factor``.
+   */
+  markup_type: 'percentage' | 'fixed' | 'banded' | 'escalation';
   category: 'overhead' | 'profit' | 'tax' | 'contingency' | 'insurance' | 'bond' | 'other';
   percentage: number;
   /**
@@ -179,6 +185,23 @@ export interface Markup {
   apply_to: 'direct_cost' | 'subtotal' | 'cumulative';
   sort_order: number;
   is_active: boolean;
+  /**
+   * Null means bill-wide: the company standard, inherited by everything. A
+   * position id confines the line to that position and its descendants, and
+   * ``overrides_id`` names the bill-wide line it stands in for there. The two
+   * together are what separates an exception from an ordinary extra row on
+   * screen.
+   */
+  scope_position_id?: string | null;
+  overrides_id?: string | null;
+  /**
+   * Only ever set on an ``escalation`` line, resolved server-side against the
+   * stored cost-index series and serialised as a Decimal string. The browser
+   * holds no index series, so it multiplies by this rather than working out a
+   * factor of its own. Null when the series or periods could not be resolved,
+   * in which case the line is worth nothing and says so.
+   */
+  escalation_factor?: number | string | null;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -197,6 +220,17 @@ export interface CreateMarkupData {
   apply_to?: string;
   sort_order?: number;
   is_active?: boolean;
+  /** Confines the line to one position and its descendants. Omit for bill-wide. */
+  scope_position_id?: string | null;
+  /** The bill-wide line this scoped line stands in for. Needs a scope as well. */
+  overrides_id?: string | null;
+  /**
+   * Carries the configuration the type needs: `bands` for a banded line,
+   * `escalation` (series_id, base_period, target_period) for an escalation
+   * one. The server refuses either type without it rather than storing a line
+   * that would price at zero.
+   */
+  metadata?: Record<string, unknown>;
 }
 
 export interface UpdateMarkupData {
@@ -208,6 +242,10 @@ export interface UpdateMarkupData {
   apply_to?: string;
   sort_order?: number;
   is_active?: boolean;
+  /** Send explicitly null to clear, i.e. to promote an exception to bill-wide. */
+  scope_position_id?: string | null;
+  overrides_id?: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 /* ── Create / Update payloads ────────────────────────────────────────── */
