@@ -19,6 +19,13 @@ route fails the run rather than lingering, because a list that keeps entries it
 has outgrown stops being a count of anything and starts quietly re-permitting
 whatever later takes the same name.
 
+A second list, ``CANNOT_TRUNCATE``, holds the routes that must keep answering
+with the whole set because a partial answer from them would be wrong rather
+than short. Those two lists mean opposite things, so they are disjoint and the
+countdown is the size of ``ALLOWED`` alone: it targets zero. ``--dump`` rewrites
+``ALLOWED`` and never touches ``CANNOT_TRUNCATE``, which is what keeps a
+justification attached to the entry it justifies.
+
 Definition of a bare-list endpoint, matching the census this list was built
 from: a function decorated with ``@router.get(...)`` whose ``response_model``
 is a ``list[...]`` subscript, or which declares no ``response_model`` and whose
@@ -47,9 +54,59 @@ MODULES_DIR = REPO_ROOT / "backend" / "app" / "modules"
 # is here to catch a broken path, not to track growth.
 MIN_FILES_SCANNED = 500
 
+# Routes that answer with a bare array and always will, because the set they
+# return cannot be cut short without the answer becoming wrong.
+#
+# This list is written by hand and --dump never prints it. That is the whole
+# point of its existing. The reason an entry belongs here is the only thing
+# keeping it here, and a reason has to survive the next regeneration of
+# ALLOWED; stored between ALLOWED's braces it does not, because --dump
+# reproduces entries and nothing else. What is left behind after such a
+# regeneration is a bare route name, indistinguishable from the hundreds
+# genuinely waiting their turn, and the next wave migrates it.
+#
+# The bar is high, and it is not "the list is short". It is not "the list is
+# bounded by its parent" either: both of those still have a state in which the
+# caller holds part of the set, which is exactly the state an envelope exists
+# to report. The bar is that a partial answer would be a correctness bug
+# rather than a page.
+#
+# The census subtracts these, so the number printed on a clean run counts down
+# towards zero rather than towards the size of this list.
+CANNOT_TRUNCATE: frozenset[str] = frozenset(
+    {
+        # A fixed taxonomy, not a register. WORKING_TIME_REGIMES in
+        # field_time/working_time.py is a frozen tuple of statutes compiled into
+        # the source, today just MiLoG (German minimum wage act) section 17 (1);
+        # it gains an entry when a developer implements another jurisdiction's
+        # recording duty, never at runtime and never per tenant. The route is a
+        # comprehension over the whole tuple, so there is no query, no LIMIT and
+        # no state in which it answers with part of the set. An envelope here
+        # would carry a total that is len(items) by construction and an
+        # "incomplete page" branch no caller could ever reach, and it would
+        # advertise a truncation this endpoint must not have: a worker choosing
+        # which statute their hours are recorded under has to see every statute
+        # on offer, so a short answer would be a correctness bug, not a page.
+        "field_time/router.py::list_working_time_regimes",
+    }
+)
+
 # Every bare-list GET route in backend/app/modules when this guard was written,
 # as "<path under modules>::<function>". Regenerate with --dump after a
 # migration wave, and let the diff show the routes that left.
+#
+# Nothing but entries goes between the braces below. The region is machine
+# written, so a comment placed inside it is deleted by the next --dump while
+# the entry it explains survives without it; main() refuses a run that finds
+# one. Notes about particular entries belong up here, and a note saying an
+# entry must never be migrated belongs in CANNOT_TRUNCATE above instead.
+#
+# The qms trio is here rather than in CANNOT_TRUNCATE. list_calibrations,
+# list_expiring_calibrations and list_itp_templates have no frontend caller at
+# all, which is why they stayed behind while the other eight moved: no wrapper
+# means no census of who reads them, and backend tests do, so the readers have
+# to be enumerated before the shape changes under them. That is work not yet
+# done, not work that must not be done.
 #
 # Regenerate from a clean checkout, not from the working tree. This repository
 # is worked by several sessions at once, so the tree on disk holds routes that
@@ -249,20 +306,6 @@ ALLOWED: frozenset[str] = frozenset(
         "field_diary/router.py::list_schedule_activities",
         "field_diary/router.py::sync_ops",
         "field_time/router.py::list_timesheets",
-        # A fixed taxonomy, not a register. WORKING_TIME_REGIMES in
-        # field_time/working_time.py is a frozen tuple of statutes compiled into
-        # the source, today just MiLoG (German minimum wage act) section 17 (1);
-        # it gains an entry when a developer implements another jurisdiction's
-        # recording duty, never at runtime and never per tenant. The route is a
-        # comprehension over the whole tuple, so there is no query, no LIMIT and
-        # no state in which it answers with part of the set. An envelope here
-        # would carry a total that is len(items) by construction and an
-        # "incomplete page" branch no caller could ever reach, and it would
-        # advertise a truncation this endpoint must not have: a worker choosing
-        # which statute their hours are recorded under has to see every statute
-        # on offer, so a short answer would be a correctness bug, not a page.
-        # Do not migrate this one; it is not what the census is counting down.
-        "field_time/router.py::list_working_time_regimes",
         "fieldreports/router.py::get_calendar",
         "fieldreports/router.py::get_linked_documents",
         "fieldreports/router.py::list_equipment_logs",
@@ -408,10 +451,6 @@ ALLOWED: frozenset[str] = frozenset(
         "property_dev/router.py::list_warranty_claims",
         "property_dev/router.py::portal_list_my_snags",
         "property_dev/router.py::portal_list_my_warranty_claims",
-        # The three left here have no frontend caller at all, which is why
-        # they stayed behind while the other eight moved: no wrapper means no
-        # census of who reads them, and backend tests do, so the readers would
-        # have to be enumerated before the shape changes under them.
         "qms/router.py::list_calibrations",
         "qms/router.py::list_expiring_calibrations",
         "qms/router.py::list_itp_templates",
@@ -655,10 +694,65 @@ async def bulk_create() -> list[ThingResponse]: ...
                 file=sys.stderr,
             )
             raise SystemExit(2)
+    # The sorting of routes across the two lists, which no scanner case above
+    # can reach. The first of these is the mechanism itself: an exempt route is
+    # present in the tree on every single run, so if it were reported as new the
+    # gate would turn red the moment an entry moved out of ALLOWED, and the only
+    # way back to green would be putting it back.
+    allowed = frozenset({"a/router.py::list_a"})
+    exempt = frozenset({"b/router.py::list_b"})
+    both = {"a/router.py::list_a", "b/router.py::list_b"}
+    splits = [
+        ("an exempt route present in the tree", both, ([], [], [])),
+        (
+            "a route in neither list",
+            both | {"c/router.py::list_c"},
+            (["c/router.py::list_c"], [], []),
+        ),
+        (
+            "a migrated entry from ALLOWED",
+            {"b/router.py::list_b"},
+            ([], ["a/router.py::list_a"], []),
+        ),
+        (
+            "an exempt entry that stopped being a bare list",
+            {"a/router.py::list_a"},
+            ([], [], ["b/router.py::list_b"]),
+        ),
+    ]
+    for label, found, expected in splits:
+        split = classify(found, allowed, exempt)
+        if split != expected:
+            print(
+                f"SELF-TEST FAILED on {label}: expected {expected}, got {split}.\n"
+                "The two lists are no longer being read as opposites, so the census "
+                "counts the wrong routes.",
+                file=sys.stderr,
+            )
+            raise SystemExit(2)
+
+    # And the overlap check, whose whole job is to refuse. It never fires on the
+    # real lists, so it is the one part of this file that could rot unobserved.
+    if double_counted(allowed, exempt):
+        print(
+            "SELF-TEST FAILED: two disjoint lists were reported as overlapping.",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+    if double_counted(allowed, exempt | allowed) != ["a/router.py::list_a"]:
+        print(
+            "SELF-TEST FAILED: a route in both lists was not reported.\n"
+            "The check cannot refuse, so it cannot keep the census honest.",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+
     # To stderr, so that --dump writes nothing to stdout but the list itself.
     print(
         "SELF-TEST OK: refuses a list response_model and a bare return annotation,\n"
-        "             accepts an envelope, and ignores single-item reads and writers.",
+        "             accepts an envelope, ignores single-item reads and writers,\n"
+        "             sorts routes across the waiting and exempt lists, and refuses\n"
+        "             a route claimed by both.",
         file=sys.stderr,
     )
 
@@ -682,6 +776,84 @@ def envelope_advice(key: str) -> str:
     )
 
 
+def double_counted(allowed: frozenset[str], exempt: frozenset[str]) -> list[str]:
+    """Routes claimed by both lists.
+
+    The lists mean opposite things and only one of them is the countdown, so a
+    route in both is at once waiting and never waiting, and the number printed
+    on a clean run is wrong by however many there are.
+
+    Args:
+        allowed: Routes waiting their turn to be migrated.
+        exempt: Routes that must never be migrated.
+
+    Returns:
+        The routes named by both, sorted.
+    """
+    return sorted(allowed & exempt)
+
+
+def classify(
+    found: set[str], allowed: frozenset[str], exempt: frozenset[str]
+) -> tuple[list[str], list[str], list[str]]:
+    """Split a scan of the tree across the two declared lists.
+
+    Args:
+        found: Bare-list routes the scan saw.
+        allowed: Routes waiting their turn to be migrated.
+        exempt: Routes that must never be migrated.
+
+    Returns:
+        The routes in neither list, the ``allowed`` entries that no longer name
+        a bare-list route, and the ``exempt`` entries that no longer name one.
+        Three lists rather than two, because the remedy for the last is not the
+        remedy for the middle one: ``--dump`` cannot prune an ``exempt`` entry,
+        it does not print that list at all.
+    """
+    return (
+        sorted(found - allowed - exempt),
+        sorted(allowed - found),
+        sorted(exempt - found),
+    )
+
+
+def commented_lines_inside_allowed() -> list[int]:
+    """Line numbers of comments written between the braces of ``ALLOWED``.
+
+    ``--dump`` reproduces that region entry by entry and nothing else, so a
+    comment placed there is erased by the next regeneration while the entry it
+    explains stays behind. A route documented as unmigratable then reads as one
+    more route waiting its turn, which is the failure ``CANNOT_TRUNCATE``
+    exists to prevent; leaving the region writable to comments would let the
+    same thing happen again with the next one.
+
+    Returns:
+        The offending line numbers, empty when the region holds entries only.
+
+    Raises:
+        SystemExit: If this file no longer declares ``ALLOWED``, since then the
+            check is passing by failing to look.
+    """
+    source = Path(__file__).resolve()
+    text = source.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    for node in ast.parse(text).body:
+        target = getattr(node, "target", None)
+        if isinstance(target, ast.Name) and target.id == "ALLOWED":
+            end = node.end_lineno or node.lineno
+            return [
+                n
+                for n in range(node.lineno, end + 1)
+                if lines[n - 1].lstrip().startswith("#")
+            ]
+    print(
+        f"ERROR: no ALLOWED assignment found in {source}, so the check that keeps\n"
+        "comments out of the machine-written region cannot have looked at it.",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
+
+
 def main() -> int:
     if not MODULES_DIR.is_dir():
         print(f"ERROR: no module tree at {MODULES_DIR}", file=sys.stderr)
@@ -700,16 +872,52 @@ def main() -> int:
         return 2
 
     if "--dump" in sys.argv:
-        for key in sorted(found):
+        # The exempt routes are bare-list routes and the scan finds them, but
+        # printing them here would fold them back into ALLOWED at the next
+        # regeneration, and their justification does not come with them.
+        waiting = sorted(found - CANNOT_TRUNCATE)
+        for key in waiting:
             print(f'        "{key}",')
         print(
-            f"\n# {len(found)} bare-list GET routes across {files} files",
+            f"\n# {len(waiting)} bare-list GET routes waiting, of {len(found)} found"
+            f" across {files} files\n"
+            f"# ({len(CANNOT_TRUNCATE)} exempt and deliberately not printed; paste the"
+            " lines above between the braces of ALLOWED,\n"
+            "# replacing what is there, and leave CANNOT_TRUNCATE alone)",
             file=sys.stderr,
         )
         return 0
 
-    added = sorted(found - ALLOWED)
-    departed = sorted(ALLOWED - found)
+    both = double_counted(ALLOWED, CANNOT_TRUNCATE)
+    if both:
+        print(
+            f"\n{len(both)} route(s) are in ALLOWED and in CANNOT_TRUNCATE at once.\n"
+            "One list says the route is waiting its turn and the other says its turn\n"
+            "never comes, so the countdown printed on a clean run is wrong and a wave\n"
+            "may migrate a route documented as unmigratable. Delete the ALLOWED entry:\n"
+            "the reason lives with the CANNOT_TRUNCATE one.\n",
+            file=sys.stderr,
+        )
+        for key in both:
+            print(f"  {key}", file=sys.stderr)
+        return 2
+
+    stray = commented_lines_inside_allowed()
+    if stray:
+        print(
+            f"\n{len(stray)} comment line(s) sit between the braces of ALLOWED, at line"
+            f" {', '.join(str(n) for n in stray)}.\n"
+            "That region is rewritten wholesale by --dump, which prints entries and\n"
+            "nothing else, so the next regeneration deletes the comment and keeps the\n"
+            "entry. Whatever the comment was there to say stops being said, and the\n"
+            "entry it explained becomes one more anonymous route awaiting a wave.\n"
+            "Move it above the frozenset. If it says the route must never be migrated,\n"
+            "move the entry to CANNOT_TRUNCATE and take the comment with it.\n",
+            file=sys.stderr,
+        )
+        return 2
+
+    added, departed, stale_exempt = classify(found, ALLOWED, CANNOT_TRUNCATE)
 
     if added:
         print(
@@ -723,9 +931,19 @@ def main() -> int:
             print(f"  {key}", file=sys.stderr)
             print(envelope_advice(key), file=sys.stderr)
         print(
-            "\nIf the route genuinely cannot truncate - a fixed taxonomy, an enum,\n"
-            "a per-parent collection that is bounded by the parent - add it to\n"
-            "ALLOWED in this file with a comment saying which of those it is.",
+            "\nIf a short answer from the route would be a correctness bug rather than\n"
+            "a page - a fixed taxonomy, an enum, a set the reader has to see all of -\n"
+            "add it to CANNOT_TRUNCATE in this file, with a comment saying why.\n"
+            "\n"
+            "Not to ALLOWED. That block is rewritten by --dump, which prints entries\n"
+            "and nothing else, so a comment written between its braces is erased at\n"
+            "the next regeneration while the entry it explains survives, and the entry\n"
+            "then reads as one more route waiting its turn. CANNOT_TRUNCATE is never\n"
+            "machine-written, which is what keeps the reason attached to the route.\n"
+            "\n"
+            "Being short today is not the test, and being bounded by a parent is not\n"
+            "the test either. Both still have a state in which the caller holds part\n"
+            "of the set, and reporting that state is what the envelope is for.",
             file=sys.stderr,
         )
         return 1
@@ -747,9 +965,24 @@ def main() -> int:
         )
         return 1
 
+    if stale_exempt:
+        print(
+            f"\n{len(stale_exempt)} entr(y/ies) in CANNOT_TRUNCATE no longer name a\n"
+            "bare-list route. Unlike the ALLOWED case this is not a finished migration\n"
+            "to be tidied up after, because these were declared unable to truncate:\n"
+            "either the route was renamed or deleted, or it was migrated to an envelope\n"
+            "against the reason recorded beside it. Read that reason before deciding.\n"
+            "Do not reach for --dump here; it does not print this list.\n",
+            file=sys.stderr,
+        )
+        for key in stale_exempt:
+            print(f"  {key}", file=sys.stderr)
+        return 1
+
     print(f"\nfiles read under backend/app/modules: {files}")
     print(
-        f"OK: no new bare-list GET routes. {len(ALLOWED)} still waiting to be migrated."
+        f"OK: no new bare-list GET routes. {len(ALLOWED)} still waiting to be migrated,"
+        f" {len(CANNOT_TRUNCATE)} exempt."
     )
     return 0
 
