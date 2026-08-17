@@ -158,13 +158,69 @@ def test_every_shipped_locale_carries_the_mark(script):
     # A directory that resolved wrong would scan nothing and report clean, so
     # establish that the corpus was really read before trusting an empty result.
     assert len(paths) >= 29, f"only {len(paths)} locale file(s) under {LOCALE_DIR}"
-    unmarked_files = [p.name for p in paths if f"Revit{R}" not in p.read_text(encoding="utf-8")]
-    assert unmarked_files == [], f"locale(s) carrying no marked mention at all: {unmarked_files}"
+    stems = {p.stem for p in paths}
+    text_of = {p.stem: p.read_text(encoding="utf-8") for p in paths}
+
+    def base_of(stem: str) -> str | None:
+        """The language file a regional variant resolves through, if any.
+
+        Derived from the code rather than mirrored from the fallback map in
+        frontend/src/app/i18n.ts, because i18next expands a two-part code into
+        ['en-US', 'en'] on its own before it ever consults that map. A mirrored
+        table is a second copy of a decision and the copy is the one that goes
+        stale, which is how the orphan guard came to demand a full keyspace of
+        an overlay.
+        """
+        if "-" not in stem:
+            return None
+        base = stem.split("-", 1)[0]
+        return base if base in stems else None
+
+    # A locale that names the tool must mark it, and a full locale that names it
+    # nowhere has had the mention translated away, which is the regression this
+    # assertion was written for. A regional overlay is the one case where naming
+    # it nowhere is correct: en-US carries 1499 keys against English's 33771,
+    # every one of them a word that actually differs, and it says nothing about
+    # CAD tools because it has nothing different to say. Demanding a marked
+    # mention there would be satisfied only by copying an English string into an
+    # overlay whose entire purpose is to hold what is not the same, and the mark
+    # the reader sees would still be the one in en.ts. So a variant is excused
+    # when its base carries the mark, and only then: strip the mark from en.ts
+    # and both files fail, which is the direction that matters.
+    unmarked = [
+        p.name
+        for p in paths
+        if f"Revit{R}" not in text_of[p.stem]
+        and not (base_of(p.stem) and f"Revit{R}" in text_of[base_of(p.stem)])  # type: ignore[index]
+    ]
+    assert unmarked == [], f"locale(s) carrying no marked mention at all: {unmarked}"
 
     offenders = [
         f"{path.name}:{lineno} {key}" for path in paths for lineno, key, _name in script._scan_trademark_form(path)
     ]
     assert offenders == [], f"{len(offenders)} unmarked UI string(s): {offenders[:10]}"
+
+
+def test_an_overlay_is_only_excused_while_its_base_carries_the_mark(script, tmp_path, monkeypatch):
+    """The carve-out above must not become a hole the base can fall through.
+
+    A variant that names the tool nowhere is reading its base's marked mention.
+    That stops being true the moment the base loses the mark, and at that point
+    both files are wrong and both have to say so, or the exemption would quietly
+    protect exactly the regression it was carved around.
+    """
+    locales = tmp_path / "frontend" / "src" / "app" / "locales"
+    locales.mkdir(parents=True)
+    monkeypatch.setattr(script, "REPO_ROOT", tmp_path)
+
+    (locales / "en.ts").write_text(_entry(f"Supports Revit{R}, IFC, DWG"), encoding="utf-8")
+    (locales / "en-US.ts").write_text(_entry("Bill of quantities"), encoding="utf-8")
+
+    assert script.main([str(locales / "en-US.ts")]) == 0
+
+    # The overlay is unchanged; only the base lost its mark.
+    (locales / "en.ts").write_text(_entry("Supports Revit, IFC, DWG"), encoding="utf-8")
+    assert script.main([str(locales / "en.ts")]) == 1
 
 
 def _scan_lines(script, tmp_path: Path, source: str) -> list[tuple[int, str]]:
