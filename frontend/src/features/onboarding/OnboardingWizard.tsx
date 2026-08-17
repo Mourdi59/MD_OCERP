@@ -3262,7 +3262,11 @@ function CountryPackCard({
 
 // ── Step 5: Data Setup (combined) ───────────────────────────────────────────
 
-function StepDataSetup({
+// Exported for its test. The step decides on its own whether to ask the server
+// for the encoder, and that decision is not reachable from the wizard's other
+// steps, so the test renders this one directly rather than driving the whole
+// wizard to reach it.
+export function StepDataSetup({
   onNext,
   onBack,
   selectedLang,
