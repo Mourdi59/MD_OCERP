@@ -26,12 +26,14 @@ After the container starts, the app responds on http://localhost:8080. Anything 
 
 ## Layout 2: separate backend and nginx frontend
 
-Here you build two images. The first is the API (`Dockerfile.backend`), which listens on port 8000. The second is an nginx container (`Dockerfile.frontend` together with `nginx.conf`) that serves the static single-page app and reverse-proxies API traffic back to the backend. Reach for this layout when you want nginx out front to terminate TLS and take care of compression and caching.
+Here you build two images. The first is the API, which listens on port 8000. It comes out of the same `Dockerfile.unified` as the all-in-one image above, from its `api` target: same base, same dependencies, no frontend. The second is an nginx container (`Dockerfile.frontend` together with `nginx.conf`) that serves the static single-page app and reverse-proxies API traffic back to the backend. Reach for this layout when you want nginx out front to terminate TLS and take care of compression and caching.
 
 ```bash
-docker build -t oce-backend  -f deploy/docker/Dockerfile.backend  .
+docker build -t oce-backend  --target api -f deploy/docker/Dockerfile.unified  .
 docker build -t oce-frontend -f deploy/docker/Dockerfile.frontend .
 ```
+
+The two layouts used to live in two Dockerfiles that had to be kept in step by hand, and they drifted: a vector-store dependency was added to the all-in-one image and never to the API-only one, so `/match-elements` answered an empty `200` on every image built for this layout. They are one file with two targets now, and the dependency list is a single build argument both targets read.
 
 The nginx container expects to find the API at `http://backend:8000`. That means the two containers have to sit on a shared Docker network and the API container has to be named `backend`. A small `docker-compose.yml`, or a `--network` flag plus `--name backend`, covers both needs. Copy `deploy/docker/.env.example`, then fill in at least `JWT_SECRET` and your `DATABASE_URL` before you bring the stack up.
 

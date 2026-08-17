@@ -1,11 +1,31 @@
-# OpenConstructionERP — Single Unified Docker Image
+# OpenConstructionERP container images.
 #
-# All-in-one image: FastAPI backend serves React frontend directly.
-# PostgreSQL is required (SQLite support was removed in v6.6.0) - the
-# container fails fast with a readable message when DATABASE_URL is
-# missing or not a PostgreSQL URL.
+# This one file builds both shipped layouts, as two targets over a shared base:
 #
-# One-command stack (this image + PostgreSQL 16, from the repo root):
+#   unified  the all-in-one image. FastAPI serves the compiled React frontend
+#            itself, on port 8080. This is the default target, so a bare
+#            `docker build -f deploy/docker/Dockerfile.unified .` still produces
+#            the all-in-one image that Railway, Render and the release workflow
+#            expect.
+#   api      the API-only image, on port 8000, with no frontend. Paired with the
+#            nginx image from Dockerfile.frontend. Built by docker-compose.prod.yml
+#            via `target: api`.
+#
+# The two used to be separate files, and they disagreed. [semantic-clients] was
+# added to the all-in-one image when /match-elements was found answering an empty
+# 200 on every stock container (qdrant_adapter._get_client raised ImportError, the
+# ranker's fallback raised again, and both were swallowed into an empty candidate
+# list). The fix never reached the API-only file, which docker-compose.prod.yml
+# builds, so the same defect stayed live there for a full release after it was
+# understood and fixed twenty lines away. The dependency set now lives in exactly
+# one place, the OE_EXTRAS build argument below, and the two targets cannot
+# disagree about it again.
+#
+# PostgreSQL is required (SQLite support was removed in v6.6.0) - the container
+# fails fast with a readable message when DATABASE_URL is missing or is not a
+# PostgreSQL URL.
+#
+# One-command stack (all-in-one image plus PostgreSQL 16, from the repo root):
 #   docker compose -f docker-compose.quickstart.yml up --build
 #
 # Standalone against your own PostgreSQL:
@@ -14,8 +34,24 @@
 #     -e DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/dbname \
 #     -e JWT_SECRET=$(openssl rand -hex 32) \
 #     openconstructionerp
+#
+# API-only image:
+#   docker build -t oce-backend --target api -f deploy/docker/Dockerfile.unified .
 
-# ── Stage 1: Build frontend ──────────────────────────────────────────
+# The extras both targets install, declared once, before the first FROM so every
+# stage can pull it in with a bare `ARG OE_EXTRAS`.
+#
+# [server] brings Celery and boto3. [semantic-clients] brings qdrant-client and
+# lancedb, the two vector stores the CWICR matching path opens, and no encoder.
+# The encoder stays out of both images on purpose: [semantic] would add torch,
+# which belongs to the desktop build alone. [vector] is not usable here either,
+# because it carries fastembed, an ONNX encoder nothing in the tree imports.
+#
+# A stage that installs a different set defeats the point of this argument. Add
+# extras here, not in a RUN line.
+ARG OE_EXTRAS=server,semantic-clients
+
+# --- Stage: frontend build (used by the unified target only) ---------------
 # node 22 because rollup-plugin-visualizer 7.x already emits an EBADENGINE
 # warning on node:20 and 8.x requires node>=22 outright (BUG-B04). The tag is
 # pinned to a minor instead of the floating `22-alpine`, which silently changes
@@ -62,72 +98,116 @@ COPY frontend/ .
 # this one command rather than for the whole stage.
 RUN NODE_OPTIONS=--max-old-space-size=8192 npm run build
 
-# ── Stage 2: Production image ────────────────────────────────────────
-FROM python:3.12-slim
+# --- Stage: shared backend base --------------------------------------------
+# Everything both images need that does not depend on whether a frontend is
+# present: system packages, the service user, the source tree and the data
+# volume.
+#
+# The base deliberately stops short of `pip install`. The wheel build bakes the
+# frontend in through hatch's force-include of ../frontend/dist, so the unified
+# target has to put the compiled UI in place BEFORE it installs, and the api
+# target must not have a UI at all. A shared install step would have to be right
+# for both, and it cannot be. The extras list is shared instead, through
+# OE_EXTRAS, which is the part that actually drifted.
+FROM python:3.12-slim AS backend-base
 
-# Install system dependencies (libpq for PostgreSQL support)
+# libpq for PostgreSQL support.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libpq-dev curl \
+    && apt-get install -y --no-install-recommends libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
+# Non-root service user.
 RUN groupadd -r oe && useradd -r -g oe -d /app -s /sbin/nologin oe
 
 WORKDIR /app
 
-# Copy backend source first (includes pyproject.toml + README.md + all code)
+# The whole backend (pyproject.toml + README.md + all source) before installing.
+# pip needs the app/ package present to build the wheel.
 COPY backend/ backend/
 
-# Create frontend dist directory for hatch force-include
+# Persistent data volume. OE_DATA_DIR pins the unified data-dir resolver
+# (app.core.storage.resolve_data_dir) at /data so BIM geometry and other
+# artifacts land on the mounted volume, not the ephemeral container layer
+# (where the wheel/site-packages default ~/.openestimate would put them,
+# leaving the DB row "ready" but the geometry endpoint 404 after a container
+# recreate). Operators can override OE_DATA_DIR at run time.
+RUN mkdir -p /data && chown oe:oe /data
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    OE_DATA_DIR=/data
+
+# --- Stage: api (backend only, port 8000) ----------------------------------
+# Paired with the nginx image from Dockerfile.frontend, which expects to reach
+# this container as http://backend:8000.
+FROM backend-base AS api
+
+ARG OE_EXTRAS
+RUN pip install --no-cache-dir "./backend[${OE_EXTRAS}]"
+
+RUN chown -R oe:oe /app
+USER oe
+
+WORKDIR /app/backend
+
+EXPOSE 8000
+
+VOLUME ["/data"]
+
+# curl is not installed in this image, so the check is made with the stdlib.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')" || exit 1
+
+CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+
+# --- Stage: unified (all-in-one, port 8080) --------------------------------
+# Last on purpose. deploy/railway/railway.toml, deploy/render/render.yaml and
+# .github/workflows/release.yml all build this file without naming a target, so
+# the final stage is what they publish. Moving another stage below this one
+# would silently start shipping them an image with no frontend.
+FROM backend-base AS unified
+
+# curl for the healthcheck below.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# The compiled frontend has to be in place before pip runs: the install below
+# builds a wheel from ./backend, and the UI ships inside it.
+#
+# /app/frontend/dist exists only to satisfy hatch's force-include, which names
+# ../frontend/dist relative to the backend directory and fails the build when the
+# path is absent. The bytes that actually get served are the ones copied into the
+# package directory.
 RUN mkdir -p /app/frontend/dist
 COPY --from=frontend-build /build/dist backend/app/_frontend_dist/
 
-# Install Python dependencies with the server and vector-client extras.
-# [server] brings Celery + boto3. [semantic-clients] brings qdrant-client, the
-# store the CWICR matching path opens. Installing only [server] left that import
-# missing, so /match-elements answered an empty 200 on every container built
-# from here, and Railway, Render and the terraform droplet all deploy this same
-# image. The encoder stays out on purpose - [semantic] would add torch.
-#
-# VECTOR_BACKEND=lancedb below still names a backend this image does not carry.
-# That is deliberate and predates this line: lancedb is 157 MB, and the generic
-# semantic store it serves has no encoder in a stock install either way, so
-# installing it would buy weight rather than a working feature.
-RUN pip install --no-cache-dir "./backend[server,semantic-clients]" && \
-    pip install --no-cache-dir "ezdxf>=0.18.0" || true
+ARG OE_EXTRAS
+RUN pip install --no-cache-dir "./backend[${OE_EXTRAS}]"
 
-# Copy data catalogs (for seed/enrichment)
+# Data catalogs (for seed/enrichment).
 COPY data/ data/
 
-# Entrypoint validates DATABASE_URL (PostgreSQL required) then execs uvicorn
+# Entrypoint validates DATABASE_URL (PostgreSQL required) then execs uvicorn.
 COPY --chmod=0755 deploy/docker/entrypoint.sh /app/entrypoint.sh
 
-# Create data volume directory
-RUN mkdir -p /data && chown oe:oe /data
-
-# Set ownership
 RUN chown -R oe:oe /app
 
 USER oe
 
 # Environment defaults for single-image mode.
 #
-# DATABASE_URL is intentionally NOT set here - the backend is
-# PostgreSQL-only since v6.6.0 and hard-rejects anything else, so a baked
-# default could only ever be wrong (the previous sqlite+aiosqlite default
-# crash-looped every bare `docker run` of the published image). The
-# entrypoint validates it at startup and prints how to supply one.
-# OE_DATA_DIR pins the unified data-dir resolver (app.core.storage.
-# resolve_data_dir) at the mounted /data volume below. Without it the
-# resolver's wheel/site-packages branch defaults to ~/.openestimate INSIDE
-# the container = the ephemeral container layer: BIM geometry is written
-# there, the DB row stays "ready", and a container recreate/redeploy makes
-# the geometry endpoint 404. Operators can still override it at run time.
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    SERVE_FRONTEND=true \
+# DATABASE_URL is intentionally NOT set here - the backend is PostgreSQL-only
+# since v6.6.0 and hard-rejects anything else, so a baked default could only ever
+# be wrong (the previous sqlite+aiosqlite default crash-looped every bare
+# `docker run` of the published image). The entrypoint validates it at startup
+# and prints how to supply one.
+#
+# VECTOR_BACKEND=lancedb names a backend this image actually carries, because
+# lancedb is in [semantic-clients] above. It used to name one the image did not
+# have, which made the shipped default a trap rather than a default.
+ENV SERVE_FRONTEND=true \
     VECTOR_BACKEND=lancedb \
-    OE_DATA_DIR=/data \
     VECTOR_DATA_DIR=/data/vectors \
     APP_ENV=production \
     APP_DEBUG=false \

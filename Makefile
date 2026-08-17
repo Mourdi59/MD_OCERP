@@ -178,7 +178,7 @@ quickstart-reset: ## Reset quickstart (delete data)
 # ─── Build & Deploy ────────────────────────────────────────────────────────
 build: ## Build all Docker images
 	docker build -t openestimate:latest -f deploy/docker/Dockerfile.unified .
-	docker build -t openestimate-backend:latest -f deploy/docker/Dockerfile.backend .
+	docker build -t openestimate-backend:latest --target api -f deploy/docker/Dockerfile.unified .
 	docker build -t openestimate-frontend:latest -f deploy/docker/Dockerfile.frontend .
 
 build-unified: ## Build single all-in-one Docker image

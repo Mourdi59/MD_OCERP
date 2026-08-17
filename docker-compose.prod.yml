@@ -18,7 +18,10 @@ services:
   backend:
     build:
       context: .
-      dockerfile: deploy/docker/Dockerfile.backend
+      dockerfile: deploy/docker/Dockerfile.unified
+      # The API-only target: port 8000, no frontend, paired with the nginx
+      # service below. The same file's default target is the all-in-one image.
+      target: api
     restart: unless-stopped
     depends_on:
       postgres:
