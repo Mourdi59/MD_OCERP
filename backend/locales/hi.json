@@ -66,7 +66,7 @@
     "direct_cost": "प्रत्यक्ष लागत",
     "net_total": "नेट कुल",
     "gross_total": "सकल कुल",
-    "vat": "VAT",
+    "vat": "वैट",
     "add_markups": "मार्कअप जोड़ें",
     "validate": "मान्य करें",
     "export": "निर्यात",
@@ -196,10 +196,10 @@
     "m3": "m³",
     "kg": "kg",
     "t": "t",
-    "pcs": "pcs",
-    "lsum": "lump sum",
-    "h": "h",
-    "set": "set"
+    "pcs": "नग",
+    "lsum": "एकमुश्त",
+    "h": "घंटा",
+    "set": "सेट"
   },
   "contacts": {
     "title": "संपर्क निर्देशिका",
@@ -276,7 +276,7 @@
     "purchase_orders": "खरीद आदेश",
     "goods_receipts": "माल रसीदें",
     "new_po": "नया PO",
-    "po_number": "PO #",
+    "po_number": "क्रय आदेश सं.",
     "vendor": "विक्रेता",
     "issue": "जारी करें",
     "confirm": "रसीद की पुष्टि करें"

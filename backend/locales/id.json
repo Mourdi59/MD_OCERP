@@ -11,12 +11,12 @@
     "5d_cost_model": "Model Biaya 5D",
     "templates": "Templat",
     "reports": "Laporan",
-    "sustainability": "Sustainability",
+    "sustainability": "Keberlanjutan",
     "group_estimation": "Estimasi",
-    "group_planning": "Planning",
+    "group_planning": "Perencanaan",
     "group_procurement": "Pengadaan",
-    "group_tools": "Tools",
-    "architecture": "Architecture Map"
+    "group_tools": "Alat",
+    "architecture": "Peta Arsitektur"
   },
   "common": {
     "save": "Simpan",
@@ -102,36 +102,36 @@
   },
   "assemblies": {
     "title": "Paket pekerjaan",
-    "description": "Reusable cost recipes — combine materials, labor, and equipment into ready-to-use templates",
+    "description": "Resep biaya yang dapat dipakai ulang, menggabungkan material, tenaga kerja, dan alat menjadi templat siap pakai",
     "new_assembly": "Paket pekerjaan baru",
     "from_database": "Dari basis data",
     "apply_to_boq": "Terapkan ke BOQ",
     "add_component": "Tambah komponen",
     "no_assemblies": "Belum ada paket pekerjaan",
-    "no_assemblies_hint": "Create your first assembly from the Cost Database or Resource Catalog",
+    "no_assemblies_hint": "Buat paket pekerjaan pertama Anda dari Basis Data Biaya atau Katalog Sumber Daya",
     "total_rate": "Tarif total"
   },
   "catalog": {
     "title": "Katalog Sumber Daya",
-    "description": "Browse and manage materials, equipment, labor rates, and operators",
-    "add_resource": "Add Resource",
-    "import_region": "Import Region",
-    "build_assembly": "Build Assembly",
-    "my_catalog": "My Catalog"
+    "description": "Telusuri dan kelola material, alat, tarif tenaga kerja, dan operator",
+    "add_resource": "Tambah Sumber Daya",
+    "import_region": "Impor Wilayah",
+    "build_assembly": "Buat Paket Pekerjaan",
+    "my_catalog": "Katalog Saya"
   },
   "validation": {
-    "title": "Validation",
+    "title": "Validasi",
     "passed": "Lulus",
     "warnings": "Peringatan",
     "errors": "Galat",
     "score": "Skor kualitas",
     "run_validation": "Jalankan validasi",
-    "missing_quantity": "Position {position} has no quantity",
-    "missing_rate": "Position {position} has no unit rate",
-    "missing_description": "Position {position} is missing a description",
-    "missing_classification": "Position {position} needs a classification code",
-    "duplicate_ordinal": "Duplicate ordinal number: {ordinal}",
-    "rate_anomaly": "Unit rate {rate} exceeds threshold ({threshold})"
+    "missing_quantity": "Posisi {position} tidak memiliki kuantitas",
+    "missing_rate": "Posisi {position} tidak memiliki harga satuan",
+    "missing_description": "Posisi {position} tidak memiliki deskripsi",
+    "missing_classification": "Posisi {position} memerlukan kode klasifikasi",
+    "duplicate_ordinal": "Nomor urut ganda: {ordinal}",
+    "rate_anomaly": "Harga satuan {rate} melampaui ambang batas ({threshold})"
   },
   "schedule": {
     "title": "Jadwal 4D"
@@ -139,9 +139,9 @@
   "cad": {
     "title": "Impor CAD",
     "upload": "Unggah file CAD",
-    "supported_formats": "Supported: DWG, DGN, RVT, IFC, PDF",
+    "supported_formats": "Didukung: DWG, DGN, RVT, IFC, PDF",
     "converting": "Mengonversi...",
-    "elements_found": "{count} elements found"
+    "elements_found": "{count} elemen ditemukan"
   },
   "takeoff": {
     "title": "Pengambilan kuantitas",
@@ -150,7 +150,7 @@
     "confidence": "Tingkat keyakinan"
   },
   "tendering": {
-    "title": "Tendering",
+    "title": "Pelelangan",
     "create_tender": "Buat tender",
     "bid": "Penawaran",
     "award": "Pemenang"
@@ -258,7 +258,7 @@
     "payable": "Utang",
     "receivable": "Piutang",
     "payments": "Pembayaran",
-    "evm": "Earned Value",
+    "evm": "Nilai Hasil",
     "invoice_number": "Faktur #",
     "amount": "Jumlah",
     "status": "Status",
@@ -276,7 +276,7 @@
     "purchase_orders": "Pesanan pembelian",
     "goods_receipts": "Penerimaan barang",
     "new_po": "PO baru",
-    "po_number": "PO #",
+    "po_number": "No. PO",
     "vendor": "Vendor",
     "issue": "Terbitkan",
     "confirm": "Konfirmasi penerimaan"
