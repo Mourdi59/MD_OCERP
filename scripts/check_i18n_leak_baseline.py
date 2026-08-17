@@ -167,9 +167,9 @@ CLUSTER_SNAPSHOT_PATH = "scripts/i18n_leak_cluster_snapshot.json"
 THRESHOLD = 24  # of 28 non-en locales
 CLUSTER_MIN_KEYS = 3  # locale-set coherence detector: >=N keys sharing one exact set
 
-# A locale part-way through its first translation pass, and the number of keys
-# it still held byte-identical to en when it was entered here, measured by this
-# file's own parser so the number means what this file means by it.
+# A locale part-way through its first translation pass, and the number of en
+# keys it already renders in its own words, measured by this file's own parser
+# so the number means what this file means by it.
 #
 # Such a locale is majority-identical to en by construction rather than by any
 # leak mechanism, and it breaks the coherence detector in a way that has nothing
@@ -184,12 +184,17 @@ CLUSTER_MIN_KEYS = 3  # locale-set coherence detector: >=N keys sharing one exac
 # these locales. The threshold detector still sees them, because a key identical
 # to en in 24 of 28 locales is worth reading whoever is in the set.
 #
-# The recorded count is a ratchet: it may fall as the translation lands and must
-# never rise. That makes the exemption self-limiting without anyone having to
-# remember it - it can only move toward zero, and at zero the entry comes out.
-# It is not a licence to add English to an exempt file.
+# The recorded count is a ratchet and it counts TRANSLATED keys, which may only
+# rise. Counting the leaked ones instead reads naturally and is wrong: en.ts
+# grows, and every key added to it that the exempt locale already carries in
+# English raises the leaked count without anyone having touched that locale. The
+# first version of this ratchet did exactly that and went red in CI on other
+# people's work within the hour. How many keys the locale renders in its own
+# words is a property of the locale alone. It rises when translation lands and
+# falls only when somebody removes a translation, which is the one thing worth
+# forbidding here.
 UNDER_TRANSLATION: dict[str, int] = {
-    "uz": 18605,
+    "uz": 15797,
 }
 
 import re
@@ -302,13 +307,16 @@ def main() -> int:  # noqa: PLR0912, PLR0915 - one linear check, splitting it hi
                 f"remove the entry, an exemption for a file that is not here exempts nothing"
             )
             continue
-        now = sum(1 for key, en_val in en_pairs.items() if pairs_by_locale[locale].get(key) == en_val)
-        if now > recorded:
+        pairs = pairs_by_locale[locale]
+        translated = sum(1 for key, en_val in en_pairs.items() if key in pairs and pairs[key] != en_val)
+        leaked = sum(1 for key, en_val in en_pairs.items() if pairs.get(key) == en_val)
+        if translated < recorded:
             ratchet_failures.append(
-                f"{locale} now holds {now} key(s) identical to en.ts, up from the {recorded} recorded when it "
-                f"was exempted. An in-progress locale may only become less English, never more."
+                f"{locale} now renders {translated} of en.ts's keys in its own words, down from the {recorded} "
+                f"recorded when it was exempted. A translation in progress may only move forward; something "
+                f"has replaced {recorded - translated} translated value(s) with the English."
             )
-        elif now == 0:
+        elif leaked == 0:
             ratchet_failures.append(
                 f"{locale} no longer holds any key identical to en.ts, so its translation pass is done; "
                 f"remove it from UNDER_TRANSLATION so the coherence detector covers it again"
