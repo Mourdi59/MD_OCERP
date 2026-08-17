@@ -399,7 +399,15 @@ export function TimesheetEditor({
                 <div className="flex flex-wrap items-end gap-3">
                   <label className="flex flex-col">
                     <span className="mb-1 text-2xs font-medium text-content-tertiary">
-                      {t('field_time.working_time.regime', { defaultValue: 'Recording regime' })}
+                      {/* Which regime this timesheet is already tracked under, a
+                          different question from field_time.working_time.regime
+                          in WorkingTimeRecord.tsx, which asks under which regime
+                          new days get filed. The two shared one key until the
+                          drift was caught: once a locale answers a key, its
+                          value wins over either call site's own defaultValue,
+                          so one of the two screens was silently speaking the
+                          other's sentence. */}
+                      {t('field_time.working_time.timesheet_regime', { defaultValue: 'Recording regime' })}
                     </span>
                     <select
                       value={timesheet.working_time_regime ?? ''}
