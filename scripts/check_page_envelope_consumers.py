@@ -142,6 +142,7 @@ MIGRATED_ENDPOINTS: dict[str, str] = {
     # invalidate the bare prefix ['equipment'], and React Query prefix-matches,
     # so a renamed key stops refreshing the register after create and delete.
     "/v1/equipment/equipment/": "equipment fleet",
+    "/v1/resources/resources/": "resources register",
 }
 
 # Left bare on purpose in wave 4: `/v1/documents/photos/recent/`. It is a

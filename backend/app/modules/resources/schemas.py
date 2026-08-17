@@ -86,6 +86,29 @@ class ResourceResponse(BaseModel):
     updated_at: datetime
 
 
+class ResourceListResponse(BaseModel):
+    """A page of resources, and how many match the filters.
+
+    ``total`` counts what ``type``, ``status`` and ``project_id`` matched
+    rather than every resource on the install, so a site surface reports the
+    size of the roster it asked for. That matters here more than on most
+    registers: ``project_id`` does not simply filter, it answers with the crews
+    homed on that project plus the unhomed company pool, and a reader comparing
+    a narrowed count against the tenant-wide one would otherwise have no way to
+    tell which question was asked.
+
+    Declared after ``ResourceResponse`` rather than beside the request models.
+    This module does not import annotations from ``__future__`` today, so the
+    name resolves either way, but the ordering is what the other envelopes in
+    this codebase rely on and it costs nothing to keep.
+    """
+
+    items: list[ResourceResponse]
+    total: int
+    offset: int = 0
+    limit: int = 50
+
+
 # ── Skill ────────────────────────────────────────────────────────────────
 
 

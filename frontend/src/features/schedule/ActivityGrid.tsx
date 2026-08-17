@@ -113,17 +113,21 @@ export function ActivityGrid({
 
   // An assignment carries a resource_id and no resource name - no endpoint
   // resolves one - so the register is read once and indexed here.
-  const { data: resourceList = [] } = useQuery({
+  const { data: resourcePage } = useQuery({
     queryKey: ['resources', 'list', 'all'],
     queryFn: () => listResources({ limit: 500 }),
     enabled: !!projectId && activities.length > 0,
     staleTime: 300_000,
   });
+  // This is a lookup, not a register the reader browses, so it gets no
+  // truncation notice. Worth knowing what a short page costs here: an id the
+  // page did not carry renders as "Unnamed resource" below, which reads like
+  // a resource with no name rather than like a lookup that ran out of rows.
   const resourceNameById = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const r of resourceList) map[r.id] = r.name;
+    for (const r of resourcePage?.items ?? []) map[r.id] = r.name;
     return map;
-  }, [resourceList]);
+  }, [resourcePage]);
 
   // Optimistic value for the per-row calendar picker while its change is in
   // flight, keyed by activity id (value is the calendar id, or null for the

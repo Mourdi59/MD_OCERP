@@ -57,6 +57,7 @@ import {
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { PageHeader } from '@/shared/ui/PageHeader';
+import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage, ApiError } from '@/shared/lib/api';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -507,7 +508,7 @@ export function ResourcesPage() {
     enabled: tab === 'assignments',
   });
 
-  const allResources: Resource[] = resourcesQ.data ?? [];
+  const allResources: Resource[] = resourcesQ.data?.items ?? [];
 
   // Distinct currencies in the loaded set — drives the currency-filter
   // dropdown. Sorted for stable order across renders.
@@ -894,6 +895,14 @@ export function ResourcesPage() {
               role="status"
               data-testid="resources-result-count"
             >
+              {/* Unfiltered, the count is the register's own size rather than
+                  the loaded page: "200 resources" on an install with 340 is a
+                  false claim, and the truncation notice below would contradict
+                  it. Filtered, it stays the loaded length on purpose, because
+                  the filtering happens on this side over the rows that
+                  arrived, so "12 of 200" describes what was actually
+                  narrowed. How many of the 340 are loaded is the notice's job,
+                  not this line's. */}
               {hasActiveFilters
                 ? t('resources.result_count_filtered', {
                     defaultValue: '{{shown}} of {{total}}',
@@ -902,7 +911,7 @@ export function ResourcesPage() {
                   })
                 : t('resources.result_count', {
                     defaultValue: '{{count}} resources',
-                    count: allResources.length,
+                    count: resourcesQ.data?.total ?? allResources.length,
                   })}
             </div>
           </div>
@@ -926,6 +935,12 @@ export function ResourcesPage() {
               />
             ) : (
               <>
+                {/* Above the rows and above the bulk bar, because the count in
+                    the header and the selection count below both describe the
+                    loaded page rather than the register. */}
+                {resourcesQ.data && (
+                  <TruncationNotice page={resourcesQ.data} className="px-4 pt-3" />
+                )}
                 {/* Bulk action bar — visible when at least one row is selected */}
                 {selectedIds.size > 0 && (
                   <div

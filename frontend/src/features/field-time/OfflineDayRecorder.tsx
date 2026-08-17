@@ -98,7 +98,7 @@ export function OfflineDayRecorder({ projectId, onRecorded }: OfflineDayRecorder
 
   const labour: PickOption[] = useMemo(
     () =>
-      (resourcesQ.data ?? [])
+      (resourcesQ.data?.items ?? [])
         .filter((r) => r.resource_type !== 'equipment')
         .map((r) => ({ id: r.id, label: joinLabel(r.code, r.name) || r.id })),
     [resourcesQ.data],

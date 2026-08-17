@@ -42,6 +42,11 @@ const RESOURCES = [
   },
 ];
 
+/* The route answers with {items, total, offset, limit}, so the mock has to as
+   well. A mock still resolving a bare array is how a migrated endpoint keeps
+   a green suite while the panel reads undefined off it in the browser. */
+const page = <T,>(items: T[]) => ({ items, total: items.length, offset: 0, limit: 500 });
+
 const HISTOGRAM = {
   resource_id: 'r1',
   bucket: 'week',
@@ -119,7 +124,7 @@ describe('ScheduleResourcePanel', () => {
   });
 
   it('renders the heading and both tab controls', async () => {
-    (listResources as any).mockResolvedValue(RESOURCES);
+    (listResources as any).mockResolvedValue(page(RESOURCES));
     (resourceHistogram as any).mockResolvedValue(HISTOGRAM);
     renderPanel();
 
@@ -129,7 +134,7 @@ describe('ScheduleResourcePanel', () => {
   });
 
   it('loads and renders the resource histogram bars on the first tab', async () => {
-    (listResources as any).mockResolvedValue(RESOURCES);
+    (listResources as any).mockResolvedValue(page(RESOURCES));
     (resourceHistogram as any).mockResolvedValue(HISTOGRAM);
     renderPanel();
 
@@ -150,7 +155,7 @@ describe('ScheduleResourcePanel', () => {
     // whichever project sorted first across every roster in the tenant, so a
     // schedule opened on a stranger's demand curve and the dropdown offered
     // every other project's crews to pick from instead.
-    (listResources as any).mockResolvedValue(RESOURCES);
+    (listResources as any).mockResolvedValue(page(RESOURCES));
     (resourceHistogram as any).mockResolvedValue(HISTOGRAM);
     renderPanel();
 
@@ -159,7 +164,7 @@ describe('ScheduleResourcePanel', () => {
   });
 
   it('shows an empty state when there are no resources', async () => {
-    (listResources as any).mockResolvedValue([]);
+    (listResources as any).mockResolvedValue(page([]));
     renderPanel();
 
     expect(await screen.findByText(/No resources yet/i)).toBeInTheDocument();
@@ -168,7 +173,7 @@ describe('ScheduleResourcePanel', () => {
   });
 
   it('previews a leveling run from the limits editor', async () => {
-    (listResources as any).mockResolvedValue(RESOURCES);
+    (listResources as any).mockResolvedValue(page(RESOURCES));
     (resourceHistogram as any).mockResolvedValue(HISTOGRAM);
     (levelPreview as any).mockResolvedValue(PREVIEW);
     renderPanel();
@@ -205,7 +210,7 @@ describe('ScheduleResourcePanel', () => {
   });
 
   it('applies a leveling run after confirmation', async () => {
-    (listResources as any).mockResolvedValue(RESOURCES);
+    (listResources as any).mockResolvedValue(page(RESOURCES));
     (resourceHistogram as any).mockResolvedValue(HISTOGRAM);
     (levelApply as any).mockResolvedValue(APPLY);
     renderPanel();

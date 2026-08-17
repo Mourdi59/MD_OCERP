@@ -6,7 +6,7 @@
  * Backed by /api/v1/resources/ — see backend/app/modules/resources/router.py
  */
 
-import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete, type Page } from '@/shared/lib/api';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -224,6 +224,12 @@ export interface CreateRequestPayload {
  * List resources. Pass `project_id` on a site surface: the server then
  * returns the crews homed on that project plus the unhomed company pool,
  * instead of every resource on the install.
+ *
+ * Answers with a page. `total` counts what the filters matched, so a picker
+ * asking for 500 can tell the reader whether 500 was all of them. There is a
+ * second `listResources` in features/schedule-advanced/api.ts reading this
+ * same route, and it moved in the same commit; migrating one and not the
+ * other would leave a caller decoding an envelope as an array.
  */
 export function listResources(params?: {
   type?: ResourceType | '';
@@ -231,7 +237,7 @@ export function listResources(params?: {
   project_id?: string;
   offset?: number;
   limit?: number;
-}): Promise<Resource[]> {
+}): Promise<Page<Resource>> {
   const qs = new URLSearchParams();
   if (params?.type) qs.set('type', params.type);
   if (params?.status) qs.set('status', params.status);
@@ -239,7 +245,13 @@ export function listResources(params?: {
   if (params?.offset !== undefined) qs.set('offset', String(params.offset));
   if (params?.limit !== undefined) qs.set('limit', String(params.limit));
   const q = qs.toString();
-  return apiGet<Resource[]>(`/v1/resources/resources/${q ? `?${q}` : ''}`);
+  /* The `?` sits inside the template rather than in a `${q ? `?${q}` : ''}`
+     suffix. That idiom puts a space inside the string literal, and the URL
+     scan in scripts/check_page_envelope_consumers.py stops at the first
+     whitespace, so the route would be invisible to the gate and could go half
+     migrated with nothing reported. A trailing `?` with an empty query is a
+     valid URL and parses as no query at all. */
+  return apiGet<Page<Resource>>(`/v1/resources/resources/?${q}`);
 }
 
 export function getResource(id: string): Promise<Resource> {

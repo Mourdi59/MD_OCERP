@@ -102,3 +102,38 @@ async def test_the_endpoint_declares_the_filter(pg_session) -> None:
 
     params = inspect.signature(list_resources).parameters
     assert "project_id" in params, "the resources endpoint does not accept a project filter"
+
+
+async def test_the_endpoint_answers_with_a_page_not_a_bare_array(pg_session) -> None:
+    """A capped list that cannot say it was capped is the bug this pins.
+
+    The route caps at 500 and every caller asks for the cap, so a tenant with
+    more resources than that was shown a page and told nothing. The service
+    has always returned the count and the route discarded it, which is why
+    this asserts the declared response rather than a row: the number existed
+    the whole time and simply never reached the wire.
+
+    Asserted against the registered ``response_model`` rather than the return
+    annotation. This module imports annotations from ``__future__``, so the
+    annotation is the string "ResourceListResponse" and an identity check
+    against it passes for any module that happens to spell a name the same
+    way. ``response_model`` is also the thing FastAPI actually serialises
+    through, so a route could declare the envelope in one and rows in the
+    other and only this half would reach the reader.
+
+    ``total`` is named explicitly because it is the field carrying the
+    disclosure: a model with ``items`` and no ``total`` satisfies a shape
+    check and still tells the reader nothing.
+    """
+    from app.modules.resources.router import list_resources, router
+    from app.modules.resources.schemas import ResourceListResponse
+
+    routes = [r for r in router.routes if getattr(r, "endpoint", None) is list_resources]
+    assert len(routes) == 1, f"expected exactly one route for list_resources, found {len(routes)}"
+    assert routes[0].response_model is ResourceListResponse, (
+        f"the register answers with {routes[0].response_model!r}, not the page envelope"
+    )
+    fields = ResourceListResponse.model_fields
+    assert set(fields) == {"items", "total", "offset", "limit"}, (
+        f"the envelope has drifted from {{items, total, offset, limit}}: {sorted(fields)}"
+    )

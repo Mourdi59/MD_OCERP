@@ -426,7 +426,6 @@ ALLOWED: frozenset[str] = frozenset(
         "resources/router.py::list_links_for_resource",
         "resources/router.py::list_requests",
         "resources/router.py::list_resource_skills",
-        "resources/router.py::list_resources",
         "resources/router.py::list_skills",
         "resources/router.py::list_windows",
         "review_authority/router.py::list_cycles",

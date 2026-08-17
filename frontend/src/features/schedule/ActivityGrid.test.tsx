@@ -93,10 +93,15 @@ describe('ActivityGrid', () => {
     (scheduleApi.updateActivity as any).mockResolvedValue({ id: 'a1' });
     (scheduleApi.reschedule as any).mockResolvedValue([]);
     (listCalendars as any).mockResolvedValue([]);
-    (listResources as any).mockResolvedValue([
-      { id: 'r1', code: 'CREW-A', name: 'Crew A' },
-      { id: 'r2', code: 'EXC-1', name: 'Excavator 1' },
-    ]);
+    (listResources as any).mockResolvedValue({
+      items: [
+        { id: 'r1', code: 'CREW-A', name: 'Crew A' },
+        { id: 'r2', code: 'EXC-1', name: 'Excavator 1' },
+      ],
+      total: 2,
+      offset: 0,
+      limit: 500,
+    });
     (listAssignmentsForActivity as any).mockResolvedValue([]);
   });
 

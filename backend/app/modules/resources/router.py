@@ -43,6 +43,7 @@ from app.modules.resources.schemas import (
     ResourceLinkCreate,
     ResourceLinkResponse,
     ResourceLinkUpdate,
+    ResourceListResponse,
     ResourceRequestCreate,
     ResourceRequestFulfill,
     ResourceRequestResponse,
@@ -76,7 +77,7 @@ router.include_router(resource_depth_router)
 # ── Resources ─────────────────────────────────────────────────────────────
 
 
-@router.get("/resources/", response_model=list[ResourceResponse])
+@router.get("/resources/", response_model=ResourceListResponse)
 async def list_resources(
     _perm: None = Depends(RequirePermission("resources.read")),
     offset: int = Query(default=0, ge=0),
@@ -85,21 +86,30 @@ async def list_resources(
     status_filter: str | None = Query(default=None, alias="status"),
     project_id: uuid.UUID | None = Query(default=None),
     service: ResourcesService = Depends(_get_service),
-) -> list[ResourceResponse]:
+) -> ResourceListResponse:
     """List resources; ``project_id`` narrows to that project's own roster.
 
     The narrowed form is what a site surface wants - the crews homed on this
     project plus the unhomed company pool. Omitting it keeps the tenant-wide
     register the resources page reads.
+
+    ``total`` is what the filters matched, not the page, so a picker capped at
+    500 can say it is showing 500 of however many there are. The service has
+    always returned that count and this route used to discard it.
     """
-    items, _ = await service.list_resources(
+    items, total = await service.list_resources(
         offset=offset,
         limit=limit,
         resource_type=type_filter,
         resource_status=status_filter,
         project_id=project_id,
     )
-    return [ResourceResponse.model_validate(i) for i in items]
+    return ResourceListResponse(
+        items=[ResourceResponse.model_validate(i) for i in items],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.post("/resources/", response_model=ResourceResponse, status_code=201)
