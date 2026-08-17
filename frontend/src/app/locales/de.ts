@@ -17440,6 +17440,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Live - diese Werte aktualisieren sich automatisch, wenn sich Kosten, Terminfortschritt oder Finanzdaten ändern",
     "nav.capacity_planning": "Kapazitätsplanung",
     "nav.payroll": "Lohnabrechnung",
+    "nav.certified_payroll": "Bestätigte Lohnabrechnung",
     "nav.takt": "Taktplanung",
     "ncr.source_clash": "Aus Kollision",
     "ncr.source_validation": "Aus Validierung",

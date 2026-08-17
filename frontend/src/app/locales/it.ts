@@ -16920,6 +16920,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "In tempo reale - i valori si aggiornano automaticamente al variare di costi, avanzamento lavori o dati finanziari",
     "nav.capacity_planning": "Pianificazione della capacità",
     "nav.payroll": "Gestione paghe",
+    "nav.certified_payroll": "Gestione paghe certificate",
     "nav.takt": "Pianificazione Takt",
     "ncr.source_clash": "Da interferenza",
     "ncr.source_validation": "Da validazione",

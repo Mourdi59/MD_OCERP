@@ -17205,6 +17205,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Live - dessa värden uppdateras automatiskt när kostnads-, tidplans- eller finansdata ändras",
     "nav.capacity_planning": "Kapacitetsplanering",
     "nav.payroll": "Lönehantering",
+    "nav.certified_payroll": "Attesterad lönehantering",
     "nav.takt": "Takt-planering",
     "ncr.source_clash": "Från kollision",
     "ncr.source_validation": "Från validering",

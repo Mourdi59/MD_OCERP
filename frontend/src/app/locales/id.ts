@@ -17151,6 +17151,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Langsung - angka-angka ini diperbarui otomatis saat data biaya, kemajuan jadwal, atau keuangan berubah",
     "nav.capacity_planning": "Perencanaan Kapasitas",
     "nav.payroll": "Penggajian",
+    "nav.certified_payroll": "Penggajian Tersertifikasi",
     "nav.takt": "Perencanaan Takt",
     "ncr.source_clash": "Dari benturan",
     "ncr.source_validation": "Dari validasi",

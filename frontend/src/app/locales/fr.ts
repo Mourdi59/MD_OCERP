@@ -16675,6 +16675,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "En direct - ces chiffres se mettent à jour automatiquement lors de toute modification du coût, de l'avancement planning ou des données financières",
     "nav.capacity_planning": "Planification des capacités",
     "nav.payroll": "Paie",
+    "nav.certified_payroll": "Paie certifiée",
     "nav.takt": "Planification Takt",
     "ncr.source_clash": "Depuis un clash",
     "ncr.source_validation": "Depuis la validation",

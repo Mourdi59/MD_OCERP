@@ -17284,6 +17284,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Онлайн, показатели обновляются автоматически при изменении данных о стоимости, прогрессе расписания или финансах",
     "nav.capacity_planning": "Планирование мощностей",
     "nav.payroll": "Расчёт зарплаты",
+    "nav.certified_payroll": "Заверенный расчёт зарплаты",
     "nav.takt": "Такт-планирование",
     "ncr.source_clash": "Из конфликта",
     "ncr.source_validation": "Из валидации",

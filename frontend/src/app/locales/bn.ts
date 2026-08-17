@@ -16790,6 +16790,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "লাইভ - কস্ট, সময়সূচীর অগ্রগতি বা আর্থিক ডেটা পরিবর্তিত হলে এই পরিসংখ্যান স্বয়ংক্রিয়ভাবে রিফ্রেশ হয়",
     "nav.capacity_planning": "ক্যাপাসিটি পরিকল্পনা",
     "nav.payroll": "পে-রোল",
+    "nav.certified_payroll": "প্রত্যয়িত পে-রোল",
     "nav.takt": "ট্যাক্ট পরিকল্পনা",
     "ncr.source_clash": "ক্ল্যাশ থেকে",
     "ncr.source_validation": "ভ্যালিডেশন থেকে",

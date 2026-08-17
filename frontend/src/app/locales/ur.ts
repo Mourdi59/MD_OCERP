@@ -16790,6 +16790,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "براہ راست - جب لاگت، شیڈول پیش رفت یا مالیاتی ڈیٹا تبدیل ہوتا ہے تو یہ اعداد خودکار طور پر تازہ ہوتے ہیں",
     "nav.capacity_planning": "گنجائش کی منصوبہ بندی",
     "nav.payroll": "تنخواہ",
+    "nav.certified_payroll": "تصدیق شدہ تنخواہ",
     "nav.takt": "ٹیکٹ پلاننگ",
     "ncr.source_clash": "Clash سے",
     "ncr.source_validation": "Validation سے",

@@ -17153,6 +17153,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Trực tiếp - các số liệu này tự động cập nhật khi dữ liệu chi phí, tiến độ hoặc tài chính thay đổi",
     "nav.capacity_planning": "Lập kế hoạch công suất",
     "nav.payroll": "Bảng lương",
+    "nav.certified_payroll": "Bảng lương được chứng nhận",
     "nav.takt": "Lập kế hoạch Takt",
     "ncr.source_clash": "Từ xung đột",
     "ncr.source_validation": "Từ kiểm tra",

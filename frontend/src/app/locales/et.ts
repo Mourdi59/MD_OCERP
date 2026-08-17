@@ -17344,6 +17344,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Reaalajas - need näitajad värskenduvad automaatselt, kui kulu, ajakava edenemine või finantsandmed muutuvad",
     "nav.capacity_planning": "Mahutavuse planeerimine",
     "nav.payroll": "Palgaarvestus",
+    "nav.certified_payroll": "Kinnitatud palgaarvestus",
     "nav.takt": "Takti planeerimine",
     "ncr.source_clash": "Kollisioonist",
     "ncr.source_validation": "Valideerimisest",

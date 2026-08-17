@@ -16790,6 +16790,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "زنده - این ارقام هنگام تغییر هزینه، پیشرفت زمان‌بندی یا داده‌های مالی به‌طور خودکار تازه می‌شوند",
     "nav.capacity_planning": "برنامه‌ریزی ظرفیت",
     "nav.payroll": "حقوق و دستمزد",
+    "nav.certified_payroll": "دستمزد گواهی‌شده",
     "nav.takt": "برنامه‌ریزی تکت",
     "ncr.source_clash": "از برخورد",
     "ncr.source_validation": "از اعتبارسنجی",

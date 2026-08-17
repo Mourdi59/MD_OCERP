@@ -17203,6 +17203,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Direkte - disse tal opdateres automatisk, når økonomi, fremdrift eller finansdata ændres",
     "nav.capacity_planning": "Kapacitetsplanlægning",
     "nav.payroll": "Løn",
+    "nav.certified_payroll": "Attesteret løn",
     "nav.takt": "Takt-planlægning",
     "ncr.source_clash": "Fra kollision",
     "ncr.source_validation": "Fra validering",

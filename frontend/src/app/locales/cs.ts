@@ -17110,6 +17110,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Živě - tyto hodnoty se automaticky aktualizují při změně nákladů, postupu harmonogramu nebo finančních dat",
     "nav.capacity_planning": "Plánování kapacit",
     "nav.payroll": "Mzdová agenda",
+    "nav.certified_payroll": "Ověřená mzdová agenda",
     "nav.takt": "Takt plánování",
     "ncr.source_clash": "Ze střetu",
     "ncr.source_validation": "Z validace",

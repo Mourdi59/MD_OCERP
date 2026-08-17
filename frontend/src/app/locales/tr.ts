@@ -17164,6 +17164,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Canlı - bu değerler maliyet, program ilerleme veya finans verileri değiştiğinde otomatik olarak güncellenir",
     "nav.capacity_planning": "Kapasite Planlaması",
     "nav.payroll": "Bordro",
+    "nav.certified_payroll": "Onaylı Bordro",
     "nav.takt": "Takt Planlaması",
     "ncr.source_clash": "Çakışmadan",
     "ncr.source_validation": "Doğrulamadan",

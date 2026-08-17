@@ -17217,6 +17217,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "실시간 - 비용, 공정 진행 또는 재무 데이터가 변경되면 수치가 자동으로 갱신됩니다",
     "nav.capacity_planning": "가용 능력 계획",
     "nav.payroll": "급여 관리",
+    "nav.certified_payroll": "인증 급여 관리",
     "nav.takt": "Takt 계획",
     "ncr.source_clash": "충돌에서",
     "ncr.source_validation": "검증에서",

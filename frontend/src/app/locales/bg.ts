@@ -17236,6 +17236,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "На живо - тези стойности се обновяват автоматично при промяна на разходи, напредък по графика или финансови данни",
     "nav.capacity_planning": "Планиране на капацитета",
     "nav.payroll": "Ведомост",
+    "nav.certified_payroll": "Заверена ведомост",
     "nav.takt": "Такт планиране",
     "ncr.source_clash": "От сблъсък",
     "ncr.source_validation": "От валидация",

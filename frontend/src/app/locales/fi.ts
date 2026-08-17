@@ -17138,6 +17138,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Reaaliaikainen - nämä luvut päivittyvät automaattisesti kustannus-, aikatauluetenemis- tai taloustietojen muuttuessa",
     "nav.capacity_planning": "Kapasiteetin suunnittelu",
     "nav.payroll": "Palkkahallinto",
+    "nav.certified_payroll": "Vahvistettu palkkahallinto",
     "nav.takt": "Takt-suunnittelu",
     "ncr.source_clash": "Törmäyksestä",
     "ncr.source_validation": "Validoinnista",

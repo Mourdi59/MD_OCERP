@@ -17146,6 +17146,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Live - aceste cifre se actualizează automat când se modifică datele de cost, progresul programului sau finanțele",
     "nav.capacity_planning": "Planificarea capacității",
     "nav.payroll": "Salarizare",
+    "nav.certified_payroll": "Salarizare certificată",
     "nav.takt": "Planificare Takt",
     "ncr.source_clash": "Din conflict",
     "ncr.source_validation": "Din validare",

@@ -6000,6 +6000,7 @@ const resource = {
     "nav.equipment": "Техника жана автопарк",
     "nav.resources": "Ресурстар жана бригада",
     "nav.payroll": "Эмгек акы",
+    "nav.certified_payroll": "Күбөлөндүрүлгөн эмгек акы",
     "nav.service": "Тейлөө жана техникалык кызмат көрсөтүү",
     "nav.portal": "Кардар жана өнөктөш порталы",
     "nav.portal_payments": "Өнөктөш төлөм порталы",

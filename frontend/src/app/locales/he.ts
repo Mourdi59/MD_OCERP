@@ -16798,6 +16798,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "חי - הנתונים הללו מתרעננים אוטומטית כשעלות, התקדמות לוח זמנים או נתוני כספים משתנים",
     "nav.capacity_planning": "תכנון קיבולת",
     "nav.payroll": "שכר",
+    "nav.certified_payroll": "שכר מאושר",
     "nav.takt": "תכנון טאקט",
     "ncr.source_clash": "מהתנגשות",
     "ncr.source_validation": "מאימות",

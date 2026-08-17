@@ -17465,6 +17465,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "مباشر - تتحدث هذه الأرقام تلقائياً عند تغيير بيانات التكلفة أو تقدم الجدول الزمني أو البيانات المالية",
     "nav.capacity_planning": "تخطيط الطاقة الإنتاجية",
     "nav.payroll": "الرواتب",
+    "nav.certified_payroll": "رواتب معتمدة",
     "nav.takt": "تخطيط Takt",
     "ncr.source_clash": "من تعارض",
     "ncr.source_validation": "من التحقق",

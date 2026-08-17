@@ -17089,6 +17089,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Uživo - ove vrijednosti automatski se osvježavaju pri promjeni troškova, napretka rasporeda ili financijskih podataka",
     "nav.capacity_planning": "Planiranje kapaciteta",
     "nav.payroll": "Plaće",
+    "nav.certified_payroll": "Ovjerene plaće",
     "nav.takt": "Takt planiranje",
     "ncr.source_clash": "Iz kolizije",
     "ncr.source_validation": "Iz validacije",

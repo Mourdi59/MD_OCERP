@@ -17222,6 +17222,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Шууд - зардал, хуваарийн явц эсвэл санхүүгийн мэдээлэл өөрчлөгдөх бүрт тоо хэмжээнүүд автоматаар шинэчлэгдэнэ",
     "nav.capacity_planning": "Хүчин чадлын төлөвлөлт",
     "nav.payroll": "Цалин хөлс",
+    "nav.certified_payroll": "Гэрчилгээжсэн цалин",
     "nav.takt": "Такт төлөвлөлт",
     "ncr.source_clash": "Зөрчлөөс",
     "ncr.source_validation": "Баталгаажуулалтаас",

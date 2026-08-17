@@ -17116,6 +17116,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Na żywo, wartości odświeżają się automatycznie po zmianie kosztów, postępu harmonogramu lub danych finansowych",
     "nav.capacity_planning": "Planowanie zasobów",
     "nav.payroll": "Listy płac",
+    "nav.certified_payroll": "Poświadczone listy płac",
     "nav.takt": "Planowanie Takt",
     "ncr.source_clash": "Z kolizji",
     "ncr.source_validation": "Z walidacji",

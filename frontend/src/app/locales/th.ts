@@ -17212,6 +17212,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Live - ตัวเลขเหล่านี้จะรีเฟรชโดยอัตโนมัติเมื่อข้อมูลต้นทุน ความคืบหน้ากำหนดการ หรือข้อมูลการเงินเปลี่ยนแปลง",
     "nav.capacity_planning": "การวางแผนกำลังการผลิต",
     "nav.payroll": "บัญชีเงินเดือน",
+    "nav.certified_payroll": "บัญชีเงินเดือนที่รับรอง",
     "nav.takt": "การวางแผน Takt",
     "ncr.source_clash": "จากการชน",
     "ncr.source_validation": "จากการตรวจสอบ",

@@ -16790,6 +16790,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Тікелей - бұл сандар құн, кесте барысы немесе қаржы деректері өзгергенде автоматты жаңарады",
     "nav.capacity_planning": "Сыйымдылықты Жоспарлау",
     "nav.payroll": "Жалақы",
+    "nav.certified_payroll": "Куәландырылған жалақы",
     "nav.takt": "Такт Жоспарлау",
     "ncr.source_clash": "Қақтығыстан",
     "ncr.source_validation": "Тексеруден",

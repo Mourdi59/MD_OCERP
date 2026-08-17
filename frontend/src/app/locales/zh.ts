@@ -17217,6 +17217,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "实时 - 当费用、进度或财务数据变化时，这些数据将自动刷新",
     "nav.capacity_planning": "产能规划",
     "nav.payroll": "薪资管理",
+    "nav.certified_payroll": "认证薪资管理",
     "nav.takt": "节拍计划",
     "ncr.source_clash": "来自碰撞检测",
     "ncr.source_validation": "来自验证",

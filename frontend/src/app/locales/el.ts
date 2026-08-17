@@ -16790,6 +16790,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Ζωντανό - αυτά τα στοιχεία ανανεώνονται αυτόματα όταν αλλάζουν τα δεδομένα κόστους, προόδου χρονοδιαγράμματος ή οικονομικών",
     "nav.capacity_planning": "Σχεδιασμός δυναμικότητας",
     "nav.payroll": "Μισθοδοσία",
+    "nav.certified_payroll": "Πιστοποιημένη μισθοδοσία",
     "nav.takt": "Προγραμματισμός Takt",
     "ncr.source_clash": "Από σύγκρουση",
     "ncr.source_validation": "Από επικύρωση",

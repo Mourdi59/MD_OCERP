@@ -17236,6 +17236,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "लाइव - ये आँकड़े स्वचालित रूप से ताज़ा होते हैं जब लागत, शेड्यूल प्रगति या वित्त डेटा बदलता है",
     "nav.capacity_planning": "क्षमता नियोजन",
     "nav.payroll": "वेतन-पत्रक",
+    "nav.certified_payroll": "प्रमाणित वेतन-पत्रक",
     "nav.takt": "Takt नियोजन",
     "ncr.source_clash": "टकराव से",
     "ncr.source_validation": "सत्यापन से",

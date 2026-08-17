@@ -17217,6 +17217,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "リアルタイム - コスト・工程進捗・財務データの変更に応じて自動的に更新されます",
     "nav.capacity_planning": "キャパシティ計画",
     "nav.payroll": "給与",
+    "nav.certified_payroll": "認定給与",
     "nav.takt": "タクト計画",
     "ncr.source_clash": "クラッシュより",
     "ncr.source_validation": "バリデーションより",

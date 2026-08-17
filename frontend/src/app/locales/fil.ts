@@ -16790,6 +16790,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Live - awtomatikong nagre-refresh ang mga numerong ito kapag nagbago ang gastos, progreso ng iskedyul o datos ng pinansya",
     "nav.capacity_planning": "Pagpaplano ng Kapasidad",
     "nav.payroll": "Talaan ng Sweldo",
+    "nav.certified_payroll": "Sertipikadong Talaan ng Sweldo",
     "nav.takt": "Pagpaplano ng Takt",
     "ncr.source_clash": "Mula sa clash",
     "ncr.source_validation": "Mula sa validation",

@@ -16852,6 +16852,7 @@ const resource = {
     "costmodel.evm_live_tooltip": "Live - deze cijfers worden automatisch bijgewerkt bij wijzigingen in kosten, planningsvoortgang of financiële gegevens",
     "nav.capacity_planning": "Capaciteitsplanning",
     "nav.payroll": "Salarisadministratie",
+    "nav.certified_payroll": "Gecertificeerde salarisadministratie",
     "nav.takt": "Taktplanning",
     "ncr.source_clash": "Uit clash",
     "ncr.source_validation": "Uit validatie",
