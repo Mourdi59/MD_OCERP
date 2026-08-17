@@ -36965,7 +36965,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Catatan yang hilang ditandai sejak awal",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Lampirkan bukti selagi penulisnya masih di lapangan",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Pindahkan catatan buku harian lapangan untuk hari-hari yang terdampak ke paket bukti beserta instruksi, revisi gambar, dan foto, lalu catat apa yang hilang agar bisa ditangkap sekarang, bukan dicari belakangan.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Celah yang Anda temukan hari ini adalah celah yang masih bisa diisi seseorang. Celah yang sama yang ditemukan pada penyelesaian akhir adalah celah dalam kasus Anda, dan satu-satunya orang yang bisa menutupnya sudah meninggalkan lapangan musim semi lalu.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Celah yang Anda temukan hari ini adalah celah yang masih bisa diisi seseorang. Celah yang sama yang ditemukan pada penyelesaian akhir adalah celah dalam kasus Anda, dan satu-satunya orang yang bisa menutupnya sudah meninggalkan lapangan berbulan-bulan lalu.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Siapa yang perlu menyetujui",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Perubahan yang sudah dihargai",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Order perubahan yang ditandatangani",

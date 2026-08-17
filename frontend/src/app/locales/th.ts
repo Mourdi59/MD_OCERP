@@ -36964,7 +36964,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "บันทึกที่ขาดหายถูกทำเครื่องหมายไว้แต่เนิ่น ๆ",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "แนบหลักฐานขณะที่ผู้สร้างมันยังอยู่หน้างาน",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "ดึงบันทึกหน้างานประจำวันสำหรับวันที่ได้รับผลกระทบเข้าสู่ชุดหลักฐาน พร้อมคำสั่ง แบบที่แก้ไข และรูปถ่าย จากนั้นบันทึกสิ่งที่ขาดหายไปเพื่อให้สามารถรวบรวมได้ทันทีแทนที่จะต้องตามหาในภายหลัง",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "ช่องว่างที่คุณพบวันนี้คือช่องว่างที่ยังมีใครสักคนสามารถเติมได้ ช่องว่างเดียวกันเมื่อพบในการตกลงขั้นสุดท้ายคือรูโหว่ในบันทึกของคุณ และคนคนเดียวที่สามารถเติมมันได้ก็ออกจากหน้างานไปตั้งแต่ฤดูใบไม้ผลิที่แล้ว",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "ช่องว่างที่คุณพบวันนี้คือช่องว่างที่ยังมีใครสักคนสามารถเติมได้ ช่องว่างเดียวกันเมื่อพบในการตกลงขั้นสุดท้ายคือรูโหว่ในบันทึกของคุณ และคนคนเดียวที่สามารถเติมมันได้ก็ออกจากหน้างานไปหลายเดือนแล้ว",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "ใครต้องอนุมัติ",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "การเปลี่ยนแปลงที่ตั้งราคาแล้ว",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "ใบสั่งเปลี่ยนแปลงที่ลงนามแล้ว",

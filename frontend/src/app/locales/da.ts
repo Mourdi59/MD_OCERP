@@ -36986,7 +36986,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Manglende dokumentation markeret tidligt",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Vedhæft dokumentation, mens forfatterne stadig er på pladsen",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Træk indførsler fra byggedagbogen for de berørte dage over i dokumentationspakken sammen med instruksen, tegningsrevisionen og billederne, og notér, hvad der mangler, så det kan indsamles nu i stedet for jagtes senere.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Et hul, du finder i dag, er et, nogen stadig kan udfylde. Det samme hul fundet ved den endelige afregning er et hul i din sag, og den eneste person, der kunne have lukket det, forlod pladsen sidste forår.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Et hul, du finder i dag, er et, nogen stadig kan udfylde. Det samme hul fundet ved den endelige afregning er et hul i din sag, og den eneste person, der kunne have lukket det, forlod pladsen for måneder siden.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Hvem skal godkende",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Prissat ændring",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Underskrevet ændringsordre",

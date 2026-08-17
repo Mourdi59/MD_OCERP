@@ -36975,7 +36975,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Hồ sơ còn thiếu được đánh dấu sớm",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Đính kèm bằng chứng khi những người tạo ra nó vẫn còn tại công trường",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Chuyển các mục ghi trong nhật ký công trường cho những ngày bị ảnh hưởng vào gói bằng chứng cùng với chỉ thị, bản vẽ sửa đổi và ảnh, rồi ghi lại những gì còn thiếu để có thể thu thập ngay bây giờ thay vì phải truy tìm sau này.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Một khoảng trống bạn tìm ra hôm nay là khoảng trống ai đó vẫn còn có thể lấp đầy. Cùng khoảng trống đó khi tìm thấy ở lúc quyết toán cuối cùng là một lỗ hổng trong hồ sơ của bạn, và người duy nhất có thể lấp nó đã rời công trường từ mùa xuân trước.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Một khoảng trống bạn tìm ra hôm nay là khoảng trống ai đó vẫn còn có thể lấp đầy. Cùng khoảng trống đó khi tìm thấy ở lúc quyết toán cuối cùng là một lỗ hổng trong hồ sơ của bạn, và người duy nhất có thể lấp nó đã rời công trường từ nhiều tháng trước.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Ai cần phê duyệt",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Thay đổi đã định giá",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Lệnh thay đổi đã ký",

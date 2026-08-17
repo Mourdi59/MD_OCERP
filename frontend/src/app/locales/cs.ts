@@ -37096,7 +37096,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Chybějící záznamy identifikovány včas",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Přiložte důkazy, dokud jsou jejich tvůrci ještě na stavbě",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Přeneste do balíku důkazů zápisy stavebního deníku pokrývající dotčené dny spolu s pokynem, revizí výkresu a fotografiemi a poznamenejte, co chybí, aby to bylo možné zachytit teď místo hledání později.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Mezeru, kterou najdete dnes, ještě někdo dokáže zaplnit. Tatáž mezera nalezená při konečném vyúčtování je díra ve vašem případě, a jediný člověk, který ji mohl uzavřít, odešel ze stavby na jaře.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Mezeru, kterou najdete dnes, ještě někdo dokáže zaplnit. Tatáž mezera nalezená při konečném vyúčtování je díra ve vašem případě, a jediný člověk, který ji mohl uzavřít, odešel ze stavby před měsíci.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Kdo to musí schválit",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Oceněná změna",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Podepsaná objednávka změny",

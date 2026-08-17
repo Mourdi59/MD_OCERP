@@ -37038,7 +37038,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "רשומות חסרות מסומנות מוקדם",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "צרפו ראיות בעוד יוצריהן עדיין באתר",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "משכו את רשומות יומן האתר עבור הימים המושפעים לחבילת הראיות יחד עם הוראות, שרטוטים מתוקנים ותמונות, ואז תעדו מה חסר כדי שאפשר יהיה לאסוף אותו עכשיו במקום לרדוף אחריו אחר כך.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "פער שאתם מוצאים היום הוא פער שמישהו עדיין יכול למלא. אותו פער כשהוא מתגלה בהסדרה הסופית הוא חור ברשומה שלכם, והאדם היחיד שיכול היה למלא אותו עזב את האתר עוד באביב שעבר.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "פער שאתם מוצאים היום הוא פער שמישהו עדיין יכול למלא. אותו פער כשהוא מתגלה בהסדרה הסופית הוא חור ברשומה שלכם, והאדם היחיד שיכול היה למלא אותו עזב את האתר לפני חודשים.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "מי צריך לאשר",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "שינוי מתומחר",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "הזמנת שינוי חתומה",

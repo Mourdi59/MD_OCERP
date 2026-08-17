@@ -37233,7 +37233,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "提前标出的缺失记录",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "趁制作者仍在现场时附上证据",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "把受影响日期的施工日志记录连同指令、修订图纸和照片拉进证据包，然后记录缺了什么，以便现在就能收集，而不是以后再去追查。",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "今天发现的缺口，是仍然有人可以补上的缺口。同样的缺口在最终结算时才被发现，就是你记录中的一个洞，而唯一能补上它的人早在上个春天就离开现场了。",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "今天发现的缺口，是仍然有人可以补上的缺口。同样的缺口在最终结算时才被发现，就是你记录中的一个洞，而唯一能补上它的人早在几个月前就离开现场了。",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "谁需要批准",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "已定价的变更",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "已签署的变更指令",

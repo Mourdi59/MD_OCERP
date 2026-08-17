@@ -36988,7 +36988,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Saknade underlag flaggade tidigt",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Bifoga underlag medan dess upphovsmän fortfarande är på plats",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Dra in poster från platsdagboken för de berörda dagarna i underlagspaketet tillsammans med instruktionen, ritningsrevisionen och bilderna, och notera vad som saknas så att det kan fångas upp nu istället för jagas senare.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Ett hål du hittar idag är ett som någon fortfarande kan fylla. Samma hål hittat vid slutregleringen är ett hål i ditt ärende, och den enda personen som kunde ha täppt till det lämnade platsen förra våren.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Ett hål du hittar idag är ett som någon fortfarande kan fylla. Samma hål hittat vid slutregleringen är ett hål i ditt ärende, och den enda personen som kunde ha täppt till det lämnade platsen för månader sedan.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Vem som måste godkänna",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Prissatt ändring",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Undertecknad ändringsorder",

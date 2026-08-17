@@ -37330,7 +37330,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Documents manquants identifiés tôt",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Joignez les preuves tant que ceux qui les ont produites sont encore sur le chantier",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Rassemblez dans le dossier de preuves les rapports de journal de chantier couvrant les journées concernées, avec l'instruction, la révision de plan et les photographies, et notez ce qui manque afin que ce soit saisi maintenant plutôt que recherché plus tard.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Le trou que vous trouvez aujourd'hui, quelqu'un peut encore le combler. Le même trou trouvé lors du décompte final est un trou dans votre dossier, et la seule personne qui aurait pu le combler a quitté le chantier au printemps.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Le trou que vous trouvez aujourd'hui, quelqu'un peut encore le combler. Le même trou trouvé lors du décompte final est un trou dans votre dossier, et la seule personne qui aurait pu le combler a quitté le chantier il y a des mois.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Qui doit approuver",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "La modification chiffrée",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Avenant signé",

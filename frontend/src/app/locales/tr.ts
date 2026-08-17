@@ -36992,7 +36992,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Erken işaretlenen eksik kayıtlar",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Yazarları hâlâ sahadayken kanıtları ekleyin",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Etkilenen günlerin saha günlüğü kayıtlarını, talimat, proje revizyonu ve fotoğraflarla birlikte kanıt paketine aktarın ve eksik olanı, sonradan aranmak yerine şimdi yakalanabilmesi için not edin.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Bugün bulduğunuz bir boşluk, birinin hâlâ doldurabileceği bir boşluktur. Nihai hesaplaşmada bulunan aynı boşluk, davanızdaki bir boşluktur ve onu kapatabilecek tek kişi geçen bahar sahadan ayrılmıştır.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Bugün bulduğunuz bir boşluk, birinin hâlâ doldurabileceği bir boşluktur. Nihai hesaplaşmada bulunan aynı boşluk, davanızdaki bir boşluktur ve onu kapatabilecek tek kişi aylar önce sahadan ayrılmıştır.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Kimin onaylaması gerekiyor",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Fiyatlandırılmış değişiklik",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "İmzalı değişiklik siparişi",

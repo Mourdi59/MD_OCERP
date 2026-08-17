@@ -36985,7 +36985,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "جلد نشان زد کیے گئے غائب ریکارڈز",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "جب ثبوت بنانے والے ابھی بھی سائٹ پر ہوں تو ثبوت منسلک کریں",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "متاثرہ دنوں کی سائٹ ڈائری کے اندراجات کو ہدایات، نظرثانی شدہ ڈرائنگز اور تصاویر کے ساتھ ثبوت کے بنڈل میں کھینچ لائیں، پھر یہ دستاویز کریں کہ کیا کمی ہے تاکہ اسے بعد میں پیچھا کرنے کے بجائے اب جمع کیا جا سکے۔",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "آج آپ جو خلا پاتے ہیں وہ ایسا خلا ہے جسے کوئی ابھی بھی بھر سکتا ہے۔ وہی خلا جب حتمی تصفیے میں پایا جائے تو آپ کے ریکارڈ میں سوراخ بن جاتا ہے، اور جو واحد شخص اسے بھر سکتا تھا وہ پچھلی بہار ہی سائٹ چھوڑ چکا ہے۔",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "آج آپ جو خلا پاتے ہیں وہ ایسا خلا ہے جسے کوئی ابھی بھی بھر سکتا ہے۔ وہی خلا جب حتمی تصفیے میں پایا جائے تو آپ کے ریکارڈ میں سوراخ بن جاتا ہے، اور جو واحد شخص اسے بھر سکتا تھا وہ کئی ماہ پہلے ہی سائٹ چھوڑ چکا ہے۔",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "کسے منظوری دینی ہے",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "قیمت لگی ہوئی تبدیلی",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "دستخط شدہ چینج آرڈر",

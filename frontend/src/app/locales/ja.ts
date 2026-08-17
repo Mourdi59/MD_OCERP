@@ -37233,7 +37233,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "早期に印を付けた欠落記録",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "作成者がまだ現場にいるうちに証拠を添付する",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "影響を受けた日の現場日報の記入を、指示書、改訂図面、写真とともに証拠の束に取り込み、後で追いかけるのではなく今のうちに集められるよう、何が欠けているかを記録します。",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "今日見つける空白は、まだ誰かが埋められる空白です。同じ空白が最終精算で見つかると、記録の穴になります。それを埋められたはずの唯一の人物は、去年の春にすでに現場を離れています。",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "今日見つける空白は、まだ誰かが埋められる空白です。同じ空白が最終精算で見つかると、記録の穴になります。それを埋められたはずの唯一の人物は、何か月も前にすでに現場を離れています。",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "誰の承認が必要か",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "価格付けされた変更",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "署名済みの変更指示書",

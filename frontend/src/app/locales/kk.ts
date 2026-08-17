@@ -36985,7 +36985,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Ерте белгіленген жетіспейтін жазбалар",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Жасаушылар әлі алаңда жүргенде дәлелдерді қоса беріңіз",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Әсер еткен күндердің алаң күнделігі жазбаларын нұсқаулармен, түзетілген сызбалармен және суреттермен бірге дәлелдер топтамасына тартыңыз, содан кейін не жетіспейтінін құжаттаңыз, сол арқылы оны кейін іздеудің орнына қазір жинауға болады.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Бүгін тапқан бос орын — әлі біреу толтыра алатын бос орын. Сол бос орын соңғы есеп айырысуда табылғанда, ол сіздің есебіңіздегі тесік болады, ал оны толтыра алатын жалғыз адам өткен көктемде алаңнан кеткен.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Бүгін тапқан бос орын — әлі біреу толтыра алатын бос орын. Сол бос орын соңғы есеп айырысуда табылғанда, ол сіздің есебіңіздегі тесік болады, ал оны толтыра алатын жалғыз адам бірнеше ай бұрын алаңнан кеткен.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Кімнің бекітуі қажет",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Бағаланған өзгеріс",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Қол қойылған өзгеріс тапсырысы",

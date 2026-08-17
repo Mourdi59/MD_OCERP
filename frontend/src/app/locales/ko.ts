@@ -37233,7 +37233,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "일찍 표시된 누락 기록",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "작성자가 아직 현장에 있을 때 증거 첨부하기",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "영향받은 날짜의 현장 일지 기록을 지시서, 수정 도면, 사진과 함께 증거 묶음으로 가져온 다음, 무엇이 빠져 있는지 문서화하여 나중에 쫓아다니는 대신 지금 수집할 수 있게 합니다.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "오늘 발견한 공백은 아직 누군가 메울 수 있는 공백입니다. 같은 공백이 최종 정산에서 발견되면 기록의 구멍이 되며, 그것을 메울 수 있었던 유일한 사람은 지난봄에 이미 현장을 떠났습니다.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "오늘 발견한 공백은 아직 누군가 메울 수 있는 공백입니다. 같은 공백이 최종 정산에서 발견되면 기록의 구멍이 되며, 그것을 메울 수 있었던 유일한 사람은 몇 달 전에 이미 현장을 떠났습니다.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "누구의 승인이 필요한지",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "가격이 매겨진 변경",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "서명된 작업변경지시서",

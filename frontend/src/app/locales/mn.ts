@@ -36977,7 +36977,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Эрт тэмдэглэгдсэн дутуу бүртгэл",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Үүсгэгчид хараахан талбайд байх үед нотлох баримт хавсаргах",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Нөлөөлөгдсөн өдрүүдийн талбайн тэмдэглэлийн бичлэгийг зааварчилгаа, шинэчлэгдсэн зураг, зурагтай хамт нотлох баримтын багцад татаж, дараа нь юу дутуу байгааг баримтжуулж, дараа нь хайхын оронд одоо цуглуулах боломжтой болгоно.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Өнөөдөр олсон цоорхой бол хэн нэгэн хараахан дүүргэж болох цоорхой юм. Тэр адилхан цоорхой эцсийн тооцоолол дээр олдох үед бол бүртгэлийн нүх болно, түүнийг дүүргэж чадах ганц хүн өнгөрсөн хавар талбайг орхисон байна.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Өнөөдөр олсон цоорхой бол хэн нэгэн хараахан дүүргэж болох цоорхой юм. Тэр адилхан цоорхой эцсийн тооцоолол дээр олдох үед бол бүртгэлийн нүх болно, түүнийг дүүргэж чадах ганц хүн хэдэн сарын өмнө талбайг орхисон байна.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Хэн батлах шаардлагатай",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Үнэлэгдсэн өөрчлөлт",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Гарын үсэг зурсан өөрчлөлтийн захиалга",

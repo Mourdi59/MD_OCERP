@@ -36990,7 +36990,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "छूटे हुए रिकॉर्ड जल्दी चिह्नित किए गए",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "जब सबूत बनाने वाले अभी भी साइट पर हों, तब सबूत जोड़ें",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "प्रभावित दिनों की साइट डायरी एंट्रीज़ को निर्देशों, संशोधित ड्रॉइंग और फोटो के साथ एविडेंस बंडल में खींच लाएं, फिर यह दर्ज करें कि क्या छूट रहा है ताकि उसे बाद में ढूंढने के बजाय अभी इकट्ठा किया जा सके।",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "आज जो गैप आप ढूंढते हैं वह ऐसा गैप है जिसे कोई अभी भी भर सकता है। वही गैप जब फाइनल सेटलमेंट में मिलता है तो आपके रिकॉर्ड में एक छेद होता है, और जो अकेला व्यक्ति उसे भर सकता था वह पिछले वसंत में ही साइट छोड़ चुका है।",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "आज जो गैप आप ढूंढते हैं वह ऐसा गैप है जिसे कोई अभी भी भर सकता है। वही गैप जब फाइनल सेटलमेंट में मिलता है तो आपके रिकॉर्ड में एक छेद होता है, और जो अकेला व्यक्ति उसे भर सकता था वह महीनों पहले ही साइट छोड़ चुका है।",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "किसे मंजूरी देनी है",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "कीमत लगाया गया बदलाव",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "साइन किया गया चेंज ऑर्डर",

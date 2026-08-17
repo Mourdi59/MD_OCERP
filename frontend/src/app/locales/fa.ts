@@ -36985,7 +36985,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "سوابق مفقود زودهنگام علامت‌گذاری‌شده",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "شواهد را زمانی پیوست کنید که تولیدکنندگان آن هنوز در کارگاه هستند",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "ثبت‌های دفتر روزانه کارگاه برای روزهای متأثر را همراه با دستورها، نقشه‌های اصلاح‌شده و عکس‌ها به بسته شواهد بکشید، سپس آنچه را کم است مستند کنید تا اکنون جمع‌آوری شود نه اینکه بعداً دنبال شود.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "خلأیی که امروز پیدا می‌کنید خلأیی است که هنوز کسی می‌تواند آن را پر کند. همان خلأ وقتی در تسویه نهایی پیدا شود سوراخی در سابقه شماست، و تنها کسی که می‌توانست آن را پر کند از بهار گذشته کارگاه را ترک کرده.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "خلأیی که امروز پیدا می‌کنید خلأیی است که هنوز کسی می‌تواند آن را پر کند. همان خلأ وقتی در تسویه نهایی پیدا شود سوراخی در سابقه شماست، و تنها کسی که می‌توانست آن را پر کند ماه‌هاست کارگاه را ترک کرده.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "چه کسی باید تأیید کند",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "تغییر قیمت‌گذاری‌شده",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "دستور تغییر امضاشده",

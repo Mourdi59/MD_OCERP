@@ -36985,7 +36985,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Nawawalang record na naflag nang maaga",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Ikabit ang ebidensya habang nasa site pa ang mga gumawa nito",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Ilipat sa bundle ng ebidensya ang mga entry sa daily report para sa mga apektadong araw kasama ang tagubilin, rebisyon ng drawing, at mga litrato, at itala kung ano ang nawawala para makuha na ito ngayon sa halip na habulin mamaya.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Ang puwang na natagpuan mo ngayon ay isang puwang na may kayang punan pa. Ang parehong puwang na natagpuan sa panghuling settlement ay isang puwang sa kaso mo, at umalis na sa site ang tanging taong sana ay nakasara nito noong nakaraang tagsibol.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Ang puwang na natagpuan mo ngayon ay isang puwang na may kayang punan pa. Ang parehong puwang na natagpuan sa panghuling settlement ay isang puwang sa kaso mo, at umalis na sa site ang tanging taong sana ay nakasara nito ilang buwan na ang nakalipas.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Sino ang kailangang mag-approve",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Pinresyuhang pagbabago",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Nilagdaang change order",

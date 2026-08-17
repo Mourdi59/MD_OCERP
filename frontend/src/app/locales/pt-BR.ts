@@ -37047,7 +37047,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Registros faltantes identificados cedo",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Anexe as evidências enquanto quem as produziu ainda está na obra",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Traga para o pacote de evidências os relatórios de diário de obra que cobrem os dias afetados junto com a instrução, a revisão de desenho e as fotografias, e anote o que está faltando para que possa ser capturado agora em vez de procurado depois.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "O buraco que você encontra hoje alguém ainda consegue preencher. O mesmo buraco encontrado na conta final é um furo no seu caso, e a única pessoa que poderia tê-lo fechado saiu da obra na primavera.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "O buraco que você encontra hoje alguém ainda consegue preencher. O mesmo buraco encontrado na conta final é um furo no seu caso, e a única pessoa que poderia tê-lo fechado saiu da obra há meses.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Quem precisa aprovar",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "A alteração precificada",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Ordem de alteração assinada",

@@ -36985,7 +36985,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Ontbrekende dossiers vroeg gesignaleerd",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Voeg het bewijs toe zolang wie het heeft gemaakt nog op het werk is",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Trek de bouwdagboekrapporten die de betreffende dagen dekken samen met de instructie, de tekeningrevisie en de foto's in het bewijsdossier, en noteer wat ontbreekt zodat het nu kan worden vastgelegd in plaats van later gezocht.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Het gat dat u vandaag vindt, kan iemand nog opvullen. Hetzelfde gat gevonden bij de eindafrekening is een gat in uw zaak, en de enige persoon die het had kunnen dichten heeft het werk in het voorjaar verlaten.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Het gat dat u vandaag vindt, kan iemand nog opvullen. Hetzelfde gat gevonden bij de eindafrekening is een gat in uw zaak, en de enige persoon die het had kunnen dichten heeft het werk maanden geleden verlaten.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Wie moet goedkeuren",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "De beprijsde wijziging",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Getekende wijzigingsorder",

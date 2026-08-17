@@ -37104,7 +37104,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Brakujące zapisy zidentyfikowane wcześnie",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Dołącz dowody, dopóki ich autorzy są jeszcze na budowie",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Wciągnij do pakietu dowodów wpisy dziennika budowy obejmujące dni, których dotyczy sprawa, razem z poleceniem, rewizją rysunku i fotografiami, i zaznacz, czego brakuje, żeby to uchwycić teraz zamiast szukać później.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Lukę, którą znajdziesz dziś, ktoś jeszcze może wypełnić. Ta sama luka znaleziona przy rozliczeniu końcowym jest dziurą w twojej sprawie, a jedyna osoba, która mogła ją zamknąć, odeszła z budowy wiosną.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Lukę, którą znajdziesz dziś, ktoś jeszcze może wypełnić. Ta sama luka znaleziona przy rozliczeniu końcowym jest dziurą w twojej sprawie, a jedyna osoba, która mogła ją zamknąć, odeszła z budowy przed miesiącami.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Kto musi zatwierdzić",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Wyceniona zmiana",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Podpisane zlecenie zmiany",

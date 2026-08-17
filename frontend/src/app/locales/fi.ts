@@ -36993,7 +36993,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Puuttuvat tallenteet merkitty ajoissa",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Liitä todisteet, kun niiden tekijät ovat vielä työmaalla",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Siirrä muutoksen kohteena olevien päivien työmaapäiväkirjan merkinnät todistuspakettiin yhdessä ohjeen, piirustusmuutoksen ja valokuvien kanssa, ja merkitse, mikä puuttuu, jotta se voidaan tallentaa nyt sen sijaan, että sitä jahdataan myöhemmin.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Tänään löytynyt aukko on sellainen, jonka joku voi vielä täyttää. Sama aukko lopullisessa selvityksessä löydettynä on aukko sinun asiassasi, ja ainoa henkilö, joka olisi voinut sen tukkia, lähti työmaalta viime keväänä.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Tänään löytynyt aukko on sellainen, jonka joku voi vielä täyttää. Sama aukko lopullisessa selvityksessä löydettynä on aukko sinun asiassasi, ja ainoa henkilö, joka olisi voinut sen tukkia, lähti työmaalta kuukausia sitten.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Kenen pitää hyväksyä",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Hinnoiteltu muutos",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Allekirjoitettu muutostilaus",

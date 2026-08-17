@@ -37100,7 +37100,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Эрте белгиленген жетишпеген жазуулар",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Түзүүчүлөр дагы эле аянтчада жүргөндө далилдерди тиркеңиз",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Таасир тийген күндөрдүн курулуш аянтчасынын күндөлүк жазууларын көрсөтмөлөр, түзөтүлгөн сызмалар жана сүрөттөр менен бирге далилдер топтомуна тартыңыз, андан кийин эмне жетишпей жатканын документтештириңиз, ошентип аны кийин издебестен азыр чогултса болот.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Бүгүн тапкан боштук — дагы эле бирөө толтура ала турган боштук. Ошол эле боштук акыркы эсептешүүдө табылганда, ал сиздин жазууңуздагы тешик болуп калат, ал эми аны толтура алган жалгыз адам өткөн жазда эле аянтчадан кеткен.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Бүгүн тапкан боштук — дагы эле бирөө толтура ала турган боштук. Ошол эле боштук акыркы эсептешүүдө табылганда, ал сиздин жазууңуздагы тешик болуп калат, ал эми аны толтура алган жалгыз адам бир нече ай мурун эле аянтчадан кеткен.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Кимдин бекитүүсү керек",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Бааланган өзгөртүү",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Кол коюлган өзгөртүү буйругу",

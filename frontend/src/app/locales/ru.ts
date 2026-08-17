@@ -37173,7 +37173,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Недостающие записи выявлены заранее",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Приложите доказательства, пока их авторы ещё на объекте",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Соберите в пакет доказательств записи журнала работ за затронутые дни вместе с распоряжением, редакцией чертежа и фотографиями, и отметьте, чего не хватает, чтобы это можно было зафиксировать сейчас, а не искать потом.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Дыру, которую вы находите сегодня, ещё может заполнить кто-то. Та же дыра, найденная при итоговом расчёте, это пробел в вашем деле, а единственный человек, который мог бы его закрыть, ушёл с объекта весной.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Дыру, которую вы находите сегодня, ещё может заполнить кто-то. Та же дыра, найденная при итоговом расчёте, это пробел в вашем деле, а единственный человек, который мог бы его закрыть, ушёл с объекта несколько месяцев назад.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Кто должен согласовать",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Оценённое изменение",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Подписанный заказ на изменение",

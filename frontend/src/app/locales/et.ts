@@ -36974,7 +36974,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Puuduvad kirjed märgitud varakult",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Lisage tõendid, kui nende autorid on veel objektil",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Tõmmake mõjutatud päevade objekti päeviku kanded tõendite pakki koos juhise, joonise muudatuse ja fotodega ning märkige, mis puudu on, et see saaks kaardistada nüüd, mitte otsida hiljem taga.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Auk, mille täna leiate, on selline, mille keegi saab veel täita. Sama auk, mis leitakse lõplikul arveldusel, on auk teie asjas, ja ainus inimene, kes oleks selle saanud sulgeda, lahkus objektilt eelmisel kevadel.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Auk, mille täna leiate, on selline, mille keegi saab veel täita. Sama auk, mis leitakse lõplikul arveldusel, on auk teie asjas, ja ainus inimene, kes oleks selle saanud sulgeda, lahkus objektilt kuude eest.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Kes peab kinnitama",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Hinnastatud muudatus",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Allkirjastatud muudatustellimus",

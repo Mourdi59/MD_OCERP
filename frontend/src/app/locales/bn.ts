@@ -36985,7 +36985,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "অনুপস্থিত রেকর্ড আগেভাগে চিহ্নিত",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "যারা এটি তৈরি করেছে তারা এখনো সাইটে থাকা অবস্থায় প্রমাণ যুক্ত করুন",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "প্রভাবিত দিনগুলোর সাইট ডায়েরি এন্ট্রি নির্দেশনা, রিভাইজড ড্রয়িং ও ছবিসহ প্রমাণ বান্ডেলে টেনে আনুন, তারপর কী অনুপস্থিত তা নথিভুক্ত করুন যাতে এটি পরে খুঁজে বের করার বদলে এখনই সংগ্রহ করা যায়।",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "আজ আপনি যে ফাঁক খুঁজে পান তা এমন একটি ফাঁক যা কেউ এখনো পূরণ করতে পারে। চূড়ান্ত মীমাংসার সময় খুঁজে পাওয়া একই ফাঁক আপনার রেকর্ডে একটি ছিদ্র, আর যে একমাত্র ব্যক্তি এটি পূরণ করতে পারত সে গত বসন্তে সাইট ছেড়ে চলে গেছে।",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "আজ আপনি যে ফাঁক খুঁজে পান তা এমন একটি ফাঁক যা কেউ এখনো পূরণ করতে পারে। চূড়ান্ত মীমাংসার সময় খুঁজে পাওয়া একই ফাঁক আপনার রেকর্ডে একটি ছিদ্র, আর যে একমাত্র ব্যক্তি এটি পূরণ করতে পারত সে কয়েক মাস আগে সাইট ছেড়ে চলে গেছে।",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "কার অনুমোদন প্রয়োজন",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "মূল্য নির্ধারিত পরিবর্তন",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "চেঞ্জ অর্ডার স্বাক্ষরিত",

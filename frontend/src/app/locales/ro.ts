@@ -37048,7 +37048,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Înregistrări lipsă semnalate din timp",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Atașați dovezile cât timp autorii lor sunt încă pe șantier",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Transferați în pachetul de dovezi înregistrările din jurnalul de șantier pentru zilele afectate, împreună cu instrucțiunea, revizia de plan și fotografiile, și notați ce lipsește, astfel încât să poată fi surprins acum, în loc să fie căutat mai târziu.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Un gol pe care îl găsiți astăzi este unul pe care cineva îl mai poate completa. Același gol găsit la decontul final este un gol în cazul dumneavoastră, iar singura persoană care l-ar fi putut închide a plecat de pe șantier primăvara trecută.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Un gol pe care îl găsiți astăzi este unul pe care cineva îl mai poate completa. Același gol găsit la decontul final este un gol în cazul dumneavoastră, iar singura persoană care l-ar fi putut închide a plecat de pe șantier de luni de zile.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Cine trebuie să aprobe",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Modificare evaluată",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Ordin de modificare semnat",

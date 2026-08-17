@@ -37218,7 +37218,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "السجلات الناقصة مُعلَّمة مبكراً",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "أرفِق الأدلة بينما لا يزال من أنتجها في الموقع",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "انقل قيود اليومية الميدانية للأيام المتأثرة إلى حزمة الأدلة مع التعليمات والمخططات المعدَّلة والصور، ثم دوِّن ما ينقص كي يمكن جمعه الآن بدل ملاحقته لاحقاً.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "الفجوة التي تجدها اليوم فجوة لا يزال بإمكان أحد سدّها. الفجوة نفسها حين تُكتشف عند التسوية النهائية ثغرة في سجلك، والشخص الوحيد القادر على سدّها غادر الموقع منذ الربيع الماضي.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "الفجوة التي تجدها اليوم فجوة لا يزال بإمكان أحد سدّها. الفجوة نفسها حين تُكتشف عند التسوية النهائية ثغرة في سجلك، والشخص الوحيد القادر على سدّها غادر الموقع منذ أشهر.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "من يحتاج إلى الموافقة",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "التغيير المُسعَّر",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "أمر التغيير موقَّع",

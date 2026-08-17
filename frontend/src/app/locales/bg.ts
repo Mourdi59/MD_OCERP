@@ -36991,7 +36991,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Липсващи записи, установени рано",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Приложете доказателствата, докато техните автори все още са на обекта",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Вкарайте в пакета с доказателства записите от дневника на обекта, обхващащи засегнатите дни, заедно с разпореждането, ревизията на чертежа и снимките, и отбележете какво липсва, за да може да се улови сега, а не да се търси по-късно.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Дупката, която откриете днес, все още някой може да запълни. Същата дупка, открита при окончателното разплащане, е пробив във вашето дело, а единственият човек, който би могъл да я затвори, е напуснал обекта през пролетта.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Дупката, която откриете днес, все още някой може да запълни. Същата дупка, открита при окончателното разплащане, е пробив във вашето дело, а единственият човек, който би могъл да я затвори, е напуснал обекта преди месеци.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Кой трябва да одобри",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Остойностената промяна",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Подписана заповед за промяна",

@@ -37963,7 +37963,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Fehlende Nachweise früh erkannt",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Fügen Sie den Nachweis bei, solange die Beteiligten noch auf der Baustelle sind",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Ziehen Sie die Bautagebuch-Einträge für die betroffenen Tage zusammen mit der Anweisung, der Planänderung und den Fotos in das Nachweisbündel, und vermerken Sie, was fehlt, damit es jetzt nachgeholt werden kann statt später gesucht zu werden.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Die Lücke, die Sie heute finden, kann noch jemand füllen. Dieselbe Lücke, gefunden bei der Schlussrechnung, ist ein Loch in Ihrem Fall, und die einzige Person, die es hätte schließen können, hat den Auftrag im Frühjahr verlassen.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Die Lücke, die Sie heute finden, kann noch jemand füllen. Dieselbe Lücke, gefunden bei der Schlussrechnung, ist ein Loch in Ihrem Fall, und die einzige Person, die es hätte schließen können, hat den Auftrag vor Monaten verlassen.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Wer zustimmen muss",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Der bepreiste Nachtrag",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Unterzeichneter Nachtrag",

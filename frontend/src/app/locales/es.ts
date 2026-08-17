@@ -37048,7 +37048,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Registros que faltan identificados a tiempo",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Adjunta la prueba mientras los que la generaron siguen en obra",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Incorpora al expediente de pruebas los partes de diario de obra que cubren los días afectados junto con la instrucción, la revisión de plano y las fotografías, y anota lo que falte para poder recogerlo ahora en vez de buscarlo después.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "El hueco que encuentras hoy todavía puede llenarlo alguien. El mismo hueco encontrado en la liquidación final es un agujero en tu caso, y la única persona que podría haberlo cerrado dejó la obra en primavera.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "El hueco que encuentras hoy todavía puede llenarlo alguien. El mismo hueco encontrado en la liquidación final es un agujero en tu caso, y la única persona que podría haberlo cerrado dejó la obra hace meses.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Quién tiene que aprobarlo",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "El cambio valorado",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Orden de cambio firmada",

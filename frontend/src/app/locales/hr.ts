@@ -37056,7 +37056,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Nedostajući zapisi prepoznati rano",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Priložite dokaze dok su njihovi autori još na gradilištu",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Prenesite u paket dokaza zapise iz dnevnika gradilišta koji pokrivaju pogođene dane zajedno s uputom, revizijom nacrta i fotografijama, i zabilježite što nedostaje kako bi se to moglo zabilježiti sada umjesto tražiti kasnije.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Rupu koju danas pronađete netko još može popuniti. Ista rupa pronađena u konačnom obračunu rupa je u vašem slučaju, a jedina osoba koja ju je mogla zatvoriti napustila je gradilište u proljeće.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Rupu koju danas pronađete netko još može popuniti. Ista rupa pronađena u konačnom obračunu rupa je u vašem slučaju, a jedina osoba koja ju je mogla zatvoriti napustila je gradilište prije više mjeseci.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Tko to mora odobriti",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "Vrednovana izmjena",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Potpisani nalog za izmjenu",

@@ -37328,7 +37328,7 @@ const resource = {
     "cases.raise_a_change_order_with_proof.step.evidence.out.gaps": "Documenti mancanti individuati per tempo",
     "cases.raise_a_change_order_with_proof.step.evidence.title": "Allega le prove finché chi le ha prodotte è ancora in cantiere",
     "cases.raise_a_change_order_with_proof.step.evidence.what": "Riversa nel fascicolo delle prove i rapporti di giornale di cantiere che coprono i giorni interessati insieme all'istruzione, alla revisione di disegno e alle fotografie, e annota cosa manca così che possa essere recuperato ora invece che cercato dopo.",
-    "cases.raise_a_change_order_with_proof.step.evidence.why": "Il buco che trovi oggi qualcuno può ancora colmarlo. Lo stesso buco trovato nel conto finale è un buco nel tuo caso, e l'unica persona che avrebbe potuto colmarlo ha lasciato il cantiere in primavera.",
+    "cases.raise_a_change_order_with_proof.step.evidence.why": "Il buco che trovi oggi qualcuno può ancora colmarlo. Lo stesso buco trovato nel conto finale è un buco nel tuo caso, e l'unica persona che avrebbe potuto colmarlo ha lasciato il cantiere mesi fa.",
     "cases.raise_a_change_order_with_proof.step.execute.in.approvals": "Chi deve approvarla",
     "cases.raise_a_change_order_with_proof.step.execute.in.priced": "La variante valorizzata",
     "cases.raise_a_change_order_with_proof.step.execute.out.executed": "Variante firmata",
