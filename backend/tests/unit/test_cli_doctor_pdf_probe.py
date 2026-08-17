@@ -126,13 +126,19 @@ class TestTheOcrExtraAnswersInBothDirections:
         frontend_imports: bool = True,
         engine: bool = True,
         engine_imports: bool = True,
+        engine_distribution: str | None = None,
     ) -> list:
         """Run the extras report with the OCR wheels' state forced.
 
-        Four dials rather than two, because the state that matters in the field
-        is frontend present and importable with no engine behind it, and two
-        booleans cannot express it.
+        Five dials rather than two, because the states that matter in the field
+        cannot be expressed with booleans over one question. Frontend present
+        and importable with no engine behind it needs three of them, and an
+        engine visible only under its distribution name needs the fifth: that
+        one exists because `paddle` is the import name this check assumes, and
+        the failure mode of assuming wrong is an error printed at an install
+        that works.
         """
+        import importlib.metadata as importlib_metadata
         import importlib.util as importlib_util
         import subprocess
 
@@ -157,13 +163,26 @@ class TestTheOcrExtraAnswersInBothDirections:
 
         def fake_run(cmd, **kwargs):
             source = cmd[2] if len(cmd) == 3 else ""
-            if "import paddleocr" in source and not frontend_imports:
+            # Whole statement, never a substring: "import paddleocr" contains
+            # "import paddle", so a substring match made the engine dial fire on
+            # the frontend's probe. The broken-engine test then went green by
+            # exercising the frontend branch and never reached the branch it
+            # was written for.
+            if source == "import paddleocr" and not frontend_imports:
                 return _Result(1, b"ImportError: DLL load failed while importing _ocr\n")
-            if "import paddle" in source and not engine_imports:
+            if source == "import paddle" and not engine_imports:
                 return _Result(1, b"ImportError: libpaddle.so: cannot open shared object file\n")
             return _Result(0)
 
+        class _Dist:
+            def __init__(self, name: str) -> None:
+                self.metadata = {"Name": name}
+
+        def fake_distributions():
+            return iter([_Dist("openconstructionerp")] + ([_Dist(engine_distribution)] if engine_distribution else []))
+
         monkeypatch.setattr(importlib_util, "find_spec", fake_find_spec)
+        monkeypatch.setattr(importlib_metadata, "distributions", fake_distributions)
         monkeypatch.setattr(subprocess, "run", fake_run)
 
         return [c for c in cli.check_optional_extras() if c.name == self.CV]
@@ -210,8 +229,44 @@ class TestTheOcrExtraAnswersInBothDirections:
         broken = self._cv_check(monkeypatch, engine_imports=False)
         assert broken[0].status == "error"
         assert "will not import" in broken[0].message
+        # Naming the engine, not just the fault: both this branch and the
+        # unloadable-frontend one say "will not import", so asserting only the
+        # phrase let this test pass on the wrong branch once already.
+        assert "engine" in broken[0].message, f"the engine branch must say so, got {broken[0].message!r}"
         absent = self._cv_check(monkeypatch, engine=False)
         assert broken[0].message != absent[0].message, "two different faults must not print one sentence"
+
+    @pytest.mark.parametrize("distribution", ["paddlepaddle", "paddlepaddle-gpu", "PaddlePaddle"])
+    def test_an_engine_under_another_name_is_not_called_missing(
+        self, monkeypatch: pytest.MonkeyPatch, distribution: str
+    ) -> None:
+        """The import name is an assumption; being wrong about it must stay cheap.
+
+        This check reads `paddle` as the engine's import name. If that is ever
+        wrong - upstream renames it, a GPU build lands under something else -
+        then deciding on that name alone prints an error at an install that
+        works and tells its operator to install what they already have. So the
+        distribution name is asked as a second opinion and absence has to fail
+        both, including the name-cased and the -gpu variants.
+        """
+        found = self._cv_check(monkeypatch, engine=False, engine_distribution=distribution)
+        assert len(found) == 1
+        assert found[0].status == "ok", (
+            f"an engine installed as {distribution!r} was reported {found[0].status}: {found[0].message}"
+        )
+
+    def test_an_engine_found_only_by_distribution_is_not_imported_under_a_guessed_name(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Not importing beats importing under a name that may not answer.
+
+        If the engine is visible only as a distribution, then `paddle` is not
+        its import name here, and probing it would fail and print "installed
+        but will not import" - swapping one false error for another.
+        """
+        found = self._cv_check(monkeypatch, engine=False, engine_imports=False, engine_distribution="paddlepaddle")
+        assert found[0].status == "ok"
+        assert "will not import" not in found[0].message
 
     def test_a_plain_install_without_the_extra_is_still_only_a_warning(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Absent stays non-fatal: a stock install is meant not to carry this."""

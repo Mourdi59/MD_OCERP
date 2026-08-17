@@ -687,6 +687,7 @@ def check_optional_extras() -> list[Check]:
                 "pip install --force-reinstall --no-cache-dir openconstructionerp",
             )
         )
+
     # Routed through the same helper as the other extras, which changes two
     # things. It reports when OCR is available instead of only when it is
     # absent: the old branch appended nothing at all on an install that had the
@@ -716,6 +717,31 @@ def check_optional_extras() -> list[Check]:
     # models over the network on first use, so probing it would measure the
     # operator's connection as much as their install, and no preflight check can
     # honestly do that.
+    def _engine_distribution_installed() -> bool:
+        """Is anything named like a paddlepaddle build installed?
+
+        Asked by distribution name rather than by import name, and asked only
+        as a second opinion. The engine imports as ``paddle`` but ships as
+        ``paddlepaddle``, and the GPU build is a third name again, so neither
+        question is safely sufficient alone: the import name would call a
+        working install broken the day upstream renames it, and the
+        distribution name alone misses an engine vendored some other way.
+
+        Absence has to fail BOTH before it is reported, because a false
+        "engine missing" is the worst result this check can produce. It tells
+        an operator to install what they already have, and a check that cries
+        wolf once is the check nobody reads the next time.
+        """
+        try:
+            from importlib.metadata import distributions
+
+            return any((d.metadata["Name"] or "").lower().startswith("paddlepaddle") for d in distributions())
+        except Exception:
+            # A broken metadata directory must not take the diagnostic down.
+            # It only costs the second opinion, which the caller then reads as
+            # "not found here" and falls back to the import name's answer.
+            return False
+
     cv_label = "PDF dimension OCR [cv]"
     if not _present("paddleocr"):
         out.append(
@@ -735,7 +761,7 @@ def check_optional_extras() -> list[Check]:
                 "pip install --force-reinstall 'openconstructionerp[cv]'",
             )
         )
-    elif not _present("paddle"):
+    elif not _present("paddle") and not _engine_distribution_installed():
         out.append(
             Check(
                 cv_label,
@@ -746,7 +772,16 @@ def check_optional_extras() -> list[Check]:
                 "does not choose one, because the right build depends on CPU vs GPU and OS.",
             )
         )
-    elif (engine_err := _import_error("paddle")) is not None:
+    # find_spec is the gate here and the import is the verdict, deliberately in
+    # that order and not to be collapsed into one. The lookup is cheap and only
+    # decides whether there is anything to verify; the import is what decides
+    # whether it works, which is the whole reason this function stopped trusting
+    # find_spec. The verdict is also only pronounced when the import NAME
+    # resolved: an engine found solely by its distribution name is left alone
+    # rather than imported under a name it may not answer to, since guessing
+    # wrong there would print "installed but will not import" at an install that
+    # is fine.
+    elif _present("paddle") and (engine_err := _import_error("paddle")) is not None:
         out.append(
             Check(
                 cv_label,
@@ -756,7 +791,7 @@ def check_optional_extras() -> list[Check]:
             )
         )
     else:
-        out.append(Check(cv_label, "ok", "paddleocr and its engine import cleanly"))
+        out.append(Check(cv_label, "ok", "paddleocr imports cleanly and a paddlepaddle engine is installed"))
 
     # AI provider key configuration (not a package check).
     out.append(check_ai_provider_keys())
