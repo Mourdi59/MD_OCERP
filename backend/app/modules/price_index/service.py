@@ -343,6 +343,24 @@ class PriceIndexService:
             raise AmbiguousSeriesError("several cost-index series exist; specify series_id to choose one")
         return rows[0][0]
 
+    async def series_points(self, series_id: uuid.UUID) -> dict[str, Decimal]:
+        """Return a series' ``{period: index value}`` map.
+
+        The public way for another module to read an index series. The BOQ
+        module's escalation markup needs the points to resolve a factor, and
+        going through this method rather than querying ``oe_price_index_point``
+        directly keeps the table an implementation detail of the module that
+        owns it.
+
+        Args:
+            series_id: The cost-index series to read.
+
+        Returns:
+            Every stored period of that series mapped to its index value.
+            Empty when the series has no points or does not exist.
+        """
+        return await self._load_series_points(series_id)
+
     async def _load_series_points(self, series_id: uuid.UUID) -> dict[str, Decimal]:
         """Load a series' ``{period: factor}`` map with one direct query.
 

@@ -880,11 +880,19 @@ class MarkupCreate(_MarkupBase):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     name: str = Field(..., min_length=1, max_length=255)
-    # Only "percentage" and "fixed" are computed by the totals engine. A
+    # The set here MUST equal the set the totals engine computes. A
     # "per_unit" markup has no well-defined basis across a mixed-unit BOQ
     # (you cannot sum m + m2 + m3) and previously computed to a silent zero,
-    # so it is rejected at the schema rather than accepted and dropped.
-    markup_type: str = Field(default="percentage", pattern=r"^(percentage|fixed)$")
+    # so it is rejected at the schema rather than accepted and dropped, and a
+    # type accepted here that the engine does not know would fail the same way
+    # round the other side. ``test_boq_markup_types.py`` asserts the two sets
+    # are the same set rather than trusting this comment.
+    #
+    # ``banded`` charges each tranche of its base at its own rate, the way a
+    # surety quotes a bond. ``escalation`` indexes its base from one month to
+    # another through the stored cost-index series instead of a percentage the
+    # estimator types. Both read their configuration from ``metadata``.
+    markup_type: str = Field(default="percentage", pattern=r"^(percentage|fixed|banded|escalation)$")
     category: str = Field(
         default="overhead",
         pattern=r"^(overhead|profit|tax|contingency|insurance|bond|other)$",
@@ -905,7 +913,7 @@ class MarkupUpdate(_MarkupBase):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     name: str | None = Field(default=None, min_length=1, max_length=255)
-    markup_type: str | None = Field(default=None, pattern=r"^(percentage|fixed)$")
+    markup_type: str | None = Field(default=None, pattern=r"^(percentage|fixed|banded|escalation)$")
     category: str | None = Field(
         default=None,
         pattern=r"^(overhead|profit|tax|contingency|insurance|bond|other)$",

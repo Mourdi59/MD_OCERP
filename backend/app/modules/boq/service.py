@@ -21,7 +21,7 @@ import logging
 import math
 import re
 import uuid
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from types import SimpleNamespace
@@ -1745,9 +1745,104 @@ def _apply_duplicate_warning(metadata: dict[str, Any], dup_ordinal: str) -> None
     metadata["boq_quality_warnings"] = warnings
 
 
+def _coerce_uuid_or_none(value: object) -> uuid.UUID | None:
+    """Read a UUID out of user-supplied JSON, or None when it is not one.
+
+    Markup metadata is written by clients, so a malformed id is data, not a
+    programming error, and it must not raise out of a money rollup.
+    """
+    if isinstance(value, uuid.UUID):
+        return value
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        return uuid.UUID(value.strip())
+    except ValueError:
+        return None
+
+
+def _read_bands(metadata: object) -> list[tuple[Decimal | None, Decimal]]:
+    """Read a banded rate card out of a markup's metadata.
+
+    A surety does not quote one number. The rate card reads "the first million
+    at two and a half percent, the next four at one and a half, the rest at
+    one", and each tranche is charged at its own rate rather than the whole
+    contract sum falling into a single band. That is what this shape holds:
+    an ordered list of ``{"up_to": <ceiling or null>, "percentage": <rate>}``
+    where the ceiling is the top of the tranche and the last entry, with no
+    ceiling, takes everything above the one before it.
+
+    Args:
+        metadata: The markup row's ``metadata_`` JSON, or anything at all; a
+            shape this cannot read yields no bands rather than an exception,
+            because a markup row is user data and a malformed one must not take
+            down the rollup for the whole bill.
+
+    Returns:
+        Bands as ``(ceiling or None, rate)`` sorted by ceiling with the
+        open-ended band last. Unreadable entries are dropped.
+    """
+    if not isinstance(metadata, dict):
+        return []
+    raw = metadata.get("bands")
+    if not isinstance(raw, list):
+        return []
+
+    bands: list[tuple[Decimal | None, Decimal]] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        try:
+            rate = Decimal(str(entry.get("percentage", "0") or "0"))
+        except (InvalidOperation, ValueError):
+            continue
+        ceiling_raw = entry.get("up_to")
+        if ceiling_raw is None or str(ceiling_raw).strip() == "":
+            bands.append((None, rate))
+            continue
+        try:
+            bands.append((Decimal(str(ceiling_raw)), rate))
+        except (InvalidOperation, ValueError):
+            continue
+
+    # Ceilings ascending, the open-ended band last however it was written.
+    return sorted(bands, key=lambda band: (band[0] is None, band[0] or Decimal("0")))
+
+
+def _banded_amount(base: Decimal, metadata: object) -> Decimal:
+    """Charge each tranche of ``base`` at its own band rate and add them up.
+
+    Progressive, not flat: a base of 1,500,000 against "first 1,000,000 at
+    2.5 %, rest at 1 %" pays 25,000 on the first million and 5,000 on the
+    remainder, never 15,000 on the whole sum. A base sitting exactly on a band
+    edge belongs entirely to the lower band, which is how a rate card that
+    says "up to" is read.
+
+    Args:
+        base: The amount the bond is written against.
+        metadata: The markup row's ``metadata_`` JSON carrying ``bands``.
+
+    Returns:
+        The premium as an exact ``Decimal``; zero when there are no bands,
+        which is the same thing a rate card with no rates would charge.
+    """
+    total = Decimal("0")
+    lower = Decimal("0")
+    for ceiling, rate in _read_bands(metadata):
+        top = base if ceiling is None else min(base, ceiling)
+        if top <= lower:
+            continue
+        total += (top - lower) * rate / Decimal("100")
+        lower = top
+        if lower >= base:
+            break
+    return total
+
+
 def _calculate_markup_amounts(
     direct_cost: Decimal,
     markups: list[BOQMarkup],
+    escalation_factors: Mapping[uuid.UUID, Decimal] | None = None,
 ) -> list[tuple[BOQMarkup, Decimal]]:
     """Compute the dollar amount for each active markup line.
 
@@ -1774,17 +1869,38 @@ def _calculate_markup_amounts(
     its own migration, not a side effect of a markup change. Do not "align" one
     to the other while passing through.
 
-    The client mirrors this. The ``calcMap`` memo in
+    The client mirrors PART of this. The ``calcMap`` memo in
     ``frontend/src/features/boq/MarkupPanel.tsx`` needs a per-markup amount
     keyed by markup id (something the ``/cost-breakdown/`` payload does not
-    carry) and has to react to a toggle before the round-trip lands. The two
-    must stay in step: same running sum, ``cumulative``/``subtotal`` based on
-    direct cost + preceding markups, ``fixed`` taking ``fixed_amount``,
-    inactive lines contributing zero. When they disagree, this one is right.
+    carry) and has to react to a toggle before the round-trip lands. It
+    reproduces ``percentage`` and ``fixed`` exactly: same running sum,
+    ``cumulative``/``subtotal`` based on direct cost + preceding markups,
+    inactive lines contributing zero. It does NOT reproduce ``banded`` or
+    ``escalation`` and must not try. A band table is the surety's rate card and
+    an escalation factor comes from an index series the browser does not hold,
+    so the panel shows the amount the server computed for those and the parity
+    claim is limited to the two types it can actually reproduce. When the two
+    disagree on a type both compute, this one is right.
+
+    ``escalation`` is where this stack meets time. ``apply_to`` still says only
+    what the base is, exactly as before; what changes is the type, and the
+    factor comes from :func:`app.modules.price_index.index_math.resolve_factor`
+    rather than a percentage the estimator types. That is deliberate. Making
+    ``apply_to`` carry "index this line from period A to period B" would turn a
+    one-word statement about a base into a small language, which is the second
+    cascade this module exists to not have. The date-to-date arithmetic is not
+    reimplemented here and must not be: this function receives the resolved
+    factor and multiplies.
 
     Args:
         direct_cost: Sum of all position totals.
         markups: Ordered list of BOQMarkup ORM objects.
+        escalation_factors: Resolved index factors keyed by markup id, from
+            :meth:`BOQService._resolve_escalation_factors`. A line whose factor
+            is absent contributes zero rather than guessing at one, because an
+            escalation nobody could resolve is not an escalation of zero
+            percent, it is an unknown, and inventing a factor here would put a
+            number on a bid that no index supports.
 
     Returns:
         List of (markup, computed_amount) tuples preserving input order.
@@ -1816,6 +1932,14 @@ def _calculate_markup_amounts(
             amount = base * pct / Decimal("100")
         elif markup_type == "fixed":
             amount = Decimal(str(markup.fixed_amount or "0"))
+        elif markup_type == "banded":
+            amount = _banded_amount(base, markup.metadata_)
+        elif markup_type == "escalation":
+            # ``factor - 1`` because the markup line IS the increase. The base
+            # is already in the bill; multiplying by the factor outright would
+            # add the original money a second time.
+            factor = (escalation_factors or {}).get(markup.id) if markup.id is not None else None
+            amount = Decimal("0") if factor is None else base * (Decimal(str(factor)) - Decimal("1"))
         else:
             # per_unit and unknown types default to zero
             amount = Decimal("0")
@@ -1923,6 +2047,7 @@ def _calculate_markup_amounts_scoped(
     markups: list[BOQMarkup],
     positions: Sequence[Position] = (),
     leaf_amount: Callable[[Position], Decimal] | None = None,
+    escalation_factors: Mapping[uuid.UUID, Decimal] | None = None,
 ) -> list[tuple[BOQMarkup, Decimal]]:
     """Compute markup amounts honouring per-position and per-section overrides.
 
@@ -1958,6 +2083,8 @@ def _calculate_markup_amounts_scoped(
         leaf_amount: The caller's own money function for one leaf position, so
             an FX-converting rollup and a raw one each partition the figure
             they actually reported. Defaults to the raw position total.
+        escalation_factors: Passed straight through to the cascade; an
+            escalation line indexes each bucket's own base.
 
     Returns:
         List of (markup, computed_amount) tuples in the input order.
@@ -1966,7 +2093,7 @@ def _calculate_markup_amounts_scoped(
         m.scope_position_id for m in markups if m.scope_position_id is not None and m.is_active
     }
     if not scope_ids:
-        return _calculate_markup_amounts(direct_cost, markups)
+        return _calculate_markup_amounts(direct_cost, markups, escalation_factors)
 
     bill_wide = [m for m in markups if m.scope_position_id is None]
     overrides_by_scope: dict[uuid.UUID, list[BOQMarkup]] = {}
@@ -2001,7 +2128,7 @@ def _calculate_markup_amounts_scoped(
     earned: dict[int, Decimal] = {id(m): Decimal("0") for m in markups}
     for key, bucket_cost in buckets.items():
         stack = _effective_stack(bill_wide, overrides_by_scope, key)
-        for markup, amount in _calculate_markup_amounts(bucket_cost, stack):
+        for markup, amount in _calculate_markup_amounts(bucket_cost, stack, escalation_factors):
             earned[id(markup)] = earned.get(id(markup), Decimal("0")) + amount
 
     return [(m, earned.get(id(m), Decimal("0"))) for m in markups]
@@ -2869,6 +2996,7 @@ class BOQService:
                 markups,
                 positions,
                 lambda pos, _fx=fx_map, _base=base: _leaf_total_base_with_resources(pos, _fx, _base),
+                await self._resolve_escalation_factors(markups),
             )
             markup_total = sum((amount for _, amount in markup_results), Decimal("0"))
             grand_total = direct_cost + markup_total
@@ -5283,6 +5411,124 @@ class BOQService:
         """List all markups for a BOQ."""
         return await self.markup_repo.list_for_boq(boq_id)
 
+    @staticmethod
+    def _validate_markup_shape(markup_type: str, metadata: dict[str, Any] | None) -> None:
+        """Refuse a banded or escalation line that carries no configuration.
+
+        Both types take their numbers from ``metadata`` rather than from the
+        percentage box, so a row saved without that block computes to zero.
+        A zero markup line looks exactly like a markup line the estimator meant
+        to be zero, which is the worst kind of wrong: it prices, it exports, and
+        nothing on the screen says the bond premium or the escalation was never
+        configured. Refusing at the door is the only point where the difference
+        is still visible.
+
+        Args:
+            markup_type: The effective type of the row after the update.
+            metadata: The effective metadata of the row after the update.
+
+        Raises:
+            HTTPException 422: If the configuration the type needs is absent
+                or unreadable.
+        """
+        kind = (markup_type or "percentage").lower()
+        meta = metadata if isinstance(metadata, dict) else {}
+
+        if kind == "banded" and not _read_bands(meta):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "A banded markup needs metadata.bands, a list of "
+                    '{"up_to": <ceiling or null>, "percentage": <rate>} tranches.'
+                ),
+            )
+
+        if kind == "escalation":
+            config = meta.get("escalation")
+            series_id = _coerce_uuid_or_none(config.get("series_id")) if isinstance(config, dict) else None
+            base_period = str(config.get("base_period") or "").strip() if isinstance(config, dict) else ""
+            target_period = str(config.get("target_period") or "").strip() if isinstance(config, dict) else ""
+            if series_id is None or not base_period or not target_period:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        "An escalation markup needs metadata.escalation with series_id, "
+                        "base_period and target_period as YYYY-MM."
+                    ),
+                )
+
+    async def _resolve_escalation_factors(self, markups: Sequence[BOQMarkup]) -> dict[uuid.UUID, Decimal]:
+        """Resolve the index factor for every escalation line in a stack.
+
+        An escalation markup does not carry a percentage the estimator typed.
+        It names a cost-index series and two months, and the increase is what
+        the index did between them. The date-to-date arithmetic belongs to
+        :mod:`app.modules.price_index.index_math` and is called, not copied,
+        so a bill and a rate library escalated over the same two periods can
+        never disagree about the factor.
+
+        The configuration lives on the row's ``metadata_`` under
+        ``escalation``: ``{"series_id": ..., "base_period": "YYYY-MM",
+        "target_period": "YYYY-MM"}``. Series identity and the two periods, and
+        nothing else. The moment that block starts saying which other lines
+        this one applies to, the stack has grown a second cascade language and
+        the design needs revisiting rather than extending.
+
+        A line whose series or period cannot be resolved is left out of the
+        result, which makes it contribute zero. That is a deliberate failure
+        mode for a list endpoint that prices many bills at once: one bill
+        pointing at a deleted series must not raise through a rollup that
+        several other bills are riding on. It is logged, and the zero is
+        visible on the line rather than folded into another one.
+
+        Args:
+            markups: The bill's markup lines, escalation or otherwise.
+
+        Returns:
+            ``{markup id: factor}`` for every line that resolved.
+        """
+        from app.modules.price_index.index_math import PeriodNotFoundError, resolve_factor
+
+        wanted: list[tuple[uuid.UUID, uuid.UUID, str, str]] = []
+        for markup in markups:
+            if (markup.markup_type or "").lower() != "escalation" or not markup.is_active or markup.id is None:
+                continue
+            config = (markup.metadata_ or {}).get("escalation") if isinstance(markup.metadata_, dict) else None
+            if not isinstance(config, dict):
+                logger.warning("Escalation markup %s carries no escalation configuration", markup.id)
+                continue
+            series_id = _coerce_uuid_or_none(config.get("series_id"))
+            base_period = str(config.get("base_period") or "").strip()
+            target_period = str(config.get("target_period") or "").strip()
+            if series_id is None or not base_period or not target_period:
+                logger.warning("Escalation markup %s names no series or period pair", markup.id)
+                continue
+            wanted.append((markup.id, series_id, base_period, target_period))
+
+        if not wanted:
+            return {}
+
+        from app.modules.price_index.service import PriceIndexService
+
+        price_index = PriceIndexService(self.session)
+        # One read per distinct series, not per line: a stack can carry several
+        # escalation lines against the same index.
+        points_by_series: dict[uuid.UUID, dict[str, Decimal]] = {}
+        factors: dict[uuid.UUID, Decimal] = {}
+        for markup_id, series_id, base_period, target_period in wanted:
+            if series_id not in points_by_series:
+                try:
+                    points_by_series[series_id] = await price_index.series_points(series_id)
+                except Exception as exc:  # noqa: BLE001 - one bad series must not fail the rollup
+                    logger.warning("Cost-index series %s could not be read: %s", series_id, exc)
+                    points_by_series[series_id] = {}
+            try:
+                factors[markup_id] = resolve_factor(points_by_series[series_id], base_period, target_period)
+            except (PeriodNotFoundError, ValueError) as exc:
+                logger.warning("Escalation markup %s could not be resolved: %s", markup_id, exc)
+
+        return factors
+
     async def _validate_markup_scope(
         self,
         boq_id: uuid.UUID,
@@ -5359,6 +5605,7 @@ class BOQService:
         """
         await self._ensure_not_locked(boq_id)
         await self._validate_markup_scope(boq_id, data.scope_position_id, data.overrides_id)
+        self._validate_markup_shape(data.markup_type, data.metadata)
 
         max_order = await self.markup_repo.get_max_sort_order(boq_id)
 
@@ -5426,6 +5673,18 @@ class BOQService:
                 fields.get("scope_position_id", markup.scope_position_id),
                 fields.get("overrides_id", markup.overrides_id),
                 self_id=markup_id,
+            )
+
+        # Same rule for the shape: a PATCH that switches a line to ``banded``
+        # is checked against the metadata the row will end up with, which is
+        # the merge below, not the fragment that arrived.
+        if "markup_type" in fields or "metadata" in fields:
+            existing_meta = markup.metadata_ if isinstance(markup.metadata_, dict) else {}
+            incoming_meta = fields.get("metadata")
+            merged_meta = {**existing_meta, **incoming_meta} if isinstance(incoming_meta, dict) else existing_meta
+            self._validate_markup_shape(
+                fields.get("markup_type") or markup.markup_type,
+                merged_meta,
             )
 
         # Convert float values to strings for storage
@@ -5523,6 +5782,7 @@ class BOQService:
             markups,
             positions,
             lambda pos: _leaf_total_base_with_resources(pos, fx_map, base_ccy or ""),
+            await self._resolve_escalation_factors(markups),
         )
         return direct_cost, calculated
 
@@ -6695,7 +6955,13 @@ class BOQService:
 
         # Calculate markups
         markups_orm = await self.markup_repo.list_for_boq(boq_id)
-        markup_results = _calculate_markup_amounts_scoped(direct_cost, markups_orm, all_positions, _leaf_total_base)
+        markup_results = _calculate_markup_amounts_scoped(
+            direct_cost,
+            markups_orm,
+            all_positions,
+            _leaf_total_base,
+            await self._resolve_escalation_factors(markups_orm),
+        )
 
         markups_calculated: list[MarkupCalculated] = []
         markup_total = Decimal("0")
@@ -6917,6 +7183,7 @@ class BOQService:
                 markups_orm,
                 all_positions,
                 lambda pos: _leaf_total_base_with_resources(pos, fx_map, base_currency),
+                await self._resolve_escalation_factors(markups_orm),
             )
             for markup_obj, amount in markup_results:
                 if markup_obj.is_active:
@@ -7023,7 +7290,13 @@ class BOQService:
         # raw position total, which is exactly what ``direct_cost`` above sums,
         # so the partition reproduces this rollup's own figure.
         markups_orm = await self.markup_repo.list_for_boq(boq_id)
-        markup_results = _calculate_markup_amounts_scoped(direct_cost, markups_orm, all_positions)
+        markup_results = _calculate_markup_amounts_scoped(
+            direct_cost,
+            markups_orm,
+            all_positions,
+            None,
+            await self._resolve_escalation_factors(markups_orm),
+        )
         markup_total = sum(amount for _, amount in markup_results)
         grand_total = float(direct_cost + markup_total)
 
