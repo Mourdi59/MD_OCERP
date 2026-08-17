@@ -35,11 +35,21 @@
 // Those 16 are a separate piece of work with an owner; do not read a green run
 // here as "the chips agree with the sidebar".
 //
+// A third way it fails was invisible to this file until 2026-08-18: a chip
+// whose label is not the English value of the key beside it. The three checks
+// compared chips with EACH OTHER, so nothing held a label to the thing it
+// actually renders, and 170 of 645 chips drifted under a green suite. That one
+// reaches a reader too, on the public case pages, which take `moduleLabel` raw.
+//
 // The baselines below are a shrink list, not an allowlist. They record the
 // splits that predate this gate so the suite is not red on arrival, and they
 // are compared by exact key set: a baselined route that grows a new variant
 // goes red, and so does one that gets fixed, because a fixed route has to leave
-// the list. Nothing may be added to either baseline.
+// the list. Nothing may be added to any of the three.
+//
+// LABEL_VALUE_BASELINE goes further and demands a reason on every line, because
+// the other two record accidents while that one records decisions, and a
+// decision nobody wrote down becomes permission.
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -113,7 +123,136 @@ const LABEL_SPLIT_BASELINE: Record<string, string[]> = {
   '/projects/:projectId/hse-advanced': ['HSE Advanced', 'HSE Management'],
   '/projects/:projectId/qms': ['QMS', 'Quality', 'Quality management'],
   '/requirements/matrix': ['EIR Matrix', 'Requirements matrix'],
+
+  // These seven were invisible until the key-split exemption came out of the
+  // check below. Every one of them is a route that also carries more than one
+  // key, and skipping such routes meant a second name for the screen went
+  // unreported for as long as the first defect stayed on the list. They are
+  // recorded here rather than fixed in the same pass so that the exemption
+  // removal is reviewable on its own.
+  //
+  // `/projects/:projectId/boq` is the one to read first: it is the case the
+  // exemption was hiding, and it stays deferred by ruling because the
+  // abbreviation depends on an unsettled question about what this document is
+  // called per country.
+  '/closeout': ['Close-out', 'Handover', 'Handover & Closeout'],
+  '/projects/:projectId/bim': ['3D model', 'BIM', 'BIM viewer'],
+  '/projects/:projectId/boq': ['BOQ', 'Bill of Quantities'],
+  '/projects/:projectId/daily-diary': ['Daily Diary', 'Daily diary'],
+  '/projects/:projectId/ncr': ['NCR', 'Non-conformance'],
+  '/schedule': ['4D Schedule', 'Schedule'],
+  '/schedule-advanced': ['Advanced Schedule', 'Advanced schedule', 'Schedule Advanced'],
 };
+
+/**
+ * Chips whose label is not the English value of the key beside it.
+ *
+ * The three checks above compare chips with each other. None of them compares a
+ * chip with the thing it actually renders, so the trap documented on
+ * `moduleLabelKey` in `types.ts` had nothing defending it, and 170 divergences
+ * accumulated under a green suite.
+ *
+ * Why it matters that the label is not dead code: every one of these 47 keys
+ * exists in `en.ts`, so `defaultValue` never fires and the label never reaches
+ * the app. It reaches the public case pages, which take `moduleLabel` raw from
+ * `playbookModules`. So each entry here is one screen that the site and the
+ * product call by different words, and a reader clicking through from one to the
+ * other has to recognise where they landed.
+ *
+ * The key's value wins by default: it is what the product shows, and the site
+ * describes the product rather than the other way round. An entry here is a
+ * claim that this pair is the exception, so it carries its reason on the line.
+ * A pair with no reason fails the suite rather than passing quietly, because a
+ * baseline of opaque keys hardens into permission while a baseline of reasons
+ * stays a worklist.
+ *
+ * Ordered by how many chips carry the pair, biggest first.
+ */
+const LABEL_VALUE_BASELINE: readonly (readonly [key: string, label: string, reason: string])[] = [
+  // Deferred by ruling, not an exception. The abbreviation sits on top of an
+  // unsettled question about what this document is called per country, and a
+  // chip alignment must not settle that by accident. `nav.boq`, these labels and
+  // the `/projects/:projectId/boq` row of KEY_SPLIT_BASELINE all stay as they are.
+  ['boq.title', 'BOQ', 'deferred by ruling: per-country naming of this document is unsettled'],
+
+  // Shortenings. The key carries a qualifier the label drops, and the qualifier
+  // is exactly what a case-page reader needs, having no sidebar to give context.
+  ['nav.qms', 'Quality', 'shortening, drops the discipline'],
+  ['nav.qms', 'QMS', 'acronym, unexpanded for a first-time reader'],
+  ['nav.schedule', 'Schedule', 'shortening, drops the 4D that separates this from the advanced schedule'],
+  ['schedule.title', 'Schedule', 'shortening, same screen as nav.schedule'],
+  ['nav.assets', 'Assets', 'shortening, drops the facilities-management scope'],
+  ['nav.reconciliation', 'Reconciliation', 'shortening, drops what is reconciled'],
+  ['nav.value', 'Value', 'shortening, drops the realised'],
+  ['cde.title', 'CDE', 'acronym, the expansion is what an unfamiliar reader needs'],
+  ['nav.service', 'Service', 'shortening, drops maintenance'],
+  ['nav.carbon', 'Carbon', 'shortening, drops ESG'],
+  ['nav.pipelines', 'Pipelines', 'shortening, drops builder'],
+  ['nav.eir_matrix', 'EIR Matrix', 'shortening, drops the ISO 19650 reference'],
+  ['nav.coordination_hub', 'Coordination', 'shortening, drops hub'],
+  ['nav.subcontractors', 'Subcontractors', 'shortening, drops directory'],
+  ['nav.resources', 'Resources', 'shortening, drops crew'],
+  ['closeout.title', 'Close-out', 'shortening, drops handover'],
+  ['closeout.title', 'Handover', 'shortening, drops close-out'],
+  ['nav.allowances', 'Allowances', 'shortening, drops contingency'],
+  ['nav.equipment', 'Equipment', 'shortening, drops fleet'],
+  ['nav.forms', 'Forms', 'shortening, drops checklists'],
+  ['nav.portal', 'Portal', 'shortening, drops who the portal is for'],
+  ['quantities.title', 'Quantities', 'shortening, drops takeoff'],
+  ['nav.takt', 'Takt', 'shortening, drops planning'],
+  ['nav.bim_viewer', 'BIM', 'shortening, and the fuller key name is the right one on a case page'],
+  ['nav.reporting', 'Reports', 'shortening, and /reports carries a second key, see the duplicate-key note'],
+
+  // Capitalisation only. One name, two shapes, no decision behind it.
+  ['nav.field_time', 'Field time', 'capitalisation only'],
+  ['nav.change_orders', 'Change orders', 'capitalisation only'],
+  ['nav.schedule_advanced', 'Advanced schedule', 'capitalisation only'],
+  ['nav.punchlist', 'Punch list', 'capitalisation only'],
+  ['nav.change_intelligence', 'Change intelligence', 'capitalisation only'],
+  ['nav.bid_management', 'Bid management', 'capitalisation only'],
+  ['nav.property_dev', 'Property development', 'capitalisation only'],
+  ['nav.capacity_planning', 'Capacity planning', 'capitalisation only'],
+  ['nav.resource_leveling', 'Resource leveling', 'capitalisation only'],
+  ['nav.daily_diary', 'Daily diary', 'capitalisation only'],
+  ['moc.title', 'Management of change', 'capitalisation only'],
+  ['nav.qms', 'Quality management', 'capitalisation only'],
+  ['nav.phone_log', 'Phone log', 'capitalisation only'],
+
+  // A different name for the same screen. Someone typed a second name by hand.
+  ['nav.closeout', 'Handover', 'a second name for the screen'],
+  ['nav.bim', '3D model', 'a second name for the screen'],
+  ['nav.bim', 'BIM viewer', 'a second name, and /bim carries three keys, see the duplicate-key note'],
+  ['nav.eir_matrix', 'Requirements matrix', 'a second name for the screen'],
+  ['ncr.title', 'NCR', 'singular acronym against a plural key'],
+  ['ncr.title', 'Non-conformance', 'singular against a plural key'],
+  ['nav.ai_estimator', 'AI Estimator', 'a second word order for the screen'],
+  ['onboarding.mod_daily_diary', 'Site diary', 'a second name for the screen'],
+  [
+    'onboarding.mod_schedule_advanced',
+    'Advanced scheduling',
+    'a second name, and this key reads worse than nav.schedule_advanced on the same route',
+  ],
+  ['nav.schedule_advanced', 'Schedule Advanced', 'the onboarding word order leaking into a chip'],
+  ['nav.hse_advanced', 'HSE Advanced', 'the label is the worse English of the two here'],
+  ['nav.labor_rates', 'Labour Rates', 'British spelling against an American key, a locale decision rather than a chip one'],
+
+  // Proposed exceptions: the two where the literal is the better chip text.
+  [
+    'nav.match_elements',
+    'Match Elements',
+    'exception proposed: the key value carries an arrow, a nav affordance that reads as broken punctuation inline',
+  ],
+  [
+    'nav.clash_detection',
+    'Clash Profiles',
+    'exception proposed: the chip walks to /clash/profiles and the label names that sub-screen, not the module',
+  ],
+  [
+    'nav.ncr',
+    'Non-conformances',
+    'not a label defect: the chip walks to /inspections while keying the NCR module, so route and key disagree',
+  ],
+];
 
 /** Resolve `frontend/src` whether vitest was started at `frontend/` or at the repo root. */
 function findSrcRoot(): string {
@@ -154,6 +293,41 @@ function localeDivergence(
     if (new Set(values).size > 1) diverged.push(file.replace(/\.ts$/, ''));
   }
   return { diverged, checked };
+}
+
+/**
+ * Every key/value pair in `en.ts`, parsed once.
+ *
+ * Parsed rather than imported because importing the locale drags i18next and the
+ * app graph into a worker that needs a lookup table, which is what timed the
+ * first version of `Header.titleKeys.test.ts` out.
+ */
+function englishValues(srcRoot: string): Map<string, string> {
+  const text = readFileSync(join(srcRoot, 'app/locales/en.ts'), 'utf8');
+  const out = new Map<string, string>();
+  // The key half accepts a capital: `approvalRoutes.title` is a real chip key,
+  // and a lowercase-only pattern reported it as absent from a file that holds
+  // it. A parser that cannot see a key is indistinguishable from a missing key,
+  // so it has to be the wider of the two.
+  const dq = /["']([A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)+)["']\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+  for (let m = dq.exec(text); m; m = dq.exec(text)) out.set(m[1], m[2].replace(/\\"/g, '"'));
+  const sq = /["']([A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)+)["']\s*:\s*'((?:[^'\\]|\\.)*)'/g;
+  for (let m = sq.exec(text); m; m = sq.exec(text)) {
+    if (!out.has(m[1])) out.set(m[1], m[2].replace(/\\'/g, "'"));
+  }
+  return out;
+}
+
+/** Every chip as it ships, one entry per step so counts are chips and not pairs. */
+function chips(): { label: string; key: string; to: string }[] {
+  const out: { label: string; key: string; to: string }[] = [];
+  for (const pb of PLAYBOOKS) {
+    for (const step of pb.steps) {
+      if (!step.moduleLabelKey) continue;
+      out.push({ label: step.moduleLabel, key: step.moduleLabelKey, to: step.to });
+    }
+  }
+  return out;
 }
 
 /** Group every shipped chip by the route it walks to. */
@@ -233,11 +407,27 @@ describe('module chips name one route one way', () => {
     // Label-only disagreement, split out from the check above because it has no
     // effect on any locale: the label is the fallback shown when the key has no
     // translation. Still wrong, still worth one line, not worth alarm.
+    //
+    // This used to `continue` on any route whose key was split, on the grounds
+    // that the key split was already reported. That handed every row of
+    // KEY_SPLIT_BASELINE a silent exemption from this check as well, which is
+    // how `/projects/:projectId/boq` carried both "BOQ" and "Bill of Quantities"
+    // under a green suite. One condition must not disarm another, so the
+    // comparison now runs inside each key instead of skipping the route.
     const failures: string[] = [];
 
     for (const [route, labels] of chipsByRoute()) {
-      if (keysOn(labels).length > 1) continue; // already reported as a key split
-      const spellings = [...labels.keys()].sort();
+      const byKey = new Map<string, Set<string>>();
+      for (const [label, keys] of labels) {
+        for (const k of keys) {
+          const seen = byKey.get(k) ?? new Set<string>();
+          seen.add(label);
+          byKey.set(k, seen);
+        }
+      }
+      const spellings = [
+        ...new Set([...byKey.values()].filter((s) => s.size > 1).flatMap((s) => [...s])),
+      ].sort();
       const baseline = LABEL_SPLIT_BASELINE[route];
 
       if (spellings.length > 1) {
@@ -256,6 +446,85 @@ describe('module chips name one route one way', () => {
     }
 
     expect(failures, `\n  - ${failures.join('\n  - ')}\n`).toEqual([]);
+  });
+
+  it('states a reason on every baselined label, in a shape that cannot go blank', () => {
+    // A reason checked by "is this string non-empty" degrades to '' or 'known'
+    // on the next pass. The shape has to carry it: three elements, and a third
+    // long enough to be a sentence rather than a placeholder.
+    const malformed: string[] = [];
+    for (const entry of LABEL_VALUE_BASELINE) {
+      const [key, label, reason] = entry;
+      if (entry.length !== 3 || typeof reason !== 'string' || reason.trim().length < 12) {
+        malformed.push(`[${key}, ${label}] carries no usable reason (got ${JSON.stringify(reason)})`);
+      }
+    }
+    expect(malformed, `\n  - ${malformed.join('\n  - ')}\n`).toEqual([]);
+
+    const seen = new Set(LABEL_VALUE_BASELINE.map(([k, l]) => `${k}\u0000${l}`));
+    expect(seen.size, 'LABEL_VALUE_BASELINE lists the same key and label twice').toBe(
+      LABEL_VALUE_BASELINE.length,
+    );
+
+    // The baseline was drawn against 645 shipped chips. If the population
+    // collapses, the check below goes green by having little left to compare
+    // and every stale entry then reads as progress.
+    expect(
+      chips().length,
+      'chip population collapsed, the baseline was drawn against 645',
+    ).toBeGreaterThan(600);
+  });
+
+  it('gives every chip the words its own key renders', () => {
+    // The chips reach the reader twice. In the app the key wins, because all of
+    // these keys exist in en.ts and a defaultValue is only consulted for a key
+    // that resolves to nothing. On the public case pages the label wins, because
+    // playbookModules hands moduleLabel to them raw. So a pair that disagrees is
+    // one screen called two things, and the reader crossing from the site to the
+    // product is the one who pays for it.
+    const srcRoot = findSrcRoot();
+    const english = englishValues(srcRoot);
+    expect(english.size, 'en.ts parsed to almost nothing, the regex is wrong').toBeGreaterThan(5000);
+
+    const allowed = new Map(LABEL_VALUE_BASELINE.map(([k, l, r]) => [`${k}\u0000${l}`, r]));
+    const counts = new Map<string, number>();
+    const failures: string[] = [];
+    const missingKeys: string[] = [];
+
+    for (const { label, key } of chips()) {
+      const value = english.get(key);
+      if (value === undefined) {
+        missingKeys.push(key);
+        continue;
+      }
+      if (value === label) continue;
+      const pair = `${key}\u0000${label}`;
+      counts.set(pair, (counts.get(pair) ?? 0) + 1);
+      if (!allowed.has(pair)) {
+        failures.push(
+          `${key} renders "${value}" but a chip is labelled "${label}". The key's value wins by ` +
+            'default: it is what the product shows. Move the label onto it, or add the pair to ' +
+            'LABEL_VALUE_BASELINE with the reason it is the exception.',
+        );
+      }
+    }
+
+    // A key a chip names but en.ts does not hold would make the check above pass
+    // by having nothing to compare, and would also mean the chip really does
+    // fall back to its label. Neither is true today and both should be loud.
+    expect([...new Set(missingKeys)].sort(), 'chip keys absent from en.ts').toEqual([]);
+
+    const stale = [...allowed.keys()]
+      .filter((pair) => !counts.has(pair))
+      .map((pair) => {
+        const [key, label] = pair.split('\u0000');
+        return (
+          `LABEL_VALUE_BASELINE still allows ${key} to be labelled "${label}", but no chip does ` +
+          'that any more. Delete the entry: the list is a worklist and only shrinks.'
+        );
+      });
+
+    expect([...failures, ...stale], `\n  - ${[...failures, ...stale].join('\n  - ')}\n`).toEqual([]);
   });
 
   it('keeps both baselines pointed at routes that still exist', () => {
