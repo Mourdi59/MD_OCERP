@@ -117,6 +117,8 @@ const resource = {
     "modules.catalog.tendering": "Търговия",
     "modules.catalog.timeline": "График на проекта",
     "modules.catalog.transmittals": "Трансмисии",
+    "modules.catalog.us_ca_pack": "Регионален пакет, Калифорния",
+    "modules.catalog.us_tx_pack": "Регионален пакет, Тексас",
     "modules.catalog.value": "Реализирана стойност",
     "modules.catalog.voice": "Гласово записване",
     "modules.catalog.waste_factors": "Коефициенти на фира",

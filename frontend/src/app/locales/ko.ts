@@ -118,6 +118,8 @@ const resource = {
     "modules.catalog.tendering": "입찰",
     "modules.catalog.timeline": "프로젝트 타임라인",
     "modules.catalog.transmittals": "송장",
+    "modules.catalog.us_ca_pack": "지역 팩, 캘리포니아",
+    "modules.catalog.us_tx_pack": "지역 팩, 텍사스",
     "modules.catalog.value": "실현 가치",
     "modules.catalog.voice": "음성 캡처",
     "modules.catalog.waste_factors": "할증률",

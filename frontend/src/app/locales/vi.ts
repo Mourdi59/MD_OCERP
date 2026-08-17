@@ -118,6 +118,8 @@ const resource = {
     "modules.catalog.tendering": "Dự thầu",
     "modules.catalog.timeline": "Dòng thời gian dự án",
     "modules.catalog.transmittals": "Truyền dẫn",
+    "modules.catalog.us_ca_pack": "Gói khu vực, California",
+    "modules.catalog.us_tx_pack": "Gói khu vực, Texas",
     "modules.catalog.value": "Giá trị đạt được",
     "modules.catalog.voice": "Ghi âm giọng nói",
     "modules.catalog.waste_factors": "Hệ số hao hụt",

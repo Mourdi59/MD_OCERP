@@ -117,6 +117,8 @@ const resource = {
     "modules.catalog.tendering": "Natječaj",
     "modules.catalog.timeline": "Vremenska crta projekta",
     "modules.catalog.transmittals": "Prenosivi",
+    "modules.catalog.us_ca_pack": "Regionalni paket, Kalifornija",
+    "modules.catalog.us_tx_pack": "Regionalni paket, Teksas",
     "modules.catalog.value": "Ostvarena vrijednost",
     "modules.catalog.voice": "Snimanje glasom",
     "modules.catalog.waste_factors": "Faktori otpada",

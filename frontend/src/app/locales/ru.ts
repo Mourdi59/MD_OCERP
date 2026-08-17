@@ -118,6 +118,8 @@ const resource = {
     "modules.catalog.tendering": "Тендеринг",
     "modules.catalog.timeline": "Временная шкала проекта",
     "modules.catalog.transmittals": "Передачи",
+    "modules.catalog.us_ca_pack": "Региональный пакет, Калифорния",
+    "modules.catalog.us_tx_pack": "Региональный пакет, Техас",
     "modules.catalog.value": "Реализованная ценность",
     "modules.catalog.voice": "Голосовой ввод",
     "modules.catalog.waste_factors": "Коэффициенты отходов",

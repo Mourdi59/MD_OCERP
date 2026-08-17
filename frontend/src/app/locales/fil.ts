@@ -121,6 +121,8 @@ const resource = {
     "modules.catalog.tendering": "Pagte-tender",
     "modules.catalog.timeline": "Timeline ng Proyekto",
     "modules.catalog.transmittals": "Mga Transmittal",
+    "modules.catalog.us_ca_pack": "Rehiyonal na Pakete, California",
+    "modules.catalog.us_tx_pack": "Rehiyonal na Pakete, Texas",
     "modules.catalog.value": "Naisakatuparang Value",
     "modules.catalog.voice": "Pagkuha ng Boses",
     "modules.catalog.waste_factors": "Waste Factor",

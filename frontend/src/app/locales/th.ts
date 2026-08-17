@@ -116,6 +116,8 @@ const resource = {
     "modules.catalog.tendering": "การเสนอราคา",
     "modules.catalog.timeline": "ไทม์ไลน์โครงการ",
     "modules.catalog.transmittals": "การถ่ายทำ",
+    "modules.catalog.us_ca_pack": "แพ็กระดับภูมิภาค แคลิฟอร์เนีย",
+    "modules.catalog.us_tx_pack": "แพ็กระดับภูมิภาค เท็กซัส",
     "modules.catalog.value": "มูลค่าที่เกิดขึ้นจริง",
     "modules.catalog.voice": "การบันทึกเสียง",
     "modules.catalog.waste_factors": "ค่าเผื่อการสูญเสีย",

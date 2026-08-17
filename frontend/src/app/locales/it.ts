@@ -119,6 +119,8 @@ const resource = {
     "modules.catalog.tendering": "Gare d'appalto",
     "modules.catalog.timeline": "Cronologia Progetto",
     "modules.catalog.transmittals": "Trasmissioni",
+    "modules.catalog.us_ca_pack": "Pacchetto regionale, California",
+    "modules.catalog.us_tx_pack": "Pacchetto regionale, Texas",
     "modules.catalog.value": "Valore realizzato",
     "modules.catalog.voice": "Acquisizione Vocale",
     "modules.catalog.waste_factors": "Fattori di sfrido",

@@ -121,6 +121,8 @@ const resource = {
     "modules.catalog.tendering": "مناقصه‌گذاری",
     "modules.catalog.timeline": "خط زمانی پروژه",
     "modules.catalog.transmittals": "ارسالیه‌ها",
+    "modules.catalog.us_ca_pack": "بسته منطقه‌ای، کالیفرنیا",
+    "modules.catalog.us_tx_pack": "بسته منطقه‌ای، تگزاس",
     "modules.catalog.value": "ارزش تحقق‌یافته",
     "modules.catalog.voice": "ثبت صوتی",
     "modules.catalog.waste_factors": "ضرایب پرت",

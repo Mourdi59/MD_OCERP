@@ -119,6 +119,8 @@ const resource = {
     "modules.catalog.tendering": "Tarjouspyyntöprosessi",
     "modules.catalog.timeline": "Projektin aikajana",
     "modules.catalog.transmittals": "Lähetykset",
+    "modules.catalog.us_ca_pack": "Aluepaketti, Kalifornia",
+    "modules.catalog.us_tx_pack": "Aluepaketti, Texas",
     "modules.catalog.value": "Saavutettu arvo",
     "modules.catalog.voice": "Äänitallennus",
     "modules.catalog.waste_factors": "Hukkakertoimet",

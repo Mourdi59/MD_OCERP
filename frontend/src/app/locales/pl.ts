@@ -119,6 +119,8 @@ const resource = {
     "modules.catalog.tendering": "Przetargi",
     "modules.catalog.timeline": "Oś czasu projektu",
     "modules.catalog.transmittals": "Transmisje",
+    "modules.catalog.us_ca_pack": "Pakiet regionalny, Kalifornia",
+    "modules.catalog.us_tx_pack": "Pakiet regionalny, Teksas",
     "modules.catalog.value": "Zrealizowana wartość",
     "modules.catalog.voice": "Przechwytywanie głosu",
     "modules.catalog.waste_factors": "Współczynniki strat",

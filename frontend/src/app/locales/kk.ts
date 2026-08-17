@@ -121,6 +121,8 @@ const resource = {
     "modules.catalog.tendering": "Тендерлеу",
     "modules.catalog.timeline": "Жоба хронологиясы",
     "modules.catalog.transmittals": "Жеткізу хаттары",
+    "modules.catalog.us_ca_pack": "Өңірлік Пакет, Калифорния",
+    "modules.catalog.us_tx_pack": "Өңірлік Пакет, Техас",
     "modules.catalog.value": "Іске асқан құндылық",
     "modules.catalog.voice": "Дауыстық түсіру",
     "modules.catalog.waste_factors": "Қалдық коэффициенттері",

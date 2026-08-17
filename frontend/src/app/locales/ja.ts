@@ -118,6 +118,8 @@ const resource = {
     "modules.catalog.tendering": "入札",
     "modules.catalog.timeline": "プロジェクトタイムライン",
     "modules.catalog.transmittals": "伝送",
+    "modules.catalog.us_ca_pack": "地域パック、カリフォルニア",
+    "modules.catalog.us_tx_pack": "地域パック、テキサス",
     "modules.catalog.value": "実現した価値",
     "modules.catalog.voice": "音声キャプチャ",
     "modules.catalog.waste_factors": "ロス率",

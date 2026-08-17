@@ -124,6 +124,8 @@ const resource = {
     "modules.catalog.tendering": "Licitação",
     "modules.catalog.timeline": "Cronograma do Projeto",
     "modules.catalog.transmittals": "Transmissões",
+    "modules.catalog.us_ca_pack": "Pacote regional, Califórnia",
+    "modules.catalog.us_tx_pack": "Pacote regional, Texas",
     "modules.catalog.value": "Valor Realizado",
     "modules.catalog.voice": "Captura de Voz",
     "modules.catalog.waste_factors": "Fatores de desperdício",

@@ -118,6 +118,8 @@ const resource = {
     "modules.catalog.tendering": "招标",
     "modules.catalog.timeline": "项目时间线",
     "modules.catalog.transmittals": "通函",
+    "modules.catalog.us_ca_pack": "区域包，加利福尼亚",
+    "modules.catalog.us_tx_pack": "区域包，得克萨斯",
     "modules.catalog.value": "已实现价值",
     "modules.catalog.voice": "语音录入",
     "modules.catalog.waste_factors": "损耗系数",

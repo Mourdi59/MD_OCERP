@@ -118,6 +118,8 @@ const resource = {
     "modules.catalog.tendering": "İhale",
     "modules.catalog.timeline": "Proje Zaman Çizelgesi",
     "modules.catalog.transmittals": "İletimler",
+    "modules.catalog.us_ca_pack": "Bölgesel Paket, Kaliforniya",
+    "modules.catalog.us_tx_pack": "Bölgesel Paket, Teksas",
     "modules.catalog.value": "Gerçekleşen Değer",
     "modules.catalog.voice": "Sesli Kayıt",
     "modules.catalog.waste_factors": "Fire Katsayıları",

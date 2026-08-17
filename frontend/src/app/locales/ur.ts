@@ -121,6 +121,8 @@ const resource = {
     "modules.catalog.tendering": "ٹینڈرنگ",
     "modules.catalog.timeline": "پروجیکٹ ٹائم لائن",
     "modules.catalog.transmittals": "ٹرانسمٹلز",
+    "modules.catalog.us_ca_pack": "علاقائی پیک، کیلیفورنیا",
+    "modules.catalog.us_tx_pack": "علاقائی پیک، ٹیکساس",
     "modules.catalog.value": "حاصل شدہ قدر",
     "modules.catalog.voice": "وائس کیپچر",
     "modules.catalog.waste_factors": "ضیاع کے عوامل",

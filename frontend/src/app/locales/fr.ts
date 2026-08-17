@@ -118,6 +118,8 @@ const resource = {
     "modules.catalog.tendering": "Mise en soumission",
     "modules.catalog.timeline": "Chronologie du projet",
     "modules.catalog.transmittals": "Transits",
+    "modules.catalog.us_ca_pack": "Pack régional, Californie",
+    "modules.catalog.us_tx_pack": "Pack régional, Texas",
     "modules.catalog.value": "Valeur réalisée",
     "modules.catalog.voice": "Capture vocale",
     "modules.catalog.waste_factors": "Coefficients de perte",

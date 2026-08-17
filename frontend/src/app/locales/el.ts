@@ -121,6 +121,8 @@ const resource = {
     "modules.catalog.tendering": "Διαγωνισμοί",
     "modules.catalog.timeline": "Χρονολόγιο Έργου",
     "modules.catalog.transmittals": "Διαβιβαστικά",
+    "modules.catalog.us_ca_pack": "Περιφερειακό Πακέτο, Καλιφόρνια",
+    "modules.catalog.us_tx_pack": "Περιφερειακό Πακέτο, Τέξας",
     "modules.catalog.value": "Υλοποιημένη Αξία",
     "modules.catalog.voice": "Φωνητική Καταγραφή",
     "modules.catalog.waste_factors": "Συντελεστές Φύρας",

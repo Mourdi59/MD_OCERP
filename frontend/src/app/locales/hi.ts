@@ -117,6 +117,8 @@ const resource = {
     "modules.catalog.tendering": "निविदा",
     "modules.catalog.timeline": "परियोजना समयरेखा",
     "modules.catalog.transmittals": "प्रेषण",
+    "modules.catalog.us_ca_pack": "क्षेत्रीय पैक, कैलिफ़ोर्निया",
+    "modules.catalog.us_tx_pack": "क्षेत्रीय पैक, टेक्सास",
     "modules.catalog.value": "साकार हुआ मूल्य",
     "modules.catalog.voice": "वॉयस कैप्चर",
     "modules.catalog.waste_factors": "अपव्यय कारक",

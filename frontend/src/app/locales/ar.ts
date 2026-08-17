@@ -119,6 +119,8 @@ const resource = {
     "modules.catalog.tendering": "المناقصات",
     "modules.catalog.timeline": "الجدول الزمني للمشروع",
     "modules.catalog.transmittals": "النقل",
+    "modules.catalog.us_ca_pack": "حزمة إقليمية، كاليفورنيا",
+    "modules.catalog.us_tx_pack": "حزمة إقليمية، تكساس",
     "modules.catalog.value": "القيمة المحققة",
     "modules.catalog.voice": "التقاط الصوت",
     "modules.catalog.waste_factors": "معاملات الهدر",

@@ -116,6 +116,8 @@ const resource = {
     "modules.catalog.tendering": "Zadávání",
     "modules.catalog.timeline": "Časová osa projektu",
     "modules.catalog.transmittals": "Přenosy",
+    "modules.catalog.us_ca_pack": "Regionální balíček, Kalifornie",
+    "modules.catalog.us_tx_pack": "Regionální balíček, Texas",
     "modules.catalog.value": "Realizovaná hodnota",
     "modules.catalog.voice": "Hlasové zachycení",
     "modules.catalog.waste_factors": "Koeficienty ztratného",

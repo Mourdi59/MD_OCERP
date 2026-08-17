@@ -117,6 +117,8 @@ const resource = {
     "modules.catalog.tendering": "Ausschreibung",
     "modules.catalog.timeline": "Projektzeitleiste",
     "modules.catalog.transmittals": "Übermittlungen",
+    "modules.catalog.us_ca_pack": "Regionalpaket, Kalifornien",
+    "modules.catalog.us_tx_pack": "Regionalpaket, Texas",
     "modules.catalog.value": "Realisierter Wert",
     "modules.catalog.voice": "Spracherfassung",
     "modules.catalog.waste_factors": "Verschnittfaktoren",

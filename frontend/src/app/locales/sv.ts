@@ -118,6 +118,8 @@ const resource = {
     "modules.catalog.tendering": "Upphandling",
     "modules.catalog.timeline": "Projekttidslinje",
     "modules.catalog.transmittals": "Överföringar",
+    "modules.catalog.us_ca_pack": "Regionalt paket, Kalifornien",
+    "modules.catalog.us_tx_pack": "Regionalt paket, Texas",
     "modules.catalog.value": "Realiserat värde",
     "modules.catalog.voice": "Röstinspelning",
     "modules.catalog.waste_factors": "Spillfaktorer",

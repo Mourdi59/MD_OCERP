@@ -121,6 +121,8 @@ const resource = {
     "modules.catalog.tendering": "מכרזים",
     "modules.catalog.timeline": "ציר זמן הפרויקט",
     "modules.catalog.transmittals": "מכתבי העברה",
+    "modules.catalog.us_ca_pack": "חבילה אזורית, קליפורניה",
+    "modules.catalog.us_tx_pack": "חבילה אזורית, טקסס",
     "modules.catalog.value": "ערך שמומש",
     "modules.catalog.voice": "לכידה קולית",
     "modules.catalog.waste_factors": "מקדמי פחת",

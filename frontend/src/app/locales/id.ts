@@ -118,6 +118,8 @@ const resource = {
     "modules.catalog.tendering": "Penawaran",
     "modules.catalog.timeline": "Linimasa Proyek",
     "modules.catalog.transmittals": "Transmittal",
+    "modules.catalog.us_ca_pack": "Paket regional, California",
+    "modules.catalog.us_tx_pack": "Paket regional, Texas",
     "modules.catalog.value": "Nilai yang Direalisasikan",
     "modules.catalog.voice": "Penangkapan Suara",
     "modules.catalog.waste_factors": "Faktor Sisa Material",

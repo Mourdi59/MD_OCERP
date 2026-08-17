@@ -121,6 +121,8 @@ const resource = {
     "modules.catalog.tendering": "টেন্ডারিং",
     "modules.catalog.timeline": "প্রজেক্ট টাইমলাইন",
     "modules.catalog.transmittals": "ট্রান্সমিটাল",
+    "modules.catalog.us_ca_pack": "আঞ্চলিক প্যাক, ক্যালিফোর্নিয়া",
+    "modules.catalog.us_tx_pack": "আঞ্চলিক প্যাক, টেক্সাস",
     "modules.catalog.value": "উপলব্ধ মূল্য",
     "modules.catalog.voice": "ভয়েস ক্যাপচার",
     "modules.catalog.waste_factors": "অপচয় ফ্যাক্টর",

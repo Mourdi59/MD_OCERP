@@ -116,6 +116,8 @@ const resource = {
     "modules.catalog.tendering": "Hankemenetlus",
     "modules.catalog.timeline": "Projekti ajajoon",
     "modules.catalog.transmittals": "Edastused",
+    "modules.catalog.us_ca_pack": "Regionaalne pakett, California",
+    "modules.catalog.us_tx_pack": "Regionaalne pakett, Texas",
     "modules.catalog.value": "Realiseeritud väärtus",
     "modules.catalog.voice": "Häälsisestus",
     "modules.catalog.waste_factors": "Jäätmetegurid",

@@ -119,6 +119,8 @@ const resource = {
     "modules.catalog.tendering": "Licitație",
     "modules.catalog.timeline": "Cronologia Proiectului",
     "modules.catalog.transmittals": "Transmitări",
+    "modules.catalog.us_ca_pack": "Pachet regional, California",
+    "modules.catalog.us_tx_pack": "Pachet regional, Texas",
     "modules.catalog.value": "Valoare realizată",
     "modules.catalog.voice": "Captură Vocală",
     "modules.catalog.waste_factors": "Factori de pierderi",

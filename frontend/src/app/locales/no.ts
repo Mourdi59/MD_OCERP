@@ -117,6 +117,8 @@ const resource = {
     "modules.catalog.tendering": "Anbudskonkurranse",
     "modules.catalog.timeline": "Prosjekttidslinje",
     "modules.catalog.transmittals": "Overføringer",
+    "modules.catalog.us_ca_pack": "Regional pakke, California",
+    "modules.catalog.us_tx_pack": "Regional pakke, Texas",
     "modules.catalog.value": "Realisert verdi",
     "modules.catalog.voice": "Talestyring",
     "modules.catalog.waste_factors": "Svinnfaktorer",

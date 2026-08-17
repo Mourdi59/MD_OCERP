@@ -110,6 +110,8 @@ const resource = {
     "modules.catalog.tendering": "Aanbestedingsproces",
     "modules.catalog.timeline": "Projecttijdlijn",
     "modules.catalog.transmittals": "Doorstuurlijsten",
+    "modules.catalog.us_ca_pack": "Regionaal pakket, Californië",
+    "modules.catalog.us_tx_pack": "Regionaal pakket, Texas",
     "modules.catalog.value": "Gerealiseerde waarde",
     "modules.catalog.voice": "Spraakopname",
     "modules.catalog.waste_factors": "Verliesfactoren",

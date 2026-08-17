@@ -118,6 +118,8 @@ const resource = {
     "modules.catalog.tendering": "Тендерлөө",
     "modules.catalog.timeline": "Долбоордун убакыт тилкеси",
     "modules.catalog.transmittals": "Жөнөтүүлөр",
+    "modules.catalog.us_ca_pack": "Аймактык топтом, Калифорния",
+    "modules.catalog.us_tx_pack": "Аймактык топтом, Техас",
     "modules.catalog.value": "Ишке ашкан баалуулук",
     "modules.catalog.voice": "Үн менен жазуу",
     "modules.catalog.waste_factors": "Калдык коэффициенттери",

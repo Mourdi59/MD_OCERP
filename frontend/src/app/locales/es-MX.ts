@@ -124,6 +124,8 @@ const resource = {
     "modules.catalog.tendering": "Licitaciones",
     "modules.catalog.timeline": "Cronograma del Proyecto",
     "modules.catalog.transmittals": "Transmisiones",
+    "modules.catalog.us_ca_pack": "Pack regional, California",
+    "modules.catalog.us_tx_pack": "Pack regional, Texas",
     "modules.catalog.value": "Valor Obtenido",
     "modules.catalog.voice": "Captura de Voz",
     "modules.catalog.waste_factors": "Factores de desperdicio",
