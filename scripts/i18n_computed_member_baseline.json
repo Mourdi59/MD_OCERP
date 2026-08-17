@@ -11293,6 +11293,39 @@
       ]
     }
   },
+  "inspections.status_": {
+    "locales_ok": 42,
+    "locales_total": 43,
+    "members": 5,
+    "missing": {
+      "uz": [
+        "inspections.status_cancelled",
+        "inspections.status_completed",
+        "inspections.status_in_progress",
+        "inspections.status_scheduled"
+      ]
+    }
+  },
+  "inspections.type_": {
+    "locales_ok": 42,
+    "locales_total": 43,
+    "members": 11,
+    "missing": {
+      "uz": [
+        "inspections.type_concrete",
+        "inspections.type_concrete_pour",
+        "inspections.type_electrical",
+        "inspections.type_fire_safety",
+        "inspections.type_fire_stopping",
+        "inspections.type_general",
+        "inspections.type_handover",
+        "inspections.type_mep",
+        "inspections.type_plumbing",
+        "inspections.type_structural",
+        "inspections.type_waterproofing"
+      ]
+    }
+  },
   "meetings.day_": {
     "locales_ok": 3,
     "locales_total": 43,
@@ -13092,6 +13125,20 @@
         "ncr.severity_major",
         "ncr.severity_minor",
         "ncr.severity_observation"
+      ]
+    }
+  },
+  "ncr.status_": {
+    "locales_ok": 42,
+    "locales_total": 43,
+    "members": 6,
+    "missing": {
+      "uz": [
+        "ncr.status_closed",
+        "ncr.status_corrective_action",
+        "ncr.status_identified",
+        "ncr.status_under_review",
+        "ncr.status_verification"
       ]
     }
   },
@@ -19940,6 +19987,19 @@
         "safety.severity_minor",
         "safety.severity_moderate",
         "safety.severity_severe"
+      ]
+    }
+  },
+  "safety.status_": {
+    "locales_ok": 42,
+    "locales_total": 43,
+    "members": 8,
+    "missing": {
+      "uz": [
+        "safety.status_closed",
+        "safety.status_corrective_action",
+        "safety.status_investigating",
+        "safety.status_reported"
       ]
     }
   },
