@@ -92,10 +92,12 @@ hidden_imports = [
 # channel on the broken behaviour the extra just fixed.
 hidden_imports += collect_submodules("qdrant_client")
 
-# The local encoder, in the lock since the [semantic-encoder] extra landed. Same
-# lazy shape as the client above and the same consequence if it is missed: every
-# import of it sits inside a function body (core/vector.py get_embedder,
-# costs/matcher.py), so the static graph never sees it.
+# The local encoder, in the lock since the [semantic-encoder] extra landed.
+# Every import of it sits inside a function body (core/vector.py get_embedder,
+# costs/matcher.py), which is thinner than it looks rather than invisible: the
+# static graph does follow imports inside function bodies, and a Windows build
+# with this line deleted still collected 167 sentence_transformers modules off
+# those two call sites. collect_submodules supplies the remaining 18.
 #
 # It has to be named here for a second reason that has nothing to do with
 # imports. embedding_installer.start_background_download() asks
