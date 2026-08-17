@@ -121,8 +121,16 @@ def _scan(parquet_path: str) -> Any:
     try:
         import polars as pl
     except ImportError as exc:  # pragma: no cover - optional [semantic] extra
+        # polars is not in requirements-desktop.lock, so this branch is one a
+        # bundle really reaches, and a bundle has no pip to act on the advice.
+        from app.core.self_upgrade import DESKTOP_NO_EXTRA, repair_hint  # noqa: PLC0415
+
         raise RuntimeError(
-            "polars is not installed; install the [semantic] extra: pip install openconstructionerp[semantic]"
+            "polars is not installed; "
+            + repair_hint(
+                "install the [semantic] extra: pip install openconstructionerp[semantic]",
+                DESKTOP_NO_EXTRA,
+            )
         ) from exc
 
     return pl.scan_parquet(parquet_path)

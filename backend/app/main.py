@@ -65,6 +65,7 @@ from app.core.self_upgrade import (
     claim_upgrade,
     current_upgrade,
     is_frozen_build,
+    repair_hint,
     run_upgrade,
 )
 from app.dependencies import RequireRole, get_current_user_id, rls_request_context
@@ -1921,8 +1922,12 @@ def create_app() -> FastAPI:
             "release_notes": release_notes,
             "published_at": published_at,
             "self_upgrade_supported": not frozen,
-            "upgrade_command": (
-                "Download and run the latest installer" if frozen else "pip install --upgrade openconstructionerp"
+            # Both spellings kept exactly as they were; only the decision moves.
+            # This was the second hand-written copy of "which advice does this
+            # install understand", and a copy is how the wording drifts.
+            "upgrade_command": repair_hint(
+                "pip install --upgrade openconstructionerp",
+                "Download and run the latest installer",
             ),
         }
         setattr(app.state, cache_key, {"data": result, "checked_at": time.time()})

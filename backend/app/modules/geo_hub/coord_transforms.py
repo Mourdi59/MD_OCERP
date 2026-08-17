@@ -212,8 +212,13 @@ def transform(
         nx, ny, nz = transformer.transform(x, y, z)
         return nx, ny, nz
 
+    # pyproj is not in requirements-desktop.lock, so a bundle reaches this and
+    # has no pip to act on the advice with.
+    from app.core.self_upgrade import DESKTOP_NO_EXTRA, repair_hint  # noqa: PLC0415
+
     raise NotImplementedError(
-        f"transform({src_epsg} -> {dst_epsg}) requires pyproj - install openconstructionerp[geo] to enable it",
+        f"transform({src_epsg} -> {dst_epsg}) requires pyproj - "
+        + repair_hint("install openconstructionerp[geo] to enable it", DESKTOP_NO_EXTRA),
     )
 
 

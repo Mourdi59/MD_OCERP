@@ -1047,9 +1047,13 @@ class S3StorageBackend(StorageBackend):
         try:
             import aioboto3  # noqa: F401  (import-time check only)
         except ImportError as exc:  # pragma: no cover - exercised at runtime
+            # aioboto3 is not in requirements-desktop.lock, so a bundle
+            # configured for S3 reaches this with no pip to act on the advice.
+            from app.core.self_upgrade import DESKTOP_NO_EXTRA, repair_hint  # noqa: PLC0415
+
             raise ImportError(
                 "S3StorageBackend requires the 'aioboto3' package. "
-                "Install it with: pip install 'openconstructionerp[s3]'"
+                + repair_hint("Install it with: pip install 'openconstructionerp[s3]'", DESKTOP_NO_EXTRA)
             ) from exc
 
         self._endpoint: str = endpoint
