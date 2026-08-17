@@ -37,6 +37,12 @@ Three checks:
     compared only when the count is unchanged: without it a locale could
     drop one key and fill another and stay green on an unmoved number.
 
+  * Placeholders survive translation. ``t()`` runs str.format over the value,
+    so the braces are code and not text. It catches KeyError and ValueError,
+    which makes a renamed field degrade to the untouched string, but it does
+    not catch IndexError, so a stray ``{}`` or ``{0}`` anywhere in a locale is
+    a 500 on the route that renders it.
+
 Regenerating the baseline after filling a locale, from the repo root:
 
     python scripts/gen_i18n_backend_coverage_baseline.py
@@ -46,6 +52,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import string
 from pathlib import Path
 
 import pytest
@@ -109,6 +116,47 @@ def test_locale_is_not_mostly_english(code: str) -> None:
         f"{code}.json is {ratio:.1%} byte-identical to en.json over {len(shared)} shared keys "
         f"({len(identical)} untranslated values) - that is an English file under a {code} name"
     )
+
+
+def _placeholders(value: str) -> tuple[set[str], list[str]]:
+    """Split a value's str.format fields into named ones and positional ones.
+
+    Doubled braces are not fields: ``{{count}}`` reaches the client as literal
+    text and is resolved there, so only single-brace fields are the backend's.
+    """
+    named: set[str] = set()
+    positional: list[str] = []
+    for _, field, _, _ in string.Formatter().parse(value):
+        if field is None:
+            continue
+        root = field.split(".")[0].split("[")[0]
+        if root == "" or root.isdigit():
+            positional.append(field)
+        else:
+            named.add(root)
+    return named, positional
+
+
+@pytest.mark.parametrize("code", sorted(_locale_files() - {"en"}))
+def test_placeholders_survive_translation(code: str) -> None:
+    """A translated value has to keep exactly the fields its English source had."""
+    en = _load_locale("en")
+    other = _load_locale(code)
+
+    faults: list[str] = []
+    for key, english in en.items():
+        if key not in other:
+            continue
+        want, _ = _placeholders(english)
+        got, positional = _placeholders(other[key])
+        if positional:
+            # t() catches KeyError and ValueError but not IndexError, so this
+            # one does not degrade to English, it 500s the rendering route.
+            faults.append(f"{key}: positional field {positional} raises IndexError in t()")
+        if got != want:
+            faults.append(f"{key}: expected {sorted(want)}, found {sorted(got)} in {other[key]!r}")
+
+    assert not faults, f"{code}.json breaks interpolation:\n  " + "\n  ".join(faults)
 
 
 def _read_baseline() -> dict:
