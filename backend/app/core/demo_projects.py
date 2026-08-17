@@ -9836,6 +9836,13 @@ async def _seed_module_data(
                     spec_section=s.get("spec_section"),
                     submittal_type=s["submittal_type"],
                     status=s["status"],
+                    # A submittal still out for review has to name whose desk it
+                    # is on, because the register prints that name beside a chip
+                    # counting the days it has been there. This is the rule
+                    # submit_submittal applies; approve_submittal sets the field
+                    # back to None, which is why an approved row stays empty.
+                    reviewer_id=(owner_str if s["status"] in ("submitted", "under_review") else None),
+                    ball_in_court=(owner_str if s["status"] in ("submitted", "under_review") else None),
                     date_submitted=s.get("date_submitted"),
                     date_returned=s.get("date_returned"),
                     created_by=owner_str,
