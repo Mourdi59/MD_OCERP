@@ -246,3 +246,13 @@ jobs:
       # module docstring in the script for the acknowledgement format.
       - name: Check migrations that rewrite pre-existing data are acknowledged
         run: python scripts/check_migration_data_rewrites.py
+      # A fork in the revision graph is invisible to the person who made it:
+      # each author runs `alembic heads` inside their own branch of work, sees
+      # one head and is telling the truth, because they ran before the other
+      # revision existed. It only shows in the union, which is what CI is. An
+      # ambiguous head makes `alembic upgrade head` refuse to run, so without
+      # this the fork is found by whoever upgrades first, and on a release that
+      # is the user. Reads the revision files rather than importing Alembic, so
+      # it needs no database and cannot hang on a driver import.
+      - name: Check the migration graph has a single head
+        run: python scripts/check_migration_heads.py
