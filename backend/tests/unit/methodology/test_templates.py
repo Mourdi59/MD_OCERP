@@ -155,11 +155,54 @@ def test_no_emdash_in_template_text() -> None:
         assert "–" not in blob, f"en-dash in template {tpl['slug']}"
 
 
-def test_all_template_text_is_ascii() -> None:
-    """Every template is plain ASCII (no smart quotes, accents or dashes)."""
+def test_all_template_copy_is_ascii() -> None:
+    """Every line of template COPY is plain ASCII: no smart quotes or accents.
+
+    Copy means the English prose a reader sees around the numbers, which is what
+    this guard was written for and where a pasted smart quote or a stray accent
+    is always a mistake.
+
+    Step labels are excluded and that is deliberate. A template derived from the
+    regional markup table carries that table's own line names, so Germany reads
+    Baustellengemeinkosten and Japan reads the Japanese term for common
+    temporary works. Rendering those in English here would be a second copy of a
+    name the canonical table already states, which is the exact duplication the
+    derivation removes. The next test pins that the exception is only ever used
+    by derived templates.
+    """
+    copy_fields = ("slug", "name", "description", "currency", "country_code", "industry")
     for tpl in t.list_templates():
-        blob = repr(tpl)
-        assert blob.isascii(), f"non-ASCII copy in template {tpl['slug']}"
+        for field in copy_fields:
+            value = tpl.get(field)
+            if isinstance(value, str):
+                assert value.isascii(), f"non-ASCII copy in template {tpl['slug']} field {field}: {value!r}"
+        for level in tpl["hierarchy_levels"]:
+            assert str(level["label"]).isascii(), f"non-ASCII hierarchy label in {tpl['slug']}"
+
+
+def test_only_a_derived_template_carries_a_national_step_label() -> None:
+    """A hand-written template writes its labels in English. A derived one does not.
+
+    The national terms enter the catalogue through exactly one door, the
+    regional markup table, and a label that arrives any other way is somebody
+    typing a foreign word into a literal by hand. That is worth catching,
+    because a hand-typed national term is a second spelling of a name the table
+    already owns.
+
+    Note for whoever reads this after a PDF looks wrong: the bundled DejaVu
+    faces cover Latin, Greek and Cyrillic but not CJK, so a Japanese, Chinese or
+    Korean label prints blank. That is not new here. A bill seeded for those
+    markets has carried the same names for as long as the regional table has
+    existed and its exporter has the same gap.
+    """
+    for tpl in t.list_templates():
+        for step in tpl["cascade_steps"]:
+            if str(step["label"]).isascii():
+                continue
+            assert tpl.get("derived_from_region"), (
+                f"{tpl['slug']}: step {step['key']} has a non-ASCII label {step['label']!r} "
+                f"but is not derived from the regional markup table"
+            )
 
 
 @pytest.mark.parametrize("tpl", t.list_templates(), ids=lambda x: x["slug"])

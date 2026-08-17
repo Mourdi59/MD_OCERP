@@ -36,11 +36,24 @@ that distinguishes one estimating tradition from another:
 Design constraints (mirror cascade.py / bases.py):
 
 * Standard library only - ``decimal``, ``dataclasses`` (via the imported pure
-  engine), ``typing``. No ``app.*`` imports except the two sibling PURE engine
-  modules, and those are imported lazily inside :func:`build_cascade_spec` /
-  re-exported types so this file can still be loaded standalone on Python 3.11
-  for unit testing (no SQLAlchemy / Pydantic / FastAPI import is triggered).
-* English only; no em-dashes in any string. Money as Decimal-safe strings.
+  engine), ``typing``. Three ``app.*`` imports are allowed and no others: the
+  two sibling PURE engine modules, imported lazily inside
+  :func:`build_cascade_spec` and as re-exported types, and
+  :mod:`app.modules.boq.markup_templates`, which is standard-library only for
+  exactly this reason. The rule was never "nothing under ``app``", it was "no
+  SQLAlchemy, Pydantic or FastAPI import is triggered", so that this file still
+  loads standalone on Python 3.11 for its unit tests. It still does. Anything
+  new imported here has to be checked against that, not against the package it
+  happens to live in.
+* English only in prose; no em-dashes in any string. Money as Decimal-safe
+  strings. Step LABELS are the deliberate exception: a country template derived
+  from the regional table carries that table's own national terms,
+  Baustellengemeinkosten and Mehrwertsteuer rather than English renderings of
+  them, because a term translated on the way through is a second copy of it and
+  the point of the derivation is that there is one. The bundled DejaVu PDF
+  faces cover Latin, Greek and Cyrillic but not CJK; that limitation already
+  applies to the bill exporter printing the same names and is not introduced
+  here.
 
 The rates below are sensible, clearly documented defaults, not regulated
 figures: a methodology is fully editable in-app once installed, so a user can
@@ -51,6 +64,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping
 
+from app.modules.boq.markup_templates import REGION_BY_COUNTRY, region_lines_for_country
+
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from app.modules.methodology.cascade import CascadeSpec
 
@@ -58,6 +73,7 @@ __all__ = [
     "TEMPLATES",
     "TEMPLATES_BY_SLUG",
     "INTERNATIONAL_SLUG",
+    "NEUTRAL_METHOD_NOTE",
     "list_templates",
     "get_template",
     "build_cascade_spec",
@@ -613,6 +629,15 @@ def _flat_country_template(
     line of data rather than a repeated fifteen-line dict, while producing the
     exact same schema the hand-written templates use.
 
+    Three steps is not a national cost plan and this builder does not claim to
+    write one. Where the regional markup table states a national convention,
+    :func:`_reconcile_with_region_table` replaces what is built here with it;
+    where it does not, the template ships as built and its description carries
+    :data:`NEUTRAL_METHOD_NOTE` so nobody reads three steps as a country's own
+    method. Bringing a market from the second class into the first means adding
+    its stack to ``DEFAULT_MARKUP_TEMPLATES`` and its country to
+    ``REGION_BY_COUNTRY``, not enriching the arguments here.
+
     Args:
         slug: Unique catalogue slug (snake_case).
         name: Display name (a country name, plain ASCII).
@@ -648,8 +673,14 @@ def _flat_country_template(
     }
 
 
-# Seven popular countries, migrated from the hardcoded DEFAULT_MARKUP_TEMPLATES
-# tradition into data. Each is the flat method with country-typical defaults.
+# Seven popular countries. What is written here is the flat method with
+# country-typical defaults, and for most of these seven it is not what ships:
+# :func:`_reconcile_with_region_table` replaces the steps of any country the
+# regional markup table covers, so what a user installs for Germany is the DACH
+# stack, not the three lines below. The literals stay because they carry the
+# currency, the decimals, the column preset and the VAT rate, which the regional
+# table has no opinion about, and because a country can lose its regional
+# coverage and needs something to fall back to.
 _COUNTRY_TEMPLATES: list[dict[str, Any]] = [
     {
         "slug": "germany",
@@ -2064,21 +2095,157 @@ _INDUSTRY_TEMPLATES: list[dict[str, Any]] = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Reconciliation with the regional markup table
+# ---------------------------------------------------------------------------
+#
+# There are two markup engines and they used to answer the same country with
+# two different numbers. A United States bill seeded from the regional table
+# came to 1,308,150 on a million of direct cost; the "United States"
+# methodology, three flat steps of overhead, profit and a zero tax, came to
+# 1,210,000. Neither number was wrong for what it computed. What was wrong was
+# that both were presented as the American way of pricing a job.
+#
+# ``app.modules.boq.markup_templates.DEFAULT_MARKUP_TEMPLATES`` is the
+# canonical statement of what a national stack contains, so the country
+# templates here derive from it instead of restating it. Nothing below is
+# hand-copied: one pass rewrites the steps of every country the table covers,
+# and the countries it does not cover keep the flat method and say so in the
+# description rather than presenting three steps as a national convention.
+#
+# ``tests/unit/test_one_country_one_markup_stack.py`` computes each covered
+# country through both engines and fails if the two disagree beyond the cents
+# their different rounding costs, so the divergence cannot come back quietly.
+
+#: Appended to the description of a country template the regional table does
+#: not cover. It exists so the catalogue never implies a national method it
+#: does not have, and the test asserts it is present on exactly that class.
+NEUTRAL_METHOD_NOTE = (
+    "This is the neutral international method carrying the local currency and "
+    "consumption-tax rate, not a national cost-planning convention."
+)
+
+# The step keys :func:`_flat_steps` emits. A template whose steps are exactly
+# these is running the neutral flat method and is a candidate for derivation; a
+# template that states a real national cascade of its own (Brazilian BDI,
+# Colombian AIU, Chilean APU, the Mexican and Uzbek methodologies) is not, and
+# is left alone even when its country appears in the regional table.
+_FLAT_STEP_KEYS = ("overhead", "profit", "vat")
+
+
+def _derived_steps(lines: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Translate regional markup lines into cascade steps.
+
+    The two vocabularies differ in one place. A markup line says ``apply_to``:
+    ``direct_cost`` for a rate on the direct cost alone, ``cumulative`` for a
+    rate on the direct cost plus every line before it. A cascade step names its
+    base explicitly. So ``direct_cost`` becomes the direct composite on its own,
+    and ``cumulative`` becomes the direct composite plus the key of every
+    preceding step, which is the same set written out. That is the whole
+    translation, and it is the only thing between the two engines: with it the
+    same country priced through either comes to the same money.
+
+    Step keys are positional (``s5_bond``) rather than derived from the line
+    name, because the names are national terms and several of them are CJK, so
+    slugifying them would produce collisions or nothing at all. Labels keep the
+    line name exactly as the table writes it.
+
+    Args:
+        lines: Markup lines from
+            :func:`app.modules.boq.markup_templates.region_lines_for_country`,
+            already in seeding order with the country VAT swapped in.
+
+    Returns:
+        Ordered cascade-step dicts for a template's ``cascade_steps``.
+    """
+    steps: list[dict[str, Any]] = []
+    preceding: list[str] = []
+    for index, line in enumerate(lines):
+        key = f"s{index + 1}_{line['category']}"
+        cumulative = str(line.get("apply_to", "direct_cost")).lower() in ("cumulative", "subtotal")
+        steps.append(
+            {
+                "key": key,
+                "label": str(line["name"]),
+                "category": str(line["category"]),
+                "kind": "percentage",
+                "rate": str(line["percentage"]),
+                "amount": "0",
+                "base": ["direct", *preceding] if cumulative else ["direct"],
+            }
+        )
+        preceding.append(key)
+    return steps
+
+
+def _reconcile_with_region_table(template: dict[str, Any]) -> dict[str, Any]:
+    """Return the template as it should ship, given the regional markup table.
+
+    Three outcomes, and which one applies is decided from the data rather than
+    from a list somebody has to remember to update:
+
+    * A flat country template whose country the regional table covers is
+      rewritten from that table. It gains the national stack, the national line
+      names, and ``derived_from_region``.
+    * A flat country template whose country the table does not cover keeps its
+      steps and gains :data:`NEUTRAL_METHOD_NOTE`, so a reader is told it is the
+      neutral method rather than left to assume a national one.
+    * Anything else, a template with a cascade of its own or with no country at
+      all, is returned untouched.
+
+    Args:
+        template: A catalogue template dict.
+
+    Returns:
+        The same dict when nothing applies, otherwise a new dict. The catalogue
+        literals above are never mutated, so a template's source keeps saying
+        what was written by hand and what the table decided.
+    """
+    country = template.get("country_code")
+    if not country:
+        return template
+    step_keys = tuple(str(step.get("key")) for step in template.get("cascade_steps") or ())
+    if step_keys != _FLAT_STEP_KEYS:
+        return {**template, "derived_from_region": None}
+
+    lines = region_lines_for_country(str(country), vat_rate=template.get("vat_rate"))
+    if lines is None:
+        return {
+            **template,
+            "description": f"{template['description']} {NEUTRAL_METHOD_NOTE}",
+            "derived_from_region": None,
+        }
+
+    region_key = REGION_BY_COUNTRY[str(country).upper()]
+    return {
+        **template,
+        "description": (
+            f"{template['name']} national markup stack, {len(lines)} lines, the same stack a bill "
+            f"of quantities is seeded with in this market ({region_key} regional template)."
+        ),
+        "cascade_steps": _derived_steps(lines),
+        "derived_from_region": region_key,
+    }
+
+
 # Ordered catalogue: international first, then countries, then UZ, MX, CL, then
 # the industry packs (railway plus the sector methodologies). The two Latin
 # American APU templates sit after the flat countries because a country can
 # appear in both traditions: Chile is in the flat list as well, and which one a
 # project wants depends on who is going to read the estimate.
-TEMPLATES: tuple[dict[str, Any], ...] = (
-    _INTERNATIONAL_TEMPLATE,
-    *_COUNTRY_TEMPLATES,
-    *_MORE_COUNTRY_TEMPLATES,
-    _UZBEKISTAN_TEMPLATE,
-    _MEXICO_TEMPLATE,
-    _CHILE_APU_TEMPLATE,
-    _COLOMBIA_AIU_TEMPLATE,
-    _BRAZIL_BDI_TEMPLATE,
-    *_INDUSTRY_TEMPLATES,
+TEMPLATES: tuple[dict[str, Any], ...] = tuple(
+    _reconcile_with_region_table(tpl)
+    for tpl in (
+        _INTERNATIONAL_TEMPLATE,
+        *_COUNTRY_TEMPLATES,
+        *_MORE_COUNTRY_TEMPLATES,
+        _UZBEKISTAN_TEMPLATE,
+        _MEXICO_TEMPLATE,
+        _CHILE_APU_TEMPLATE,
+        _COLOMBIA_AIU_TEMPLATE,
+        _BRAZIL_BDI_TEMPLATE,
+        *_INDUSTRY_TEMPLATES,
+    )
 )
 
 # Index by slug for O(1) lookup. Built once at import time.

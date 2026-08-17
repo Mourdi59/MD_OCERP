@@ -72,19 +72,28 @@ def test_international_flat_overhead_then_profit() -> None:
     assert r.grand_total == Decimal("241.92")
 
 
-def test_germany_vat_applies_on_top_of_overhead_and_profit() -> None:
-    """DE: overhead 13 %, profit 6 %, VAT 19 % on labor 1000 + material 0.
+def test_germany_vat_applies_on_top_of_the_whole_zuschlag() -> None:
+    """DE: the DACH Zuschlagskalkulation on labor 1000 + material 0.
 
-    direct = 1000; overhead = 130; profit = 6 % of 1130 = 67.80;
-    subtotal = 1197.80; VAT = 19 % of 1197.80 = 227.582 -> 227.58.
-    grand = 1425.38.
+    The claim under test has not changed: the tax step prices everything before
+    it, not the direct cost alone. The stack it prices has. Germany used to be
+    three flat steps of 13 / 6 / 19 for a grand total of 1425.38, which was the
+    methodology catalogue disagreeing with the stack a German bill was actually
+    seeded with. It now derives from that stack, so the numbers here are the
+    VOB/B ones: BGK 10 %, AGK 8 %, Wagnis 2 % and Gewinn 3 % all on direct cost,
+    then MwSt 19 % on the sum of all of them.
+
+    direct = 1000; BGK = 100; AGK = 80; Wagnis = 20; Gewinn = 30;
+    subtotal = 1230; MwSt = 19 % of 1230 = 233.70. grand = 1463.70.
     """
     r = _compute("germany", {"labor": Decimal("1000")})
     amts = _amounts(r)
-    assert amts["overhead"] == Decimal("130.00")
-    assert amts["profit"] == Decimal("67.80")
-    assert amts["vat"] == Decimal("227.58")
-    assert r.grand_total == Decimal("1425.38")
+    assert amts["s1_overhead"] == Decimal("100.00")
+    assert amts["s2_overhead"] == Decimal("80.00")
+    assert amts["s3_contingency"] == Decimal("20.00")
+    assert amts["s4_profit"] == Decimal("30.00")
+    assert amts["s5_tax"] == Decimal("233.70")
+    assert r.grand_total == Decimal("1463.70")
 
 
 # ── Uzbekistan cascading methodology ─────────────────────────────────────
