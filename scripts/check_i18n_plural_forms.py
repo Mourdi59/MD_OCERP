@@ -75,7 +75,7 @@ CATEGORIES: dict[str, tuple[str, ...]] = {
     "de": ("one", "other"),
     "el": ("one", "other"),
     "en": ("one", "other"),
-    "es": ("one", "many", "other"),
+    "es": ("one", "many", "other"),
     "es-CO": ("one", "many", "other"),
     "es-CL": ("one", "many", "other"),
     "es-MX": ("one", "many", "other"),
@@ -97,14 +97,21 @@ CATEGORIES: dict[str, tuple[str, ...]] = {
     "nl": ("one", "other"),
     "no": ("one", "other"),
     "pl": ("one", "few", "many", "other"),
-    "pt": ("one", "many", "other"),
+    "pt": ("one", "many", "other"),
     "pt-BR": ("one", "many", "other"),
     "ro": ("one", "few", "other"),
     "ru": ("one", "few", "many", "other"),
     "sv": ("one", "other"),
     "th": ("other",),
     "tr": ("one", "other"),
+    # Ukrainian takes the same four categories as Russian, so a counted key
+    # translated by pattern-matching against ru.ts arrives with the right
+    # shape; one translated against a two-form neighbour arrives one form
+    # short and i18next answers it in English, because it does not fall back
+    # from a missing plural form to another form of the same language.
+    "uk": ("one", "few", "many", "other"),
     "ur": ("one", "other"),
+    "uz": ("one", "other"),
     "vi": ("other",),
     "zh": ("other",),
 }
