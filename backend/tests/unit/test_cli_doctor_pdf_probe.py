@@ -98,3 +98,77 @@ class TestFrozenBuildIsNotProbedWithAChild:
             "pdfplumber is the primary reader and must be probed"
         )
         assert any("import pymupdf" in cmd[2] for cmd in imports), "pymupdf is the fallback reader and must be probed"
+
+
+class TestTheOcrExtraAnswersInBothDirections:
+    """The [cv] check must report OCR present as well as OCR absent.
+
+    It used to append a Check only when paddleocr was missing, so an install
+    that HAD the extra produced no line at all. "OCR works here" and "this
+    check never ran" printed identically, which is the one thing a report
+    cannot do. It also decided on ``find_spec`` alone, which resolves a module
+    without executing it, so a wheel set that is installed but cannot load
+    counted as installed - the blind spot already closed for the vector and
+    encoder checks and left open on this one.
+    """
+
+    CV = "PDF dimension OCR [cv]"
+
+    def _cv_check(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        present: bool,
+        import_fails: bool,
+    ) -> list:
+        """Run the extras report with paddleocr's state forced, return its line."""
+        import importlib.util as importlib_util
+        import subprocess
+
+        # The child-process arm, so the probe is the one a normal install uses
+        # and nothing is imported into the test interpreter.
+        monkeypatch.setattr(sys, "frozen", False, raising=False)
+        monkeypatch.delenv("OE_DESKTOP", raising=False)
+
+        real_find_spec = importlib_util.find_spec
+
+        def fake_find_spec(name: str, package: str | None = None):
+            if name == "paddleocr":
+                return object() if present else None
+            return real_find_spec(name, package)
+
+        class _Result:
+            def __init__(self, code: int, err: bytes = b"") -> None:
+                self.returncode = code
+                self.stdout = b""
+                self.stderr = err
+
+        def fake_run(cmd, **kwargs):
+            source = cmd[2] if len(cmd) == 3 else ""
+            if "import paddleocr" in source and import_fails:
+                return _Result(1, b"ModuleNotFoundError: No module named 'paddle'\n")
+            return _Result(0)
+
+        monkeypatch.setattr(importlib_util, "find_spec", fake_find_spec)
+        monkeypatch.setattr(subprocess, "run", fake_run)
+
+        return [c for c in cli.check_optional_extras() if c.name == self.CV]
+
+    def test_a_working_install_says_so_instead_of_saying_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        found = self._cv_check(monkeypatch, present=True, import_fails=False)
+        assert len(found) == 1, "an install WITH the extra must still produce a line"
+        assert found[0].status == "ok"
+
+    def test_installed_but_unloadable_is_not_reported_as_installed(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """find_spec would call this one installed; importing it does not."""
+        found = self._cv_check(monkeypatch, present=True, import_fails=True)
+        assert len(found) == 1
+        assert found[0].status == "error", "a wheel set that cannot import is not a working OCR install"
+        assert "paddle" in found[0].message, f"the failure should name what went wrong, got {found[0].message!r}"
+
+    def test_a_plain_install_without_the_extra_is_still_only_a_warning(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Absent stays non-fatal: a stock install is meant not to carry this."""
+        found = self._cv_check(monkeypatch, present=False, import_fails=False)
+        assert len(found) == 1
+        assert found[0].status == "warn"
+        assert "geometry detection still works" in found[0].message

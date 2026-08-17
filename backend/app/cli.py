@@ -687,15 +687,32 @@ def check_optional_extras() -> list[Check]:
                 "pip install --force-reinstall --no-cache-dir openconstructionerp",
             )
         )
-    if not _present("paddleocr"):
-        out.append(
-            Check(
-                "PDF dimension OCR [cv]",
-                "warn",
-                "not installed (geometry detection still works; dimension-text reading disabled)",
-                "pip install 'openconstructionerp[cv]'",
-            )
+    # Routed through the same helper as the other extras, which changes two
+    # things. It reports when OCR is available instead of only when it is
+    # absent: the old branch appended nothing at all on an install that had the
+    # extra, so "OCR works here" and "this check never ran" printed identically,
+    # which is the one thing a diagnostic must never do. And it verifies by
+    # importing rather than by locating, so a wheel set that is present but
+    # cannot load is reported as broken instead of as installed - the blind spot
+    # this function's own docstring was written about, which had been closed for
+    # the vector and encoder checks and left open one extra over.
+    #
+    # Open question, deliberately not answered here. [cv] resolves paddleocr and
+    # paddlex but does NOT pull paddlepaddle, because upstream expects the
+    # caller to choose a CPU, GPU or platform build. If ``import paddleocr``
+    # succeeds anyway on such an install, this check would still call it ok
+    # while OCR fails at upload time, and catching that needs a probe that
+    # exercises the engine rather than the frontend. That is a measurement
+    # nobody has made yet, so it is written down rather than guessed at.
+    out.append(
+        _extra_check(
+            "PDF dimension OCR [cv]",
+            "paddleocr",
+            "cv",
+            "paddleocr imports cleanly",
+            "not installed (geometry detection still works; dimension-text reading disabled)",
         )
+    )
 
     # AI provider key configuration (not a package check).
     out.append(check_ai_provider_keys())
