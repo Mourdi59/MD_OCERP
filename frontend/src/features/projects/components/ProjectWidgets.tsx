@@ -651,14 +651,14 @@ export function VariationsWidget({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const rollup = useRollupSlice('project_variations');
-  const fallback = useGracefulQuery<VariationRequest[]>(
+  const fallback = useGracefulQuery<Page<VariationRequest>>(
     ['proj-widget-var', projectId],
     `/v1/variations/variation-requests/?project_id=${projectId}&limit=50`,
     !rollup.hasProvider,
   );
   const data: VariationRequest[] | null | undefined = rollup.hasProvider
     ? (rollup.data?.items as VariationRequest[] | undefined) ?? null
-    : fallback.data;
+    : fallback.data?.items ?? null;
   const isLoading = rollup.hasProvider ? rollup.isLoadingFromRollup : fallback.isLoading;
 
   const stats = useMemo(() => {

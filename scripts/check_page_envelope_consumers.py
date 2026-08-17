@@ -331,6 +331,29 @@ SHARED_QUERY_KEYS: dict[str, str] = {
 
 QUERY_KEY_RE = r"queryKey:\s*\[\s*['\"`]{key}['\"`]"
 
+# The calls that read a collection, and the calls that do not. `apiGet` is
+# the shared client; the rest are wrappers around it that a feature wrote for
+# itself, and every one of them has to be named here or its callers are not
+# scanned at all - not counted, not judged, silently absent from the report.
+#
+# The bar for adding a wrapper is exact: the URL literal and the type argument
+# must both appear AT THE CALL SITE. That is what lets the scan bind them to
+# each other, and it is why `useGracefulQuery` qualifies. A helper written as
+# `fetchRows(path)` does not, however convenient it looks: it holds the type
+# argument in its own body, several hundred characters away in another
+# function, so naming it here would count its callers while inspecting none of
+# them. That is the decorative entry the notes above refuse, and it reads as
+# coverage. The fix for that shape is at the caller - hand the helper the
+# request instead of the path, so each caller names its own row type.
+READ_CALLS: tuple[str, ...] = ("apiGet", "useGracefulQuery")
+WRITE_CALLS: tuple[str, ...] = ("apiPost", "apiPatch", "apiPut", "apiDelete")
+# Longest first, so a name that is a prefix of another cannot shadow it.
+CALL_RE = re.compile(
+    "|".join(
+        re.escape(n) for n in sorted((*READ_CALLS, *WRITE_CALLS), key=len, reverse=True)
+    )
+)
+
 # A call is migrated when it names the envelope type. A call that still
 # names a bare array of the row type is not, and neither is one hedging
 # between the two: `apiGet<Row[] | {items: Row[]}>` unwraps whichever shape
@@ -338,8 +361,16 @@ QUERY_KEY_RE = r"queryKey:\s*\[\s*['\"`]{key}['\"`]"
 # exists to leave behind. So the bare hint reads the type argument up to its
 # first `>` and asks whether an array is in there at all - `Page<Row>` and
 # `Pick<Page<Row>, 'items' | 'total'>` carry none, the union carries two.
+#
+# The bare hint is built from READ_CALLS rather than written out, because a
+# hint that knows fewer calls than the binder above is worse than no hint: the
+# call gets counted as a consumer and then judged on the envelope hint alone,
+# and `.items` belonging to some neighbouring line inside the window is enough
+# to acquit a caller that reads a bare array.
 ENVELOPE_HINT = re.compile(r"Page<|\.items\b|items:\s")
-BARE_ARRAY_HINT = re.compile(r"apiGet<[^>]*\[\]")
+BARE_ARRAY_HINT = re.compile(
+    r"(?:" + "|".join(re.escape(n) for n in READ_CALLS) + r")<[^>]*\[\]"
+)
 
 
 def url_shape(url: str) -> str:
@@ -379,8 +410,8 @@ def scan(root: Path) -> tuple[dict[str, list[Path]], dict[str, list[Path]]]:
             # these api objects list one route per line, so a window wide
             # enough to hold the call is wide enough to hold its neighbour's.
             before = text[max(0, m.start() - 400) : m.start()]
-            verbs = re.findall(r"api(Get|Post|Patch|Put|Delete)", before)
-            if not verbs or verbs[-1] != "Get":
+            calls = CALL_RE.findall(before)
+            if not calls or calls[-1] not in READ_CALLS:
                 continue
             consumers[shape].append(path)
             # Judge the call this URL belongs to, not the neighbourhood it
@@ -390,7 +421,19 @@ def scan(root: Path) -> tuple[dict[str, list[Path]], dict[str, list[Path]]]:
             # another. The documents route is bare and the transmittals route
             # is not, so a windowed read convicts the migrated call of its
             # neighbour's shape and no edit to the file can clear it.
-            call = before[before.rfind("apiGet") :] + text[m.start() : m.start() + 200]
+            # The tail stops at the next call for the same reason the head
+            # starts at this one. Both windows used to borrow from the
+            # neighbour; only the head was ever narrowed, and the tail can go
+            # wrong in both directions. It can convict a migrated call of the
+            # bare array belonging to the call underneath it, and it can
+            # acquit an untyped `apiGet(url)` on an `.items` that is the next
+            # call's unwrapping. 200 characters is three or four lines, which
+            # is well inside the next entry of any api object in this tree.
+            tail = text[m.start() : m.start() + 200]
+            following = CALL_RE.search(tail)
+            if following:
+                tail = tail[: following.start()]
+            call = before[before.rfind(calls[-1]) :] + tail
             if BARE_ARRAY_HINT.search(call) or not ENVELOPE_HINT.search(call):
                 unmigrated[shape].append(path)
     return consumers, unmigrated
@@ -608,6 +651,54 @@ def self_test() -> int:
             print("                That caller still throws `total` away.")
             return 1
         (fake / "Hedge.tsx").unlink()
+
+        # A feature that reads through its own wrapper rather than calling
+        # apiGet directly. Both callers below have to be visible, and the
+        # second one has to be refused.
+        #
+        # The second fixture is written the way the real one was, with the
+        # rows unwrapped on the line after the call, and that detail is the
+        # point of it. The envelope hint reads a window, `.items` on the next
+        # line lands inside that window, and so a hint set that knows only
+        # `apiGet` would count this caller and then acquit it on a `.items`
+        # that belongs to the unwrapping rather than to the type argument. It
+        # can only be convicted by a bare-array hint that knows the wrapper,
+        # which is why BARE_ARRAY_HINT is built from READ_CALLS.
+        (fake / "Wrapper.tsx").write_text(
+            "const good = useGracefulQuery<Page<ScheduleRow>>(\n"
+            "  ['a', id],\n"
+            "  `/v1/schedule/schedules/${id}/activities/`,\n"
+            ");\n"
+            "const bad = useGracefulQuery<ScheduleRow[]>(\n"
+            "  ['b', id],\n"
+            "  `/v1/schedule/schedules/?project_id=${id}`,\n"
+            ");\n"
+            "const rows = bad.data?.items ?? [];\n",
+            encoding="utf-8",
+        )
+        consumers, unmigrated = scan(fake)
+        if len(consumers["/v1/schedule/schedules/{}/activities/"]) != 1:
+            print(
+                "SELF-TEST FAIL: a read through a named wrapper was not counted at all."
+            )
+            print(
+                "                Such callers are invisible rather than green, so the"
+            )
+            print("                per-endpoint totals understate what was inspected.")
+            return 1
+        if unmigrated["/v1/schedule/schedules/{}/activities/"]:
+            print(
+                "SELF-TEST FAIL: a wrapper call naming the envelope type was refused."
+            )
+            return 1
+        if len(unmigrated["/v1/schedule/schedules/"]) != 1:
+            print("SELF-TEST FAIL: a wrapper call reading a bare array was accepted.")
+            print(
+                "                It unwraps `.items` on the next line, so the envelope"
+            )
+            print("                hint acquits it and only the bare hint can refuse.")
+            return 1
+        (fake / "Wrapper.tsx").unlink()
 
         # The cache-key half has to be proven too, and it cannot be proven from
         # the real tree while SHARED_QUERY_KEYS is empty: an empty dict makes
