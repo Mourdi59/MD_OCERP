@@ -224,7 +224,12 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             # generic contract catalog for any demo project that has no
             # contracts at all. A claim run is money a real project has earned,
             # so it stays on the demo estate. Self-guards per contract on an
-            # existing claim.
+            # existing claim. Also gives each contract the schedule of values
+            # it was agreed against and breaks every claim down against it,
+            # without which the continuation sheet has nothing to continue.
+            # The projects whose contracts are worded in German get a German
+            # schedule, of DIN 276 cost groups or Leistungsverzeichnis
+            # positions, picked by the trade each contract's title names.
             ("contracts", None, lambda s: seed_contracts_demo(s, _demo_pids)),
             # The cost-value reconciliation register: closed months, the month
             # running, the cashflow curve and the interim applications raised
