@@ -225,8 +225,18 @@ def test_no_locked_dependency_is_excluded_by_the_spec() -> None:
     and scipy were still in the spec's excludes, so the build would have
     downloaded 190 MB of encoder on Windows and then frozen a sidecar without
     it. PyInstaller says nothing about excluding a package it was going to
-    bundle, and the failure only shows up as a missing feature on the desktop
-    channel.
+    bundle.
+
+    That state was built and measured rather than argued about. A Windows
+    sidecar frozen from this spec with torch and scipy put back in excludes
+    still carries sentence_transformers, 167 modules of it, because PyInstaller
+    reads the imports inside function bodies too. It carries no torch and no
+    scipy at all. Its own ``doctor`` then prints "Semantic search [semantic]:
+    sentence-transformers installed", because that check asks find_spec and
+    find_spec is satisfied by what is in the archive. Nothing fails until
+    something imports the package for real, which pulls torch, scipy and
+    sklearn at module level, and by then the desktop build has already told the
+    user the feature is there.
 
     The comparison is by distribution name, which is the same as the import name
     for every name currently in either list. It would not catch a distribution
