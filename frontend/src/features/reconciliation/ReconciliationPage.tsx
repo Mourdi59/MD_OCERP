@@ -44,6 +44,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { getEventThread, listRecordLinks, decideRecordLink } from './api';
 import type { LinkDecision, LinkStatus, ThreadLink, ThreadRecord } from './types';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 type BadgeVariant = 'neutral' | 'blue' | 'success' | 'warning' | 'error';
 
@@ -93,7 +94,7 @@ function reasonLabel(t: (k: string, o: { defaultValue: string }) => string, reas
 function whenLabel(iso: string | null): string {
   if (!iso) return '-';
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(getIntlLocale());
 }
 
 // The canonical key the seed field submits for a record. Mirrors the engine's

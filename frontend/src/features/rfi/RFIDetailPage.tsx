@@ -69,6 +69,7 @@ import {
   type RFIFormData,
 } from './RFIPage';
 import { ApprovalInstanceCard } from '@/features/approval-routes';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /**
  * Decode the ``sub`` claim from the JWT — duplicated locally so the
@@ -138,7 +139,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 function formatDate(value: string | null | undefined): string {
   if (!value) return '—';
   try {
-    return new Date(value).toLocaleDateString(undefined, {
+    return new Date(value).toLocaleDateString(getIntlLocale(), {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -151,7 +152,7 @@ function formatDate(value: string | null | undefined): string {
 function formatDateTime(value: string | null | undefined): string {
   if (!value) return '—';
   try {
-    return new Date(value).toLocaleString(undefined, {
+    return new Date(value).toLocaleString(getIntlLocale(), {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

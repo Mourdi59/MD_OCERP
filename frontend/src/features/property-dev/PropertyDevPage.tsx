@@ -178,6 +178,7 @@ import { OverviewTab } from './tabs/OverviewTab';
 import { DevelopmentsGrid } from './tabs/DevelopmentsTab';
 import { PlotsTab } from './tabs/PlotsTab';
 import { HouseTypesTab } from './tabs/HouseTypesTab';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 // Order matters - arrow-key navigation walks the list in this order.
 const PROPDEV_TAB_IDS = [
@@ -1550,7 +1551,7 @@ function LeadsTab({
                         })}
                       </td>
                       <td className="px-4 py-2 text-xs font-mono tabular-nums">
-                        {toNumber(l.lead_score).toFixed(0)}
+                        {fmtFixed(toNumber(l.lead_score), 0)}
                       </td>
                       <td className="px-4 py-2">
                         <Badge variant={LEAD_VARIANT[l.status]} dot>
@@ -5411,7 +5412,7 @@ function PlotDetailDrawer({
                 label={t('propdev.area', { defaultValue: 'Area' })}
                 value={(() => {
                   const a = dq.convert(toNumber(plot.area_m2), 'm²');
-                  return `${a.value.toFixed(1)} ${a.unit}`;
+                  return `${fmtFixed(a.value, 1)} ${a.unit}`;
                 })()}
               />
               <Field label={t('propdev.orientation', { defaultValue: 'Orientation' })} value={plot.orientation || '—'} />
@@ -5420,7 +5421,7 @@ function PlotDetailDrawer({
                 value={(() => {
                   if (plot.garden_area_m2 == null) return '—';
                   const g = dq.convert(toNumber(plot.garden_area_m2), 'm²');
-                  return `${g.value.toFixed(1)} ${g.unit}`;
+                  return `${fmtFixed(g.value, 1)} ${g.unit}`;
                 })()}
               />
               <Field

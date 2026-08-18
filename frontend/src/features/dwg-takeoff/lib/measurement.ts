@@ -5,6 +5,7 @@
  */
 
 import { toDisplayQuantity } from '@/shared/lib/unitConversion';
+import { getIntlLocale, fmtFixed, fmtPrecision } from '@/shared/lib/formatters';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 
 /** Euclidean distance between two points. */
@@ -188,19 +189,19 @@ export function formatMeasurement(value: number, unit: string): string {
   ({ value, unit } = toDisplayQuantity(value, unit, system));
   if (isCompositeUnit(unit)) {
     const abs = Math.abs(value);
-    if (abs !== 0 && abs < 0.01) return `${value.toPrecision(2)} ${unit}`;
-    if (abs < 1) return `${value.toFixed(4)} ${unit}`;
-    if (abs < 1000) return `${value.toFixed(2)} ${unit}`;
+    if (abs !== 0 && abs < 0.01) return `${fmtPrecision(value, 2)} ${unit}`;
+    if (abs < 1) return `${fmtFixed(value, 4)} ${unit}`;
+    if (abs < 1000) return `${fmtFixed(value, 2)} ${unit}`;
     // Group thousands instead of a bogus k-prefix.
-    return `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unit}`;
+    return `${value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 1 })} ${unit}`;
   }
   if (value >= 1000) {
-    return `${(value / 1000).toFixed(2)} k${unit}`;
+    return `${fmtFixed(value / 1000, 2)} k${unit}`;
   }
   if (value !== 0 && Math.abs(value) < 0.01) {
-    return `${(value * 1000).toFixed(2)} m${unit}`;
+    return `${fmtFixed(value * 1000, 2)} m${unit}`;
   }
-  return `${value.toFixed(2)} ${unit}`;
+  return `${fmtFixed(value, 2)} ${unit}`;
 }
 
 /* ── Polyline-specific measurements ──────────────────────────────── */

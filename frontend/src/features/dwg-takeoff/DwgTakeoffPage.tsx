@@ -169,6 +169,7 @@ import CreateTaskFromDwgModal from './CreateTaskFromDwgModal';
 import LinkDocumentToDwgModal from './LinkDocumentToDwgModal';
 import LinkActivityToDwgModal from './LinkActivityToDwgModal';
 import LinkRequirementToDwgModal from './LinkRequirementToDwgModal';
+import { getIntlLocale, fmtFixed, fmtPrecision } from '@/shared/lib/formatters';
 // boqApi / Position import removed - BOQ picker now handled via ElementInfoPopover callback
 
 /* ── GridBackground ──────────────────────────────────────────────────── */
@@ -2340,11 +2341,11 @@ export function DwgTakeoffPage() {
     const sumArea = q.convert(summaryAggregate.area, 'm²');
     const sumPerimeter = q.convert(summaryAggregate.perimeter, 'm');
     const sumLength = q.convert(summaryAggregate.length, 'm');
-    doc.text(`Σ area: ${sumArea.value.toFixed(2)} ${sumArea.unit}`, margin, y);
+    doc.text(`Σ area: ${fmtFixed(sumArea.value, 2)} ${sumArea.unit}`, margin, y);
     y += 5;
-    doc.text(`Σ perimeter: ${sumPerimeter.value.toFixed(2)} ${sumPerimeter.unit}`, margin, y);
+    doc.text(`Σ perimeter: ${fmtFixed(sumPerimeter.value, 2)} ${sumPerimeter.unit}`, margin, y);
     y += 5;
-    doc.text(`Σ length: ${sumLength.value.toFixed(2)} ${sumLength.unit}`, margin, y);
+    doc.text(`Σ length: ${fmtFixed(sumLength.value, 2)} ${sumLength.unit}`, margin, y);
     y += 8;
 
     doc.setFont('helvetica', 'bold');
@@ -2361,7 +2362,7 @@ export function DwgTakeoffPage() {
       const rowLength = q.convert(row.length, 'm');
       doc.text(
         `${row.layer.slice(0, 40).padEnd(42)} × ${String(row.count).padStart(4)}  ` +
-          `area ${rowArea.value.toFixed(2)} ${rowArea.unit}  length ${rowLength.value.toFixed(2)} ${rowLength.unit}`,
+          `area ${fmtFixed(rowArea.value, 2)} ${rowArea.unit}  length ${fmtFixed(rowLength.value, 2)} ${rowLength.unit}`,
         margin,
         y,
       );
@@ -4260,7 +4261,7 @@ export function DwgTakeoffPage() {
                       data-testid="dwg-group-area"
                     >
                       {selectionAggregate.area > 0
-                        ? q.convert(selectionAggregate.area, 'm²').value.toFixed(2) : '—'}
+                        ? fmtFixed(q.convert(selectionAggregate.area, 'm²').value, 2) : '—'}
                     </div>
                     <div className="text-content-tertiary text-[9px] uppercase">
                       {t('dwg_takeoff.area', 'Area')} {q.unitFor('m²')}
@@ -4272,7 +4273,7 @@ export function DwgTakeoffPage() {
                       data-testid="dwg-group-perimeter"
                     >
                       {selectionAggregate.perimeter > 0
-                        ? q.convert(selectionAggregate.perimeter, 'm').value.toFixed(2) : '—'}
+                        ? fmtFixed(q.convert(selectionAggregate.perimeter, 'm').value, 2) : '—'}
                     </div>
                     <div className="text-content-tertiary text-[9px] uppercase">
                       {t('dwg_takeoff.perimeter', 'Perimeter')} {q.unitFor('m')}
@@ -4284,7 +4285,7 @@ export function DwgTakeoffPage() {
                       data-testid="dwg-group-length"
                     >
                       {selectionAggregate.length > 0
-                        ? q.convert(selectionAggregate.length, 'm').value.toFixed(2) : '—'}
+                        ? fmtFixed(q.convert(selectionAggregate.length, 'm').value, 2) : '—'}
                     </div>
                     <div className="text-content-tertiary text-[9px] uppercase">
                       {t('dwg_takeoff.length', 'Length')} {q.unitFor('m')}
@@ -4407,11 +4408,11 @@ export function DwgTakeoffPage() {
                       <div className="text-content-tertiary text-[9px] uppercase">{t('dwg_takeoff.entities', 'Entities')}</div>
                     </div>
                     <div>
-                      <div className="font-semibold text-content-primary tabular-nums">{areaSum > 0 ? q.convert(areaSum, 'm²').value.toFixed(1) : '—'}</div>
+                      <div className="font-semibold text-content-primary tabular-nums">{areaSum > 0 ? fmtFixed(q.convert(areaSum, 'm²').value, 1) : '—'}</div>
                       <div className="text-content-tertiary text-[9px] uppercase">{q.unitFor('m²')}</div>
                     </div>
                     <div>
-                      <div className="font-semibold text-content-primary tabular-nums">{distSum > 0 ? q.convert(distSum, 'm').value.toFixed(1) : '—'}</div>
+                      <div className="font-semibold text-content-primary tabular-nums">{distSum > 0 ? fmtFixed(q.convert(distSum, 'm').value, 1) : '—'}</div>
                       <div className="text-content-tertiary text-[9px] uppercase">{q.unitFor('m')}</div>
                     </div>
                   </div>
@@ -4518,7 +4519,7 @@ export function DwgTakeoffPage() {
                             const dq = q.convert(ann.measurement_value, ann.measurement_unit ?? 'm');
                             return (
                               <span className="ml-1 text-muted-foreground">
-                                ({dq.value.toFixed(2)} {dq.unit})
+                                ({fmtFixed(dq.value, 2)} {dq.unit})
                               </span>
                             );
                           })()}
@@ -4565,11 +4566,11 @@ export function DwgTakeoffPage() {
                       {selectedEntity.start && (
                         <PropertyRow
                           label={t('dwg_takeoff.prop_position', 'Position')}
-                          value={`(${selectedEntity.start.x.toFixed(2)}, ${selectedEntity.start.y.toFixed(2)})`}
+                          value={`(${fmtFixed(selectedEntity.start.x, 2)}, ${fmtFixed(selectedEntity.start.y, 2)})`}
                         />
                       )}
                       {selectedEntity.radius != null && (
-                        <PropertyRow label={t('dwg_takeoff.prop_radius', 'Radius')} value={selectedEntity.radius.toFixed(3)} />
+                        <PropertyRow label={t('dwg_takeoff.prop_radius', 'Radius')} value={fmtFixed(selectedEntity.radius, 3)} />
                       )}
                       {selectedEntity.text && (
                         <PropertyRow label={t('dwg_takeoff.prop_text', 'Text')} value={selectedEntity.text} />
@@ -4950,7 +4951,7 @@ export function DwgTakeoffPage() {
                   </div>
                   <p className="text-sm font-semibold text-content-primary">{uploadFile.name}</p>
                   <p className="text-[11px] text-content-quaternary">
-                    {(uploadFile.size / 1024 / 1024).toFixed(1)} MB
+                    {fmtFixed(uploadFile.size / 1024 / 1024, 1)} MB
                   </p>
                 </>
               ) : (
@@ -5632,7 +5633,7 @@ function ScaleTab({
           <span className="font-mono">{unitLabel || 'unitless'}</span>
         </span>
         <span className="font-mono">
-          × {effectiveScale.toPrecision(4)}
+          × {fmtPrecision(effectiveScale, 4)}
         </span>
       </div>
 
@@ -5759,7 +5760,7 @@ function ScaleTab({
               </span>
               <span className="font-mono font-semibold text-content-primary tabular-nums">
                 {calibrationPixels !== null
-                  ? calibrationPixels.toFixed(3)
+                  ? fmtFixed(calibrationPixels, 3)
                   : t('dwg_takeoff.scale_calibrate_none', { defaultValue: '—' })}
               </span>
             </div>
@@ -6008,24 +6009,24 @@ function SummaryTab({
       >
         <SummaryKpiCard
           label={t('dwg_takeoff.kpi_total_entities', { defaultValue: 'Total entities' })}
-          value={entityCount.toLocaleString()}
+          value={entityCount.toLocaleString(getIntlLocale())}
           accent="blue"
         />
         <SummaryKpiCard
           label={t('dwg_takeoff.kpi_total_area', { defaultValue: 'Σ Area' })}
-          value={aggregate.area > 0 ? q.convert(aggregate.area, 'm²').value.toFixed(2) : '—'}
+          value={aggregate.area > 0 ? fmtFixed(q.convert(aggregate.area, 'm²').value, 2) : '—'}
           unit={aggregate.area > 0 ? q.unitFor('m²') : undefined}
           accent="emerald"
         />
         <SummaryKpiCard
           label={t('dwg_takeoff.kpi_total_perimeter', { defaultValue: 'Σ Perimeter' })}
-          value={aggregate.perimeter > 0 ? q.convert(aggregate.perimeter, 'm').value.toFixed(2) : '—'}
+          value={aggregate.perimeter > 0 ? fmtFixed(q.convert(aggregate.perimeter, 'm').value, 2) : '—'}
           unit={aggregate.perimeter > 0 ? q.unitFor('m') : undefined}
           accent="amber"
         />
         <SummaryKpiCard
           label={t('dwg_takeoff.kpi_total_length', { defaultValue: 'Σ Length' })}
-          value={aggregate.length > 0 ? q.convert(aggregate.length, 'm').value.toFixed(2) : '—'}
+          value={aggregate.length > 0 ? fmtFixed(q.convert(aggregate.length, 'm').value, 2) : '—'}
           unit={aggregate.length > 0 ? q.unitFor('m') : undefined}
           accent="violet"
         />
@@ -6043,7 +6044,7 @@ function SummaryTab({
           </span>
         </div>
         <span className="text-sm font-bold tabular-nums text-content-primary">
-          {countTotal.toLocaleString()}
+          {countTotal.toLocaleString(getIntlLocale())}
         </span>
       </div>
 
@@ -6075,7 +6076,7 @@ function SummaryTab({
             </div>
             <div className="text-[11px] font-bold tabular-nums text-emerald-300">
               {quantifyTotals.area > 0
-                ? q.convert(quantifyTotals.area, 'm²').value.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                ? q.convert(quantifyTotals.area, 'm²').value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 })
                 : '-'}
               <span className="text-[9px] font-medium opacity-70"> {q.unitFor('m²')}</span>
             </div>
@@ -6086,7 +6087,7 @@ function SummaryTab({
             </div>
             <div className="text-[11px] font-bold tabular-nums text-violet-300">
               {quantifyTotals.length > 0
-                ? q.convert(quantifyTotals.length, 'm').value.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                ? q.convert(quantifyTotals.length, 'm').value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 })
                 : '-'}
               <span className="text-[9px] font-medium opacity-70"> {q.unitFor('m')}</span>
             </div>
@@ -6096,7 +6097,7 @@ function SummaryTab({
               {t('dwg_takeoff.count', 'Count')}
             </div>
             <div className="text-[11px] font-bold tabular-nums text-sky-300">
-              {quantifyTotals.count.toLocaleString()}
+              {quantifyTotals.count.toLocaleString(getIntlLocale())}
               <span className="text-[9px] font-medium opacity-70"> nr</span>
             </div>
           </div>
@@ -6149,7 +6150,7 @@ function SummaryTab({
                     className="text-[13px] font-bold tabular-nums text-content-primary"
                     data-testid="dwg-quantify-value"
                   >
-                    {display.value.toLocaleString(undefined, {
+                    {display.value.toLocaleString(getIntlLocale(), {
                       maximumFractionDigits: measure === 'count' ? 0 : 2,
                     })}
                     <span className="text-[10px] font-medium text-content-tertiary"> {display.unit}</span>

@@ -84,7 +84,7 @@ import {
 } from './api';
 import { biDashboardsGuide } from './biDashboardsGuide';
 import { useDashboardFilters } from '@/stores/useDashboardFilters';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
 type Tab = 'dashboards' | 'kpis' | 'reports' | 'schedules' | 'alerts';
 
@@ -122,10 +122,10 @@ function formatValue(
   if (!Number.isFinite(value)) return '—';
   const abs = Math.abs(value);
   let formatted: string;
-  if (abs >= 1_000_000) formatted = `${(value / 1_000_000).toFixed(2)}M`;
-  else if (abs >= 1_000) formatted = `${(value / 1_000).toFixed(1)}k`;
+  if (abs >= 1_000_000) formatted = `${fmtFixed(value / 1_000_000, 2)}M`;
+  else if (abs >= 1_000) formatted = `${fmtFixed(value / 1_000, 1)}k`;
   else if (Number.isInteger(value)) formatted = String(value);
-  else formatted = value.toFixed(2);
+  else formatted = fmtFixed(value, 2);
   if (unit === 'percent') return `${formatted}%`;
   if (unit === 'currency') {
     // Money rule: a currency amount must always carry its ISO code. When the

@@ -13,6 +13,7 @@ import type { ViewportState } from '../lib/viewport';
 import { worldToScreen } from '../lib/viewport';
 import { formatMeasurement } from '../lib/measurement';
 import type { CalibrationUnit } from '../lib/calibration';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /** Optional two-click calibration override. When present, every linear
  *  ``measurement_value`` is multiplied by ``unitsPerPixel`` and areal
@@ -34,10 +35,10 @@ function formatCalibrated(
   const factor = isArea ? cal.unitsPerPixel * cal.unitsPerPixel : cal.unitsPerPixel;
   const v = rawValue * factor;
   const unit = isArea ? `${cal.unit}\u00B2` : cal.unit;
-  if (v >= 1000) return `${(v / 1000).toFixed(2)}k ${unit}`;
-  if (v < 0.01) return `${v.toFixed(4)} ${unit}`;
-  if (v < 1) return `${v.toFixed(3)} ${unit}`;
-  return `${v.toFixed(2)} ${unit}`;
+  if (v >= 1000) return `${fmtFixed(v / 1000, 2)}k ${unit}`;
+  if (v < 0.01) return `${fmtFixed(v, 4)} ${unit}`;
+  if (v < 1) return `${fmtFixed(v, 3)} ${unit}`;
+  return `${fmtFixed(v, 2)} ${unit}`;
 }
 
 /** Pick between calibrated and preset-scale formatting. Kept in one

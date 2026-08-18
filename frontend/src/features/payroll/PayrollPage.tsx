@@ -72,6 +72,7 @@ import type {
   DeductionMode,
   AddDeductionPayload,
 } from './api';
+import { fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Helpers ───────────────────────────────────────────────────────────── */
 
@@ -79,7 +80,7 @@ function money(value: string | number, currency?: string): string {
   const n = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(n)) return String(value);
   try {
-    return new Intl.NumberFormat(undefined, {
+    return new Intl.NumberFormat(getIntlLocale(), {
       style: currency ? 'currency' : 'decimal',
       currency: currency || undefined,
       minimumFractionDigits: 2,
@@ -92,7 +93,7 @@ function money(value: string | number, currency?: string): string {
 
 function hours(value: string): string {
   const n = Number(value);
-  return Number.isFinite(n) ? n.toFixed(2) : value;
+  return Number.isFinite(n) ? fmtFixed(n, 2) : value;
 }
 
 /* ── How-it-works flow + module integrations ───────────────────────────── */

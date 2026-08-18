@@ -123,6 +123,7 @@ import {
   type UpdateRequirementPayload,
   type ValidateBIMResult,
 } from '@/features/requirements/api';
+import { fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Form state types ─────────────────────────────────────────────────── */
 
@@ -441,7 +442,7 @@ function SandboxResultView({ result, unit }: { result: SandboxRunResult; unit: s
         <span className="rounded-md bg-surface-tertiary px-2 py-0.5 font-medium tabular-nums text-content-secondary">
           {t('bim_rules.sandbox_total', {
             defaultValue: 'Σ {{total}} {{unit}}',
-            total: conv(result.totalAdjusted).toLocaleString(undefined, {
+            total: conv(result.totalAdjusted).toLocaleString(getIntlLocale(), {
               maximumFractionDigits: 3,
             }),
             unit: displayUnit || '',
@@ -495,9 +496,9 @@ function SandboxResultView({ result, unit }: { result: SandboxRunResult; unit: s
                 <td className="max-w-[160px] truncate px-2 py-1 text-content-tertiary">
                   {m.name || m.stable_id || m.element_id}
                 </td>
-                <td className="px-2 py-1 text-right tabular-nums">{conv(m.raw_quantity).toFixed(3)}</td>
+                <td className="px-2 py-1 text-right tabular-nums">{fmtFixed(conv(m.raw_quantity), 3)}</td>
                 <td className="px-2 py-1 text-right tabular-nums">
-                  {conv(m.adjusted_quantity).toFixed(3)}
+                  {fmtFixed(conv(m.adjusted_quantity), 3)}
                 </td>
               </tr>
             ))}
@@ -1049,7 +1050,7 @@ function RuleEditorModal({
                           {v.waste_factor_pct}% · {v.unit || '-'}
                         </span>
                         <span className="shrink-0 text-[10px] text-content-quaternary tabular-nums">
-                          {new Date(v.saved_at).toLocaleString()}
+                          {new Date(v.saved_at).toLocaleString(getIntlLocale())}
                         </span>
                         <button
                           type="button"
@@ -1434,10 +1435,10 @@ function PreviewModal({ open, onClose, result, loading }: PreviewModalProps) {
                           {item.quantity_source}
                         </td>
                         <td className="px-2 py-1 text-right tabular-nums">
-                          {q.convert(item.raw_quantity, item.unit).value.toFixed(3)}
+                          {fmtFixed(q.convert(item.raw_quantity, item.unit).value, 3)}
                         </td>
                         <td className="px-2 py-1 text-right tabular-nums">
-                          {q.convert(item.adjusted_quantity, item.unit).value.toFixed(3)}
+                          {fmtFixed(q.convert(item.adjusted_quantity, item.unit).value, 3)}
                         </td>
                         <td className="px-2 py-1">{q.unitFor(item.unit)}</td>
                       </tr>

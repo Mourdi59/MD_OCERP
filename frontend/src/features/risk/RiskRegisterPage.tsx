@@ -18,7 +18,7 @@ import { PlanningCrossLinks } from '@/features/schedule/PlanningCrossLinks';
 import SimilarItemsPanel from '@/shared/ui/SimilarItemsPanel';
 import { UserSearchInput } from '@/shared/ui/UserSearchInput';
 import { apiGet, apiPost, apiPatch, apiDelete, type Page } from '@/shared/lib/api';
-import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
@@ -101,7 +101,7 @@ const selectCls = 'h-8 rounded-lg border border-border bg-surface-primary px-2.5
 function fmtCur(n: number, c = 'EUR') {
   const s = /^[A-Z]{3}$/.test(c) ? c : 'EUR';
   try { return new Intl.NumberFormat(getIntlLocale(), { style: 'currency', currency: s, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n); }
-  catch { return `${n.toFixed(0)} ${s}`; }
+  catch { return `${fmtFixed(n, 0)} ${s}`; }
 }
 
 function matrixColor(prob: string, impact: string) {
@@ -413,7 +413,7 @@ function DetailView({ riskId, onBack }: { riskId: string; onBack: () => void }) 
         {[
           [t('risk.probability', { defaultValue: 'Probability' }), fmtPercent(risk.probability * 100, 0)],
           [t('risk.severity', { defaultValue: 'Severity' }), t(`risk.severity_${risk.impact_severity}`, { defaultValue: risk.impact_severity })],
-          [t('risk.score', { defaultValue: 'Score' }), risk.risk_score.toFixed(2)],
+          [t('risk.score', { defaultValue: 'Score' }), fmtFixed(risk.risk_score, 2)],
           [t('risk.impact_cost', { defaultValue: 'Cost Impact' }), fmtCur(risk.impact_cost, risk.currency)],
           [t('risk.owner', { defaultValue: 'Owner' }), risk.owner_name || '-'],
         ].map(([label, val]) => (
@@ -1004,7 +1004,7 @@ export function RiskRegisterPage() {
                       <td className="px-4 py-3"><Badge variant="neutral">{t(`risk.cat_${r.category}`, { defaultValue: r.category })}</Badge></td>
                       <td className="px-4 py-3 text-center text-content-secondary tabular-nums">{fmtPercent(r.probability * 100, 0)}</td>
                       <td className="px-4 py-3"><Badge variant={r.impact_severity === 'critical' ? 'error' : r.impact_severity === 'high' ? 'warning' : r.impact_severity === 'medium' ? 'blue' : 'neutral'}>{t(`risk.severity_${r.impact_severity}`, { defaultValue: r.impact_severity })}</Badge></td>
-                      <td className="px-4 py-3 text-center font-medium tabular-nums text-content-primary">{r.risk_score.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-center font-medium tabular-nums text-content-primary">{fmtFixed(r.risk_score, 1)}</td>
                       <td className="px-4 py-3"><Badge variant={STATUS_COLORS[r.status] || 'neutral'}>{t(`risk.status_${r.status}`, { defaultValue: r.status })}</Badge></td>
                       <td className="px-4 py-3 text-content-secondary text-xs truncate max-w-[100px]">{r.owner_name || '-'}</td>
                       <td className="px-4 py-3">

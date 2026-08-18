@@ -46,6 +46,7 @@ import {
   type EsgMetricSummary,
   type UpdateEsgEntryPayload,
 } from './api';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Constants & helpers ───────────────────────────────────────────────── */
 
@@ -80,7 +81,11 @@ const CHIP_NEUTRAL = 'bg-surface-tertiary text-content-tertiary';
 const inputCls =
   'h-10 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
 
-const numberFmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+/** Two decimals, written the way the reader's language writes them. Built per
+ *  call rather than once at module scope, because the language switcher does
+ *  not reload the app and a formatter made at chunk load never hears about it. */
+const numberFmt = (n: number): string =>
+  n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 });
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** Parse a Decimal-as-string into a finite number, or null. */
@@ -91,7 +96,7 @@ function toNum(value: string | null | undefined): number | null {
 }
 
 function fmtNum(n: number | null): string {
-  return n === null ? '-' : numberFmt.format(n);
+  return n === null ? '-' : numberFmt(n);
 }
 
 function formatPeriod(period: string | null): string {
@@ -407,7 +412,7 @@ function MetricCard({
                   <Minus size={11} />
                 )}
                 {summary.delta_pct > 0 ? '+' : ''}
-                {numberFmt.format(summary.delta_pct)}%
+                {numberFmt(summary.delta_pct)}%
               </span>
             )}
           </div>
@@ -1066,7 +1071,7 @@ export function EsgPage() {
             unit: m.unit,
             latest: fmtNum(toNum(m.latest_value)),
             target: m.target !== null ? fmtNum(toNum(m.target)) : '-',
-            deltaLabel: dp === null ? '-' : `${dp > 0 ? '+' : ''}${numberFmt.format(dp)}%`,
+            deltaLabel: dp === null ? '-' : `${dp > 0 ? '+' : ''}${numberFmt(dp)}%`,
             status: (m.on_track === true ? 'ok' : m.on_track === false ? 'bad' : 'muted') as
               | 'ok'
               | 'bad'
@@ -1086,7 +1091,7 @@ export function EsgPage() {
       periodLabel: summary.latest_period
         ? formatPeriod(summary.latest_period)
         : t('esg.report_no_period', { defaultValue: 'No readings yet' }),
-      generatedLabel: new Date().toLocaleDateString(undefined, {
+      generatedLabel: new Date().toLocaleDateString(getIntlLocale(), {
         year: 'numeric',
         month: 'long',
         day: 'numeric',

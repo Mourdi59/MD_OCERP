@@ -28,6 +28,7 @@ import {
 } from './api';
 import { useTelemetry } from '@/shared/lib/telemetry';
 import { onlyChangedFields } from '@/shared/lib/apiHelpers';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 // ── Regions (grouped by continent) ────────────────────────────────────────
 
@@ -2088,7 +2089,7 @@ export function CreateProjectModal({
                   />
                   <SummaryRow
                     label={t('projects.regional_factor', { defaultValue: 'Regional Factor' })}
-                    value={clampFactor(regionalFactorStr).toFixed(2)}
+                    value={fmtFixed(clampFactor(regionalFactorStr), 2)}
                   />
                   <SummaryRow
                     label={t('project_wizard.step_type', { defaultValue: 'Project type' })}

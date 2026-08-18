@@ -28,11 +28,15 @@ import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { getResourceStatement } from '@/features/resource-summary/api';
 import { formatCurrency, toNum } from '@/shared/lib/money';
 import { KpiStrip } from './KpiStrip';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 // Whole-number formatter for labour hours and the distinct-resource count.
-// Locale is left undefined so it follows the active UI locale, matching the
-// other KpiStrip cards (see RfiTurnaroundCard).
-const wholeFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+// An omitted locale follows the BROWSER, which is not the language the reader
+// picked in the header, so the locale is read here on every call: the language
+// switcher deliberately does not reload the app, and a formatter built once at
+// module scope would keep writing in whatever language the chunk loaded in.
+const wholeFormat = (n: number): string =>
+  n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 });
 
 export function EstimateResourceCard() {
   const { t } = useTranslation();
@@ -53,8 +57,8 @@ export function EstimateResourceCard() {
   if (isLoading) return null;
   if (!data || data.line_count <= 0) return null;
 
-  const hoursText = wholeFormat.format(toNum(data.labor_hours));
-  const countText = wholeFormat.format(data.line_count);
+  const hoursText = wholeFormat(toNum(data.labor_hours));
+  const countText = wholeFormat(data.line_count);
   // total_cost is a Decimal string; formatCurrency coerces it safely and
   // renders with the estimate's own currency (no hardcoded symbol).
   const costText = formatCurrency(data.total_cost, data.currency, undefined, {

@@ -22,7 +22,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { getResourceTypeLabel } from './boqResourceTypes';
 import { VariantPicker } from '@/features/costs/VariantPicker';
 import type { CostVariant } from '@/features/costs/api';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Constants ──────────────────────────────────────────────────────── */
 
@@ -529,10 +529,10 @@ export function ResourceSummary({ boqId, locale = 'de-DE' }: { boqId: string; lo
                                   remaining sum is shown so the user can see how
                                   much budget the current filter selection
                                   covers. */}
-                              {filteredResources
-                                .reduce((sum, r) => sum + (r.abc_percentage ?? 0), 0)
-                                .toFixed(1)}
-                              %
+                              {fmtPercent(
+                                filteredResources.reduce((sum, r) => sum + (r.abc_percentage ?? 0), 0),
+                                1,
+                              )}
                             </td>
                             <td />
                             <td />
@@ -776,7 +776,7 @@ function ResourceRow({
                   defaultValue:
                     'Class {{cls}} · {{pct}}% of project resource cost',
                   cls: abcClass,
-                  pct: abcPct.toFixed(2),
+                  pct: fmtFixed(abcPct, 2),
                 })
               : ''
           }

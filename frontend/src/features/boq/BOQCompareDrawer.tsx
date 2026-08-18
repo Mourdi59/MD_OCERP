@@ -21,6 +21,7 @@ import clsx from 'clsx';
 import { Badge } from '@/shared/ui';
 import { boqApi } from './api';
 import { CHANGE_VARIANT, filterCompareRows, showsPair } from './compareHelpers';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 export interface BOQCompareDrawerProps {
   /** The BOQ acting as the comparison baseline (reference frame). */
@@ -112,17 +113,16 @@ export function BOQCompareDrawer({
     retry: false,
   });
 
-  const numberFmt = useMemo(
-    () => new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }),
-    [],
-  );
   const fmt = useCallback(
     (v: string | null) => {
       if (v == null || v === '') return '—';
       const n = Number(v);
-      return Number.isFinite(n) ? numberFmt.format(n) : v;
+      // The locale is read inside the call, not held in a memoised formatter:
+      // a language change does not remount the drawer, so a formatter built on
+      // mount would go on writing the language it opened in.
+      return Number.isFinite(n) ? n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 }) : v;
     },
-    [numberFmt],
+    [],
   );
 
   const visibleRows = useMemo(

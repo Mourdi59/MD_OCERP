@@ -79,6 +79,7 @@ import { computeIssueStats } from './issueStats';
 import { buildIssueReportHtml, type IssueReportRow } from './issueReport';
 import { ReviewDashboard } from './ReviewDashboard';
 import { CoordinationMode } from './CoordinationMode';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Small helpers ─────────────────────────────────────────────────────── */
 
@@ -913,7 +914,7 @@ export function BcfIssuesPanel({
         defaultValue: '{{count}} issue(s)',
         count: filtered.length,
       }),
-      generatedOn: new Date().toLocaleString(),
+      generatedOn: new Date().toLocaleString(getIntlLocale()),
       stats,
       rows,
       labels: {

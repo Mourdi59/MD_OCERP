@@ -73,6 +73,7 @@ import { ApprovalTargetBadge } from '@/features/approval-routes';
 import { CreateTaskFromSourceDialog } from '@/features/tasks';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildRFIInsights } from './rfiInsights';
+import { fmtDate, getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
@@ -1487,10 +1488,7 @@ const RFIRow = React.memo(function RFIRow({
           )}
         >
           {rfi.response_due_date
-            ? new Date(rfi.response_due_date).toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-              })
+            ? fmtDate(rfi.response_due_date)
             : '-'}
         </span>
 
@@ -1529,7 +1527,7 @@ const RFIRow = React.memo(function RFIRow({
               <p className="text-sm text-content-primary whitespace-pre-wrap">{rfi.official_response}</p>
               {rfi.responded_at && (
                 <p className="text-xs text-content-tertiary mt-2">
-                  {new Date(rfi.responded_at).toLocaleDateString(undefined, {
+                  {new Date(rfi.responded_at).toLocaleDateString(getIntlLocale(), {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric',
@@ -2632,7 +2630,7 @@ export function RFIPage() {
                         <span className={isOverdue ? 'text-semantic-error font-semibold' : ''}>{days}d {t('rfi.days_open_short', { defaultValue: 'open' })}</span>
                         {rfi.response_due_date && (
                           <span className={isOverdue ? 'text-semantic-error font-semibold' : ''}>
-                            {t('rfi.col_due', { defaultValue: 'Due' })}: {new Date(rfi.response_due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            {t('rfi.col_due', { defaultValue: 'Due' })}: {fmtDate(rfi.response_due_date)}
                           </span>
                         )}
                       </div>

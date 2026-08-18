@@ -40,6 +40,7 @@ import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useFileTrash, useFileTrashStats, usePurgeTrash, useRestoreFromTrash } from './hooks';
 import { fileTrashGuide } from './fileTrashGuide';
 import type { TrashItem, TrashKind } from './types';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 const KIND_ICON: Record<TrashKind, typeof FileText> = {
   document: FileText,
@@ -55,9 +56,9 @@ const KIND_ICON: Record<TrashKind, typeof FileText> = {
 function formatBytes(bytes: number): string {
   if (!bytes) return '0 B';
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
+  return `${fmtFixed(bytes / (1024 * 1024 * 1024), 2)} GB`;
 }
 
 function daysUntilExpiry(trashedAt: string, retentionDays: number): number {

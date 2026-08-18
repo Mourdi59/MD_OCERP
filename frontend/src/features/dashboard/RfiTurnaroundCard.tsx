@@ -20,12 +20,13 @@ import { Card, CardContent, CardHeader, InfoHint } from '@/shared/ui';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { fetchRFIStats } from '@/features/rfi/api';
 import { KpiStrip } from './KpiStrip';
-
-const countFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 function formatCount(value: number): string {
   if (!Number.isFinite(value)) return '-';
-  return countFormat.format(value);
+  // Read on each call. A formatter built once at module scope keeps the
+  // language the chunk loaded in, and the header switcher does not reload.
+  return value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 });
 }
 
 function formatDays(value: number | null | undefined): string | null {
@@ -33,7 +34,7 @@ function formatDays(value: number | null | undefined): string | null {
   // Days to response is a small figure, so one decimal keeps sub-day
   // turnarounds honest while staying readable.
   const rounded = Math.round(value * 10) / 10;
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(rounded);
+  return rounded.toLocaleString(getIntlLocale(), { maximumFractionDigits: 1 });
 }
 
 export function RfiTurnaroundCard() {

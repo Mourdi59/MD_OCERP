@@ -30,7 +30,7 @@ import {
   type IntegrityIssueCode,
   type IntegrityReport,
 } from './api';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
 export interface IntegrityOverviewProps {
   snapshotId: string;
@@ -463,7 +463,7 @@ function RowDetail({ column, rowCount }: RowDetailProps) {
 
 function formatStat(value: number | null): string {
   if (value === null) return '—';
-  if (Math.abs(value) >= 1000) return value.toFixed(1);
-  if (Math.abs(value) >= 1) return value.toFixed(3);
-  return value.toFixed(4);
+  if (Math.abs(value) >= 1000) return fmtFixed(value, 1);
+  if (Math.abs(value) >= 1) return fmtFixed(value, 3);
+  return fmtFixed(value, 4);
 }

@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TrendingUp, Calculator, Info } from 'lucide-react';
 import clsx from 'clsx';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Published construction cost indices (annual % change) ────────────── */
 
@@ -97,12 +97,16 @@ export function EscalationCalculator({
   );
 
   const totalPctChange = useMemo(
-    () => ((escalation.factor - 1) * 100).toFixed(1),
+    () => fmtFixed((escalation.factor - 1) * 100, 1),
     [escalation.factor],
   );
 
-  const fmt = useMemo(
-    () => new Intl.NumberFormat(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
+  // Whole amounts in the reader's language. The locale is read per call rather
+  // than captured in a memoised formatter: switching language re-renders this
+  // panel but does not remount it, so a formatter made on mount would keep the
+  // separators of the language the panel opened in.
+  const fmt = useCallback(
+    (n: number) => n.toLocaleString(getIntlLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
     [],
   );
 
@@ -252,7 +256,7 @@ export function EscalationCalculator({
               {t('costs.base_cost', { defaultValue: 'Base cost' })} ({baseYear})
             </p>
             <p className="text-sm font-semibold text-content-primary tabular-nums">
-              {fmt.format(baseAmountNum)}
+              {fmt(baseAmountNum)}
             </p>
           </div>
           <div className="text-center">
@@ -260,7 +264,7 @@ export function EscalationCalculator({
               {t('costs.escalation_factor', { defaultValue: 'Factor' })}
             </p>
             <p className="text-sm font-semibold text-amber-600 tabular-nums">
-              {escalation.factor.toFixed(4)}x
+              {fmtFixed(escalation.factor, 4)}x
               <span className="text-2xs ml-1">(+{totalPctChange}%)</span>
             </p>
           </div>
@@ -269,7 +273,7 @@ export function EscalationCalculator({
               {t('costs.escalated_cost', { defaultValue: 'Escalated cost' })} ({targetYear})
             </p>
             <p className="text-sm font-bold text-content-primary tabular-nums">
-              {fmt.format(escalatedAmount)}
+              {fmt(escalatedAmount)}
             </p>
           </div>
         </div>

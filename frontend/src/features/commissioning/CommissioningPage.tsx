@@ -81,6 +81,7 @@ import {
   type Tr,
   type CertMaps,
 } from './certificate';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Config maps ───────────────────────────────────────────────────────── */
 
@@ -1225,7 +1226,7 @@ export function CommissioningPage() {
     const fmt = (iso: string | null): string => {
       if (!iso) return '';
       const d = new Date(iso);
-      return Number.isNaN(d.getTime()) ? '' : d.toLocaleString();
+      return Number.isNaN(d.getTime()) ? '' : d.toLocaleString(getIntlLocale());
     };
     const header = [
       t('commissioning.field_name', { defaultValue: 'System name' }),
