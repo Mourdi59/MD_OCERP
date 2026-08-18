@@ -67,7 +67,16 @@ export const SUPPORTED_LANGUAGES = [
   // two modifier letters in the language's own name are U+02BB, not an
   // apostrophe, and a straight quote there is a misspelling rather than a
   // typographic preference.
-  { code: 'uz', name: 'Oʻzbekcha', english: 'Uzbek', flag: '🇺🇿', country: 'uz' },
+  //
+  // Uzbek is deliberately not offered yet. Measured on 2026-08-18, 16249 of
+  // the 34369 keys uz.ts shares with en.ts were still byte identical to the
+  // English, so about half the interface would reach a reader in English
+  // through silent fallback. Because the script is Latin, a glance cannot
+  // tell a translation from an untranslated string here, so that figure is a
+  // literal comparison rather than an inspection. The locale file stays on
+  // disk and the batch work continues; uncomment this line when it is done,
+  // and keep the U+02BB modifier letters when you do.
+  // { code: 'uz', name: 'Oʻzbekcha', english: 'Uzbek', flag: '🇺🇿', country: 'uz' },
 ];
 
 export function getLanguageByCode(code: string): (typeof SUPPORTED_LANGUAGES)[number] {
