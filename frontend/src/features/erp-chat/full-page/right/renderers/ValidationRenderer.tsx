@@ -1,9 +1,11 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { unwrapList, toNum } from './normalize';
 import { validationPath } from './deepLink';
 import DeepLinkBar, { useOpenLabels } from './DeepLinkBar';
+import { ruleSetListLabel } from '@/features/validation/ruleSetLabels';
 
 interface ValidationReport {
   id?: string;
@@ -26,6 +28,11 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 function ReportCard({ report }: { report: ValidationReport }) {
+  const { t } = useTranslation();
+  // `rule_set` is stored plus-joined, so printing the column gave the reader
+  // `boq_quality+masterformat`. The names come from the same map the validation
+  // page reads, rather than from a second copy that could drift from it.
+  const ruleSets = ruleSetListLabel(report.rule_set, t);
   const status = (report.status ?? 'pending').toLowerCase();
   const color = STATUS_COLOR[status] ?? 'var(--chat-text-secondary)';
   const score = toNum(report.score);
@@ -59,7 +66,7 @@ function ReportCard({ report }: { report: ValidationReport }) {
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
         <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--chat-text-primary)' }}>
-          {report.rule_set ?? 'Validation'}
+          {ruleSets || 'Validation'}
           {report.target_type && (
             <span style={{ color: 'var(--chat-text-tertiary)', fontWeight: 400, marginLeft: 6, fontSize: 12 }}>
               {report.target_type}

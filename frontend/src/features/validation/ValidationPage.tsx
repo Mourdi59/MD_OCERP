@@ -31,6 +31,7 @@ import {
   validationExportPath,
   type ValidationExportFormat,
 } from './validationExport';
+import { ruleSetLabel } from './ruleSetLabels';
 import { EstimateAuditPanel } from './EstimateAuditPanel';
 import { fmtFixed } from '@/shared/lib/formatters';
 
@@ -275,21 +276,10 @@ function getRuleDescriptions(t: (key: string, opts?: Record<string, unknown>) =>
  * engine id is rendered as muted secondary text next to it, and the full
  * sentence ({@link getRuleSetDescription}) stays as the hover/title tooltip.
  */
-function getRuleSetLabel(
-  ruleSet: string,
-  t: (key: string, opts?: Record<string, unknown>) => string,
-): string {
-  const map: Record<string, string> = {
-    boq_quality: t('validation.rs_label_boq_quality', { defaultValue: 'BOQ quality' }),
-    din276: t('validation.rs_label_din276', { defaultValue: 'DIN 276' }),
-    gaeb: t('validation.rs_label_gaeb', { defaultValue: 'GAEB' }),
-    nrm: t('validation.rs_label_nrm', { defaultValue: 'NRM' }),
-    masterformat: t('validation.rs_label_masterformat', { defaultValue: 'MasterFormat' }),
-    bim_compliance: t('validation.rs_label_bim', { defaultValue: 'BIM compliance' }),
-    project_completeness: t('validation.rs_label_completeness', { defaultValue: 'Completeness' }),
-  };
-  return map[ruleSet] ?? ruleSet.replace(/_/g, ' ');
-}
+// Kept as a local alias so the call sites below read unchanged; the map itself
+// now lives in ./ruleSetLabels so the chat renderer and the project settings
+// pack list read the same names this page does.
+const getRuleSetLabel = ruleSetLabel;
 
 /* ── Rule-set descriptions (badge tooltips) ───────────────────────────── */
 
@@ -700,15 +690,18 @@ function FilterBar({
 }
 
 /**
- * Rule-set chip: human label as primary text plus the engine id as muted
- * secondary text, so the meaning is legible without hovering (the full
- * sentence stays as the title tooltip). Replaces the old badge that printed
- * the raw engine id alone.
+ * Rule-set chip: the human label, with the full sentence as the title tooltip.
+ *
+ * It used to print the engine id beside the label as muted secondary text,
+ * which had the effect of showing `boq_quality` next to a clean `MasterFormat`
+ * on the same row: the id was hidden only when it happened to match its own
+ * label, so the tidiest names were the ones that stayed tidy. An estimator has
+ * no use for the identifier in either case, and the tooltip already carries
+ * what the set actually checks.
  */
 function RuleSetChip({ ruleSet, tone }: { ruleSet: string; tone: 'blue' | 'neutral' }) {
   const { t } = useTranslation();
   const label = getRuleSetLabel(ruleSet, t);
-  const showId = label.toLowerCase() !== ruleSet.toLowerCase();
   const toneClasses =
     tone === 'blue'
       ? 'border-oe-blue/30 bg-oe-blue-subtle text-oe-blue'
@@ -719,9 +712,6 @@ function RuleSetChip({ ruleSet, tone }: { ruleSet: string; tone: 'blue' | 'neutr
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${toneClasses}`}
     >
       {label}
-      {showId && (
-        <span className="font-mono text-2xs font-normal text-content-tertiary">{ruleSet}</span>
-      )}
     </span>
   );
 }

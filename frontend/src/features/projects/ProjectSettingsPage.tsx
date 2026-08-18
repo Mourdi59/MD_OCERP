@@ -38,6 +38,7 @@ import { CURRENCY_GROUPS, CreateProjectModal } from './CreateProjectPage';
 import { getVatRate } from '../boq/boqHelpers';
 import { TranslationSettingsTab } from '../translation';
 import { MethodologyActiveCard } from '../methodology/MethodologyActiveCard';
+import { ruleSetLabel } from '../validation/ruleSetLabels';
 import {
   listComplianceRulePacks,
   type ComplianceRulePack,
@@ -496,8 +497,12 @@ function ComplianceRulePacksCard({ project }: { project: Project }) {
                       </p>
                     )}
                     {pack.rule_sets.length > 0 && (
-                      <p className="mt-1 font-mono text-[11px] text-content-tertiary">
-                        {pack.rule_sets.join(' · ')}
+                      // The pack lists which rule sets it brings. It used to
+                      // print the engine identifiers, so a pack advertised
+                      // itself as `boq_quality · din276` to someone choosing
+                      // between packs.
+                      <p className="mt-1 text-[11px] text-content-tertiary">
+                        {pack.rule_sets.map((rs) => ruleSetLabel(rs, t)).join(' · ')}
                       </p>
                     )}
                   </div>
