@@ -4709,12 +4709,17 @@ def _generate_module_data(
 
     # ── Meetings (4-5) ───────────────────────────────────────────────────
     firm_attendees = [{"name": f"{c} rep", "company": c, "status": "present"} for c, _ in firms[:3]]
+    # First column is the meetings module's own type. It offers kickoff, design,
+    # progress, safety, subcontractor and closeout, so the kick-off and the
+    # weeklies say which they are instead of all reading "site". The cost review
+    # is filed as progress because the module has no commercial type; the title
+    # is what tells a reader which meeting it was.
     meeting_titles = [
-        ("site", "Project kick-off meeting", "completed", 0),
-        ("site", "Weekly progress meeting #1", "completed", 7),
+        ("kickoff", "Project kick-off meeting", "completed", 0),
+        ("progress", "Weekly progress meeting #1", "completed", 7),
         ("design", "Design coordination workshop", "completed", 14),
-        ("site", "Weekly progress meeting #2", "scheduled", 21),
-        ("commercial", "Commercial / cost review", "scheduled", 35),
+        ("progress", "Weekly progress meeting #2", "scheduled", 21),
+        ("progress", "Commercial / cost review", "scheduled", 35),
     ]
     meetings: list[dict] = []
     for i, (mtype, title, status, day) in enumerate(meeting_titles):
@@ -4998,6 +5003,14 @@ def _generate_module_data(
     # ── Finance budgets (match the BOQ section groups) ───────────────────
     finance_budgets: list[dict] = []
     for i, section in enumerate(template.sections):
+        # The section code is the budget line's WBS reference, and it is the
+        # same value the product writes itself: locking a BOQ groups positions
+        # by ``Position.wbs_id`` and upserts one budget per group. Seeding the
+        # column empty left the WBS column blank on every row of every project,
+        # and left the commitment routing in finance/events.py with nothing to
+        # match a purchase order against, so every order fell through to the
+        # oldest budget line instead of the one it belongs to.
+        wbs = str(section[0]) if section and section[0] else None
         trade = _clean_trade(section[1] if len(section) > 1 else "")
         sec_items = section[3] if len(section) > 3 else []
         original = 0.0
@@ -5013,6 +5026,7 @@ def _generate_module_data(
         actual = round(original * (0.5 if i < len(template.sections) // 2 else 0.0), 2)
         finance_budgets.append(
             {
+                "wbs_id": wbs,
                 "category": trade,
                 "original_budget": f"{round(original, 2)}",
                 "revised_budget": f"{revised}",
@@ -5023,22 +5037,30 @@ def _generate_module_data(
         )
 
     # ── Punch list (10-15) ───────────────────────────────────────────────
+    # The third column is the punchlist module's own category, one of the
+    # eleven it defines. A word the module does not have reaches the register as
+    # a title-cased token, because there is no label for a category the product
+    # does not offer, and the filter above the register cannot select it either.
+    # Fifteen rows do not have to use all eleven: electrical, hvac and
+    # landscaping carry no snag here on purpose, because these are the defects a
+    # generic project hands over with. An empty filter option is a true answer
+    # and does not want filling with an invented remark.
     punch_templates = [
-        ("Touch-up required to finished surface", "low", "finishes"),
-        ("Sealant defect at junction to be redone", "medium", "facade"),
+        ("Touch-up required to finished surface", "low", "finishing"),
+        ("Sealant defect at junction to be redone", "medium", "exterior"),
         ("Minor crack to be monitored / filled", "medium", "structural"),
-        ("Service penetration not fully sealed", "high", "fire_protection"),
-        ("Fixing/bracket missing - to be installed", "medium", "mep"),
-        ("Damaged finish to be replaced", "low", "finishes"),
-        ("Snag - door/ironmongery adjustment", "low", "joinery"),
-        ("Leak at connection - retighten and test", "medium", "mep"),
+        ("Service penetration not fully sealed", "high", "fire_safety"),
+        ("Fixing/bracket missing - to be installed", "medium", "mechanical"),
+        ("Damaged finish to be replaced", "low", "finishing"),
+        ("Snag - door/ironmongery adjustment", "low", "architectural"),
+        ("Leak at connection - retighten and test", "medium", "plumbing"),
         ("Alignment/level out of tolerance", "medium", "structural"),
         ("Cleaning required before handover", "low", "general"),
-        ("Paint defect on wall surface", "low", "finishes"),
+        ("Paint defect on wall surface", "low", "finishing"),
         ("Missing label / signage", "low", "general"),
-        ("Tile lippage exceeds tolerance", "medium", "finishes"),
-        ("Loose handrail fixing", "high", "safety"),
-        ("Incomplete grout to wet area", "medium", "finishes"),
+        ("Tile lippage exceeds tolerance", "medium", "finishing"),
+        ("Loose handrail fixing", "high", "architectural"),
+        ("Incomplete grout to wet area", "medium", "finishing"),
     ]
     punchlist: list[dict] = []
     for i, (title, prio, cat) in enumerate(punch_templates):
@@ -5061,7 +5083,10 @@ def _generate_module_data(
     # ── Field reports (8-12 spread across the schedule months) ───────────
     field_reports: list[dict] = []
     fr_n = min(max(months, 8), 12)
-    conditions = ["clear", "partly_cloudy", "overcast", "rain"]
+    # The six conditions the fieldreports module defines. It draws no line
+    # between broken cloud and full overcast, so the rotation carries fog rather
+    # than the same word twice.
+    conditions = ["clear", "cloudy", "fog", "rain"]
     for i in range(fr_n):
         trade = trades[i % len(trades)][1] if trades else "General works"
         day = round(i * (months * 30) / fr_n) + 3
@@ -5149,12 +5174,15 @@ def _generate_module_data(
         ("incoming", "Authority acknowledgement of commencement", "letter", 7, "authority"),
         ("outgoing", "Submission of insurance and bonds", "letter", 12, "client"),
         ("incoming", "Client instruction on scope clarification", "letter", 20, "client"),
-        ("outgoing", "Monthly progress report to client", "report", 30, "client"),
+        # The correspondence module types a document by how it travelled, and
+        # offers letter, email, memo and notice. A report is not one of them, so
+        # the two reports below are filed as the letters that carried them.
+        ("outgoing", "Monthly progress report to client", "letter", 30, "client"),
         ("incoming", "Consultant design clarification", "email", 24, "consultant"),
         ("outgoing", "Request for information log update", "email", 28, "consultant"),
         ("incoming", "Subcontractor early-warning notice", "letter", 35, "subcontractor"),
         ("outgoing", "Interim valuation cover letter", "letter", 31, "client"),
-        ("incoming", "Authority inspection report", "report", 45, "authority"),
+        ("incoming", "Authority inspection report", "letter", 45, "authority"),
     ]
     correspondence: list[dict] = []
     out_i = in_i = 0
@@ -5217,10 +5245,14 @@ def _generate_module_data(
     # boilerplate line.
     daily_diary: list[dict] = []
     dd_n = min(max(months, 6), 10)
+    # Keyed on the same words as ``conditions`` above, which are the
+    # fieldreports module's own. Both lists have to move together: the diary
+    # note is looked up by the condition, so a word in one and not the other is
+    # a KeyError that takes the whole demo install with it.
     diary_weather_note = {
         "clear": "Dry and clear, full working day.",
-        "partly_cloudy": "Partly cloudy, no impact on production.",
-        "overcast": "Overcast but workable conditions.",
+        "cloudy": "Cloudy but workable conditions.",
+        "fog": "Morning fog, lifting operations held until visibility improved.",
         "rain": "Intermittent rain, external works paused in the afternoon.",
     }
     diary_activities = [
@@ -5262,13 +5294,17 @@ def _generate_module_data(
 
     # compliance (compliance_docs) - insurance / permit / bond tracker.
     compliance: list[dict] = []
+    # First column is the compliance_docs module's own doc_type, which names the
+    # kind of insurance, bond, permit or certificate rather than just the
+    # family. A bare family word is a document the expiry filter cannot group
+    # and the edit form cannot re-select.
     comp_seeds = [
-        ("insurance", "Contractor all-risk insurance (CAR)", "Insurer", 5_000_000),
-        ("insurance", "Public liability insurance", "Insurer", 10_000_000),
-        ("bond", "Performance bond", "Surety", 1_000_000),
-        ("permit", "Building / construction permit", "Local authority", None),
-        ("certification", "ISO 9001 quality certification", "Certification body", None),
-        ("permit", "Site environmental permit", "Environmental authority", None),
+        ("insurance_umbrella", "Contractor all-risk insurance (CAR)", "Insurer", 5_000_000),
+        ("insurance_general_liability", "Public liability insurance", "Insurer", 10_000_000),
+        ("bond_performance", "Performance bond", "Surety", 1_000_000),
+        ("permit_building", "Building / construction permit", "Local authority", None),
+        ("certification_other", "ISO 9001 quality certification", "Certification body", None),
+        ("permit_other", "Site environmental permit", "Environmental authority", None),
     ]
     for i, (dtype, name, issuer, cov) in enumerate(comp_seeds):
         compliance.append(
@@ -5291,7 +5327,6 @@ def _generate_module_data(
     po_n = min(max(len(trades), 4), 8)
     for i in range(po_n):
         code, trade, item = trades[i % len(trades)] if trades else ("", "General works", "")
-        firm, _ = firms[i % len(firms)]
         amount = 0.0
         if trades and (i % len(trades)) < len(template.sections):
             for it in template.sections[i % len(trades)][3][:2]:
@@ -5310,15 +5345,20 @@ def _generate_module_data(
                 "delivery_date": _d(48 + i * 14),
                 "currency_code": cur,
                 "status": ("issued", "approved", "draft")[i % 3],
-                "notes": f"{firm} - supply for {trade}",
-                # The firm this order is with, as a contact role and a position
-                # in that role's list. The notes above name the same company in
-                # prose; this is the field the link is built from, so a reworded
-                # note cannot move the order to a different vendor. Only the
-                # first few firms get a contact seeded, and orders beyond that
-                # deliberately resolve to nothing rather than to the wrong firm.
+                # The note names no company, because at this point nothing here
+                # knows which companies will end up with a contact. It used to
+                # name ``firms[i % len(firms)]``, the template's tender list,
+                # while the link indexed the seeded subcontractor contacts, and
+                # the two are not the same set in the same order: the six
+                # hand-written packs supply their own contact list, so 39 of 267
+                # orders named one firm and pointed at another, and 16 more
+                # pointed at nothing because only the first three template firms
+                # ever got a contact. The writer picks the vendor from the
+                # contacts that exist and composes this note from that same
+                # company, so the prose and the link cannot come apart.
+                "notes_subject": f"supply for {trade}",
                 "party": "subcontractor",
-                "party_index": i % len(firms) if firms else 0,
+                "party_index": i,
                 "items": [
                     {
                         "description": f"{item or trade} - supply",
@@ -5385,8 +5425,11 @@ def _generate_module_data(
             "end_date": _d(months * 30),
         }
     )
-    sub_firms = firms[:3]
-    for i, (company, _) in enumerate(sub_firms):
+    # Three trade subcontracts, or fewer on a project with fewer firms. The
+    # firms themselves are no longer read here: which company each subcontract
+    # is with is settled at seed time against the contacts that exist.
+    sub_count = min(3, len(firms))
+    for i in range(sub_count):
         trade = trades[i % len(trades)][1] if trades else "Works"
         sub_value = round((contract_total * 0.15) + i * 50000.0, 2)
         # The last subcontract is still a draft. Every contract being active
@@ -5394,19 +5437,22 @@ def _generate_module_data(
         # a deal and billing it: the compliance gate and the signature only
         # appear on a draft, so a demo where everything is signed can show the
         # whole lifecycle except the part where the contract becomes binding.
-        sub_status = "draft" if i == len(sub_firms) - 1 else "active"
+        sub_status = "draft" if i == sub_count - 1 else "active"
         contracts.append(
             {
                 "code": f"{demo_id}-SUB-{i + 1:02d}",
-                "title": f"Subcontract - {trade} ({company})",
+                # No company in the title, for the same reason as the purchase
+                # order note above: this list is the template's tender firms,
+                # and the contacts a project ends up with can be a different
+                # list. The writer appends the firm it actually linked.
+                "title_subject": f"Subcontract - {trade}",
                 "contract_type": "remeasurement",
                 "counterparty_type": "subcontractor",
-                # The subcontractor contacts are built from firms[:3] in this
-                # same order, so the nth subcontract is the nth firm's. Without
-                # the index all three would point at one company while their
-                # titles named three.
+                # The nth subcontract is the nth seeded subcontractor, so three
+                # subcontracts read as three firms rather than one repeated.
                 "party": "subcontractor",
                 "party_index": i,
+                "party_cycle": True,
                 # A subcontract is signed by the main contractor buying the
                 # work and the firm selling it, not by the employer, who is
                 # not a party to it.
@@ -5422,7 +5468,7 @@ def _generate_module_data(
                         "party_role": "subcontractor",
                         "party": "subcontractor",
                         "party_index": i,
-                        "display_name": company,
+                        "party_cycle": True,
                         "is_primary": False,
                     },
                 ],
@@ -5828,7 +5874,13 @@ def _generate_module_data(
 # ---------------------------------------------------------------------------
 
 
-def _seeded_party_id(contact_ids_by_type: dict[str, list[str]], role: str | None, index: int = 0) -> str | None:
+def _seeded_party_id(
+    contact_ids_by_type: dict[str, list[str]],
+    role: str | None,
+    index: int = 0,
+    *,
+    cycle: bool = False,
+) -> str | None:
     """Id of the ``index``-th contact seeded with ``role``, or ``None`` if there is none.
 
     Every register that names a counterparty resolves it through here, so the
@@ -5850,14 +5902,56 @@ def _seeded_party_id(contact_ids_by_type: dict[str, list[str]], role: str | None
     worse than a row with no link: the empty cell is visibly missing, and the
     wrong link reads as correct on every screen that shows it.
 
+    ``cycle`` is the opt-in for the callers where that reasoning does not apply,
+    because the row names no company of its own. The purchase orders and the
+    trade subcontracts are those: their firm is chosen from the contacts that
+    exist and their note or title is written from the same choice through
+    ``_party_company``, so wrapping round cannot make prose and link disagree,
+    and refusing to wrap would only leave the vendor cell empty. Everything that
+    resolves a party for a row written elsewhere - the punch item's assignee,
+    the inspection's consultant, the main contract's client - stays on the
+    default and keeps the refusal.
+
     ``None`` is a real answer in the ordinary case too. The contacts block is
     fail-soft, so when that module is not loaded nothing was seeded and every
     caller simply stores no link.
     """
     ids = contact_ids_by_type.get(role or "") or []
-    if not ids or not 0 <= index < len(ids):
+    if not ids:
+        return None
+    if cycle:
+        return ids[index % len(ids)]
+    if not 0 <= index < len(ids):
         return None
     return ids[index]
+
+
+def _party_company(
+    contact_companies_by_type: dict[str, list[str]],
+    role: str | None,
+    index: int = 0,
+    *,
+    cycle: bool = False,
+) -> str:
+    """Company name of the contact ``_seeded_party_id`` returns for the same arguments.
+
+    Same list, same index, same wrapping, so a row that resolves a party
+    through one of these and writes prose through the other names the firm it
+    linked to rather than a different one. The pair replaces the older
+    arrangement where the generator wrote the company into the note and the
+    writer resolved the link, which agreed only as long as the template's
+    tender firms and the seeded contacts were the same list in the same order.
+    They are not: all six hand-written packs supply their own contacts.
+
+    Empty string where there is no such contact. The callers turn that into
+    prose with no company in it rather than prose with a blank where one was.
+    """
+    companies = contact_companies_by_type.get(role or "") or []
+    if not companies:
+        return ""
+    if cycle:
+        return companies[index % len(companies)]
+    return companies[index] if 0 <= index < len(companies) else ""
 
 
 def _contacts_for_project(hand_written: list[dict] | None, generated: list[dict]) -> list[dict]:
@@ -6513,6 +6607,11 @@ async def _seed_module_data(
     # invoice to the counterparty it already names in prose. Same fail-soft
     # contract as contact_ids_by_type.
     contact_id_by_company: dict[str, str] = {}
+    # Role -> company names, in the same order as contact_ids_by_type, so a
+    # writer that picks a party by position can also say who it picked. The
+    # purchase orders need it: their vendor is chosen here rather than in the
+    # generator, and the note has to name that firm and no other.
+    contact_companies_by_type: dict[str, list[str]] = {}
 
     try:
         contact_list = _contacts_for_project(_CONTACTS.get(demo_id), generated.get("contacts", []))
@@ -6520,6 +6619,7 @@ async def _seed_module_data(
             contact_id = _id()
             contact_ids_by_type.setdefault(c["contact_type"], []).append(str(contact_id))
             company = str(c.get("company_name") or "").strip()
+            contact_companies_by_type.setdefault(c["contact_type"], []).append(company)
             if company:
                 contact_id_by_company.setdefault(company, str(contact_id))
             session.add(
@@ -7098,7 +7198,7 @@ async def _seed_module_data(
         "residential-berlin": [
             {
                 "meeting_number": "MTG-001",
-                "meeting_type": "site",
+                "meeting_type": "kickoff",
                 "title": "Bauanlaufbesprechung",
                 "meeting_date": base.strftime("%Y-%m-%d"),
                 "location": "Baubüro Chausseestr. 45",
@@ -7130,7 +7230,7 @@ async def _seed_module_data(
             },
             {
                 "meeting_number": "MTG-002",
-                "meeting_type": "site",
+                "meeting_type": "progress",
                 "title": "Wochenbesprechung KW 16",
                 "meeting_date": (base + timedelta(days=7)).strftime("%Y-%m-%d"),
                 "location": "Baubüro Chausseestr. 45",
@@ -7205,7 +7305,7 @@ async def _seed_module_data(
             },
             {
                 "meeting_number": "MTG-002",
-                "meeting_type": "site",
+                "meeting_type": "kickoff",
                 "title": "Pre-Construction Meeting",
                 "meeting_date": base.strftime("%Y-%m-%d"),
                 "location": "Site office, E14",
@@ -7267,7 +7367,7 @@ async def _seed_module_data(
             },
             {
                 "meeting_number": "MTG-002",
-                "meeting_type": "site",
+                "meeting_type": "progress",
                 "title": "Weekly OAC Meeting #4",
                 "meeting_date": (base + timedelta(days=28)).strftime("%Y-%m-%d"),
                 "location": "Job trailer, site",
@@ -7286,7 +7386,7 @@ async def _seed_module_data(
         "school-paris": [
             {
                 "meeting_number": "MTG-001",
-                "meeting_type": "site",
+                "meeting_type": "progress",
                 "title": "Reunion de chantier hebdomadaire #1",
                 "meeting_date": base.strftime("%Y-%m-%d"),
                 "location": "Base vie, Rue de Belleville",
@@ -7336,7 +7436,7 @@ async def _seed_module_data(
         "warehouse-dubai": [
             {
                 "meeting_number": "MTG-001",
-                "meeting_type": "site",
+                "meeting_type": "kickoff",
                 "title": "Project Kick-off Meeting",
                 "meeting_date": base.strftime("%Y-%m-%d"),
                 "location": "Meridiem Gulf office, Dubai Design District",
@@ -7369,7 +7469,7 @@ async def _seed_module_data(
             },
             {
                 "meeting_number": "MTG-002",
-                "meeting_type": "site",
+                "meeting_type": "progress",
                 "title": "Weekly Progress Meeting #2",
                 "meeting_date": (base + timedelta(days=14)).strftime("%Y-%m-%d"),
                 "location": "Site office, Jebel Ali",
@@ -7581,7 +7681,7 @@ async def _seed_module_data(
                 "severity": "moderate",
                 "description": "Steel erector showed signs of heat exhaustion at 14:00 during "
                 "June operations. Temperature 48C. Worker evacuated and treated.",
-                "treatment_type": "medical_treatment",
+                "treatment_type": "medical",
                 "injured_person_details": {"role": "Steel erector", "company": "Nakheer Engineering"},
                 "root_cause": "Worker continued past midday ban period. Supervisor failed to enforce break.",
                 "corrective_actions": [
@@ -8888,9 +8988,22 @@ async def _seed_module_data(
         logger.debug("Finance module not loaded, skipping demo invoices")
 
     # ── Finance - Project Budget Lines ───────────────────────────────
+    # ``wbs_id`` is the cost-plan reference the finance register shows and the
+    # commitment routing matches a purchase order against. Each pack is numbered
+    # by the standard its own market already uses rather than by one chosen
+    # here: DIN 276 cost groups for the German projects, NRM 1 group elements
+    # for the British one, UniFormat level one for the American one. Where the
+    # market does not read that clearly the field stays empty, because a blank
+    # cell is visible and a wrong reference is not.
+    #
+    # These categories are trade names rather than cost groups, so several lines
+    # can share one reference. That is ordinary in a cost plan and it is the
+    # reason the duplicate guard below keys on the whole (wbs_id, category) pair
+    # instead of the category alone.
     _BUDGETS: dict[str, list[dict]] = {
         "residential-berlin": [
             {
+                "wbs_id": "300",
                 "category": "Erdarbeiten",
                 "original_budget": "450000",
                 "revised_budget": "465000",
@@ -8899,6 +9012,7 @@ async def _seed_module_data(
                 "forecast_final": "462000",
             },
             {
+                "wbs_id": "300",
                 "category": "Gründung",
                 "original_budget": "680000",
                 "revised_budget": "680000",
@@ -8907,6 +9021,7 @@ async def _seed_module_data(
                 "forecast_final": "675000",
             },
             {
+                "wbs_id": "300",
                 "category": "Rohbau",
                 "original_budget": "2850000",
                 "revised_budget": "2920000",
@@ -8915,6 +9030,7 @@ async def _seed_module_data(
                 "forecast_final": "2900000",
             },
             {
+                "wbs_id": "300",
                 "category": "Fassade/Dach",
                 "original_budget": "1450000",
                 "revised_budget": "1450000",
@@ -8923,6 +9039,7 @@ async def _seed_module_data(
                 "forecast_final": "1480000",
             },
             {
+                "wbs_id": "400",
                 "category": "HLS/Elektro",
                 "original_budget": "2100000",
                 "revised_budget": "2100000",
@@ -8933,6 +9050,7 @@ async def _seed_module_data(
         ],
         "office-london": [
             {
+                "wbs_id": "1",
                 "category": "Substructure",
                 "original_budget": "3200000",
                 "revised_budget": "3350000",
@@ -8941,6 +9059,7 @@ async def _seed_module_data(
                 "forecast_final": "3300000",
             },
             {
+                "wbs_id": "2",
                 "category": "Steel Frame",
                 "original_budget": "5800000",
                 "revised_budget": "5800000",
@@ -8949,6 +9068,7 @@ async def _seed_module_data(
                 "forecast_final": "5750000",
             },
             {
+                "wbs_id": "2",
                 "category": "Envelope",
                 "original_budget": "7200000",
                 "revised_budget": "7450000",
@@ -8957,6 +9077,7 @@ async def _seed_module_data(
                 "forecast_final": "7400000",
             },
             {
+                "wbs_id": "5",
                 "category": "MEP Services",
                 "original_budget": "8500000",
                 "revised_budget": "8500000",
@@ -8967,6 +9088,9 @@ async def _seed_module_data(
         ],
         "medical-us": [
             {
+                # Nearest, not exact: the foundation half is UniFormat A and the
+                # site half is G, and this line is dominated by the foundation.
+                "wbs_id": "A",
                 "category": "Site & Foundation",
                 "original_budget": "3500000",
                 "revised_budget": "3500000",
@@ -8975,6 +9099,7 @@ async def _seed_module_data(
                 "forecast_final": "3450000",
             },
             {
+                "wbs_id": "B",
                 "category": "Structure",
                 "original_budget": "5200000",
                 "revised_budget": "5200000",
@@ -8983,6 +9108,7 @@ async def _seed_module_data(
                 "forecast_final": "5150000",
             },
             {
+                "wbs_id": "D",
                 "category": "MEP Systems",
                 "original_budget": "8500000",
                 "revised_budget": "8900000",
@@ -8991,6 +9117,7 @@ async def _seed_module_data(
                 "forecast_final": "8800000",
             },
             {
+                "wbs_id": "E",
                 "category": "Medical Equipment",
                 "original_budget": "4200000",
                 "revised_budget": "4580000",
@@ -8999,6 +9126,7 @@ async def _seed_module_data(
                 "forecast_final": "4550000",
             },
             {
+                "wbs_id": "C",
                 "category": "Interior Finishes",
                 "original_budget": "3800000",
                 "revised_budget": "3800000",
@@ -9094,6 +9222,7 @@ async def _seed_module_data(
         # committed/actual/forecast.
         "retail-market-heilbronn": [
             {
+                "wbs_id": "200",
                 "category": "KG 200 Vorbereitende Massnahmen / Erschließung",
                 "original_budget": "280000.00",
                 "revised_budget": "280000.00",
@@ -9102,6 +9231,7 @@ async def _seed_module_data(
                 "forecast_final": "285000.00",
             },
             {
+                "wbs_id": "300",
                 "category": "KG 300 Bauwerk - Baukonstruktionen",
                 "original_budget": "3300000.00",
                 "revised_budget": "3300000.00",
@@ -9110,6 +9240,7 @@ async def _seed_module_data(
                 "forecast_final": "3335000.00",
             },
             {
+                "wbs_id": "400",
                 "category": "KG 400 Bauwerk - Technische Anlagen",
                 "original_budget": "2660000.00",
                 "revised_budget": "2660000.00",
@@ -9118,6 +9249,7 @@ async def _seed_module_data(
                 "forecast_final": "2665000.00",
             },
             {
+                "wbs_id": "500",
                 "category": "KG 500 Außenanlagen und Freiflächen",
                 "original_budget": "1150000.00",
                 "revised_budget": "1150000.00",
@@ -9126,6 +9258,7 @@ async def _seed_module_data(
                 "forecast_final": "1152600.00",
             },
             {
+                "wbs_id": "600",
                 "category": "KG 600 Ausstattung",
                 "original_budget": "700000.00",
                 "revised_budget": "700000.00",
@@ -9134,6 +9267,7 @@ async def _seed_module_data(
                 "forecast_final": "668700.00",
             },
             {
+                "wbs_id": "700",
                 "category": "KG 700 Baunebenkosten",
                 "original_budget": "1050000.00",
                 "revised_budget": "1050000.00",
@@ -9161,31 +9295,45 @@ async def _seed_module_data(
         # a column of em-dashes instead of money. The template currency is
         # the same value that went into Project.currency.
         budget_currency = (template.currency or "").strip()[:3].upper()
-        # Skip categories this project already carries. Without this the insert
-        # was unguarded, and the guards above it do not cover it: the callers of
+        # Skip lines this project already carries. Without this the insert was
+        # unguarded, and the guards above it do not cover it: the callers of
         # ``_seed_module_data`` gate on a *representative* module (an RFI row),
         # so any run that reaches this block a second time - a first run that
         # failed after the budgets were written, or a re-enrichment - wrote the
-        # category again. ``ProjectBudget`` is unique on
-        # (project_id, wbs_id, category) but ``wbs_id`` is NULL here, and
-        # PostgreSQL treats NULLs as distinct, so the constraint does not catch
-        # it: the estate silently grew a second "KG 300 Bauwerk" line and the
-        # finance rollup double-counted it. Checking explicitly is the only
-        # thing that actually holds.
-        existing_categories = set(
-            (await session.execute(select(ProjectBudget.category).where(ProjectBudget.project_id == project_id)))
-            .scalars()
-            .all()
-        )
+        # line again, and the estate silently grew a second "KG 300 Bauwerk"
+        # line that the finance rollup double-counted.
+        #
+        # The key is the whole of what ``ProjectBudget`` is unique on,
+        # (project_id, wbs_id, category), not the category alone. Now that the
+        # seed writes a wbs_id, two lines can legitimately share a category
+        # under different WBS references, and a guard reading only the category
+        # would refuse the second one. The database constraint still does not
+        # substitute for this check: a line with no WBS reference stores NULL,
+        # PostgreSQL treats NULLs as distinct, and a duplicate of it would pass.
+        existing_lines = {
+            (wbs, category)
+            for wbs, category in (
+                await session.execute(
+                    select(ProjectBudget.wbs_id, ProjectBudget.category).where(ProjectBudget.project_id == project_id)
+                )
+            ).all()
+        }
         added_budgets = 0
         for bl in budget_list:
-            if bl["category"][:100] in existing_categories:
+            # wbs_id is String(36). No demo section code comes near that, the
+            # longest is three characters, but clip for the same reason the
+            # category below is clipped: a value from a template is data, and a
+            # rollback here loses the whole install.
+            raw_wbs = bl.get("wbs_id")
+            wbs_id = str(raw_wbs)[:36] if raw_wbs else None
+            if (wbs_id, bl["category"][:100]) in existing_lines:
                 continue
             added_budgets += 1
             session.add(
                 ProjectBudget(
                     id=_id(),
                     project_id=project_id,
+                    wbs_id=wbs_id,
                     # ProjectBudget.category is VARCHAR(100); a longer LV
                     # section label would roll back the whole demo install, so
                     # clip it defensively here.
@@ -9545,7 +9693,7 @@ async def _seed_module_data(
             {
                 "report_date": date(2026, 4, 7),
                 "report_type": "daily",
-                "weather_condition": "partly_cloudy",
+                "weather_condition": "cloudy",
                 "temperature_c": 12.0,
                 "work_performed": "Spundwandverbau Larssen 603 installation completed south wall. "
                 "Dewatering pumps operational. Excavation proceeding grid A-C.",
@@ -9577,7 +9725,7 @@ async def _seed_module_data(
             {
                 "report_date": date(2026, 4, 7),
                 "report_type": "daily",
-                "weather_condition": "overcast",
+                "weather_condition": "cloudy",
                 "temperature_c": 14.0,
                 "work_performed": "Piled foundation CFA installation - 12 piles completed. "
                 "Steel delivery for erection next week.",
@@ -9612,7 +9760,7 @@ async def _seed_module_data(
             {
                 "report_date": date(2026, 4, 7),
                 "report_type": "daily",
-                "weather_condition": "partly_cloudy",
+                "weather_condition": "cloudy",
                 "temperature_c": 15.0,
                 "work_performed": "Demolition of existing structure 80% complete. "
                 "Sorting of demolition waste for recycling ongoing.",
@@ -9646,7 +9794,7 @@ async def _seed_module_data(
             {
                 "report_date": date(2026, 4, 14),
                 "report_type": "daily",
-                "weather_condition": "hazy",
+                "weather_condition": "fog",
                 "temperature_c": 38.0,
                 "work_performed": "Foundation pads poured bays 1-2. Earthworks grading 85% complete. "
                 "Rebar delivery received for bay 3-6 foundations.",
@@ -9808,7 +9956,10 @@ async def _seed_module_data(
                 "submittal_number": "SUB-002",
                 "title": "ESFR sprinkler system - hydraulic calculations",
                 "spec_section": "21 13 00",
-                "submittal_type": "calculation",
+                # Nearest, not exact: the submittals module offers no
+                # calculation type, so this goes with the drawings it supports
+                # and the title says what it really is.
+                "submittal_type": "shop_drawing",
                 "status": "under_review",
                 "date_submitted": (base + timedelta(days=60)).strftime("%Y-%m-%d"),
             },
@@ -10030,7 +10181,10 @@ async def _seed_module_data(
                 "reference_number": "IN-2026-001",
                 "direction": "incoming",
                 "subject": "Building control initial inspection report",
-                "correspondence_type": "report",
+                # Nearest, not exact: the correspondence module types a document
+                # by how it travelled and has no report, so this is the letter
+                # the report arrived in.
+                "correspondence_type": "letter",
                 "date_received": (base + timedelta(days=14)).strftime("%Y-%m-%d"),
                 "notes": "Approved Inspectors initial inspection - no issues",
             },
@@ -10048,7 +10202,10 @@ async def _seed_module_data(
                 "reference_number": "IN-2026-001",
                 "direction": "incoming",
                 "subject": "JCAHO compliance pre-assessment report",
-                "correspondence_type": "report",
+                # Nearest, not exact: the correspondence module types a document
+                # by how it travelled and has no report, so this is the letter
+                # the report arrived in.
+                "correspondence_type": "letter",
                 "date_received": (base - timedelta(days=30)).strftime("%Y-%m-%d"),
                 "notes": "Joint Commission pre-assessment - 3 observations to address",
             },
@@ -10222,6 +10379,14 @@ async def _seed_module_data(
 
         po_list = generated.get("procurement", [])
         for po in po_list:
+            # Vendor first, note second. Both come from the same slot of the
+            # same list, so an order cannot name one firm and link to another.
+            po_slot = int(po.get("party_index", 0) or 0)
+            po_role = po.get("party") or ""
+            po_vendor_id = _seeded_party_id(contact_ids_by_type, po_role, po_slot, cycle=True)
+            po_vendor = _party_company(contact_companies_by_type, po_role, po_slot, cycle=True)
+            po_subject = str(po.get("notes_subject") or "")
+            po_notes = f"{po_vendor} - {po_subject}" if po_vendor and po_subject else (po_subject or None)
             po_items = po.get("items", [])
             subtotal = sum(float(li.get("amount", 0)) for li in po_items)
             po_obj = PurchaseOrder(
@@ -10236,10 +10401,8 @@ async def _seed_module_data(
                 tax_amount="0",
                 amount_total=f"{round(subtotal, 2)}",
                 status=po.get("status", "draft"),
-                notes=po.get("notes"),
-                vendor_contact_id=_seeded_party_id(
-                    contact_ids_by_type, po.get("party"), int(po.get("party_index", 0) or 0)
-                ),
+                notes=po.get("notes") or po_notes,
+                vendor_contact_id=po_vendor_id,
                 created_by=owner_id,
                 metadata_={"project_id": str(project_id), "demo_id": demo_id},
             )
@@ -10269,7 +10432,12 @@ async def _seed_module_data(
 
         contract_list = generated.get("contracts", [])
         for ct in contract_list:
-            counterparty_id = _seeded_party_id(contact_ids_by_type, ct.get("party"), int(ct.get("party_index", 0) or 0))
+            ct_slot = int(ct.get("party_index", 0) or 0)
+            ct_cycle = bool(ct.get("party_cycle"))
+            counterparty_id = _seeded_party_id(contact_ids_by_type, ct.get("party"), ct_slot, cycle=ct_cycle)
+            ct_company = _party_company(contact_companies_by_type, ct.get("party"), ct_slot, cycle=ct_cycle)
+            ct_subject = str(ct.get("title_subject") or "")
+            ct_title = str(ct.get("title") or "") or (f"{ct_subject} ({ct_company})" if ct_company else ct_subject)
             contract_pk = _id()
             for pt in ct.get("parties", []):
                 session.add(
@@ -10286,9 +10454,16 @@ async def _seed_module_data(
                                 contact_ids_by_type,
                                 pt.get("party"),
                                 int(pt.get("party_index", 0) or 0),
+                                cycle=bool(pt.get("party_cycle")),
                             )
                         ),
-                        display_name=pt["display_name"],
+                        display_name=pt.get("display_name")
+                        or _party_company(
+                            contact_companies_by_type,
+                            pt.get("party"),
+                            int(pt.get("party_index", 0) or 0),
+                            cycle=bool(pt.get("party_cycle")),
+                        ),
                         is_primary=bool(pt.get("is_primary", False)),
                         metadata_={"demo_id": demo_id},
                     )
@@ -10298,7 +10473,7 @@ async def _seed_module_data(
                     id=contract_pk,
                     project_id=project_id,
                     code=ct["code"],
-                    title=ct.get("title", ""),
+                    title=ct_title,
                     contract_type=ct.get("contract_type", "lump_sum"),
                     counterparty_type=ct.get("counterparty_type", "client"),
                     counterparty_id=_uuid_or_none(counterparty_id),
@@ -10688,7 +10863,17 @@ async def _seed_module_data(
             trade_name=sub_name,
             trade_categories=[sub_trade],
             prequalification_status="approved",
-            rating_score=Decimal("4.20"),
+            # rating_score runs 0..100, the range the rating engine clamps to
+            # and the range the purchasing page compares against when it
+            # decides whether a vendor is rated too low to buy from. This used
+            # to say 4.20, which is four point two out of five written into a
+            # column that runs to a hundred, and every demo project seeded one
+            # such row. The register drew five empty stars beside the digit 4
+            # on every line, and a purchase order raised against the same firm
+            # wore an amber "low rating" pill despite the approved status one
+            # line above. 84 is the same judgement on the scale the column
+            # actually keeps.
+            rating_score=Decimal("84.00"),
             country=country,
             is_active=True,
             created_by=owner_str,
