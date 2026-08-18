@@ -78,9 +78,7 @@ async def test_a_rupee_priced_demo_installs_and_reads_back_whole(pg_session) -> 
     # Counts first. Each of these blocks swallows its own exception, so a
     # rejected write reaches this point as a successful install with an empty
     # table, and every read below would then be reading nothing.
-    assemblies = (
-        (await pg_session.execute(select(Assembly).where(Assembly.project_id == project_id))).scalars().all()
-    )
+    assemblies = (await pg_session.execute(select(Assembly).where(Assembly.project_id == project_id))).scalars().all()
     assert assemblies, "the install reported success and wrote no assemblies at all"
 
     components = (
