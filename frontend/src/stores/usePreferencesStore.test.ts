@@ -166,4 +166,59 @@ describe('usePreferencesStore', () => {
       expect(usePreferencesStore.getState().dateFormat).toBe('auto');
     });
   });
+
+  // The number format carries the same untrustworthy stored value as the date
+  // format above, and one column wider: `users.number_format` is NOT NULL and
+  // defaulted to the German pattern for every account created anywhere in the
+  // world, so hydration handed German grouping to readers who never asked for
+  // it. This is not a money question - the preference feeds every
+  // `Intl.NumberFormat` in the product, down to file sizes and percentages.
+  //
+  // The column is written in two vocabularies: a display PATTERN, which is
+  // what the seed puts there, and a BCP-47 tag, which is what the settings
+  // toggle PATCHes. Only the pattern can be a leftover default, so only the
+  // pattern is refused.
+  describe('number format hydration', () => {
+    it('reads the seeded account default as "never chose" and stays automatic', async () => {
+      mockApiGet.mockResolvedValueOnce({ number_format: '1.234,56' });
+      await usePreferencesStore.getState().hydrateFromServer();
+      expect(usePreferencesStore.getState().numberLocale).toBe('auto');
+    });
+
+    it('adopts a pattern the account default could never have produced', async () => {
+      mockApiGet.mockResolvedValueOnce({ number_format: '1 234,56' });
+      await usePreferencesStore.getState().hydrateFromServer();
+      expect(usePreferencesStore.getState().numberLocale).toBe('fr-FR');
+    });
+
+    it('adopts an explicit automatic from the account', async () => {
+      usePreferencesStore.getState().setPreference('numberLocale', 'en-US');
+      mockApiGet.mockResolvedValueOnce({ number_format: 'auto' });
+      await usePreferencesStore.getState().hydrateFromServer();
+      expect(usePreferencesStore.getState().numberLocale).toBe('auto');
+    });
+
+    it('keeps German when this browser chose it, rather than reading it as the default', async () => {
+      usePreferencesStore.getState().setPreference('numberLocale', 'de-DE');
+      mockApiGet.mockResolvedValueOnce({ number_format: '1.234,56' });
+      await usePreferencesStore.getState().hydrateFromServer();
+      expect(usePreferencesStore.getState().numberLocale).toBe('de-DE');
+    });
+
+    it('adopts a locale tag saved by the settings toggle, seeding cannot write one', async () => {
+      // A tag in this column is evidence of a click: nothing seeds `de-DE`.
+      // Accounts already carrying one keep reading German, which is the whole
+      // point of refusing only the pattern.
+      mockApiGet.mockResolvedValueOnce({ number_format: 'de-DE' });
+      await usePreferencesStore.getState().hydrateFromServer();
+      expect(usePreferencesStore.getState().numberLocale).toBe('de-DE');
+    });
+
+    it('leaves a pattern outside the vocabulary alone, landing on automatic', async () => {
+      // The regional packs also ship lakh grouping, which no pattern key maps.
+      mockApiGet.mockResolvedValueOnce({ number_format: '12,34,567.89' });
+      await usePreferencesStore.getState().hydrateFromServer();
+      expect(usePreferencesStore.getState().numberLocale).toBe('auto');
+    });
+  });
 });

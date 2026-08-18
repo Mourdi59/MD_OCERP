@@ -370,7 +370,15 @@ export function RegionalSettings({ animationDelay = '0ms' }: { animationDelay?: 
   // Number Format row with nothing selected while the product was quite
   // definitely formatting in German. Measured on the stand: stored `de-DE`,
   // every button `aria-pressed="false"`.
-  const serverFormat = prefs?.number_format ? adoptServerNumberFormat(prefs.number_format) : undefined;
+  // Pass the local preference the boot path passes, so this row and the store
+  // reach the same answer. The translator refuses the seeded German pattern on
+  // a browser that never chose, which means the store stays on `'auto'`; a row
+  // that skipped the argument would light the German button while the product
+  // formatted in the interface language, and a control that disagrees with
+  // what is on screen is worse than one that lights nothing.
+  const serverFormat = prefs?.number_format
+    ? adoptServerNumberFormat(prefs.number_format, storeNumberLocale)
+    : undefined;
   const numberFormat = resolveNumberLocale(serverFormat ?? storeNumberLocale);
   // MONEY-BUG FIX: read the persisted server value from `currency_code`
   // (the real backend field) instead of the non-existent `currency`, so a

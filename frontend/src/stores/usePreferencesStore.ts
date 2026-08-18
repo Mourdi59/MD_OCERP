@@ -200,6 +200,15 @@ function adoptServerDateFormat(server: string, local: DateFormat): DateFormat | 
   if (server === LEGACY_ACCOUNT_DATE_FORMAT && local === 'auto') return undefined;
   return server as DateFormat;
 }
+/**
+ * The value the account column carries when nobody ever picked a number
+ * format: `users.number_format` is NOT NULL and defaulted to this for every
+ * account created anywhere in the world, so the stored string is ambiguous
+ * between "never chose" and "chose German grouping". Same ambiguity as
+ * `LEGACY_ACCOUNT_DATE_FORMAT` above, same resolution.
+ */
+const LEGACY_ACCOUNT_NUMBER_FORMAT = '1.234,56';
+
 // The account stores the number format as a display PATTERN, not a BCP-47
 // locale; map the known patterns onto the locale the store formats with.
 const NUMBER_FORMAT_TO_LOCALE: Record<string, NumberLocale> = {
@@ -232,8 +241,17 @@ export const NUMBER_LOCALES: readonly NumberLocale[] = [
  * which meant the preference could not actually be overridden from the
  * account. Accepting both keeps the old pattern working and lets a saved
  * choice survive. An unknown value is skipped rather than forced in.
+ *
+ * The seeded pattern is refused unless this browser already carries an
+ * explicit choice, exactly as `adoptServerDateFormat` refuses the seeded date
+ * order. Without that, every account ever created read its numbers in German,
+ * because the column defaulted to the German pattern for all of them and the
+ * translator faithfully adopted it. `local` is what breaks the tie: the value
+ * alone cannot say whether German was chosen or seeded, but a browser sitting
+ * on `'auto'` has demonstrably never chosen anything.
  */
-export function adoptServerNumberFormat(server: string): NumberLocale | undefined {
+export function adoptServerNumberFormat(server: string, local: NumberLocale): NumberLocale | undefined {
+  if (server === LEGACY_ACCOUNT_NUMBER_FORMAT && local === 'auto') return undefined;
   const mapped = NUMBER_FORMAT_TO_LOCALE[server];
   if (mapped) return mapped;
   return (NUMBER_LOCALES as readonly string[]).includes(server) ? (server as NumberLocale) : undefined;
@@ -291,7 +309,7 @@ export const usePreferencesStore = create<PreferencesState>((set, get) => ({
         const adopted = adoptServerDateFormat(r.date_format, get().dateFormat);
         if (adopted) updates.dateFormat = adopted;
       }
-      const mappedLocale = r.number_format ? adoptServerNumberFormat(r.number_format) : undefined;
+      const mappedLocale = r.number_format ? adoptServerNumberFormat(r.number_format, get().numberLocale) : undefined;
       if (mappedLocale) updates.numberLocale = mappedLocale;
       // An empty currency_code means "not chosen" on the account; only a real
       // ISO-4217 code overrides the local currency.
