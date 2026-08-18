@@ -65,12 +65,16 @@ def normalize_language(language: str | None) -> str:
 
 # ── Localised vocabulary ──────────────────────────────────────────────────
 
-# Correspondence types match the schema pattern (letter|email|notice|memo).
+# One entry per value in ``schemas.CORRESPONDENCE_TYPES``. A type missing here
+# falls back to its raw code, so the reader would be shown the stored token
+# rather than a word; the module's own test asserts this table covers the
+# vocabulary in every language it claims to support.
 _TYPE_LABELS: dict[str, dict[str, str]] = {
     "letter": {"en": "Letter", "de": "Brief", "ru": "Письмо"},
     "email": {"en": "Email", "de": "E-Mail", "ru": "Электронное письмо"},
     "notice": {"en": "Notice", "de": "Mitteilung", "ru": "Уведомление"},
     "memo": {"en": "Memo", "de": "Memo", "ru": "Служебная записка"},
+    "report": {"en": "Report", "de": "Bericht", "ru": "Отчёт"},
 }
 
 _DIRECTION_LABELS: dict[str, dict[str, str]] = {

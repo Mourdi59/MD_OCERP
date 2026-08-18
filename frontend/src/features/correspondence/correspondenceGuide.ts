@@ -16,7 +16,7 @@ export const correspondenceGuide: ModuleGuideContent = {
   titleDefault: 'Correspondence',
   introKey: 'guide.correspondence.intro',
   introDefault:
-    'Correspondence is your contemporaneous register of every formal letter, notice, email and memo exchanged with project parties. Log each one as it happens so you have a clean, traceable evidence trail if a claim or dispute arises.',
+    'Correspondence is your contemporaneous register of every formal letter, notice, email, memo and report exchanged with project parties. Log each one as it happens so you have a clean, traceable evidence trail if a claim or dispute arises.',
   sections: [
     {
       icon: 'BookOpen',
@@ -32,7 +32,7 @@ export const correspondenceGuide: ModuleGuideContent = {
       titleDefault: 'Log an entry',
       bodyKey: 'guide.correspondence.log.body',
       bodyDefault:
-        'Click New Letter to record a communication. Set the direction (incoming or outgoing) and the type (letter, email, notice or memo), then add the subject. Inbound email auto-import is not wired yet, so entries are logged by hand today.',
+        'Click New Letter to record a communication. Set the direction (incoming or outgoing) and the type (letter, email, notice, memo or report), then add the subject. Inbound email auto-import is not wired yet, so entries are logged by hand today.',
     },
     {
       icon: 'Send',

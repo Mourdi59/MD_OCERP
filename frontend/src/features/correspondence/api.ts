@@ -13,7 +13,15 @@ import { useAuthStore } from '@/stores/useAuthStore';
 
 export type CorrespondenceDirection = 'incoming' | 'outgoing';
 
-export type CorrespondenceType = 'letter' | 'email' | 'notice' | 'memo';
+// The kinds the backend validates against, in the order the picker shows them.
+// `report` covers the inspection, compliance and survey reports that arrive
+// through the same channel as a letter and used to be filed as one.
+export const CORRESPONDENCE_TYPES = ['letter', 'email', 'notice', 'memo', 'report'] as const;
+
+// Derived rather than restated, so the union and the list cannot disagree and
+// the `Record<CorrespondenceType, ...>` maps on the page fail the build until
+// they carry an entry for a new kind.
+export type CorrespondenceType = (typeof CORRESPONDENCE_TYPES)[number];
 
 export type CorrespondenceStatus = 'open' | 'awaiting_response' | 'responded' | 'closed';
 

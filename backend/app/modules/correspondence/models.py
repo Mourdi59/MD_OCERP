@@ -15,7 +15,7 @@ from app.database import GUID, Base
 
 
 class Correspondence(Base):
-    """A project correspondence record (letter, email, notice)."""
+    """One entry in a project's correspondence register, typed by ``CORRESPONDENCE_TYPES``."""
 
     __tablename__ = "oe_correspondence_correspondence"
     # ``reference_number`` must be unique per project - the auto-generator

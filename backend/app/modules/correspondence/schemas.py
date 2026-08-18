@@ -8,6 +8,20 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+# The kinds of correspondence the register can hold. Stated once, because the
+# create and update schemas both gate on it and the frontend keeps a matching
+# list of its own; a word that reaches one of those and not the others is an
+# option somebody can pick and the API then refuses.
+#
+# ``report`` is here because an inspection report, a compliance report or a
+# survey report arrives through the same channel as a letter, is filed in the
+# same register, and has to be found again by the same search. Filing one as a
+# letter is what the register did before, and it meant the type filter could
+# not separate a report from ordinary correspondence.
+CORRESPONDENCE_TYPES: tuple[str, ...] = ("letter", "email", "notice", "memo", "report")
+
+CORRESPONDENCE_TYPE_PATTERN = rf"^({'|'.join(CORRESPONDENCE_TYPES)})$"
+
 
 def _sanitize_email_header_value(value: str) -> str:
     """Strip CR/LF and other control chars from a string destined for an
@@ -56,10 +70,7 @@ class CorrespondenceCreate(BaseModel):
     to_contact_ids: list[str] = Field(default_factory=list)
     date_sent: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     date_received: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
-    correspondence_type: str = Field(
-        ...,
-        pattern=r"^(letter|email|notice|memo)$",
-    )
+    correspondence_type: str = Field(..., pattern=CORRESPONDENCE_TYPE_PATTERN)
     linked_document_ids: list[str] = Field(default_factory=list)
     linked_transmittal_id: str | None = None
     linked_rfi_id: str | None = None
@@ -104,10 +115,7 @@ class CorrespondenceUpdate(BaseModel):
     to_contact_ids: list[str] | None = None
     date_sent: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     date_received: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
-    correspondence_type: str | None = Field(
-        default=None,
-        pattern=r"^(letter|email|notice|memo)$",
-    )
+    correspondence_type: str | None = Field(default=None, pattern=CORRESPONDENCE_TYPE_PATTERN)
     linked_document_ids: list[str] | None = None
     linked_transmittal_id: str | None = None
     linked_rfi_id: str | None = None

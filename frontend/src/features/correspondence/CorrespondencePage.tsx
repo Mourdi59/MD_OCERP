@@ -64,6 +64,7 @@ import {
   uploadCorrespondenceAttachment,
   downloadCorrespondenceAttachment,
   attachmentDisplayName,
+  CORRESPONDENCE_TYPES,
   type Correspondence,
   type CorrespondenceDirection,
   type CorrespondenceType,
@@ -83,17 +84,22 @@ interface Project {
   name: string;
 }
 
+/* English fallbacks for the `correspondence.type_*` keys, which the register
+   went without entirely until now: every reader saw these four English words
+   whatever their language, because a `defaultValue` renders and looks like a
+   translation nobody got round to. */
 const TYPE_LABELS: Record<CorrespondenceType, string> = {
   letter: 'Letter',
   email: 'Email',
   notice: 'Notice',
   memo: 'Memo',
+  report: 'Report',
 };
 
 /* correspondence_type is a free string column, so demo and imported data can
-   carry values outside TYPE_LABELS (e.g. "report"). Humanize anything unknown
-   ("method_statement" -> "Method Statement") so a missing label never falls
-   through to a raw i18n key in the UI. */
+   carry values outside TYPE_LABELS (e.g. "method_statement"). Humanize
+   anything unknown ("method_statement" -> "Method Statement") so a missing
+   label never falls through to a raw i18n key in the UI. */
 const prettyType = (tp: string): string =>
   tp.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 const correspondenceTypeLabel = (tp: string | null | undefined): string =>
@@ -154,9 +160,8 @@ const TYPE_BADGE_COLORS: Record<CorrespondenceType, string> = {
   email: 'text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950/30 dark:border-blue-800',
   notice: 'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950/30 dark:border-amber-800',
   memo: 'text-gray-600 bg-gray-50 border-gray-200 dark:text-gray-400 dark:bg-gray-800/50 dark:border-gray-700',
+  report: 'text-teal-600 bg-teal-50 border-teal-200 dark:text-teal-400 dark:bg-teal-950/30 dark:border-teal-800',
 };
-
-const CORR_TYPES_LIST: CorrespondenceType[] = ['letter', 'email', 'notice', 'memo'];
 
 const inputCls =
   'h-10 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
@@ -617,7 +622,7 @@ function CreateCorrespondenceModal({
             role="radiogroup"
             aria-label={t('correspondence.field_type', { defaultValue: 'Type' })}
           >
-            {CORR_TYPES_LIST.map((tp) => {
+            {CORRESPONDENCE_TYPES.map((tp) => {
               const selected = form.type === tp;
               return (
                 <button
@@ -1436,7 +1441,7 @@ function ModLink({ to, children }: { to: string; children: React.ReactNode }) {
 
 /**
  * One-glance explainer: what the correspondence register is and how it connects
- * to the rest of the platform. Each letter, notice, email or memo is logged with
+ * to the rest of the platform. Each letter, notice, email, memo or report is logged
  * its source file and linked to the related transmittal, RFI, documents and
  * contacts, so one traceable thread survives for any later claim. Every
  * connected module is a link.
@@ -1449,7 +1454,7 @@ function HowCorrespondenceWorks() {
       icon: <Mail size={14} className="text-oe-blue" />,
       title: t('correspondence.how_step1_title', { defaultValue: 'Log an entry' }),
       desc: t('correspondence.how_step1_desc', {
-        defaultValue: 'Record each letter, notice, email or memo, incoming or outgoing.',
+        defaultValue: 'Record each letter, notice, email, memo or report, incoming or outgoing.',
       }),
     },
     {
@@ -1484,7 +1489,7 @@ function HowCorrespondenceWorks() {
       <p className="text-xs text-content-tertiary">
         {t('correspondence.how_intro', {
           defaultValue:
-            'Log every formal letter, notice, email and memo, attach its source file and link it into one traceable thread you can rely on if a claim arises.',
+            'Log every formal letter, notice, email, memo and report, attach its source file and link it into one traceable thread you can rely on if a claim arises.',
         })}
       </p>
 
@@ -1789,7 +1794,7 @@ export function CorrespondencePage() {
       <PageHeader
         srTitle={t('correspondence.title', { defaultValue: 'Correspondence' })}
         subtitle={t('correspondence.subtitle', {
-          defaultValue: 'A contemporaneous register of every formal letter, notice, email, and memo',
+          defaultValue: 'A contemporaneous register of every formal letter, notice, email, memo and report',
         })}
         actions={
           <>
@@ -1848,7 +1853,7 @@ export function CorrespondencePage() {
       >
         {t('correspondence.intro_body', {
           defaultValue:
-            'Keep a contemporaneous register of every formal letter, notice, email and memo exchanged with project parties. Log each entry, attach the source file and link it to the related Transmittals, RFIs, Documents and Contacts so a single thread of communication stays traceable end to end if a dispute arises. Inbound email auto-import is not wired yet, so entries are logged by hand today.',
+            'Keep a contemporaneous register of every formal letter, notice, email, memo and report exchanged with project parties. Log each entry, attach the source file and link it to the related Transmittals, RFIs, Documents and Contacts so a single thread of communication stays traceable end to end if a dispute arises. Inbound email auto-import is not wired yet, so entries are logged by hand today.',
         })}
       </DismissibleInfo>
 

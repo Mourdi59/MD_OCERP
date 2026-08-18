@@ -1482,8 +1482,8 @@ _PARIS = DemoTemplate(
         "lng": 2.3844,
     },
     validation_rule_sets=["dpgf", "boq_quality"],
-    boq_name="Estimation Detaillee - Ecole Primaire",
-    boq_description="Estimation detaillee des couts pour l'ecole primaire Belleville",
+    boq_name="Estimation Détaillée - École Primaire",
+    boq_description="Estimation détaillée des coûts pour l'école primaire Belleville",
     boq_metadata={
         "standard": "DPGF (France)",
         "phase": "APS/APD",
@@ -5173,15 +5173,12 @@ def _generate_module_data(
         ("incoming", "Authority acknowledgement of commencement", "letter", 7, "authority"),
         ("outgoing", "Submission of insurance and bonds", "letter", 12, "client"),
         ("incoming", "Client instruction on scope clarification", "letter", 20, "client"),
-        # The correspondence module types a document by how it travelled, and
-        # offers letter, email, memo and notice. A report is not one of them, so
-        # the two reports below are filed as the letters that carried them.
-        ("outgoing", "Monthly progress report to client", "letter", 30, "client"),
+        ("outgoing", "Monthly progress report to client", "report", 30, "client"),
         ("incoming", "Consultant design clarification", "email", 24, "consultant"),
         ("outgoing", "Request for information log update", "email", 28, "consultant"),
         ("incoming", "Subcontractor early-warning notice", "letter", 35, "subcontractor"),
         ("outgoing", "Interim valuation cover letter", "letter", 31, "client"),
-        ("incoming", "Authority inspection report", "letter", 45, "authority"),
+        ("incoming", "Authority inspection report", "report", 45, "authority"),
     ]
     correspondence: list[dict] = []
     out_i = in_i = 0
@@ -9800,7 +9797,7 @@ async def _seed_module_data(
             {
                 "report_date": date(2026, 4, 14),
                 "report_type": "daily",
-                "weather_condition": "fog",
+                "weather_condition": "cloudy",
                 "temperature_c": 38.0,
                 "work_performed": "Foundation pads poured bays 1-2. Earthworks grading 85% complete. "
                 "Rebar delivery received for bay 3-6 foundations.",
@@ -10187,10 +10184,7 @@ async def _seed_module_data(
                 "reference_number": "IN-2026-001",
                 "direction": "incoming",
                 "subject": "Building control initial inspection report",
-                # Nearest, not exact: the correspondence module types a document
-                # by how it travelled and has no report, so this is the letter
-                # the report arrived in.
-                "correspondence_type": "letter",
+                "correspondence_type": "report",
                 "date_received": (base + timedelta(days=14)).strftime("%Y-%m-%d"),
                 "notes": "Approved Inspectors initial inspection - no issues",
             },
@@ -10208,10 +10202,7 @@ async def _seed_module_data(
                 "reference_number": "IN-2026-001",
                 "direction": "incoming",
                 "subject": "JCAHO compliance pre-assessment report",
-                # Nearest, not exact: the correspondence module types a document
-                # by how it travelled and has no report, so this is the letter
-                # the report arrived in.
-                "correspondence_type": "letter",
+                "correspondence_type": "report",
                 "date_received": (base - timedelta(days=30)).strftime("%Y-%m-%d"),
                 "notes": "Joint Commission pre-assessment - 3 observations to address",
             },

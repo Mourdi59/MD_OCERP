@@ -2,8 +2,9 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """Correspondence module.
 
-Project correspondence tracking - letters, emails, and notices with
-direction tracking, contact linking, and document cross-references.
+Project correspondence tracking - letters, emails, notices, memos and
+reports with direction tracking, contact linking, and document
+cross-references.
 """
 
 

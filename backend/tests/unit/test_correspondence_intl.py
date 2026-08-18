@@ -297,3 +297,29 @@ class TestItemStatusReport:
         data = report.as_dict()
         assert data["status"] == "responded"
         assert data["response_time_days"] == 1
+
+
+class TestTheTableCoversTheVocabulary:
+    """A type this table has never heard of is shown to the reader as its code.
+
+    ``_lookup`` returns the raw value when it finds no entry, which is the
+    right fallback because it drops nothing, and it is also why a missing entry
+    is invisible until somebody reads a document and sees ``report`` where a
+    word should be. The table is a second copy of the schema's vocabulary, and
+    the only thing that keeps a second copy honest is a test that compares it
+    against the first.
+    """
+
+    def test_every_correspondence_type_has_a_word_in_every_language(self):
+        from app.modules.correspondence.schemas import CORRESPONDENCE_TYPES
+
+        missing = {
+            f"{type_code}/{language}": True
+            for type_code in CORRESPONDENCE_TYPES
+            for language in intl.SUPPORTED_LANGUAGES
+            if intl.localize_type(type_code, language) == type_code
+        }
+        assert missing == {}, f"these render as the stored token instead of a word: {sorted(missing)}"
+
+    def test_the_check_above_would_notice_a_type_it_does_not_know(self):
+        assert intl.localize_type("carrier_pigeon", "de") == "carrier_pigeon"
