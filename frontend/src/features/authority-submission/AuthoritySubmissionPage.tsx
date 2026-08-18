@@ -61,6 +61,7 @@ import {
   type CreateSubmissionPayload,
 } from './api';
 import { authoritySubmissionGuide } from './authoritySubmissionGuide';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
@@ -366,7 +367,7 @@ function ValidationReportCard({ report }: { report: Submission['validation_repor
         <span className="text-content-tertiary font-normal">
           {t('authority_submission.validation_score', {
             defaultValue: 'score {{score}}',
-            score: report.score.toFixed(2),
+            score: fmtFixed(report.score, 2),
           })}
         </span>
       </div>

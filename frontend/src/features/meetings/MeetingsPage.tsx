@@ -94,6 +94,7 @@ import { RecurringSeriesDialog } from './RecurringSeriesDialog';
 import { meetingsGuide } from './meetingsGuide';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildMeetingsInsights } from './meetingsInsights';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /* -- Constants ------------------------------------------------------------- */
 
@@ -243,8 +244,8 @@ const EMPTY_FORM: MeetingFormData = {
 
 function formatBytes(bytes: number): string {
   if (!bytes || bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 1)} KB`;
+  return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
 }
 
 /* -- People fields (Chairperson + Attendees, shared by Create + Edit) -------
@@ -1273,7 +1274,7 @@ function ImportSummaryModal({
                     <CheckCircle2 size={32} className="mx-auto text-semantic-success" />
                     <p className="text-sm font-medium text-content-primary">{selectedFile.name}</p>
                     <p className="text-xs text-content-tertiary">
-                      {(selectedFile.size / 1024).toFixed(1)} KB
+                      {fmtFixed(selectedFile.size / 1024, 1)} KB
                     </p>
                     {sourceCfg && (
                       <Badge variant="neutral" size="sm" className={sourceCfg.cls}>

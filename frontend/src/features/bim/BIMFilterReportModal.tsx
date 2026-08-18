@@ -21,6 +21,7 @@ import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 import { summariseBimQuantities, QUANTITY_FIELDS, type QuantitySummary } from './boqSummary';
 import { buildReportHtml } from './printReport';
 import { exportBoqXlsx } from './api';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface BIMFilterReportModalProps {
   open: boolean;
@@ -42,7 +43,7 @@ function SummaryTable({ summary, groupHeader }: { summary: QuantitySummary; grou
   // Excel export downloads the canonical (metric) BOQ from the backend
   // separately, so this on-screen restatement never touches stored data.
   const dq = useDisplayQuantity();
-  const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 3 });
+  const fmt = (n: number) => n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 3 });
   const conv = (value: number, i: number) =>
     dq.convert(value, QUANTITY_FIELDS[i]?.unit ?? '').value;
   return (
@@ -121,7 +122,7 @@ export default function BIMFilterReportModal({
       })}`,
       // No Date.now() in callers that must be deterministic, but this is a
       // user-initiated print so a live timestamp is correct here.
-      generatedOn: new Date().toLocaleString(),
+      generatedOn: new Date().toLocaleString(getIntlLocale()),
       // Restate quantity columns into the user's measurement system so the
       // printed PDF matches the on-screen report (#285). Money/totals are
       // unaffected - these are quantity columns only.

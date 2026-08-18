@@ -31,6 +31,7 @@ import {
   formatSuggestionBadge,
   type QuantitySuggestion,
 } from '@/features/boq/suggestQuantityFromBIM';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 /** Backend response shape for POST /api/v1/costs/suggest-for-element/. */
 interface CostSuggestion {
@@ -87,7 +88,7 @@ function buildDefaultDescription(elements: BIMElementData[]): string {
     if (el.element_type) types.add(el.element_type);
   }
   const typeLabel = Array.from(types).slice(0, 3).join(', ') || 'BIM elements';
-  return `${typeLabel} (${elements.length.toLocaleString()} elements from BIM model)`;
+  return `${typeLabel} (${elements.length.toLocaleString(getIntlLocale())} elements from BIM model)`;
 }
 
 /** Extract a merged classification from all elements (first non-empty wins). */
@@ -132,7 +133,7 @@ export default function AddToBOQModal({
   const defaultQty = useMemo(() => pickInitialQuantity(elements), [elements]);
   const [description, setDescription] = useState(() => buildDefaultDescription(elements));
   const [unit, setUnit] = useState(defaultQty.unit);
-  const [quantity, setQuantity] = useState(defaultQty.quantity.toFixed(3));
+  const [quantity, setQuantity] = useState(fmtFixed(defaultQty.quantity, 3));
   const [unitRate, setUnitRate] = useState('0');
   const [ordinal, setOrdinal] = useState('');
   // Tracks whether the user has manually edited the quantity field; if so
@@ -530,7 +531,7 @@ export default function AddToBOQModal({
                               {(() => {
                                 // Display-only conversion; unmapped units pass through.
                                 const dq = displayQty.convert(p.quantity, p.unit ?? '');
-                                return `${dq.value.toLocaleString()}${dq.unit ? ` ${dq.unit}` : ''}`;
+                                return `${dq.value.toLocaleString(getIntlLocale())}${dq.unit ? ` ${dq.unit}` : ''}`;
                               })()}
                             </span>
                           </div>
@@ -645,7 +646,7 @@ export default function AddToBOQModal({
                             ? s.unit_rate
                             : Number.parseFloat(String(s.unit_rate));
                         const rateLabel = Number.isFinite(rateNum)
-                          ? rateNum.toLocaleString(undefined, {
+                          ? rateNum.toLocaleString(getIntlLocale(), {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })

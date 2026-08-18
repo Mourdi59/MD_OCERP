@@ -32,6 +32,7 @@ import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { InfoHint } from '@/shared/ui';
 import type { CoordinationDashboard } from './types';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 export interface CoordinationKPICardsProps {
   data: CoordinationDashboard | undefined;
@@ -324,7 +325,7 @@ export function CoordinationKPICards({
         testId="kpi-open-clashes"
         icon={<Radar size={18} />}
         label={t('coordination.open_clashes', { defaultValue: 'Open Clashes' })}
-        primary={data.clashes.open_count.toLocaleString()}
+        primary={data.clashes.open_count.toLocaleString(getIntlLocale())}
         delta={clashDelta}
         onClick={goClashOpen}
         onClickTitle={t('coordination.open_clashes_drill', {
@@ -377,7 +378,7 @@ export function CoordinationKPICards({
         testId="kpi-rule-pack"
         icon={<ClipboardCheck size={18} />}
         label={t('coordination.rule_pack_status', { defaultValue: 'Rule Packs' })}
-        primary={data.rule_packs.installed_count.toLocaleString()}
+        primary={data.rule_packs.installed_count.toLocaleString(getIntlLocale())}
         onClick={goRules}
         onClickTitle={t('coordination.rule_pack_drill', {
           defaultValue: 'Open BIM rule packs',
@@ -397,7 +398,7 @@ export function CoordinationKPICards({
         testId="kpi-federations"
         icon={<Layers size={18} />}
         label={t('coordination.federations_count', { defaultValue: 'Federations' })}
-        primary={data.federations.count.toLocaleString()}
+        primary={data.federations.count.toLocaleString(getIntlLocale())}
         onClick={goFederations}
         onClickTitle={t('coordination.federations_drill', {
           defaultValue: 'Open BIM federations',
@@ -454,7 +455,7 @@ export function CoordinationKPICards({
         label={t('coordination_hub.smart_views_project', {
           defaultValue: 'Project smart views',
         })}
-        value={data.smart_views.project_count.toLocaleString()}
+        value={data.smart_views.project_count.toLocaleString(getIntlLocale())}
         footer={t('coordination_hub.smart_views_project_footer', {
           defaultValue: 'Saved views scoped to this project',
         })}
@@ -464,7 +465,7 @@ export function CoordinationKPICards({
         label={t('coordination_hub.smart_views_personal', {
           defaultValue: 'Personal smart views',
         })}
-        value={data.smart_views.user_count.toLocaleString()}
+        value={data.smart_views.user_count.toLocaleString(getIntlLocale())}
         footer={t('coordination_hub.smart_views_personal_footer', {
           defaultValue: 'Across all projects',
         })}

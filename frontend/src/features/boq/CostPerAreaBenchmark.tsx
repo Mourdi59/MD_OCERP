@@ -24,6 +24,7 @@ import { Ruler } from 'lucide-react';
 import { InfoHint } from '@/shared/ui';
 import { fetchCostBenchmark } from '@/features/costs/api';
 import { fmtWithCurrency } from './boqHelpers';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface CostPerAreaBenchmarkProps {
   /** Estimate direct cost in the project base currency. */
@@ -50,7 +51,7 @@ export function CostPerAreaBenchmark({
     // Round the key so tiny recomputations do not refetch on every keystroke.
     queryKey: ['costs', 'benchmark', currencyCode, Math.round(costPerM2)],
     queryFn: () =>
-      fetchCostBenchmark({ cost_per_m2: costPerM2.toFixed(2), currency: currencyCode }),
+      fetchCostBenchmark({ cost_per_m2: fmtFixed(costPerM2, 2), currency: currencyCode }),
     enabled: hasArea,
     staleTime: 5 * 60 * 1000,
   });

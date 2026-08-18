@@ -67,6 +67,7 @@ import {
   type UpdateGatePayload,
   type UpdateLaydownZonePayload,
 } from './api';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Constants & helpers ───────────────────────────────────────────────── */
 
@@ -115,7 +116,7 @@ const STATUS_CONFIG: Record<DeliveryStatus, { label: string; cls: string }> = {
  * entered, on any viewer's machine.
  */
 function fmtTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, {
+  return new Date(iso).toLocaleTimeString(getIntlLocale(), {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
@@ -124,7 +125,7 @@ function fmtTime(iso: string): string {
 }
 
 function fmtDateHeader(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString(getIntlLocale(), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',

@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Image as ImageIcon, Sparkles, UploadCloud, X } from 'lucide-react';
 import clsx from 'clsx';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /** Accepted image MIME types — kept in sync with the backend's
  *  ``_detect_image_mime`` magic-byte gate (PNG / JPG / WebP). */
@@ -32,7 +33,7 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
 }
 
 interface Props {

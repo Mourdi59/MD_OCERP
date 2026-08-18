@@ -12,7 +12,7 @@ import clsx from 'clsx';
 import { Card } from '@/shared/ui/Card';
 
 import { clashApi, type ClashKpi } from './api';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
 const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low'] as const;
 const SEVERITY_COLOR: Record<string, string> = {
@@ -141,7 +141,7 @@ export function ClashKpiPanel({ projectId, runId }: ClashKpiPanelProps) {
               {t('clash.kpi.mttr', { defaultValue: 'Mean time to resolve' })}
             </div>
             <div className="text-3xl font-semibold text-content-primary mt-1">
-              {data.mttr_hours.toFixed(1)}h
+              {fmtFixed(data.mttr_hours, 1)}h
             </div>
           </div>
         )}

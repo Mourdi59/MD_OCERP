@@ -29,6 +29,7 @@ import { Card, CardContent, CardHeader, InfoHint } from '@/shared/ui';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { fetchPunchSummary, type PunchStatus } from '@/features/punchlist/api';
 import { KpiStrip } from './KpiStrip';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 /**
  * Statuses the punchlist module treats as "done". Everything else counts
@@ -40,7 +41,7 @@ const DONE_STATUSES: PunchStatus[] = ['verified', 'closed'];
 function formatCount(value: number): string {
   if (!Number.isFinite(value)) return '0';
   try {
-    return new Intl.NumberFormat().format(value);
+    return new Intl.NumberFormat(getIntlLocale()).format(value);
   } catch {
     return String(Math.round(value));
   }
@@ -105,7 +106,7 @@ export function PunchListQualityCard() {
             },
             {
               label: t('dashboard.punch_avg_label', { defaultValue: 'Avg to close' }),
-              value: hasAvgDays ? avgDays.toFixed(1) : '-',
+              value: hasAvgDays ? fmtFixed(avgDays, 1) : '-',
               tone: 'text-content-secondary',
             },
           ]}

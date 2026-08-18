@@ -9,6 +9,7 @@ import clsx from 'clsx';
 import { useToastStore } from '@/stores/useToastStore';
 import { previewExport, downloadBundle } from '../api';
 import type { BundleScope, ExportOptions, ExportPreview } from '../types';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface ExportWizardProps {
   open: boolean;
@@ -22,9 +23,9 @@ const SCOPES: BundleScope[] = ['metadata_only', 'documents', 'bim', 'dwg', 'full
 function fmtBytes(bytes: number): string {
   if (!bytes) return '0 B';
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
+  return `${fmtFixed(bytes / (1024 * 1024 * 1024), 2)} GB`;
 }
 
 export function ExportWizard({ open, projectId, projectName, onClose }: ExportWizardProps) {

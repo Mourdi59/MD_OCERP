@@ -7,6 +7,7 @@
  */
 import type { AggregateGroup } from './api';
 import type { SlicerFilter } from '@/stores/useAnalysisStateStore';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Aggregation function vocabulary ──────────────────────────────────── */
 
@@ -249,7 +250,7 @@ export function rollupParentValue(
  *  always locale-aware thousand separators — e.g. `1,234` or `1 234`. */
 export function formatCount(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return '-';
-  return Math.round(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
+  return Math.round(n).toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 });
 }
 
 /** Sort groups by a numeric `column` and optionally keep the top-N or

@@ -56,6 +56,7 @@ import { CDEHistoryDrawer } from './CDEHistoryDrawer';
 import { CDETransmittalsBadge } from './CDETransmittalsBadge';
 import { CDESetupWizard } from './CDESetupWizard';
 import { cdeGuide } from './cdeGuide';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
@@ -712,8 +713,8 @@ function LinkDocumentModal({
   const formatSize = (bytes: number | null) => {
     if (!bytes) return '';
     if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 0)} KB`;
+    return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
   };
 
   return (

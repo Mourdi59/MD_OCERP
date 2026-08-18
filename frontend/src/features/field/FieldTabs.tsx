@@ -32,6 +32,7 @@ import {
   type DiaryEntry,
   type FieldSession,
 } from './fieldApi';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 type Enqueue = (input: EnqueueInput) => Promise<void>;
 
@@ -545,7 +546,7 @@ export function CrewTab({
                   <Clock size={14} aria-hidden="true" />
                   {t('field.punched_in_since', {
                     defaultValue: 'In since {{time}}',
-                    time: new Date(m.startedAt).toLocaleTimeString(),
+                    time: new Date(m.startedAt).toLocaleTimeString(getIntlLocale()),
                   })}
                 </p>
               )}

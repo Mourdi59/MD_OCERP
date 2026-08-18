@@ -8,6 +8,7 @@
  */
 
 import type { ExchangePosition, CountryTemplate } from './templateTypes';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 const htmlEscape = (value: string | number): string =>
   String(value)
@@ -28,13 +29,13 @@ export function generateBOQPrintHTML(
     date?: string;
   } = {},
 ): string {
-  const { projectName = 'Project', boqName = 'Bill of Quantities', includePrices = true, date = new Date().toLocaleDateString() } = options;
+  const { projectName = 'Project', boqName = 'Bill of Quantities', includePrices = true, date = new Date().toLocaleDateString(getIntlLocale()) } = options;
 
   const totalValue = positions.reduce((sum, p) => sum + (p.isSection ? 0 : Number(p.total) || 0), 0);
   const posCount = positions.filter((p) => !p.isSection).length;
 
   const formatCurrency = (val: number) =>
-    `${htmlEscape(template.currencySymbol)}${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    `${htmlEscape(template.currencySymbol)}${val.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const rows = positions
     .map((pos) => {
@@ -45,7 +46,7 @@ export function generateBOQPrintHTML(
         <td>${htmlEscape(pos.ordinal)}</td>
         <td>${htmlEscape(pos.description)}</td>
         <td class="center">${htmlEscape(pos.unit)}</td>
-        <td class="right">${pos.quantity.toFixed(3)}</td>
+        <td class="right">${fmtFixed(pos.quantity, 3)}</td>
         ${includePrices ? `<td class="right">${formatCurrency(pos.unitRate)}</td><td class="right">${formatCurrency(pos.total)}</td>` : ''}
       </tr>`;
     })

@@ -47,6 +47,7 @@ import {
   readRecent,
 } from './savedSearches';
 import type { RetrievalQuery, RetrievalResult, SavedSearch } from './types';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 type BadgeVariant = 'neutral' | 'blue' | 'success' | 'warning' | 'error';
 type SortMode = 'relevance' | 'date' | 'type';
@@ -184,7 +185,7 @@ function ResultCard({
           <span className="text-xs tabular-nums text-content-tertiary">
             {t('retrieval.score', {
               defaultValue: 'score {{score}}',
-              score: result.score.toFixed(2),
+              score: fmtFixed(result.score, 2),
             })}
           </span>
           {href && (

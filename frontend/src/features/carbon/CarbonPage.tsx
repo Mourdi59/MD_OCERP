@@ -107,7 +107,7 @@ import {
   type Scope3Entry,
   type MaterialCarbonFactor,
 } from './api';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 type Tab = 'inventory' | 'wholelife' | 'epds' | 'targets' | 'reports';
 
@@ -131,9 +131,9 @@ function toNum(v: number | string | null | undefined): number {
 }
 
 function formatKg(kg: number): string {
-  if (Math.abs(kg) >= 1_000_000) return `${(kg / 1_000_000).toFixed(2)} kt`;
-  if (Math.abs(kg) >= 1_000) return `${(kg / 1_000).toFixed(2)} t`;
-  return `${kg.toFixed(0)} kg`;
+  if (Math.abs(kg) >= 1_000_000) return `${fmtFixed(kg / 1_000_000, 2)} kt`;
+  if (Math.abs(kg) >= 1_000) return `${fmtFixed(kg / 1_000, 2)} t`;
+  return `${fmtFixed(kg, 0)} kg`;
 }
 
 type TFn = ReturnType<typeof useTranslation>['t'];
@@ -853,7 +853,7 @@ function EPDTable({
                 </Badge>
               </td>
               <td className="px-4 py-2 text-right tabular-nums font-medium">
-                {toNum(r.gwp_a1a3).toFixed(3)}
+                {fmtFixed(toNum(r.gwp_a1a3), 3)}
               </td>
               <td className="px-4 py-2 text-xs text-content-tertiary">kg/{r.declared_unit}</td>
               <td className="px-4 py-2 text-right">
@@ -1014,7 +1014,7 @@ function TargetRow({
             {t('carbon.baseline', { defaultValue: 'Baseline' })}
           </p>
           <p className="font-medium tabular-nums">
-            {toNum(target.baseline_value).toFixed(0)}
+            {fmtFixed(toNum(target.baseline_value), 0)}
           </p>
         </div>
         <div>
@@ -1022,7 +1022,7 @@ function TargetRow({
             {t('carbon.current', { defaultValue: 'Current' })}
           </p>
           <p className="font-medium tabular-nums">
-            {p ? toNum(p.current_value).toFixed(0) : '—'}
+            {p ? fmtFixed(toNum(p.current_value), 0) : '—'}
           </p>
         </div>
         <div>
@@ -1030,7 +1030,7 @@ function TargetRow({
             {t('carbon.target_label', { defaultValue: 'Target' })}
           </p>
           <p className="font-medium tabular-nums">
-            {toNum(target.target_value).toFixed(0)}
+            {fmtFixed(toNum(target.target_value), 0)}
           </p>
         </div>
       </div>
@@ -2678,7 +2678,7 @@ function EmbodiedEntryModal({
               value={form.carbon_kg}
               onChange={(e) => setForm({ ...form, carbon_kg: e.target.value })}
               className={inputCls}
-              placeholder={autoCarbon.toFixed(2)}
+              placeholder={fmtFixed(autoCarbon, 2)}
             />
           </div>
         </div>
@@ -2947,7 +2947,7 @@ function AssignBoqModal({
                           <td className="px-3 py-2 text-right tabular-nums text-content-secondary whitespace-nowrap align-top">
                             {(() => {
                               const d = displayQty.convert(toNum(p.quantity), p.unit || '');
-                              return `${d.value.toLocaleString()} ${d.unit}`;
+                              return `${d.value.toLocaleString(getIntlLocale())} ${d.unit}`;
                             })()}
                           </td>
                         </tr>

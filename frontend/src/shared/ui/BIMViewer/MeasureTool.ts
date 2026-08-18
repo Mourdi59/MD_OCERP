@@ -23,6 +23,7 @@
 
 import * as THREE from 'three';
 import { uuid } from '@/shared/lib/browser';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 const SNAP_PX = 8;
 
@@ -60,8 +61,8 @@ function uid(): string {
 }
 
 function formatDistance(metres: number): string {
-  if (metres >= 1) return `${metres.toFixed(2)} m`;
-  return `${(metres * 1000).toFixed(0)} mm`;
+  if (metres >= 1) return `${fmtFixed(metres, 2)} m`;
+  return `${fmtFixed(metres * 1000, 0)} mm`;
 }
 
 export class MeasureTool {

@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   X as XIcon,
 } from 'lucide-react';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 // Domain tab config
 const DOMAIN_TABS = [
@@ -396,7 +397,7 @@ function _formatDate(dateStr: string): string {
     if (hours < 24) return `${hours}h ago`;
     const days = Math.floor(hours / 24);
     if (days < 7) return `${days}d ago`;
-    return d.toLocaleDateString();
+    return d.toLocaleDateString(getIntlLocale());
   } catch {
     return dateStr;
   }

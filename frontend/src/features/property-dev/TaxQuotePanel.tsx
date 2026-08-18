@@ -19,6 +19,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 
 import { fetchContractTaxQuote } from './api';
 import type { ContractTaxQuote, TaxQuotePayload } from './api';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface Props {
   /** SalesContract.id to quote. */
@@ -121,13 +122,13 @@ function formatMoney(value: string | number, currency: string): string {
   const n = typeof value === 'string' ? parseFloat(value) : value;
   if (!Number.isFinite(n)) return String(value);
   try {
-    return new Intl.NumberFormat(undefined, {
+    return new Intl.NumberFormat(getIntlLocale(), {
       style: 'currency',
       currency: currency || 'USD',
       maximumFractionDigits: 2,
     }).format(n);
   } catch {
-    return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    return n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 });
   }
 }
 

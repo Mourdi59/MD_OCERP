@@ -29,6 +29,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import type { BIMElementData } from './ElementManager';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -97,7 +98,7 @@ function fmtQty(
   if (!q) return null;
   const fmt = (value: number, metricUnit: string): string => {
     const d = convert(value, metricUnit);
-    return `${d.value.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${d.unit}`;
+    return `${d.value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 })} ${d.unit}`;
   };
   const vol = q['volume'] ?? q['Volume'];
   if (typeof vol === 'number' && vol > 0) {

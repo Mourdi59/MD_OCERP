@@ -5,6 +5,7 @@ import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 import { unwrapList } from './normalize';
 import { boqPath, readString } from './deepLink';
 import DeepLinkBar, { useOpenLabels } from './DeepLinkBar';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface BOQItem {
   id?: string;
@@ -101,11 +102,11 @@ export default function BOQRenderer({ data }: { data: unknown }) {
                 <td style={{ ...cellBase, color: 'var(--chat-text-tertiary)' }}>{item.ordinal ?? i + 1}</td>
                 <td style={cellBase}>{item.description ?? '-'}</td>
                 <td style={{ ...cellBase, textAlign: 'center', color: 'var(--chat-text-secondary)' }}>{dispUnit ?? '-'}</td>
-                <td style={numCell}>{dispQty != null ? dispQty.value.toLocaleString() : '-'}</td>
+                <td style={numCell}>{dispQty != null ? dispQty.value.toLocaleString(getIntlLocale()) : '-'}</td>
                 <td style={{ ...numCell, color: isZeroPrice ? 'var(--chat-tool-error)' : undefined }}>
-                  {dispRate != null ? dispRate.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                  {dispRate != null ? dispRate.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2 }) : '-'}
                 </td>
-                <td style={numCell}>{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                <td style={numCell}>{total.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2 })}</td>
               </tr>
             );
           })}
@@ -116,7 +117,7 @@ export default function BOQRenderer({ data }: { data: unknown }) {
               Grand Total
             </td>
             <td style={{ ...numCell, fontWeight: 700, color: 'var(--chat-accent)', fontSize: 14 }}>
-              {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              {grandTotal.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2 })}
             </td>
           </tr>
         </tfoot>

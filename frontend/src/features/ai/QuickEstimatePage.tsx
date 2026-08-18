@@ -58,6 +58,7 @@ import {
   formatNumber,
   getFileExtension,
   getIntlLocale,
+  fmtFixed,
 } from '@/shared/lib/formatters';
 import { useLLMRun } from './hooks/useLLMRun';
 import { IntakePanel } from './intake';
@@ -450,7 +451,7 @@ function RecentEstimatesPanel({
                           <>
                             <span aria-hidden="true">·</span>
                             <span title={t('ai.est_cost_hint', { defaultValue: 'Estimated AI spend for this run' })}>
-                              ~${Number(job.cost_usd_estimate).toFixed(4)}
+                              ~${fmtFixed(Number(job.cost_usd_estimate), 4)}
                             </span>
                           </>
                         )}
@@ -1509,7 +1510,7 @@ function CadConverterSection({
               {/* Footer */}
               <div className="mt-3 flex items-center justify-between pt-2 border-t border-border-light">
                 <span className="text-2xs text-content-quaternary">
-                  v{c.version} &middot; {c.size_mb >= 1024 ? `${(c.size_mb / 1024).toFixed(1)} GB` : `${c.size_mb} MB`}
+                  v{c.version} &middot; {c.size_mb >= 1024 ? `${fmtFixed(c.size_mb / 1024, 1)} GB` : `${c.size_mb} MB`}
                 </span>
                 {c.installed ? (
                   <button
@@ -1821,9 +1822,9 @@ export function QuickEstimatePage() {
         type: 'success',
         title: t('ai.estimate_complete', { defaultValue: 'Estimate generated' }),
         message: t('ai.estimate_complete_msg', {
-          defaultValue: `${data.items.length} items in ${(data.duration_ms / 1000).toFixed(1)}s`,
+          defaultValue: `${data.items.length} items in ${fmtFixed(data.duration_ms / 1000, 1)}s`,
           count: data.items.length,
-          duration: (data.duration_ms / 1000).toFixed(1),
+          duration: fmtFixed(data.duration_ms / 1000, 1),
         }),
       });
     },
@@ -1847,9 +1848,9 @@ export function QuickEstimatePage() {
         type: 'success',
         title: t('ai.estimate_complete', { defaultValue: 'Estimate generated' }),
         message: t('ai.estimate_complete_msg', {
-          defaultValue: `${data.items.length} items in ${(data.duration_ms / 1000).toFixed(1)}s`,
+          defaultValue: `${data.items.length} items in ${fmtFixed(data.duration_ms / 1000, 1)}s`,
           count: data.items.length,
-          duration: (data.duration_ms / 1000).toFixed(1),
+          duration: fmtFixed(data.duration_ms / 1000, 1),
         }),
       });
     },
@@ -1873,9 +1874,9 @@ export function QuickEstimatePage() {
         type: 'success',
         title: t('ai.estimate_complete', { defaultValue: 'Estimate generated' }),
         message: t('ai.estimate_complete_msg', {
-          defaultValue: `${data.items.length} items in ${(data.duration_ms / 1000).toFixed(1)}s`,
+          defaultValue: `${data.items.length} items in ${fmtFixed(data.duration_ms / 1000, 1)}s`,
           count: data.items.length,
-          duration: (data.duration_ms / 1000).toFixed(1),
+          duration: fmtFixed(data.duration_ms / 1000, 1),
         }),
       });
     },
@@ -3594,12 +3595,12 @@ export function QuickEstimatePage() {
               <h3 className="text-sm font-semibold text-content-primary">
                 {cadColumnsData.filename}
               </h3>
-              <Badge variant="blue" size="sm">{cadColumnsData.total_elements.toLocaleString()} elements</Badge>
+              <Badge variant="blue" size="sm">{cadColumnsData.total_elements.toLocaleString(getIntlLocale())} elements</Badge>
               <Badge variant="neutral" size="sm">{cadColumnsData.format.toUpperCase()}</Badge>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-2xs text-content-quaternary">
-                {t('ai.extracted_in', { defaultValue: 'Extracted in {{time}}s', time: (cadColumnsData.duration_ms / 1000).toFixed(1) })}
+                {t('ai.extracted_in', { defaultValue: 'Extracted in {{time}}s', time: fmtFixed(cadColumnsData.duration_ms / 1000, 1) })}
               </span>
               <Button
                 variant="secondary"
@@ -4312,7 +4313,7 @@ export function QuickEstimatePage() {
               <span>
                 {t('ai.cad_extracted_in', {
                   defaultValue: 'Extracted in {{duration}}s',
-                  duration: (cadResult.duration_ms / 1000).toFixed(1),
+                  duration: fmtFixed(cadResult.duration_ms / 1000, 1),
                 })}
               </span>
             </div>
@@ -4422,7 +4423,7 @@ export function QuickEstimatePage() {
             <div className="text-xs text-content-tertiary">
               {t('ai.generated_in', {
                 defaultValue: 'Generated in {{duration}}s using {{model}}',
-                duration: (result.duration_ms / 1000).toFixed(1),
+                duration: fmtFixed(result.duration_ms / 1000, 1),
                 model: result.model_used,
               })}
             </div>

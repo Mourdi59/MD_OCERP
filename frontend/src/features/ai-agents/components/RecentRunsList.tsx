@@ -6,6 +6,7 @@ import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 
 import type { AgentDescriptor, AgentRunListItem } from '../api';
 import { resolveAgentIcon, agentDisplayName } from './agentMeta';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface RecentRunsListProps {
   runs: AgentRunListItem[];
@@ -51,7 +52,7 @@ function RecentRunButton({
   onSelect: () => void;
 }): JSX.Element {
   const { t } = useTranslation();
-  const when = run.created_at ? new Date(run.created_at).toLocaleString() : '';
+  const when = run.created_at ? new Date(run.created_at).toLocaleString(getIntlLocale()) : '';
   const title = agentDisplayName(run.agent_name, descriptor?.display_name);
   const Icon = resolveAgentIcon(descriptor?.icon);
 

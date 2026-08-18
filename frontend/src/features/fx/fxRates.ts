@@ -25,6 +25,7 @@
  */
 
 import type { FxPolicy, FxValidation } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /**
  * Parse a plain-decimal string from the API.
@@ -234,7 +235,7 @@ export function formatDerivedRate(value: number | null): string | null {
   if (value === 0) return '0';
   const magnitude = Math.abs(value);
   const decimals = magnitude >= 1 ? 6 : Math.min(11 - Math.floor(Math.log10(magnitude)), 100);
-  const rendered = value.toFixed(decimals);
+  const rendered = fmtFixed(value, decimals);
   return rendered.includes('.') ? rendered.replace(/0+$/, '').replace(/\.$/, '') : rendered;
 }
 

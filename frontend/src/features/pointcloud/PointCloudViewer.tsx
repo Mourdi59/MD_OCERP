@@ -118,6 +118,7 @@ import {
   type Vec3,
   type VolumeEstimate,
 } from './pointcloudTools';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 export type ColorMode = 'rgb' | 'height' | 'intensity' | 'single';
 
@@ -349,14 +350,14 @@ function buildColors(
 }
 
 function formatPoints(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  if (n >= 1_000_000) return `${fmtFixed(n / 1_000_000, 1)}M`;
+  if (n >= 1_000) return `${fmtFixed(n / 1_000, 0)}K`;
   return String(n);
 }
 
 function formatBytes(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 0)} KB`;
+  return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
 }
 
 interface ToolbarButtonProps {
@@ -1911,7 +1912,7 @@ export function PointCloudViewer({ scanId, scanLabel }: PointCloudViewerProps) {
     const w = bounds.worldMax.x - bounds.worldMin.x;
     const d = bounds.worldMax.z - bounds.worldMin.z;
     const h = bounds.worldMax.y - bounds.worldMin.y;
-    return `${w.toFixed(1)} × ${d.toFixed(1)} × ${h.toFixed(1)} m`;
+    return `${fmtFixed(w, 1)} × ${fmtFixed(d, 1)} × ${fmtFixed(h, 1)} m`;
   }, [bounds]);
 
   const bgModeOptions = useMemo(
@@ -2528,7 +2529,7 @@ export function PointCloudViewer({ scanId, scanLabel }: PointCloudViewerProps) {
                       defaultValue: 'over {{area}} in {{cells}} cells @ {{cell}} m',
                       area: formatAreaM2(volumeResult.area),
                       cells: volumeResult.cellCount,
-                      cell: volumeResult.cellSize.toFixed(2),
+                      cell: fmtFixed(volumeResult.cellSize, 2),
                     })}
                   </span>
                   <div className="ml-auto flex items-center gap-3">
@@ -2664,7 +2665,7 @@ export function PointCloudViewer({ scanId, scanLabel }: PointCloudViewerProps) {
                     data-testid="pointcloud-annotation-note"
                   />
                   <span className="hidden shrink-0 text-2xs tabular-nums text-content-quaternary sm:inline">
-                    X {a.scan.x.toFixed(2)} · Y {a.scan.y.toFixed(2)} · Z {a.scan.z.toFixed(2)}
+                    X {fmtFixed(a.scan.x, 2)} · Y {fmtFixed(a.scan.y, 2)} · Z {fmtFixed(a.scan.z, 2)}
                   </span>
                   <button
                     type="button"
@@ -2801,9 +2802,9 @@ export function PointCloudViewer({ scanId, scanLabel }: PointCloudViewerProps) {
                 const m = boxMetrics(clipBox);
                 return t('pointcloud.groups_box_extent', {
                   defaultValue: 'Current box {{w}} × {{d}} × {{h}} m · {{vol}} · {{area}}',
-                  w: m.width.toFixed(2),
-                  d: m.depth.toFixed(2),
-                  h: m.height.toFixed(2),
+                  w: fmtFixed(m.width, 2),
+                  d: fmtFixed(m.depth, 2),
+                  h: fmtFixed(m.height, 2),
                   vol: formatVolumeM3(m.volume),
                   area: formatAreaM2(m.planArea),
                 });

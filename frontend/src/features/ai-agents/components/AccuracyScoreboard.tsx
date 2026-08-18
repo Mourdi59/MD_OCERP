@@ -16,6 +16,7 @@ import clsx from 'clsx';
 
 import { agentDisplayName } from './agentMeta';
 import type { AccuracyScore, AgentDescriptor } from '../api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface AccuracyScoreboardProps {
   scores: AccuracyScore[];
@@ -117,7 +118,7 @@ function ScoreCard({
           {t('agents.accuracy.accurate', { defaultValue: 'accurate' })}
         </span>
         <span className="ml-auto text-2xs text-content-tertiary">
-          {t('agents.accuracy.brier', { defaultValue: 'Brier {{score}}', score: score.brier_score.toFixed(2) })}
+          {t('agents.accuracy.brier', { defaultValue: 'Brier {{score}}', score: fmtFixed(score.brier_score, 2) })}
         </span>
       </div>
 

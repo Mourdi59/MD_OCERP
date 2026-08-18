@@ -24,6 +24,7 @@ import type { WalkMode } from './WalkMode';
 import type { MeasureTool, Measurement } from './MeasureTool';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 export type ActiveViewerTool = 'section' | 'walk' | 'measure' | null;
 
@@ -192,10 +193,10 @@ export function ViewerToolbar({
     (distMetres: number): string => {
       if (distMetres >= 1) {
         const big = q.convert(distMetres, 'm'); // m -> ft for imperial
-        return `${big.value.toFixed(3)} ${big.unit}`;
+        return `${fmtFixed(big.value, 3)} ${big.unit}`;
       }
       const small = q.convert(distMetres * 1000, 'mm'); // mm -> in for imperial
-      return `${small.value.toFixed(0)} ${small.unit}`;
+      return `${fmtFixed(small.value, 0)} ${small.unit}`;
     },
     [q],
   );
@@ -352,7 +353,7 @@ export function ViewerToolbar({
               className="flex-1"
             />
             <span className="tabular-nums w-10 text-end">
-              {flightSpeed.toFixed(1)}
+              {fmtFixed(flightSpeed, 1)}
             </span>
           </label>
           <p className="px-1 text-[10px] text-content-tertiary leading-tight">
@@ -482,7 +483,7 @@ function SectionOffsetsReadout({
   sectionBox: SectionBox;
 }): JSX.Element {
   const bounds = sectionBox.getBounds();
-  const fmt = (v: number): string => v.toFixed(3);
+  const fmt = (v: number): string => fmtFixed(v, 3);
   return (
     <div
       className="grid grid-cols-3 gap-x-2 text-[10px] text-content-tertiary tabular-nums mt-1"

@@ -14,6 +14,7 @@ import { ANNOTATION_TYPES } from './takeoff-groups';
 import type { MeasurementSystem } from '@/stores/usePreferencesStore';
 import { convertQuantity } from './takeoff-display-units';
 import { effectiveQuantity } from './takeoff-quantity';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /** Sortable column keys exposed by the ledger table. */
 export type LedgerSortColumn =
@@ -293,9 +294,9 @@ function formatNumber(value: number): string {
   // in Excel without scientific notation.
   if (value === 0) return '0';
   const abs = Math.abs(value);
-  if (abs < 1) return value.toFixed(3);
-  if (abs < 100) return value.toFixed(2);
-  return value.toFixed(1);
+  if (abs < 1) return fmtFixed(value, 3);
+  if (abs < 100) return fmtFixed(value, 2);
+  return fmtFixed(value, 1);
 }
 
 /** Convert a filter payload to the union of unique tokens found in the

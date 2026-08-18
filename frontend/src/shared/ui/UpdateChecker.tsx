@@ -35,6 +35,7 @@ import { APP_VERSION } from '@/shared/lib/version';
 import { apiGet, apiPost, ApiError } from '@/shared/lib/api';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { isTauri } from '@/shared/lib/desktop';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── One-click upgrade — starts `pip install --upgrade` server-side ───
  *
@@ -425,7 +426,7 @@ export function UpdateNotification({ forceShow = false, hideDismiss = false }: U
   if (dismissed && !forceShow) return null;
 
   const relativeDate = release.publishedAt
-    ? new Date(release.publishedAt).toLocaleDateString()
+    ? new Date(release.publishedAt).toLocaleDateString(getIntlLocale())
     : '';
 
   return (
@@ -660,7 +661,7 @@ function UpdateFullModal({
   }, [onClose]);
 
   const relativeDate = release.publishedAt
-    ? new Date(release.publishedAt).toLocaleDateString()
+    ? new Date(release.publishedAt).toLocaleDateString(getIntlLocale())
     : '';
 
   const methods: Array<{ key: string; title: string; subtitle: string; cmd: string }> = [

@@ -23,6 +23,7 @@ import {
 import { ApprovalInstanceDetailDrawer } from './ApprovalInstanceDetailDrawer';
 import { kindLabel } from './labels';
 import type { ApprovalInstance, InstanceStatus } from './types';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 // Mirrors models.INSTANCE_STATUSES — ``pending`` is the active state
 // (there is no separate ``in_progress``).
@@ -346,7 +347,7 @@ function InstanceRow({
           : '—'}
       </td>
       <td className="px-3 py-2.5 text-xs text-content-tertiary">
-        {new Date(instance.started_at).toLocaleDateString()}
+        {new Date(instance.started_at).toLocaleDateString(getIntlLocale())}
       </td>
       <td className="px-3 py-2.5 text-right">
         <ChevronRight size={14} className="text-content-tertiary inline" />

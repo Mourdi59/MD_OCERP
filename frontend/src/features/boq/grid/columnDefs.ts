@@ -24,6 +24,7 @@ import {
   type FormulaVariable,
 } from './formula';
 import type { Position } from '../api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /**
  * How the Material / Labor / Equipment cost-driver split is shown in the BOQ
@@ -1067,7 +1068,7 @@ export interface CustomColumnEngineContext {
  */
 function formatCalculatedNumber(value: number, decimals: number): string {
   const safe = Math.max(0, Math.min(6, decimals));
-  return value.toFixed(safe);
+  return fmtFixed(value, safe);
 }
 
 /**
@@ -1315,11 +1316,11 @@ export function getCustomColumnDefs(
                 allSum += rq * rr;
               }
               if (allSum <= 0) return '';
-              return ((contribution / allSum) * 100).toFixed(dec);
+              return fmtFixed((contribution / allSum) * 100, dec);
             }
             // resource_sum on a resource row = this resource's
             // contribution to the position unit rate.
-            return contribution.toFixed(dec);
+            return fmtFixed(contribution, dec);
           }
 
           // Position row: existing aggregation across the position's
@@ -1341,10 +1342,10 @@ export function getCustomColumnDefs(
           if (col.derived === 'percentage_of_unit_rate') {
             if (allSum <= 0) return '';
             const pct = (matched / allSum) * 100;
-            return pct.toFixed(dec);
+            return fmtFixed(pct, dec);
           }
           // resource_sum
-          return matched.toFixed(dec);
+          return fmtFixed(matched, dec);
         };
         const roleLabel = roleSet ? Array.from(roleSet).join(' / ') : 'matching';
         base.tooltipValueGetter = () => {

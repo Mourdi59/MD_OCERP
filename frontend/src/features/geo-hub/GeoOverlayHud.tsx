@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { Compass } from 'lucide-react';
 
 import { formatAltitude, formatDegrees } from './utils';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface GeoOverlayHudProps {
   /** Cursor latitude in degrees (null when pointer is off-globe). */
@@ -56,8 +57,8 @@ function scaleBarFor(alt: number | null): { label: string; widthPx: number } {
   const pick = steps.find((s) => s >= groundMetres) ?? fallback;
   const label =
     pick >= 1000
-      ? `${(pick / 1000).toFixed(0)} km`
-      : `${pick.toFixed(0)} m`;
+      ? `${fmtFixed(pick / 1000, 0)} km`
+      : `${fmtFixed(pick, 0)} m`;
   // Width is capped 60-130 px so the bar never dominates the HUD.
   const widthPx = Math.min(130, Math.max(60, 60 + Math.log10(pick) * 12));
   return { label, widthPx };

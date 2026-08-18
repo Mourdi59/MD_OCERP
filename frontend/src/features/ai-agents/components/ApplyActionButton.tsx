@@ -33,6 +33,7 @@ import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { aiAgentsApi, type ApplyProposalsResult } from '../api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 // ── Legacy client-side proposal parser ────────────────────────────────────────
 // Kept as an exported pure helper: the live panel now reads proposals from the
@@ -231,7 +232,7 @@ export function ApplyActionButton({ runId }: ApplyActionButtonProps): JSX.Elemen
             <span className="min-w-0 truncate text-content-primary">{p.description || '—'}</span>
             <span className="shrink-0 text-content-tertiary">
               {p.qty} {p.unit}
-              {p.currency ? ` · ${Number(p.total).toFixed(2)} ${p.currency}` : ''}
+              {p.currency ? ` · ${fmtFixed(Number(p.total), 2)} ${p.currency}` : ''}
             </span>
           </li>
         ))}
@@ -248,7 +249,7 @@ export function ApplyActionButton({ runId }: ApplyActionButtonProps): JSX.Elemen
       {combinedTotal !== null && singleCurrency && (
         <p className="mt-2 text-xs font-medium text-content-secondary">
           {t('agents.apply.combined_total', { defaultValue: 'Combined total' })}:{' '}
-          {combinedTotal.toFixed(2)} {singleCurrency}
+          {fmtFixed(combinedTotal, 2)} {singleCurrency}
         </p>
       )}
 

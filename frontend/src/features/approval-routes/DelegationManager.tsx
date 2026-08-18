@@ -34,6 +34,7 @@ import {
   revokeDelegation,
 } from './api';
 import type { ApprovalDelegation } from './types';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface UserResult {
   id: string;
@@ -200,7 +201,7 @@ export function DelegationManager({ open, onClose }: DelegationManagerProps) {
 
   const formatWindow = (d: ApprovalDelegation): string => {
     const fmt = (iso: string | null) =>
-      iso ? new Date(iso).toLocaleDateString() : null;
+      iso ? new Date(iso).toLocaleDateString(getIntlLocale()) : null;
     const from = fmt(d.starts_at);
     const to = fmt(d.ends_at);
     if (from && to)

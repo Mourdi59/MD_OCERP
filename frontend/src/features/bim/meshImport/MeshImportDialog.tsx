@@ -55,6 +55,7 @@ import {
   type UpAxis,
 } from './geometry';
 import { MeshPreview } from './MeshPreview';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface MeshImportDialogProps {
   projectId: string;
@@ -332,7 +333,7 @@ export default function MeshImportDialog({
 
   const fmtNum = useCallback(
     (n: number, dp = 2): string =>
-      n.toLocaleString(undefined, { maximumFractionDigits: dp, minimumFractionDigits: 0 }),
+      n.toLocaleString(getIntlLocale(), { maximumFractionDigits: dp, minimumFractionDigits: 0 }),
     [],
   );
 

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { unwrapList } from './normalize';
 import { projectPath } from './deepLink';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface ProjectInfo {
   id?: string;
@@ -25,7 +26,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
 
 function formatCurrency(value: number | undefined, currency?: string): string {
   if (value == null) return '-';
-  const formatted = value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  const formatted = value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 });
   return currency ? `${formatted} ${currency}` : formatted;
 }
 

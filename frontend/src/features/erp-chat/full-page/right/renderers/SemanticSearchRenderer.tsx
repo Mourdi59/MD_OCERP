@@ -1,6 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import { unwrapList } from './normalize';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /**
  * Renders the `semantic_search` tool result, shared by every `search_*`
@@ -68,7 +69,7 @@ function HitCard({ hit }: { hit: Hit }) {
             whiteSpace: 'nowrap',
           }}
         >
-          {(score).toFixed(2)}
+          {fmtFixed(score, 2)}
         </span>
       </div>
       {hit.snippet && (

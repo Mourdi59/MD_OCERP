@@ -14,7 +14,7 @@ import { Loader2, TrendingUp, AlertTriangle, Truck } from 'lucide-react';
 import { WideModal, Badge, EmptyState } from '@/shared/ui';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { getSupplierScorecard } from './api';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
 
 interface SupplierScorecardModalProps {
   open: boolean;
@@ -162,13 +162,13 @@ export function SupplierScorecardModal({
               label={t('procurement.scorecard_total_pos', {
                 defaultValue: 'Purchase orders',
               })}
-              value={scorecard.total_po_count.toLocaleString()}
+              value={scorecard.total_po_count.toLocaleString(getIntlLocale())}
             />
             <SummaryStat
               label={t('procurement.scorecard_total_grs', {
                 defaultValue: 'Goods receipts',
               })}
-              value={scorecard.total_gr_count.toLocaleString()}
+              value={scorecard.total_gr_count.toLocaleString(getIntlLocale())}
             />
             <SummaryStat
               label={t('procurement.scorecard_total_value', {

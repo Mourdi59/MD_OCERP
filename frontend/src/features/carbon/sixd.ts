@@ -7,6 +7,7 @@
 // so it can be unit-tested without a DOM.
 
 import type { AutoEnrichBimResult, EmbodiedSource } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /** Subset of the design-system Badge variants the source pill uses. Narrower
  *  than Badge's full union on purpose, and assignable to it. */
@@ -108,9 +109,9 @@ export function toNumber(value: number | string | null | undefined): number {
  *  drawer so the whole-life tab reads the same. */
 export function formatCarbonKg(kg: number): string {
   const abs = Math.abs(kg);
-  if (abs >= 1_000_000) return `${(kg / 1_000_000).toFixed(2)} kt`;
-  if (abs >= 1_000) return `${(kg / 1_000).toFixed(2)} t`;
-  return `${kg.toFixed(0)} kg`;
+  if (abs >= 1_000_000) return `${fmtFixed(kg / 1_000_000, 2)} kt`;
+  if (abs >= 1_000) return `${fmtFixed(kg / 1_000, 2)} t`;
+  return `${fmtFixed(kg, 0)} kg`;
 }
 
 /** Traffic-light band for a coverage percentage (0..100).

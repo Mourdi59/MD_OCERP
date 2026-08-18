@@ -40,6 +40,7 @@ import {
   type TakeoffCompareResponse,
   type TakeoffMeasurementDiffRow,
 } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 type CompareTab = 'measurements' | 'summary';
 
@@ -492,10 +493,10 @@ function MeasurementsTab({
             <span className="text-[10px] text-content-tertiary">
               {t('takeoff_compare.page_n', { defaultValue: 'p.{{n}}', n: r.page })}
             </span>
-            <span className="tabular-nums">{r.old_value != null ? r.old_value.toFixed(2) : '—'}</span>
+            <span className="tabular-nums">{r.old_value != null ? fmtFixed(r.old_value, 2) : '—'}</span>
             <ArrowRight size={12} className="text-content-tertiary" />
             <span className="tabular-nums font-medium text-content-primary">
-              {r.new_value != null ? r.new_value.toFixed(2) : '—'}
+              {r.new_value != null ? fmtFixed(r.new_value, 2) : '—'}
             </span>
             {r.measurement_unit && <span className="text-content-tertiary">{r.measurement_unit}</span>}
           </div>

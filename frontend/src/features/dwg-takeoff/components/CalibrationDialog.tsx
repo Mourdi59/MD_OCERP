@@ -25,6 +25,7 @@ import {
   pixelDistance,
   type CalibrationUnit,
 } from '../lib/calibration';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /** Which step the dialog is currently showing. Driven by the parent
  *  (it knows when a click has landed). Step 0 = not open. */
@@ -204,7 +205,7 @@ export function CalibrationDialog({
               data-testid="dwg-calibration-pixel-distance"
               className="font-mono text-xs font-semibold text-foreground"
             >
-              {pixels.toFixed(2)} px
+              {fmtFixed(pixels, 2)} px
             </span>
           </div>
 

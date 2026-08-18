@@ -22,6 +22,7 @@ import { Check, ChevronDown, Clock, Loader2 } from 'lucide-react';
 import { Button } from '@/shared/ui';
 
 import { getSnapshotTimeline } from './api';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 export interface SnapshotPickerInlineProps {
   projectId: string;
@@ -148,7 +149,7 @@ export function SnapshotPickerInline({
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString();
+    return new Date(iso).toLocaleDateString(getIntlLocale());
   } catch {
     return iso;
   }

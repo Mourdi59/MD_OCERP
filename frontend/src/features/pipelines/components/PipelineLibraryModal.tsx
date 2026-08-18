@@ -30,6 +30,7 @@ import {
   TEMPLATE_TAG_LABELS,
   type PipelineTemplate,
 } from '../templates';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 type Tab = 'templates' | 'saved';
 
@@ -270,7 +271,7 @@ function SavedTab({
                   })
                 : ''}
               {p.updated_at
-                ? ` · ${new Date(p.updated_at).toLocaleDateString()}`
+                ? ` · ${new Date(p.updated_at).toLocaleDateString(getIntlLocale())}`
                 : ''}
             </span>
           </button>

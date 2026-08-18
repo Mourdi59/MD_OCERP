@@ -23,6 +23,7 @@ import {
   type ReadinessSummary,
   type ItemStatus,
 } from './api';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /**
  * Minimal translate signature. The page passes a wrapper around react-i18next
@@ -103,7 +104,7 @@ function csvCell(value: string | number | null | undefined): string {
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString();
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString(getIntlLocale());
 }
 
 function itemStatusLabel(status: ItemStatus, tr: Tr): string {
@@ -314,7 +315,7 @@ export function buildCertificateHtml(data: CertificateData, tr: Tr, maps: CertMa
     `<h2 class="section">${escapeHtml(label)}</h2>`;
 
   const generatedLine = tr('commissioning.cert_generated', 'Generated {{date}}', {
-    date: generatedAt.toLocaleString(),
+    date: generatedAt.toLocaleString(getIntlLocale()),
   });
   const refLine = tr('commissioning.cert_reference', 'Reference {{id}}', { id: system.id });
   const signAuthority = tr('commissioning.cert_sign_authority', 'Commissioning authority');
@@ -515,7 +516,7 @@ export function buildCertificateCsv(data: CertificateData, tr: Tr, maps: CertMap
   const lines: string[] = [];
 
   lines.push([csvCell(tr('commissioning.cert_title', 'Commissioning Certificate'))].join(','));
-  lines.push([csvCell(tr('commissioning.cert_generated_label', 'Generated')), csvCell(generatedAt.toLocaleString())].join(','));
+  lines.push([csvCell(tr('commissioning.cert_generated_label', 'Generated')), csvCell(generatedAt.toLocaleString(getIntlLocale()))].join(','));
   lines.push([csvCell(tr('commissioning.cert_project', 'Project')), csvCell(projectName)].join(','));
   lines.push([csvCell(tr('commissioning.field_name', 'System name')), csvCell(system.name)].join(','));
   lines.push([csvCell(tr('commissioning.field_type', 'System type')), csvCell(typeLabel(system, tr, maps))].join(','));

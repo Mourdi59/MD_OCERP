@@ -1,6 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import { toNum } from './normalize';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 interface CostModelData {
   bac?: number;
@@ -22,9 +23,9 @@ interface CostModelData {
 
 function formatNumber(n: number | undefined): string {
   if (n == null) return '-';
-  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return n.toFixed(2);
+  if (Math.abs(n) >= 1_000_000) return `${fmtFixed(n / 1_000_000, 1)}M`;
+  if (Math.abs(n) >= 1_000) return `${fmtFixed(n / 1_000, 0)}K`;
+  return fmtFixed(n, 2);
 }
 
 function kpiColor(label: string, value: number | undefined): string {
@@ -129,7 +130,7 @@ function MiniChart({ planned, actual, earned }: { planned?: number[]; actual?: n
 
 function fmtMoney(n: number | undefined): string {
   if (n == null) return '-';
-  return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  return n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 });
 }
 
 /**

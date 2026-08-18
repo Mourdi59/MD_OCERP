@@ -36,6 +36,7 @@ import clsx from 'clsx';
 
 import { useToastStore } from '@/stores/useToastStore';
 import { aiAgentsApi, type AgentRun, type TrustSource } from '../api';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 // -- Helpers -------------------------------------------------------------------
 
@@ -74,14 +75,14 @@ const SOURCE_ICON: Record<string, LucideIcon> = {
 /** Render a source's relevance score: 0..1 as a percentage, else two decimals. */
 function formatScore(score: number): string {
   if (score >= 0 && score <= 1) return `${Math.round(score * 100)}%`;
-  return score.toFixed(2);
+  return fmtFixed(score, 2);
 }
 
 function formatDate(iso?: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString();
+  return d.toLocaleDateString(getIntlLocale());
 }
 
 // -- Sub-views ---------------------------------------------------------------

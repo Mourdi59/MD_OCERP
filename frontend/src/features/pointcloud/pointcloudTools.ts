@@ -19,6 +19,7 @@
 
 /** A plain 3D point/vector - deliberately not a THREE.Vector3 so this module
  *  has zero runtime dependency on three.js. */
+import { fmtFixed } from '@/shared/lib/formatters';
 export interface Vec3 {
   x: number;
   y: number;
@@ -52,7 +53,7 @@ export function computeMeasurement3D(a: Vec3, b: Vec3): Measurement3D {
 export function formatLengthMm(metres: number): string {
   if (!Number.isFinite(metres)) return '-';
   const abs = Math.abs(metres);
-  if (abs >= 1) return `${metres.toFixed(2)} m`;
+  if (abs >= 1) return `${fmtFixed(metres, 2)} m`;
   return `${Math.round(metres * 1000)} mm`;
 }
 
@@ -61,7 +62,7 @@ export function formatLengthMm(metres: number): string {
  *  (heights typically span whole buildings). */
 export function formatMetersLabel(metres: number): string {
   if (!Number.isFinite(metres)) return '-';
-  return `${metres.toFixed(2)} m`;
+  return `${fmtFixed(metres, 2)} m`;
 }
 
 export interface CloudBoundsInput {
@@ -503,13 +504,13 @@ export function decimationStride(pointCount: number, keepFraction: number): numb
 /** Format a plan area for display, in square metres (ASCII "m2"). */
 export function formatAreaM2(m2: number): string {
   if (!Number.isFinite(m2)) return '-';
-  return `${m2.toFixed(2)} m2`;
+  return `${fmtFixed(m2, 2)} m2`;
 }
 
 /** Format a volume for display, in cubic metres (ASCII "m3"). */
 export function formatVolumeM3(m3: number): string {
   if (!Number.isFinite(m3)) return '-';
-  return `${m3.toFixed(2)} m3`;
+  return `${fmtFixed(m3, 2)} m3`;
 }
 
 // ── CSV export ────────────────────────────────────────────────────────────
@@ -623,7 +624,7 @@ export function angleAtVertex(a: Vec3, b: Vec3, c: Vec3): number {
  *  Non-finite -> "-". */
 export function formatAngle(deg: number): string {
   if (!Number.isFinite(deg)) return '-';
-  return `${deg.toFixed(1)}°`;
+  return `${fmtFixed(deg, 1)}°`;
 }
 
 // ── Dynamic scale bar ─────────────────────────────────────────────────────

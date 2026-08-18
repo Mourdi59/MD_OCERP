@@ -134,6 +134,7 @@ import {
   isNon3DBimFormat,
   type BIMElementGroup,
 } from './api';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
@@ -171,9 +172,9 @@ function isDataFile(fn: string): boolean {
 }
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
+  return `${fmtFixed(bytes / (1024 * 1024 * 1024), 1)} GB`;
 }
 
 /* ── Stat Pill ───────────────────────────────────────────────────────── */
@@ -418,7 +419,7 @@ function ModelCard({ model, isActive, onClick, onDelete }: {
           </div>
           {model.created_at && (
             <span className="text-content-quaternary">
-              {new Date(model.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+              {new Date(model.created_at).toLocaleDateString(getIntlLocale(), { month: 'short', day: 'numeric' })}
             </span>
           )}
         </div>
@@ -3425,9 +3426,9 @@ export function BIMPage() {
                       return activeModel.name;
                     }
                     const fmtMb = (mb: number): string => {
-                      if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`;
-                      if (mb >= 1) return `${mb.toFixed(1)} MB`;
-                      if (mb > 0) return `${(mb * 1024).toFixed(0)} KB`;
+                      if (mb >= 1024) return `${fmtFixed(mb / 1024, 2)} GB`;
+                      if (mb >= 1) return `${fmtFixed(mb, 1)} MB`;
+                      if (mb > 0) return `${fmtFixed(mb * 1024, 0)} KB`;
                       return '0 B';
                     };
                     const artifactMb = data.total_artifact_size_mb ?? 0;
@@ -4034,19 +4035,19 @@ export function BIMPage() {
                     <div>
                       <div className="text-[9px] uppercase text-content-tertiary">L</div>
                       <div className="font-semibold text-content-primary">
-                        {dimL.value.toFixed(2)}<span className="text-[9px] text-content-tertiary ml-0.5">{dimL.unit}</span>
+                        {fmtFixed(dimL.value, 2)}<span className="text-[9px] text-content-tertiary ml-0.5">{dimL.unit}</span>
                       </div>
                     </div>
                     <div>
                       <div className="text-[9px] uppercase text-content-tertiary">W</div>
                       <div className="font-semibold text-content-primary">
-                        {dimW.value.toFixed(2)}<span className="text-[9px] text-content-tertiary ml-0.5">{dimW.unit}</span>
+                        {fmtFixed(dimW.value, 2)}<span className="text-[9px] text-content-tertiary ml-0.5">{dimW.unit}</span>
                       </div>
                     </div>
                     <div>
                       <div className="text-[9px] uppercase text-content-tertiary">H</div>
                       <div className="font-semibold text-content-primary">
-                        {dimH.value.toFixed(2)}<span className="text-[9px] text-content-tertiary ml-0.5">{dimH.unit}</span>
+                        {fmtFixed(dimH.value, 2)}<span className="text-[9px] text-content-tertiary ml-0.5">{dimH.unit}</span>
                       </div>
                     </div>
                   </>
@@ -4058,7 +4059,7 @@ export function BIMPage() {
               <span className="tabular-nums font-medium text-content-secondary">
                 {(() => {
                   const v = displayQty.convert(selectedDimensions.volume, 'm³');
-                  return `${v.value.toFixed(2)} ${v.unit}`;
+                  return `${fmtFixed(v.value, 2)} ${v.unit}`;
                 })()}
               </span>
             </div>
@@ -4288,7 +4289,7 @@ export function BIMPage() {
                 <Globe2 size={14} />
                 {t('bim.load_full_model', {
                   defaultValue: 'Load full model ({{total}} elements)',
-                  total: activeModel?.element_count?.toLocaleString() ?? '...',
+                  total: activeModel?.element_count?.toLocaleString(getIntlLocale()) ?? '...',
                 })}
               </button>
             </div>

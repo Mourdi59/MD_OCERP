@@ -101,6 +101,7 @@ import {
   fetchOnboardingStatus,
   type OnboardingJobState,
 } from './onboardingApi';
+import { getIntlLocale } from '@/shared/lib/formatters';
 import { SemanticModelCard } from './SemanticModelCard';
 import { aiEstimatorApi } from '@/features/ai-estimator/api';
 
@@ -573,11 +574,11 @@ function bgStepDetail(step: string, detail: Record<string, unknown>): string | u
   };
   if (step === 'cost_db') {
     const items = num('items');
-    if (items && items > 0) return items.toLocaleString();
+    if (items && items > 0) return items.toLocaleString(getIntlLocale());
   }
   if (step === 'resources') {
     const resources = num('resources');
-    if (resources && resources > 0) return resources.toLocaleString();
+    if (resources && resources > 0) return resources.toLocaleString(getIntlLocale());
   }
   if (step === 'demos') {
     const installed = detail['installed'];
@@ -3414,7 +3415,7 @@ export function StepDataSetup({
           updateQueueTask(taskId, {
             status: 'completed',
             progress: 100,
-            message: `${imported.toLocaleString()} items imported`,
+            message: `${imported.toLocaleString(getIntlLocale())} items imported`,
           });
 
           try {
@@ -3434,7 +3435,7 @@ export function StepDataSetup({
           addToast({
             type: 'success',
             title: `${dbName} loaded`,
-            message: `${imported.toLocaleString()} cost items imported`,
+            message: `${imported.toLocaleString(getIntlLocale())} cost items imported`,
           });
           return true;
         }
@@ -3754,7 +3755,7 @@ export function StepDataSetup({
               <div className="flex items-center gap-2 text-sm text-semantic-success">
                 <CheckCircle2 size={16} />
                 <span className="font-medium">
-                  {loadedDb.count.toLocaleString()}{' '}
+                  {loadedDb.count.toLocaleString(getIntlLocale())}{' '}
                   {t('onboarding.items_loaded', { defaultValue: 'items loaded' })}
                 </span>
               </div>

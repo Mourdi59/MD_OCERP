@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getIntlLocale, fmtFixed, fmtPercent } from '@/shared/lib/formatters';
 import { toDisplayQuantity, displayUnitFor } from '@/shared/lib/unitConversion';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import {
@@ -907,8 +907,8 @@ async function downloadProgressReport(
     const dashboard = await costModelApi.getDashboard(projectId);
     htmlParts.push(`<h2>${esc(t('reports.html_evm_performance', { defaultValue: 'Earned Value Performance' }))}</h2>`);
     htmlParts.push('<div>');
-    htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_spi', { defaultValue: 'SPI' }))}</div><div class="metric-value" style="color:${Number(dashboard.spi||0)>=1?'#166534':'#991b1b'}">${Number(dashboard.spi||0).toFixed(2)}</div></div>`);
-    htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_cpi', { defaultValue: 'CPI' }))}</div><div class="metric-value" style="color:${Number(dashboard.cpi||0)>=1?'#166534':'#991b1b'}">${Number(dashboard.cpi||0).toFixed(2)}</div></div>`);
+    htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_spi', { defaultValue: 'SPI' }))}</div><div class="metric-value" style="color:${Number(dashboard.spi||0)>=1?'#166534':'#991b1b'}">${fmtFixed(Number(dashboard.spi||0), 2)}</div></div>`);
+    htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_cpi', { defaultValue: 'CPI' }))}</div><div class="metric-value" style="color:${Number(dashboard.cpi||0)>=1?'#166534':'#991b1b'}">${fmtFixed(Number(dashboard.cpi||0), 2)}</div></div>`);
     htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_budget', { defaultValue: 'Budget' }))}</div><div class="metric-value">${Number(dashboard.total_budget||0).toLocaleString(lang)}</div></div>`);
     htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_actual', { defaultValue: 'Actual' }))}</div><div class="metric-value">${Number(dashboard.total_actual||0).toLocaleString(lang)}</div></div>`);
     htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_forecast_eac', { defaultValue: 'Forecast (EAC)' }))}</div><div class="metric-value">${Number(dashboard.total_forecast||0).toLocaleString(lang)}</div></div>`);
@@ -947,7 +947,7 @@ async function downloadProgressReport(
       htmlParts.push(`<table><thead><tr><th>${esc(t('reports.html_col_code', { defaultValue: 'Code' }))}</th><th>${esc(t('reports.html_col_risk', { defaultValue: 'Risk' }))}</th><th>${esc(t('reports.html_col_severity', { defaultValue: 'Severity' }))}</th><th>${esc(t('reports.html_col_score', { defaultValue: 'Score' }))}</th></tr></thead><tbody>`);
       const sorted = [...risks].sort((a, b) => b.risk_score - a.risk_score);
       for (const r of sorted) {
-        htmlParts.push(`<tr><td>${esc(r.code)}</td><td>${esc(r.title)}</td><td>${esc(r.impact_severity)}</td><td>${r.risk_score.toFixed(1)}</td></tr>`);
+        htmlParts.push(`<tr><td>${esc(r.code)}</td><td>${esc(r.title)}</td><td>${esc(r.impact_severity)}</td><td>${fmtFixed(r.risk_score, 1)}</td></tr>`);
       }
       htmlParts.push('</tbody></table>');
     }
@@ -1437,8 +1437,8 @@ export function ReportsPage() {
                 try {
                   const dashboard = await getDashboard();
                   htmlParts.push('<div>');
-                  htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_spi', { defaultValue: 'SPI' }))}</div><div class="metric-value">${Number(dashboard.spi || 0).toFixed(2)}</div></div>`);
-                  htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_cpi', { defaultValue: 'CPI' }))}</div><div class="metric-value">${Number(dashboard.cpi || 0).toFixed(2)}</div></div>`);
+                  htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_spi', { defaultValue: 'SPI' }))}</div><div class="metric-value">${fmtFixed(Number(dashboard.spi || 0), 2)}</div></div>`);
+                  htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_cpi', { defaultValue: 'CPI' }))}</div><div class="metric-value">${fmtFixed(Number(dashboard.cpi || 0), 2)}</div></div>`);
                   htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_eac', { defaultValue: 'EAC' }))}</div><div class="metric-value">${Number(dashboard.total_forecast || 0).toLocaleString(lang)}</div></div>`);
                   htmlParts.push('</div>');
                   htmlParts.push(`<p style="color:#6b7280;font-size:13px">${esc(t('reports.html_evm_hint', { defaultValue: 'SPI > 1.0 = ahead of schedule. CPI > 1.0 = under budget. EAC = Estimate at Completion.' }))}</p>`);
@@ -1527,7 +1527,7 @@ export function ReportsPage() {
                     const top5 = [...risks].sort((a, b) => b.risk_score - a.risk_score).slice(0, 5);
                     for (const r of top5) {
                       const cls = r.impact_severity === 'critical' ? 'error' : r.impact_severity === 'high' ? 'warning' : 'neutral';
-                      htmlParts.push(`<tr><td>${esc(r.code)}</td><td>${esc(r.title)}</td><td>${(r.probability * 100).toFixed(0)}%</td><td><span class="badge badge-${cls}">${esc(r.impact_severity)}</span></td><td style="text-align:right">${r.risk_score.toFixed(1)}</td></tr>`);
+                      htmlParts.push(`<tr><td>${esc(r.code)}</td><td>${esc(r.title)}</td><td>${fmtPercent(r.probability * 100, 0)}</td><td><span class="badge badge-${cls}">${esc(r.impact_severity)}</span></td><td style="text-align:right">${fmtFixed(r.risk_score, 1)}</td></tr>`);
                     }
                     htmlParts.push('</tbody></table>');
                   }

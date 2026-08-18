@@ -105,7 +105,7 @@ import {
   type ParetoRow,
 } from './api';
 import { changeIntelligenceGuide } from './change_intelligenceGuide';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
 type BadgeVariant = 'neutral' | 'blue' | 'success' | 'warning' | 'error';
 
@@ -438,8 +438,8 @@ function CycleTimeTab({ projectId }: { projectId: string }) {
                   <td className="px-3 py-2 font-medium text-content-primary">{p.party}</td>
                   <td className="px-3 py-2 text-right">{p.open_count}</td>
                   <td className="px-3 py-2 text-right text-semantic-error">{p.overdue_count || ''}</td>
-                  <td className="px-3 py-2 text-right">{p.avg_age_days.toFixed(1)}</td>
-                  <td className="px-3 py-2 text-right">{p.oldest_age_days.toFixed(0)}</td>
+                  <td className="px-3 py-2 text-right">{fmtFixed(p.avg_age_days, 1)}</td>
+                  <td className="px-3 py-2 text-right">{fmtFixed(p.oldest_age_days, 0)}</td>
                 </tr>
               ))}
             </tbody>
@@ -1387,7 +1387,7 @@ function ApportionmentFormModal({
             {rows.map((r, i) => {
               const rowPct = Number(r.pct);
               const preview =
-                chargeable > 0 && Number.isFinite(rowPct) ? ((chargeable * rowPct) / 100).toFixed(2) : '0';
+                chargeable > 0 && Number.isFinite(rowPct) ? fmtFixed((chargeable * rowPct) / 100, 2) : '0';
               return (
                 <li key={r.key} className="flex items-end gap-2">
                   <WideModalField
@@ -2015,14 +2015,14 @@ function WatchTab({ projectId }: { projectId: string }) {
                   <span>
                     {t('change_intelligence.watch.idle_days', {
                       defaultValue: '{{days}}d idle',
-                      days: r.idle_days.toFixed(0),
+                      days: fmtFixed(r.idle_days, 0),
                     })}
                   </span>
                   {r.overdue_days > 0 && (
                     <span className="text-semantic-error">
                       {t('change_intelligence.watch.overdue_days', {
                         defaultValue: '{{days}}d overdue',
-                        days: r.overdue_days.toFixed(0),
+                        days: fmtFixed(r.overdue_days, 0),
                       })}
                     </span>
                   )}
@@ -3274,7 +3274,7 @@ function RunRateTab({ projectId }: { projectId: string }) {
         />
         <StatTile
           label={t('change_intelligence.runrate.tile.intake', { defaultValue: 'Intake / month' })}
-          value={data ? data.intake_rate_per_month.toFixed(1) : '0'}
+          value={data ? fmtFixed(data.intake_rate_per_month, 1) : '0'}
         />
       </div>
 

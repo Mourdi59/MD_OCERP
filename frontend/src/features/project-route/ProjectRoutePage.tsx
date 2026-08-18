@@ -53,6 +53,7 @@ import {
   type ClassifyResult,
 } from './api';
 import { projectRouteGuide } from './projectRouteGuide';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
@@ -363,7 +364,7 @@ const AssessmentRow = React.memo(function AssessmentRow({
             <p className="text-xs text-content-tertiary">
               {t('project_route.classified_at', {
                 defaultValue: 'Classified {{date}}',
-                date: new Date(item.classified_at).toLocaleString(),
+                date: new Date(item.classified_at).toLocaleString(getIntlLocale()),
               })}
             </p>
           )}

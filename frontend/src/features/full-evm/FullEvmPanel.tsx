@@ -91,6 +91,7 @@ import {
   validationTone,
   varianceTone,
 } from './evmIndicators';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 type Tab = 'progress' | 'curve' | 'forecast';
 
@@ -479,7 +480,7 @@ function MeasureCard({ measure, currency }: { measure: Measure; currency: string
           <Badge variant="neutral" size="sm">
             {t('full_evm.percent_complete', {
               defaultValue: '{{percent}}% of the work earned',
-              percent: complete.toFixed(1),
+              percent: fmtFixed(complete, 1),
             })}
           </Badge>
         )}
@@ -487,7 +488,7 @@ function MeasureCard({ measure, currency }: { measure: Measure; currency: string
           <Badge variant="neutral" size="sm">
             {t('full_evm.percent_spent', {
               defaultValue: '{{percent}}% of the budget spent',
-              percent: spent.toFixed(1),
+              percent: fmtFixed(spent, 1),
             })}
           </Badge>
         )}
@@ -515,9 +516,9 @@ function MeasureCard({ measure, currency }: { measure: Measure; currency: string
           {t('full_evm.eac_spread', {
             defaultValue:
               'The formulas disagree by {{spread}} on the outturn, from {{low}} to {{high}}. Worked out here from the variants the register published.',
-            spread: spread.spread.toFixed(2),
-            low: spread.low.toFixed(2),
-            high: spread.high.toFixed(2),
+            spread: fmtFixed(spread.spread, 2),
+            low: fmtFixed(spread.low, 2),
+            high: fmtFixed(spread.high, 2),
           })}
         </p>
       )}

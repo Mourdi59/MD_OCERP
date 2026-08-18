@@ -20,6 +20,7 @@
  */
 
 import type { BIMElementData } from './ElementManager';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /** Longest brief we emit; the assistant hard-caps input at 5000 chars. */
 const MAX_PROMPT_CHARS = 4500;
@@ -33,7 +34,7 @@ function toNumber(v: number | string | null | undefined): number | null {
 
 /** Compact, locale-aware number formatting (max 2 decimals, no thousands noise). */
 function fmt(n: number): string {
-  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  return n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 });
 }
 
 function nonEmpty(s: string | null | undefined): s is string {

@@ -10,6 +10,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { mintEmailLink } from '../api';
 import { copyToClipboard } from '../lib/tauri';
 import type { EmailLinkResponse, FileRow } from '../types';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 interface EmailDialogProps {
   open: boolean;
@@ -28,9 +29,9 @@ const TTL_PRESETS: { hours: number; labelKey: string; defaultLabel: string }[] =
 function fmtBytes(bytes: number): string {
   if (!bytes) return '0 B';
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
+  return `${fmtFixed(bytes / (1024 * 1024 * 1024), 2)} GB`;
 }
 
 export function EmailDialog({ open, row, onClose }: EmailDialogProps) {
@@ -102,7 +103,7 @@ export function EmailDialog({ open, row, onClose }: EmailDialogProps) {
           'Hi,\n\nHere is the file you asked about - {{name}} ({{size}}).\nDownload link (expires {{expires}}):\n{{url}}\n\n- sent from OpenConstructionERP',
         name: row.name,
         size: fmtBytes(link.size_bytes),
-        expires: new Date(link.expires_at).toLocaleString(),
+        expires: new Date(link.expires_at).toLocaleString(getIntlLocale()),
         url: link.url,
       })
     : '';
@@ -211,7 +212,7 @@ export function EmailDialog({ open, row, onClose }: EmailDialogProps) {
               <div className="text-2xs text-content-tertiary">
                 {t('files.email.expires', { defaultValue: 'Expires' })}:{' '}
                 <span className="text-content-secondary">
-                  {new Date(link.expires_at).toLocaleString()}
+                  {new Date(link.expires_at).toLocaleString(getIntlLocale())}
                 </span>
               </div>
 

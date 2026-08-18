@@ -21,7 +21,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Wallet, AlertTriangle, Inbox } from 'lucide-react';
 
 import { Card, Skeleton, EmptyState, Badge } from '@/shared/ui';
-import { fmtCurrency, fmtPercent } from '@/shared/lib/formatters';
+import { fmtCurrency, fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 import { getErrorMessage } from '@/shared/lib/api';
 import { costModelApi, type ContractExposureGroup } from './api';
 
@@ -225,7 +225,7 @@ export function ContractExposurePanel({ projectId, currency }: ContractExposureP
                 <div className={`mt-1 text-2xs font-medium ${ratioColor(totalPct)}`}>
                   {t('costmodel.exposure_committed_of_budget', {
                     defaultValue: '{{pct}}% of budget committed',
-                    pct: totalPct.toFixed(0),
+                    pct: fmtFixed(totalPct, 0),
                   })}
                 </div>
               )}

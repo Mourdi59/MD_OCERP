@@ -20,6 +20,7 @@ import {
   dropQuartile,
   num,
 } from './_shared';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface FunnelConversionProps {
   developmentId: string;
@@ -112,7 +113,7 @@ export function FunnelConversion({ developmentId }: FunnelConversionProps) {
             {t('propdev.dashboards.funnel.subtitle', {
               defaultValue:
                 'Lead → Reservation → SPA → Handover. {{conv}}% end-to-end conversion.',
-              conv: num(data.totals.conversion_pct).toFixed(1),
+              conv: fmtFixed(num(data.totals.conversion_pct), 1),
             })}
           </p>
         </div>
@@ -163,7 +164,7 @@ export function FunnelConversion({ developmentId }: FunnelConversionProps) {
                   '{{label}}: {{count}} ({{drop}}% drop from previous)',
                 label: stage.label,
                 count: stage.count,
-                drop: drop.toFixed(1),
+                drop: fmtFixed(drop, 1),
               })}
             >
               <div className="w-28 shrink-0 text-xs font-medium text-content-secondary">
@@ -195,7 +196,7 @@ export function FunnelConversion({ developmentId }: FunnelConversionProps) {
                   ? '—'
                   : t('propdev.dashboards.funnel.drop_pct', {
                       defaultValue: '↓ {{pct}}%',
-                      pct: drop.toFixed(1),
+                      pct: fmtFixed(drop, 1),
                     })}
               </div>
             </div>

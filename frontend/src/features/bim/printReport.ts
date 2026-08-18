@@ -10,6 +10,7 @@
  */
 import { QUANTITY_FIELDS, type QuantitySummary } from './boqSummary';
 import { toDisplayQuantity, displayUnitFor } from '@/shared/lib/unitConversion';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 export function escapeHtml(value: string): string {
   return value
@@ -22,7 +23,7 @@ export function escapeHtml(value: string): string {
 
 function fmt(n: number): string {
   // Group thousands, keep up to 3 decimals, drop trailing zeros.
-  return n.toLocaleString(undefined, { maximumFractionDigits: 3 });
+  return n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 3 });
 }
 
 export interface ReportSection {

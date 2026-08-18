@@ -22,6 +22,7 @@ import { WideModal } from '@/shared/ui/WideModal';
 import { useToastStore } from '@/stores/useToastStore';
 
 import { clashApi, type ClashRuleSuggestion } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 export interface ClashRuleSuggestionBannerProps {
   projectId: string;
@@ -142,7 +143,7 @@ export function ClashRuleSuggestionBanner({
                     {s.rule.discipline_a} × {s.rule.discipline_b}
                     {' - '}
                     <span className="text-oe-blue">
-                      {s.rule.tolerance_m.toFixed(3)} m
+                      {fmtFixed(s.rule.tolerance_m, 3)} m
                     </span>
                   </div>
                   <div className="text-xs text-content-secondary mt-1">

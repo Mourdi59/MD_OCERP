@@ -8,6 +8,7 @@ import { Card, SkeletonTable } from '@/shared/ui';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { getErrorMessage } from '@/shared/lib/api';
 import { getFailureForecast } from '../api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /**
  * Forecast card: predicted next-service date, confidence and recent daily use.
@@ -130,7 +131,7 @@ export function FailureForecastCard({ equipmentId }: { equipmentId: string }) {
           </p>
           <p className="mt-1 flex items-center gap-1 text-base font-semibold tabular-nums text-content-primary">
             <Gauge size={13} className="text-content-tertiary" />
-            {fc.daily_usage.toFixed(1)}
+            {fmtFixed(fc.daily_usage, 1)}
             <span className="text-2xs font-normal text-content-tertiary">
               {t('equipment.forecast.hours_per_day', {
                 defaultValue: 'h/day',

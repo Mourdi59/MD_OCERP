@@ -52,6 +52,7 @@ import {
   normaliseFormula,
   type FormulaVariable,
 } from './grid/formula';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface CustomColumnsDialogProps {
   open: boolean;
@@ -192,7 +193,7 @@ export function CustomColumnsDialog({
     try {
       const r = evaluateFormulaRaw(formula, ctx);
       if (r === null) setTestResult('(empty)');
-      else if (typeof r === 'number') setTestResult(r.toFixed(Math.max(0, Math.min(6, newDecimals))));
+      else if (typeof r === 'number') setTestResult(fmtFixed(r, Math.max(0, Math.min(6, newDecimals))));
       else setTestResult(String(r));
     } catch (e) {
       setTestResult(`#ERR: ${e instanceof Error ? e.message : 'unknown'}`);

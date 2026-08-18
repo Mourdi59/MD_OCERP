@@ -73,6 +73,7 @@ import {
   type FederationSnapshot,
   type HealthTone,
 } from './federationHealth';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 // The federated 3D viewer pulls in Three.js, so it is code-split and only
 // fetched when a user actually opens the "3D" tab of a federation.
@@ -469,7 +470,7 @@ function FederationHealthPanel({ federationId }: FederationHealthPanelProps) {
         </div>
         <div className="text-right">
           <div className="text-sm font-semibold text-slate-800">
-            {data.total_elements.toLocaleString()}
+            {data.total_elements.toLocaleString(getIntlLocale())}
           </div>
           <div className="text-xs text-slate-500">
             {t('bim.federation.health.total_elements', {
@@ -545,7 +546,7 @@ function FederationHealthPanel({ federationId }: FederationHealthPanelProps) {
               </Badge>
               <span className="text-sm text-slate-700">{m.model_name}</span>
               <span className="text-xs text-slate-400">
-                {m.element_count.toLocaleString()}{' '}
+                {m.element_count.toLocaleString(getIntlLocale())}{' '}
                 {t('bim.federation.health.elements_short', {
                   defaultValue: 'el.',
                 })}
@@ -756,7 +757,7 @@ function FederationSnapshotPanel({ federationId }: FederationSnapshotPanelProps)
                         <Badge>{m.discipline}</Badge>
                         <span>{m.model_name}</span>
                         <span className="text-xs text-slate-400">
-                          {m.element_count.toLocaleString()}
+                          {m.element_count.toLocaleString(getIntlLocale())}
                         </span>
                       </li>
                     ))}

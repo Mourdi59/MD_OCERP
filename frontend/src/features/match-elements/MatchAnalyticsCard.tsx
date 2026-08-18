@@ -34,7 +34,7 @@ import {
   type AnalyticsBreakdown,
   type MatchAnalyticsResponse,
 } from './api';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 const WINDOW_OPTIONS = [1, 7, 30, 90] as const;
 
@@ -45,7 +45,7 @@ function fmtPct(v: number | null | undefined): string {
 
 function fmtNum(v: number | null | undefined, digits = 2): string {
   if (v === null || v === undefined) return '—';
-  return v.toFixed(digits);
+  return fmtFixed(v, digits);
 }
 
 function fmtMs(v: number | null | undefined): string {
@@ -451,7 +451,7 @@ export function MatchAnalyticsCard({ projectId }: MatchAnalyticsCardProps) {
                   'match_elements.analytics_footer',
                   'Generated {{at}} · {{ref}}',
                   {
-                    at: new Date(data.generated_at).toLocaleString(),
+                    at: new Date(data.generated_at).toLocaleString(getIntlLocale()),
                     ref: 'MAPPING_PROCESS.md §10',
                   },
                 )}

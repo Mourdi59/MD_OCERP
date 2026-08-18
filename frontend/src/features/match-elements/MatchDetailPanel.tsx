@@ -28,6 +28,7 @@ import {
 } from './matchReasons';
 import { NoMatchModal } from './NoMatchModal';
 import { SymbolSuggestionPanel } from './SymbolSuggestionPanel';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 type DetailTabKey = 'methods' | 'elements' | 'apply';
 const DETAIL_TAB_IDS: readonly DetailTabKey[] = ['methods', 'elements', 'apply'];
@@ -52,7 +53,7 @@ function ConfidencePill({ band, score }: { band: ConfidenceBand; score: number }
           : 'bg-slate-400';
   return (
     <span className={`inline-block px-1.5 py-0.5 rounded text-white text-xs ${cls}`}>
-      {score.toFixed(2)}
+      {fmtFixed(score, 2)}
     </span>
   );
 }
@@ -266,7 +267,7 @@ export function MatchDetailPanel({ sessionId, group, projectId, onClose }: Props
                 count: group.element_count,
               })}{' '}
               · {Object.entries(group.quantities).slice(0, 3).map(
-                ([k, v]) => `${k}=${(v as number).toFixed(1)}`,
+                ([k, v]) => `${k}=${fmtFixed(v as number, 1)}`,
               ).join(' · ')}
               {group.opening_warning && (
                 <span className="ml-2 inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
@@ -290,7 +291,7 @@ export function MatchDetailPanel({ sessionId, group, projectId, onClose }: Props
                     <span className="opacity-80">
                       {t('match_elements.detail.prior_pick_last', {
                         defaultValue: '· last {{date}}',
-                        date: new Date(priorPick.last_used_at).toLocaleDateString(),
+                        date: new Date(priorPick.last_used_at).toLocaleDateString(getIntlLocale()),
                       })}
                     </span>
                   )}
@@ -437,7 +438,7 @@ export function MatchDetailPanel({ sessionId, group, projectId, onClose }: Props
                             )}
                           </td>
                           <td className="px-2 py-1.5 text-right text-xs tabular-nums align-top">
-                            {Number(cand.unit_rate).toFixed(2)} {cand.currency}/{cand.unit}
+                            {fmtFixed(Number(cand.unit_rate), 2)} {cand.currency}/{cand.unit}
                           </td>
                           <td className="px-2 py-1.5 text-right align-top">
                             <ConfidencePill band={cand.confidence_band} score={cand.score} />
@@ -527,7 +528,7 @@ export function MatchDetailPanel({ sessionId, group, projectId, onClose }: Props
                     {t('match_elements.detail.apply_total', 'Total')}
                   </span>
                   <strong className="tabular-nums">
-                    {Number(applyQ.data.grand_total).toFixed(2)}{' '}
+                    {fmtFixed(Number(applyQ.data.grand_total), 2)}{' '}
                     {applyQ.data.currency ?? ''}
                   </strong>
                 </div>
@@ -540,10 +541,10 @@ export function MatchDetailPanel({ sessionId, group, projectId, onClose }: Props
                     {(() => {
                       const dq = q.convert(Number(p.quantity), p.unit || '');
                       const dr = q.convertRate(Number(p.unit_rate), p.unit || '');
-                      return `${dq.value.toFixed(2)} ${p.unit ? dq.unit : ''}`.trim()
-                        + ` × ${dr.toFixed(2)} ${p.currency}`;
+                      return `${fmtFixed(dq.value, 2)} ${p.unit ? dq.unit : ''}`.trim()
+                        + ` × ${fmtFixed(dr, 2)} ${p.currency}`;
                     })()}{' '}={' '}
-                    <strong className="tabular-nums">{Number(p.line_total).toFixed(2)} {p.currency}</strong>
+                    <strong className="tabular-nums">{fmtFixed(Number(p.line_total), 2)} {p.currency}</strong>
                   </div>
                   {p.resources.length > 0 && (
                     <div className="mt-2 pl-3 border-l-2 border-slate-200 dark:border-slate-700">
@@ -553,7 +554,7 @@ export function MatchDetailPanel({ sessionId, group, projectId, onClose }: Props
                         return (
                           <div key={i} className="text-xs flex justify-between text-slate-600 dark:text-slate-300">
                             <span>{r.description} (×{r.factor})</span>
-                            <span className="tabular-nums">{`${dr.value.toFixed(2)} ${r.unit ? dr.unit : ''}`.trim()}</span>
+                            <span className="tabular-nums">{`${fmtFixed(dr.value, 2)} ${r.unit ? dr.unit : ''}`.trim()}</span>
                           </div>
                         );
                       })}

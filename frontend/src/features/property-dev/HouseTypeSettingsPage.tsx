@@ -38,6 +38,7 @@ import {
   type HouseTypeCatalogueEntry,
 } from './api';
 import { HouseTypeEditModal } from './HouseTypeEditModal';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 const inputCls =
   'h-9 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
@@ -374,7 +375,7 @@ export function HouseTypeSettingsPage() {
                                 Number(entry.area_typical_m2),
                                 'm²',
                               );
-                              return `${a.value.toFixed(1)} ${a.unit}`;
+                              return `${fmtFixed(a.value, 1)} ${a.unit}`;
                             })()
                           : entry.area_typical_m2}
                     </td>

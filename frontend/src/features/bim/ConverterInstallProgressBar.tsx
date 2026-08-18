@@ -36,6 +36,7 @@ import {
   fetchBIMConverterInstallProgress,
   type BIMConverterInstallProgress,
 } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface ConverterInstallProgressBarProps {
   /** Converter id (``rvt`` / ``ifc`` / ``dwg`` / ``dgn``). */
@@ -175,8 +176,8 @@ export function ConverterInstallProgressBar({
         </span>
         <span className="shrink-0 font-mono">
           {expectedMb > 0
-            ? `${mbDone.toFixed(1)} / ${expectedMb} MB`
-            : `${mbDone.toFixed(1)} MB`}
+            ? `${fmtFixed(mbDone, 1)} / ${expectedMb} MB`
+            : `${fmtFixed(mbDone, 1)} MB`}
         </span>
       </div>
     </div>

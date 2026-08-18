@@ -8,7 +8,7 @@ import { apiGet, apiPost, type Page } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 import { SUPPORTED_LANGUAGES } from '@/app/i18n';
 import { uploadDocument, fetchDocuments, type DocumentItem } from '@/features/documents/api';
 import {
@@ -2284,7 +2284,7 @@ function DashboardPageInner() {
     }
     const byCurrency: CurrencyTotal[] = Array.from(sums.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([currency, total]) => ({ currency, total_value: total.toFixed(2) }));
+      .map(([currency, total]) => ({ currency, total_value: fmtFixed(total, 2) }));
     return { byCurrency, multiCurrency: byCurrency.length > 1 };
   }, [scopedBoqSummary]);
 
@@ -2967,7 +2967,7 @@ function AnalyticsSection({ projects }: { projects: ProjectSummary[] }) {
       }
       byCurrency = Array.from(sums.entries())
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([currency, total]) => ({ currency, total_value: total.toFixed(2) }));
+        .map(([currency, total]) => ({ currency, total_value: fmtFixed(total, 2) }));
     }
     const multiCurrency = extra.multi_currency ?? byCurrency.length > 1;
 
@@ -3026,9 +3026,9 @@ function AnalyticsSection({ projects }: { projects: ProjectSummary[] }) {
   const fmtCompact = (value: number, code: string): string => {
     const num =
       value >= 1_000_000
-        ? `${(value / 1_000_000).toFixed(1)}M`
+        ? `${fmtFixed(value / 1_000_000, 1)}M`
         : value >= 1_000
-          ? `${(value / 1_000).toFixed(0)}K`
+          ? `${fmtFixed(value / 1_000, 0)}K`
           : value.toLocaleString(getIntlLocale(), {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0,
@@ -3225,7 +3225,7 @@ function SystemStatus() {
         vectorVectors > 0
           ? t('dashboard.status_vectors_count', {
               defaultValue: '{{n}} vectors',
-              n: vectorVectors.toLocaleString(),
+              n: vectorVectors.toLocaleString(getIntlLocale()),
             })
           : '',
       ]

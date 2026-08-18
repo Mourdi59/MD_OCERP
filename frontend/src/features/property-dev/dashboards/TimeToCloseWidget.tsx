@@ -16,6 +16,7 @@ import {
   type TimeToCloseResponse,
 } from '../api';
 import { DashboardEmpty, DashboardSkeleton, num } from './_shared';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface TimeToCloseWidgetProps {
   since?: string;
@@ -134,9 +135,9 @@ function StageBar({ stage, max }: { stage: StageDistribution; max: number }) {
         defaultValue:
           '{{label}}: mean {{mean}}d, p50 {{p50}}d, p90 {{p90}}d ({{n}} samples)',
         label,
-        mean: mean.toFixed(1),
-        p50: p50.toFixed(1),
-        p90: p90.toFixed(1),
+        mean: fmtFixed(mean, 1),
+        p50: fmtFixed(p50, 1),
+        p90: fmtFixed(p90, 1),
         n: stage.sample_size,
       })}
     >
@@ -145,9 +146,9 @@ function StageBar({ stage, max }: { stage: StageDistribution; max: number }) {
         <span className="text-content-tertiary">
           {t('propdev.dashboards.ttc.bar_stats', {
             defaultValue: 'mean {{m}}d • p50 {{p50}}d • p90 {{p90}}d • n={{n}}',
-            m: mean.toFixed(1),
-            p50: p50.toFixed(1),
-            p90: p90.toFixed(1),
+            m: fmtFixed(mean, 1),
+            p50: fmtFixed(p50, 1),
+            p90: fmtFixed(p90, 1),
             n: stage.sample_size,
           })}
         </span>

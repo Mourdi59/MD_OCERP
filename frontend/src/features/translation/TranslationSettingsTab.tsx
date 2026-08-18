@@ -46,6 +46,7 @@ import { getErrorMessage } from '@/shared/lib/api';
 import { IATE_ALLOWED_PREFIXES, isIateUrlAllowed } from './api';
 import { useTranslationStatus, useTriggerDownload } from './queries';
 import type { DictionaryEntry, InFlightTask, LookupKind } from './types';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
@@ -91,7 +92,7 @@ function formatBytes(bytes: number): string {
     Math.floor(Math.log(bytes) / Math.log(1024)),
   );
   const value = bytes / 1024 ** idx;
-  return `${value.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
+  return `${fmtFixed(value, idx === 0 ? 0 : 1)} ${units[idx]}`;
 }
 
 /** Render a Unix epoch (seconds) as a relative time string ("3 minutes ago").

@@ -39,6 +39,7 @@ import {
 import { takeoffApi, type TakeoffDocumentResponse } from '../takeoff/api';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { QuantitySummaryPanel } from './QuantitySummaryPanel';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -359,7 +360,7 @@ function ConverterCard({
           )}{' '}
           &middot;{' '}
           {converter.size_mb >= 1024
-            ? `${(converter.size_mb / 1024).toFixed(1)} GB`
+            ? `${fmtFixed(converter.size_mb / 1024, 1)} GB`
             : `${converter.size_mb} MB`}
         </span>
 
@@ -1291,7 +1292,7 @@ export function QuantitiesPage() {
                         {doc.uploaded_at && (
                           <span className="flex items-center gap-1">
                             <Clock size={10} />
-                            {new Date(doc.uploaded_at).toLocaleDateString()}
+                            {new Date(doc.uploaded_at).toLocaleDateString(getIntlLocale())}
                           </span>
                         )}
                         {doc.pages > 0 && (

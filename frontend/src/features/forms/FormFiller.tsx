@@ -47,6 +47,7 @@ import {
   computeFormulas,
   applyDefaults,
 } from './fieldTypes';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 const inputCls =
   'h-10 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
@@ -734,7 +735,7 @@ function SignatureInput({
       {sig.signed_at && (
         <p className="inline-flex items-center gap-1 text-xs text-semantic-success">
           <Check size={12} />
-          {t('forms.signed_on', { defaultValue: 'Signed {{date}}', date: new Date(sig.signed_at).toLocaleString() })}
+          {t('forms.signed_on', { defaultValue: 'Signed {{date}}', date: new Date(sig.signed_at).toLocaleString(getIntlLocale()) })}
           {!disabled && (
             <button
               type="button"

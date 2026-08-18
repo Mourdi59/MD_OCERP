@@ -12,6 +12,7 @@ import clsx from 'clsx';
 import { FileText, Image as ImageIcon, Layout, Box, Pencil, File, PenTool, FileBarChart, Tag } from 'lucide-react';
 import { SnippetHighlight } from './SnippetHighlight';
 import type { SearchHit } from './types';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 const KIND_ICON: Record<string, typeof FileText> = {
   document: FileText,
@@ -105,7 +106,7 @@ export function SearchResults({ hits, query, isLoading, onOpen, className }: Sea
                   <span className="ms-auto tabular-nums">
                     {t('files.search.score', {
                       defaultValue: 'Score {{score}}',
-                      score: hit.score.toFixed(2),
+                      score: fmtFixed(hit.score, 2),
                     })}
                   </span>
                 </div>

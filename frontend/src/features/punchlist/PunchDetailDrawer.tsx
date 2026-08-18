@@ -30,6 +30,7 @@ import {
 import { PunchClosureStepper } from './PunchClosureStepper';
 import { PunchPhotoGallery } from './PunchPhotoGallery';
 import { AssigneeLabel } from './assignee';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 const STATUS_VARIANT: Record<PunchStatus, 'error' | 'warning' | 'blue' | 'success' | 'neutral'> = {
   open: 'error',
@@ -58,7 +59,7 @@ function titleCase(value: string): string {
 function formatDate(value: string | null | undefined): string {
   if (!value) return '-';
   try {
-    return new Date(value).toLocaleDateString(undefined, {
+    return new Date(value).toLocaleDateString(getIntlLocale(), {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

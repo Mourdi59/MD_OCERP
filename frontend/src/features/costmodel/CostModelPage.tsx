@@ -48,7 +48,7 @@ import { CostSpinePanel } from './CostSpinePanel';
 import { ContractExposurePanel } from './ContractExposurePanel';
 import { costmodelGuide } from './costmodelGuide';
 import { BudgetLineThresholdEditor, parseThreshold } from './BudgetLineThresholdEditor';
-import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 import { formatCompactCurrency, formatCurrency as fmtMoney } from '@/shared/lib/money';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -181,7 +181,7 @@ const PerformanceIndicator = memo(function PerformanceIndicator({
 }) {
   const { t } = useTranslation();
   const isHealthy = value >= 1.0;
-  const displayValue = value.toFixed(2);
+  const displayValue = fmtFixed(value, 2);
 
   return (
     <div className="flex items-center gap-4">
@@ -255,7 +255,7 @@ const SCurveChart = memo(function SCurveChart({ data }: { data: SCurvePoint[] })
       values
         .map(
           (v, i) =>
-            `${i === 0 ? 'M' : 'L'} ${scales.x(i).toFixed(1)} ${scales.y(v).toFixed(1)}`,
+            `${i === 0 ? 'M' : 'L'} ${fmtFixed(scales.x(i), 1)} ${fmtFixed(scales.y(v), 1)}`,
         )
         .join(' '),
     [scales],
@@ -621,11 +621,11 @@ const EVMKPIBox = memo(function EVMKPIBox({
 }) {
   let displayValue: string;
   if (format === 'index') {
-    displayValue = value.toFixed(2);
+    displayValue = fmtFixed(value, 2);
   } else if (format === 'currency') {
     displayValue = formatCompact(value, currency);
   } else {
-    displayValue = value.toFixed(2);
+    displayValue = fmtFixed(value, 2);
   }
 
   let colorClass = 'text-content-primary';
@@ -863,7 +863,7 @@ const EVMDashboard = memo(function EVMDashboard({
                 <span className="text-sm text-content-secondary">
                   {t('costmodel.evm_tcpi_hint', {
                     defaultValue: 'To finish on budget, you need a CPI of {{tcpi}} going forward',
-                    tcpi: evm.tcpi.toFixed(2),
+                    tcpi: fmtFixed(evm.tcpi, 2),
                   })}
                 </span>
               </div>
@@ -1546,10 +1546,10 @@ function SnapshotsList({ projectId, currency }: { projectId: string; currency: s
                     {formatCompact(snap.actual_cost, currency)}
                   </td>
                   <td className={`py-2.5 px-3 text-center tabular-nums font-medium ${snap.spi >= 1 ? 'text-semantic-success' : 'text-semantic-error'}`}>
-                    {snap.spi.toFixed(2)}
+                    {fmtFixed(snap.spi, 2)}
                   </td>
                   <td className={`py-2.5 px-3 text-center tabular-nums font-medium ${snap.cpi >= 1 ? 'text-semantic-success' : 'text-semantic-error'}`}>
-                    {snap.cpi.toFixed(2)}
+                    {fmtFixed(snap.cpi, 2)}
                   </td>
                   <td className="py-2.5 pl-3 min-w-[160px]">
                     {editingNotes === snap.id ? (

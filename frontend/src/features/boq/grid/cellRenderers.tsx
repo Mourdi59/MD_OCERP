@@ -50,7 +50,7 @@ import { resolveRowModelId } from './resolveRowModelId';
 import { MiniGeometryPreview } from '@/shared/ui/MiniGeometryPreview';
 import { fetchBIMElementsByIds, fetchBIMElementProperties } from '@/features/bim/api';
 import type { BIMElementData } from '@/shared/ui/BIMViewer/ElementManager';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 import { localizedUnitCode } from '@/shared/lib/unitLabels';
 import type { DisplayQuantityApi } from '@/shared/hooks/useDisplayQuantity';
 import { useFxRatesStore, getFxRate } from '@/stores/useFxRatesStore';
@@ -217,7 +217,7 @@ export function SectionFullWidthRenderer(params: ICellRendererParams) {
   const displayCode = dc && dc.rate > 0 ? dc.code : (ctx.currencyCode ?? 'EUR');
   const formattedSubtotal = ctx.fmt
     ? fmtWithCurrency(displayedSubtotal, ctx.locale ?? 'de-DE', displayCode)
-    : `${displayedSubtotal.toFixed(2)}`;
+    : `${fmtFixed(displayedSubtotal, 2)}`;
 
   const t = ctx.t ?? ((key: string, opts?: Record<string, string | number>) =>
     (opts?.defaultValue as string) ?? key);
@@ -3832,7 +3832,7 @@ export function EditableResourceRow({ data, ctx, slots, leftPad }: { data: Recor
     const meanRate = Number(availableVariantStats!.mean);
     const minRate = Number(availableVariantStats!.min);
     const maxRate = Number(availableVariantStats!.max);
-    const range = `${minRate.toFixed(2)} – ${maxRate.toFixed(2)} ${resourceCurrency}`;
+    const range = `${fmtFixed(minRate, 2)} – ${fmtFixed(maxRate, 2)} ${resourceCurrency}`;
     if (resourceVariant) {
       const delta =
         meanRate > 0
@@ -3844,7 +3844,7 @@ export function EditableResourceRow({ data, ctx, slots, leftPad }: { data: Recor
         defaultValue:
           'Variant: {{label}} @ {{price}} {{currency}}{{delta}}. Click to switch.',
         label: resourceVariant.label,
-        price: Number(resourceVariant.price).toFixed(2),
+        price: fmtFixed(Number(resourceVariant.price), 2),
         currency: resourceCurrency,
         delta: deltaStr,
       });
@@ -5350,7 +5350,7 @@ export function UnitRateCellRenderer(params: ICellRendererParams) {
   // Variant cache present — render number + pill.  When resource-driven,
   // suppress the pill (rate is computed from resources, not a variant).
   const optsCount = stats!.count;
-  const minMax = `${stats!.min.toFixed(2)} – ${stats!.max.toFixed(2)} ${currency}`;
+  const minMax = `${fmtFixed(stats!.min, 2)} – ${fmtFixed(stats!.max, 2)} ${currency}`;
   const tooltip = variant
     ? t('boq.unit_rate_variant_pill_tooltip_picked', {
         defaultValue:

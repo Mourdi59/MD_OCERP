@@ -149,7 +149,7 @@ export function ScheduleRiskPanel({ scheduleId, activitiesById }: ScheduleRiskPa
         title: t('schedule.risk.run_done', { defaultValue: 'Simulation complete' }),
         message: t('schedule.risk.run_done_detail', {
           defaultValue: '{{iterations}} iterations - {{status}}',
-          iterations: data.iterations.toLocaleString(),
+          iterations: data.iterations.toLocaleString(getIntlLocale()),
           status: data.convergence_status || '-',
         }),
       });

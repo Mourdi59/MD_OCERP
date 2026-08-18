@@ -43,6 +43,7 @@ import {
   type UnifiedMarkupSource,
   type UnifiedMarkupType,
 } from './aggregator';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Visual tokens ───────────────────────────────────────────────────── */
 
@@ -86,7 +87,7 @@ function UnifiedRow({ item, onOpen }: { item: UnifiedMarkup; onOpen: () => void 
   const TypeIcon = TYPE_ICONS[item.type] ?? Layers;
   const createdLabel = useMemo(() => {
     try {
-      return new Date(item.createdAt).toLocaleDateString(undefined, {
+      return new Date(item.createdAt).toLocaleDateString(getIntlLocale(), {
         month: 'short',
         day: 'numeric',
         year: 'numeric',

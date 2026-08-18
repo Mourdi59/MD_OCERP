@@ -62,6 +62,7 @@ import {
   placeBimModelOnMap,
   uploadPdfRasterOverlay,
 } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface PlaceOnMapPickerProps {
   open: boolean;
@@ -540,7 +541,7 @@ export function PlaceOnMapPicker({
                           {doc.name}
                         </p>
                         <p className="text-xs text-content-tertiary">
-                          {((doc.file_size ?? 0) / 1024 / 1024).toFixed(1)} MB
+                          {fmtFixed((doc.file_size ?? 0) / 1024 / 1024, 1)} MB
                         </p>
                       </div>
                       {placed ? (

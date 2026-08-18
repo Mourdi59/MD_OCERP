@@ -74,6 +74,7 @@ import {
   WELL_KNOWN_ENTITY_TYPES,
   WELL_KNOWN_ACTIONS,
 } from './api';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 const DEFAULT_LIMIT = 50;
 const LIMIT_OPTIONS = [25, 50, 100, 200] as const;
@@ -114,7 +115,7 @@ function formatTimestamp(iso: string | null): string {
   try {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleString(undefined, {
+    return d.toLocaleString(getIntlLocale(), {
       year: 'numeric',
       month: 'short',
       day: '2-digit',

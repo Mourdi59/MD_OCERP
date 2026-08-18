@@ -63,6 +63,7 @@ import type {
   ProjectRFIInboxPayload,
   ProjectVariationsPayload,
 } from '@/shared/api/dashboardRollup';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Rollup provider ──────────────────────────────────────────────────── */
 
@@ -342,7 +343,7 @@ function fmtMoney(value: number | string | null | undefined, currency = 'EUR'): 
   if (value == null) return `${currency} 0`;
   const n = typeof value === 'string' ? Number(value) : value;
   if (!Number.isFinite(n)) return `${currency} 0`;
-  return `${currency} ${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  return `${currency} ${n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })}`;
 }
 
 export function ChangeOrdersPulseWidget({
@@ -832,8 +833,8 @@ interface FileItem {
 function fmtBytes(bytes?: number): string {
   if (!bytes) return '—';
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 1)} KB`;
+  return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
 }
 
 export function RecentFilesWidget({ projectId }: { projectId: string }) {
@@ -1528,7 +1529,7 @@ export function ScheduleStripWidget({ projectId }: { projectId: string }) {
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <span className="text-2xl font-bold tabular-nums text-content-primary leading-none">
-              {Number.isFinite(pct) ? pct.toFixed(0) : 0}%
+              {Number.isFinite(pct) ? fmtFixed(pct, 0) : 0}%
             </span>
             <div className="flex-1 h-2 bg-surface-secondary rounded-full overflow-hidden">
               <div

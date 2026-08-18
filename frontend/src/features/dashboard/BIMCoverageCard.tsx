@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import { Cuboid, Link2, FileText, ShieldCheck, CheckSquare, Calendar, ArrowRight } from 'lucide-react';
 import { apiGet } from '@/shared/lib/api';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface BIMCoverageSummary {
   project_id: string;
@@ -59,7 +60,7 @@ function MetricRow({ icon, label, count, total, percent, color }: MetricRowProps
             {label}
           </span>
           <span className="text-xs font-mono text-content-tertiary tabular-nums shrink-0">
-            {count.toLocaleString()} / {total.toLocaleString()}{' '}
+            {count.toLocaleString(getIntlLocale())} / {total.toLocaleString(getIntlLocale())}{' '}
             <span className="text-content-quaternary">({pctDisplay}%)</span>
           </span>
         </div>

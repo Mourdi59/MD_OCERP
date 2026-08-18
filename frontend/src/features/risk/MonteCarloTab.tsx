@@ -122,7 +122,7 @@ export function MonteCarloTab({ projectId, currency }: MonteCarloTabProps) {
         }),
         message: t('risk.montecarlo.run_done_detail', {
           defaultValue: '{{iterations}} iterations across {{risks}} risks',
-          iterations: data.iterations.toLocaleString(),
+          iterations: data.iterations.toLocaleString(getIntlLocale()),
           risks: data.risk_count,
         }),
       });
@@ -245,7 +245,7 @@ export function MonteCarloTab({ projectId, currency }: MonteCarloTabProps) {
               {t('risk.montecarlo.last_run', {
                 defaultValue: 'Last run - {{risks}} risks, {{iterations}} iterations',
                 risks: result.risk_count,
-                iterations: result.iterations.toLocaleString(),
+                iterations: result.iterations.toLocaleString(getIntlLocale()),
               })}
             </h3>
           </div>

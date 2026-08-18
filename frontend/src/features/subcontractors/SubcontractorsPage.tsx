@@ -87,7 +87,7 @@ import {
   type CreateSubcontractorPayload,
   type Rating,
 } from './api';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
 type DrawerTab = 'scope' | 'payments' | 'ratings' | 'retention';
 
@@ -210,7 +210,7 @@ function RatingStars({ score }: { score: number | string }) {
         />
       ))}
       <span className="ml-1.5 text-xs text-content-secondary tabular-nums">
-        {num.toFixed(0)}
+        {fmtFixed(num, 0)}
       </span>
     </span>
   );
@@ -1700,19 +1700,19 @@ function RatingsTab({
             <tr key={r.id} className="border-t border-border-light">
               <td className="px-3 py-2 font-mono">{r.period}</td>
               <td className="px-3 py-2 text-right tabular-nums">
-                {toNum(r.quality_score).toFixed(0)}
+                {fmtFixed(toNum(r.quality_score), 0)}
               </td>
               <td className="px-3 py-2 text-right tabular-nums">
-                {toNum(r.hse_score).toFixed(0)}
+                {fmtFixed(toNum(r.hse_score), 0)}
               </td>
               <td className="px-3 py-2 text-right tabular-nums">
-                {toNum(r.schedule_score).toFixed(0)}
+                {fmtFixed(toNum(r.schedule_score), 0)}
               </td>
               <td className="px-3 py-2 text-right tabular-nums">
-                {toNum(r.cost_score).toFixed(0)}
+                {fmtFixed(toNum(r.cost_score), 0)}
               </td>
               <td className="px-3 py-2 text-right font-semibold tabular-nums">
-                {toNum(r.overall_score).toFixed(0)}
+                {fmtFixed(toNum(r.overall_score), 0)}
               </td>
             </tr>
           ))}

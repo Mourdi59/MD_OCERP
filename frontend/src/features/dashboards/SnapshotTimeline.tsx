@@ -30,6 +30,7 @@ import {
   getSnapshotTimeline,
   type SnapshotTimelineItem,
 } from './api';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 export interface SnapshotTimelineProps {
   projectId: string;
@@ -347,7 +348,7 @@ function formatTimestamp(iso: string): string {
   // glance ("2 days ago") would be nicer but i18n adds friction; ISO
   // → toLocaleString covers the v1 need.
   try {
-    return new Date(iso).toLocaleString();
+    return new Date(iso).toLocaleString(getIntlLocale());
   } catch {
     return iso;
   }

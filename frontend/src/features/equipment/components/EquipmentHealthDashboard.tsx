@@ -20,6 +20,7 @@ import {
   type MaintenanceTrend,
 } from '../api';
 import { FailureForecastCard } from './FailureForecastCard';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /**
  * Health & Analytics tab for the equipment detail drawer.
@@ -86,7 +87,7 @@ function RiskGauge({ score, band }: { score: number; band: HealthBand }) {
         <span
           className={clsx('text-3xl font-bold tabular-nums', BAND_TEXT[band])}
         >
-          {clamped.toFixed(0)}
+          {fmtFixed(clamped, 0)}
         </span>
         <span className="text-2xs uppercase tracking-wide text-content-tertiary">
           {t('equipment.health.score_label', { defaultValue: 'Health Score' })}

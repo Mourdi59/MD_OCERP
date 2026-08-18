@@ -28,6 +28,7 @@ import { Button, EmptyState, Skeleton, AuthImage } from '@/shared/ui';
 import { useFileList } from '@/features/file-manager/hooks';
 import { UploadDialog } from '@/features/file-manager/components/UploadDialog';
 import type { FileRow } from '@/features/file-manager/types';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -35,9 +36,9 @@ import type { FileRow } from '@/features/file-manager/types';
 export function fmtBytes(bytes: number): string {
   if (!bytes) return '0 B';
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
+  return `${fmtFixed(bytes / (1024 * 1024 * 1024), 2)} GB`;
 }
 
 /** Pick the best "captured at" timestamp:

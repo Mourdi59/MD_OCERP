@@ -38,6 +38,7 @@ import {
   type Plot,
   type UpdateBuyerPayload,
 } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 const inputCls =
   'h-9 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
@@ -129,7 +130,7 @@ function roundMoney(raw: string): string {
   if (!raw) return '0';
   const n = Number(raw);
   if (Number.isNaN(n)) return raw;
-  return n.toFixed(2);
+  return fmtFixed(n, 2);
 }
 
 function validate(form: FormState, t: (k: string, o?: { defaultValue: string }) => string): Record<string, string> {

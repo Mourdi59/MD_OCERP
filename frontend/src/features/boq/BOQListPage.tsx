@@ -13,7 +13,7 @@ import { Card, Badge, EmptyState, Skeleton, Button, Breadcrumb, FileTypeChips, D
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { apiGet } from '@/shared/lib/api';
-import { fmtCompact, fmtNumber, fmtPercent } from '@/shared/lib/formatters';
+import { fmtCompact, fmtNumber, fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
 import { boqApi, type BOQWithPositions, groupPositionsIntoSections, type SectionGroup } from './api';
 import { resourceAwareTotalInBase, getCurrencyCode } from './boqHelpers';
 import { projectsApi, type ProjectFxRate } from '@/features/projects/api';
@@ -875,7 +875,7 @@ export function BOQListPage() {
           </div>
           <div className="flex flex-col justify-start rounded-xl border border-slate-200/70 dark:border-slate-700/50 bg-gradient-to-b from-slate-50/70 to-slate-100/45 dark:from-slate-800/50 dark:to-slate-900/35 p-4 shadow-xs transition-shadow duration-normal ease-oe hover:shadow-sm">
             <div className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">{t('boq.total_positions', { defaultValue: 'Total Positions' })}</div>
-            <div className="mt-1 text-lg font-semibold text-content-primary tabular-nums">{stats.totalPositions.toLocaleString()}</div>
+            <div className="mt-1 text-lg font-semibold text-content-primary tabular-nums">{stats.totalPositions.toLocaleString(getIntlLocale())}</div>
           </div>
           <div className="flex flex-col justify-start rounded-xl border border-slate-200/70 dark:border-slate-700/50 bg-gradient-to-b from-slate-50/70 to-slate-100/45 dark:from-slate-800/50 dark:to-slate-900/35 p-4 shadow-xs transition-shadow duration-normal ease-oe hover:shadow-sm">
             <div className="text-2xs font-medium text-content-tertiary uppercase tracking-wide">{t('boq.total_value', { defaultValue: 'Total Value' })}</div>

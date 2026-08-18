@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, Trash2, Loader2, Library, Sparkles } from 'lucide-react';
 import { matchElementsApi } from './api';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface Props {
   onClose: () => void;
@@ -149,7 +150,7 @@ export function TemplatesPanel({ onClose, activeSignatures }: Props) {
                   <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                     {t('match_elements.templates.used', 'Used')} <strong className="tabular-nums">{tpl.use_count}</strong>×
                     {tpl.last_used_at && (
-                      <> · {t('match_elements.templates.last', 'last {{date}}', { date: new Date(tpl.last_used_at).toLocaleDateString() })}</>
+                      <> · {t('match_elements.templates.last', 'last {{date}}', { date: new Date(tpl.last_used_at).toLocaleDateString(getIntlLocale()) })}</>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-1 mt-1.5">

@@ -12,6 +12,7 @@
  *   GET  /api/v1/bim-hub/federations/{id}/snapshot
  *   POST /api/v1/bim-hub/federations/{id}/diff   (body = prior snapshot)
  */
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Health types (mirror backend schemas) ─────────────────────────── */
 
@@ -289,5 +290,5 @@ export function diffHasChanges(diff: FederationDiff): boolean {
  */
 export function formatDrift(drift: number): string {
   const sign = drift > 0 ? '+' : '';
-  return `${sign}${drift.toLocaleString()}`;
+  return `${sign}${drift.toLocaleString(getIntlLocale())}`;
 }

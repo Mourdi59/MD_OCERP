@@ -61,6 +61,7 @@ import type {
   StepDecision,
   StepState,
 } from './types';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface MeResponse {
   id?: string;
@@ -706,7 +707,7 @@ function HistoryList({ instances }: { instances: ApprovalInstance[] }) {
             <span className="truncate">{i.id.slice(0, 8)}</span>
             {i.completed_at && (
               <span className="text-content-tertiary text-2xs ml-auto">
-                {new Date(i.completed_at).toLocaleDateString()}
+                {new Date(i.completed_at).toLocaleDateString(getIntlLocale())}
               </span>
             )}
           </li>

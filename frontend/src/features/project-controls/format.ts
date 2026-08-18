@@ -9,6 +9,7 @@
  */
 
 import type { ControlsStatus } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 export function formatControlsValue(
   rawValue: string | number,
@@ -19,10 +20,10 @@ export function formatControlsValue(
   if (!Number.isFinite(value)) return '—';
   const abs = Math.abs(value);
   let formatted: string;
-  if (abs >= 1_000_000) formatted = `${(value / 1_000_000).toFixed(2)}M`;
-  else if (abs >= 1_000) formatted = `${(value / 1_000).toFixed(1)}k`;
+  if (abs >= 1_000_000) formatted = `${fmtFixed(value / 1_000_000, 2)}M`;
+  else if (abs >= 1_000) formatted = `${fmtFixed(value / 1_000, 1)}k`;
   else if (Number.isInteger(value)) formatted = String(value);
-  else formatted = value.toFixed(2);
+  else formatted = fmtFixed(value, 2);
 
   switch (unit) {
     case 'percent':

@@ -29,7 +29,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
-import { fmtCompact, fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtCompact, fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 import { formatCompactCurrency } from '@/shared/lib/money';
 import { hasEnoughPoints } from '@/shared/lib/chartDataFloor';
 import type { SeriesPoint } from './aggregate';
@@ -63,7 +63,7 @@ const MARGIN = { top: 8, right: 12, left: 0, bottom: 4 };
 /** Compact form for axis ticks and KPI tiles: 12.3K, 1.2M, 45%. */
 export function formatCompact(v: number, format: ValueFormat = 'number', currency?: string): string {
   if (!Number.isFinite(v)) return '-';
-  if (format === 'percent') return `${v.toFixed(Math.abs(v) < 10 ? 1 : 0)}%`;
+  if (format === 'percent') return `${fmtFixed(v, Math.abs(v) < 10 ? 1 : 0)}%`;
   if (format === 'currency' && currency) return formatCompactCurrency(v, currency);
   const abs = Math.abs(v);
   if (abs < 1_000) return `${Math.round(v * 100) / 100}`;

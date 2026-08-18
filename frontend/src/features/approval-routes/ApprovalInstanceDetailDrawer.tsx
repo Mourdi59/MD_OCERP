@@ -46,6 +46,7 @@ import {
 import { kindLabel } from './labels';
 import { ReassignDialog } from './ReassignDialog';
 import type { StepDecision } from './types';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface MeResponse {
   id?: string;
@@ -241,7 +242,7 @@ export function ApprovalInstanceDetailDrawer({
               <span className="text-2xs text-content-tertiary ml-auto">
                 {t('approvalRoutes.started_on', {
                   defaultValue: 'Started {{date}}',
-                  date: new Date(instance.started_at).toLocaleDateString(),
+                  date: new Date(instance.started_at).toLocaleDateString(getIntlLocale()),
                 })}
               </span>
             </div>

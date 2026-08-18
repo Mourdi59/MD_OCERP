@@ -21,6 +21,7 @@ import { FlaskConical, X } from 'lucide-react';
 import { boqApi } from './api';
 import { useToastStore } from '@/stores/useToastStore';
 import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 export interface ScenarioDialogProps {
   boqId: string;
@@ -196,7 +197,7 @@ export function ScenarioDialog({ boqId, baseName, isOpen, onClose, onCreated }: 
                 : showsPreview
                   ? t('boq.scenario_pct_preview', {
                       defaultValue: 'Every unit rate is multiplied by {{factor}}.',
-                      factor: factor.toFixed(4),
+                      factor: fmtFixed(factor, 4),
                     })
                   : t('boq.scenario_pct_hint', {
                       defaultValue:

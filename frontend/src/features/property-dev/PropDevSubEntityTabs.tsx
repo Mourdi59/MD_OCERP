@@ -105,7 +105,7 @@ import type {
   PriceMatrixStatus,
   RegulatorRef,
 } from './api';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
 const inputCls =
   'h-9 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
@@ -1287,7 +1287,7 @@ function AssignPlotsToBlockModal({
                     {(() => {
                       const a = dq.convert(toNumber(p.area_m2), 'm²');
                       const v =
-                        dq.system === 'imperial' ? a.value.toFixed(1) : a.value;
+                        dq.system === 'imperial' ? fmtFixed(a.value, 1) : a.value;
                       return `${v} ${a.unit}`;
                     })()}
                   </span>
@@ -1961,7 +1961,7 @@ export function PriceMatrixTab({
                   >
                     <td className="py-2 pr-3 font-medium">{m.name}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">
-                      {toNumber(m.base_price_per_m2).toFixed(2)}
+                      {fmtFixed(toNumber(m.base_price_per_m2), 2)}
                     </td>
                     <td className="py-2 pr-3 text-xs">{m.currency}</td>
                     <td className="py-2 pr-3 text-xs">
@@ -2502,7 +2502,7 @@ function PriceMatrixPreviewModal({
             {plots.length === 0 && <option value="">- no plots -</option>}
             {plots.map((p) => {
               const a = dq.convert(toNumber(p.area_m2), 'm²');
-              const v = dq.system === 'imperial' ? a.value.toFixed(1) : a.value;
+              const v = dq.system === 'imperial' ? fmtFixed(a.value, 1) : a.value;
               return (
                 <option key={p.id} value={p.id}>
                   {p.plot_number} — {v} {a.unit}
@@ -2538,7 +2538,7 @@ function PriceMatrixPreviewModal({
                 {(() => {
                   const a = dq.convert(toNumber(previewQ.data.area_m2), 'm²');
                   const v =
-                    dq.system === 'imperial' ? a.value.toFixed(1) : a.value;
+                    dq.system === 'imperial' ? fmtFixed(a.value, 1) : a.value;
                   return `${v} ${a.unit}`;
                 })()}
               </div>
@@ -2548,7 +2548,7 @@ function PriceMatrixPreviewModal({
                 })}
               </div>
               <div className="text-right tabular-nums">
-                {toNumber(previewQ.data.base_price_per_m2).toFixed(2)}{' '}
+                {fmtFixed(toNumber(previewQ.data.base_price_per_m2), 2)}{' '}
                 {previewQ.data.currency}
               </div>
               <div className="text-content-tertiary">
@@ -2557,7 +2557,7 @@ function PriceMatrixPreviewModal({
                 })}
               </div>
               <div className="text-right tabular-nums">
-                {toNumber(previewQ.data.base_price).toFixed(2)}{' '}
+                {fmtFixed(toNumber(previewQ.data.base_price), 2)}{' '}
                 {previewQ.data.currency}
               </div>
               <div className="text-content-tertiary">
@@ -2566,7 +2566,7 @@ function PriceMatrixPreviewModal({
                 })}
               </div>
               <div className="text-right tabular-nums">
-                ×{toNumber(previewQ.data.combined_multiplier).toFixed(4)}
+                ×{fmtFixed(toNumber(previewQ.data.combined_multiplier), 4)}
               </div>
               <div className="font-semibold">
                 {t('propdev.matrix.preview.final', {
@@ -2830,7 +2830,7 @@ function EscrowAccountCard({
           </div>
           <div className="font-semibold tabular-nums">
             {balanceQ.data
-              ? toNumber(balanceQ.data.credit_total).toFixed(2)
+              ? fmtFixed(toNumber(balanceQ.data.credit_total), 2)
               : '—'}
           </div>
         </div>
@@ -2840,7 +2840,7 @@ function EscrowAccountCard({
           </div>
           <div className="font-semibold tabular-nums">
             {balanceQ.data
-              ? toNumber(balanceQ.data.debit_total).toFixed(2)
+              ? fmtFixed(toNumber(balanceQ.data.debit_total), 2)
               : '—'}
           </div>
         </div>
@@ -2849,7 +2849,7 @@ function EscrowAccountCard({
             {t('propdev.escrow.balance', { defaultValue: 'Balance' })}
           </div>
           <div className="font-bold tabular-nums text-oe-blue">
-            {balanceQ.data ? toNumber(balanceQ.data.balance).toFixed(2) : '—'}
+            {balanceQ.data ? fmtFixed(toNumber(balanceQ.data.balance), 2) : '—'}
           </div>
         </div>
       </div>
@@ -3229,7 +3229,7 @@ function EscrowTransactionsDrawer({
                       </Badge>
                     </td>
                     <td className="py-2 pr-3 text-right tabular-nums">
-                      {toNumber(tx.amount).toFixed(2)} {tx.currency}
+                      {fmtFixed(toNumber(tx.amount), 2)} {tx.currency}
                     </td>
                     <td className="py-2 pr-3 text-xs">{tx.source_type}</td>
                     <td className="py-2 pr-3 text-xs">

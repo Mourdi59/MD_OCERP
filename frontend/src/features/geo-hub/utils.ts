@@ -8,6 +8,7 @@
  */
 
 /** Format a byte count as KB/MB/GB with one decimal. */
+import { fmtFixed } from '@/shared/lib/formatters';
 export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -17,7 +18,7 @@ export function formatBytes(bytes: number): string {
     value /= 1024;
     i += 1;
   }
-  return `${value.toFixed(value >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+  return `${fmtFixed(value, value >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
 /**
@@ -43,7 +44,7 @@ export function formatRelativeTime(iso: string | null | undefined): string {
  */
 export function formatAltitude(metres: number): string {
   if (!Number.isFinite(metres)) return '—';
-  if (metres >= 1000) return `${(metres / 1000).toFixed(metres >= 10_000 ? 0 : 1)} km`;
+  if (metres >= 1000) return `${fmtFixed(metres / 1000, metres >= 10_000 ? 0 : 1)} km`;
   return `${Math.round(metres)} m`;
 }
 

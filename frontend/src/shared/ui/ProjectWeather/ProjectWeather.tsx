@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface ProjectWeatherProps {
   lat: number | null | undefined;
@@ -249,7 +250,7 @@ export function ProjectWeather({
           {weekRain > 0.5 && (
             <span className="flex items-center gap-0.5 text-blue-500">
               <Droplets size={9} />
-              {weekRain.toFixed(weekRain < 10 ? 1 : 0)}mm
+              {fmtFixed(weekRain, weekRain < 10 ? 1 : 0)}mm
             </span>
           )}
         </span>
@@ -281,7 +282,7 @@ export function ProjectWeather({
             </span>
             <span className="flex items-center gap-1">
               <Droplets size={11} />
-              {days[0].precipMm.toFixed(1)} mm
+              {fmtFixed(days[0].precipMm, 1)} mm
             </span>
           </div>
         )}
@@ -348,7 +349,7 @@ export function ProjectWeather({
                 </div>
                 {d.precipMm > 0.1 && (
                   <span className="text-[9px] text-blue-500 tabular-nums">
-                    {d.precipMm.toFixed(d.precipMm < 1 ? 1 : 0)}mm
+                    {fmtFixed(d.precipMm, d.precipMm < 1 ? 1 : 0)}mm
                   </span>
                 )}
                 {tempRange < 0 && <span aria-hidden />}

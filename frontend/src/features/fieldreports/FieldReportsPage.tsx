@@ -94,6 +94,7 @@ import { SignaturePad } from './SignaturePad';
 import { fieldreportsGuide } from './fieldreportsGuide';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildFieldReportsInsights } from './fieldReportsInsights';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 declare global {
   interface Window {
@@ -145,7 +146,7 @@ const STATUS_DOT_COLOR: Record<ReportStatus, string> = {
 
 function formatDate(dateStr: string): string {
   try {
-    return new Date(dateStr + 'T00:00:00').toLocaleDateString(undefined, {
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString(getIntlLocale(), {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -495,7 +496,7 @@ export function FieldReportsPage() {
 
   // ── Month label ─────────────────────────────────────────────────────
 
-  const monthLabel = new Date(calYear, calMonth - 1).toLocaleDateString(undefined, {
+  const monthLabel = new Date(calYear, calMonth - 1).toLocaleDateString(getIntlLocale(), {
     year: 'numeric',
     month: 'long',
   });

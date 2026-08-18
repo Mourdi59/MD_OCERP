@@ -1561,13 +1561,13 @@ export function CostDatabaseSearchModal({
     if (totalCount != null) {
       return t('boq.loaded_n_of_m', {
         defaultValue: '{{loaded}} of {{total}} items',
-        loaded: items.length.toLocaleString(),
-        total: totalCount.toLocaleString(),
+        loaded: items.length.toLocaleString(getIntlLocale()),
+        total: totalCount.toLocaleString(getIntlLocale()),
       });
     }
     return t('boq.cost_results_count', {
       defaultValue: '{{loaded}}+ items',
-      loaded: items.length.toLocaleString(),
+      loaded: items.length.toLocaleString(getIntlLocale()),
     });
   })();
 

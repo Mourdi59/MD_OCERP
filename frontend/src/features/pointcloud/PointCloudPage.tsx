@@ -65,6 +65,7 @@ import {
 import { PointCloudBackground } from './PointCloudBackground';
 import { PointCloudViewer } from './PointCloudViewer';
 import { pointcloudGuide } from './pointcloudGuide';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /* The accepted upload containers, mirrored from the backend allow-list
    (backend/app/modules/pointcloud/models.py ACCEPTED_SCAN_FORMATS). The
@@ -119,17 +120,17 @@ const SOURCE_LABEL: Record<string, string> = {
 
 function formatPointCount(n: number): string {
   if (!n) return '-';
-  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B pts`;
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M pts`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K pts`;
+  if (n >= 1_000_000_000) return `${fmtFixed(n / 1_000_000_000, 1)}B pts`;
+  if (n >= 1_000_000) return `${fmtFixed(n / 1_000_000, 1)}M pts`;
+  if (n >= 1_000) return `${fmtFixed(n / 1_000, 1)}K pts`;
   return `${n} pts`;
 }
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
+  return `${fmtFixed(bytes / (1024 * 1024 * 1024), 1)} GB`;
 }
 
 /* Format a single linear span (max - min) with the scan's declared units. The
@@ -140,7 +141,7 @@ function formatSpan(span: number, units: string): string {
   const u = units || 'm';
   if (!Number.isFinite(span)) return '-';
   const abs = Math.abs(span);
-  const v = abs >= 100 ? abs.toFixed(0) : abs >= 1 ? abs.toFixed(2) : abs.toFixed(3);
+  const v = abs >= 100 ? fmtFixed(abs, 0) : abs >= 1 ? fmtFixed(abs, 2) : fmtFixed(abs, 3);
   return `${v} ${u}`;
 }
 

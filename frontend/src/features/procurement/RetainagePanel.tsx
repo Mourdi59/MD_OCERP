@@ -22,7 +22,7 @@ import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage } from '@/shared/lib/api';
 import { listPORetainageReleases, releasePORetainage } from './api';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
 interface RetainagePanelProps {
   open: boolean;
@@ -367,7 +367,7 @@ export function RetainageBadge({ percent }: { percent?: string }) {
     <Badge variant="warning" size="sm">
       {t('procurement.retainage_badge', {
         defaultValue: 'Retainage {{pct}}%',
-        pct: pct.toFixed(pct % 1 === 0 ? 0 : 2),
+        pct: fmtFixed(pct, pct % 1 === 0 ? 0 : 2),
       })}
     </Badge>
   );

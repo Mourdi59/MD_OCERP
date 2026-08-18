@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 
 import type { StageState, StageStatus } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface Props {
   stage: StageState;
@@ -205,7 +206,7 @@ export function StageCard({
                   <span className="text-[10px] text-content-tertiary">
                     {stage.took_ms < 1000
                       ? `${stage.took_ms} ms`
-                      : `${(stage.took_ms / 1000).toFixed(1)} s`}
+                      : `${fmtFixed(stage.took_ms / 1000, 1)} s`}
                   </span>
                 )}
               </div>

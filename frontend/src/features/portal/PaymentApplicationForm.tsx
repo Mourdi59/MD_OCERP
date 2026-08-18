@@ -22,6 +22,7 @@ import {
   submitMyPaymentApplication,
   type PortalAgreementSummary,
 } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 const inputCls =
   'h-10 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
@@ -33,7 +34,7 @@ function toNumber(v: string): number {
 }
 
 function money(n: number, currency: string): string {
-  const s = n.toFixed(2);
+  const s = fmtFixed(n, 2);
   return currency ? `${currency} ${s}` : s;
 }
 

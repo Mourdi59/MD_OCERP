@@ -78,7 +78,7 @@ import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useRecentStore } from '@/stores/useRecentStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useToastStore } from '@/stores/useToastStore';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -956,7 +956,7 @@ function ImportDialog({
                       {selectedFile.name}
                     </p>
                     <p className="text-xs text-content-tertiary">
-                      {(selectedFile.size / 1024).toFixed(1)} KB
+                      {fmtFixed(selectedFile.size / 1024, 1)} KB
                     </p>
                   </div>
                   {!mutation.isPending && (

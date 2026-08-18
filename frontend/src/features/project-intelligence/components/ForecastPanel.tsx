@@ -33,6 +33,7 @@ import {
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 interface SparklinePoint {
   date: string;
@@ -317,7 +318,7 @@ export function ForecastPanel({ projectId, onAlertCountChange }: ForecastPanelPr
           </div>
           <div className="flex items-end justify-between mt-2">
             <span className={`text-2xl font-bold tabular-nums ${INDEX_COLOR[spiLevel]}`}>
-              {spi.toFixed(3)}
+              {fmtFixed(spi, 3)}
             </span>
             <Sparkline values={spiSeries} color={INDEX_BAR[spiLevel]} />
           </div>
@@ -347,7 +348,7 @@ export function ForecastPanel({ projectId, onAlertCountChange }: ForecastPanelPr
               className={`text-2xl font-bold tabular-nums ${INDEX_COLOR[cpiLevel]}`}
               data-testid="forecast-cpi"
             >
-              {cpi.toFixed(3)}
+              {fmtFixed(cpi, 3)}
             </span>
             <Sparkline values={cpiSeries} color={INDEX_BAR[cpiLevel]} />
           </div>
@@ -384,7 +385,7 @@ export function ForecastPanel({ projectId, onAlertCountChange }: ForecastPanelPr
             {overBudget
               ? t('project_intelligence.forecast.over_budget', {
                   defaultValue: 'Forecast to finish {{pct}}% over budget',
-                  pct: ((overrunRatio - 1) * 100).toFixed(1),
+                  pct: fmtFixed((overrunRatio - 1) * 100, 1),
                 })
               : t('project_intelligence.forecast.under_budget', {
                   defaultValue: 'Forecast within budget',
@@ -457,7 +458,7 @@ export function ForecastPanel({ projectId, onAlertCountChange }: ForecastPanelPr
                   ? t('project_intelligence.forecast.tcpi_unachievable', {
                       defaultValue: 'Not achievable',
                     })
-                  : num(fc.tcpi).toFixed(3)}
+                  : fmtFixed(num(fc.tcpi), 3)}
               </span>
             </span>
             <span>
@@ -549,7 +550,7 @@ export function ForecastPanel({ projectId, onAlertCountChange }: ForecastPanelPr
                         <MoneyDisplay amount={num(a.eac)} currency={currency} className="tabular-nums" />
                       </td>
                       <td className="py-2.5 pr-3 text-content-tertiary whitespace-nowrap">
-                        {a.triggered_at ? new Date(a.triggered_at).toLocaleDateString() : '—'}
+                        {a.triggered_at ? new Date(a.triggered_at).toLocaleDateString(getIntlLocale()) : '—'}
                       </td>
                       <td className="py-2.5 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ToolCallInfo } from '../../types';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 const TOOL_LABELS: Record<string, string> = {
   get_all_projects: 'All projects',
@@ -23,7 +24,7 @@ const TOOL_LABELS: Record<string, string> = {
 function formatDuration(ms: number | undefined): string {
   if (ms === undefined) return '';
   if (ms < 1000) return `${ms}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
+  return `${fmtFixed(ms / 1000, 1)}s`;
 }
 
 function StatusIcon({ status }: { status: ToolCallInfo['status'] }) {

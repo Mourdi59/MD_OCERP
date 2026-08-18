@@ -955,7 +955,7 @@ export function AssembliesPage() {
                     defaultValue: '{{from}}-{{to}} of {{total}}',
                     from: offset + 1,
                     to: Math.min(offset + PAGE_SIZE, total),
-                    total: total.toLocaleString(),
+                    total: total.toLocaleString(getIntlLocale()),
                   })}
                 </p>
                 {totalPages > 1 && (

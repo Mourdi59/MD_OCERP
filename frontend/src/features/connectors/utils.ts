@@ -7,6 +7,7 @@
 // the source card.
 
 import type { ConnectorSource } from './types';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /** The narrow `t` shape these helpers need (defaultValue + interpolation). */
 type Translate = (key: string, opts: { defaultValue: string } & Record<string, unknown>) => string;
@@ -29,14 +30,14 @@ export function formatSyncAgo(iso: string | null | undefined, t: Translate): str
   if (hr < 24) return t('connectors.rel_hour', { defaultValue: '{{n}}h ago', n: hr });
   const day = Math.round(hr / 24);
   if (day < 30) return t('connectors.rel_day', { defaultValue: '{{n}}d ago', n: day });
-  return new Date(then).toLocaleDateString();
+  return new Date(then).toLocaleDateString(getIntlLocale());
 }
 
 /** A full, locale-formatted timestamp for tooltips; '' when unparseable. */
 export function formatAbsolute(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString();
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString(getIntlLocale());
 }
 
 /** The most recent last_synced_at across the sources (ISO), or null if none. */

@@ -22,6 +22,7 @@ import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { Shield, ClipboardCheck, CalendarClock, Coins, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { Rating } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface ScorecardTileProps {
   ratings: Rating[];
@@ -115,7 +116,7 @@ function Dial({ label, value, prior, icon: Icon }: DialProps) {
         )}
       </div>
       <p className={clsx('mt-1 text-base font-semibold tabular-nums', cls.text)}>
-        {v.toFixed(0)}
+        {fmtFixed(v, 0)}
         <span className="ml-0.5 text-xs font-normal text-content-tertiary">
           /100
         </span>
@@ -233,7 +234,7 @@ export function ScorecardTile({ ratings }: ScorecardTileProps) {
               overallCls.text,
             )}
           >
-            {overall.toFixed(0)}
+            {fmtFixed(overall, 0)}
             <span className="ml-1 text-sm font-normal text-content-tertiary">
               /100
             </span>

@@ -28,6 +28,7 @@ import {
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { apiGet, apiDelete, getErrorMessage, getAuthToken, API_BASE } from '@/shared/lib/api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 // Six values to match the backend ``_VALID_WAIVER_TYPES`` enum. Keep
 // labels short (table-row friendly); ``defaultValue`` covers the
@@ -260,7 +261,7 @@ export function LienWaiverPanel({ subcontractorId }: LienWaiverPanelProps) {
                     {w.signed_date || '—'}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">
-                    {typeof w.amount === 'string' ? w.amount : w.amount.toFixed(2)}{' '}
+                    {typeof w.amount === 'string' ? w.amount : fmtFixed(w.amount, 2)}{' '}
                     <span className="text-content-tertiary">{w.currency || ''}</span>
                   </td>
                   <td className="px-3 py-2 text-content-secondary">

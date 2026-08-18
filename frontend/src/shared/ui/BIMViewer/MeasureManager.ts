@@ -26,6 +26,7 @@ import { SnapDetector, type SnapKind } from './SnapDetector';
 import { uuid } from '@/shared/lib/browser';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { toDisplayQuantity } from '@/shared/lib/unitConversion';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 export type MeasureState = 'idle' | 'awaiting-first' | 'awaiting-second' | 'done';
 
@@ -664,7 +665,7 @@ export class MeasureManager {
     // label is converted to the user's measurement system for display.
     const system = usePreferencesStore.getState().measurementSystem;
     const d = toDisplayQuantity(dist, 'm', system);
-    const label = this.makeLabel(`${d.value.toFixed(2)} ${d.unit}`);
+    const label = this.makeLabel(`${fmtFixed(d.value, 2)} ${d.unit}`);
     const measurement: Measurement = {
       id: randomId(),
       kind: 'distance',
@@ -698,7 +699,7 @@ export class MeasureManager {
     const system = usePreferencesStore.getState().measurementSystem;
     const a = toDisplayQuantity(area, 'm²', system);
     const label = this.makeLabel(
-      `${a.value.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${a.unit}`,
+      `${a.value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 })} ${a.unit}`,
     );
     const measurement: Measurement = {
       id: randomId(),
@@ -726,7 +727,7 @@ export class MeasureManager {
     line.renderOrder = 998;
     this.sceneManager.scene.add(line);
 
-    const label = this.makeLabel(`${deg.toFixed(1)}°`);
+    const label = this.makeLabel(`${fmtFixed(deg, 1)}°`);
     const measurement: Measurement = {
       id: randomId(),
       kind: 'angle',

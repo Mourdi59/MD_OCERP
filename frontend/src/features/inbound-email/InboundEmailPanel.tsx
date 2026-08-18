@@ -26,6 +26,7 @@ import { getErrorMessage } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 
 import { analyzeInboundEmail, type DelaySignal, type InboundEmailAnalysis } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 const ACCEPTED_EXTENSIONS = '.eml,message/rfc822';
 
@@ -53,8 +54,8 @@ function confidenceVariant(confidence: number): 'neutral' | 'blue' | 'warning' {
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 1)} KB`;
+  return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
 }
 
 export function InboundEmailPanel() {

@@ -43,7 +43,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { apiGet, apiPost, API_BASE, getAuthToken, ApiError } from '@/shared/lib/api';
 import { projectsApi, type Project } from '@/features/projects/api';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 // Roles allowed to trigger the portfolio-wide KPI recompute. The backend
 // gates /kpi/recalculate-all/ behind reporting.distribute (MANAGER), so
@@ -207,7 +207,7 @@ function humanizeReportType(reportType: string): string {
 
 function fmtNum(v: number | null | undefined, decimals = 0): string {
   if (v === null || v === undefined) return EMPTY;
-  return v.toLocaleString(undefined, {
+  return v.toLocaleString(getIntlLocale(), {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
@@ -1251,7 +1251,7 @@ function PMDashboard({
                 label={t('reporting.avg_response', { defaultValue: 'Avg Response (days)' })}
                 value={
                   rfiStats.avg_days_to_response != null
-                    ? rfiStats.avg_days_to_response.toFixed(1)
+                    ? fmtFixed(rfiStats.avg_days_to_response, 1)
                     : EMPTY
                 }
               />
@@ -2110,7 +2110,7 @@ function ReportsTab({ project, projects }: { project?: Project; projects: Projec
                 <tbody>
                   {reports.map((r) => {
                     const generated = r.generated_at || r.created_at;
-                    const ts = generated ? new Date(generated).toLocaleString() : '—';
+                    const ts = generated ? new Date(generated).toLocaleString(getIntlLocale()) : '—';
                     return (
                       <tr key={r.id} className="border-b border-border-light last:border-0 hover:bg-surface-secondary/50">
                         <td className="px-4 py-3 font-medium text-content-primary">{r.title}</td>

@@ -10,7 +10,7 @@ import {
   type CostRiskDriver,
   type CostRiskCdfPoint,
 } from './api';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
@@ -31,7 +31,7 @@ function num(v: number | string | undefined | null): number {
 function fmtCurrency(n: number, fmt: Intl.NumberFormat): string {
   const abs = Math.abs(n);
   if (abs >= 1_000_000) {
-    return `${n < 0 ? '-' : ''}${(abs / 1_000_000).toFixed(2)}M`;
+    return `${n < 0 ? '-' : ''}${fmtFixed(abs / 1_000_000, 2)}M`;
   }
   if (abs >= 10_000) {
     return `${n < 0 ? '-' : ''}${fmt.format(Math.round(abs / 1_000))}K`;
@@ -125,7 +125,7 @@ function ConvergenceBadge({
       className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-2xs font-medium ${cfg.cls}`}
       title={t('boq.cost_risk_convergence_hint', {
         defaultValue: 'Split-half stability of the P80 estimate ({{margin}}% of P50). Lower is better.',
-        margin: marginPct.toFixed(2),
+        margin: fmtFixed(marginPct, 2),
       })}
     >
       <Icon size={11} strokeWidth={2} />
@@ -233,7 +233,7 @@ function ContingencyCard({
           defaultValue:
             'Budgeting at P{{p}} gives {{p}}% confidence the final cost will not exceed this amount. There is a {{base}}% chance it lands at or below the deterministic base estimate.',
           p: targetConfidence,
-          base: probWithinBase.toFixed(0),
+          base: fmtFixed(probWithinBase, 0),
         })}
       </p>
     </div>
@@ -503,7 +503,7 @@ export function CostRiskPanel({ boqId, locale = 'de-DE' }: { boqId: string; loca
           </span>
           {hasData && (
             <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-surface-secondary px-1.5 text-2xs font-medium text-content-secondary tabular-nums">
-              {data.iterations.toLocaleString()} {t('boq.cost_risk_iterations_label', { defaultValue: 'iter.' })}
+              {data.iterations.toLocaleString(getIntlLocale())} {t('boq.cost_risk_iterations_label', { defaultValue: 'iter.' })}
             </span>
           )}
           {hasData && data.convergence_status && (

@@ -30,7 +30,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { apiGet } from '@/shared/lib/api';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
 import {
   Badge,
   Breadcrumb,
@@ -71,7 +71,7 @@ function fmtQty(value: string | number | null | undefined, frac = 2): string {
   if (value == null) return '-';
   const n = typeof value === 'string' ? parseFloat(value) : value;
   if (!Number.isFinite(n)) return '-';
-  return n.toLocaleString(undefined, { maximumFractionDigits: frac });
+  return n.toLocaleString(getIntlLocale(), { maximumFractionDigits: frac });
 }
 
 /** Format a Decimal-string percentage. Returns "-" when null/unparseable. */

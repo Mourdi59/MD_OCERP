@@ -40,7 +40,7 @@ import { Button, Card, Badge, EmptyState, SkeletonTable, CountryFlag, CountryFla
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { ApiError, apiGet, apiPost, apiPatch, apiDelete, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
-import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -3702,7 +3702,7 @@ function CostItemRow({
                   </div>
                   {laborHours > 0 && (
                     <div className="text-2xs text-content-tertiary mt-0.5">
-                      {t('costs.labor_hours_short', { defaultValue: '{{hours}} hrs', hours: laborHours.toFixed(1) })}
+                      {t('costs.labor_hours_short', { defaultValue: '{{hours}} hrs', hours: fmtFixed(laborHours, 1) })}
                     </div>
                   )}
                   {workers > 0 && (
@@ -3860,7 +3860,7 @@ function CostItemRow({
                             {comp.unit_localized || comp.unit || '—'}
                           </td>
                           <td className="px-3 py-2 text-right tabular-nums text-content-secondary">
-                            {qty > 0 ? qty.toFixed(2) : '—'}
+                            {qty > 0 ? fmtFixed(qty, 2) : '—'}
                           </td>
                           <td className="px-3 py-2 text-right tabular-nums text-content-secondary">
                             {unitRate > 0 ? money(unitRate) : '—'}

@@ -14,6 +14,7 @@ import {
   type CwicrMatchResult,
 } from './api';
 import { VariantPicker } from './VariantPicker';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /** Slim view of `CostItemResponse` — just the fields we need to drive
  *  the variant picker. */
@@ -292,7 +293,7 @@ export function CwicrMatchPanel(props: CwicrMatchPanelProps) {
                 <td>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}>
                     <span>
-                      {Number(row.unit_rate).toFixed(2)} {row.currency}
+                      {fmtFixed(Number(row.unit_rate), 2)} {row.currency}
                     </span>
                     {/* Variant badge — backend MatchResult currently doesn't
                         carry variant_count, so this is a no-op until the
@@ -302,7 +303,7 @@ export function CwicrMatchPanel(props: CwicrMatchPanelProps) {
                         <span
                           title={
                             row.variant_min != null && row.variant_max != null
-                              ? `${row.variant_min.toFixed(2)} – ${row.variant_max.toFixed(2)} ${row.currency}`
+                              ? `${fmtFixed(row.variant_min, 2)} – ${fmtFixed(row.variant_max, 2)} ${row.currency}`
                               : undefined
                           }
                         >

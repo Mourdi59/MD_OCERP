@@ -59,6 +59,7 @@ import {
 import { TimeFactorsEditor } from './TimeFactorsEditor';
 import { valueGuide } from './valueGuide';
 import type { Confidence, ValueSummary } from './types';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 type BadgeVariant = 'neutral' | 'blue' | 'success' | 'warning' | 'error';
 
@@ -378,7 +379,7 @@ function AdoptionView() {
               {benchmark?.comparisons.map((c) => {
                 const isRate = c.metric === 'recovery_rate' || c.metric === 'overrun_pct';
                 const fmt = (v: number | null) =>
-                  v == null ? '-' : isRate ? floatPct(v) : `${v.toFixed(1)}d`;
+                  v == null ? '-' : isRate ? floatPct(v) : `${fmtFixed(v, 1)}d`;
                 return (
                   <tr key={c.metric} className="border-t border-border-light">
                     <td className="px-3 py-2 font-medium text-content-primary">

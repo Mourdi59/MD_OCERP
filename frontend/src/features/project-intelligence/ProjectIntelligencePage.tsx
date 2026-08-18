@@ -45,6 +45,7 @@ import {
   FileText,
   TrendingUp,
 } from 'lucide-react';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /** Dynamic state object from backend — each domain key (boq, validation, etc.)
  *  maps to an object with heterogeneous metric fields. */
@@ -489,10 +490,10 @@ export function ProjectIntelligencePage() {
           count: missingPriceCount,
           amount:
             costUncertainty >= 1_000_000
-              ? `$${(costUncertainty / 1_000_000).toFixed(1)}M`
+              ? `$${fmtFixed(costUncertainty / 1_000_000, 1)}M`
               : costUncertainty >= 1_000
-              ? `$${(costUncertainty / 1_000).toFixed(0)}k`
-              : `$${costUncertainty.toFixed(0)}`,
+              ? `$${fmtFixed(costUncertainty / 1_000, 0)}k`
+              : `$${fmtFixed(costUncertainty, 0)}`,
         })
       : null;
 

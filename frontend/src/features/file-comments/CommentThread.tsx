@@ -30,6 +30,7 @@ import type {
   FileCommentThread as ThreadNode,
   FileKind,
 } from './types';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 // ── Body renderer (markdown-lite + @mentions) ──────────────────────────
 
@@ -134,7 +135,7 @@ function relativeTime(iso: string, now: Date = new Date()): string {
     const d = Math.floor(diff / 86400);
     return `${d}d ago`;
   }
-  return then.toLocaleDateString();
+  return then.toLocaleDateString(getIntlLocale());
 }
 
 // ── Avatar ─────────────────────────────────────────────────────────────

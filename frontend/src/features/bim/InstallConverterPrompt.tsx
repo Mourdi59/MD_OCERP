@@ -27,6 +27,7 @@ import {
 } from './api';
 import { ConverterInstallProgressBar } from './ConverterInstallProgressBar';
 import { useToastStore } from '@/stores/useToastStore';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface InstallConverterPromptProps {
   open: boolean;
@@ -42,9 +43,9 @@ interface InstallConverterPromptProps {
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
+  return `${fmtFixed(bytes / (1024 * 1024 * 1024), 1)} GB`;
 }
 
 export function InstallConverterPrompt({

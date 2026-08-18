@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ThumbsUp, ThumbsDown, Cpu, Database, Activity } from 'lucide-react';
 import { getAdminStats } from './api';
 import type { AdminStats } from './types';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 const WINDOWS = [7, 30, 90] as const;
 
@@ -81,9 +81,9 @@ function StatCard({ label, value, icon, sub }: StatCardProps) {
 }
 
 function fmt(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return n.toLocaleString();
+  if (n >= 1_000_000) return `${fmtFixed(n / 1_000_000, 1)}M`;
+  if (n >= 1_000) return `${fmtFixed(n / 1_000, 1)}k`;
+  return n.toLocaleString(getIntlLocale());
 }
 
 export default function AdminStatsPage() {
@@ -314,7 +314,7 @@ export default function AdminStatsPage() {
                 return (
                   <div
                     key={d.date}
-                    title={`${d.date}\n${d.messages} messages\n${d.tokens.toLocaleString()} tokens\n+${d.thumbs_up} / -${d.thumbs_down}`}
+                    title={`${d.date}\n${d.messages} messages\n${d.tokens.toLocaleString(getIntlLocale())} tokens\n+${d.thumbs_up} / -${d.thumbs_down}`}
                     style={{
                       width: 12,
                       minWidth: 12,

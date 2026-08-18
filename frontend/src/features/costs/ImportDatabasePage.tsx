@@ -25,7 +25,7 @@ import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useToastStore } from '@/stores/useToastStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { apiGet, apiPost, apiDelete, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
-import { formatFileSize } from '@/shared/lib/formatters';
+import { formatFileSize, getIntlLocale } from '@/shared/lib/formatters';
 import { COMMON_CURRENCIES } from '@/features/boq/boqHelpers';
 import { fetchCostCatalogs, type CostCatalog } from './api';
 import { ResourcePriceSheetPanel } from './ResourcePriceSheetPanel';
@@ -494,7 +494,7 @@ function CWICRDatabaseGrid(_props: { onLoadDatabase: (file: File) => void }) {
             }),
             message: t('costs.market_priced_msg', {
               defaultValue: '{{items}} items repriced into {{market}} ({{currency}})',
-              items: repriced.toLocaleString(),
+              items: repriced.toLocaleString(getIntlLocale()),
               market: variant.market,
               currency: variant.currency,
             }),
@@ -571,13 +571,13 @@ function CWICRDatabaseGrid(_props: { onLoadDatabase: (file: File) => void }) {
           addToast({
             type: 'info',
             title: `${db.name} already loaded`,
-            message: (data.message as string) ?? `${totalItems.toLocaleString()} items available`,
+            message: (data.message as string) ?? `${totalItems.toLocaleString(getIntlLocale())} items available`,
           });
         } else {
           addToast({
             type: 'success',
             title: t('costs.db_installed', { defaultValue: 'Database installed successfully' }),
-            message: `${imported.toLocaleString()} cost items imported`,
+            message: `${imported.toLocaleString(getIntlLocale())} cost items imported`,
           });
         }
 
@@ -621,7 +621,7 @@ function CWICRDatabaseGrid(_props: { onLoadDatabase: (file: File) => void }) {
           addToast({
             type: 'success',
             title: t('costs.db_installed', { defaultValue: 'Database installed successfully' }),
-            message: `${landed.count.toLocaleString()} cost items imported`,
+            message: `${landed.count.toLocaleString(getIntlLocale())} cost items imported`,
           });
           queryClient.invalidateQueries({ queryKey: ['costs'] });
           apiPost('/v1/costs/vector/index/').catch(() => {});
@@ -785,13 +785,13 @@ function CWICRDatabaseGrid(_props: { onLoadDatabase: (file: File) => void }) {
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   <div className="rounded-lg bg-semantic-success-bg/50 px-3 py-2 text-center">
                     <div className="text-lg font-bold text-semantic-success tabular-nums">
-                      {result.imported.toLocaleString()}
+                      {result.imported.toLocaleString(getIntlLocale())}
                     </div>
                     <div className="text-2xs text-semantic-success/70">{t('costs.items_installed', { defaultValue: 'items installed' })}</div>
                   </div>
                   <div className="rounded-lg bg-surface-secondary px-3 py-2 text-center">
                     <div className="text-lg font-bold text-content-secondary tabular-nums">
-                      {result.skipped.toLocaleString()}
+                      {result.skipped.toLocaleString(getIntlLocale())}
                     </div>
                     <div className="text-2xs text-content-tertiary">{t('costs.duplicates_skipped', { defaultValue: 'duplicates skipped' })}</div>
                   </div>
@@ -973,7 +973,7 @@ function LoadedDatabasesSection() {
               {isLoading
                 ? t('costs.loaded_loading', { defaultValue: 'Loading installed databases...' })
                 : hasData
-                  ? `${regionCount} ${regionCount === 1 ? t('costs.region_singular', { defaultValue: 'region' }) : t('costs.region_plural', { defaultValue: 'regions' })} · ${totalItems.toLocaleString()} ${t('costs.items_total', { defaultValue: 'items total' })}`
+                  ? `${regionCount} ${regionCount === 1 ? t('costs.region_singular', { defaultValue: 'region' }) : t('costs.region_plural', { defaultValue: 'regions' })} · ${totalItems.toLocaleString(getIntlLocale())} ${t('costs.items_total', { defaultValue: 'items total' })}`
                   : t('costs.no_databases_installed', {
                       defaultValue: 'No databases installed yet. Pick a region above to install.',
                     })}
@@ -1075,7 +1075,7 @@ function LoadedDatabasesSection() {
                       </div>
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums text-sm font-semibold text-content-primary">
-                      {rs.count.toLocaleString()}
+                      {rs.count.toLocaleString(getIntlLocale())}
                     </td>
                     <td className="px-3 py-2.5 text-center">
                       {isActive ? (
@@ -1279,7 +1279,7 @@ function VectorDatabaseSection() {
             addToast({
               type: 'success',
               title: `${db.name} vectors loaded`,
-              message: `${indexed.toLocaleString()} vectors indexed in ${duration}s`,
+              message: `${indexed.toLocaleString(getIntlLocale())} vectors indexed in ${duration}s`,
             });
           } catch (err) {
             if (import.meta.env.DEV) console.error('GitHub vector load failed, falling back to local generation:', err);
@@ -1297,7 +1297,7 @@ function VectorDatabaseSection() {
               addToast({
                 type: 'success',
                 title: `${db.name} vectors generated`,
-                message: `${indexed.toLocaleString()} vectors indexed locally in ${duration}s`,
+                message: `${indexed.toLocaleString(getIntlLocale())} vectors indexed locally in ${duration}s`,
               });
             } else {
               const errData = await res.json().catch(() => ({ detail: 'Indexing failed' }));
@@ -1341,7 +1341,7 @@ function VectorDatabaseSection() {
         addToast({
           type: 'success',
           title: t('costs.vector_index_created', { defaultValue: 'Vector index created' }),
-          message: `${data.indexed.toLocaleString()} items indexed in ${data.duration_seconds}s`,
+          message: `${data.indexed.toLocaleString(getIntlLocale())} items indexed in ${data.duration_seconds}s`,
         });
         refetchStatus();
         refetchVectorRegions();
@@ -1471,7 +1471,7 @@ function VectorDatabaseSection() {
                         <div className="flex items-center gap-1.5 mt-1">
                           {isVectorized ? (
                             <span className="text-2xs text-purple-600 font-medium">
-                              {vecCount.toLocaleString()} vectors
+                              {vecCount.toLocaleString(getIntlLocale())} vectors
                             </span>
                           ) : (
                             <span className="text-2xs text-content-quaternary">55,719 vectors</span>
@@ -1494,13 +1494,13 @@ function VectorDatabaseSection() {
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div className="rounded-lg bg-surface-secondary p-3 text-center">
                 <div className="text-lg font-bold tabular-nums text-content-primary">
-                  {totalItems.toLocaleString()}
+                  {totalItems.toLocaleString(getIntlLocale())}
                 </div>
                 <div className="text-2xs text-content-tertiary">Cost items</div>
               </div>
               <div className="rounded-lg bg-surface-secondary p-3 text-center">
                 <div className={`text-lg font-bold tabular-nums ${indexedCount > 0 ? 'text-purple-600' : 'text-content-tertiary'}`}>
-                  {indexedCount.toLocaleString()}
+                  {indexedCount.toLocaleString(getIntlLocale())}
                 </div>
                 <div className="text-2xs text-content-tertiary">Vectors indexed</div>
               </div>
@@ -1652,7 +1652,7 @@ function VectorDatabaseSection() {
                 <div className="flex items-center gap-2">
                   <CheckCircle2 size={14} className="text-semantic-success" />
                   <span className="text-xs font-medium text-semantic-success">
-                    {lastResult.indexed.toLocaleString()} vectors indexed in {lastResult.duration}s
+                    {lastResult.indexed.toLocaleString(getIntlLocale())} vectors indexed in {lastResult.duration}s
                     {lastResult.region !== 'all' && ` (${CWICR_DATABASES.find((d) => d.id === lastResult.region)?.name ?? lastResult.region})`}
                   </span>
                 </div>

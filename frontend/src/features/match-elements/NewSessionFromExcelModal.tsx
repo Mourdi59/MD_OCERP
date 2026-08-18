@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, X, FileSpreadsheet, Upload } from 'lucide-react';
 import { matchElementsApi, type MatchSession } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface Props {
   projectId: string;
@@ -138,7 +139,7 @@ export function NewSessionFromExcelModal({
                     {file.name}
                   </div>
                   <div className="text-xs text-content-tertiary tabular-nums">
-                    {(file.size / 1024).toFixed(1)} KB
+                    {fmtFixed(file.size / 1024, 1)} KB
                   </div>
                 </>
               ) : (

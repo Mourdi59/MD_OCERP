@@ -13,6 +13,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Send, MessageSquare, Trash2, Clock } from 'lucide-react';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Types ───────────────────────────────────────────────────────────── */
 
@@ -52,7 +53,7 @@ function formatRelativeTime(isoString: string, t: (k: string, o?: Record<string,
   if (diffMin < 60) return t('comments.minutes_ago', { defaultValue: '{{count}}m ago', count: diffMin });
   if (diffH < 24) return t('comments.hours_ago', { defaultValue: '{{count}}h ago', count: diffH });
   if (diffD < 7) return t('comments.days_ago', { defaultValue: '{{count}}d ago', count: diffD });
-  return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString(getIntlLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 /** Read comments from position metadata, handling both legacy string and new array formats. */

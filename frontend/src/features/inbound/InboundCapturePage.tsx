@@ -41,6 +41,7 @@ import {
   inboundChannels,
   type InboundFilterState,
 } from './InboundFilters';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 // How many messages we pull per page from the paginated read endpoint. The
 // search / filter refinement runs over whichever page is loaded.
@@ -52,7 +53,7 @@ const PAGE_SIZE = 25;
 function whenLabel(iso: string): string {
   if (!iso) return '-';
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(getIntlLocale());
 }
 
 // Human-readable byte size for an attachment; blank when the size is unknown so
@@ -66,7 +67,7 @@ function formatBytes(n: number): string {
     value /= 1024;
     unit += 1;
   }
-  const rounded = value >= 10 || unit === 0 ? Math.round(value).toString() : value.toFixed(1);
+  const rounded = value >= 10 || unit === 0 ? Math.round(value).toString() : fmtFixed(value, 1);
   return `${rounded} ${units[unit]}`;
 }
 

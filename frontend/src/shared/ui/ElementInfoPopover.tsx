@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { X, Link2, Cuboid, PenLine, Ruler } from 'lucide-react';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 import type { DisplayQuantity } from '@/shared/lib/unitConversion';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Source-specific payload shapes ──────────────────────────────────── */
 
@@ -110,7 +111,7 @@ function extractRows(
                   ? 'm'
                   : '';
           const d = convert(v, metricUnit);
-          rows.push({ label: k, value: d.value.toFixed(3), unit: d.unit });
+          rows.push({ label: k, value: fmtFixed(d.value, 3), unit: d.unit });
         }
       }
     }
@@ -118,7 +119,7 @@ function extractRows(
     if (el.properties) {
       for (const [k, v] of Object.entries(el.properties)) {
         if (isNumeric(v)) {
-          rows.push({ label: k, value: (v as number).toFixed(3) });
+          rows.push({ label: k, value: fmtFixed(v as number, 3) });
         }
       }
     }
@@ -126,13 +127,13 @@ function extractRows(
     if (el.measurements) {
       for (const [k, m] of Object.entries(el.measurements)) {
         const d = convert(m.value, m.unit);
-        rows.push({ label: k, value: d.value.toFixed(3), unit: d.unit });
+        rows.push({ label: k, value: fmtFixed(d.value, 3), unit: d.unit });
       }
     }
     if (el.properties) {
       for (const [k, v] of Object.entries(el.properties)) {
         if (isNumeric(v)) {
-          rows.push({ label: k, value: (v as number).toFixed(3) });
+          rows.push({ label: k, value: fmtFixed(v as number, 3) });
         } else if (typeof v === 'string' && v.trim()) {
           rows.push({ label: k, value: v });
         }
@@ -140,11 +141,11 @@ function extractRows(
     }
   } else if (el.source === 'pdf') {
     const d = convert(el.value, el.unit);
-    rows.push({ label: el.measurementType, value: d.value.toFixed(3), unit: d.unit });
+    rows.push({ label: el.measurementType, value: fmtFixed(d.value, 3), unit: d.unit });
     if (el.properties) {
       for (const [k, v] of Object.entries(el.properties)) {
         if (isNumeric(v)) {
-          rows.push({ label: k, value: (v as number).toFixed(3) });
+          rows.push({ label: k, value: fmtFixed(v as number, 3) });
         } else if (typeof v === 'string' && v.trim()) {
           rows.push({ label: k, value: v });
         }

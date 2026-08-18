@@ -41,6 +41,7 @@ import { SampleTemplateButton } from '../_shared/SampleTemplateButton';
 import type { ExchangePosition, ImportParseResult } from '../_shared/templateTypes';
 import type { RegionalTemplate } from './regionalRegistry';
 import { importDispatcher } from './regionalRegistry';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Types from the BOQ module ──────────────────────────────────────── */
 
@@ -151,10 +152,10 @@ function ImportPreview({
                     {pos.unit || '-'}
                   </td>
                   <td className="px-3 py-1.5 text-right tabular-nums">
-                    {pos.quantity > 0 ? pos.quantity.toFixed(3) : '-'}
+                    {pos.quantity > 0 ? fmtFixed(pos.quantity, 3) : '-'}
                   </td>
                   <td className="px-3 py-1.5 text-right tabular-nums">
-                    {pos.unitRate > 0 ? pos.unitRate.toFixed(2) : '-'}
+                    {pos.unitRate > 0 ? fmtFixed(pos.unitRate, 2) : '-'}
                   </td>
                   <td
                     className="px-3 py-1.5 text-content-tertiary text-2xs truncate"
@@ -531,7 +532,7 @@ export default function RegionalExchangePage({ template }: RegionalExchangePageP
                   <FileUp size={18} className="text-oe-blue" />
                   <span className="font-medium">{importFile.name}</span>
                   <span className="text-content-tertiary">
-                    ({(importFile.size / 1024).toFixed(1)} KB)
+                    ({fmtFixed(importFile.size / 1024, 1)} KB)
                   </span>
                   <button
                     type="button"
@@ -924,11 +925,11 @@ export default function RegionalExchangePage({ template }: RegionalExchangePageP
                               {pos.unit}
                             </td>
                             <td className="px-3 py-1.5 text-right tabular-nums">
-                              {pos.quantity.toFixed(3)}
+                              {fmtFixed(pos.quantity, 3)}
                             </td>
                             {includePrices && (
                               <td className="px-3 py-1.5 text-right tabular-nums">
-                                {pos.unitRate.toFixed(2)}
+                                {fmtFixed(pos.unitRate, 2)}
                               </td>
                             )}
                           </tr>

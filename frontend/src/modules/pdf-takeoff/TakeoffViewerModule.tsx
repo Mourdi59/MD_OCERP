@@ -84,7 +84,7 @@ import {
   type ConfidenceThresholds,
 } from '../../features/takeoff/lib/confidenceBand';
 import { apiGet, apiPost } from '../../shared/lib/api';
-import { formatFileSize } from '../../shared/lib/formatters';
+import { formatFileSize, fmtFixed } from '../../shared/lib/formatters';
 import { convertBetween } from '../../shared/lib/unitConversion';
 import { useMeasurementPersistence } from './useMeasurementPersistence';
 import {
@@ -217,7 +217,7 @@ import { openLink } from '@/shared/lib/desktop';
 // Type-only: the scale-source vocabulary is a closed set owned by the backend
 // contract, so the viewer reuses it instead of restating it as a bare string.
 import type { ScaleSource } from '@/features/takeoff/api';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
 
 // Configure PDF.js worker — bundled locally (no CDN dependency)
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -9196,7 +9196,7 @@ export default function TakeoffViewerModule({
                               max={89}
                               step={0.5}
                               value={Number(
-                                degreesFromSlopeFactor(selectedMeasurement.slopeFactor ?? 1).toFixed(1),
+                                fmtFixed(degreesFromSlopeFactor(selectedMeasurement.slopeFactor ?? 1), 1),
                               )}
                               onChange={(e) => {
                                 const deg = Number(e.target.value);
@@ -9968,7 +9968,7 @@ export default function TakeoffViewerModule({
                                         Math.round(
                                           convertQuantity(m.value, m.unit || '', measurementSystem).value * 100,
                                         ) / 100
-                                      ).toLocaleString()}
+                                      ).toLocaleString(getIntlLocale())}
                                     </span>
                                     <span className="font-mono text-rose-700/80 dark:text-rose-300/80 shrink-0">
                                       {displayUnitFor(m.unit || '', measurementSystem)}
@@ -10138,7 +10138,7 @@ export default function TakeoffViewerModule({
                                                   {/* Current qty badge — shows what's about to be replaced. */}
                                                   {currentQty > 0 && (
                                                     <span className="font-mono tabular-nums text-content-tertiary shrink-0 text-[9px]">
-                                                      {currentQty.toLocaleString()}
+                                                      {currentQty.toLocaleString(getIntlLocale())}
                                                     </span>
                                                   )}
                                                   {unitMismatch ? (
@@ -10392,7 +10392,7 @@ export default function TakeoffViewerModule({
             <p className="text-xs text-content-tertiary mb-3">
               {t('takeoff_viewer.scale_desc', {
                 defaultValue: 'You marked a line of {{pixels}} pixels. Enter the real-world length:',
-                pixels: scaleRefPixels.toFixed(0),
+                pixels: fmtFixed(scaleRefPixels, 0),
               })}
             </p>
             <div className="flex items-center gap-2 mb-4">

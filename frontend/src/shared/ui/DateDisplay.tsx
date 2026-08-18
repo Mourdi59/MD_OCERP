@@ -105,7 +105,7 @@ export function DateDisplay({ value, format = 'date', className }: DateDisplayPr
         break;
     }
   } catch {
-    formatted = dateObj.toLocaleDateString();
+    formatted = dateObj.toLocaleDateString(getIntlLocale());
   }
 
   return (

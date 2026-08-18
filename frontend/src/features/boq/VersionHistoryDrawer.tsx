@@ -7,6 +7,7 @@ import { X, Clock, RotateCcw, Loader2, Save, History, Undo2 } from 'lucide-react
 import clsx from 'clsx';
 import { boqApi, type BOQSnapshot, type ActivityEntry } from './api';
 import { useToastStore } from '@/stores/useToastStore';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Snapshot diff helpers ─────────────────────────────────────────────── */
 
@@ -222,7 +223,7 @@ export function VersionHistoryDrawer({ boqId, isOpen, onClose }: VersionHistoryD
   const formatDate = useCallback((dateStr: string) => {
     try {
       const d = new Date(dateStr);
-      return d.toLocaleDateString(undefined, {
+      return d.toLocaleDateString(getIntlLocale(), {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
@@ -233,12 +234,12 @@ export function VersionHistoryDrawer({ boqId, isOpen, onClose }: VersionHistoryD
     }
   }, []);
 
-  const fmt = new Intl.NumberFormat(undefined, {
+  const fmt = new Intl.NumberFormat(getIntlLocale(), {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
 
-  const fmtSigned = new Intl.NumberFormat(undefined, {
+  const fmtSigned = new Intl.NumberFormat(getIntlLocale(), {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
     signDisplay: 'always',

@@ -23,6 +23,7 @@ import {
   revokePortalToken,
   type PortalIssueResponse,
 } from './api';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface Props {
   buyerId: string;
@@ -201,14 +202,14 @@ export function BuyerAccessLinkPanel({
                 <p className="text-content-tertiary">
                   {t('buyer_portal_panel.expires', {
                     defaultValue: 'Expires {{date}}',
-                    date: new Date(row.expires_at).toLocaleDateString(),
+                    date: new Date(row.expires_at).toLocaleDateString(getIntlLocale()),
                   })}
                   {row.last_used_at && (
                     <>
                       {' · '}
                       {t('buyer_portal_panel.last_used', {
                         defaultValue: 'last used {{date}}',
-                        date: new Date(row.last_used_at).toLocaleDateString(),
+                        date: new Date(row.last_used_at).toLocaleDateString(getIntlLocale()),
                       })}
                     </>
                   )}

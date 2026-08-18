@@ -59,6 +59,7 @@ import {
   type StreamStepDescriptor,
   type StreamStepName,
 } from '@/features/onboarding/partnerPacksApi';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface PartnerPackApplyDialogProps {
   open: boolean;
@@ -450,8 +451,8 @@ export function PartnerPackApplyDialog({
                   ? t('modules.pp_summary_ok', {
                       defaultValue:
                         'Pack activated. {{items}} catalog items and {{resources}} resources installed.',
-                      items: summaryItems.toLocaleString(),
-                      resources: summaryResources.toLocaleString(),
+                      items: summaryItems.toLocaleString(getIntlLocale()),
+                      resources: summaryResources.toLocaleString(getIntlLocale()),
                     })
                   : t('modules.pp_summary_partial', {
                       defaultValue:

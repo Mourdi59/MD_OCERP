@@ -57,6 +57,7 @@ import {
   type ModuleAccessLevel,
   type ModuleAccess,
 } from './api';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 const inputCls =
   'h-10 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
@@ -1111,7 +1112,7 @@ export function UserManagementPage() {
                       {user.last_login_at ? (
                         <div className="flex items-center gap-1">
                           <Clock size={11} />
-                          {new Date(user.last_login_at).toLocaleDateString()}
+                          {new Date(user.last_login_at).toLocaleDateString(getIntlLocale())}
                         </div>
                       ) : (
                         <span className="text-content-quaternary">

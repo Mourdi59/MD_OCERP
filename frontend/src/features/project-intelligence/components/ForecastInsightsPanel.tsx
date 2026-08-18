@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { apiGet } from '@/shared/lib/api';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface CostForecast {
   available: boolean;
@@ -228,7 +229,7 @@ export function ForecastInsightsPanel({ projectId }: ForecastInsightsPanelProps)
               className={`mt-1 block text-xl font-bold tabular-nums ${indexColor(cost.cpi)}`}
               data-testid="forecast-insights-cpi"
             >
-              {cost.cpi !== null ? cost.cpi.toFixed(2) : '—'}
+              {cost.cpi !== null ? fmtFixed(cost.cpi, 2) : '—'}
             </span>
           </div>
 
@@ -248,7 +249,7 @@ export function ForecastInsightsPanel({ projectId }: ForecastInsightsPanelProps)
               className={`mt-1 block text-xl font-bold tabular-nums ${indexColor(cost.spi)}`}
               data-testid="forecast-insights-spi"
             >
-              {cost.spi !== null ? cost.spi.toFixed(2) : '—'}
+              {cost.spi !== null ? fmtFixed(cost.spi, 2) : '—'}
             </span>
           </div>
 

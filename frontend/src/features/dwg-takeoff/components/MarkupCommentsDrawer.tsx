@@ -29,6 +29,7 @@ import {
   deleteMarkupComment,
   type MarkupComment,
 } from '@/features/markups/api';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /** React-Query key used by both the drawer (`[..., markupId]`) and the
  *  badge count hook (`[...]`). Exported so the parent page can invalidate
@@ -48,7 +49,7 @@ const QUERY_KEY = MARKUP_COMMENTS_QUERY_KEY;
 function formatTimestamp(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString();
+  return d.toLocaleString(getIntlLocale());
 }
 
 export function MarkupCommentsDrawer({ markupId, onClose }: Props): JSX.Element | null {

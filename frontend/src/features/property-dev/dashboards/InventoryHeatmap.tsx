@@ -27,6 +27,7 @@ import {
   StatusLegend,
   num,
 } from './_shared';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface InventoryHeatmapProps {
   developmentId: string;
@@ -295,7 +296,7 @@ function UnitCell({
     status: t(`propdev.status.${unit.status}`, {
       defaultValue: unit.status.replace(/_/g, ' '),
     }),
-    area: area.value.toFixed(0),
+    area: fmtFixed(area.value, 0),
     unit: area.unit,
   });
   return (

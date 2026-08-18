@@ -21,7 +21,7 @@ import {
 import { apiGet } from '@/shared/lib/api';
 import { RecoveryCard, Skeleton } from '@/shared/ui';
 import { classifyVariance, type VarianceLevel } from './variance-thresholds';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 
 export const PI_QUERY_STALE_MS = 60_000;
 
@@ -66,9 +66,9 @@ interface ProjectKPIHeroProps {
 function formatMoney(value: number, currency: string): string {
   if (!Number.isFinite(value)) return '—';
   const abs = Math.abs(value);
-  if (abs >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(2)}M`;
-  if (abs >= 1_000) return `${currency} ${(value / 1_000).toFixed(1)}k`;
-  return `${currency} ${value.toFixed(0)}`;
+  if (abs >= 1_000_000) return `${currency} ${fmtFixed(value / 1_000_000, 2)}M`;
+  if (abs >= 1_000) return `${currency} ${fmtFixed(value / 1_000, 1)}k`;
+  return `${currency} ${fmtFixed(value, 0)}`;
 }
 
 const LEVEL_STYLE: Record<VarianceLevel, { ring: string; text: string; dot: string }> = {

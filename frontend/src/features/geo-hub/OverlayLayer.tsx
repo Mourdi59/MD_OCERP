@@ -42,6 +42,7 @@ import type {
 } from './types';
 
 import type { OverlayEditMode } from './OverlayPanel';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 // Minimum bbox dimension (in radians) below which Cesium's
 // ``Rectangle.fromCartographicArray`` throws DeveloperError. ~1e-6 rad
@@ -759,11 +760,11 @@ function applyCrop(c: any, layer: any, polygon: CropPolygon | null): void {
 
 function layerSignature(o: GeoRasterOverlay): string {
   const corners = (o.corners_geojson ?? [])
-    .map((p) => `${p[0].toFixed(7)},${p[1].toFixed(7)}`)
+    .map((p) => `${fmtFixed(p[0], 7)},${fmtFixed(p[1], 7)}`)
     .join('|');
   const crop = o.crop_polygon_geojson
     ? `crop:${(o.crop_polygon_geojson.coordinates?.[0] ?? [])
-        .map((p) => `${p[0].toFixed(7)},${p[1].toFixed(7)}`)
+        .map((p) => `${fmtFixed(p[0], 7)},${fmtFixed(p[1], 7)}`)
         .join('|')}`
     : 'nocrop';
   return `${o.raster_blob_url ?? ''}|${corners}|${crop}|z:${o.z_order}`;

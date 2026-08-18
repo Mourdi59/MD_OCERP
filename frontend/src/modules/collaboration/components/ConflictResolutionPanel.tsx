@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { GitMerge, X, User, Clock, AlertTriangle, CheckCircle2, Edit3 } from 'lucide-react';
 import clsx from 'clsx';
 import type { ConflictItem, ConflictResolution } from '../hooks/useConflictDetection';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -125,7 +126,7 @@ export function ConflictResolutionPanel({
   const isLast = position === total - 1;
 
   const formattedTime = activeConflict
-    ? activeConflict.timestamp.toLocaleTimeString(undefined, {
+    ? activeConflict.timestamp.toLocaleTimeString(getIntlLocale(), {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',

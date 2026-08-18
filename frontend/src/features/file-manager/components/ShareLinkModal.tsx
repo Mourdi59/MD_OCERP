@@ -31,6 +31,7 @@ import {
   revokeShareLink,
 } from '../api';
 import type { FileRow, ShareLinkResponse } from '../types';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface ShareLinkModalProps {
   open: boolean;
@@ -317,7 +318,7 @@ export function ShareLinkModal({ open, row, onClose }: ShareLinkModalProps) {
                     {t('files.share.expires_label', { defaultValue: 'Expires' })}
                     :{' '}
                     <span className="text-content-secondary">
-                      {new Date(justCreated.expires_at).toLocaleString()}
+                      {new Date(justCreated.expires_at).toLocaleString(getIntlLocale())}
                     </span>
                   </div>
                 )}
@@ -409,7 +410,7 @@ export function ShareLinkModal({ open, row, onClose }: ShareLinkModalProps) {
                     <div className="flex items-center justify-between text-[10px] text-content-tertiary">
                       <span>
                         {link.expires_at
-                          ? `${t('files.share.expires_label', { defaultValue: 'Expires' })}: ${new Date(link.expires_at).toLocaleString()}`
+                          ? `${t('files.share.expires_label', { defaultValue: 'Expires' })}: ${new Date(link.expires_at).toLocaleString(getIntlLocale())}`
                           : t('files.share.never_expires', {
                               defaultValue: 'Never expires',
                             })}

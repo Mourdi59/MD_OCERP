@@ -46,6 +46,7 @@ import { allLayersVisible, type LayerKey } from './layers';
 import { LayerPanel } from './LayerPanel';
 import { PlanRoomViewer } from './PlanRoomViewer';
 import { SheetCompletenessPanel } from './SheetCompletenessPanel';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /** Roles that satisfy ``plan_room.write`` (EDITOR and above, plus the role
  *  aliases the backend permission registry maps). Used only to decide whether
@@ -440,7 +441,7 @@ function PhotoGallery({ photos }: { photos: OverlayPhoto[] }) {
               </span>
               {ph.taken_at && (
                 <span className="block text-2xs text-content-quaternary">
-                  {new Date(ph.taken_at).toLocaleDateString()}
+                  {new Date(ph.taken_at).toLocaleDateString(getIntlLocale())}
                 </span>
               )}
             </span>

@@ -17,6 +17,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { useBaseCatalog, flattenVariants, type BaseVariant } from '@/features/costs/baseCatalog';
 import { BaseCatalogBrowser } from '@/features/costs/BaseCatalogBrowser';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -372,11 +373,11 @@ export function DatabaseSetupPage() {
         // Single combined toast with longer duration so the user has time to
         // follow up in the Cost Database / Resource Catalog.
         const lines = [
-          `${(totalItems || imported).toLocaleString()} ${t('setup.cost_items', { defaultValue: 'cost items' })}`,
+          `${(totalItems || imported).toLocaleString(getIntlLocale())} ${t('setup.cost_items', { defaultValue: 'cost items' })}`,
         ];
         if (catalogData) {
           lines.push(
-            `${catalogImported.toLocaleString()} ${t('setup.catalog_resources', { defaultValue: 'catalog resources' })}`,
+            `${catalogImported.toLocaleString(getIntlLocale())} ${t('setup.catalog_resources', { defaultValue: 'catalog resources' })}`,
           );
         }
         addToast(
@@ -589,7 +590,7 @@ export function DatabaseSetupPage() {
             )}
             {totalItems > 0 && (
               <Badge variant="blue" size="sm">
-                {totalItems.toLocaleString()} {t('setup.items', { defaultValue: 'items' })}
+                {totalItems.toLocaleString(getIntlLocale())} {t('setup.items', { defaultValue: 'items' })}
               </Badge>
             )}
           </div>

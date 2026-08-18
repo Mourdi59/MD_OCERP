@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { ClipboardPaste, X, Upload, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/shared/ui';
 import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 export interface PastedRow {
   ordinal: string;
@@ -295,9 +296,9 @@ export function ExcelPasteModal({ open, onClose, onImport, loading }: ExcelPaste
                         <td className="px-3 py-1.5 font-mono text-content-tertiary">{r.ordinal}</td>
                         <td className="px-3 py-1.5 max-w-[300px] truncate">{r.description}</td>
                         <td className="px-3 py-1.5 text-center font-mono uppercase">{r.unit}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">{r.quantity.toLocaleString()}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">{r.unit_rate.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">{(r.quantity * r.unit_rate).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums">{r.quantity.toLocaleString(getIntlLocale())}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums">{r.unit_rate.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2 })}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">{(r.quantity * r.unit_rate).toLocaleString(getIntlLocale(), { minimumFractionDigits: 2 })}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -317,7 +318,7 @@ export function ExcelPasteModal({ open, onClose, onImport, loading }: ExcelPaste
           <div className="text-xs text-content-secondary">
             {rows.length > 0 && (
               <span>
-                {rows.length} {t('boq.positions', { defaultValue: 'positions' })} · {t('boq.total', { defaultValue: 'Total' })}: {totalSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {rows.length} {t('boq.positions', { defaultValue: 'positions' })} · {t('boq.total', { defaultValue: 'Total' })}: {totalSum.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2 })}
               </span>
             )}
           </div>

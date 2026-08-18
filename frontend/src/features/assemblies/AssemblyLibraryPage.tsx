@@ -22,6 +22,7 @@ import {
   type AppliedTemplateCurrencySubtotal,
   type ResourceType,
 } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /* -- Constants ------------------------------------------------------------ */
 
@@ -323,7 +324,7 @@ export function PreviewTotalsFooter({
             {t('assemblies.library.grand_total', 'Grand total')}
           </td>
           <td className="py-2 text-right font-mono">
-            {`${Number(grandTotal).toFixed(currencyFractionDigits(currencyLabel))} ${currencyLabel}`.trim()}
+            {`${fmtFixed(Number(grandTotal), currencyFractionDigits(currencyLabel))} ${currencyLabel}`.trim()}
           </td>
         </tr>
       </tfoot>
@@ -349,7 +350,7 @@ export function PreviewTotalsFooter({
               : t('assemblies.library.subtotal_currency_not_set', 'Subtotal, currency not set')}
           </td>
           <td className="py-1 text-right font-mono">
-            {`${Number(sub.amount).toFixed(currencyFractionDigits(sub.currency))} ${sub.currency}`.trim()}
+            {`${fmtFixed(Number(sub.amount), currencyFractionDigits(sub.currency))} ${sub.currency}`.trim()}
           </td>
         </tr>
       ))}
@@ -740,17 +741,17 @@ function TemplateDrawer({
                         <td className="py-1.5 pr-2 text-right font-mono">
                           {(() => {
                             const d = q.convert(c.scaled_quantity, c.unit || '');
-                            return `${d.value.toFixed(2)} ${c.unit ? d.unit : ''}`.trim();
+                            return `${fmtFixed(d.value, 2)} ${c.unit ? d.unit : ''}`.trim();
                           })()}
                         </td>
                         <td className="py-1.5 pr-2 text-right font-mono">
                           {matched
-                            ? `${q.convertRate(Number(c.unit_rate), c.unit || '').toFixed(currencyFractionDigits(rowCurrency(c)))} ${rowCurrency(c)}`.trim()
+                            ? `${fmtFixed(q.convertRate(Number(c.unit_rate), c.unit || ''), currencyFractionDigits(rowCurrency(c)))} ${rowCurrency(c)}`.trim()
                             : '—'}
                         </td>
                         <td className="py-1.5 text-right font-mono">
                           {matched
-                            ? `${c.total.toFixed(currencyFractionDigits(rowCurrency(c)))} ${rowCurrency(c)}`.trim()
+                            ? `${fmtFixed(c.total, currencyFractionDigits(rowCurrency(c)))} ${rowCurrency(c)}`.trim()
                             : '—'}
                         </td>
                       </tr>

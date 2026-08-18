@@ -31,6 +31,7 @@ import type { BIMElementGroup } from './api';
 import { updateElementGroup } from './api';
 import type { BIMElementData } from '@/shared/ui/BIMViewer';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
 
@@ -284,7 +285,7 @@ export default function BIMGroupsPanel({
 
   /** Format a number with locale separators and 1 decimal place. */
   const fmt = useCallback(
-    (n: number): string => n.toLocaleString(undefined, { maximumFractionDigits: 1 }),
+    (n: number): string => n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 1 }),
     [],
   );
 
@@ -379,7 +380,7 @@ export default function BIMGroupsPanel({
 
                   {/* Element count */}
                   <span className="text-[10px] text-content-quaternary tabular-nums shrink-0">
-                    {group.element_count.toLocaleString()}
+                    {group.element_count.toLocaleString(getIntlLocale())}
                   </span>
 
                   {/* Context menu trigger */}

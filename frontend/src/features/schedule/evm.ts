@@ -10,6 +10,7 @@
  * dimensionless ratios, the health verdict and the snapshot status tallies.
  */
 import type { EvmSummary, ScheduleSnapshot } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /** Performance verdict for an SPI/CPI index relative to the 1.0 baseline. */
 export type EvmHealth = 'ahead' | 'on_track' | 'behind' | 'unknown';
@@ -38,7 +39,7 @@ export function classifyIndex(index: number | null | undefined): EvmHealth {
  */
 export function formatIndex(index: number | null | undefined, placeholder = '-'): string {
   if (index == null || !Number.isFinite(index)) return placeholder;
-  return index.toFixed(2);
+  return fmtFixed(index, 2);
 }
 
 /**

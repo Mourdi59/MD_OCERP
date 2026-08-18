@@ -27,12 +27,13 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useToastStore } from '@/stores/useToastStore';
 
 import { getGeocodeCacheStats, purgeGeocodeCache } from './api';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 function fmtTimestamp(ts: string | null): string {
   if (!ts) return '—';
   const d = new Date(ts);
   if (Number.isNaN(d.getTime())) return ts;
-  return d.toLocaleString();
+  return d.toLocaleString(getIntlLocale());
 }
 
 function PanelBody() {

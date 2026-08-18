@@ -1,5 +1,6 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+import { fmtFixed } from '@/shared/lib/formatters';
 interface ToolBadgeProps {
   toolName: string;
   summary: string;
@@ -39,7 +40,7 @@ export default function ToolBadge({ toolName, summary, durationMs, onRefresh }: 
       )}
       {durationMs !== undefined && (
         <span style={{ color: 'var(--chat-text-tertiary)', flexShrink: 0 }}>
-          {durationMs < 1000 ? `${durationMs}ms` : `${(durationMs / 1000).toFixed(1)}s`}
+          {durationMs < 1000 ? `${durationMs}ms` : `${fmtFixed(durationMs / 1000, 1)}s`}
         </span>
       )}
       {onRefresh && (

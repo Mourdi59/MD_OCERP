@@ -21,6 +21,7 @@ import { AlertCircle, Check, Download, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { fetchTileManifest, prefetchModelTiles } from './streaming/tileStreamer';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 type Phase = 'probing' | 'unavailable' | 'idle' | 'saving' | 'saved' | 'error';
 
@@ -39,7 +40,7 @@ function formatBytes(n: number): string {
     value /= 1024;
     unit += 1;
   }
-  const rounded = value < 10 && unit > 0 ? value.toFixed(1) : String(Math.round(value));
+  const rounded = value < 10 && unit > 0 ? fmtFixed(value, 1) : String(Math.round(value));
   return `${rounded} ${units[unit]}`;
 }
 

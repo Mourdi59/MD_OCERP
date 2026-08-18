@@ -93,6 +93,7 @@ import {
   partitionLanes,
   type MatchLaneId,
 } from './matchReasons';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 // ─────────────────────────────────────────────────────────────────────────
 //  Stage model — the single source of truth for the one-and-only rail
@@ -202,7 +203,7 @@ const STAGE_INDEX: Record<StageId, number> = STAGES.reduce(
 function fmtMoney(value: number | null | undefined, currency: string | null | undefined) {
   if (value == null) return '—';
   try {
-    return new Intl.NumberFormat(undefined, {
+    return new Intl.NumberFormat(getIntlLocale(), {
       style: currency ? 'currency' : 'decimal',
       currency: currency || undefined,
       maximumFractionDigits: 2,
@@ -1606,7 +1607,7 @@ export function MatchWizardFlow() {
                         defaultValue: 'Auto-confirm above score',
                       })}{' '}
                       <span className="tabular-nums text-oe-blue">
-                        {autoThreshold.toFixed(2)}
+                        {fmtFixed(autoThreshold, 2)}
                       </span>
                     </label>
                     <input
@@ -2006,7 +2007,7 @@ export function MatchWizardFlow() {
                                         {p.unit}
                                       </td>
                                       <td className="px-3 py-2 text-right tabular-nums text-content-secondary">
-                                        {Number(p.quantity).toLocaleString(undefined, {
+                                        {Number(p.quantity).toLocaleString(getIntlLocale(), {
                                           maximumFractionDigits: 3,
                                         })}
                                       </td>

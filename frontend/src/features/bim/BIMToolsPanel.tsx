@@ -36,6 +36,7 @@ import {
   type BoqExportScope,
   type BoqGroupBy,
 } from './api';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 interface BIMToolsPanelProps {
   modelId: string;
@@ -113,7 +114,7 @@ export default function BIMToolsPanel({
   const handleSave = useCallback(() => {
     const snapshot = getCurrentViewpoint();
     if (!snapshot) return;
-    const fallback = new Date().toLocaleString();
+    const fallback = new Date().toLocaleString(getIntlLocale());
     // Capture the rest of the viewer state at the moment of save - filter
     // panel selections, section box / clipping plane, and an optional
     // thumbnail. Each is best-effort: if the bridge isn't installed (e.g.
@@ -380,7 +381,7 @@ export default function BIMToolsPanel({
                       <span className="text-[10px] tabular-nums text-content-tertiary shrink-0">
                         {(() => {
                           const d = q.convert(m.distance, 'm');
-                          return `${d.value.toFixed(2)} ${d.unit}`;
+                          return `${fmtFixed(d.value, 2)} ${d.unit}`;
                         })()}
                       </span>
                     </button>
@@ -539,7 +540,7 @@ export default function BIMToolsPanel({
                       onClick={() => onApplyViewpoint(v)}
                       className="flex flex-1 min-w-0 items-center gap-2 text-left text-[11px] text-content-primary hover:text-oe-blue"
                       data-testid={`apply-view-${v.name}`}
-                      title={new Date(v.createdAt).toLocaleString()}
+                      title={new Date(v.createdAt).toLocaleString(getIntlLocale())}
                     >
                       {v.screenshotDataUrl ? (
                         // Thumbnail preview - keeps the row to ~24px tall by

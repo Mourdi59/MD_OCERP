@@ -40,6 +40,7 @@ import {
   type SnapCandidate,
   type SnapModes,
 } from '../lib/snap';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Text Pin popup types & constants ─────────────────────────────────── */
 
@@ -519,7 +520,7 @@ export function DxfViewer({
       if (coord) {
         const world = mousePosRef.current;
         if (world && entities.length > 0) {
-          const text = `X: ${world.x.toFixed(2)}   Y: ${world.y.toFixed(2)}`;
+          const text = `X: ${fmtFixed(world.x, 2)}   Y: ${fmtFixed(world.y, 2)}`;
           if (coord.textContent !== text) coord.textContent = text;
           if (coord.style.display !== '') coord.style.display = '';
         } else if (coord.style.display !== 'none') {
@@ -826,7 +827,7 @@ export function DxfViewer({
           const rawPx = calculateDistance(lastPt, mouseWorld);
           const calHot = calibrationRef.current;
           const label = calHot
-            ? `${(rawPx * calHot.unitsPerPixel).toFixed(2)} ${calHot.unit}`
+            ? `${fmtFixed(rawPx * calHot.unitsPerPixel, 2)} ${calHot.unit}`
             : formatMeasurement(rawPx * drawingScaleRef.current, 'm');
           const midX = (lastScreen.x + mouseScreen.x) / 2;
           const midY = (lastScreen.y + mouseScreen.y) / 2;

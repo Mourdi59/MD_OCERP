@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import type { ResourceOut, PreviewResourceRow } from '../api';
 import { fmtMoneyStr, resourceTypeBadge } from '../helpers';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface NormalisedRow {
   name: string;
@@ -26,7 +27,7 @@ interface NormalisedRow {
 function normalise(r: ResourceOut | PreviewResourceRow): NormalisedRow {
   const name = 'name' in r ? r.name : r.description;
   const code = 'code' in r ? r.code : null;
-  const cost = (r.quantity * Number(r.unit_rate || 0)).toFixed(2);
+  const cost = fmtFixed(r.quantity * Number(r.unit_rate || 0), 2);
   return {
     name,
     code,

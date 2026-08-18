@@ -31,6 +31,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, X } from 'lucide-react';
 import { apiGet } from '@/shared/lib/api';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /** Backend response shape — kept in lock-step with
  *  ``backend/app/modules/clash_cost_impact/schemas.py``.
@@ -314,10 +315,10 @@ export function ClashCostImpactColumn({
     defaultValue: impact.confidence,
   });
   const tooltip =
-    `${reworkLabel}: ${toNum(c.rework_positions_total).toFixed(2)} ${displayCurrency} × ` +
-    `${toNum(c.rework_factor_pct)}% = ${toNum(c.rework_subtotal).toFixed(2)} ${displayCurrency}\n` +
-    `${labourLabel}: ${toNum(c.labour_hours)}h × ${toNum(c.blended_rate).toFixed(2)} ${displayCurrency} = ` +
-    `${toNum(c.labour_subtotal).toFixed(2)} ${displayCurrency}\n` +
+    `${reworkLabel}: ${fmtFixed(toNum(c.rework_positions_total), 2)} ${displayCurrency} × ` +
+    `${toNum(c.rework_factor_pct)}% = ${fmtFixed(toNum(c.rework_subtotal), 2)} ${displayCurrency}\n` +
+    `${labourLabel}: ${toNum(c.labour_hours)}h × ${fmtFixed(toNum(c.blended_rate), 2)} ${displayCurrency} = ` +
+    `${fmtFixed(toNum(c.labour_subtotal), 2)} ${displayCurrency}\n` +
     `${confidenceTooltipLabel}: ${confidenceText}`;
 
   // Gate the BOQ drill-down on high confidence (the only band where a BOQ

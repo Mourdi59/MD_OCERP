@@ -32,6 +32,7 @@ import {
   type ValidationExportFormat,
 } from './validationExport';
 import { EstimateAuditPanel } from './EstimateAuditPanel';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -499,7 +500,7 @@ function SummaryCard({ report }: { report: ValidationReportData }) {
             })}
           </p>
           <p className="mt-1 text-xs text-content-tertiary tabular-nums">
-            {t('validation.duration', 'Duration')}: {report.duration_ms.toFixed(1)}ms
+            {t('validation.duration', 'Duration')}: {fmtFixed(report.duration_ms, 1)}ms
           </p>
         </div>
       </div>

@@ -11,6 +11,7 @@ import { primaryModule } from '../kindModule';
 import { SnippetHighlight } from '@/features/file-search/SnippetHighlight';
 import { CDEBadge } from './CDEBadge';
 import { favoriteKey, type FileRow, type FileKind, type FileFilters } from '../types';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 const KIND_ICON: Record<FileKind, typeof FileText> = {
   document: FileText,
@@ -46,9 +47,9 @@ interface FileListProps {
 function fmtBytes(bytes: number): string {
   if (!bytes) return '0 B';
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
+  return `${fmtFixed(bytes / (1024 * 1024 * 1024), 2)} GB`;
 }
 
 /* Render the document version as ``V01`` / ``V12``. ``extra.version`` is the

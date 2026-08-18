@@ -1,6 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import { unwrapList, toNum } from './normalize';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface CWICRItem {
   code?: string;
@@ -74,7 +75,7 @@ export default function CWICRRenderer({ data }: { data: unknown }) {
               }}
             >
               {item.rate != null
-                ? item.rate.toLocaleString(undefined, { minimumFractionDigits: 2 })
+                ? item.rate.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2 })
                 : '-'}
               {item.currency && (
                 <span style={{ fontSize: 11, color: 'var(--chat-text-tertiary)', marginLeft: 3 }}>

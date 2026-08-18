@@ -8,6 +8,7 @@ import clsx from 'clsx';
 import type { FileTreeNode, FileKind } from '../types';
 import { TrashNode } from '@/features/file-trash/TrashNode';
 import { SavedViewsRail } from '@/features/file-saved-views';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 const KIND_ICONS: Record<FileKind, typeof FileText> = {
   document: FileText,
@@ -33,9 +34,9 @@ interface FileTreeProps {
 function fmtBytes(bytes: number): string {
   if (!bytes) return '0 B';
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
+  return `${fmtFixed(bytes / (1024 * 1024 * 1024), 2)} GB`;
 }
 
 export function FileTree({ nodes, selectedId, onSelect, isLoading, projectId }: FileTreeProps) {

@@ -25,6 +25,7 @@ import { fetchBIMModels } from '../bim/api';
 import { fetchDrawings } from '../dwg-takeoff/api';
 import { takeoffApi } from '../takeoff/api';
 import { documentsGuide } from './documentsGuide';
+import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Types ───────────────────────────────────────────────────────────── */
 
@@ -94,9 +95,9 @@ function cdeTransitionErrorKey(message: string): string | null {
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  if (bytes < 1024 * 1024) return `${fmtFixed(bytes / 1024, 1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${fmtFixed(bytes / (1024 * 1024), 1)} MB`;
+  return `${fmtFixed(bytes / (1024 * 1024 * 1024), 2)} GB`;
 }
 
 /**
@@ -1153,12 +1154,12 @@ export function DocumentsPage() {
                       <p className="text-sm font-medium text-content-primary truncate" title={s.display_name}>{s.display_name}</p>
                       <p className="text-[11px] text-content-tertiary mt-1 flex items-center gap-1.5">
                         <span className={`px-1.5 py-0.5 rounded font-mono text-[10px] font-semibold ${fmtColor[fmt] || 'bg-surface-secondary text-content-tertiary'}`}>{fmt || '—'}</span>
-                        <span>{s.element_count.toLocaleString()} elements</span>
+                        <span>{s.element_count.toLocaleString(getIntlLocale())} elements</span>
                       </p>
                     </div>
                   </div>
                   <div className="mt-3 pt-2.5 border-t border-border-light/60 flex items-center justify-between text-[10px] text-content-quaternary">
-                    <span>{s.extraction_time.toFixed(1)}s</span>
+                    <span>{fmtFixed(s.extraction_time, 1)}s</span>
                     {s.created_at && <span><DateDisplay value={s.created_at} /></span>}
                     {s.is_permanent ? (
                       <Badge variant="success" size="sm">{t('documents.saved', { defaultValue: 'Saved' })}</Badge>
@@ -1201,7 +1202,7 @@ export function DocumentsPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium text-content-primary truncate">{m.name}</p>
                     <p className="text-[10px] text-content-tertiary">
-                      {(m.model_format || m.format || 'BIM').toUpperCase()} &middot; {(m.element_count ?? 0).toLocaleString()} elem
+                      {(m.model_format || m.format || 'BIM').toUpperCase()} &middot; {(m.element_count ?? 0).toLocaleString(getIntlLocale())} elem
                     </p>
                   </div>
                 </div>

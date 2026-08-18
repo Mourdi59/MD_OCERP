@@ -26,6 +26,7 @@ import {
 import { WideModal } from '@/shared/ui/WideModal';
 import { Button } from '@/shared/ui';
 import { formatFixedDigits, formatMaxDigits } from '../lib/measurement-format';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /** What the user actually typed, for honest badge display.
  *
@@ -109,7 +110,7 @@ export function CalibrationDialog({
           {t('takeoff_viewer.calibrate_desc', {
             defaultValue:
               'You picked a line of {{pixels}} pixels. Enter its real-world length:',
-            pixels: pixelDistance.toFixed(0),
+            pixels: fmtFixed(pixelDistance, 0),
           })}
         </span>
       }

@@ -12,6 +12,7 @@
  */
 
 import jsPDF from 'jspdf';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /** Options accepted by {@link exportCanvasToPdf}. */
 export interface PdfExportOptions {
@@ -37,7 +38,7 @@ function ymdStamp(d: Date = new Date()): string {
 /** Format a Date for display in the header ("18 Apr 2026"). */
 function headerDate(d: Date = new Date()): string {
   try {
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat(getIntlLocale(), {
       day: '2-digit',
       month: 'short',
       year: 'numeric',

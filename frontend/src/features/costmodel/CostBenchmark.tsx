@@ -386,7 +386,7 @@ export const CostBenchmark = memo(function CostBenchmark({ totalBudget, currency
                         contradict the number they entered. */}
                     {t('costmodel.benchmark_area_value', {
                       defaultValue: '{{area}} m\u00B2',
-                      area: areaNum.toLocaleString(),
+                      area: areaNum.toLocaleString(getIntlLocale()),
                     })}
                   </div>
                 </div>

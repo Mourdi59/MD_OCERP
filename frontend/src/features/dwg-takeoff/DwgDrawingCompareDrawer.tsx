@@ -58,6 +58,7 @@ import {
   type DwgEntityDiffRow,
   type DwgAnnotationDiffRow,
 } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 type CompareTab = 'entities' | 'annotations' | 'summary';
 
@@ -950,11 +951,11 @@ function AnnotationsTab({
           </div>
           <div className="mt-1.5 flex items-center gap-2 text-xs text-content-secondary">
             <span className="tabular-nums">
-              {r.old_measurement != null ? r.old_measurement.toFixed(2) : '—'}
+              {r.old_measurement != null ? fmtFixed(r.old_measurement, 2) : '—'}
             </span>
             <ArrowRight size={12} className="text-content-tertiary" />
             <span className="tabular-nums font-medium text-content-primary">
-              {r.new_measurement != null ? r.new_measurement.toFixed(2) : '—'}
+              {r.new_measurement != null ? fmtFixed(r.new_measurement, 2) : '—'}
             </span>
             {r.measurement_unit && <span className="text-content-tertiary">{r.measurement_unit}</span>}
           </div>

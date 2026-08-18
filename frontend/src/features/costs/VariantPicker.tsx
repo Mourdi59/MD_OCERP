@@ -489,7 +489,7 @@ export function VariantPicker({
               <span className="text-2xs text-content-tertiary tabular-nums">
                 {t('costs.variant_per_unit', { defaultValue: 'Per unit' })}
                 {': '}
-                {v.price_per_unit.toLocaleString(undefined, {
+                {v.price_per_unit.toLocaleString(getIntlLocale(), {
                   maximumFractionDigits: 4,
                 })}
               </span>

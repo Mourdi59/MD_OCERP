@@ -1,6 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import { unwrapList, toNum } from './normalize';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 interface CompareData {
   metrics?: { label: string; values: (string | number | null)[] }[];
@@ -99,7 +100,7 @@ export default function CompareRenderer({ data }: { data: unknown }) {
                     else if (val === worst) color = 'var(--chat-tool-error)';
                   }
                   const display = isNumeric(val)
-                    ? val.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                    ? val.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 })
                     : val ?? '-';
                   return (
                     <td

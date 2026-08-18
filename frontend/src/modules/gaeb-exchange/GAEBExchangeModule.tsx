@@ -19,7 +19,7 @@ import {
 import { Button, Badge, DismissibleInfo } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { apiGet, getAuthToken, triggerDownload } from '@/shared/lib/api';
-import { fmtNumber } from '@/shared/lib/formatters';
+import { fmtNumber, fmtFixed } from '@/shared/lib/formatters';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { boqApi, isSection as isSectionRow } from '@/features/boq/api';
@@ -526,7 +526,7 @@ export default function GAEBExchangeModule() {
                   <FileUp size={18} className="text-oe-blue" />
                   <span className="font-medium">{importFile.name}</span>
                   <span className="text-content-tertiary">
-                    ({(importFile.size / 1024).toFixed(1)} KB)
+                    ({fmtFixed(importFile.size / 1024, 1)} KB)
                   </span>
                   <button
                     onClick={handleClearImport}

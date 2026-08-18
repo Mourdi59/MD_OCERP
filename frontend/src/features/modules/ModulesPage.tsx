@@ -63,6 +63,7 @@ import { useModuleStore } from '@/stores/useModuleStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { getModulesByCategory } from '@/modules/_registry';
 import { translateManifestText } from '@/modules/_i18n';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -230,8 +231,8 @@ function getModuleIcon(iconName: string): LucideIcon {
 
 function formatSize(sizeMb: number): string {
   if (sizeMb < 1) return `${Math.round(sizeMb * 1024)} KB`;
-  if (sizeMb >= 1024) return `${(sizeMb / 1024).toFixed(1)} GB`;
-  return `${sizeMb.toFixed(1)} MB`;
+  if (sizeMb >= 1024) return `${fmtFixed(sizeMb / 1024, 1)} GB`;
+  return `${fmtFixed(sizeMb, 1)} MB`;
 }
 
 /* ── Module category display config ────────────────────────────────────── */
@@ -837,7 +838,7 @@ export function InstallPackPanel({ onChanged }: { onChanged: () => void }) {
     if (file.size > MAX_PACK_UPLOAD_BYTES) {
       return t('modules.pack_install_too_large', {
         defaultValue: 'That file is {{size}} MB. Packs must be 25 MB or smaller.',
-        size: (file.size / (1024 * 1024)).toFixed(1),
+        size: fmtFixed(file.size / (1024 * 1024), 1),
       });
     }
     return null;

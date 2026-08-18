@@ -27,6 +27,7 @@ import { Card, CardContent, CardHeader, InfoHint } from '@/shared/ui';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { fetchSubmittals, type Submittal, type SubmittalStatus } from '@/features/submittals/api';
 import { KpiStrip } from './KpiStrip';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /** In-review statuses awaiting a reviewer decision. */
 const PENDING_STATUSES = new Set<SubmittalStatus>(['submitted', 'under_review']);
@@ -100,7 +101,7 @@ export function SubmittalsPendingCard() {
   if (isLoading) return null;
   if (rows.length === 0) return null;
 
-  const nf = new Intl.NumberFormat();
+  const nf = new Intl.NumberFormat(getIntlLocale());
 
   return (
     <Card className="h-full">

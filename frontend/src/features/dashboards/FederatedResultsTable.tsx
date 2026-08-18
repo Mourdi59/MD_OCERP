@@ -16,6 +16,7 @@ import type {
   FederatedAggregateRow,
   FederationAggregateResponse,
 } from './api';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 export interface FederatedResultsTableProps {
   data: FederationAggregateResponse | null;
@@ -179,8 +180,8 @@ function formatNumber(value: unknown): string {
   if (value === null || value === undefined) return '—';
   if (typeof value === 'number' && Number.isFinite(value)) {
     return Math.abs(value) >= 1000
-      ? value.toLocaleString(undefined, { maximumFractionDigits: 1 })
-      : value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+      ? value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 1 })
+      : value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 4 });
   }
   return String(value);
 }

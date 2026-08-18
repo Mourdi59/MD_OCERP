@@ -20,6 +20,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/shared/ui';
 import { getVendorEligibility } from './api';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 interface VendorPrequalBadgeProps {
   /** CRM contact id the PO references via ``vendor_contact_id``. */
@@ -79,7 +80,7 @@ export function VendorPrequalBadge({
       <Badge variant="warning" size="sm" dot>
         {t('procurement.vendor_low_rating', {
           defaultValue: 'Low rating ({{score}})',
-          score: score.toFixed(0),
+          score: fmtFixed(score, 0),
         })}
       </Badge>
     );

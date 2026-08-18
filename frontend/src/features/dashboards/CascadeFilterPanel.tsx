@@ -36,6 +36,7 @@ import {
   type CascadeValue,
 } from './api';
 import { useDebouncedValue } from './SmartValueAutocomplete';
+import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── Types ───────────────────────────────────────────────────────────── */
 
@@ -164,8 +165,8 @@ export function CascadeFilterPanel({
             {rowCountQuery.data
               ? t('dashboards.cascade.rows_match', {
                   defaultValue: '{{matched}} of {{total}} rows match',
-                  matched: rowCountQuery.data.matched.toLocaleString(),
-                  total: rowCountQuery.data.total.toLocaleString(),
+                  matched: rowCountQuery.data.matched.toLocaleString(getIntlLocale()),
+                  total: rowCountQuery.data.total.toLocaleString(getIntlLocale()),
                 })
               : t('dashboards.cascade.rows_loading', {
                   defaultValue: 'Counting rows…',
@@ -378,7 +379,7 @@ function CascadeFilterCard({
             >
               <span className="truncate">{c.value}</span>
               <span className="shrink-0 text-xs tabular-nums text-content-tertiary">
-                {c.count.toLocaleString()}
+                {c.count.toLocaleString(getIntlLocale())}
               </span>
             </button>
           </li>
