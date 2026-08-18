@@ -46,8 +46,26 @@ def test_the_guard_reads_both_columns_of_the_key() -> None:
 
 
 def test_the_guard_runs_before_the_insert() -> None:
-    assert "if (wbs_id, bl[" in _seeder(), (
+    assert "if key in existing_lines" in _seeder(), (
         "the budget guard's membership test is gone or reshaped - the pg mirror is now fiction"
+    )
+    assert 'key = (wbs_id, bl["category"][:100])' in _seeder(), "the guard no longer composes the key it tests"
+
+
+def test_the_guard_also_holds_within_one_batch() -> None:
+    """The half the first version of this file could not tell apart.
+
+    The set is read from the database once, so guarding on membership alone
+    stops a re-run and lets a single batch carrying one (wbs_id, category)
+    twice through - two rows, one double count, first pass. Both copies must
+    grow the set as they go, and neither of the assertions above changes when
+    one of them stops.
+    """
+    assert "existing_lines.add(key)" in _seeder(), (
+        "the seeder guards across runs but not within a batch; the pg mirror does both"
+    )
+    assert "existing.add(key)" in MIRROR.read_text(encoding="utf-8"), (
+        "the pg mirror stopped guarding within a batch; the seeder still does"
     )
 
 

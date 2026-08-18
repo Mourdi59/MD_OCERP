@@ -9325,8 +9325,15 @@ async def _seed_module_data(
             # rollback here loses the whole install.
             raw_wbs = bl.get("wbs_id")
             wbs_id = str(raw_wbs)[:36] if raw_wbs else None
-            if (wbs_id, bl["category"][:100]) in existing_lines:
+            key = (wbs_id, bl["category"][:100])
+            if key in existing_lines:
                 continue
+            # Guard within the batch too, not only against what is already
+            # stored. The set is seeded from the database, so without this a
+            # template listing one (wbs_id, category) twice writes it twice on
+            # the very first pass - the same double count the re-run guard
+            # exists to stop, arriving from the input instead of from a re-run.
+            existing_lines.add(key)
             added_budgets += 1
             session.add(
                 ProjectBudget(
