@@ -10,6 +10,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from app.modules.einvoice.rules import VAT_CATEGORY_CODES
+from app.modules.finance.variance import expected_outturn
 
 
 # ── v3 §10 money serialisation helper ─────────────────────────────────────
@@ -539,20 +540,41 @@ class BudgetResponse(BaseModel):
             # is a ratio, so float is fine there.
             revised_money = Decimal(str(self.revised_budget))
             actual_money = Decimal(str(self.actual))
-            self.variance = format(revised_money - actual_money, "f")
+            committed_money = Decimal(str(self.committed))
+            forecast_money = Decimal(str(self.forecast_final))
+            # The rule lives in `variance.py` and nowhere else. It used to be
+            # written once per caller, and only the caller that happened to be
+            # read carefully got corrected.
+            outturn = expected_outturn(
+                forecast_final=forecast_money,
+                committed=committed_money,
+                actual=actual_money,
+            )
+            self.variance = format(revised_money - outturn, "f")
             revised = float(revised_money)
-            actual = float(actual_money)
+            # Two questions, deliberately on two bases. `consumed_pct` is the
+            # bar: how much of the budget has actually left the building.
+            # `warning_level` is the flag: how much of it is spoken for. The
+            # flag used to sit on spend, which is how a line with 33.4 of its
+            # 48.7 already on order read "normal" in green. A warning that
+            # lights only once the money is gone is not a warning.
             if revised > 0:
-                self.consumed_pct = round(actual / revised * 100, 1)
+                self.consumed_pct = round(float(actual_money) / revised * 100, 1)
+                committed_pct = float(outturn) / revised * 100
             else:
                 self.consumed_pct = 0.0
-            if self.consumed_pct >= 95:
+                committed_pct = 0.0
+            if committed_pct >= 95:
                 self.warning_level = "critical"
-            elif self.consumed_pct >= 80:
+            elif committed_pct >= 80:
                 self.warning_level = "caution"
             else:
                 self.warning_level = "normal"
-        except (ValueError, TypeError):
+        except (ArithmeticError, ValueError, TypeError):
+            # InvalidOperation is an ArithmeticError, not a ValueError, so the
+            # narrower pair this used to catch let a malformed money string out
+            # of the guard and turned one bad row into a 500 for the whole
+            # budget list. A row we cannot read reports nothing instead.
             self.variance = "0"
             self.consumed_pct = 0.0
             self.warning_level = "normal"

@@ -111,6 +111,7 @@ from app.modules.finance.schemas import (
     TrialBalanceRow,
 )
 from app.modules.finance.service import FinanceService
+from app.modules.finance.variance import budget_variance
 
 router = APIRouter(tags=["finance"])
 logger = logging.getLogger(__name__)
@@ -1598,7 +1599,15 @@ async def export_budgets(
         committed = _bd(b.committed)
         actual = _bd(b.actual)
         forecast = _bd(b.forecast_final)
-        variance = revised - actual
+        # The same rule the table on screen uses. A workbook that disagreed
+        # with the page it was exported from would be the more expensive of
+        # the two, because it travels.
+        variance = budget_variance(
+            revised_budget=revised,
+            forecast_final=forecast,
+            committed=committed,
+            actual=actual,
+        )
 
         ws.cell(row=row_idx, column=3, value=original)
         ws.cell(row=row_idx, column=4, value=revised)

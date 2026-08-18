@@ -493,14 +493,33 @@ class BudgetRepository:
     ) -> dict:
         """Aggregate budget totals using SQL instead of loading all rows.
 
-        Returns dict with original/revised/committed/actual totals.
+        Returns dict with original/revised/committed/actual/outturn totals.
 
         ``project_ids`` scopes the aggregation to a set of projects (the
         accessible-projects scope of a non-admin caller) when ``project_id`` is
         not given. An empty set aggregates nothing - the safe default for a
         caller with no projects, never every tenant's rows.
         """
-        from sqlalchemy import Numeric, cast
+        from sqlalchemy import Numeric, case, cast
+
+        # Expected outturn, decided per row and then summed, because the header
+        # total has to agree with the sum of the column underneath it. Deciding
+        # it on the sums instead would answer a different question and quietly
+        # come out lower.
+        #
+        # This mirrors `expected_outturn` in `variance.py` and has to be read
+        # against it. A `case` rather than GREATEST so the expression does not
+        # depend on which database is underneath, and the casts sit inside the
+        # comparisons: `MoneyType` is NUMERIC on PostgreSQL but a string column
+        # elsewhere, and comparing money as text makes 9 larger than 33.40.
+        forecast_col = cast(ProjectBudget.forecast_final, Numeric)
+        committed_col = cast(ProjectBudget.committed, Numeric)
+        actual_col = cast(ProjectBudget.actual, Numeric)
+        outturn_col = case(
+            (forecast_col > 0, forecast_col),
+            (committed_col > actual_col, committed_col),
+            else_=actual_col,
+        )
 
         # Group by currency so the caller can FX-convert each currency's
         # subtotals into the project base currency instead of summing mixed
@@ -511,6 +530,7 @@ class BudgetRepository:
             func.coalesce(func.sum(cast(ProjectBudget.revised_budget, Numeric)), 0),
             func.coalesce(func.sum(cast(ProjectBudget.committed, Numeric)), 0),
             func.coalesce(func.sum(cast(ProjectBudget.actual, Numeric)), 0),
+            func.coalesce(func.sum(outturn_col), 0),
         )
         if project_id is not None:
             base = base.where(ProjectBudget.project_id == project_id)
@@ -524,12 +544,14 @@ class BudgetRepository:
         revised_by_currency: dict[str, float] = {}
         committed_by_currency: dict[str, float] = {}
         actual_by_currency: dict[str, float] = {}
-        for currency_code, original, revised, committed, actual in rows:
+        outturn_by_currency: dict[str, float] = {}
+        for currency_code, original, revised, committed, actual, outturn in rows:
             code = currency_code or ""
             original_by_currency[code] = original_by_currency.get(code, 0.0) + float(original)
             revised_by_currency[code] = revised_by_currency.get(code, 0.0) + float(revised)
             committed_by_currency[code] = committed_by_currency.get(code, 0.0) + float(committed)
             actual_by_currency[code] = actual_by_currency.get(code, 0.0) + float(actual)
+            outturn_by_currency[code] = outturn_by_currency.get(code, 0.0) + float(outturn)
 
         # Resolve the dominant currency for the dashboard so the UI does
         # not have to hardcode one. We pick the most-used non-empty
@@ -557,6 +579,7 @@ class BudgetRepository:
             "revised_by_currency": revised_by_currency,
             "committed_by_currency": committed_by_currency,
             "actual_by_currency": actual_by_currency,
+            "outturn_by_currency": outturn_by_currency,
             "currency": currency,
         }
 

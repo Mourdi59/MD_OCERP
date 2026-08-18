@@ -1913,14 +1913,23 @@ class FinanceService:
         total_budget_revised = _to_base(budget_agg["revised_by_currency"])
         total_committed = _to_base(budget_agg["committed_by_currency"])
         total_actual = _to_base(budget_agg["actual_by_currency"])
+        # Summed per row by the repository, following the rule in `variance.py`,
+        # so this header agrees with the column of variances under it. It used
+        # to subtract spend alone and report money that was already on order as
+        # headroom still available.
+        total_outturn = _to_base(budget_agg["outturn_by_currency"])
 
-        total_variance = total_budget_revised - total_actual
+        total_variance = total_budget_revised - total_outturn
+        # The bar stays on spend and the flag moves to outturn, the same split
+        # the individual rows make: how much has gone, against how much is
+        # spoken for.
         budget_consumed_pct = total_actual / total_budget_revised * 100 if total_budget_revised > 0 else Decimal("0")
+        committed_pct = total_outturn / total_budget_revised * 100 if total_budget_revised > 0 else Decimal("0")
 
         # Budget warning level
-        if budget_consumed_pct >= 95:
+        if committed_pct >= 95:
             warning_level = "critical"
-        elif budget_consumed_pct >= 80:
+        elif committed_pct >= 80:
             warning_level = "caution"
         else:
             warning_level = "normal"
