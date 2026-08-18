@@ -209,14 +209,14 @@ describe('formatCurrency fraction-digit safety', () => {
   });
 
   it('keeps the engine currency table, which our static minor-unit list contradicts', () => {
-    // formatCurrency reads the natural digit count from Intl, not from
-    // shared/ui/currencyMinorUnits. The two disagree on 16 codes where CLDR
-    // says zero decimals and the static list says two, so sourcing the count
-    // from the list would start printing forint and rupiah with cents. The
-    // register used to source it from there, which is how one amount could
-    // carry cents on one screen and not on the next; no surface reads the
-    // list now, because a screen is written for its reader and only a
-    // document is written for a bank.
+    // formatCurrency reads the natural digit count from Intl, not from a
+    // static ISO 4217 list. The two disagree on 16 codes where CLDR says
+    // zero decimals and ISO says two, so sourcing the count from the list
+    // would start printing forint and rupiah with cents. The register used
+    // to source it from there, which is how one amount could carry cents on
+    // one screen and not on the next; no surface reads such a list now and
+    // the frontend copy is gone, because a screen is written for its reader
+    // and only a document is written for a bank.
     //
     // Asserted on the decimal marker rather than the whole string: hu-HU
     // groups with a non-breaking space, so an assertion written with an

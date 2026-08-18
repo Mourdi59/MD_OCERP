@@ -611,14 +611,15 @@ const REGISTER_FIXTURES: readonly (readonly [number, string])[] = [
 /**
  * The last codes on which the two surfaces disagreed, kept as data.
  *
- * They resolved the decimal count from different sources: the register read the
- * static ISO 4217 list in `shared/ui/currencyMinorUnits`, the bill read what the
+ * They resolved the decimal count from different sources: the register read a
+ * static ISO 4217 list, the bill read what the
  * engine holds, and CLDR gives these five zero decimals where ISO gives two.
  * That was never a contest between two tables, it was a contest between a table
  * and a reader - a Hungarian does not write forints with fillér - and on a
  * screen the reader wins, so the register asks the engine now as well. The
  * opposite rule holds for a document, which is read by a bank rather than by
- * our user, and belongs with the code that writes documents.
+ * our user, and is written down with the code that writes one, in
+ * `money_decimals` in the backend einvoice rules.
  *
  * Eleven other codes used to sit beside these - BHD CLP ISK JOD JPY KRW KWD OMR
  * TND UGX VND - because the bill asked for two decimals on everything, showing

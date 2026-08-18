@@ -166,6 +166,26 @@ def money_decimals(currency_code: str) -> int:
     for document amounts. A currency with no minor unit yields ``0``, so a yen
     or peso amount is never printed with cents.
 
+    THE RULE HAS TWO HALVES AND THIS IS THE DOCUMENT ONE.
+
+    In a document ISO 4217 wins. An invoice under EN 16931 and any payment
+    file declare an amount to a bank and a tax office, whose authority is the
+    standard and not the locale of whoever pressed export. On a screen the
+    opposite holds and CLDR wins, because a number a person reads is written
+    in their own convention: a Hungarian does not write forints with fillér,
+    so every money surface asks the formatting engine instead. Both halves
+    are stated here together on purpose. Written apart, a later pass reads
+    one of them and corrects the other into agreement.
+
+    The two disagree on 16 codes, where CLDR says zero decimals and ISO says
+    two: AFN, ALL, COP, HUF, IDR, IQD, IRR, KPW, LAK, LBP, MGA, MMK, PKR,
+    SOS, SYP, YER. This function does not yet act on the disagreement. It
+    reads ``CURRENCIES``, which carries the CLDR count for those codes, so a
+    forint invoice is written without fillér today. Which of the two a
+    document should follow for them is an open question rather than a
+    settled one, and it is named here so that whoever settles it can see
+    both the rule and the distance the code stands from it.
+
     Args:
         currency_code: ISO 4217 code, e.g. ``"EUR"`` or ``"JPY"``.
 

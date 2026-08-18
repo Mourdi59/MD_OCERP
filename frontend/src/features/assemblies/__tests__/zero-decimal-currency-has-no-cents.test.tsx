@@ -6,10 +6,9 @@
 // not a rounding choice, they are a quantity the currency cannot express, and
 // this is the figure that goes into a public tender.
 //
-// Both currency tables in the tree already knew it - `money.py` carries CLP at
-// zero decimals, `currencyMinorUnits.ts` lists it under ZERO_DECIMAL, and
-// `formatCurrency` asks the CLDR data directly. The assembly screens reached
-// past all three and wrote a literal 2, so the one number a Chilean estimator
+// Both sources in the tree already knew it - `money.py` carries CLP at zero
+// decimals and `formatCurrency` asks the CLDR data directly. The assembly
+// screens reached past both and wrote a literal 2, so the number a Chilean
 // actually reads was the one place none of that applied.
 //
 // The tests are split deliberately. The first pins the helper, which is cheap

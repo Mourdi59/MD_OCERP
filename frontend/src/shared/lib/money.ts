@@ -70,18 +70,21 @@ const PLAIN_FRACTION_DIGITS = 2;
  * Natural minor-unit count per ISO 4217 code, as the running engine sees it.
  *
  * The engine is the answer for anything a person looks at, and it is now the
- * only answer: `MoneyDisplay` used to override it from the static ISO 4217
- * list in `shared/ui/currencyMinorUnits`, and the two disagree on 16 codes
+ * only answer: `MoneyDisplay` used to override it from a static ISO 4217
+ * list this tree no longer carries, and the two disagreed on 16 codes
  * (AFN, ALL, COP, HUF, IDR, IQD, IRR, KPW, LAK, LBP, MGA, MMK, PKR, SOS, SYP,
  * YER) where CLDR says zero decimals and the list says two. That is not a
  * contest between two tables, it is a contest between a table and a reader: a
  * Hungarian does not write forints with fillér, so "1.234,00 Ft" was the list
  * arguing with the person reading it.
  *
- * The list is right about the other half of the question. An invoice under EN
+ * ISO is right about the other half of the question. An invoice under EN
  * 16931 and any payment file declare an amount to a bank and a tax office,
  * whose authority is ISO 4217 and not the locale of whoever is looking, and
- * nothing on a screen is one of those.
+ * nothing on a screen is one of those. That half is written down where a
+ * document is actually assembled, in `money_decimals` in the backend einvoice
+ * rules, because a rule kept next to code that cannot act on it is a
+ * comment rather than a rule.
  *
  * Cached by code alone - currency digits come from CLDR `currencyData` and do
  * not vary by locale, so keying on the locale would only multiply entries.
