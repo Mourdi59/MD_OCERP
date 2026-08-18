@@ -33,28 +33,42 @@ logger = logging.getLogger(__name__)
 
 _NS = uuid.UUID("d4d4c300-1909-4ddc-b01c-0a44e3b01c00")
 
+# Every one of these people used to be named after the job they do: Bob Client,
+# Nora Sub, Sven Tenant, and the same joke again in German and Polish, all of
+# them at example.com. The portal is a screen we put in front of prospects and
+# photograph for the public case pages, so a reader met twenty one placeholders
+# and drew a conclusion about the product rather than about the seed. They are
+# invented people now, each one plausible in the language the row declares, at
+# invented organisations on the reserved .example TLD, which is the convention
+# the rest of the demo data already follows.
+#
+# The seeder upserts on the email address, so these rows arrive alongside the
+# old ones on a database that was seeded before this change rather than
+# replacing them. That is a property of every rename in a seed keyed this way,
+# and the answer is a fresh install rather than a migration of demonstration
+# data.
 _USERS: tuple[tuple[str, str, str, str], ...] = (
     # (email, full_name, role, language)
-    ("alice.client@example.com", "Alice Client", "client", "en"),
-    ("bob.client@example.com", "Bob Client", "client", "de"),
-    ("clara.cliente@example.com", "Clara Cliente", "client", "es"),
-    ("denis.client@example.com", "Denis Client", "client", "ru"),
-    ("eric.investor@example.com", "Eric Investor", "investor", "en"),
-    ("frieda.investor@example.com", "Frieda Investor", "investor", "de"),
-    ("george.invest@example.com", "George Invest", "investor", "en"),
-    ("hannah.consult@example.com", "Hannah Consultant", "consultant", "en"),
-    ("ivan.consult@example.com", "Ivan Konsultant", "consultant", "ru"),
-    ("julia.consult@example.com", "Julia Beraterin", "consultant", "de"),
-    ("kai.sub@example.com", "Kai Subcontractor", "subcontractor", "en"),
-    ("lina.sub@example.com", "Lina Sub", "subcontractor", "de"),
-    ("marek.sub@example.com", "Marek Podwykonawca", "subcontractor", "en"),
-    ("nora.sub@example.com", "Nora Sub", "subcontractor", "en"),
-    ("oscar.supply@example.com", "Oscar Supplier", "supplier", "en"),
-    ("petra.supply@example.com", "Petra Lieferant", "supplier", "de"),
-    ("quentin.supply@example.com", "Quentin Supply", "supplier", "en"),
-    ("rosa.supply@example.com", "Rosa Suministro", "supplier", "es"),
-    ("sven.tenant@example.com", "Sven Tenant", "building_user", "en"),
-    ("tomas.tenant@example.com", "Tomas Mieter", "building_user", "de"),
+    ("a.renwick@harbourgate-estates.example", "Alice Renwick", "client", "en"),
+    ("b.kaltenbach@sennwald-immobilien.example", "Bernd Kaltenbach", "client", "de"),
+    ("c.montoro@vellara-inversiones.example", "Clara Montoro", "client", "es"),
+    ("d.yermolov@nevskaya-estate.example", "Denis Yermolov", "client", "ru"),
+    ("e.halloway@lindmark-capital.example", "Eric Halloway", "investor", "en"),
+    ("f.osterkamp@wendhorst-beteiligungen.example", "Frieda Osterkamp", "investor", "de"),
+    ("g.tamblyn@lindmark-capital.example", "George Tamblyn", "investor", "en"),
+    ("h.prewitt@calderwood-advisory.example", "Hannah Prewitt", "consultant", "en"),
+    ("i.zheleznov@stroysovet-proekt.example", "Ivan Zheleznov", "consultant", "ru"),
+    ("j.weinhold@brandhoff-planung.example", "Julia Weinhold", "consultant", "de"),
+    ("k.brenner@marlowe-fitout.example", "Kai Brenner", "subcontractor", "en"),
+    ("l.sattler@terrolt-bau.example", "Lina Sattler", "subcontractor", "de"),
+    ("m.dolinski@ravensworth-mep.example", "Marek Dolinski", "subcontractor", "en"),
+    ("n.fenwick@ravensworth-mep.example", "Nora Fenwick", "subcontractor", "en"),
+    ("o.lindqvist@peakstone-supply.example", "Oscar Lindqvist", "supplier", "en"),
+    ("p.nordhausen@kessmar-rohbau.example", "Petra Nordhausen", "supplier", "de"),
+    ("q.marsh@peakstone-supply.example", "Quentin Marsh", "supplier", "en"),
+    ("r.alcaraz@suministros-vellara.example", "Rosa Alcaraz", "supplier", "es"),
+    ("s.ackroyd@harbourgate-estates.example", "Sven Ackroyd", "building_user", "en"),
+    ("t.reinbold@sennwald-immobilien.example", "Tomas Reinbold", "building_user", "de"),
 )
 
 
