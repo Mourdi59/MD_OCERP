@@ -220,7 +220,7 @@ function mapRunResponse(data: RunValidationResponse): ValidationReportData {
 }
 
 /** Map a persisted ValidationReport into the page's report shape. */
-function mapStoredReport(report: ValidationReportResponse): ValidationReportData {
+export function mapStoredReport(report: ValidationReportResponse): ValidationReportData {
   const results: ValidationResultItem[] = report.results.map((r) => {
     const passed = r.passed ?? r.status === 'pass';
     return {
@@ -504,7 +504,10 @@ function SummaryCard({ report }: { report: ValidationReportData }) {
           </p>
           {report.duration_ms !== null && (
             <p className="mt-1 text-xs text-content-tertiary tabular-nums">
-              {t('validation.duration', 'Duration')}: {fmtFixed(report.duration_ms, 1)}ms
+              {t('validation.duration_ms', {
+                defaultValue: 'Duration: {{ms}}ms',
+                ms: fmtFixed(report.duration_ms, 1),
+              })}
             </p>
           )}
         </div>
