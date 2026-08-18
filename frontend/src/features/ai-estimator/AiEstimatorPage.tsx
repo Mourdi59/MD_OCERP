@@ -26,7 +26,6 @@ import { IntakePanel } from '@/features/ai/intake';
 import { projectsApi, type Project } from '@/features/projects/api';
 import { matchElementsApi } from '@/features/match-elements/api';
 import { fetchDocuments, uploadDocument } from '@/features/documents/api';
-import { getIntlLocale } from '@/shared/lib/formatters';
 import { BetaBanner, Button, Card, DismissibleInfo, ModuleGuideButton } from '@/shared/ui';
 import { PageHeader } from '@/shared/ui/PageHeader';
 
@@ -50,6 +49,7 @@ import { Stage2Groups } from './components/Stage2Groups';
 import { Stage3Match } from './components/Stage3Match';
 import { Stage4Review } from './components/Stage4Review';
 import { InlineErrorRetry } from './components/InlineErrorRetry';
+import { useNumberLocale } from '@/stores/usePreferencesStore';
 
 type View = 'list' | 'wizard';
 
@@ -60,7 +60,12 @@ export function AiEstimatorPage() {
   const qc = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
   const [searchParams, setSearchParams] = useSearchParams();
-  const locale = getIntlLocale();
+  // Subscribed, not sampled. The snapshot form of this reader is for callers
+  // that cannot hold a hook, and it is only correct where something else
+  // repaints the surface. Nothing repaints this page when the preference
+  // moves, so sampling it left every money figure below in the previous
+  // format until an unrelated prop happened to re-render the wizard.
+  const locale = useNumberLocale();
 
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
   const urlProject = searchParams.get('project');

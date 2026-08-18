@@ -1,4 +1,4 @@
-import i18n from '@/app/i18n';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /**
  * Shared locale-aware digit rendering for takeoff quantity readouts
@@ -14,6 +14,16 @@ import i18n from '@/app/i18n';
  *
  * Formatters are cached per locale+shape because the viewer formats every
  * label on every canvas redraw.
+ *
+ * The locale is the reader's number preference, not the interface language.
+ * These used to fall back to `i18n.language`, which meant a person reading the
+ * app in English and formatting numbers the German way got "485.3" on the
+ * canvas and "485,3" everywhere else, which is the exact frame this module was
+ * written to stop. The preference resolver answers the language when the
+ * preference is `auto`, so the old behaviour is still reachable by choosing it
+ * rather than by being the only thing on offer. The snapshot reader is the
+ * right one here: these are plain functions called from a canvas redraw, not
+ * components, and the viewer repaints them from above.
  */
 const _formats = new Map<string, Intl.NumberFormat>();
 
@@ -29,7 +39,7 @@ function cachedFormat(locale: string, key: string, opts: Intl.NumberFormatOption
 
 /** Render with a fixed number of fraction digits (locale-aware `toFixed`). */
 export function formatFixedDigits(value: number, digits: number, locale?: string): string {
-  const loc = locale || i18n.language || 'en';
+  const loc = locale || getNumberLocale();
   return cachedFormat(loc, `f${digits}`, {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
@@ -39,7 +49,7 @@ export function formatFixedDigits(value: number, digits: number, locale?: string
 /** Render with a fixed number of significant digits (for sub-millimetre
  *  readouts where fraction digits would collapse to zero). */
 export function formatSignificantDigits(value: number, digits: number, locale?: string): string {
-  const loc = locale || i18n.language || 'en';
+  const loc = locale || getNumberLocale();
   return cachedFormat(loc, `s${digits}`, {
     minimumSignificantDigits: digits,
     maximumSignificantDigits: digits,
@@ -56,7 +66,8 @@ export function quantityDigits(value: number): number {
   return 1;
 }
 
-/** Ledger-ladder quantity in the app language (or an explicit locale).
+/** Ledger-ladder quantity in the reader's number format (or an explicit
+ *  locale, which is what a caller formatting for somebody else passes).
  *  Zero renders as a bare "0" (not "0.000"): the ledger and the RFI
  *  prefill both showed it that way before the ladder was shared. */
 export function formatQuantity(value: number, locale?: string): string {
@@ -78,7 +89,7 @@ export function formatCountQuantity(value: number, locale?: string): string {
  *  echoing back a user-entered number in the user's locale (K-15: the
  *  calibration toast printed the raw JS number). */
 export function formatMaxDigits(value: number, maxDigits: number, locale?: string): string {
-  const loc = locale || i18n.language || 'en';
+  const loc = locale || getNumberLocale();
   return cachedFormat(loc, `m${maxDigits}`, {
     maximumFractionDigits: maxDigits,
   }).format(value);

@@ -2,7 +2,6 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 /** Pixel-to-real-world scale conversion helpers */
 
-import i18n from '@/app/i18n';
 import { formatFixedDigits, formatSignificantDigits } from '@/features/takeoff/lib/measurement-format';
 
 export interface ScaleConfig {
@@ -133,7 +132,7 @@ export function polygonPerimeterPixels(
  *  rules; the digit rendering goes through the shared cached formatters
  *  in `measurement-format.ts` so every takeoff surface renders numbers
  *  the same way. */
-function measurementNumber(value: number, locale: string): string {
+function measurementNumber(value: number, locale?: string): string {
   if (value < 0.001) return formatSignificantDigits(value, 2, locale);
   if (value < 1) return formatFixedDigits(value, 4, locale);
   if (value < 100) return formatFixedDigits(value, 2, locale);
@@ -150,12 +149,15 @@ function measurementNumber(value: number, locale: string): string {
  *  rather than being collapsed to zero or hidden (D-TKC-007): an
  *  estimator measuring small details still needs to read the number.
  *
- *  Numbers render in the app language (decimal comma for de, dot for en);
- *  pass `locale` explicitly only where the app language must not apply
- *  (tests, fixed-format exports). */
+ *  Numbers render in the reader's number format (decimal comma for de, dot
+ *  for en); pass `locale` explicitly only where that must not apply (tests,
+ *  fixed-format exports). An omitted `locale` is passed on as omitted rather
+ *  than resolved here: working the answer out at this level is what made the
+ *  shared default in `measurement-format` unreachable from this module, so
+ *  the two disagreed while looking like one rule. */
 export function formatMeasurement(value: number, unit: string, locale?: string): string {
   if (!Number.isFinite(value) || value <= 0) return '';
-  return `${measurementNumber(value, locale || i18n.language || 'en')} ${unit}`;
+  return `${measurementNumber(value, locale)} ${unit}`;
 }
 
 /** Derive scale from a known reference measurement.
