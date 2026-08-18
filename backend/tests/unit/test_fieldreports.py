@@ -412,3 +412,21 @@ def test_the_default_is_a_word_the_schema_accepts() -> None:
     assert DEFAULT_WEATHER_CONDITION in WEATHER_CONDITIONS
     report = FieldReportCreate(project_id=uuid.uuid4(), report_date=date(2026, 4, 13))
     assert report.weather_condition == DEFAULT_WEATHER_CONDITION
+
+
+def test_the_import_body_cap_is_the_number_the_module_states() -> None:
+    """The cap that governs the import, pinned where the push gate can see it.
+
+    This number is a limit, so something has to hold it still. The integration
+    test that used to hold it sent 26 MB and expected a refusal, which was
+    right when the cap was 25 MB; the limits sweep of 2026-06-11 moved it to
+    100 MB and left that test behind, asserting a rule the code no longer had.
+    Nobody saw the red, because the integration tree runs nightly and the push
+    gate runs the unit tree only. So the pin lives here instead.
+
+    Changing the cap is a decision, not a refactor: raise this number and this
+    test fails until somebody writes the new one down on purpose.
+    """
+    from app.modules.fieldreports.router import IMPORT_MAX_BYTES
+
+    assert IMPORT_MAX_BYTES == 100 * 1024 * 1024

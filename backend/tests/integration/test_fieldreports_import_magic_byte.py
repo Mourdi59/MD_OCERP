@@ -157,16 +157,24 @@ async def test_random_blob_renamed_xlsx_is_rejected(http_client, owner_project):
 
 
 @pytest.mark.asyncio
-async def test_oversize_upload_rejected(http_client, owner_project):
-    """A 26 MB upload must 400 before any parser allocates."""
-    big = b"," * (26 * 1024 * 1024)
+async def test_an_upload_under_the_cap_reaches_the_parser(http_client, owner_project):
+    """Under the cap the size gate stands aside and the parser has its say.
+
+    Sending something over the cap is deliberately not done here: it would
+    move 100 MB through the client to watch one comparison, and the number
+    itself is pinned above. What this adds is the other half of that pin, that
+    an ordinary upload is not turned away on size. A file of commas carries no
+    header, so it is the parser that rejects it, with a different message.
+    """
+    under = b"," * (1024 * 1024)
     resp = await http_client.post(
         f"/api/v1/fieldreports/reports/import/file/?project_id={owner_project['project_id']}",
         headers=owner_project["headers"],
-        files={"file": ("big.csv", big, "text/csv")},
+        files={"file": ("small.csv", under, "text/csv")},
     )
-    assert resp.status_code == 400, f"oversize upload accepted: {resp.status_code} {resp.text!r}"
-    assert "maximum size" in resp.text.lower() or "exceed" in resp.text.lower()
+    assert resp.status_code == 400
+    body = resp.text.lower()
+    assert "maximum size" not in body and "exceed" not in body, "the size gate fired below the cap"
 
 
 # ── Happy path ─────────────────────────────────────────────────────────────

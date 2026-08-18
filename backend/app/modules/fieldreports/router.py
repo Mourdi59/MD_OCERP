@@ -56,6 +56,21 @@ from app.modules.fieldreports.service import FieldReportService, FieldReportTemp
 router = APIRouter(tags=["fieldreports"])
 logger = logging.getLogger(__name__)
 
+# Hard cap on an import body - the whole upload is read into memory and then
+# again by openpyxl - so a caller cannot force an arbitrarily large allocation.
+# 100 MB is far above any legitimate field-report import: a 10K-row sheet is
+# about 2 MB, and 100 MB of ordinary rows parses in roughly 3 seconds.
+#
+# This bounds memory and it does not bound time. Parse cost follows the shape
+# of a file, not its size: a single line carrying millions of fields costs
+# about 40x more per byte than an ordinary sheet, and the gap widens with size,
+# which is how a 26 MB upload once spent 61 seconds here and parsed to zero
+# rows. The guard for that belongs in the parser, not in this number.
+#
+# Module scope on purpose. It governs a limit, so a test has to be able to
+# assert it without reading this file as text.
+IMPORT_MAX_BYTES = 100 * 1024 * 1024
+
 
 def _get_service(session: SessionDep) -> FieldReportService:
     return FieldReportService(session)
@@ -536,15 +551,10 @@ async def import_field_reports_file(
             detail="Uploaded file is empty.",
         )
 
-    # Hard cap on body size - the entire upload is read into memory and
-    # then again by openpyxl. 25 MB is well above any legitimate field-
-    # report import (a 10K-row sheet is ~2 MB) and keeps a malicious
-    # caller from forcing arbitrarily large allocations.
-    _IMPORT_MAX_BYTES = 100 * 1024 * 1024
-    if len(content) > _IMPORT_MAX_BYTES:
+    if len(content) > IMPORT_MAX_BYTES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File exceeds maximum size ({_IMPORT_MAX_BYTES} bytes).",
+            detail=f"File exceeds maximum size ({IMPORT_MAX_BYTES} bytes).",
         )
 
     # Magic-byte verification: the filename extension is fully attacker-
