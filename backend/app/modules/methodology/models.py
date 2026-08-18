@@ -133,8 +133,13 @@ class Methodology(Base):
         default=list,
         server_default="[]",
     )
-    # Optional VAT rate as a Decimal-string percent (e.g. "12" = 12 %); NULL =
-    # VAT handled as a cascade step or not at all.
+    # Catalogue fact, not the rate in force. A Decimal-string percent (e.g.
+    # "12" = 12 %) recording what the country's standard rate was when this
+    # methodology was minted; NULL = VAT handled as a cascade step or not at
+    # all. Nothing prices from this column: the cascade's ``tax`` step is what
+    # computes, and a project stating its own ``default_vat_rate`` replaces
+    # that step. Read ``EffectiveVat`` on the API response for the rate a
+    # given project is actually charged, and do not seed a reader from here.
     vat_rate: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     is_builtin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="0")

@@ -50,6 +50,7 @@ from app.modules.methodology.models import (
 from app.modules.methodology.schemas import (
     ComputeEstimateRequest,
     DimensionCreate,
+    EffectiveVat,
     FundingSourceCreate,
     FundingSourceUpdate,
     MethodologyCreate,
@@ -67,6 +68,25 @@ ACTIVE_METHODOLOGY_META_KEY = "methodology_slug"
 # Where the project's per-position resource totals come from when the caller
 # does not pass ``resource_totals`` explicitly to compute_estimate.
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
+
+
+def _rate_to_decimal(raw: object) -> Decimal | None:
+    """Read a percentage that is stored as a string, without inventing a number.
+
+    Rates travel as decimal strings ("19", "8.1") through the cascade JSON and
+    through the project column alike. A value that cannot be read is returned
+    as ``None`` rather than as nought: a rate nobody could parse is unknown,
+    and nought is a rate somebody chose.
+    """
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    try:
+        return Decimal(text)
+    except (InvalidOperation, ValueError):
+        return None
 
 
 def _slugify(value: str) -> str:
@@ -686,18 +706,68 @@ class MethodologyService:
         the one being changed is copied. Mutating it in place would re-rate
         every later computation in the process, including other projects'.
         """
+        index = MethodologyService._single_tax_index(cascade_steps)
+        if index is None:
+            return cascade_steps
+
+        patched = list(cascade_steps)
+        patched[index] = {**patched[index], "rate": vat_rate}
+        return patched
+
+    @staticmethod
+    def _single_tax_index(cascade_steps: list[Any]) -> int | None:
+        """Position of the one ``tax`` step, or ``None`` when there is not exactly one.
+
+        Both the override and the effective-rate signal have to answer "can one
+        project figure stand in for this stack", and they have to answer it the
+        same way every time. Two conditions that agree today are one condition
+        written twice, so the condition lives here and is read, never restated.
+        """
         tax_positions = [
             index
             for index, step in enumerate(cascade_steps)
             if isinstance(step, dict) and str(step.get("category", "")).strip().lower() == "tax"
         ]
-        if len(tax_positions) != 1:
-            return cascade_steps
+        return tax_positions[0] if len(tax_positions) == 1 else None
 
-        patched = list(cascade_steps)
-        index = tax_positions[0]
-        patched[index] = {**patched[index], "rate": vat_rate}
-        return patched
+    async def effective_vat(self, methodology: Methodology, project_id: uuid.UUID) -> EffectiveVat:
+        """Which VAT rate this methodology is priced at for this project, and why.
+
+        The read side of the substitution :meth:`compute_estimate` performs. It
+        exists because the two used to disagree in silence: the computation and
+        both exports have honoured the project's rate since ``e7dbcded9``,
+        while a read returned the stored steps, so an editor showing a tax line
+        at nought belonged to a bill costed at the project's rate with nothing
+        on screen saying so. A hand-made methodology is the sharp case, since
+        the create form seeds exactly one tax step at nought and that is
+        precisely the shape the override replaces.
+
+        This resolves rather than decides: it applies the same rule as the
+        override, through the same helper, and does not itself change a price.
+        """
+        steps = list(methodology.cascade_steps or [])
+        index = self._single_tax_index(steps)
+        stored = _rate_to_decimal(steps[index].get("rate")) if index is not None else None
+
+        if index is None:
+            # No single tax line, so no one rate describes this stack. Say that
+            # plainly rather than reporting a nought somebody would read as
+            # zero-rated.
+            return EffectiveVat(rate=None, source="none", stored_rate=None, differs_from_stored=False)
+
+        project_rate = _rate_to_decimal(await self._project_vat_rate(project_id))
+        if project_rate is None:
+            return EffectiveVat(rate=stored, source="methodology", stored_rate=stored, differs_from_stored=False)
+
+        return EffectiveVat(
+            rate=project_rate,
+            source="project",
+            stored_rate=stored,
+            # A project on the same rate as the template is not an override
+            # worth announcing, which is why this compares figures instead of
+            # simply reporting that a project rate exists.
+            differs_from_stored=stored is None or project_rate != stored,
+        )
 
     async def _aggregate_boq_resource_totals(self, boq_id: uuid.UUID) -> dict[str, Decimal]:
         """Sum a BOQ's resource costs per resource type via the BOQ service.

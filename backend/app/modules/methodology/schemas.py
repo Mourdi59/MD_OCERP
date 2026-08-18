@@ -210,6 +210,10 @@ class MethodologyBase(BaseModel):
     base_mapping: dict[str, list[str]] = Field(default_factory=dict)
     composites: dict[str, list[str]] = Field(default_factory=dict)
     cascade_steps: list[MarkupStepSchema] = Field(default_factory=list)
+    # A catalogue fact about a country, not the rate this methodology charges.
+    # Nothing prices from it. The ``tax`` step inside ``cascade_steps`` is what
+    # computes, and a project that states its own rate replaces that step, so
+    # read ``effective_vat`` on the response for the figure actually applied.
     vat_rate: Decimal | None = None
     metadata: dict[str, Any] = Field(default_factory=dict, alias="metadata_")
 
@@ -257,6 +261,48 @@ class MethodologyUpdate(BaseModel):
         return _serialise_money(v)
 
 
+class EffectiveVat(BaseModel):
+    """The consumption-tax rate this methodology is priced at, and where it came from.
+
+    The stored cascade is not always the cascade that prices. When a project
+    states a ``default_vat_rate`` and the stack carries exactly one tax line,
+    the computation substitutes the project's rate, because VAT is a property
+    of the transaction rather than of the method and one bill asked two ways
+    cannot cost two amounts. Everything downstream of the computation reports
+    the substituted figure honestly; without this block the read side would
+    not, and a screen showing nought would belong to a bill costed at 25.
+
+    It names the source as well as the rate so a reader can be told why, not
+    merely that. The comparison against the stored figure is made here rather
+    than by each caller: the rule for when a single project rate may stand in
+    for a stack is stated once, in
+    :meth:`~app.modules.methodology.service.MethodologyService._single_tax_index`,
+    and a screen that recomputed it would be free to drift from the engine.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    # The rate that will actually be applied, or None when the stack carries no
+    # single tax line and so no one figure can be named for it.
+    rate: Decimal | None = None
+    # ``project`` when the project's own rate is substituted, ``methodology``
+    # when the stack's own tax line stands, ``none`` when there is no single
+    # tax line to speak about. Never guess a fourth meaning from a null rate.
+    source: Literal["project", "methodology", "none"] = "none"
+    # What the stored cascade says, so a reader can be shown both figures
+    # without fetching the steps and reasoning about them again.
+    stored_rate: Decimal | None = None
+    # True only when the priced rate and the stored rate genuinely differ. A
+    # project whose rate equals the template's is not an override worth
+    # announcing, which is why this is a comparison and not `source ==
+    # "project"`.
+    differs_from_stored: bool = False
+
+    @field_serializer("rate", "stored_rate", when_used="json")
+    def _ser_rates(self, v: Decimal | None) -> str | None:
+        return _serialise_money(v)
+
+
 class MethodologyResponse(MethodologyBase):
     """A methodology returned from the API."""
 
@@ -270,6 +316,11 @@ class MethodologyResponse(MethodologyBase):
     is_editable: bool = True
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    # Populated on the reads that know which project is asking. Absent means
+    # the question was not asked on this endpoint, never that no VAT applies:
+    # the list rows carry no cascade at all, so there is nothing for a rate to
+    # qualify there.
+    effective_vat: EffectiveVat | None = None
 
 
 class MethodologyListItem(BaseModel):

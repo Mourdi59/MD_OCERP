@@ -73,6 +73,23 @@ def _get_service(session: SessionDep) -> MethodologyService:
     return MethodologyService(session)
 
 
+async def _with_effective_vat(
+    service: MethodologyService,
+    obj: object,
+    project_id: uuid.UUID,
+) -> MethodologyResponse:
+    """Serialise a methodology and say which VAT rate it is actually priced at.
+
+    Every endpoint that returns a whole methodology to a named project goes
+    through here, so none of them can quietly omit the signal. Omitting it is
+    the failure mode worth guarding: a stored tax line reads as the rate in
+    force, and when the project states its own rate it is not.
+    """
+    resp = MethodologyResponse.model_validate(obj)
+    resp.effective_vat = await service.effective_vat(obj, project_id)
+    return resp
+
+
 # ── Built-in templates (project-agnostic catalogue) ────────────────────────
 
 
@@ -121,7 +138,7 @@ async def install_template(
         idempotent=payload.idempotent,
         set_active=payload.set_active,
     )
-    return MethodologyResponse.model_validate(obj)
+    return await _with_effective_vat(service, obj, payload.project_id)
 
 
 # ── Methodology CRUD ────────────────────────────────────────────────────────
@@ -159,7 +176,7 @@ async def create_methodology(
     """Create a project-scoped methodology."""
     await verify_project_access(payload.project_id, user_id, session)
     obj = await service.create_methodology(payload)
-    return MethodologyResponse.model_validate(obj)
+    return await _with_effective_vat(service, obj, payload.project_id)
 
 
 # ── Active methodology pointer ──────────────────────────────────────────────
@@ -215,7 +232,7 @@ async def get_methodology(
     """Get one methodology, scoped to a project the caller can access."""
     await verify_project_access(project_id, user_id, session)
     obj = await service.get_methodology_for_project(methodology_id, project_id)
-    return MethodologyResponse.model_validate(obj)
+    return await _with_effective_vat(service, obj, project_id)
 
 
 @router.patch(
@@ -234,7 +251,7 @@ async def update_methodology(
     """Update an editable, project-owned methodology."""
     await verify_project_access(project_id, user_id, session)
     obj = await service.update_methodology(methodology_id, project_id, payload)
-    return MethodologyResponse.model_validate(obj)
+    return await _with_effective_vat(service, obj, project_id)
 
 
 @router.delete(
