@@ -51,6 +51,16 @@ export const HEX_PORTRAIT_CLIP =
  * cropped at `aspect-[7/8]` and the sign-in art at 88x100, so the slanted
  * sides ran 3.96% and 4.42% long.
  *
+ * The rim on the case cards is the one place this is knowingly approximate.
+ * A border cannot survive a clip path, so the rim is the wrapper's own
+ * background showing through a few pixels of padding, and shrinking a box by
+ * an equal number of pixels on every side is not the same operation as
+ * offsetting a hexagon inward. The visible outline stays exactly regular; the
+ * photo cut just inside it lands near 0.853, whose slanted sides are 1.14%
+ * short - about half a pixel on a cell that size, under an edge nobody can
+ * see past. Drawing a true inward offset would need a second polygon, which
+ * is a larger change than the thing it would correct.
+ *
  * Numerically this is {@link HEX_ASPECT}, and it is deliberately not the same
  * constant. That one is a flat-top cell's height over its width; this one is a
  * pointy-top portrait's width over its height. They agree today because a
