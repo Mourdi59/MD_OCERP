@@ -29,6 +29,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import i18next from 'i18next';
 import { getIntlLocale, fmtFixed, fmtNumber } from '../formatters';
+import { usePreferencesStore } from '@/stores/usePreferencesStore';
 
 const SRC = join(__dirname, '..', '..', '..');
 
@@ -677,6 +678,11 @@ describe('every number and date is written in the language the reader picked', (
   });
 
   it('writes a fixed-decimal number in the reader language without inventing one', async () => {
+    // A number follows the format preference, and `auto` is what hands that
+    // decision back to the interface language. This asserts the `auto` half,
+    // so it names the setting rather than inheriting it: the day the default
+    // stops being `auto`, these lines go red at a change that broke nothing.
+    usePreferencesStore.setState({ numberLocale: 'auto' });
     await i18next.init({ lng: 'en', resources: {}, initImmediate: false });
     await i18next.changeLanguage('en');
     expect(fmtFixed(12550880.81, 2)).toBe('12,550,880.81');
@@ -693,15 +699,17 @@ describe('every number and date is written in the language the reader picked', (
     expect(fmtNumber(NaN, 2)).toBe('0,00');
   });
 
-  it('resolves the tag the rewritten call sites pass', async () => {
+  it('resolves the tag a date is written with', async () => {
     await i18next.init({ lng: 'en', resources: {}, initImmediate: false });
     await i18next.changeLanguage('en');
     const inEnglish = (12550880.81).toLocaleString(getIntlLocale(), { minimumFractionDigits: 2 });
     await i18next.changeLanguage('de');
     const inGerman = (12550880.81).toLocaleString(getIntlLocale(), { minimumFractionDigits: 2 });
 
-    // The exact shape the codemod produced, pinned end to end: the language
-    // the reader picked reaches Intl and changes the separators.
+    // The literal is a probe of the tag, not the shape of a call site: a
+    // number passes `getNumberLocale()` now and only a date still passes
+    // this one. Separators are the sharpest thing a tag moves, which is why
+    // a number reads it here.
     expect(inEnglish).toBe('12,550,880.81');
     expect(inGerman).toBe('12.550.880,81');
   });
