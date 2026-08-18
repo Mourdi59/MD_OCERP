@@ -25,8 +25,9 @@ _INT32_MAX = 2_147_483_647
 _SIGNATURE_MAX_LEN = 2 * 1024 * 1024
 
 # The weather a site report can record. Written once, because the same
-# words are spelled again by the CSV import guard in ``router.py`` and by
-# the picker in the frontend, and a hand-copied vocabulary drifts. The
+# words used to be spelled again by the CSV import guard and are spelled
+# again by the picker in the frontend, and a hand-copied vocabulary drifts.
+# The import now reads its cell through ``weather_condition_from_cell``. The
 # column is ``String(30)`` and the longest word here is ``partly_cloudy``
 # at thirteen characters, so widening the list needs no migration.
 WEATHER_CONDITIONS: tuple[str, ...] = (
@@ -41,6 +42,37 @@ WEATHER_CONDITIONS: tuple[str, ...] = (
     "storm",
 )
 WEATHER_CONDITION_PATTERN = rf"^({'|'.join(WEATHER_CONDITIONS)})$"
+
+# The word a report carries when it says nothing about the weather.
+DEFAULT_WEATHER_CONDITION = "clear"
+
+
+def weather_condition_from_cell(value: object) -> str:
+    """Read the weather word out of an imported cell.
+
+    An empty cell takes the default, which is what a report that does not
+    state its weather has always stored. A cell that states something this
+    module has no word for raises, so the row is refused and named in the
+    import result: rewriting it to the default would file a rainy day as a
+    clear one, with nothing anywhere to say the reading was lost.
+
+    Args:
+        value: The raw cell, as the CSV or spreadsheet reader handed it over.
+
+    Returns:
+        A word from ``WEATHER_CONDITIONS``.
+
+    Raises:
+        ValueError: The cell states a word the module does not know.
+    """
+    stated = str(value if value is not None else "").strip()
+    if not stated:
+        return DEFAULT_WEATHER_CONDITION
+    weather = stated.lower()
+    if weather not in WEATHER_CONDITIONS:
+        raise ValueError(f"Unknown weather condition: {stated}. Use one of: {', '.join(WEATHER_CONDITIONS)}.")
+    return weather
+
 
 # The kinds of report the register offers. Four schemas here constrain
 # this field, and a fifth copy sat in the page, so the words are stated
@@ -110,7 +142,7 @@ class FieldReportCreate(BaseModel):
         pattern=REPORT_TYPE_PATTERN,
     )
     weather_condition: str = Field(
-        default="clear",
+        default=DEFAULT_WEATHER_CONDITION,
         pattern=WEATHER_CONDITION_PATTERN,
     )
     temperature_c: float | None = Field(default=None, ge=-100.0, le=100.0, allow_inf_nan=False)
@@ -185,7 +217,7 @@ class FieldReportResponse(BaseModel):
     project_id: UUID
     report_date: date
     report_type: str = "daily"
-    weather_condition: str = "clear"
+    weather_condition: str = DEFAULT_WEATHER_CONDITION
     temperature_c: float | None = None
     wind_speed: str | None = None
     precipitation: str | None = None

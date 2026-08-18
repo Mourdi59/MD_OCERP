@@ -34,7 +34,6 @@ from app.core.upload_guards import reject_if_xlsx_bomb
 from app.core.validation.messages import translate
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
 from app.modules.fieldreports.schemas import (
-    WEATHER_CONDITIONS,
     FieldReportCreate,
     FieldReportResponse,
     FieldReportSummary,
@@ -50,6 +49,7 @@ from app.modules.fieldreports.schemas import (
     SiteWorkforceLogCreate,
     SiteWorkforceLogResponse,
     SiteWorkforceLogUpdate,
+    weather_condition_from_cell,
 )
 from app.modules.fieldreports.service import FieldReportService, FieldReportTemplateService
 
@@ -418,10 +418,6 @@ _REPORT_COLUMN_ALIASES: dict[str, list[str]] = {
     ],
 }
 
-# The import guard reads the schema's vocabulary rather than restating it:
-# a row carrying a word the picker offers must not be quietly rewritten.
-_ALLOWED_WEATHER = set(WEATHER_CONDITIONS)
-
 
 def _match_report_column(header: str) -> str | None:
     """Match a header string to a canonical column name using the alias map."""
@@ -621,10 +617,10 @@ async def import_field_reports_file(
                 )
                 continue
 
-            # Weather
-            weather = str(row.get("weather_condition", "clear")).strip().lower()
-            if weather not in _ALLOWED_WEATHER:
-                weather = "clear"
+            # Weather. A word the module has no place for is refused by the
+            # helper and lands in ``errors`` below with its row, rather than
+            # being quietly rewritten.
+            weather = weather_condition_from_cell(row.get("weather_condition"))
 
             # Temperature
             temp_raw = str(row.get("temperature_c", "")).strip()
