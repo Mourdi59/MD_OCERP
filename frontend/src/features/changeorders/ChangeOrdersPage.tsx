@@ -38,7 +38,8 @@ import {
 } from '@/shared/ui/WideModal';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
-import { fmtDate, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtDate } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { formatCurrency as fmtMoney } from '@/shared/lib/money';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -243,7 +244,7 @@ function formatSignedCurrency(amount: string | number, currency?: string): strin
 function formatQuantity(value: string | number): string {
   const n = Number(value);
   if (!Number.isFinite(n)) return String(value);
-  return n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 6 });
+  return n.toLocaleString(getNumberLocale(), { maximumFractionDigits: 6 });
 }
 
 function formatDate(iso: string | null): string {

@@ -5,8 +5,8 @@
  */
 
 import { toDisplayQuantity } from '@/shared/lib/unitConversion';
-import { getIntlLocale, fmtFixed, fmtPrecision } from '@/shared/lib/formatters';
-import { usePreferencesStore } from '@/stores/usePreferencesStore';
+import { fmtFixed, fmtPrecision } from '@/shared/lib/formatters';
+import { getNumberLocale, usePreferencesStore } from '@/stores/usePreferencesStore';
 
 /** Euclidean distance between two points. */
 export function calculateDistance(
@@ -193,7 +193,7 @@ export function formatMeasurement(value: number, unit: string): string {
     if (abs < 1) return `${fmtFixed(value, 4)} ${unit}`;
     if (abs < 1000) return `${fmtFixed(value, 2)} ${unit}`;
     // Group thousands instead of a bogus k-prefix.
-    return `${value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 1 })} ${unit}`;
+    return `${value.toLocaleString(getNumberLocale(), { maximumFractionDigits: 1 })} ${unit}`;
   }
   if (value >= 1000) {
     return `${fmtFixed(value / 1000, 2)} k${unit}`;

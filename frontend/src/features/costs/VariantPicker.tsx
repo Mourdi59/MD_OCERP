@@ -28,7 +28,6 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { X, Search, ArrowUpDown, ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge, Button, KvList, Kv, QtyTile } from '@/shared/ui';
-import { getIntlLocale } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 import type { CostVariant, VariantStats } from './api';
 
@@ -490,7 +489,7 @@ export function VariantPicker({
               <span className="text-2xs text-content-tertiary tabular-nums">
                 {t('costs.variant_per_unit', { defaultValue: 'Per unit' })}
                 {': '}
-                {v.price_per_unit.toLocaleString(getIntlLocale(), {
+                {v.price_per_unit.toLocaleString(getNumberLocale(), {
                   maximumFractionDigits: 4,
                 })}
               </span>

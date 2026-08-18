@@ -52,7 +52,8 @@ import {
   BUCKETS,
   type BIMCategoryBucket,
 } from './bimCategoryTaxonomy';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -1375,7 +1376,7 @@ export default function BIMFilterPanel({
                           {g.name}
                         </span>
                         <span className="text-[10px] text-content-quaternary tabular-nums shrink-0 ms-auto">
-                          {g.element_count.toLocaleString(getIntlLocale())}
+                          {g.element_count.toLocaleString(getNumberLocale())}
                         </span>
                       </button>
                       {onLinkGroupToBOQ && (
@@ -1457,7 +1458,7 @@ export default function BIMFilterPanel({
                 </span>
                 <span className="flex-1 truncate text-left">{s.label}</span>
                 <span className="text-[10px] text-content-quaternary tabular-nums shrink-0">
-                  {s.count.toLocaleString(getIntlLocale())}
+                  {s.count.toLocaleString(getNumberLocale())}
                 </span>
               </button>
             );
@@ -1595,7 +1596,7 @@ export default function BIMFilterPanel({
                             {prettifyCategoryName(category)}
                           </span>
                           <span className="text-[10px] text-content-quaternary tabular-nums shrink-0 ms-auto">
-                            {total.toLocaleString(getIntlLocale())}
+                            {total.toLocaleString(getNumberLocale())}
                           </span>
                         </button>
                         <button
@@ -1635,7 +1636,7 @@ export default function BIMFilterPanel({
                                     {typeName}
                                   </span>
                                   <span className={`tabular-nums shrink-0 ${typeActive ? 'text-oe-blue' : 'text-content-quaternary'}`}>
-                                    {count.toLocaleString(getIntlLocale())}
+                                    {count.toLocaleString(getNumberLocale())}
                                   </span>
                                 </button>
                               </li>
@@ -1682,7 +1683,7 @@ export default function BIMFilterPanel({
                             {meta.label}
                           </span>
                           <span className="text-[10px] text-content-quaternary tabular-nums shrink-0">
-                            {total.toLocaleString(getIntlLocale())}
+                            {total.toLocaleString(getNumberLocale())}
                           </span>
                         </button>
                         <button
@@ -1832,7 +1833,7 @@ export default function BIMFilterPanel({
 /** Format a quantity value for compact display (e.g. 1234.5 -> "1,235") */
 function fmtQty(val: number): string {
   if (val === 0) return '';
-  if (val >= 1000) return Math.round(val).toLocaleString(getIntlLocale());
+  if (val >= 1000) return Math.round(val).toLocaleString(getNumberLocale());
   if (val >= 10) return fmtFixed(val, 1);
   return fmtFixed(val, 2);
 }
@@ -1932,7 +1933,7 @@ function CategoryFlatList({
               </span>
             </div>
             <span className="text-[10px] text-content-quaternary tabular-nums">
-              {other.reduce((s, [, c]) => s + c, 0).toLocaleString(getIntlLocale())}
+              {other.reduce((s, [, c]) => s + c, 0).toLocaleString(getNumberLocale())}
             </span>
           </button>
           {otherExpanded && (
@@ -2035,7 +2036,7 @@ function FilterChip({
         </div>
       </div>
       <span className="text-[10px] text-content-quaternary tabular-nums shrink-0">
-        {count.toLocaleString(getIntlLocale())}
+        {count.toLocaleString(getNumberLocale())}
       </span>
     </button>
   );

@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/ui/Button';
 import { Skeleton, SkeletonText } from '@/shared/ui/Skeleton';
 import type { PlotStatus } from '../api';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 export const PLOT_STATUS_FILL: Record<string, string> = {
   planned: '#94a3b8',
@@ -254,7 +255,7 @@ export function StatusLegend() {
 }
 
 /** Format a numeric value to compact notation (1.2M / 540K). */
-export function fmtCompactNumber(value: number, locale = 'en-US'): string {
+export function fmtCompactNumber(value: number, locale = getNumberLocale()): string {
   if (!Number.isFinite(value)) return '0';
   const abs = Math.abs(value);
   if (abs >= 1_000_000)

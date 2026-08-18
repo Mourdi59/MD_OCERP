@@ -26,7 +26,7 @@ import { useMemo, useState, type KeyboardEvent } from 'react';
 import { ChevronRight, ChevronDown, Search } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import type { CategoryTreeNode } from './api';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 const UNSPECIFIED_SENTINEL = '__unspecified__';
 
@@ -208,7 +208,7 @@ function TreeNodeRow({
               : 'bg-surface-tertiary text-content-tertiary group-hover:bg-surface-primary'
           }`}
         >
-          {node.count.toLocaleString(getIntlLocale())}
+          {node.count.toLocaleString(getNumberLocale())}
         </span>
       </div>
       {isExpanded &&

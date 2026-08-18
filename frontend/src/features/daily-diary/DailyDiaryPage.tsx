@@ -125,7 +125,7 @@ import {
 import { PublishRecordModal } from '@/features/record-publishing/PublishRecordModal';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildDailyDiaryInsights } from './dailyDiaryInsights';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 type Tab = 'diaries' | 'today' | 'archive';
 
@@ -2388,7 +2388,7 @@ function DroneSection({
                 const a = q.convert(Number(s.area_m2), 'm²');
                 return (
                   <p className="mt-0.5 text-xs text-content-secondary">
-                    {Number.isFinite(a.value) ? a.value.toLocaleString(getIntlLocale()) : String(s.area_m2)} {a.unit}
+                    {Number.isFinite(a.value) ? a.value.toLocaleString(getNumberLocale()) : String(s.area_m2)} {a.unit}
                   </p>
                 );
               })()}
@@ -2467,7 +2467,7 @@ function RealitySection({
               </div>
               {c.point_count_estimate && (
                 <p className="mt-0.5 text-xs text-content-secondary">
-                  {c.point_count_estimate.toLocaleString(getIntlLocale())} pts
+                  {c.point_count_estimate.toLocaleString(getNumberLocale())} pts
                 </p>
               )}
             </li>

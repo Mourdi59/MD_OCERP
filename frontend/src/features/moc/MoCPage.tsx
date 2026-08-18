@@ -91,7 +91,7 @@ import {
 import { mocGuide } from './mocGuide';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildMocInsights } from './mocInsights';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* -- Constants ------------------------------------------------------------- */
 
@@ -185,7 +185,7 @@ function cap(s: string): string {
 function formatMoney(amount: string | null | undefined, currency: string): string {
   const n = Number.parseFloat(amount || '0');
   if (!Number.isFinite(n) || n === 0) return '';
-  const formatted = n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 });
+  const formatted = n.toLocaleString(getNumberLocale(), { maximumFractionDigits: 2 });
   return currency ? `${currency} ${formatted}` : formatted;
 }
 

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, BarChart3, Loader2, Inbox } from 'lucide-react';
 import { boqApi, type SensitivityItem } from './api';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
@@ -142,7 +142,7 @@ export function SensitivityChart({ boqId, locale = 'de-DE' }: { boqId: string; l
                       {t('boq.sensitivity_ranked_by', { defaultValue: 'Ranked by variance' })}{' '}
                       <span className="font-semibold text-content-primary">
                         ({t('boq.sensitivity_montecarlo', { defaultValue: 'Monte Carlo' })},{' '}
-                        {iterations.toLocaleString(getIntlLocale())}{' '}
+                        {iterations.toLocaleString(getNumberLocale())}{' '}
                         {t('boq.cost_risk_iterations_label', { defaultValue: 'iter.' })}, r={correlation})
                       </span>
                     </span>

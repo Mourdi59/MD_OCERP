@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { getIntlLocale, fmtFixed, fmtPercent } from '@/shared/lib/formatters';
 import { toDisplayQuantity, displayUnitFor } from '@/shared/lib/unitConversion';
-import { usePreferencesStore } from '@/stores/usePreferencesStore';
+import { getNumberLocale, usePreferencesStore } from '@/stores/usePreferencesStore';
 import {
   FileText,
   BarChart3,
@@ -909,9 +909,9 @@ async function downloadProgressReport(
     htmlParts.push('<div>');
     htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_spi', { defaultValue: 'SPI' }))}</div><div class="metric-value" style="color:${Number(dashboard.spi||0)>=1?'#166534':'#991b1b'}">${fmtFixed(Number(dashboard.spi||0), 2)}</div></div>`);
     htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_cpi', { defaultValue: 'CPI' }))}</div><div class="metric-value" style="color:${Number(dashboard.cpi||0)>=1?'#166534':'#991b1b'}">${fmtFixed(Number(dashboard.cpi||0), 2)}</div></div>`);
-    htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_budget', { defaultValue: 'Budget' }))}</div><div class="metric-value">${Number(dashboard.total_budget||0).toLocaleString(lang)}</div></div>`);
-    htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_actual', { defaultValue: 'Actual' }))}</div><div class="metric-value">${Number(dashboard.total_actual||0).toLocaleString(lang)}</div></div>`);
-    htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_forecast_eac', { defaultValue: 'Forecast (EAC)' }))}</div><div class="metric-value">${Number(dashboard.total_forecast||0).toLocaleString(lang)}</div></div>`);
+    htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_budget', { defaultValue: 'Budget' }))}</div><div class="metric-value">${Number(dashboard.total_budget||0).toLocaleString(getNumberLocale())}</div></div>`);
+    htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_actual', { defaultValue: 'Actual' }))}</div><div class="metric-value">${Number(dashboard.total_actual||0).toLocaleString(getNumberLocale())}</div></div>`);
+    htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_forecast_eac', { defaultValue: 'Forecast (EAC)' }))}</div><div class="metric-value">${Number(dashboard.total_forecast||0).toLocaleString(getNumberLocale())}</div></div>`);
     htmlParts.push('</div>');
   } catch { htmlParts.push(`<p>${esc(t('reports.html_no_budget', { defaultValue: 'No budget data available.' }))}</p>`); }
 
@@ -1380,9 +1380,9 @@ export function ReportsPage() {
                   const dashboard = await getDashboard();
                   const cur = dashboard.currency || 'EUR';
                   htmlParts.push('<div>');
-                  htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_total_budget', { defaultValue: 'Total Budget' }))}</div><div class="metric-value">${Number(dashboard.total_budget || 0).toLocaleString(lang)} ${esc(cur)}</div></div>`);
-                  htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_total_actual', { defaultValue: 'Total Actual' }))}</div><div class="metric-value">${Number(dashboard.total_actual || 0).toLocaleString(lang)} ${esc(cur)}</div></div>`);
-                  htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_variance', { defaultValue: 'Variance' }))}</div><div class="metric-value">${Number(dashboard.variance || 0).toLocaleString(lang)} ${esc(cur)}</div></div>`);
+                  htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_total_budget', { defaultValue: 'Total Budget' }))}</div><div class="metric-value">${Number(dashboard.total_budget || 0).toLocaleString(getNumberLocale())} ${esc(cur)}</div></div>`);
+                  htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_total_actual', { defaultValue: 'Total Actual' }))}</div><div class="metric-value">${Number(dashboard.total_actual || 0).toLocaleString(getNumberLocale())} ${esc(cur)}</div></div>`);
+                  htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_variance', { defaultValue: 'Variance' }))}</div><div class="metric-value">${Number(dashboard.variance || 0).toLocaleString(getNumberLocale())} ${esc(cur)}</div></div>`);
                   htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_status', { defaultValue: 'Status' }))}</div><div class="metric-value">${esc(dashboard.status || naLabel)}</div></div>`);
                   htmlParts.push('</div>');
                 } catch {
@@ -1396,12 +1396,12 @@ export function ReportsPage() {
                 try {
                   const dashboard = await getDashboard();
                   htmlParts.push(`<table><thead><tr><th>${esc(t('reports.html_col_metric', { defaultValue: 'Metric' }))}</th><th style="text-align:right">${esc(t('reports.html_col_value', { defaultValue: 'Value' }))}</th></tr></thead><tbody>`);
-                  htmlParts.push(`<tr><td>${esc(t('reports.html_total_budget_planned', { defaultValue: 'Total Budget (Planned)' }))}</td><td style="text-align:right">${Number(dashboard.total_budget || 0).toLocaleString(lang)}</td></tr>`);
-                  htmlParts.push(`<tr><td>${esc(t('reports.html_total_committed', { defaultValue: 'Total Committed' }))}</td><td style="text-align:right">${Number(dashboard.total_committed || 0).toLocaleString(lang)}</td></tr>`);
-                  htmlParts.push(`<tr><td>${esc(t('reports.html_total_actual', { defaultValue: 'Total Actual' }))}</td><td style="text-align:right">${Number(dashboard.total_actual || 0).toLocaleString(lang)}</td></tr>`);
-                  htmlParts.push(`<tr><td>${esc(t('reports.html_total_forecast', { defaultValue: 'Total Forecast' }))}</td><td style="text-align:right">${Number(dashboard.total_forecast || 0).toLocaleString(lang)}</td></tr>`);
+                  htmlParts.push(`<tr><td>${esc(t('reports.html_total_budget_planned', { defaultValue: 'Total Budget (Planned)' }))}</td><td style="text-align:right">${Number(dashboard.total_budget || 0).toLocaleString(getNumberLocale())}</td></tr>`);
+                  htmlParts.push(`<tr><td>${esc(t('reports.html_total_committed', { defaultValue: 'Total Committed' }))}</td><td style="text-align:right">${Number(dashboard.total_committed || 0).toLocaleString(getNumberLocale())}</td></tr>`);
+                  htmlParts.push(`<tr><td>${esc(t('reports.html_total_actual', { defaultValue: 'Total Actual' }))}</td><td style="text-align:right">${Number(dashboard.total_actual || 0).toLocaleString(getNumberLocale())}</td></tr>`);
+                  htmlParts.push(`<tr><td>${esc(t('reports.html_total_forecast', { defaultValue: 'Total Forecast' }))}</td><td style="text-align:right">${Number(dashboard.total_forecast || 0).toLocaleString(getNumberLocale())}</td></tr>`);
                   const variance = Number(dashboard.variance || 0);
-                  htmlParts.push(`<tr><td><strong>${esc(t('reports.html_variance', { defaultValue: 'Variance' }))}</strong></td><td style="text-align:right;color:${variance >= 0 ? '#166534' : '#991b1b'}"><strong>${variance >= 0 ? '+' : ''}${variance.toLocaleString(lang)}</strong></td></tr>`);
+                  htmlParts.push(`<tr><td><strong>${esc(t('reports.html_variance', { defaultValue: 'Variance' }))}</strong></td><td style="text-align:right;color:${variance >= 0 ? '#166534' : '#991b1b'}"><strong>${variance >= 0 ? '+' : ''}${variance.toLocaleString(getNumberLocale())}</strong></td></tr>`);
                   htmlParts.push(`<tr><td>${esc(t('reports.html_variance_pct', { defaultValue: 'Variance %' }))}</td><td style="text-align:right">${dashboard.variance_pct || 0}%</td></tr>`);
                   htmlParts.push('</tbody></table>');
                 } catch {
@@ -1420,7 +1420,7 @@ export function ReportsPage() {
                     const unknownLabel = t('reports.csv_unknown', { defaultValue: 'Unknown' });
                     for (const cat of categories) {
                       const v = Number(cat.planned || 0) - Number(cat.actual || 0);
-                      htmlParts.push(`<tr><td>${esc(String(cat.category || cat.name || unknownLabel))}</td><td style="text-align:right">${Number(cat.planned || 0).toLocaleString(lang)}</td><td style="text-align:right">${Number(cat.actual || 0).toLocaleString(lang)}</td><td style="text-align:right;color:${v >= 0 ? '#166534' : '#991b1b'}">${v >= 0 ? '+' : ''}${v.toLocaleString(lang)}</td></tr>`);
+                      htmlParts.push(`<tr><td>${esc(String(cat.category || cat.name || unknownLabel))}</td><td style="text-align:right">${Number(cat.planned || 0).toLocaleString(getNumberLocale())}</td><td style="text-align:right">${Number(cat.actual || 0).toLocaleString(getNumberLocale())}</td><td style="text-align:right;color:${v >= 0 ? '#166534' : '#991b1b'}">${v >= 0 ? '+' : ''}${v.toLocaleString(getNumberLocale())}</td></tr>`);
                     }
                     htmlParts.push('</tbody></table>');
                   } else {
@@ -1439,7 +1439,7 @@ export function ReportsPage() {
                   htmlParts.push('<div>');
                   htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_spi', { defaultValue: 'SPI' }))}</div><div class="metric-value">${fmtFixed(Number(dashboard.spi || 0), 2)}</div></div>`);
                   htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_cpi', { defaultValue: 'CPI' }))}</div><div class="metric-value">${fmtFixed(Number(dashboard.cpi || 0), 2)}</div></div>`);
-                  htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_eac', { defaultValue: 'EAC' }))}</div><div class="metric-value">${Number(dashboard.total_forecast || 0).toLocaleString(lang)}</div></div>`);
+                  htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_eac', { defaultValue: 'EAC' }))}</div><div class="metric-value">${Number(dashboard.total_forecast || 0).toLocaleString(getNumberLocale())}</div></div>`);
                   htmlParts.push('</div>');
                   htmlParts.push(`<p style="color:#6b7280;font-size:13px">${esc(t('reports.html_evm_hint', { defaultValue: 'SPI > 1.0 = ahead of schedule. CPI > 1.0 = under budget. EAC = Estimate at Completion.' }))}</p>`);
                 } catch {
@@ -1512,7 +1512,7 @@ export function ReportsPage() {
                     throw new Error(`The risk register exceeds the ${riskCeiling} row report ceiling.`);
                   }
                   if (partialRiskTotal !== undefined) {
-                    htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_total_risks', { defaultValue: 'Total Risks' }))}</div><div class="metric-value">${partialRiskTotal.toLocaleString(lang)}</div></div>`);
+                    htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_total_risks', { defaultValue: 'Total Risks' }))}</div><div class="metric-value">${partialRiskTotal.toLocaleString(getNumberLocale())}</div></div>`);
                     htmlParts.push(`<p style="color:#92400e;font-size:13px">${esc(t('cases.showing_count', { defaultValue: 'Showing {{shown}} of {{total}}', shown: risks.length, total: partialRiskTotal }))}</p>`);
                   } else if (risks.length === 0) {
                     htmlParts.push(`<p>${esc(t('reports.html_no_risks', { defaultValue: 'No risks registered.' }))}</p>`);
@@ -1521,7 +1521,7 @@ export function ReportsPage() {
                     const highCritical = risks.filter(r => r.impact_severity === 'high' || r.impact_severity === 'critical').length;
                     htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_total_risks', { defaultValue: 'Total Risks' }))}</div><div class="metric-value">${risks.length}</div></div>`);
                     htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_high_critical', { defaultValue: 'High/Critical' }))}</div><div class="metric-value">${highCritical}</div></div>`);
-                    htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_total_exposure', { defaultValue: 'Total Exposure' }))}</div><div class="metric-value">${totalExposure.toLocaleString(lang, { maximumFractionDigits: 0 })}</div></div>`);
+                    htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_total_exposure', { defaultValue: 'Total Exposure' }))}</div><div class="metric-value">${totalExposure.toLocaleString(getNumberLocale(), { maximumFractionDigits: 0 })}</div></div>`);
                     htmlParts.push(`<h3>${esc(t('reports.html_top5_risks', { defaultValue: 'Top 5 Risks' }))}</h3>`);
                     htmlParts.push(`<table><thead><tr><th>${esc(t('reports.html_col_code', { defaultValue: 'Code' }))}</th><th>${esc(t('reports.html_col_title', { defaultValue: 'Title' }))}</th><th>${esc(t('reports.html_col_probability', { defaultValue: 'Probability' }))}</th><th>${esc(t('reports.html_col_severity', { defaultValue: 'Severity' }))}</th><th style="text-align:right">${esc(t('reports.html_col_score', { defaultValue: 'Score' }))}</th></tr></thead><tbody>`);
                     const top5 = [...risks].sort((a, b) => b.risk_score - a.risk_score).slice(0, 5);
@@ -1544,7 +1544,7 @@ export function ReportsPage() {
                   htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_total_orders', { defaultValue: 'Total Orders' }))}</div><div class="metric-value">${summary.total_orders}</div></div>`);
                   htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_approved', { defaultValue: 'Approved' }))}</div><div class="metric-value">${summary.approved_count}</div></div>`);
                   htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_pending', { defaultValue: 'Pending' }))}</div><div class="metric-value">${summary.draft_count + summary.submitted_count}</div></div>`);
-                  htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_cost_impact', { defaultValue: 'Cost Impact' }))}</div><div class="metric-value">${Number(summary.total_cost_impact).toLocaleString(lang)} ${esc(summary.currency)}</div></div>`);
+                  htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_cost_impact', { defaultValue: 'Cost Impact' }))}</div><div class="metric-value">${Number(summary.total_cost_impact).toLocaleString(getNumberLocale())} ${esc(summary.currency)}</div></div>`);
                   htmlParts.push(`<div class="metric"><div class="metric-label">${esc(t('reports.html_schedule_impact', { defaultValue: 'Schedule Impact' }))}</div><div class="metric-value">${summary.total_schedule_impact_days} ${esc(t('reports.csv_days', { defaultValue: 'days' }))}</div></div>`);
                 } catch {
                   htmlParts.push(`<p>${esc(t('reports.html_no_change_orders', { defaultValue: 'No change order data available.' }))}</p>`);
@@ -1576,10 +1576,10 @@ export function ReportsPage() {
                     const unitScale = toDisplayQuantity(1, pos.unit || '', measurementSystem).value || 1;
                     const dispRate = Number(pos.unit_rate || 0) / unitScale;
                     const dispUnit = displayUnitFor(pos.unit || '', measurementSystem);
-                    htmlParts.push(`<tr><td>${esc(pos.ordinal)}</td><td>${esc(pos.description)}</td><td>${esc(dispUnit)}</td><td style="text-align:right">${dq.value.toLocaleString(lang, { maximumFractionDigits: 2 })}</td><td style="text-align:right">${dispRate.toLocaleString(lang, { maximumFractionDigits: 2 })}</td><td style="text-align:right">${Number(pos.total || 0).toLocaleString(lang, { maximumFractionDigits: 2 })}</td></tr>`);
+                    htmlParts.push(`<tr><td>${esc(pos.ordinal)}</td><td>${esc(pos.description)}</td><td>${esc(dispUnit)}</td><td style="text-align:right">${dq.value.toLocaleString(getNumberLocale(), { maximumFractionDigits: 2 })}</td><td style="text-align:right">${dispRate.toLocaleString(getNumberLocale(), { maximumFractionDigits: 2 })}</td><td style="text-align:right">${Number(pos.total || 0).toLocaleString(getNumberLocale(), { maximumFractionDigits: 2 })}</td></tr>`);
                   }
                   const grandTotal = positions.reduce((sum, pos) => sum + Number(pos.total || 0), 0);
-                  htmlParts.push(`<tr style="font-weight:700;border-top:2px solid #1a1a1a"><td colspan="5">${esc(t('reports.html_grand_total', { defaultValue: 'Grand Total' }))}</td><td style="text-align:right">${grandTotal.toLocaleString(lang, { maximumFractionDigits: 2 })}</td></tr>`);
+                  htmlParts.push(`<tr style="font-weight:700;border-top:2px solid #1a1a1a"><td colspan="5">${esc(t('reports.html_grand_total', { defaultValue: 'Grand Total' }))}</td><td style="text-align:right">${grandTotal.toLocaleString(getNumberLocale(), { maximumFractionDigits: 2 })}</td></tr>`);
                   htmlParts.push('</tbody></table>');
                 } catch {
                   htmlParts.push(`<p>${esc(t('reports.html_boq_load_fail', { defaultValue: 'Could not load BOQ positions.' }))}</p>`);

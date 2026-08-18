@@ -34,7 +34,6 @@ import { Play, Loader2, TrendingUp, AlertTriangle } from 'lucide-react';
 
 import { Button, Card, EmptyState } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
-import { getIntlLocale } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { toNum } from '@/shared/lib/money';
 
@@ -123,7 +122,7 @@ export function MonteCarloTab({ projectId, currency }: MonteCarloTabProps) {
         }),
         message: t('risk.montecarlo.run_done_detail', {
           defaultValue: '{{iterations}} iterations across {{risks}} risks',
-          iterations: data.iterations.toLocaleString(getIntlLocale()),
+          iterations: data.iterations.toLocaleString(getNumberLocale()),
           risks: data.risk_count,
         }),
       });
@@ -246,7 +245,7 @@ export function MonteCarloTab({ projectId, currency }: MonteCarloTabProps) {
               {t('risk.montecarlo.last_run', {
                 defaultValue: 'Last run - {{risks}} risks, {{iterations}} iterations',
                 risks: result.risk_count,
-                iterations: result.iterations.toLocaleString(getIntlLocale()),
+                iterations: result.iterations.toLocaleString(getNumberLocale()),
               })}
             </h3>
           </div>

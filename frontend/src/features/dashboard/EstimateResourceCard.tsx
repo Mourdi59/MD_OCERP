@@ -28,7 +28,7 @@ import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { getResourceStatement } from '@/features/resource-summary/api';
 import { formatCurrency, toNum } from '@/shared/lib/money';
 import { KpiStrip } from './KpiStrip';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // Whole-number formatter for labour hours and the distinct-resource count.
 // An omitted locale follows the BROWSER, which is not the language the reader
@@ -36,7 +36,7 @@ import { getIntlLocale } from '@/shared/lib/formatters';
 // switcher deliberately does not reload the app, and a formatter built once at
 // module scope would keep writing in whatever language the chunk loaded in.
 const wholeFormat = (n: number): string =>
-  n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 });
+  n.toLocaleString(getNumberLocale(), { maximumFractionDigits: 0 });
 
 export function EstimateResourceCard() {
   const { t } = useTranslation();

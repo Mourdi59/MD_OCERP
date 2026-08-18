@@ -52,7 +52,8 @@ import type {
   MatchSource,
   MatchStatus,
 } from './types';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Props ─────────────────────────────────────────────────────────────── */
 
@@ -723,9 +724,9 @@ function CatalogBindingBar({
         <span className={labelClass} data-testid="match-catalog-badge">
           {catalogId}
           <span className="font-sans text-[10px] text-content-secondary">
-            · {catalogCount.toLocaleString(getIntlLocale())}
+            · {catalogCount.toLocaleString(getNumberLocale())}
             {vectorizedCount > 0 && (
-              <> / {vectorizedCount.toLocaleString(getIntlLocale())} vec</>
+              <> / {vectorizedCount.toLocaleString(getNumberLocale())} vec</>
             )}
           </span>
         </span>
@@ -793,11 +794,11 @@ function CatalogBindingBar({
                       {db.id}
                     </span>
                     <span className="text-[10px] text-content-secondary">
-                      {db.count.toLocaleString(getIntlLocale())}
+                      {db.count.toLocaleString(getNumberLocale())}
                     </span>
                     {db.vectorized_count > 0 ? (
                       <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-emerald-700 dark:text-emerald-300">
-                        <Check size={10} strokeWidth={2.5} /> {db.vectorized_count.toLocaleString(getIntlLocale())} vec
+                        <Check size={10} strokeWidth={2.5} /> {db.vectorized_count.toLocaleString(getNumberLocale())} vec
                       </span>
                     ) : (
                       <span className="ml-auto text-[10px] text-amber-700 dark:text-amber-300">

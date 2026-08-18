@@ -15,6 +15,7 @@ import { PageHeader } from '@/shared/ui/PageHeader';
 import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { useWidgetSettingsStore } from '@/stores/useWidgetSettingsStore';
 import { fmtNumber, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { projectsApi, type Project } from './api';
 import { apiGet, apiPatch, apiPost, apiDelete } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
@@ -676,7 +677,7 @@ export function ProjectsPage() {
                 {t('projects.stats_boqs', { defaultValue: 'Total BOQs' })}
               </div>
               <div className="mt-1 text-xl font-bold text-content-primary tabular-nums leading-none">
-                {boqStats ? stats.totalBoqs.toLocaleString(getIntlLocale()) : (
+                {boqStats ? stats.totalBoqs.toLocaleString(getNumberLocale()) : (
                   <Skeleton width={40} height={20} className="inline-block align-middle" />
                 )}
               </div>

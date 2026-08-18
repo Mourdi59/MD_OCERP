@@ -42,7 +42,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, Button, Skeleton, Badge } from '@/shared/ui';
 import { useDashboardRollupContext } from '../context/DashboardRollupContext';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Types ────────────────────────────────────────────────────────────── */
 
@@ -63,7 +63,7 @@ function fmtMoney(value: string | number | null | undefined, currency: string): 
   if (value == null) return `${currency} 0`;
   const n = typeof value === 'string' ? Number(value) : value;
   if (!Number.isFinite(n)) return `${currency} 0`;
-  return `${currency} ${n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })}`;
+  return `${currency} ${n.toLocaleString(getNumberLocale(), { maximumFractionDigits: 0 })}`;
 }
 
 /** Shared widget shell so empty / loading states stay consistent.

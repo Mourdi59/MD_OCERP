@@ -76,7 +76,7 @@ import type { DocumentItem } from '@/features/documents/api';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
-import { usePreferencesStore } from '@/stores/usePreferencesStore';
+import { getNumberLocale, usePreferencesStore } from '@/stores/usePreferencesStore';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 import { useDwgUploadStore } from '@/stores/useDwgUploadStore';
 import { apiGet } from '@/shared/lib/api';
@@ -169,7 +169,7 @@ import CreateTaskFromDwgModal from './CreateTaskFromDwgModal';
 import LinkDocumentToDwgModal from './LinkDocumentToDwgModal';
 import LinkActivityToDwgModal from './LinkActivityToDwgModal';
 import LinkRequirementToDwgModal from './LinkRequirementToDwgModal';
-import { getIntlLocale, fmtFixed, fmtPrecision } from '@/shared/lib/formatters';
+import { fmtFixed, fmtPrecision } from '@/shared/lib/formatters';
 // boqApi / Position import removed - BOQ picker now handled via ElementInfoPopover callback
 
 /* ── GridBackground ──────────────────────────────────────────────────── */
@@ -6009,7 +6009,7 @@ function SummaryTab({
       >
         <SummaryKpiCard
           label={t('dwg_takeoff.kpi_total_entities', { defaultValue: 'Total entities' })}
-          value={entityCount.toLocaleString(getIntlLocale())}
+          value={entityCount.toLocaleString(getNumberLocale())}
           accent="blue"
         />
         <SummaryKpiCard
@@ -6044,7 +6044,7 @@ function SummaryTab({
           </span>
         </div>
         <span className="text-sm font-bold tabular-nums text-content-primary">
-          {countTotal.toLocaleString(getIntlLocale())}
+          {countTotal.toLocaleString(getNumberLocale())}
         </span>
       </div>
 
@@ -6076,7 +6076,7 @@ function SummaryTab({
             </div>
             <div className="text-[11px] font-bold tabular-nums text-emerald-300">
               {quantifyTotals.area > 0
-                ? q.convert(quantifyTotals.area, 'm²').value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 })
+                ? q.convert(quantifyTotals.area, 'm²').value.toLocaleString(getNumberLocale(), { maximumFractionDigits: 2 })
                 : '-'}
               <span className="text-[9px] font-medium opacity-70"> {q.unitFor('m²')}</span>
             </div>
@@ -6087,7 +6087,7 @@ function SummaryTab({
             </div>
             <div className="text-[11px] font-bold tabular-nums text-violet-300">
               {quantifyTotals.length > 0
-                ? q.convert(quantifyTotals.length, 'm').value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 })
+                ? q.convert(quantifyTotals.length, 'm').value.toLocaleString(getNumberLocale(), { maximumFractionDigits: 2 })
                 : '-'}
               <span className="text-[9px] font-medium opacity-70"> {q.unitFor('m')}</span>
             </div>
@@ -6097,7 +6097,7 @@ function SummaryTab({
               {t('dwg_takeoff.count', 'Count')}
             </div>
             <div className="text-[11px] font-bold tabular-nums text-sky-300">
-              {quantifyTotals.count.toLocaleString(getIntlLocale())}
+              {quantifyTotals.count.toLocaleString(getNumberLocale())}
               <span className="text-[9px] font-medium opacity-70"> nr</span>
             </div>
           </div>
@@ -6150,7 +6150,7 @@ function SummaryTab({
                     className="text-[13px] font-bold tabular-nums text-content-primary"
                     data-testid="dwg-quantify-value"
                   >
-                    {display.value.toLocaleString(getIntlLocale(), {
+                    {display.value.toLocaleString(getNumberLocale(), {
                       maximumFractionDigits: measure === 'count' ? 0 : 2,
                     })}
                     <span className="text-[10px] font-medium text-content-tertiary"> {display.unit}</span>

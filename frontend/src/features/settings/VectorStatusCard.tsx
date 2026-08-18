@@ -26,7 +26,7 @@ import { Card, CardHeader, CardContent, Button } from '@/shared/ui';
 import { apiPost } from '@/shared/lib/api';
 import { fetchSearchStatus, type SearchStatusCollection } from '@/features/search/api';
 import { useToastStore } from '@/stores/useToastStore';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /** Map of collection name → backend reindex endpoint path.
  *
@@ -186,7 +186,7 @@ export default function VectorStatusCard() {
               <div className="inline-flex items-center gap-1.5">
                 <span className="text-content-tertiary">total indexed:</span>
                 <span className="font-mono font-semibold tabular-nums">
-                  {totalIndexed.toLocaleString(getIntlLocale())}
+                  {totalIndexed.toLocaleString(getNumberLocale())}
                 </span>
               </div>
               {statusQuery.data.connected ? (
@@ -235,7 +235,7 @@ export default function VectorStatusCard() {
                           {col.collection}
                           {' • '}
                           <span className="tabular-nums">
-                            {col.vectors_count.toLocaleString(getIntlLocale())}
+                            {col.vectors_count.toLocaleString(getNumberLocale())}
                           </span>{' '}
                           vectors
                         </div>

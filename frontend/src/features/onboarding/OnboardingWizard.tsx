@@ -101,7 +101,7 @@ import {
   fetchOnboardingStatus,
   type OnboardingJobState,
 } from './onboardingApi';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { SemanticModelCard } from './SemanticModelCard';
 import { aiEstimatorApi } from '@/features/ai-estimator/api';
 
@@ -574,11 +574,11 @@ function bgStepDetail(step: string, detail: Record<string, unknown>): string | u
   };
   if (step === 'cost_db') {
     const items = num('items');
-    if (items && items > 0) return items.toLocaleString(getIntlLocale());
+    if (items && items > 0) return items.toLocaleString(getNumberLocale());
   }
   if (step === 'resources') {
     const resources = num('resources');
-    if (resources && resources > 0) return resources.toLocaleString(getIntlLocale());
+    if (resources && resources > 0) return resources.toLocaleString(getNumberLocale());
   }
   if (step === 'demos') {
     const installed = detail['installed'];
@@ -3415,7 +3415,7 @@ export function StepDataSetup({
           updateQueueTask(taskId, {
             status: 'completed',
             progress: 100,
-            message: `${imported.toLocaleString(getIntlLocale())} items imported`,
+            message: `${imported.toLocaleString(getNumberLocale())} items imported`,
           });
 
           try {
@@ -3435,7 +3435,7 @@ export function StepDataSetup({
           addToast({
             type: 'success',
             title: `${dbName} loaded`,
-            message: `${imported.toLocaleString(getIntlLocale())} cost items imported`,
+            message: `${imported.toLocaleString(getNumberLocale())} cost items imported`,
           });
           return true;
         }
@@ -3755,7 +3755,7 @@ export function StepDataSetup({
               <div className="flex items-center gap-2 text-sm text-semantic-success">
                 <CheckCircle2 size={16} />
                 <span className="font-medium">
-                  {loadedDb.count.toLocaleString(getIntlLocale())}{' '}
+                  {loadedDb.count.toLocaleString(getNumberLocale())}{' '}
                   {t('onboarding.items_loaded', { defaultValue: 'items loaded' })}
                 </span>
               </div>

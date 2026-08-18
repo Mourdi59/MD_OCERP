@@ -60,6 +60,7 @@ import {
   getIntlLocale,
   fmtFixed,
 } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { useLLMRun } from './hooks/useLLMRun';
 import { IntakePanel } from './intake';
 
@@ -944,7 +945,7 @@ function QuantityTablesResult({ data }: { data: CadExtractResponse }) {
 
   const fmtNum = (v: number) => {
     if (v === 0) return '-';
-    return v.toLocaleString(getIntlLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    return v.toLocaleString(getNumberLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   };
 
   return (
@@ -3595,7 +3596,7 @@ export function QuickEstimatePage() {
               <h3 className="text-sm font-semibold text-content-primary">
                 {cadColumnsData.filename}
               </h3>
-              <Badge variant="blue" size="sm">{cadColumnsData.total_elements.toLocaleString(getIntlLocale())} elements</Badge>
+              <Badge variant="blue" size="sm">{cadColumnsData.total_elements.toLocaleString(getNumberLocale())} elements</Badge>
               <Badge variant="neutral" size="sm">{cadColumnsData.format.toUpperCase()}</Badge>
             </div>
             <div className="flex items-center gap-2">
@@ -3784,7 +3785,7 @@ export function QuickEstimatePage() {
                                 {val === null || val === undefined || val === 'None' || val === ''
                                   ? '-'
                                   : typeof displayVal === 'number'
-                                    ? displayVal.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 })
+                                    ? displayVal.toLocaleString(getNumberLocale(), { maximumFractionDigits: 2 })
                                     : String(displayVal)}
                               </td>
                             );
@@ -3970,7 +3971,7 @@ export function QuickEstimatePage() {
                               {sumCols.map((col) => (
                                 <td key={col} className="px-4 py-2 text-right font-mono text-sm font-semibold text-content-primary">
                                   {(node.sums[col] || 0) > 0
-                                    ? sumDisplay(col, node.sums[col] || 0).toLocaleString(getIntlLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                                    ? sumDisplay(col, node.sums[col] || 0).toLocaleString(getNumberLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 2 })
                                     : '-'}
                                 </td>
                               ))}
@@ -4014,7 +4015,7 @@ export function QuickEstimatePage() {
                                       (g.sums[col] ?? 0) > 0 ? 'text-content-primary font-medium' : 'text-content-quaternary',
                                     )}>
                                       {g.sums[col] != null && g.sums[col] > 0
-                                        ? sumDisplay(col, g.sums[col]).toLocaleString(getIntlLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                                        ? sumDisplay(col, g.sums[col]).toLocaleString(getNumberLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 2 })
                                         : '-'}
                                     </td>
                                   ))}
@@ -4061,7 +4062,7 @@ export function QuickEstimatePage() {
                                 (g.sums[col] ?? 0) > 0 ? 'text-content-primary font-medium' : 'text-content-quaternary',
                               )}>
                                 {g.sums[col] != null && g.sums[col] > 0
-                                  ? sumDisplay(col, g.sums[col]).toLocaleString(getIntlLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                                  ? sumDisplay(col, g.sums[col]).toLocaleString(getNumberLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 2 })
                                   : '-'}
                               </td>
                             ))}
@@ -4086,7 +4087,7 @@ export function QuickEstimatePage() {
                           ? displayQty
                               .convert(computedTotals.sums[col] ?? 0, cadColumnsData?.unit_labels?.[col] ?? '')
                               .value
-                              .toLocaleString(getIntlLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                              .toLocaleString(getNumberLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 2 })
                           : '-'}
                       </td>
                     ))}
@@ -4242,7 +4243,7 @@ export function QuickEstimatePage() {
                               {val === null || val === undefined || val === 'None' || val === ''
                                 ? '-'
                                 : typeof displayVal === 'number'
-                                  ? displayVal.toLocaleString(getIntlLocale(), { maximumFractionDigits: 4 })
+                                  ? displayVal.toLocaleString(getNumberLocale(), { maximumFractionDigits: 4 })
                                   : String(displayVal)}
                             </td>
                           );
@@ -4271,7 +4272,7 @@ export function QuickEstimatePage() {
                             )}
                           >
                             {displayTotal != null
-                              ? displayTotal.toLocaleString(getIntlLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 4 })
+                              ? displayTotal.toLocaleString(getNumberLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 4 })
                               : ''}
                           </td>
                         );

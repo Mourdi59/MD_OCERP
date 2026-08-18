@@ -135,6 +135,7 @@ import {
   type BIMElementGroup,
 } from './api';
 import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
@@ -4289,7 +4290,7 @@ export function BIMPage() {
                 <Globe2 size={14} />
                 {t('bim.load_full_model', {
                   defaultValue: 'Load full model ({{total}} elements)',
-                  total: activeModel?.element_count?.toLocaleString(getIntlLocale()) ?? '...',
+                  total: activeModel?.element_count?.toLocaleString(getNumberLocale()) ?? '...',
                 })}
               </button>
             </div>

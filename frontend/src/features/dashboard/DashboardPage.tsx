@@ -8,7 +8,7 @@ import { apiGet, apiPost, type Page } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { SUPPORTED_LANGUAGES } from '@/app/i18n';
 import { uploadDocument, fetchDocuments, type DocumentItem } from '@/features/documents/api';
@@ -2391,7 +2391,7 @@ function DashboardPageInner() {
           )}
           {lastBoq.grandTotal > 0 && (
             <span className="text-xs font-semibold text-content-primary tabular-nums">
-              {lastBoq.currency} {lastBoq.grandTotal.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })}
+              {lastBoq.currency} {lastBoq.grandTotal.toLocaleString(getNumberLocale(), { maximumFractionDigits: 0 })}
             </span>
           )}
           <ArrowRight size={16} className="text-content-tertiary group-hover:text-oe-blue group-hover:translate-x-0.5 transition-all" />
@@ -3030,7 +3030,7 @@ function AnalyticsSection({ projects }: { projects: ProjectSummary[] }) {
         ? `${fmtFixed(value / 1_000_000, 1)}M`
         : value >= 1_000
           ? `${fmtFixed(value / 1_000, 0)}K`
-          : value.toLocaleString(getIntlLocale(), {
+          : value.toLocaleString(getNumberLocale(), {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0,
             });
@@ -3226,7 +3226,7 @@ function SystemStatus() {
         vectorVectors > 0
           ? t('dashboard.status_vectors_count', {
               defaultValue: '{{n}} vectors',
-              n: vectorVectors.toLocaleString(getIntlLocale()),
+              n: vectorVectors.toLocaleString(getNumberLocale()),
             })
           : '',
       ]

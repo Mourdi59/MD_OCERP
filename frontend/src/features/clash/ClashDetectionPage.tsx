@@ -121,6 +121,7 @@ import { ClashSmartIssuesPanel } from './ClashSmartIssuesPanel';
 import { ClashCostImpactColumn } from './ClashCostImpactColumn';
 import { clashGuide } from './clashGuide';
 import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 const EMPTY_SET: ClashSelectionSet = {
   disciplines: [],
@@ -5750,7 +5751,7 @@ function ModelCardPicker({
                     </Badge>
                     <span className="inline-flex items-center gap-1 text-2xs text-content-tertiary">
                       <Layers className="h-3 w-3" />
-                      {m.element_count.toLocaleString(getIntlLocale())}{' '}
+                      {m.element_count.toLocaleString(getNumberLocale())}{' '}
                       {t('clash.ctx_elements', {
                         defaultValue: 'elements',
                       })}

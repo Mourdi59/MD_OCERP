@@ -24,7 +24,7 @@ import {
   fmtCompactNumber,
   num,
 } from './_shared';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 const VELOCITY_GRANULARITY_IDS = ['week', 'month', 'quarter'] as const;
 
@@ -246,7 +246,7 @@ function BarRow({
         />
       </div>
       <span className="w-16 shrink-0 text-right font-medium text-content-primary">
-        {fmt ? fmt(value) : value.toLocaleString(getIntlLocale())}
+        {fmt ? fmt(value) : value.toLocaleString(getNumberLocale())}
       </span>
     </div>
   );

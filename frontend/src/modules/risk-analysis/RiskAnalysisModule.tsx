@@ -25,7 +25,7 @@ import {
 import { apiGet } from '@/shared/lib/api';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
-import { useNumberLocale } from '@/stores/usePreferencesStore';
+import { getNumberLocale, useNumberLocale } from '@/stores/usePreferencesStore';
 import { projectsApi, type Project } from '@/features/projects/api';
 import {
   runSimulation,
@@ -35,7 +35,7 @@ import {
   type DistributionType,
   type BOQPositionForRisk,
 } from './data/montecarlo';
-import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtPercent } from '@/shared/lib/formatters';
 
 // ---------------------------------------------------------------------------
 // Money formatting
@@ -814,7 +814,7 @@ export default function RiskAnalysisModule() {
                   <span className="text-content-quaternary">|</span>
                   <span>
                     {t('risk.iterations', { defaultValue: 'Iterations' })}:{' '}
-                    <span className="font-semibold text-content-primary">{result.iterations.toLocaleString(getIntlLocale())}</span>
+                    <span className="font-semibold text-content-primary">{result.iterations.toLocaleString(getNumberLocale())}</span>
                   </span>
                   <span className="text-content-quaternary">|</span>
                   <span>

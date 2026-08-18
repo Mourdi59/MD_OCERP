@@ -40,7 +40,7 @@ import { Button, Card, Badge, EmptyState, SkeletonTable, CountryFlag, CountryFla
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { ApiError, apiGet, apiPost, apiPatch, apiDelete, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
-import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { useToastStore } from '@/stores/useToastStore';
@@ -411,7 +411,7 @@ function RegionTabBar({
             {t('costs.all_regions', { defaultValue: 'All' })}
           </span>
           <span className={`text-2xs tabular-nums ${activeRegion === '' ? 'text-oe-blue' : 'text-content-quaternary'}`}>
-            {totalItems > 0 ? totalItems.toLocaleString(getIntlLocale()) : ''}
+            {totalItems > 0 ? totalItems.toLocaleString(getNumberLocale()) : ''}
           </span>
         </button>
 
@@ -448,7 +448,7 @@ function RegionTabBar({
                   : info.name}
               </span>
               <span className={`text-2xs tabular-nums ${isActive ? 'text-oe-blue' : 'text-content-quaternary'}`}>
-                {count > 0 ? count.toLocaleString(getIntlLocale()) : ''}
+                {count > 0 ? count.toLocaleString(getNumberLocale()) : ''}
               </span>
             </button>
           );
@@ -1189,10 +1189,10 @@ export function CostsPage() {
                     : isFetching && tabCount != null
                       ? tabCount
                       : 0;
-                return `${regionInfo.name}, ${display.toLocaleString(getIntlLocale())} ${t('costs.items', 'items')}`;
+                return `${regionInfo.name}, ${display.toLocaleString(getNumberLocale())} ${t('costs.items', 'items')}`;
               })()
             : total > 0
-              ? `${total.toLocaleString(getIntlLocale())} ${t('costs.results_found', 'results found')}`
+              ? `${total.toLocaleString(getNumberLocale())} ${t('costs.results_found', 'results found')}`
               : t('costs.search_hint', 'Search cost items by description or code')
         }
         actions={
@@ -1723,7 +1723,7 @@ export function CostsPage() {
                     defaultValue: '{{from}}-{{to}} of {{total}}',
                     from: offset + 1,
                     to: Math.min(offset + PAGE_SIZE, total),
-                    total: total.toLocaleString(getIntlLocale()),
+                    total: total.toLocaleString(getNumberLocale()),
                   })}
                 </p>
                 {totalPages > 1 && (
@@ -3305,7 +3305,7 @@ function CostVariantDetail({
           <>
             <span className="text-content-tertiary">·</span>
             <span className="rounded bg-surface-primary/70 px-1.5 py-0.5">
-              <span className="font-semibold text-content-primary">{stats.position_count.toLocaleString(getIntlLocale())}</span>
+              <span className="font-semibold text-content-primary">{stats.position_count.toLocaleString(getNumberLocale())}</span>
               <span className="ml-1 text-content-tertiary">
                 {t('costs.variant_position_count_label', { defaultValue: 'Estimates' })}
               </span>

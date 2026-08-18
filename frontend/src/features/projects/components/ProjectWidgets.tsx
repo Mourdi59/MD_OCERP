@@ -63,7 +63,8 @@ import type {
   ProjectRFIInboxPayload,
   ProjectVariationsPayload,
 } from '@/shared/api/dashboardRollup';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Rollup provider ──────────────────────────────────────────────────── */
 
@@ -343,7 +344,7 @@ function fmtMoney(value: number | string | null | undefined, currency = 'EUR'): 
   if (value == null) return `${currency} 0`;
   const n = typeof value === 'string' ? Number(value) : value;
   if (!Number.isFinite(n)) return `${currency} 0`;
-  return `${currency} ${n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })}`;
+  return `${currency} ${n.toLocaleString(getNumberLocale(), { maximumFractionDigits: 0 })}`;
 }
 
 export function ChangeOrdersPulseWidget({

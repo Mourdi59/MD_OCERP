@@ -20,7 +20,8 @@ import {
   type EPDMaterial,
   type EPDCategory,
 } from './data/epd-materials';
-import { fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -369,7 +370,7 @@ export default function SustainabilityModule() {
                     </td>
                     <td className="px-3 py-2 text-xs text-content-tertiary">{item.unit}</td>
                     <td className={`px-3 py-2 text-right font-mono text-xs ${item.gwp < 0 ? 'text-emerald-600' : 'text-content-primary'}`}>
-                      {item.gwp < 0 ? '' : '+'}{item.gwp.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })}
+                      {item.gwp < 0 ? '' : '+'}{item.gwp.toLocaleString(getNumberLocale(), { maximumFractionDigits: 0 })}
                     </td>
                     <td className="px-3 py-2">
                       <button
@@ -389,7 +390,7 @@ export default function SustainabilityModule() {
                     {t('common.total', { defaultValue: 'Total' })}
                   </td>
                   <td className={`px-3 py-2 text-right font-mono text-sm font-bold ${carbonBreakdown.totalGWP < 0 ? 'text-emerald-600' : 'text-content-primary'}`}>
-                    {carbonBreakdown.totalGWP.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })} kg
+                    {carbonBreakdown.totalGWP.toLocaleString(getNumberLocale(), { maximumFractionDigits: 0 })} kg
                   </td>
                   <td />
                 </tr>
@@ -449,7 +450,7 @@ export default function SustainabilityModule() {
                       />
                     </div>
                     <span className="w-24 text-right text-xs font-mono text-content-tertiary">
-                      {cat.value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })} kg
+                      {cat.value.toLocaleString(getNumberLocale(), { maximumFractionDigits: 0 })} kg
                     </span>
                   </div>
                 ))}

@@ -25,7 +25,8 @@ import { fetchBIMModels } from '../bim/api';
 import { fetchDrawings } from '../dwg-takeoff/api';
 import { takeoffApi } from '../takeoff/api';
 import { documentsGuide } from './documentsGuide';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Types ───────────────────────────────────────────────────────────── */
 
@@ -1154,7 +1155,7 @@ export function DocumentsPage() {
                       <p className="text-sm font-medium text-content-primary truncate" title={s.display_name}>{s.display_name}</p>
                       <p className="text-[11px] text-content-tertiary mt-1 flex items-center gap-1.5">
                         <span className={`px-1.5 py-0.5 rounded font-mono text-[10px] font-semibold ${fmtColor[fmt] || 'bg-surface-secondary text-content-tertiary'}`}>{fmt || '—'}</span>
-                        <span>{s.element_count.toLocaleString(getIntlLocale())} elements</span>
+                        <span>{s.element_count.toLocaleString(getNumberLocale())} elements</span>
                       </p>
                     </div>
                   </div>
@@ -1202,7 +1203,7 @@ export function DocumentsPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium text-content-primary truncate">{m.name}</p>
                     <p className="text-[10px] text-content-tertiary">
-                      {(m.model_format || m.format || 'BIM').toUpperCase()} &middot; {(m.element_count ?? 0).toLocaleString(getIntlLocale())} elem
+                      {(m.model_format || m.format || 'BIM').toUpperCase()} &middot; {(m.element_count ?? 0).toLocaleString(getNumberLocale())} elem
                     </p>
                   </div>
                 </div>

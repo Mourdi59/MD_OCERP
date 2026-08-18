@@ -93,7 +93,7 @@ import {
   partitionLanes,
   type MatchLaneId,
 } from './matchReasons';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -2008,7 +2008,7 @@ export function MatchWizardFlow() {
                                         {p.unit}
                                       </td>
                                       <td className="px-3 py-2 text-right tabular-nums text-content-secondary">
-                                        {Number(p.quantity).toLocaleString(getIntlLocale(), {
+                                        {Number(p.quantity).toLocaleString(getNumberLocale(), {
                                           maximumFractionDigits: 3,
                                         })}
                                       </td>

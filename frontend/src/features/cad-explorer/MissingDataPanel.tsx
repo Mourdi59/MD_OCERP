@@ -25,7 +25,8 @@ import {
 } from './api';
 import { useToastStore } from '@/stores/useToastStore';
 import { copyToClipboard } from '@/shared/lib/browser';
-import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtPercent } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 interface MissingDataPanelProps {
   sessionId: string;
@@ -269,12 +270,12 @@ export function MissingDataPanel({ sessionId }: MissingDataPanelProps) {
   const footerLabel = data.sampled
     ? t('explorer.missingness_footer_sampled', {
         defaultValue: 'Showing {{n}} of {{m}} rows (random sample)',
-        n: data.sampled_rows.toLocaleString(getIntlLocale()),
-        m: data.total_rows.toLocaleString(getIntlLocale()),
+        n: data.sampled_rows.toLocaleString(getNumberLocale()),
+        m: data.total_rows.toLocaleString(getNumberLocale()),
       })
     : t('explorer.missingness_footer_full', {
         defaultValue: 'Showing all {{n}} rows',
-        n: data.total_rows.toLocaleString(getIntlLocale()),
+        n: data.total_rows.toLocaleString(getNumberLocale()),
       });
 
   return (
@@ -298,7 +299,7 @@ export function MissingDataPanel({ sessionId }: MissingDataPanelProps) {
                 </option>
                 {(categoryOpts?.values ?? []).map((v) => (
                   <option key={v.value} value={v.value}>
-                    {v.value} ({v.count.toLocaleString(getIntlLocale())})
+                    {v.value} ({v.count.toLocaleString(getNumberLocale())})
                   </option>
                 ))}
               </select>
@@ -320,7 +321,7 @@ export function MissingDataPanel({ sessionId }: MissingDataPanelProps) {
                 </option>
                 {(typeOpts?.values ?? []).map((v) => (
                   <option key={v.value} value={v.value}>
-                    {v.value} ({v.count.toLocaleString(getIntlLocale())})
+                    {v.value} ({v.count.toLocaleString(getNumberLocale())})
                   </option>
                 ))}
               </select>
@@ -410,8 +411,8 @@ export function MissingDataPanel({ sessionId }: MissingDataPanelProps) {
                   {fmtPercent(hover.column.fill_rate * 100)}{' '}
                   {t('explorer.missingness_tooltip_filled', { defaultValue: 'filled' })}
                   {' · '}
-                  {hover.column.non_null_count.toLocaleString(getIntlLocale())}{' / '}
-                  {data.total_rows.toLocaleString(getIntlLocale())}
+                  {hover.column.non_null_count.toLocaleString(getNumberLocale())}{' / '}
+                  {data.total_rows.toLocaleString(getNumberLocale())}
                 </div>
                 <div className="opacity-60">
                   {t('explorer.missingness_dtype', { defaultValue: 'type' })}: {hover.column.dtype}

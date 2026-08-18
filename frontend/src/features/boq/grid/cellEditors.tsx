@@ -29,7 +29,7 @@ import {
   type FormulaContext,
   type FormulaVariable,
 } from './formula';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Formula Cell Editor ──────────────────────────────────────────── */
 
@@ -703,7 +703,7 @@ export const FormulaCellEditor = forwardRef(
           <div className="absolute right-0 top-full mt-0.5 text-[10px] leading-tight tabular-nums pointer-events-none whitespace-nowrap z-10 px-1.5 py-0.5 rounded shadow-sm bg-surface-elevated border border-border-light">
             {preview.kind === 'ok' && (
               <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                = {preview.v.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                = {preview.v.toLocaleString(getNumberLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
               </span>
             )}
             {preview.kind === 'number' && isFormulaMode === false && value.trim() !== '' && (

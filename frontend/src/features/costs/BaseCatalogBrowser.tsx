@@ -19,6 +19,7 @@ import { CountryFlag, CountryFlagBackdrop } from '@/shared/ui';
 import type { BaseCatalog, BaseFamily, BaseVariant } from './baseCatalog';
 import { variantMatches } from './baseCatalog';
 import { DEPTH_BANDS, baseDepthLevel } from './baseDepth';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // Founder-requested family order for the base picker: China first, then the
 // flagship Global CWICR base (GESN / FER / TER) second, then every other family
@@ -70,10 +71,11 @@ interface BaseCatalogBrowserProps {
   className?: string;
 }
 
-// Grouping follows the app language, not the browser locale: a reader on ?lang=de
-// gets 55.719 even when their browser is set to English.
-function positionsLabel(n: number, lang: string): string {
-  return n.toLocaleString(lang);
+// Grouping follows the number format the reader picked, which starts out as the
+// one their language implies: a reader on ?lang=de gets 55.719 even when their
+// browser is set to English, and a reader who chose another format gets that.
+function positionsLabel(n: number): string {
+  return n.toLocaleString(getNumberLocale());
 }
 
 /**
@@ -85,13 +87,13 @@ function positionsLabel(n: number, lang: string): string {
  * text label for assistive tech, because five divs read as nothing.
  */
 function DepthMeter({ positions }: { positions: number }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const level = baseDepthLevel(positions);
   const label = t('costs.base_depth_hint', {
     defaultValue: 'Catalogue depth {{level}} of {{total}}: {{positions}} work items',
     level,
     total: DEPTH_BANDS,
-    positions: positionsLabel(positions, i18n.language),
+    positions: positionsLabel(positions),
   });
 
   return (
@@ -151,7 +153,7 @@ function BaseVariantCard({
   onReprice,
   elapsedSeconds,
 }: CardProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const shownPositions = loaded && variant.loaded_positions > 0 ? variant.loaded_positions : variant.positions;
   // A national market card (reprice target). Only treat it as one when a
   // reprice handler is wired (the import page); on surfaces without it, market
@@ -211,7 +213,7 @@ function BaseVariantCard({
       <div className="mt-2.5 flex items-end justify-between gap-2">
         <div>
           <div className="text-lg font-bold leading-none tabular-nums text-content-primary">
-            {positionsLabel(shownPositions, i18n.language)}
+            {positionsLabel(shownPositions)}
           </div>
           <div className="text-[11px] text-content-tertiary">
             {t('costs.base_positions', { defaultValue: 'positions' })}
@@ -324,7 +326,7 @@ export function BaseCatalogBrowser({
   elapsedSeconds,
   className = '',
 }: BaseCatalogBrowserProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
 
   // Loaded is a property of the BASE, not the card: every card of a base shares
@@ -429,7 +431,7 @@ export function BaseCatalogBrowser({
           {' · '}
           {t('costs.base_summary_positions', {
             defaultValue: '{{positions}}+ positions',
-            positions: positionsRounded.toLocaleString(i18n.language),
+            positions: positionsRounded.toLocaleString(getNumberLocale()),
           })}
         </span>
       </div>
@@ -541,7 +543,7 @@ export function BaseCatalogBrowser({
                 </div>
                 <div className="hidden shrink-0 text-right sm:block">
                   <div className="text-sm font-bold tabular-nums text-content-primary">
-                    {positionsLabel(family.positions, i18n.language)}
+                    {positionsLabel(family.positions)}
                   </div>
                   <div className="text-[11px] text-content-tertiary">
                     {t('costs.base_positions', { defaultValue: 'positions' })}

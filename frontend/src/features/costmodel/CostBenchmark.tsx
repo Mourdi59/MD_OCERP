@@ -4,7 +4,6 @@ import { useState, useMemo, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Ruler } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/shared/ui';
-import { getIntlLocale } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 
@@ -387,7 +386,7 @@ export const CostBenchmark = memo(function CostBenchmark({ totalBudget, currency
                         contradict the number they entered. */}
                     {t('costmodel.benchmark_area_value', {
                       defaultValue: '{{area}} m\u00B2',
-                      area: areaNum.toLocaleString(getIntlLocale()),
+                      area: areaNum.toLocaleString(getNumberLocale()),
                     })}
                   </div>
                 </div>

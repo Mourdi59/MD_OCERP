@@ -7,7 +7,7 @@ import { X, Loader2, Cuboid, ArrowRight } from 'lucide-react';
 import { fetchBIMElementsByIds } from '@/features/bim/api';
 import type { BIMElementData } from '@/shared/ui/BIMViewer/ElementManager';
 import type { DisplayQuantityApi } from '@/shared/hooks/useDisplayQuantity';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Unit inference from property/quantity key ─────────────────────── */
 
@@ -152,8 +152,8 @@ function computeSums(groups: ElementQuantities[]): SumEntry[] {
 /* ── Format number for display ─────────────────────────────────────── */
 
 function fmtNum(v: number): string {
-  if (Number.isInteger(v)) return v.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 });
-  return v.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  if (Number.isInteger(v)) return v.toLocaleString(getNumberLocale(), { maximumFractionDigits: 0 });
+  return v.toLocaleString(getNumberLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 }
 
 /* ── Component ─────────────────────────────────────────────────────── */

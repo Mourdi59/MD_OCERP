@@ -3,7 +3,7 @@
 import { toNum } from './normalize';
 import { projectPath } from './deepLink';
 import DeepLinkBar, { useOpenLabels } from './DeepLinkBar';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /**
  * Renders the `project_summary` tool result (`get_project_summary`):
@@ -30,7 +30,7 @@ interface ProjectSummary {
 function money(v: number | string | undefined, currency?: string): string {
   const n = toNum(v);
   if (n == null) return '-';
-  const f = n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 });
+  const f = n.toLocaleString(getNumberLocale(), { maximumFractionDigits: 0 });
   return currency ? `${f} ${currency}` : f;
 }
 

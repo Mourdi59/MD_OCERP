@@ -38,7 +38,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RotateCcw } from 'lucide-react';
 import { upAxisMatrix, type UpAxis } from './geometry';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 export interface MeshPreviewProps {
   /** The parsed scene, in its own native coordinates. Never mutated. */
@@ -68,9 +68,9 @@ function niceStep(raw: number): number {
 
 /** Format a grid step in metres, dropping the noise digits. */
 function formatStep(step: number): string {
-  if (step >= 1) return `${step.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })} m`;
-  if (step >= 0.01) return `${(step * 100).toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })} cm`;
-  return `${(step * 1000).toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })} mm`;
+  if (step >= 1) return `${step.toLocaleString(getNumberLocale(), { maximumFractionDigits: 0 })} m`;
+  if (step >= 0.01) return `${(step * 100).toLocaleString(getNumberLocale(), { maximumFractionDigits: 0 })} cm`;
+  return `${(step * 1000).toLocaleString(getNumberLocale(), { maximumFractionDigits: 0 })} mm`;
 }
 
 export function MeshPreview({ object, upAxis, unitScale }: MeshPreviewProps) {

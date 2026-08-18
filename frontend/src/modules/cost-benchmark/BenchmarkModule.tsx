@@ -23,12 +23,13 @@ import {
 import { useProjectBenchmarkData } from './hooks/useProjectBenchmarkData';
 import { fetchOwnPortfolio, type BenchmarkResponse } from './api';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
-import { fmtPercent, fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Helpers ───────────────────────────────────────────────────────── */
 
 function formatCurrency(value: number, currency: string): string {
-  return value.toLocaleString(getIntlLocale(), {
+  return value.toLocaleString(getNumberLocale(), {
     style: 'currency',
     currency,
     maximumFractionDigits: 0,
@@ -823,7 +824,7 @@ export default function BenchmarkModule() {
                   (multiply) to ft2 for imperial; the unit label follows. */}
               {t('benchmarks.secondary_basis_v2', {
                 defaultValue: 'Median basis, about {{area}} {{unit}} GFA per unit.',
-                area: q.convert(benchmarkRange.secondary.areaPerUnit, 'm²').value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 }),
+                area: q.convert(benchmarkRange.secondary.areaPerUnit, 'm²').value.toLocaleString(getNumberLocale(), { maximumFractionDigits: 0 }),
                 unit: rateUnit,
               })}
             </p>

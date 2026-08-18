@@ -27,7 +27,8 @@ import {
 import clsx from 'clsx';
 import type { FileTreeNode, FileKind } from '../types';
 import { KIND_TONE } from '../kindModule';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 const KIND_ICON: Record<FileKind, LucideIcon> = {
   document: FileText,
@@ -311,7 +312,7 @@ function FolderCard({
         {/* Inline stat row — files · size · subfolders (denser than the old 2-col dl) */}
         <div className="mt-3 flex items-baseline gap-1.5">
           <span className="text-xl font-semibold text-content-primary tabular-nums leading-none">
-            {node.file_count.toLocaleString(getIntlLocale())}
+            {node.file_count.toLocaleString(getNumberLocale())}
           </span>
           <span className="text-xs text-content-tertiary">
             {t('files.folder.files_count', { defaultValue: 'files' })}

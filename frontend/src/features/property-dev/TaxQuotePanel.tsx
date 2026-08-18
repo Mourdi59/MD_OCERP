@@ -19,7 +19,6 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 
 import { fetchContractTaxQuote } from './api';
 import type { ContractTaxQuote, TaxQuotePayload } from './api';
-import { getIntlLocale } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 interface Props {
@@ -129,7 +128,7 @@ function formatMoney(value: string | number, currency: string): string {
       maximumFractionDigits: 2,
     }).format(n);
   } catch {
-    return n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 });
+    return n.toLocaleString(getNumberLocale(), { maximumFractionDigits: 2 });
   }
 }
 

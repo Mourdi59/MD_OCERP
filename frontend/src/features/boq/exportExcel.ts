@@ -17,6 +17,7 @@ import {
 } from './api';
 import { resourceAwareTotalInBase } from './boqHelpers';
 import { getIntlLocale, fmtPercent } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Types ────────────────────────────────────────────────────────────── */
 
@@ -252,7 +253,7 @@ export function buildBOQSheetData(options: ExportOptions): {
   merge(1, 0, 1, colCount - 1);
 
   const statsLine = `Date: ${dateStr}  |  ${sectionCount} sections  |  ${itemCount} positions  |  Gross Total: ${options.currency}${grossTotal.toLocaleString(
-    undefined,
+    getNumberLocale(),
     { minimumFractionDigits: 2, maximumFractionDigits: 2 },
   )}`;
   rows.push([statsLine, ...Array(colCount - 1).fill(null)]);

@@ -42,7 +42,7 @@ import {
   FederatedViewerLegend,
   type LegendDiscipline,
 } from './FederatedViewerLegend';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Imperative handle ─────────────────────────────────────────────── */
 
@@ -471,7 +471,7 @@ export const FederatedViewer = forwardRef<FederatedViewerHandle, Props>(
                     // non-metric (or custom) shared_units value passes through
                     // unchanged - never double-converted.
                     const d = displayQty.convert(measurement.distance, unitLabel);
-                    return `${d.value.toLocaleString(getIntlLocale(), {
+                    return `${d.value.toLocaleString(getNumberLocale(), {
                       maximumFractionDigits: 3,
                     })} ${d.unit}`;
                   })()}

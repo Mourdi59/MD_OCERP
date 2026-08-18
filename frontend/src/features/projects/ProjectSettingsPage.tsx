@@ -42,7 +42,7 @@ import {
   listComplianceRulePacks,
   type ComplianceRulePack,
 } from '../contracts/api';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -281,8 +281,8 @@ function FxRateModal({
               const inverseRate = 1 / rateNum;
               const fmt = (n: number) =>
                 n >= 1000 || n < 0.001
-                  ? n.toLocaleString(getIntlLocale(), { maximumSignificantDigits: 6 })
-                  : n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 6 });
+                  ? n.toLocaleString(getNumberLocale(), { maximumSignificantDigits: 6 })
+                  : n.toLocaleString(getNumberLocale(), { maximumFractionDigits: 6 });
               return (
                 <div className="rounded-lg bg-surface-tertiary px-3 py-2 text-xs text-content-secondary space-y-0.5">
                   <div>
@@ -324,8 +324,8 @@ function FxRateModal({
               if (!looksInverted && !looksUnusual) return null;
               const fmt = (n: number) =>
                 n >= 1000 || n < 0.001
-                  ? n.toLocaleString(getIntlLocale(), { maximumSignificantDigits: 6 })
-                  : n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 6 });
+                  ? n.toLocaleString(getNumberLocale(), { maximumSignificantDigits: 6 })
+                  : n.toLocaleString(getNumberLocale(), { maximumFractionDigits: 6 });
               return (
                 <div
                   role="status"

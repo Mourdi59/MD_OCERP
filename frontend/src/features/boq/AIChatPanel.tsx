@@ -78,7 +78,7 @@ export function AIChatPanel({
         ? t('boq.ai_generated_summary', {
             defaultValue: 'Generated {{count}} positions totalling {{total}} {{currency}}.',
             count: response.items.length,
-            total: total.toLocaleString(i18n.language, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            total: total.toLocaleString(getNumberLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
             currency,
           })
         : '';

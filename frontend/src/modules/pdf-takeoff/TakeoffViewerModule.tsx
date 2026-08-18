@@ -217,7 +217,8 @@ import { openLink } from '@/shared/lib/desktop';
 // Type-only: the scale-source vocabulary is a closed set owned by the backend
 // contract, so the viewer reuses it instead of restating it as a bare string.
 import type { ScaleSource } from '@/features/takeoff/api';
-import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtPercent } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // Configure PDF.js worker — bundled locally (no CDN dependency)
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -9968,7 +9969,7 @@ export default function TakeoffViewerModule({
                                         Math.round(
                                           convertQuantity(m.value, m.unit || '', measurementSystem).value * 100,
                                         ) / 100
-                                      ).toLocaleString(getIntlLocale())}
+                                      ).toLocaleString(getNumberLocale())}
                                     </span>
                                     <span className="font-mono text-rose-700/80 dark:text-rose-300/80 shrink-0">
                                       {displayUnitFor(m.unit || '', measurementSystem)}
@@ -10138,7 +10139,7 @@ export default function TakeoffViewerModule({
                                                   {/* Current qty badge — shows what's about to be replaced. */}
                                                   {currentQty > 0 && (
                                                     <span className="font-mono tabular-nums text-content-tertiary shrink-0 text-[9px]">
-                                                      {currentQty.toLocaleString(getIntlLocale())}
+                                                      {currentQty.toLocaleString(getNumberLocale())}
                                                     </span>
                                                   )}
                                                   {unitMismatch ? (

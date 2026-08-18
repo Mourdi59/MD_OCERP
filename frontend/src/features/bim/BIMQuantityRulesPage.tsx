@@ -124,6 +124,7 @@ import {
   type ValidateBIMResult,
 } from '@/features/requirements/api';
 import { fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Form state types ─────────────────────────────────────────────────── */
 
@@ -442,7 +443,7 @@ function SandboxResultView({ result, unit }: { result: SandboxRunResult; unit: s
         <span className="rounded-md bg-surface-tertiary px-2 py-0.5 font-medium tabular-nums text-content-secondary">
           {t('bim_rules.sandbox_total', {
             defaultValue: 'Σ {{total}} {{unit}}',
-            total: conv(result.totalAdjusted).toLocaleString(getIntlLocale(), {
+            total: conv(result.totalAdjusted).toLocaleString(getNumberLocale(), {
               maximumFractionDigits: 3,
             }),
             unit: displayUnit || '',

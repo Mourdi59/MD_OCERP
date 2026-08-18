@@ -45,7 +45,7 @@ import {
   type ResourcePriceRow,
   type ResourceType,
 } from './useResourcePrices';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
 
@@ -439,8 +439,8 @@ export function ResourcePriceSheetPanel({
               {stats
                 ? t('costs.resource_prices.coverage_count', {
                     defaultValue: '{{priced}} of {{total}} priced ({{pct}}%)',
-                    priced: stats.priced.toLocaleString(getIntlLocale()),
-                    total: stats.resources.toLocaleString(getIntlLocale()),
+                    priced: stats.priced.toLocaleString(getNumberLocale()),
+                    total: stats.resources.toLocaleString(getNumberLocale()),
                     pct: coveragePct,
                   })
                 : '…'}
@@ -695,7 +695,7 @@ export function ResourcePriceSheetPanel({
                   defaultValue: '{{from}}-{{to}} of {{total}}',
                   from: rows.length === 0 ? 0 : page * PAGE_SIZE + 1,
                   to: page * PAGE_SIZE + rows.length,
-                  total: total.toLocaleString(getIntlLocale()),
+                  total: total.toLocaleString(getNumberLocale()),
                 })}
               </span>
               <div className="flex items-center gap-1.5">
@@ -737,11 +737,11 @@ export function ResourcePriceSheetPanel({
                 {t('costs.resource_prices.preview_summary', {
                   defaultValue:
                     '{{fully}} of {{total}} items would be fully priced ({{pct}}%). {{partial}} partially priced, {{unpriced}} still unpriced.',
-                  fully: preview.items_fully_priced.toLocaleString(getIntlLocale()),
-                  total: preview.items_total.toLocaleString(getIntlLocale()),
+                  fully: preview.items_fully_priced.toLocaleString(getNumberLocale()),
+                  total: preview.items_total.toLocaleString(getNumberLocale()),
                   pct: Math.round(preview.coverage * 100),
-                  partial: preview.items_partially_priced.toLocaleString(getIntlLocale()),
-                  unpriced: preview.items_unpriced.toLocaleString(getIntlLocale()),
+                  partial: preview.items_partially_priced.toLocaleString(getNumberLocale()),
+                  unpriced: preview.items_unpriced.toLocaleString(getNumberLocale()),
                 })}
               </p>
               {preview.missing_resource_count > 0 && (

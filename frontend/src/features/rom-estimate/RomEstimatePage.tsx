@@ -28,6 +28,7 @@ import {
   type RomReconciliation,
 } from './api';
 import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // English fallbacks for the computed `romEstimate.reconcile.desc_*` keys. No locale
 // carries those keys yet, so this table is what every reader sees, English
@@ -406,7 +407,7 @@ function RomResultView({
 
   const gfaLabel = useMemo(() => {
     const n = toNum(result.gfa_canonical_m2);
-    return n.toLocaleString(getIntlLocale());
+    return n.toLocaleString(getNumberLocale());
   }, [result.gfa_canonical_m2]);
 
   return (

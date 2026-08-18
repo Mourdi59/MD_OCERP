@@ -37,7 +37,7 @@ import type { LucideIcon } from 'lucide-react';
 
 import { apiGet } from '@/shared/lib/api';
 import { Badge } from '@/shared/ui';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -243,7 +243,7 @@ export function FederationTypeTree({ federationId, onSelectClass }: Props) {
                     {cls.ifc_class}
                   </span>
                 </button>
-                <Badge>{cls.element_count.toLocaleString(getIntlLocale())}</Badge>
+                <Badge>{cls.element_count.toLocaleString(getNumberLocale())}</Badge>
               </div>
               {isExpanded ? (
                 <ul
@@ -263,7 +263,7 @@ export function FederationTypeTree({ federationId, onSelectClass }: Props) {
                         <span className="truncate">{m.model_name}</span>
                       </div>
                       <span className="font-mono">
-                        {m.element_count.toLocaleString(getIntlLocale())}
+                        {m.element_count.toLocaleString(getNumberLocale())}
                       </span>
                     </li>
                   ))}

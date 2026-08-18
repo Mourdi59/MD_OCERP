@@ -4,7 +4,8 @@ import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TrendingUp, Calculator, Info } from 'lucide-react';
 import clsx from 'clsx';
-import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Published construction cost indices (annual % change) ────────────── */
 
@@ -106,7 +107,7 @@ export function EscalationCalculator({
   // panel but does not remount it, so a formatter made on mount would keep the
   // separators of the language the panel opened in.
   const fmt = useCallback(
-    (n: number) => n.toLocaleString(getIntlLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
+    (n: number) => n.toLocaleString(getNumberLocale(), { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
     [],
   );
 

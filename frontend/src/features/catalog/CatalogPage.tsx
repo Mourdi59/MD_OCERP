@@ -450,7 +450,7 @@ function RegionTabBar({
           <span
             className={`text-2xs tabular-nums ${activeRegion === '' ? 'text-oe-blue' : 'text-content-quaternary'}`}
           >
-            {totalItems > 0 ? totalItems.toLocaleString(getIntlLocale()) : ''}
+            {totalItems > 0 ? totalItems.toLocaleString(getNumberLocale()) : ''}
           </span>
         </button>
 
@@ -480,7 +480,7 @@ function RegionTabBar({
               <span
                 className={`text-2xs tabular-nums ${isActive ? 'text-oe-blue' : 'text-content-quaternary'}`}
               >
-                {count > 0 ? count.toLocaleString(getIntlLocale()) : '0'}
+                {count > 0 ? count.toLocaleString(getNumberLocale()) : '0'}
               </span>
             </button>
           );
@@ -514,7 +514,7 @@ function RegionTabBar({
               <span
                 className={`text-2xs tabular-nums ${isActive ? 'text-oe-blue' : 'text-content-quaternary'}`}
               >
-                {count > 0 ? count.toLocaleString(getIntlLocale()) : ''}
+                {count > 0 ? count.toLocaleString(getNumberLocale()) : ''}
               </span>
             </button>
           );
@@ -939,9 +939,9 @@ function ResourceDetailPanel({
           {/* Usage */}
           <div className="rounded-lg bg-surface-primary border border-border-light p-2.5">
             <div className="text-2xs text-content-quaternary uppercase tracking-wider mb-1">{t('catalog.usage', { defaultValue: 'Usage' })}</div>
-            <div className="text-xs font-medium text-content-primary">{resource.usage_count.toLocaleString(getIntlLocale())} {t('catalog.references', { defaultValue: 'references' })}</div>
+            <div className="text-xs font-medium text-content-primary">{resource.usage_count.toLocaleString(getNumberLocale())} {t('catalog.references', { defaultValue: 'references' })}</div>
             {specs.used_in_work_items ? (
-              <div className="text-2xs text-content-tertiary mt-0.5">{Number(specs.used_in_work_items).toLocaleString(getIntlLocale())} {t('catalog.work_items', { defaultValue: 'work items' })}</div>
+              <div className="text-2xs text-content-tertiary mt-0.5">{Number(specs.used_in_work_items).toLocaleString(getNumberLocale())} {t('catalog.work_items', { defaultValue: 'work items' })}</div>
             ) : null}
           </div>
 
@@ -1006,7 +1006,7 @@ function ResourceDetailPanel({
                   <div key={k} className="flex justify-between gap-2 py-0.5">
                     <span className="text-content-quaternary capitalize">{k.replace(/_/g, ' ').replace('parent ', '')}</span>
                     <span className="text-content-secondary truncate max-w-[150px] text-right" title={String(v)}>
-                      {!isNaN(Number(v)) ? Number(Number(v).toFixed(2)).toLocaleString(getIntlLocale()) : String(v)}
+                      {!isNaN(Number(v)) ? Number(Number(v).toFixed(2)).toLocaleString(getNumberLocale()) : String(v)}
                     </span>
                   </div>
                 ))}
@@ -1643,9 +1643,9 @@ export function CatalogPage() {
         srTitle={t('catalog.title', { defaultValue: 'Resource Catalog' })}
         subtitle={
           regionInfo
-            ? `${regionInfo.name}, ${total.toLocaleString(getIntlLocale())} ${t('catalog.resources', { defaultValue: 'resources' })}`
+            ? `${regionInfo.name}, ${total.toLocaleString(getNumberLocale())} ${t('catalog.resources', { defaultValue: 'resources' })}`
             : total > 0
-              ? `${total.toLocaleString(getIntlLocale())} ${t('catalog.resources_found', { defaultValue: 'resources found' })}`
+              ? `${total.toLocaleString(getNumberLocale())} ${t('catalog.resources_found', { defaultValue: 'resources found' })}`
               : t('catalog.search_hint', {
                   defaultValue: 'Browse materials, equipment, labor, and operators',
                 })
@@ -1673,7 +1673,7 @@ export function CatalogPage() {
                   const info = REGION_MAP[rs.region];
                   return (
                     <option key={rs.region} value={rs.region}>
-                      {info?.name ?? rs.region} ({rs.count.toLocaleString(getIntlLocale())})
+                      {info?.name ?? rs.region} ({rs.count.toLocaleString(getNumberLocale())})
                     </option>
                   );
                 })}
@@ -1801,7 +1801,7 @@ export function CatalogPage() {
                       isActive ? 'text-white/70' : 'text-content-quaternary'
                     }`}
                   >
-                    {count.toLocaleString(getIntlLocale())}
+                    {count.toLocaleString(getNumberLocale())}
                   </span>
                 )}
               </button>
@@ -1938,7 +1938,7 @@ export function CatalogPage() {
                 {t('catalog.all_categories', { defaultValue: 'All categories' })}
               </span>
               <span className="text-2xs text-content-tertiary tabular-nums shrink-0 ml-2">
-                {totalCount.toLocaleString(getIntlLocale())}
+                {totalCount.toLocaleString(getNumberLocale())}
               </span>
             </button>
             {(stats?.by_category ?? []).map((c) => {
@@ -1959,7 +1959,7 @@ export function CatalogPage() {
                     {t(`catalog.category_${c.category.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`, { defaultValue: c.category })}
                   </span>
                   <span className={`text-2xs tabular-nums shrink-0 ml-2 ${isActive ? 'text-content-secondary' : 'text-content-tertiary'}`}>
-                    {c.count.toLocaleString(getIntlLocale())}
+                    {c.count.toLocaleString(getNumberLocale())}
                   </span>
                 </button>
               );
@@ -2139,7 +2139,7 @@ export function CatalogPage() {
                     defaultValue: '{{from}}-{{to}} of {{total}}',
                     from: offset + 1,
                     to: Math.min(offset + PAGE_SIZE, total),
-                    total: total.toLocaleString(getIntlLocale()),
+                    total: total.toLocaleString(getNumberLocale()),
                   })}
                 </p>
                 {totalPages > 1 && (
@@ -2655,7 +2655,7 @@ function PriceAdjustModal({
             <p className="text-sm text-content-secondary">
               {t('catalog.adjust_preview', {
                 defaultValue: 'This will affect approximately {{num}} resources',
-                num: estimatedCount.toLocaleString(getIntlLocale()),
+                num: estimatedCount.toLocaleString(getNumberLocale()),
               })}
             </p>
             {factor !== 1 && (

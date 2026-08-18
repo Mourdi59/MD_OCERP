@@ -24,9 +24,9 @@ import {
 } from './measureMath';
 import { SnapDetector, type SnapKind } from './SnapDetector';
 import { uuid } from '@/shared/lib/browser';
-import { usePreferencesStore } from '@/stores/usePreferencesStore';
+import { getNumberLocale, usePreferencesStore } from '@/stores/usePreferencesStore';
 import { toDisplayQuantity } from '@/shared/lib/unitConversion';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 export type MeasureState = 'idle' | 'awaiting-first' | 'awaiting-second' | 'done';
 
@@ -699,7 +699,7 @@ export class MeasureManager {
     const system = usePreferencesStore.getState().measurementSystem;
     const a = toDisplayQuantity(area, 'm²', system);
     const label = this.makeLabel(
-      `${a.value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 })} ${a.unit}`,
+      `${a.value.toLocaleString(getNumberLocale(), { maximumFractionDigits: 2 })} ${a.unit}`,
     );
     const measurement: Measurement = {
       id: randomId(),

@@ -47,6 +47,7 @@ import {
   type UpdateEsgEntryPayload,
 } from './api';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Constants & helpers ───────────────────────────────────────────────── */
 
@@ -85,7 +86,7 @@ const inputCls =
  *  call rather than once at module scope, because the language switcher does
  *  not reload the app and a formatter made at chunk load never hears about it. */
 const numberFmt = (n: number): string =>
-  n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 2 });
+  n.toLocaleString(getNumberLocale(), { maximumFractionDigits: 2 });
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** Parse a Decimal-as-string into a finite number, or null. */

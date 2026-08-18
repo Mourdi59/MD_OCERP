@@ -1,7 +1,8 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import { toNum } from './normalize';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 interface CostModelData {
   bac?: number;
@@ -130,7 +131,7 @@ function MiniChart({ planned, actual, earned }: { planned?: number[]; actual?: n
 
 function fmtMoney(n: number | undefined): string {
   if (n == null) return '-';
-  return n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 });
+  return n.toLocaleString(getNumberLocale(), { maximumFractionDigits: 0 });
 }
 
 /**

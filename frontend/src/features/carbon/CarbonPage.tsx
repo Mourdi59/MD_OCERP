@@ -107,7 +107,8 @@ import {
   type Scope3Entry,
   type MaterialCarbonFactor,
 } from './api';
-import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 type Tab = 'inventory' | 'wholelife' | 'epds' | 'targets' | 'reports';
 
@@ -2947,7 +2948,7 @@ function AssignBoqModal({
                           <td className="px-3 py-2 text-right tabular-nums text-content-secondary whitespace-nowrap align-top">
                             {(() => {
                               const d = displayQty.convert(toNum(p.quantity), p.unit || '');
-                              return `${d.value.toLocaleString(getIntlLocale())} ${d.unit}`;
+                              return `${d.value.toLocaleString(getNumberLocale())} ${d.unit}`;
                             })()}
                           </td>
                         </tr>

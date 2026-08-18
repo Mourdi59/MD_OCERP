@@ -13,7 +13,8 @@ import { useTranslation } from 'react-i18next';
 import { Database, FileText, HardDrive, Layers } from 'lucide-react';
 import type { FileKind, FileTreeNode, StorageLocations } from '../types';
 import { ALL_KINDS, KIND_COLORS } from '../kindModule';
-import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 function fmtBytes(bytes: number): string {
   if (bytes === 0 || !Number.isFinite(bytes)) return '0 B';
@@ -64,7 +65,7 @@ export function FilesStatsStrip({ tree, locations }: FilesStatsStripProps) {
         <Metric
           icon={<FileText size={14} />}
           label={t('files.stats_total', { defaultValue: 'Total files' })}
-          value={stats.totalFiles.toLocaleString(getIntlLocale())}
+          value={stats.totalFiles.toLocaleString(getNumberLocale())}
         />
         <Metric
           icon={<HardDrive size={14} />}

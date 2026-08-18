@@ -41,7 +41,7 @@ import {
   WideModalField,
 } from '@/shared/ui/WideModal';
 import { GROUP_COLORS } from './BIMGroupsPanel';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 export interface SaveSmartViewModalProps {
   open: boolean;
@@ -308,7 +308,7 @@ export default function SaveSmartViewModal({
         {/* Match-count summary */}
         <div className="flex items-center gap-2 text-[11px] text-content-tertiary">
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-oe-blue/10 text-oe-blue font-medium">
-            {matchedCount.toLocaleString(getIntlLocale())}{' '}
+            {matchedCount.toLocaleString(getNumberLocale())}{' '}
             {t('bim.elements', { defaultValue: 'elements' })}
           </span>
           <span>

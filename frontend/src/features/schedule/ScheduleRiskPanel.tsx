@@ -38,7 +38,6 @@ import { Play, Loader2, TrendingUp, Activity, Target, AlertTriangle } from 'luci
 
 import { Button, Card, Badge, EmptyState } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
-import { getIntlLocale } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { getErrorMessage } from '@/shared/lib/api';
 import {
@@ -150,7 +149,7 @@ export function ScheduleRiskPanel({ scheduleId, activitiesById }: ScheduleRiskPa
         title: t('schedule.risk.run_done', { defaultValue: 'Simulation complete' }),
         message: t('schedule.risk.run_done_detail', {
           defaultValue: '{{iterations}} iterations - {{status}}',
-          iterations: data.iterations.toLocaleString(getIntlLocale()),
+          iterations: data.iterations.toLocaleString(getNumberLocale()),
           status: data.convergence_status || '-',
         }),
       });

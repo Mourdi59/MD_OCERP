@@ -44,6 +44,7 @@ import { useToastStore } from '@/stores/useToastStore';
 import { apiGet, apiPost, API_BASE, getAuthToken, ApiError } from '@/shared/lib/api';
 import { projectsApi, type Project } from '@/features/projects/api';
 import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // Roles allowed to trigger the portfolio-wide KPI recompute. The backend
 // gates /kpi/recalculate-all/ behind reporting.distribute (MANAGER), so
@@ -207,7 +208,7 @@ function humanizeReportType(reportType: string): string {
 
 function fmtNum(v: number | null | undefined, decimals = 0): string {
   if (v === null || v === undefined) return EMPTY;
-  return v.toLocaleString(getIntlLocale(), {
+  return v.toLocaleString(getNumberLocale(), {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });

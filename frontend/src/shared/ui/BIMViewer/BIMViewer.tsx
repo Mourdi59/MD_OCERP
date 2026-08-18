@@ -105,6 +105,7 @@ import { copyToClipboard } from '@/shared/lib/browser';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 import { useIsTouch } from '@/shared/hooks/useIsTouch';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -535,7 +536,7 @@ function QuantitiesTable({ quantities }: { quantities: Record<string, number> })
           </span>
           <span className="text-[11px] text-content-primary font-semibold tabular-nums">
             {typeof value === 'number'
-              ? value.toLocaleString(getIntlLocale(), { maximumFractionDigits: 3 })
+              ? value.toLocaleString(getNumberLocale(), { maximumFractionDigits: 3 })
               : String(value)}
           </span>
         </div>
@@ -851,7 +852,7 @@ export function BIMViewer({
   const displayQty = useDisplayQuantity();
   const showQty = (value: number, metricUnit: string, maxFrac = 1) => {
     const d = displayQty.convert(value, metricUnit);
-    return `${d.value.toLocaleString(getIntlLocale(), { maximumFractionDigits: maxFrac })} ${d.unit}`;
+    return `${d.value.toLocaleString(getNumberLocale(), { maximumFractionDigits: maxFrac })} ${d.unit}`;
   };
   const [measureCount, setMeasureCount] = useState(0);
   /** Local mirror of the live section-box / plane state for the popover. */
@@ -4511,7 +4512,7 @@ export function BIMViewer({
           <div className="flex items-center justify-between w-full text-[10px] text-content-secondary tabular-nums">
             <span>
               {rateStats.linkedCount > 0
-                ? rateStats.min.toLocaleString(getIntlLocale(), {
+                ? rateStats.min.toLocaleString(getNumberLocale(), {
                     maximumFractionDigits: 2,
                   })
                 : '—'}
@@ -4521,7 +4522,7 @@ export function BIMViewer({
             </span>
             <span>
               {rateStats.linkedCount > 0
-                ? rateStats.max.toLocaleString(getIntlLocale(), {
+                ? rateStats.max.toLocaleString(getNumberLocale(), {
                     maximumFractionDigits: 2,
                   })
                 : '—'}
@@ -4699,7 +4700,7 @@ export function BIMViewer({
             })}
           >
             <Box size={11} />
-            {elementCount.toLocaleString(getIntlLocale())}
+            {elementCount.toLocaleString(getNumberLocale())}
           </span>
 
           {/* BOQ-linked count — clickable, narrows to linked-to-BOQ elements */}
@@ -4716,7 +4717,7 @@ export function BIMViewer({
               })}
             >
               <Link2 size={11} />
-              {healthStats.linkedToBoq.toLocaleString(getIntlLocale())}/{elementCount.toLocaleString(getIntlLocale())} BOQ
+              {healthStats.linkedToBoq.toLocaleString(getNumberLocale())}/{elementCount.toLocaleString(getNumberLocale())} BOQ
             </button>
           )}
 
@@ -4732,7 +4733,7 @@ export function BIMViewer({
               })}
             >
               <AlertCircle size={11} />
-              {healthStats.errors.toLocaleString(getIntlLocale())} errors
+              {healthStats.errors.toLocaleString(getNumberLocale())} errors
             </button>
           )}
 
@@ -4748,7 +4749,7 @@ export function BIMViewer({
               })}
             >
               <AlertCircle size={11} />
-              {healthStats.warnings.toLocaleString(getIntlLocale())} warn
+              {healthStats.warnings.toLocaleString(getNumberLocale())} warn
             </button>
           )}
 
@@ -4764,7 +4765,7 @@ export function BIMViewer({
               })}
             >
               <CheckSquare size={11} />
-              {healthStats.hasTasks.toLocaleString(getIntlLocale())}
+              {healthStats.hasTasks.toLocaleString(getNumberLocale())}
             </button>
           )}
 
@@ -4780,7 +4781,7 @@ export function BIMViewer({
               })}
             >
               <FileText size={11} />
-              {healthStats.hasDocs.toLocaleString(getIntlLocale())}
+              {healthStats.hasDocs.toLocaleString(getNumberLocale())}
             </button>
           )}
         </div>
@@ -4904,14 +4905,14 @@ export function BIMViewer({
             </div>
             <div className="mt-1.5 flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center rounded-md bg-oe-blue/10 px-2 py-0.5 text-xs font-semibold text-oe-blue tabular-nums">
-                {modelSummary.shown.toLocaleString(getIntlLocale())}
+                {modelSummary.shown.toLocaleString(getNumberLocale())}
               </span>
               <span className="text-xs text-content-tertiary">
                 {t('bim.model_total_elements_label', { defaultValue: 'elements' })}
               </span>
               {modelSummary.scope !== 'all' && modelSummary.total !== modelSummary.shown && (
                 <span className="text-[10px] text-content-quaternary tabular-nums">
-                  {t('bim.of_total', { defaultValue: 'of {{total}}', total: modelSummary.total.toLocaleString(getIntlLocale()) })}
+                  {t('bim.of_total', { defaultValue: 'of {{total}}', total: modelSummary.total.toLocaleString(getNumberLocale()) })}
                 </span>
               )}
             </div>
@@ -4950,7 +4951,7 @@ export function BIMViewer({
                         {prettifyCategoryName(cat)}
                       </span>
                       <span className="relative text-[11px] font-semibold text-content-primary tabular-nums shrink-0">
-                        {count.toLocaleString(getIntlLocale())}
+                        {count.toLocaleString(getNumberLocale())}
                       </span>
                     </div>
                   );
@@ -4985,7 +4986,7 @@ export function BIMViewer({
                           />
                           <span className="relative text-xs text-content-secondary truncate mr-2">{st}</span>
                           <span className="relative text-[11px] font-semibold text-content-primary tabular-nums shrink-0">
-                            {count.toLocaleString(getIntlLocale())}
+                            {count.toLocaleString(getNumberLocale())}
                           </span>
                         </div>
                       );
@@ -5057,8 +5058,8 @@ export function BIMViewer({
                   {modelSummary.aggregations.map((a) => {
                     const fmtNum = (n: number) =>
                       Number.isInteger(n)
-                        ? n.toLocaleString(getIntlLocale())
-                        : n.toLocaleString(getIntlLocale(), {
+                        ? n.toLocaleString(getNumberLocale())
+                        : n.toLocaleString(getNumberLocale(), {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 4,
                           });
@@ -5837,10 +5838,10 @@ export function BIMViewer({
                                   {link.boq_position_unit ? ` ${link.boq_position_unit}` : ''}
                                 </span>
                               )}
-                              {rate != null && <span>@ {rate.toLocaleString(getIntlLocale())}</span>}
+                              {rate != null && <span>@ {rate.toLocaleString(getNumberLocale())}</span>}
                               {total != null && (
                                 <span className="font-semibold text-content-secondary">
-                                  = {total.toLocaleString(getIntlLocale())}
+                                  = {total.toLocaleString(getNumberLocale())}
                                 </span>
                               )}
                             </div>

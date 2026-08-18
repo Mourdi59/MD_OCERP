@@ -31,7 +31,7 @@ import {
   WideModalField,
 } from '@/shared/ui/WideModal';
 import SmartViewBuilder from './SmartViewBuilder';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 interface SaveGroupModalProps {
   projectId: string;
@@ -380,7 +380,7 @@ export default function SaveGroupModal({
         {/* Counts pill — show what will actually be saved */}
         <div className="flex items-center gap-2 text-[11px] text-content-tertiary">
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-oe-blue/10 text-oe-blue font-medium">
-            {(effectiveDynamic ? visibleCount : elements.length).toLocaleString(getIntlLocale())}{' '}
+            {(effectiveDynamic ? visibleCount : elements.length).toLocaleString(getNumberLocale())}{' '}
             {t('bim.elements', { defaultValue: 'elements' })}
           </span>
           {modelId && (

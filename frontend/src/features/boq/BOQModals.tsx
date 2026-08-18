@@ -28,7 +28,6 @@ import {
 } from 'lucide-react';
 import { Button, Badge, CountryFlag } from '@/shared/ui';
 import { apiGet, apiPost } from '@/shared/lib/api';
-import { getIntlLocale } from '@/shared/lib/formatters';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { REGION_MAP } from '@/stores/useCostDatabaseStore';
@@ -1562,13 +1561,13 @@ export function CostDatabaseSearchModal({
     if (totalCount != null) {
       return t('boq.loaded_n_of_m', {
         defaultValue: '{{loaded}} of {{total}} items',
-        loaded: items.length.toLocaleString(getIntlLocale()),
-        total: totalCount.toLocaleString(getIntlLocale()),
+        loaded: items.length.toLocaleString(getNumberLocale()),
+        total: totalCount.toLocaleString(getNumberLocale()),
       });
     }
     return t('boq.cost_results_count', {
       defaultValue: '{{loaded}}+ items',
-      loaded: items.length.toLocaleString(getIntlLocale()),
+      loaded: items.length.toLocaleString(getNumberLocale()),
     });
   })();
 

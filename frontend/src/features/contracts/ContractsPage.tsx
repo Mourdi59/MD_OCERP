@@ -103,7 +103,8 @@ import {
 } from './api';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildContractsInsights } from './contractsInsights';
-import { getIntlLocale, fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // English fallbacks for the computed `contracts.type_*` keys. The default used to be
 // the raw value, so until the key lands in a locale the screen shows the bare
@@ -1912,7 +1913,7 @@ export function ContractDetailDrawer({
                           {l.description || '—'}
                         </td>
                         <td className="py-1 text-right text-content-secondary">
-                          {toNum(l.quantity).toLocaleString(getIntlLocale())} {l.unit || ''}
+                          {toNum(l.quantity).toLocaleString(getNumberLocale())} {l.unit || ''}
                         </td>
                         <td className="py-1 text-right text-content-secondary">
                           <MoneyDisplay

@@ -10,7 +10,8 @@ import {
   type CostRiskDriver,
   type CostRiskCdfPoint,
 } from './api';
-import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 
@@ -503,7 +504,7 @@ export function CostRiskPanel({ boqId, locale = 'de-DE' }: { boqId: string; loca
           </span>
           {hasData && (
             <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-surface-secondary px-1.5 text-2xs font-medium text-content-secondary tabular-nums">
-              {data.iterations.toLocaleString(getIntlLocale())} {t('boq.cost_risk_iterations_label', { defaultValue: 'iter.' })}
+              {data.iterations.toLocaleString(getNumberLocale())} {t('boq.cost_risk_iterations_label', { defaultValue: 'iter.' })}
             </span>
           )}
           {hasData && data.convergence_status && (

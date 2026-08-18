@@ -1,7 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import { toNum } from './normalize';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /**
  * Renders the `boq_item_created` write-tool result (`create_boq_item`):
@@ -22,7 +22,7 @@ interface CreatedItem {
 function num(v: number | undefined, digits = 2): string {
   const n = toNum(v);
   if (n == null) return '-';
-  return n.toLocaleString(getIntlLocale(), { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return n.toLocaleString(getNumberLocale(), { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 export default function BOQItemCreatedRenderer({ data }: { data: unknown }) {

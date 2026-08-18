@@ -20,7 +20,8 @@ import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage } from '@/shared/lib/api';
 import { updateClaimLine, type ProgressClaimLine } from './api';
-import { getIntlLocale, fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 function toNum(v: number | string | null | undefined): number {
   if (v === null || v === undefined) return 0;
@@ -157,7 +158,7 @@ function ClaimLineRow({
         {line.contract_line_id.slice(0, 8)}
       </td>
       <td className="px-3 py-2 text-right text-content-secondary">
-        {toNum(line.period_completed_qty).toLocaleString(getIntlLocale())}
+        {toNum(line.period_completed_qty).toLocaleString(getNumberLocale())}
       </td>
       <td className="px-3 py-2 text-right">
         {editing ? (
