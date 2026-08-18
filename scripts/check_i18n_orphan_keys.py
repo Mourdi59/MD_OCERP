@@ -60,6 +60,28 @@ picks up single-quoted or multi-line entries its keys drop out of the scan
 and the guard would go green on missing data. A locale file that parses to
 no keys, or a source tree that yields no call sites, fails rather than
 reporting success on nothing.
+
+A gap in a locale outside SUPPORTED_LANGUAGES is not always the same defect
+as a gap in one that is. frontend/src/app/i18n.ts decides which languages a
+real reader can pick, and a file that exists on disk but is not on that list
+is not being shown to anyone - a translator can be partway through it, or it
+can be a build nobody finished, and those are different states. A locale in
+SUPPORTED_LANGUAGES gets no exception here regardless of which: it is being
+offered today, so every gap in it stays a hard error, exactly as before this
+mechanism existed. Outside that list, the guard reads how much of the file
+still matches English word for word (identical_fraction, against
+IN_PROGRESS_IDENTICAL_FRACTION) rather than trusting a flag someone could set
+once and never revisit: a file still mostly English downgrades to a loud,
+counted line instead of an error, and a file that reads as finished but was
+never added to SUPPORTED_LANGUAGES is its own anomaly and gets said
+explicitly rather than passed in silence. The threshold was set by measuring
+the committed tree, not guessed: every finished locale sat under 5% identical
+(nl highest, at 4.83%, from ordinary overlap like numbers and codes and
+acronyms such as BOQ or MEP), en-US sat at 0% because it inherits everything,
+and the one locale genuinely mid-translation at the time sat at 40%.
+Whether a given locale belongs in SUPPORTED_LANGUAGES at all is a product
+decision this guard does not make; it only enforces whichever way that list
+currently reads.
 """
 
 from __future__ import annotations
@@ -73,11 +95,29 @@ import sys
 LOCALE_GLOB = "frontend/src/app/locales/*.ts"
 SOURCE_GLOB = "frontend/src/**/*.ts*"
 BASELINE_PATH = "scripts/i18n_orphan_baseline.json"
+I18N_TS_PATH = "frontend/src/app/i18n.ts"
+EN_PATH = "frontend/src/app/locales/en.ts"
+
+# Above this share of a locale's shared keys sitting byte-identical to en.ts,
+# a locale outside SUPPORTED_LANGUAGES reads as still under construction
+# rather than finished. See the module docstring for how this was measured.
+IN_PROGRESS_IDENTICAL_FRACTION = 0.10
 
 # `"key": ` at the head of a line, the one-entry-per-line shape the locale
 # files are generated in. Same double-quote-only blind spot the leak guard
 # documents, and desync is caught by the zero-key check rather than tolerated.
 _KEY_LINE = re.compile(r'^\s*"([A-Za-z0-9_.\-]+)"\s*:', re.MULTILINE)
+
+# Same shape as _KEY_LINE, with the value captured too. Only used for the
+# identical-fraction heuristic below, so a value this misses (wrapped across
+# lines, which the generator does not produce) only narrows that sample and
+# never affects which keys count as missing.
+_KEY_VALUE_LINE = re.compile(
+    r'^\s*"([A-Za-z0-9_.\-]+)"\s*:\s*"((?:[^"\\]|\\.)*)"', re.MULTILINE
+)
+
+# `{ code: 'xx', ... }` entries inside SUPPORTED_LANGUAGES.
+_SUPPORTED_CODE = re.compile(r"code:\s*'([A-Za-z0-9\-]+)'")
 
 # Opening of a t() call with a string-literal key, up to the `{` of its
 # options object. The options object itself is brace-matched afterwards
@@ -105,6 +145,72 @@ def _base_of(stem: str, by_locale: dict[str, set[str]]) -> str | None:
         return None
     base = stem.split("-", 1)[0]
     return base if base in by_locale else None
+
+
+def read_supported_languages(path: str = I18N_TS_PATH) -> set[str]:
+    """Locale codes the language picker actually offers.
+
+    Deliberately not "every *.ts file under locales/": mn.ts sits on disk
+    today, invented rather than translated, and was removed from this list
+    for it while the file stayed so the work resumes from where it stopped.
+    This guard's strictness has to follow what a user can select, not what
+    happens to exist on disk.
+    """
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    start = text.index("SUPPORTED_LANGUAGES")
+    end = text.index("\n];", start)
+    return set(_SUPPORTED_CODE.findall(text[start:end]))
+
+
+def read_en_values(path: str = EN_PATH) -> dict[str, str]:
+    with open(path, encoding="utf-8") as fh:
+        return dict(_KEY_VALUE_LINE.findall(fh.read()))
+
+
+def identical_fraction(locale_path: str, en_values: dict[str, str]) -> float:
+    """Share of a locale's keys whose value is byte-identical to en.ts.
+
+    A coarse signal, not a translation-quality check: a finished locale still
+    matches English on numbers, unit codes and acronyms like BOQ or MEP, so
+    some identical fraction is normal everywhere. See IN_PROGRESS_IDENTICAL_
+    FRACTION for how the cutoff was set.
+    """
+    with open(locale_path, encoding="utf-8") as fh:
+        pairs = dict(_KEY_VALUE_LINE.findall(fh.read()))
+    shared = [k for k in pairs if k in en_values]
+    if not shared:
+        return 0.0
+    return sum(1 for k in shared if pairs[k] == en_values[k]) / len(shared)
+
+
+def classify_locales(
+    by_locale: dict[str, set[str]],
+    supported: set[str],
+    en_values: dict[str, str],
+    locale_glob: str = LOCALE_GLOB,
+) -> tuple[set[str], dict[str, float], set[str]]:
+    """Split locales outside SUPPORTED_LANGUAGES into in-progress and abandoned.
+
+    A locale in SUPPORTED_LANGUAGES is not classified at all: it is offered
+    to a user today, so every gap in it stays a hard error no matter how
+    translated the file otherwise is. Outside that list, a high share of
+    values still identical to English reads as a file mid-translation, which
+    is expected and downgrades; a low share reads as a file nobody is
+    building and nobody is showing, which is its own anomaly and stays
+    enforced, just named for what it is.
+    """
+    in_progress: set[str] = set()
+    abandoned: set[str] = set()
+    fractions: dict[str, float] = {}
+    for stem in by_locale:
+        if stem in supported:
+            continue
+        path = locale_glob.replace("*", stem)
+        frac = identical_fraction(path, en_values)
+        fractions[stem] = frac
+        (in_progress if frac > IN_PROGRESS_IDENTICAL_FRACTION else abandoned).add(stem)
+    return in_progress, fractions, abandoned
 
 
 def _options_body(text: str, brace_index: int) -> str | None:
@@ -159,7 +265,10 @@ def _reach(key: str, by_locale: dict[str, set[str]]) -> set[str]:
 
 
 def missing_locales(
-    key: str, by_locale: dict[str, set[str]], bases: dict[str, str | None]
+    key: str,
+    by_locale: dict[str, set[str]],
+    bases: dict[str, str | None],
+    in_progress: frozenset[str] = frozenset(),
 ) -> list[str]:
     """Locales whose reader would see this key's English default.
 
@@ -167,10 +276,36 @@ def missing_locales(
     covered when the base declares the key even though the variant file does
     not. Falling back to the base is the designed behaviour; falling back past
     it into English is the defect this guard exists to catch.
+
+    A locale classified as in-progress (see classify_locales) is excluded the
+    same way a variant's base is: not because the gap is answered, but because
+    it is not this guard's job to enforce a file nobody has finished and
+    nobody is showing. downgraded_locales reports exactly what was excluded
+    here, so the exclusion is never silent even though it is not an error.
     """
     reach = _reach(key, by_locale)
     return sorted(
-        stem for stem in by_locale if stem not in reach and bases[stem] not in reach
+        stem
+        for stem in by_locale
+        if stem not in reach and bases[stem] not in reach and stem not in in_progress
+    )
+
+
+def downgraded_locales(
+    key: str,
+    by_locale: dict[str, set[str]],
+    bases: dict[str, str | None],
+    in_progress: frozenset[str],
+) -> list[str]:
+    """In-progress locales this key's English default would still reach.
+
+    The mirror of the exclusion missing_locales makes: everything counted
+    here is a gap that is NOT enforced, and it exists so that exclusion is
+    reported with a number instead of disappearing from the guard's output.
+    """
+    reach = _reach(key, by_locale)
+    return sorted(
+        stem for stem in in_progress if stem not in reach and bases[stem] not in reach
     )
 
 
@@ -211,12 +346,22 @@ def main() -> int:
     # whoever met it into pasting a full copy of English into en-US.ts.
     bases = {stem: _base_of(stem, by_locale) for stem in all_locales}
     variants = {stem: base for stem, base in bases.items() if base}
+
+    supported = read_supported_languages()
+    en_values = read_en_values()
+    in_progress, fractions, abandoned = classify_locales(
+        by_locale, supported, en_values
+    )
+
     new_gaps: list[tuple[str, str, list[str]]] = []
     widened: list[tuple[str, list[str]]] = []
     healed: list[str] = []
+    downgraded: dict[str, list[str]] = {}
 
     for key, first_file in sorted(sites.items()):
-        missing = missing_locales(key, by_locale, bases)
+        missing = missing_locales(key, by_locale, bases, frozenset(in_progress))
+        for stem in downgraded_locales(key, by_locale, bases, frozenset(in_progress)):
+            downgraded.setdefault(stem, []).append(key)
         entry = baseline.get(key)
         declared = sorted(entry["missing_locales"]) if entry else []  # type: ignore[index,arg-type]
         if not missing:
@@ -227,6 +372,34 @@ def main() -> int:
             new_gaps.append((key, first_file, missing))
         elif set(missing) - set(declared):
             widened.append((key, sorted(set(missing) - set(declared))))
+
+    # Printed unconditionally, pass or fail: a locale excluded here is a gap
+    # that is not being enforced, and that must never look the same as a gap
+    # that does not exist.
+    if in_progress:
+        print(
+            f"{len(in_progress)} locale(s) outside SUPPORTED_LANGUAGES read as "
+            "mid-translation and are not enforced by this guard:"
+        )
+        for stem in sorted(in_progress):
+            n = len(downgraded.get(stem, []))
+            print(
+                f"  {stem}: {fractions[stem] * 100:.1f}% of shared keys still "
+                f"identical to English, {n} gap(s) not enforced"
+            )
+    else:
+        print("0 locale(s) outside SUPPORTED_LANGUAGES read as mid-translation.")
+    if abandoned:
+        print(
+            f"{len(abandoned)} locale(s) outside SUPPORTED_LANGUAGES read as finished "
+            "but are not offered to anyone; their gaps are enforced below like any "
+            f"other locale, since nothing else is tracking that file's completion: "
+            f"{', '.join(sorted(abandoned))}"
+        )
+    else:
+        print(
+            "0 locale(s) outside SUPPORTED_LANGUAGES read as an abandoned, unoffered file."
+        )
 
     if new_gaps or widened:
         for key, first_file, missing in new_gaps:

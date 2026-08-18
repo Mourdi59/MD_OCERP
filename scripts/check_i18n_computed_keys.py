@@ -111,6 +111,19 @@ place to check a string this guard has landed is en.ts.
 Parser desync is a failure, not a pass, on the same reasoning as the sibling
 guards: en.ts parsing to zero keys, or a source tree yielding no call sites,
 exits 2 rather than reporting a clean scan of nothing.
+
+The member-completeness check shares one more piece of machinery with the
+orphan guard: a locale outside SUPPORTED_LANGUAGES is not enforced the same
+way a listed one is. frontend/src/app/i18n.ts decides which languages a real
+reader can pick, and this check reads how much of an unlisted locale's file
+still matches English word for word (identical_fraction, against
+IN_PROGRESS_IDENTICAL_FRACTION) to tell a file mid-translation from one that
+reads finished but was never listed. A locale in SUPPORTED_LANGUAGES gets no
+exception regardless: every member it is missing is a hard error. See
+check_i18n_orphan_keys.py, which carries the fuller reasoning and the
+measurement this threshold was set from; the two guards duplicate the
+mechanism rather than share it, on the same one-script-per-concern grounds
+they already duplicate _options_body and _KEY_LINE.
 """
 
 from __future__ import annotations
@@ -129,13 +142,32 @@ DEFAULT_SOURCE_GLOB = "frontend/src/**/*.ts*"
 DEFAULT_BASELINE_PATH = "scripts/i18n_computed_key_baseline.json"
 DEFAULT_LOCALE_GLOB = "frontend/src/app/locales/*.ts"
 DEFAULT_MEMBER_BASELINE_PATH = "scripts/i18n_computed_member_baseline.json"
+DEFAULT_I18N_TS_PATH = "frontend/src/app/i18n.ts"
 
 _CLDR_SUFFIXES = ("_zero", "_one", "_two", "_few", "_many", "_other")
+
+# Above this share of a locale's shared keys sitting byte-identical to en.ts,
+# a locale outside SUPPORTED_LANGUAGES reads as still under construction
+# rather than finished. See check_i18n_orphan_keys.py for how this was
+# measured; duplicated rather than imported, like everything else this file
+# shares with that one.
+IN_PROGRESS_IDENTICAL_FRACTION = 0.10
 
 # `"key": ` at the head of a line, the shape the locale files are generated
 # in. Double-quote only, like the sibling guards; the zero-key tripwire below
 # turns a change in that shape into a failure instead of a smaller scan.
 _KEY_LINE = re.compile(r'^\s*"([A-Za-z0-9_.\-]+)"\s*:', re.MULTILINE)
+
+# Same shape as _KEY_LINE, with the value captured too. Only used for the
+# identical-fraction heuristic, so a value this misses (wrapped across lines,
+# which the generator does not produce) only narrows that sample and never
+# affects which keys count as missing.
+_KEY_VALUE_LINE = re.compile(
+    r'^\s*"([A-Za-z0-9_.\-]+)"\s*:\s*"((?:[^"\\]|\\.)*)"', re.MULTILINE
+)
+
+# `{ code: 'xx', ... }` entries inside SUPPORTED_LANGUAGES.
+_SUPPORTED_CODE = re.compile(r"code:\s*'([A-Za-z0-9\-]+)'")
 
 # The opening of `t(` with a template-literal key.
 _TPL_HEAD = re.compile(r"\bt\(\s*`")
@@ -332,18 +364,105 @@ def _reach(key: str, by_locale: dict[str, set[str]]) -> set[str]:
 
 
 def missing_locales(
-    key: str, by_locale: dict[str, set[str]], bases: dict[str, str | None]
+    key: str,
+    by_locale: dict[str, set[str]],
+    bases: dict[str, str | None],
+    in_progress: frozenset[str] = frozenset(),
 ) -> list[str]:
     """Locales whose reader would see this key's English default.
 
     A regional variant is answered by its base language, so it counts as
     covered when the base declares the key even though the variant file does
     not, the same rule the orphan guard applies to literal keys.
+
+    A locale classified as in-progress (see classify_locales) is excluded the
+    same way: not because the gap is answered, but because it is not this
+    check's job to enforce a file nobody has finished and nobody is showing.
+    downgraded_locales reports exactly what was excluded, so the exclusion is
+    never silent even though it is not an error.
     """
     reach = _reach(key, by_locale)
     return sorted(
-        stem for stem in by_locale if stem not in reach and bases[stem] not in reach
+        stem
+        for stem in by_locale
+        if stem not in reach and bases[stem] not in reach and stem not in in_progress
     )
+
+
+def downgraded_locales(
+    key: str,
+    by_locale: dict[str, set[str]],
+    bases: dict[str, str | None],
+    in_progress: frozenset[str],
+) -> list[str]:
+    """In-progress locales this key's English default would still reach."""
+    reach = _reach(key, by_locale)
+    return sorted(
+        stem for stem in in_progress if stem not in reach and bases[stem] not in reach
+    )
+
+
+def read_supported_languages(path: str = DEFAULT_I18N_TS_PATH) -> set[str]:
+    """Locale codes the language picker actually offers.
+
+    Duplicated from check_i18n_orphan_keys.py rather than imported, for the
+    same reason the rest of this file's helpers are.
+    """
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    start = text.index("SUPPORTED_LANGUAGES")
+    end = text.index("\n];", start)
+    return set(_SUPPORTED_CODE.findall(text[start:end]))
+
+
+def read_en_values(en_path: str) -> dict[str, str]:
+    with open(en_path, encoding="utf-8") as fh:
+        return dict(_KEY_VALUE_LINE.findall(fh.read()))
+
+
+def identical_fraction(locale_path: str, en_values: dict[str, str]) -> float:
+    """Share of a locale's keys whose value is byte-identical to en.ts.
+
+    A coarse signal, not a translation-quality check: a finished locale still
+    matches English on numbers, unit codes and acronyms like BOQ or MEP, so
+    some identical fraction is normal everywhere. See IN_PROGRESS_IDENTICAL_
+    FRACTION for how the cutoff was set.
+    """
+    with open(locale_path, encoding="utf-8") as fh:
+        pairs = dict(_KEY_VALUE_LINE.findall(fh.read()))
+    shared = [k for k in pairs if k in en_values]
+    if not shared:
+        return 0.0
+    return sum(1 for k in shared if pairs[k] == en_values[k]) / len(shared)
+
+
+def classify_locales(
+    by_locale: dict[str, set[str]],
+    supported: set[str],
+    en_values: dict[str, str],
+    locale_glob: str,
+) -> tuple[set[str], dict[str, float], set[str]]:
+    """Split locales outside SUPPORTED_LANGUAGES into in-progress and abandoned.
+
+    A locale in SUPPORTED_LANGUAGES is not classified at all: it is offered to
+    a user today, so every gap in it stays a hard error no matter how
+    translated the file otherwise is. Outside that list, a high share of
+    values still identical to English reads as a file mid-translation, which
+    is expected and downgrades; a low share reads as a file nobody is
+    building and nobody is showing, which is its own anomaly and stays
+    enforced, just named for what it is.
+    """
+    in_progress: set[str] = set()
+    abandoned: set[str] = set()
+    fractions: dict[str, float] = {}
+    for stem in by_locale:
+        if stem in supported:
+            continue
+        path = locale_glob.replace("*", stem)
+        frac = identical_fraction(path, en_values)
+        fractions[stem] = frac
+        (in_progress if frac > IN_PROGRESS_IDENTICAL_FRACTION else abandoned).add(stem)
+    return in_progress, fractions, abandoned
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -353,6 +472,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--baseline", default=DEFAULT_BASELINE_PATH)
     parser.add_argument("--locales", default=DEFAULT_LOCALE_GLOB)
     parser.add_argument("--member-baseline", default=DEFAULT_MEMBER_BASELINE_PATH)
+    parser.add_argument("--i18n-ts", default=DEFAULT_I18N_TS_PATH)
     args = parser.parse_args(argv)
 
     try:
@@ -422,14 +542,25 @@ def main(argv: list[str] | None = None) -> int:
     # ----
     answered_prefixes = sorted(p for p in where if p not in empty)
     bases = {stem: _base_of(stem, by_locale) for stem in by_locale}
+
+    supported = read_supported_languages(args.i18n_ts)
+    en_values = read_en_values(args.en)
+    in_progress, fractions, abandoned = classify_locales(
+        by_locale, supported, en_values, args.locales
+    )
+    in_progress = frozenset(in_progress)
+
     member_gaps: dict[str, dict[str, list[str]]] = {}  # prefix -> locale -> keys
     member_counts: dict[str, int] = {}
+    downgraded: dict[str, list[str]] = {}
     for prefix in answered_prefixes:
         members = sorted(k for k in keys if k.startswith(prefix))
         member_counts[prefix] = len(members)
         for key in members:
-            for stem in missing_locales(key, by_locale, bases):
+            for stem in missing_locales(key, by_locale, bases, in_progress):
                 member_gaps.setdefault(prefix, {}).setdefault(stem, []).append(key)
+            for stem in downgraded_locales(key, by_locale, bases, in_progress):
+                downgraded.setdefault(stem, []).append(key)
 
     try:
         with open(args.member_baseline, encoding="utf-8") as fh:
@@ -491,6 +622,34 @@ def main(argv: list[str] | None = None) -> int:
     )
     for posix, line in sites.unpaired[:5]:
         print(f"          {posix}:{line}")
+
+    # Printed unconditionally, pass or fail, same as the orphan guard: a
+    # locale excluded here is a gap that is not being enforced, and that must
+    # never look the same as a gap that does not exist.
+    if in_progress:
+        print(
+            f"\n{len(in_progress)} locale(s) outside SUPPORTED_LANGUAGES read as "
+            "mid-translation and are not enforced by this check:"
+        )
+        for stem in sorted(in_progress):
+            n = len(downgraded.get(stem, []))
+            print(
+                f"  {stem}: {fractions[stem] * 100:.1f}% of shared keys still "
+                f"identical to English, {n} member gap(s) not enforced"
+            )
+    else:
+        print("\n0 locale(s) outside SUPPORTED_LANGUAGES read as mid-translation.")
+    if abandoned:
+        print(
+            f"{len(abandoned)} locale(s) outside SUPPORTED_LANGUAGES read as finished "
+            "but are not offered to anyone; their gaps are enforced below like any "
+            f"other locale, since nothing else is tracking that file's completion: "
+            f"{', '.join(sorted(abandoned))}"
+        )
+    else:
+        print(
+            "0 locale(s) outside SUPPORTED_LANGUAGES read as an abandoned, unoffered file."
+        )
 
     if answered:
         print(
