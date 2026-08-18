@@ -233,7 +233,7 @@ export const NUMBER_LOCALES: readonly NumberLocale[] = [
  * account. Accepting both keeps the old pattern working and lets a saved
  * choice survive. An unknown value is skipped rather than forced in.
  */
-function adoptServerNumberFormat(server: string): NumberLocale | undefined {
+export function adoptServerNumberFormat(server: string): NumberLocale | undefined {
   const mapped = NUMBER_FORMAT_TO_LOCALE[server];
   if (mapped) return mapped;
   return (NUMBER_LOCALES as readonly string[]).includes(server) ? (server as NumberLocale) : undefined;

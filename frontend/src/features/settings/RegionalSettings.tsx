@@ -15,7 +15,7 @@ import { Globe, Ruler, FileText, Calendar, Hash, DollarSign, Search, Check } fro
 import clsx from 'clsx';
 import { Card, CardHeader, CardContent } from '@/shared/ui';
 import { apiGet, apiPatch } from '@/shared/lib/api';
-import { usePreferencesStore, resolveNumberLocale, NUMBER_LOCALES, type MeasurementSystem, type DateFormat, type NumberLocale } from '@/stores/usePreferencesStore';
+import { usePreferencesStore, resolveNumberLocale, adoptServerNumberFormat, NUMBER_LOCALES, type MeasurementSystem, type DateFormat, type NumberLocale } from '@/stores/usePreferencesStore';
 import { useToastStore } from '@/stores/useToastStore';
 import {
   CUSTOM_CURRENCY_SENTINEL,
@@ -362,7 +362,16 @@ export function RegionalSettings({ animationDelay = '0ms' }: { animationDelay?: 
   // automatic default into an explicit choice, which is the honest reading of a
   // deliberate click. A locale outside the list (the UI has 29 languages) lights
   // no button, exactly as an unmapped account value already did.
-  const numberFormat = resolveNumberLocale((prefs?.number_format as NumberLocale) ?? storeNumberLocale);
+  // Read the account value through the same translator the boot path uses. The
+  // column is free-form and has been written in two vocabularies: `i18n_data.py`
+  // seeds a display pattern (`1.234,56`) and this toggle PATCHes a BCP-47 tag
+  // (`de-DE`). Casting the raw string to `NumberLocale` compiles and then
+  // matches no button, so an account still carrying the seeded pattern showed a
+  // Number Format row with nothing selected while the product was quite
+  // definitely formatting in German. Measured on the stand: stored `de-DE`,
+  // every button `aria-pressed="false"`.
+  const serverFormat = prefs?.number_format ? adoptServerNumberFormat(prefs.number_format) : undefined;
+  const numberFormat = resolveNumberLocale(serverFormat ?? storeNumberLocale);
   // MONEY-BUG FIX: read the persisted server value from `currency_code`
   // (the real backend field) instead of the non-existent `currency`, so a
   // saved currency survives reload. Do NOT hardcode 'EUR' here — fall back to
