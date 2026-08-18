@@ -170,6 +170,13 @@ describe('the hexagons are regular', () => {
     const inner = clip.slice(clip.indexOf('(') + 1, clip.lastIndexOf(')'));
     return inner.split(',').map((point) => {
       const [x, y] = point.trim().split(/\s+/);
+      // Read explicitly rather than trusted. A missing half reaches parseFloat
+      // as undefined and comes back NaN, and every comparison below against a
+      // NaN is false, so a malformed polygon would pass the spread checks
+      // instead of failing them - the one outcome this file must never have.
+      if (x === undefined || y === undefined) {
+        throw new Error(`not an "x y" vertex: ${JSON.stringify(point)}`);
+      }
       return [parseFloat(x) / 100, parseFloat(y) / 100] as [number, number];
     });
   }
@@ -178,7 +185,9 @@ describe('the hexagons are regular', () => {
   function sides(clip: string, width: number, height: number): number[] {
     const points = vertices(clip);
     return points.map(([x, y], i) => {
-      const [nx, ny] = points[(i + 1) % points.length];
+      const next = points[(i + 1) % points.length];
+      if (next === undefined) throw new Error(`the polygon has no vertex after ${i}`);
+      const [nx, ny] = next;
       return Math.hypot((nx - x) * width, (ny - y) * height);
     });
   }
