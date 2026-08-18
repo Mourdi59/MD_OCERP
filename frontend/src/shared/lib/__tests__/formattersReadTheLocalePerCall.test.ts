@@ -21,7 +21,17 @@ import { fmtNumber, fmtCompact, fmtPercent } from '../formatters';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 
 const SRC = join(__dirname, '..', '..', '..');
-const BUILT = /new Intl\.(?:Number|DateTime)Format\(\s*getIntlLocale\(\)/;
+// Both resolvers, because a freeze is a property of building once, not of
+// which setting was read. `getNumberLocale()` is the newer of the two and it
+// moves for the same reason the language does: the regional settings page
+// changes the preference in place, without a reload. A formatter built on it
+// at module scope keeps the separators the page opened with, exactly as one
+// built on `getIntlLocale()` does. When this gate was written only the first
+// resolver existed in enough places to be worth naming; of the 81 sites under
+// src today 76 build on `getNumberLocale()` and 5 on `getIntlLocale()`, all
+// five of them date formatters. Reading only those five left the rule pointed
+// at the shrinking half, and the blind half is where the numbers are.
+const BUILT = /new Intl\.(?:Number|DateTime)Format\(\s*(?:getIntlLocale|getNumberLocale)\(\)/;
 const DECLARES = /^(?:export\s+)?(?:const|let|var)\b/;
 const MEMOISED = /\b(?:useMemo|useRef|useState)\(/;
 // The language is only re-read where the expression is evaluated again, so
@@ -127,6 +137,27 @@ describe('no formatter outlives a language change', () => {
     expect(frozenSites(nested)).toHaveLength(1);
     expect(frozenSites(memoised)).toHaveLength(1);
     // And the two that do not, so the gate cannot pass by calling everything a freeze.
+    expect(frozenSites(perRender)).toEqual([]);
+    expect(frozenSites(watching)).toEqual([]);
+  });
+
+  it('recognises the same five shapes when the number preference is the resolver', () => {
+    // The same five, once per resolver. Widening the pattern and widening the
+    // comment look identical from the outside: both leave every assertion in
+    // this file passing on exactly the sources it passed on before. Only a
+    // fixture that names `getNumberLocale()` can tell them apart, so the five
+    // are repeated rather than parameterised - a loop over both resolvers
+    // would pass if the pattern silently stopped reading one of them, because
+    // the loop would then be checking the surviving one twice.
+    const plain = 'const money = new Intl.NumberFormat(getNumberLocale(), { style: "currency" });';
+    const nested = ['const FORMATS = {', '  money: new Intl.NumberFormat(getNumberLocale()),', '};'].join('\n');
+    const memoised = ['  const money = useMemo(', '    () => new Intl.NumberFormat(getNumberLocale()),', '    [],', '  );'].join('\n');
+    const perRender = ['  function Row() {', '    const money = new Intl.NumberFormat(getNumberLocale());', '  }'].join('\n');
+    const watching = ['  const money = useMemo(', '    () => new Intl.NumberFormat(getNumberLocale()),', '    [numberLocale],', '  );'].join('\n');
+
+    expect(frozenSites(plain)).toHaveLength(1);
+    expect(frozenSites(nested)).toHaveLength(1);
+    expect(frozenSites(memoised)).toHaveLength(1);
     expect(frozenSites(perRender)).toEqual([]);
     expect(frozenSites(watching)).toEqual([]);
   });
