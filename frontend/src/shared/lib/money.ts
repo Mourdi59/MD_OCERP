@@ -23,7 +23,12 @@
  * USD/BRL/JPY amount with a Euro sign actively misinforms the operator, so
  * an unknown/blank currency yields a plain grouped number with no symbol.
  */
-import { getIntlLocale } from './formatters';
+// The reader's number locale, not the UI language. A screen follows its
+// reader, and the reader may have asked for a format their language does not
+// imply. The preference answers 'auto' with the UI language, so a caller who
+// never set one sees exactly what it saw before; only a reader who chose is
+// newly obeyed here.
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { resolveFractionDigits } from './fractionDigits';
 
 /** Options controlling the fraction-digit policy of {@link formatCurrency}. */
@@ -86,6 +91,14 @@ function naturalFractionDigits(code: string): number {
     // significant-digits formatter reports no fraction bounds at all. This one
     // never asks for significant digits, so the fallback is unreachable in
     // practice and only there to keep the value a plain number.
+    // The one hardcoded locale in this file, and it is not a display locale.
+    // Nothing formatted here reaches a reader: the call asks the engine a
+    // question about the CURRENCY, and how many minor units a currency has is
+    // a property of the currency. CLDR keeps it in `currencyData`, which is
+    // not keyed by locale at all, so every tag returns the same number and
+    // 'en-US' is simply the one guaranteed present on a host built with a
+    // trimmed ICU. Reading the reader's locale here would be the bug it looks
+    // like the fix for.
     const resolved = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: code,
@@ -189,7 +202,7 @@ export function formatCompactCurrency(
   locale?: string,
 ): string {
   const amount = toNum(v);
-  const loc = locale || getIntlLocale();
+  const loc = locale || getNumberLocale();
   const code = (currency || '').trim().toUpperCase();
   const isValid = CURRENCY_CODE_RE.test(code);
   const whole = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
@@ -214,7 +227,7 @@ export function formatCurrency(
   options?: FormatCurrencyOptions,
 ): string {
   const amount = toNum(v);
-  const loc = locale || getIntlLocale();
+  const loc = locale || getNumberLocale();
   const code = (currency || '').trim().toUpperCase();
   const isValid = CURRENCY_CODE_RE.test(code);
 

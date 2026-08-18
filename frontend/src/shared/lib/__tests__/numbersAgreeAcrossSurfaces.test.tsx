@@ -38,6 +38,7 @@ import i18next from 'i18next';
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { QuantityDisplay } from '@/shared/ui/QuantityDisplay';
 import { formatCurrency } from '@/shared/lib/money';
+import { fmtWithCurrency } from '@/features/boq/boqHelpers';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 
 const SRC = join(__dirname, '..', '..', '..');
@@ -313,5 +314,106 @@ describe('there is one place the number locale comes from', () => {
     const store = read('stores/usePreferencesStore.ts');
     expect(store).not.toMatch(/new Intl\.NumberFormat\(\s*numberLocale\b/);
     expect(store).toMatch(/new Intl\.NumberFormat\(resolveNumberLocale\(/);
+  });
+});
+
+/* ── Half three: the bill is a surface like any other ─────────────────────── */
+
+/**
+ * Why this half exists when the two halves above already passed.
+ *
+ * They compared `<MoneyDisplay>` against `formatCurrency`, and both were right.
+ * The bill of quantities called neither. It called `fmtWithCurrency`, a second
+ * implementation of the same idea, and handed it a locale derived from the
+ * project's region rather than from the reader. So the pair under test agreed
+ * while the pair on the screen did not, and the gate stayed green through a
+ * defect it was written for. A test of two things that already agree cannot
+ * find the third thing that does not.
+ *
+ * The fix is structural rather than a matching pair of edits: `fmtWithCurrency`
+ * now delegates, and the bill reads the same locale as everything else. These
+ * assertions hold the shape of that, so the second implementation cannot grow
+ * back.
+ */
+
+/** Amount and currency of readings caught on the registers, as data. */
+const REGISTER_FIXTURES: readonly (readonly [number, string])[] = [
+  [1543500, 'GBP'],
+  [3091300, 'USD'],
+  [906890, 'BRL'],
+];
+
+/**
+ * Currencies where the bill and the register still disagree, and why.
+ *
+ * Not a blessing, a boundary. The two surfaces resolve the decimal count from
+ * different sources on purpose: the register reads the static ISO 4217 table in
+ * `currencyMinorUnits`, the bill reads what the engine holds, and CLDR gives
+ * these five zero decimals where ISO gives two. Which is right is a question
+ * about money rather than about code, and it is open.
+ *
+ * Asserted as an upper bound rather than an exact set, so adding a currency
+ * that agrees does not fail, and any NEW disagreement does. Eleven codes used
+ * to sit here - BHD CLP ISK JOD JPY KRW KWD OMR TND UGX VND - because the bill
+ * asked for two decimals on everything, showing cents on yen and hiding a
+ * digit on dinars.
+ */
+const DECIMAL_COUNT_UNDECIDED = ['COP', 'HUF', 'IDR', 'LBP', 'PKR'];
+
+/** Every currency the project form offers, read from the form itself. */
+function offeredCurrencies(): string[] {
+  const source = read('features/projects/CreateProjectPage.tsx');
+  const codes: string[] = [];
+  for (const m of source.matchAll(/value: '([A-Z]{3})'/g)) {
+    // The group is always present when the pattern matched, but the index
+    // signature does not know that and the build is the only gate that cares.
+    if (m[1]) codes.push(m[1]);
+  }
+  return [...new Set(codes)];
+}
+
+/** What `<MoneyDisplay>` puts on the screen for this amount. */
+function registerReading(amount: number, currency: string): string {
+  const { container } = render(<MoneyDisplay amount={amount} currency={currency} />);
+  const text = container.textContent ?? '';
+  cleanup();
+  return text;
+}
+
+describe('the bill and the finance register cannot be told different things', () => {
+  it.each(LANGUAGES)('%s writes one amount one way on both surfaces', (language, tag) => {
+    speak(language);
+    for (const [amount, currency] of REGISTER_FIXTURES) {
+      expect(fmtWithCurrency(amount, tag, currency)).toBe(registerReading(amount, currency));
+    }
+  });
+
+  it('the reader who picked a format is obeyed on both, not just on one', () => {
+    // The screenshot pair in one line: an English UI with German numbers. The
+    // bill used to answer the project's region here and the register the
+    // preference, which is how one record read two ways inside one session.
+    speak('en');
+    usePreferencesStore.getState().setPreference('numberLocale', 'de-DE');
+    for (const [amount, currency] of REGISTER_FIXTURES) {
+      const bill = fmtWithCurrency(amount, 'de-DE', currency);
+      expect(bill).toBe(registerReading(amount, currency));
+      expect(bill).not.toBe(expectedMoney('en-US', currency, amount));
+    }
+  });
+
+  it('no currency the product offers reads differently on the two surfaces', () => {
+    speak('en');
+    const disagree = offeredCurrencies().filter(
+      (code) => fmtWithCurrency(1234.5, 'en-US', code) !== registerReading(1234.5, code),
+    );
+    expect(disagree.filter((c) => !DECIMAL_COUNT_UNDECIDED.includes(c))).toEqual([]);
+  });
+
+  it('there is one money formatter, and the bill helper is a name for it', () => {
+    // The adapter may keep the argument order eleven bill surfaces already use.
+    // It may not grow a formatter of its own again.
+    const helpers = read('features/boq/boqHelpers.ts');
+    const body = helpers.slice(helpers.indexOf('export function fmtWithCurrency'));
+    expect(body.slice(0, body.indexOf('\n}'))).not.toMatch(/new Intl\.NumberFormat/);
   });
 });

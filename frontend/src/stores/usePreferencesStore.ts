@@ -129,6 +129,22 @@ export function resolveNumberLocale(preference: NumberLocale): string {
 }
 
 /**
+ * `resolveNumberLocale` for a caller that cannot hold a hook.
+ *
+ * A grid cell renderer is a plain function called by the grid, not a component
+ * React owns, so it cannot subscribe to anything. This reads the preference at
+ * the moment of the call. That makes it a snapshot, and a snapshot is only
+ * correct because the surfaces that use it are repainted from above: the grid
+ * rebuilds its context and its column definitions when the locale moves, and
+ * the renderers run again. Keep those two halves in mind together. Dropping the
+ * locale from a grid's dependencies would leave these cells reading a value
+ * nobody asks them to read again.
+ */
+export function getNumberLocale(): string {
+  return resolveNumberLocale(usePreferencesStore.getState().numberLocale);
+}
+
+/**
  * `resolveNumberLocale` bound to both of the things it depends on.
  *
  * Reading the preference alone is not enough for a component: with `'auto'` the

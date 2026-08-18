@@ -50,7 +50,8 @@ import { resolveRowModelId } from './resolveRowModelId';
 import { MiniGeometryPreview } from '@/shared/ui/MiniGeometryPreview';
 import { fetchBIMElementsByIds, fetchBIMElementProperties } from '@/features/bim/api';
 import type { BIMElementData } from '@/shared/ui/BIMViewer/ElementManager';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { localizedUnitCode } from '@/shared/lib/unitLabels';
 import type { DisplayQuantityApi } from '@/shared/hooks/useDisplayQuantity';
 import { useFxRatesStore, getFxRate } from '@/stores/useFxRatesStore';
@@ -216,7 +217,7 @@ export function SectionFullWidthRenderer(params: ICellRendererParams) {
   const displayedSubtotal = dc && dc.rate > 0 ? subtotal / dc.rate : subtotal;
   const displayCode = dc && dc.rate > 0 ? dc.code : (ctx.currencyCode ?? 'EUR');
   const formattedSubtotal = ctx.fmt
-    ? fmtWithCurrency(displayedSubtotal, ctx.locale ?? 'de-DE', displayCode)
+    ? fmtWithCurrency(displayedSubtotal, ctx.locale ?? getNumberLocale(), displayCode)
     : `${fmtFixed(displayedSubtotal, 2)}`;
 
   const t = ctx.t ?? ((key: string, opts?: Record<string, string | number>) =>
@@ -1213,7 +1214,7 @@ export function DescriptionCellRenderer(params: ICellRendererParams) {
 
   const fmt = (n: number) => {
     try {
-      return new Intl.NumberFormat(getIntlLocale(), {
+      return new Intl.NumberFormat(getNumberLocale(), {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(n);
@@ -2023,7 +2024,7 @@ const BimLinkPopover = forwardRef<
                           </span>
                           <div className="flex items-center gap-1 shrink-0">
                             <span className="text-[10px] font-mono text-content-primary tabular-nums font-medium">
-                              {value.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                              {value.toLocaleString(getNumberLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                             </span>
                             {canApply && (
                               isCurrent ? (
@@ -2208,8 +2209,8 @@ const BimLinkPopover = forwardRef<
                 if (s.agg === 'sum') {
                   const isCurrent = Math.abs(s.sum - currentQuantity) < 0.001;
                   const fmt = Number.isInteger(s.sum)
-                    ? s.sum.toLocaleString(getIntlLocale())
-                    : s.sum.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+                    ? s.sum.toLocaleString(getNumberLocale())
+                    : s.sum.toLocaleString(getNumberLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 });
                   return (
                     <div
                       key={s.key}
@@ -2270,8 +2271,8 @@ const BimLinkPopover = forwardRef<
                 const sortedUnique = [...unique].sort((a, b) => a - b);
                 const fmtVal = (n: number) =>
                   Number.isInteger(n)
-                    ? n.toLocaleString(getIntlLocale())
-                    : n.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+                    ? n.toLocaleString(getNumberLocale())
+                    : n.toLocaleString(getNumberLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 });
                 return (
                   <div key={s.key} className="px-3 py-1.5 border-b border-border-light/30 dark:border-border-dark/30 last:border-b-0 hover:bg-sky-50/40 dark:hover:bg-sky-950/20 transition-colors">
                     <div className="flex items-center gap-1 mb-0.5">
@@ -2552,7 +2553,7 @@ function PdfDwgSourcePopover(props: PdfDwgSourcePopoverProps) {
           {measurementValue !== null ? (
             <div className="flex items-baseline gap-1.5">
               <span className="text-[20px] font-semibold tabular-nums text-content-primary leading-none">
-                {(displayMeasurementValue ?? measurementValue).toLocaleString(getIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                {(displayMeasurementValue ?? measurementValue).toLocaleString(getNumberLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
               </span>
               {displayMeasurementUnit && (
                 <span className="text-[11px] text-content-secondary font-medium">{displayMeasurementUnit}</span>
@@ -3923,9 +3924,9 @@ export function EditableResourceRow({ data, ctx, slots, leftPad }: { data: Recor
     [resourceCurrency, baseCurrency, ratesVsUsd, setGlobalRate, ctx],
   );
 
-  const formattedTotal = fmtWithCurrency(total, ctx.locale ?? 'de-DE', resourceCurrency);
+  const formattedTotal = fmtWithCurrency(total, ctx.locale ?? getNumberLocale(), resourceCurrency);
   const formattedTotalInBase = isForeign && hasFxRate
-    ? fmtWithCurrency(totalInBase, ctx.locale ?? 'de-DE', baseCurrency)
+    ? fmtWithCurrency(totalInBase, ctx.locale ?? getNumberLocale(), baseCurrency)
     : null;
 
   const posId = data._parentPositionId as string;
@@ -4964,7 +4965,7 @@ export function ResourceFullWidthRenderer(params: ICellRendererParams) {
           style={{ width: `${width}px` }}
           title={ctx.t('boq.resources_total', { defaultValue: 'Resources total' })}
         >
-          {fmtWithCurrency(shown, ctx.locale ?? 'de-DE', code)}
+          {fmtWithCurrency(shown, ctx.locale ?? getNumberLocale(), code)}
         </span>
       );
     };
@@ -5081,7 +5082,7 @@ export function QuantityCellRenderer(params: ICellRendererParams) {
       }
       // Always use a dedicated formatter with the computed maxFrac
       // (ctx.fmt is fixed at 2 decimals and would hide small values)
-      const f = new Intl.NumberFormat(ctx?.locale ?? 'en', {
+      const f = new Intl.NumberFormat(ctx?.locale ?? getNumberLocale(), {
         minimumFractionDigits: 2,
         maximumFractionDigits: maxFrac,
       });
@@ -5236,7 +5237,12 @@ export function UnitRateCellRenderer(params: ICellRendererParams) {
     : numericVal;
   const formatted = (() => {
     try {
-      return new Intl.NumberFormat(getIntlLocale(), {
+      // Same source as the total column beside it. Reading the snapshot here
+      // instead would agree with it today and drift the moment the grid changes
+      // how it supplies the locale, which is the shape of the defect this cell
+      // was part of: the rate asked the UI language while the total asked the
+      // project, and one table printed two.
+      return new Intl.NumberFormat(ctx?.locale ?? getNumberLocale(), {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(isNaN(displayRate) ? 0 : displayRate);

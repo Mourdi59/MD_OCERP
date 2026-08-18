@@ -14,7 +14,7 @@ import {
 } from './api';
 import { ApiError } from '@/shared/lib/api';
 import { useIsRTL } from '@/shared/hooks/useIsRTL';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 
@@ -212,7 +212,7 @@ export function AIChatPanel({
 
   /** Format a number for display. */
   const fmtNum = (n: number) =>
-    new Intl.NumberFormat(getIntlLocale(), {
+    new Intl.NumberFormat(getNumberLocale(), {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(n);

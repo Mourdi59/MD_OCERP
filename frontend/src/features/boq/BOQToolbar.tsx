@@ -61,7 +61,7 @@ import {
   ListCollapse,
 } from 'lucide-react';
 import { Button } from '@/shared/ui';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { formatCurrency } from '@/shared/lib/money';
 import { useBoqDescDensityStore, type BoqDescDensity } from '@/stores/useBoqDescDensityStore';
 
@@ -668,7 +668,7 @@ export function BOQToolbar({
                       'Whole BOQ rendered in {{disp}} at rate {{rate}} ({{base}} → {{disp}}). View-only - server keeps base values. Switch to "Base" to edit prices.',
                     base: summary.currencyCode || summary.currencySymbol,
                     disp: summary.displayCurrency,
-                    rate: summary.displayRate.toLocaleString(getIntlLocale(), {
+                    rate: summary.displayRate.toLocaleString(getNumberLocale(), {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 6,
                     }),
@@ -692,7 +692,7 @@ export function BOQToolbar({
               return (
                 <>
                   {summary.displaySymbol}{' '}
-                  {summary.grandTotalDisplay.toLocaleString(getIntlLocale(), {
+                  {summary.grandTotalDisplay.toLocaleString(getNumberLocale(), {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}

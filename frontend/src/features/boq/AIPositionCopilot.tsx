@@ -23,7 +23,7 @@ import {
   type CopilotResource,
 } from './api';
 import { ApiError } from '@/shared/lib/api';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Props ──────────────────────────────────────────────────────────── */
 
@@ -78,7 +78,7 @@ const draftCache = new Map<string, string>();
 /* ── Helpers ────────────────────────────────────────────────────────── */
 
 function fmtNum(n: number): string {
-  return new Intl.NumberFormat(getIntlLocale(), {
+  return new Intl.NumberFormat(getNumberLocale(), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(n);

@@ -10,6 +10,7 @@
 
 import type { Position, Markup } from './api';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { formatCurrency } from '@/shared/lib/money';
 import { apiGet, apiPatch } from '@/shared/lib/api';
 import { formatElapsed, type Translate as DurationTranslate } from '@/shared/lib/duration';
 
@@ -406,46 +407,34 @@ export function fmtCompact(n: number, fmt: Intl.NumberFormat): string {
 
 /**
  * Format a number with locale-aware currency symbol placement.
- * Uses Intl.NumberFormat with style: 'currency' so the symbol position,
- * decimal separator, and grouping are all determined by the locale:
- *  - de-DE + EUR → "1.400,00 €"
- *  - en-US + USD → "$1,400.00"
- *  - en-GB + GBP → "£1,400.00"
- *  - ar-AE + AED → "١٬٤٠٠٫٠٠ د.إ." (with Latin digits fallback)
- *  - ru-RU + RUB → "1 400,00 ₽"
+ *
+ * A thin adapter over the canonical `formatCurrency`, kept for its argument
+ * order, which the eleven bill surfaces already spell this way. The formatting
+ * itself deliberately lives in one place: this used to build its own
+ * `Intl.NumberFormat`, and two implementations of the same idea is how the bill
+ * and the finance register came to write the same amount two different ways.
+ *
+ * The visible consequence of delegating is the decimal count. This helper asked
+ * for two of them on every currency, so a bill in yen showed cents that do not
+ * exist and one in dinars hid a digit that does. `formatCurrency` reads the
+ * count the engine holds for the code.
+ *
+ *  - de-DE + EUR -> "1.400,00 EUR-symbol"
+ *  - en-US + USD -> "$1,400.00"
+ *  - en-GB + GBP -> "£1,400.00"
+ *  - ja-JP + JPY -> "¥1,400"      (no minor unit)
+ *  - ar-AE + AED -> Arabic-indic digits, symbol per locale
+ *  - ru-RU + RUB -> "1 400,00 ₽"
  */
 export function fmtWithCurrency(
   value: number,
   locale: string,
   currencyCode: string,
 ): string {
-  // Empty / invalid currency → render the number without a symbol.
-  // Better than forcing EUR (or whatever default the call site happened
-  // to ship with) on a project that's actually USD/GBP/JPY/RUB.
-  const trimmed = (currencyCode || '').trim().toUpperCase();
-  const isValid = /^[A-Z]{3}$/.test(trimmed);
-  const safeLocale = (locale || '').trim() || undefined;
-  if (!isValid) {
-    return new Intl.NumberFormat(safeLocale, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  }
-  try {
-    return new Intl.NumberFormat(safeLocale, {
-      style: 'currency',
-      currency: trimmed,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  } catch {
-    // Fallback: use the plain number formatter + symbol
-    const fmt = new Intl.NumberFormat(safeLocale, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    return `${fmt.format(value)} ${trimmed}`;
-  }
+  // An empty tag means "no opinion", not "the C locale": `formatCurrency`
+  // answers that with the UI language, which is what a caller who passed
+  // nothing wants to see.
+  return formatCurrency(value, currencyCode, (locale || '').trim() || undefined);
 }
 
 /* ── Multi-currency rebase (Issue #88 / #111) ───────────────────────────
