@@ -23,7 +23,7 @@ export const submittalsGuide: ModuleGuideContent = {
       titleDefault: 'What a submittal is',
       bodyKey: 'guide.submittals.what.body',
       bodyDefault:
-        'Each submittal is one item that needs review, tagged with a type such as shop drawing, product data, sample, mock-up, test report, certificate or warranty. It carries a submittal number, a spec section, a title and a revision so you always know which version is in play.',
+        'Each submittal is one item that needs review, tagged with a type such as shop drawing, product data, sample, mock-up, test report, calculation, method statement, certificate or warranty. It carries a submittal number, a spec section, a title and a revision so you always know which version is in play.',
     },
     {
       icon: 'PencilLine',

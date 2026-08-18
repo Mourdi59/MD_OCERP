@@ -3,7 +3,8 @@
 """Submittals module.
 
 Construction submittal management - shop drawings, product data, samples,
-test reports, and certificates with multi-stage review/approval workflows.
+mock-ups, test reports, calculations, method statements, certificates and
+warranties with multi-stage review/approval workflows.
 """
 
 

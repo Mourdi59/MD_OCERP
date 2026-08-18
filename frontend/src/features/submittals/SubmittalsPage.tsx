@@ -51,6 +51,7 @@ import {
   submitReviewDecision,
   type Submittal,
   type SubmittalStatus,
+  SUBMITTAL_TYPES,
   type SubmittalType,
   type CreateSubmittalPayload,
   type UpdateSubmittalPayload,
@@ -103,13 +104,15 @@ const TYPE_LABELS: Record<SubmittalType, string> = {
   sample: 'Sample',
   mock_up: 'Mock-Up',
   test_report: 'Test Report',
+  calculation: 'Calculation',
+  method_statement: 'Method Statement',
   certificate: 'Certificate',
   warranty: 'Warranty',
 };
 
-/* type is a free string column, so demo and imported data can carry values
-   outside TYPE_LABELS (e.g. "method_statement"). Humanize anything unknown so a
-   missing label never falls through to a raw i18n key in the UI. */
+/* type is a free string column, so imported data can carry values outside the
+   vocabulary the pickers offer. Humanize anything unknown so a missing label
+   never falls through to a raw i18n key in the UI. */
 const prettySubmittalType = (tp: string): string =>
   tp.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 const submittalTypeLabel = (tp: string | null | undefined): string =>
@@ -360,7 +363,7 @@ function SubmittalFormModal({
               onChange={(e) => set('type', e.target.value as SubmittalType)}
               className={inputCls + ' appearance-none pr-9'}
             >
-              {(Object.keys(TYPE_LABELS) as SubmittalType[]).map((tp) => (
+              {SUBMITTAL_TYPES.map((tp) => (
                 <option key={tp} value={tp}>
                   {t(`submittals.type_${tp}`, { defaultValue: TYPE_LABELS[tp] })}
                 </option>

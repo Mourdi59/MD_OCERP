@@ -37,9 +37,10 @@ actual vocabulary.
 What this cannot see, measured rather than assumed. Reintroducing all four of the
 defects above, it catches the contracts and tasks ones and misses the safety one,
 because the safety values live in a tuple pool that a generator reads rather than
-in a dict literal. That measurement predates the table resolution below and has
-not been repeated, so read it as a floor on the blindness rather than a
-description of it. Either way it is the division of labour with
+in a dict literal. That measurement predates both the table resolution below and
+the shape and value split, either of which may have narrowed it, and it has not
+been repeated, so read it as a floor on the blindness rather than a description
+of it. Either way it is the division of labour with
 ``test_demo_safety_vocabulary.py``, which calls the generator and validates real
 schema objects: this file is wide and shallow across every module, that one is
 narrow and deep on the module where it mattered. A module whose seed is generated
@@ -47,11 +48,15 @@ rather than written needs the second kind.
 
 The floors below exist so that a change which quietly drops the attribution rate
 to zero fails instead of passing, because a comparison over nothing passes. Of
-1641 dict literals in the seed sources, 752 are readable as records and 352
+1642 dict literals in the seed sources, 895 are readable as records and 401
 attribute to a schema that states a vocabulary; the rest are configuration and
 nested fragments that are not records at all. Counted 18.08 by walking every
 ``ast.Dict`` in ``_seed_sources()`` and running ``_record_literals`` and
-``_scan`` over them, not by reading the assertions.
+``_scan`` over them, not by reading the assertions. The first two rose from 752
+and 352 when attribution moved onto the record's shape: a record whose other
+fields are f-strings and calls used to fall under the floor and be dropped
+whole, which is how a seeded submittal type outside its own vocabulary reached
+every generated project with this file green.
 
 A floor sitting far under the real number stops being a floor. These were set
 when 143 records attributed and 143 was already the number after a defect that
@@ -65,6 +70,7 @@ import ast
 import importlib
 import pkgutil
 import re
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -84,12 +90,18 @@ _MIN_COVERAGE = 0.5
 
 # Floors, so that a scan which stops finding anything fails rather than passes.
 # Measured 18.08: 452 schemas carry a vocabulary, 662 fields across them, and
-# 352 seeded records attribute. Set under those so ordinary drift and a module
+# 401 seeded records attribute. Set under those so ordinary drift and a module
 # that fails to import do not trip them, but close enough that losing a quarter
 # of the seed does. The previous pair sat at 250 and 90 against a real 143, wide
 # enough that a scan reading no loop-built record at all still cleared them.
 _MIN_SCHEMAS_WITH_VOCABULARY = 380
-_MIN_ATTRIBUTED_RECORDS = 280
+_MIN_ATTRIBUTED_RECORDS = 360
+
+# Places the scan reached a constrained field and could not read its value: the
+# record spells it, but it is built from a call or an f-string. Eight today.
+# Held rather than only printed, because this number growing means the scan is
+# judging less of the seed than it used to while still reporting clean.
+_MAX_UNRESOLVED_FIELDS = 20
 
 
 def _module_schemas() -> tuple[dict[str, set[str]], dict[str, dict[str, tuple[str, set[str]]]], list[str]]:
@@ -352,28 +364,37 @@ def _scope_nodes(scope: ast.AST) -> list[ast.AST]:
     return out
 
 
-def _record_literals(path: Path) -> list[tuple[int, dict[str, Any]]]:
-    """Every dict literal in the file, as ``(line, readable keys and values)``.
+def _record_literals(path: Path) -> list[tuple[int, dict[str, Any], set[str]]]:
+    """Every dict literal, as ``(line, readable values, every literal key)``.
 
     A value is a constant where the record spells one, and the set of constants
     a table column holds where the record reads one from a loop. Keys are always
     literal: a computed key is a shape this seeder does not use.
+
+    The shape is returned separately because it answers a different question.
+    Which schema a record belongs to is settled by the names it spells, while
+    only the values that resolve can be judged. Attributing on the readable
+    values alone discarded every record whose other fields are f-strings and
+    calls, which is how a seeded submittal type outside the vocabulary reached
+    every generated project with this gate green.
     """
-    out: list[tuple[int, dict[str, Any]]] = []
+    out: list[tuple[int, dict[str, Any], set[str]]] = []
 
     def visit(node: ast.AST, loops: list[ast.For], bindings: dict[str, list[ast.expr]]) -> None:
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda | ast.ClassDef):
             bindings, loops = _scope_bindings(node), []
         elif isinstance(node, ast.Dict):
             record: dict[str, Any] = {}
+            shape: set[str] = set()
             for key, value in zip(node.keys, node.values, strict=False):
                 if not isinstance(key, ast.Constant) or not isinstance(key.value, str):
                     continue
+                shape.add(key.value)
                 resolved = _possible_values(value, loops, bindings)
                 if resolved is not None:
                     record[key.value] = resolved[0] if isinstance(resolved, tuple) else resolved
-            if len(record) >= _MIN_SHARED_KEYS:
-                out.append((node.lineno, record))
+            if len(shape) >= _MIN_SHARED_KEYS:
+                out.append((node.lineno, record, shape))
         if isinstance(node, ast.For):
             # Only the body runs with the name bound. The iterable is evaluated
             # before the binding exists, so reading it through the loop would be
@@ -391,7 +412,7 @@ def _record_literals(path: Path) -> list[tuple[int, dict[str, Any]]]:
 
 
 def _attribute(
-    record: dict[str, Any],
+    keys: set[str],
     fields: dict[str, set[str]],
     constrained: dict[str, dict[str, tuple[str, set[str]]]],
 ) -> list[str]:
@@ -416,7 +437,6 @@ def _attribute(
     own coverage instead. Only that module's: a lower-covering schema from
     somewhere else is a different record, not a quieter reading of this one.
     """
-    keys = set(record)
     scored: list[tuple[float, str]] = []
     for name, schema_fields in fields.items():
         shared = len(keys & schema_fields)
@@ -435,7 +455,8 @@ def _attribute(
     return [name for _, name in scored if name in constrained and _home_module(name) in homes]
 
 
-def _scan() -> tuple[int, list[str]]:
+@cache
+def _scan() -> tuple[int, int, list[str]]:
     fields, constrained, unreadable = _module_schemas()
     broken = f"; {len(unreadable)} modules would not import: {' / '.join(unreadable)}" if unreadable else ""
     assert len(constrained) >= _MIN_SCHEMAS_WITH_VOCABULARY, (
@@ -445,6 +466,7 @@ def _scan() -> tuple[int, list[str]]:
     )
 
     attributed = 0
+    unresolved = 0
     problems: list[str] = []
     for source in _seed_sources():
         # A module's own seed.py seeds that module's records, so its schemas are
@@ -454,8 +476,8 @@ def _scan() -> tuple[int, list[str]]:
         # not scoped, because it writes for every module at once.
         home = source.parent.name if source.name == "seed.py" else None
         visible = {n: f for n, f in fields.items() if home is None or _home_module(n) == home}
-        for line, record in _record_literals(source):
-            candidates = [name for name in _attribute(record, visible, constrained) if name in constrained]
+        for line, record, shape in _record_literals(source):
+            candidates = [name for name in _attribute(shape, visible, constrained) if name in constrained]
             if not candidates:
                 continue
             attributed += 1
@@ -466,6 +488,14 @@ def _scan() -> tuple[int, list[str]]:
                 for field, (module_name, allowed) in constrained[name].items():
                     vocabularies.setdefault(field, []).append((name, module_name, allowed))
             for field, claimants in vocabularies.items():
+                if field not in record:
+                    # The record spells this field and the value did not
+                    # resolve. Counting it is the difference between a place
+                    # that was checked and a place that was skipped, and a
+                    # scan silent about the second reads as clean.
+                    if field in shape:
+                        unresolved += 1
+                    continue
                 held = record.get(field)
                 # A field read out of a table holds every value that column can
                 # hold, so each one is judged separately: a table is wrong the
@@ -485,16 +515,33 @@ def _scan() -> tuple[int, list[str]]:
                     f"{_where(source)}:{line} seeds {field}={'/'.join(refused)}, but {'/'.join(named)} "
                     f"accepts only {'|'.join(accepted)} (matched {', '.join(sorted(candidates))})"
                 )
-    return attributed, problems
+    return attributed, unresolved, problems
 
 
 def test_no_seeded_record_holds_a_value_its_module_refuses() -> None:
-    attributed, problems = _scan()
+    attributed, unresolved, problems = _scan()
+    print(f"seed scan: {attributed} records attributed, {unresolved} vocabulary fields unresolved")
     assert attributed >= _MIN_ATTRIBUTED_RECORDS, (
         f"only {attributed} seeded records could be attributed to a schema, expected at "
         f"least {_MIN_ATTRIBUTED_RECORDS}; a scan that compares nothing reports clean"
     )
-    assert not problems, "seeded values the owning module would refuse:\n  " + "\n  ".join(problems)
+    assert not problems, (
+        f"seeded values the owning module would refuse ({unresolved} more could not be read):\n  "
+        + "\n  ".join(problems)
+    )
+
+
+def test_the_scan_says_how_much_it_could_not_read() -> None:
+    """A scan silent about what it skipped reads as a scan that found nothing wrong.
+
+    The seeded method statement sat behind exactly that silence: the record that
+    held it was dropped for having too few readable values, and nothing said so.
+    """
+    _attributed, unresolved, _problems = _scan()
+    assert unresolved <= _MAX_UNRESOLVED_FIELDS, (
+        f"{unresolved} seeded vocabulary fields could not be read, over the {_MAX_UNRESOLVED_FIELDS} "
+        f"this file records; the scan is judging less of the seed than it used to"
+    )
 
 
 def test_the_scan_would_notice_a_refused_value() -> None:
@@ -512,7 +559,9 @@ def test_the_scan_would_notice_a_refused_value() -> None:
         "project_id": "X",
     }
     candidates = [
-        name for name in _attribute(record, fields, constrained) if "counterparty_type" in constrained.get(name, {})
+        name
+        for name in _attribute(set(record), fields, constrained)
+        if "counterparty_type" in constrained.get(name, {})
     ]
     assert candidates, "the sample record no longer attributes to any schema that owns counterparty_type"
     for name in candidates:

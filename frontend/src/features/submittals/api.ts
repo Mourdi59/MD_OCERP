@@ -20,14 +20,23 @@ export type SubmittalStatus =
   | 'rejected'
   | 'closed';
 
-export type SubmittalType =
-  | 'shop_drawing'
-  | 'product_data'
-  | 'sample'
-  | 'mock_up'
-  | 'test_report'
-  | 'certificate'
-  | 'warranty';
+// The one list. It mirrors SUBMITTAL_TYPES in the backend schema and is held
+// against it by test_module_vocabularies_close_across_layers.py. The union is
+// derived rather than written out again, so a Record keyed by SubmittalType
+// stops compiling until every picker has learned a newly added type.
+export const SUBMITTAL_TYPES = [
+  'shop_drawing',
+  'product_data',
+  'sample',
+  'mock_up',
+  'test_report',
+  'calculation',
+  'method_statement',
+  'certificate',
+  'warranty',
+] as const;
+
+export type SubmittalType = (typeof SUBMITTAL_TYPES)[number];
 
 export interface Submittal {
   id: string;

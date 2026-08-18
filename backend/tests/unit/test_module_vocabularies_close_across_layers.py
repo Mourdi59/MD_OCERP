@@ -30,6 +30,7 @@ from pydantic import BaseModel, ValidationError
 
 from app.modules.correspondence.schemas import CORRESPONDENCE_TYPES, CorrespondenceCreate
 from app.modules.meetings.schemas import MEETING_TYPES, MeetingCreate
+from app.modules.submittals.schemas import SUBMITTAL_TYPES, SubmittalCreate
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BACKEND = REPO_ROOT / "backend" / "app" / "modules"
@@ -106,6 +107,24 @@ REGISTRY = [
             "correspondence.how_intro",
         ),
     ),
+    Vocabulary(
+        module="submittals",
+        field="submittal_type",
+        values=SUBMITTAL_TYPES,
+        create_schema=SubmittalCreate,
+        create_payload={"project_id": _A_PROJECT, "title": "S"},
+        feature="submittals",
+        ts_const="SUBMITTAL_TYPES",
+        locale_prefix="submittals.type_",
+        descriptions=False,
+        # Empty on purpose. Submittals names examples rather than listing the
+        # vocabulary: the how-to says "shop drawing, product data, sample,
+        # certificate and more", and the one sentence that did enumerate all
+        # seven stopped doing so when the eighth type arrived, which is the
+        # standing rule. A hedged list does not go stale, so there is nothing
+        # here to hold in step.
+        prose_keys=(),
+    ),
 ]
 
 _ids = [v.module for v in REGISTRY]
@@ -134,6 +153,12 @@ def _surface_forms(value: str) -> str:
     if value.endswith("y"):
         forms.append(re.escape(value[:-1].replace("_", " ")) + "ies")
     return r"\b(?:" + "|".join(forms) + r")\b"
+
+
+def _sentences_in_namespace(text: str, module: str) -> dict[str, str]:
+    """Every en.ts string belonging to a module, keyed by its full key name."""
+    pattern = re.compile(rf'"((?:howto\.)?{re.escape(module)}\.[a-z0-9_.]+)"\s*:\s*"(.*?)(?<!\\)",\n', re.S)
+    return {match.group(1): match.group(2) for match in pattern.finditer(text)}
 
 
 def _locale_families(prefix: str) -> dict[str, tuple[set[str], set[str]]]:
@@ -316,6 +341,19 @@ class TestTheLocaleSide:
         everywhere on the next translation pass.
         """
         text = (LOCALES / "en.ts").read_text(encoding="utf-8")
+        if not vocab.prose_keys:
+            sentences = _sentences_in_namespace(text, vocab.locale_prefix.split(".")[0])
+            assert sentences, f"no {vocab.module} strings found in en.ts, so this check measures nothing"
+            listed = sorted(
+                key
+                for key, sentence in sentences.items()
+                if not set(vocab.values) - set(_named_in_prose(sentence, vocab.values))
+            )
+            assert listed == [], (
+                f"{vocab.module} is registered as naming examples, but these now name the whole "
+                f"vocabulary and will go stale on the next type: {listed}"
+            )
+            return
         for key in vocab.prose_keys:
             sentence = re.search(rf'"{re.escape(key)}"\s*:\s*"(.*?)(?<!\\)",\n', text, re.S)
             assert sentence, f"{key} is gone from en.ts"

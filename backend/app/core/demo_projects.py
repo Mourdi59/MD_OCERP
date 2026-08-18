@@ -9959,10 +9959,7 @@ async def _seed_module_data(
                 "submittal_number": "SUB-002",
                 "title": "ESFR sprinkler system - hydraulic calculations",
                 "spec_section": "21 13 00",
-                # Nearest, not exact: the submittals module offers no
-                # calculation type, so this goes with the drawings it supports
-                # and the title says what it really is.
-                "submittal_type": "shop_drawing",
+                "submittal_type": "calculation",
                 "status": "under_review",
                 "date_submitted": (base + timedelta(days=60)).strftime("%Y-%m-%d"),
             },

@@ -8,6 +8,25 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+# The one list. A submittal type reaches the API from this tuple, the pattern
+# below is built from it, and the TypeScript array the pickers import is held
+# against it by test_module_vocabularies_close_across_layers.py. Calculation
+# was missing: a structural or hydraulic calculation is a submission in its own
+# right, and the seeder had been filing one as the shop drawing it supports.
+SUBMITTAL_TYPES: tuple[str, ...] = (
+    "shop_drawing",
+    "product_data",
+    "sample",
+    "mock_up",
+    "test_report",
+    "calculation",
+    "method_statement",
+    "certificate",
+    "warranty",
+)
+
+SUBMITTAL_TYPE_PATTERN = rf"^({'|'.join(SUBMITTAL_TYPES)})$"
+
 
 class SubmittalCreate(BaseModel):
     """Create a new submittal."""
@@ -20,10 +39,7 @@ class SubmittalCreate(BaseModel):
     spec_section: str | None = Field(default=None, max_length=100)
     submittal_type: str = Field(
         ...,
-        pattern=(
-            r"^(shop_drawing|product_data|sample|mock_up|"
-            r"test_report|certificate|warranty)$"
-        ),
+        pattern=SUBMITTAL_TYPE_PATTERN,
     )
     status: str = Field(
         default="draft",
@@ -54,10 +70,7 @@ class SubmittalUpdate(BaseModel):
     spec_section: str | None = Field(default=None, max_length=100)
     submittal_type: str | None = Field(
         default=None,
-        pattern=(
-            r"^(shop_drawing|product_data|sample|mock_up|"
-            r"test_report|certificate|warranty)$"
-        ),
+        pattern=SUBMITTAL_TYPE_PATTERN,
     )
     status: str | None = Field(
         default=None,
