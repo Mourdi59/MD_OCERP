@@ -771,6 +771,16 @@ describe('there is one place the number locale comes from', () => {
     expect(at('const n = Number(raw);\n  return n')).toBe('number');
     // 4. the single annotation of a bare name
     expect(at('const fmt = (n: number) => n')).toBe('number');
+    // Including the shape that decided how reading 4 is written. `QtyTile`
+    // annotates its receiver inside a destructured props object type, not in a
+    // parameter list, so the tempting restriction to `(` or `,` before the name
+    // would refuse it. Occurrence-uniqueness is what makes the answer safe
+    // instead, and this fixture is here so that a future tightening to a
+    // parameter-list rule fails rather than silently dropping the site.
+    expect(at('}: {\n  label: string;\n  value: number;\n  unit: string;\n}) {\n  return value')).toBe('number');
+    // And the counterpart it depends on: annotated twice, so no longer an
+    // answer about this receiver but a coincidence of naming.
+    expect(at('interface Row { value: number }\n  const f = (value: string) => value')).toBe('unjudged');
     // and the refusals, which are the point of counting rather than guessing
     expect(at('const total = pick(a, b);\n  return total')).toBe('unjudged');
     expect(at('let d = a;\n  let d = b;\n  return d')).toBe('unjudged');
@@ -847,6 +857,13 @@ describe('there is one place the number locale comes from', () => {
     // per-file totals, so once it passes the composition of those totals is
     // fixed too. A drifted working copy fails on `held` first, with the
     // message that tells the reader not to edit the number.
+    //
+    // That safety rests on one condition, so here it is by name: `held` and
+    // these three counts come out of the same walk in the same test, both from
+    // `judgedCalls`. Split them into two tests, or count them from two walks,
+    // and the exact numbers below stop being pinned by anything and start
+    // failing on drift with the wrong message. Keep them together or make them
+    // floors.
     const of = (v: Verdict) => counted.filter((c) => c === v).length;
     expect(of('date'), 'a date keeps the interface language whichever way the document rule goes').toBe(6);
     expect(of('number'), 'these are the figures the recipient rule will have to move').toBe(27);
