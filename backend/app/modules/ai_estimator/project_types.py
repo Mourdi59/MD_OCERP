@@ -6,7 +6,8 @@ Curated, deterministic data (no ML), the same pattern as :mod:`taxonomy`. Ten
 project types, each carrying:
 
 * detection synonyms in EN / RU / DE so a free-text request can be matched to a
-  type offline (substring match, the same technique as ``classify_trade``);
+  type offline (substring match against accent-folded text, the same technique
+  as ``classify_trade``, so a request typed without its marks still lands);
 * a parameter questionnaire where every parameter is justified by the quantity
   it unlocks (a parameter that unlocks nothing is cut, enforced by a test);
 * a curated work-package checklist where every package declares its foreman
@@ -28,6 +29,8 @@ existing search plan's stage hard/soft filter can fire.
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from app.modules.ai_estimator.taxonomy import fold_accents
 
 # ── Foreman stage order + OmniClass mapping ──────────────────────────────────
 
@@ -1116,12 +1119,49 @@ def get_project_type(key: str) -> ProjectType | None:
     return PROJECT_TYPES.get(key)
 
 
+# Synonyms whose marks decide the meaning, so folding them would hand the
+# synonym a word it never had. Folding "küche" gives "kuche", which sits inside
+# "Kuchen": the German for cake and the German for kitchen differ by the umlaut
+# alone, and a folded match would read a bakery fit-out as a kitchen
+# renovation. These keep their marks and are matched literally. The price is
+# that "kuche" typed without the umlaut detects nothing, which is the normal
+# path onto the manual type tiles rather than a wrong answer. A test holds this
+# set to exactly the synonyms the fold would ruin, so it empties itself when a
+# synonym stops being dangerous.
+ACCENT_IS_LOAD_BEARING: frozenset[str] = frozenset({"küche"})
+
+
+def _synonyms(pt: ProjectType) -> tuple[str, ...]:
+    """Every detection synonym of ``pt``, lower-cased, stripped and non-empty."""
+    spellings = (syn.lower().strip() for syn in (*pt.synonyms_en, *pt.synonyms_ru, *pt.synonyms_de))
+    return tuple(syn for syn in spellings if syn)
+
+
+# Per type: the needles to look for in accent-folded text, and the ones that
+# must keep their marks. Each needle carries the length of the synonym *as
+# written*, because that length is what breaks ties between types. Folding
+# decides what matches; it must not decide what wins, so "Außenanlagen" weighs
+# 12 whether or not the fold spelled it "aussenanlagen" at 13.
+_DETECT_TABLE: tuple[tuple[str, tuple[tuple[str, int], ...], tuple[tuple[str, int], ...]], ...] = tuple(
+    (
+        pt.key,
+        tuple((fold_accents(syn), len(syn)) for syn in _synonyms(pt) if syn not in ACCENT_IS_LOAD_BEARING),
+        tuple((syn, len(syn)) for syn in _synonyms(pt) if syn in ACCENT_IS_LOAD_BEARING),
+    )
+    for pt in _TYPES
+)
+
+
 def detect_project_type(text: str) -> tuple[str | None, int]:
     """Deterministically detect a project type from free text (offline path).
 
     Substring-matches the normalised text against every type's EN / RU / DE
     synonyms (the same technique as ``classify_trade``), counting how many
-    distinct types matched. Returns ``(key_or_None, match_count)``:
+    distinct types matched. Matching runs on accent-folded text, so a request
+    typed without its marks ("kuchenumbau", "pristroika") reaches the same type
+    as the marked spelling; the few synonyms whose marks carry meaning are
+    listed in ``ACCENT_IS_LOAD_BEARING`` and matched literally.
+    Returns ``(key_or_None, match_count)``:
 
     * exactly one type matched -> ``(that_key, 1)`` (the offline path selects it
       with a null confidence: deterministic, not probabilistic);
@@ -1137,11 +1177,12 @@ def detect_project_type(text: str) -> tuple[str | None, int]:
     haystack = (text or "").lower()
     if not haystack.strip():
         return None, 0
+    folded = fold_accents(haystack)
     matched: list[tuple[int, str]] = []
-    for pt in _TYPES:
-        best = _best_synonym_len(haystack, pt)
+    for key, folded_needles, literal_needles in _DETECT_TABLE:
+        best = _best_synonym_len(folded, haystack, folded_needles, literal_needles)
         if best > 0:
-            matched.append((best, pt.key))
+            matched.append((best, key))
     if not matched:
         return None, 0
     if len(matched) == 1:
@@ -1155,13 +1196,34 @@ def detect_project_type(text: str) -> tuple[str | None, int]:
     return None, len(matched)
 
 
-def _best_synonym_len(haystack: str, pt: ProjectType) -> int:
-    """Length of the longest synonym of ``pt`` present in ``haystack`` (0 none)."""
+def _best_synonym_len(
+    folded: str,
+    haystack: str,
+    folded_needles: tuple[tuple[str, int], ...],
+    literal_needles: tuple[tuple[str, int], ...],
+) -> int:
+    """Length of the longest synonym present, as written (0 if none matched).
+
+    Args:
+        folded: The request text, lower-cased and accent-folded.
+        haystack: The same text, lower-cased but with its marks intact.
+        folded_needles: ``(folded synonym, length as written)`` pairs, looked
+            for in ``folded`` so a spelling that lost its marks still matches.
+        literal_needles: The same pairs for synonyms whose marks carry meaning,
+            looked for in ``haystack`` so they cannot swallow a folded word.
+
+    Returns:
+        The length of the longest synonym that matched, counted on the synonym
+        as written so the caller's tie-break does not move when a fold changes
+        a spelling's length.
+    """
     best = 0
-    for syn in (*pt.synonyms_en, *pt.synonyms_ru, *pt.synonyms_de):
-        s = syn.lower().strip()
-        if s and s in haystack and len(s) > best:
-            best = len(s)
+    for needle, weight in folded_needles:
+        if weight > best and needle in folded:
+            best = weight
+    for needle, weight in literal_needles:
+        if weight > best and needle in haystack:
+            best = weight
     return best
 
 
