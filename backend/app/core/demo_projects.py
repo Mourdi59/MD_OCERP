@@ -5517,11 +5517,58 @@ def _generate_module_data(
         )
 
     # requirements - a requirement set with EAC triplets from real trades.
+    #
+    # Each requirement carries the information deliverables that prove it. The
+    # matrix is reconstructed from those rows and scores coverage as accepted
+    # over total, so a requirement with no deliverables is not read as "nothing
+    # demanded yet": every cell paints red and the score reads nought per cent.
+    # A demo that ships an empty EIR shows a reader a failed project.
+    def _eir_deliverables(index: int) -> list[dict]:
+        """One requirement's deliverables, in the state a live project is in.
+
+        Deterministic rather than random, because a demo has to look the same
+        on every re-seed. Spread across the three states on purpose: the model
+        signed off, the drawing in review, the third artefact still owed. A
+        matrix that is all green teaches as little as one that is all red.
+        """
+        submitted = (base + timedelta(days=40 + index * 5)).replace(tzinfo=UTC)
+        accepted = (base + timedelta(days=55 + index * 5)).replace(tzinfo=UTC)
+        third = ("cobie", "schedule", "pset", "report")[index % 4]
+        return [
+            {
+                "type": "model",
+                "lod": "300",
+                "loi": "3",
+                "submitted_at": submitted,
+                "accepted_at": None if index % 4 == 3 else accepted,
+            },
+            {
+                "type": "drawing",
+                "lod": "200",
+                "loi": "2",
+                "submitted_at": None if index % 3 == 2 else submitted,
+                "accepted_at": accepted if index % 2 == 0 else None,
+            },
+            {
+                "type": third,
+                "lod": None,
+                "loi": "2",
+                "submitted_at": submitted if index % 4 == 1 else None,
+                "accepted_at": None,
+            },
+        ]
+
     req_items: list[dict] = []
     for i, (code, trade, item) in enumerate(trades[:8]):
         req_items.append(
             {
-                "entity": (item or trade).lower().replace(" ", "_")[:120] or "element",
+                # The name a reader sees in the matrix, so it stays a name. It
+                # used to be lowercased with the spaces punched out, which put
+                # "blinding_concrete,__15_mpa" on screen where the trade item
+                # belongs. Nothing is lost by spelling it: the entity is matched
+                # against a model's ``element_type`` and a bill's trade item was
+                # never going to match one either way.
+                "entity": " ".join((item or trade).split())[:120] or "Element",
                 "attribute": ("fire_rating", "u_value", "strength_class", "finish")[i % 4],
                 "constraint_type": "equals",
                 "constraint_value": ("F90", "0.24 W/m2K", "C30/37", "as specification")[i % 4],
@@ -5529,6 +5576,7 @@ def _generate_module_data(
                 "category": trade[:100] or "general",
                 "priority": "must",
                 "source_ref": f"Section {code or trade}",
+                "deliverables": _eir_deliverables(i),
             }
         )
     requirements: list[dict] = [
@@ -10553,10 +10601,11 @@ async def _seed_module_data(
 
     # ── Requirements (a requirement set + EAC items) ──────────────────
     try:
-        from app.modules.requirements.models import Requirement, RequirementSet
+        from app.modules.requirements.models import Requirement, RequirementDeliverable, RequirementSet
 
         req_sets = generated.get("requirements", [])
         req_total = 0
+        deliverable_total = 0
         for rs in req_sets:
             rs_obj = RequirementSet(
                 id=_id(),
@@ -10571,9 +10620,10 @@ async def _seed_module_data(
             session.add(rs_obj)
             await session.flush()
             for item in rs.get("items", []):
+                req_id = _id()
                 session.add(
                     Requirement(
-                        id=_id(),
+                        id=req_id,
                         requirement_set_id=rs_obj.id,
                         entity=item["entity"],
                         attribute=item["attribute"],
@@ -10588,7 +10638,26 @@ async def _seed_module_data(
                     )
                 )
                 req_total += 1
+                # The deliverables are what the EIR matrix actually reads. A
+                # requirement without them is not an empty column, it is a red
+                # one scored at nought, because coverage is accepted over the
+                # rows that exist and no rows means no coverage.
+                for row in item.get("deliverables", []):
+                    session.add(
+                        RequirementDeliverable(
+                            id=_id(),
+                            requirement_id=req_id,
+                            deliverable_type=row["type"],
+                            lod=row.get("lod"),
+                            loi=row.get("loi"),
+                            submitted_at=row.get("submitted_at"),
+                            accepted_at=row.get("accepted_at"),
+                            notes=row.get("notes", ""),
+                        )
+                    )
+                    deliverable_total += 1
         results["requirements"] = req_total
+        results["requirement_deliverables"] = deliverable_total
     except Exception:
         logger.debug("Requirements module not loaded, skipping demo requirements")
 
