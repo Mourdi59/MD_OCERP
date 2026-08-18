@@ -80,7 +80,7 @@ import { RoleAvatar } from "./RoleAvatar";
 import { RoleArt } from "./RoleArt";
 import { CaseArt } from "./CaseArt";
 
-import { HEX_PORTRAIT_CLIP } from "@/shared/lib/honeycomb";
+import { HEX_PORTRAIT_ASPECT, HEX_PORTRAIT_CLIP } from "@/shared/lib/honeycomb";
 import { CompanyArt } from "./CompanyArt";
 import { dealCaseFaces } from "./caseFaces";
 import {
@@ -1498,8 +1498,8 @@ function CaseCard({
                 {/* The rim is the wrapper's own background showing through a
                     3px inset, because a border cannot survive a clip-path. */}
                 <div
-                  className="aspect-[7/8] bg-white/90 p-[3px] shadow-md shadow-slate-900/15"
-                  style={{ clipPath: HEX_PORTRAIT_CLIP }}
+                  className="bg-white/90 p-[3px] shadow-md shadow-slate-900/15"
+                  style={{ aspectRatio: HEX_PORTRAIT_ASPECT, clipPath: HEX_PORTRAIT_CLIP }}
                 >
                   <img
                     src={face}

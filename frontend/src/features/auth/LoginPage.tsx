@@ -18,7 +18,7 @@ import { useBrandingStore } from '@/stores/useBrandingStore';
 import { BrandingEditorModal } from '@/app/layout/CustomBranding';
 import { extractErrorMessageFromBody } from '@/shared/lib/api';
 import { isTauri } from '@/shared/lib/desktop';
-import { HEX_PORTRAIT_CLIP } from '@/shared/lib/honeycomb';
+import { HEX_PORTRAIT_ASPECT, HEX_PORTRAIT_CLIP } from '@/shared/lib/honeycomb';
 import { APP_VERSION } from '@/shared/lib/version';
 import { AuthBackground } from './AuthBackground';
 import {
@@ -567,12 +567,12 @@ export function LoginPage() {
         <div className="relative mt-1 mr-auto h-[280px] w-[560px] max-w-full overflow-hidden animate-stagger-in" style={{ animationDelay: '260ms' }}>
           {([
             // Top row (y = -75) - 6 cells, offset by 44.
-            { x: -220, y: -75, icon: ShieldCheck,     label: t('login.mod.local',     { defaultValue: 'Local' }) },
-            { x: -132, y: -75, icon: Brain,           label: t('login.mod.ai',       { defaultValue: 'AI' }) },
-            { x:  -44, y: -75, icon: Ruler,           label: t('login.mod.takeoff',  { defaultValue: 'Takeoff' }) },
-            { x:   44, y: -75, icon: PenTool,         label: t('login.mod.cad',      { defaultValue: 'CAD' }) },
-            { x:  132, y: -75, icon: Box,             label: t('login.mod.bim',      { defaultValue: 'BIM' }) },
-            { x:  220, y: -75, icon: TrendingUp,      label: t('login.mod.cost5d',   { defaultValue: '5D' }) },
+            { x: -220, y: -76, icon: ShieldCheck,     label: t('login.mod.local',     { defaultValue: 'Local' }) },
+            { x: -132, y: -76, icon: Brain,           label: t('login.mod.ai',       { defaultValue: 'AI' }) },
+            { x:  -44, y: -76, icon: Ruler,           label: t('login.mod.takeoff',  { defaultValue: 'Takeoff' }) },
+            { x:   44, y: -76, icon: PenTool,         label: t('login.mod.cad',      { defaultValue: 'CAD' }) },
+            { x:  132, y: -76, icon: Box,             label: t('login.mod.bim',      { defaultValue: 'BIM' }) },
+            { x:  220, y: -76, icon: TrendingUp,      label: t('login.mod.cost5d',   { defaultValue: '5D' }) },
             // Mid row (y = 0) - 5 cells aligned on the same axis.
             { x: -176, y:  0,  icon: Database,        label: t('login.mod.costs',    { defaultValue: 'Costs' }) },
             { x:  -88, y:  0,  icon: FileSpreadsheet, label: t('common.boq') },
@@ -580,12 +580,12 @@ export function LoginPage() {
             { x:   88, y:  0,  icon: CalendarClock,   label: t('login.mod.schedule', { defaultValue: 'Schedule' }) },
             { x:  176, y:  0,  icon: BarChart3,       label: t('login.mod.tender',   { defaultValue: 'Tendering' }) },
             // Bottom row (y = 75) - 6 cells, offset by 44.
-            { x: -220, y:  75, icon: Zap,             label: t('login.mod.realtime', { defaultValue: 'Realtime' }) },
-            { x: -132, y:  75, icon: Boxes,           label: t('login.mod.resources',{ defaultValue: 'Resources' }) },
-            { x:  -44, y:  75, icon: ClipboardList,   label: t('login.mod.tasks',    { defaultValue: 'Tasks' }) },
-            { x:   44, y:  75, icon: FileCheck,       label: t('login.mod.validate', { defaultValue: 'Validate' }) },
-            { x:  132, y:  75, icon: FolderOpen,      label: t('login.mod.files',    { defaultValue: 'Files' }) },
-            { x:  220, y:  75, icon: Upload,          label: t('login.mod.exports',  { defaultValue: 'Exports' }) },
+            { x: -220, y:  76, icon: Zap,             label: t('login.mod.realtime', { defaultValue: 'Realtime' }) },
+            { x: -132, y:  76, icon: Boxes,           label: t('login.mod.resources',{ defaultValue: 'Resources' }) },
+            { x:  -44, y:  76, icon: ClipboardList,   label: t('login.mod.tasks',    { defaultValue: 'Tasks' }) },
+            { x:   44, y:  76, icon: FileCheck,       label: t('login.mod.validate', { defaultValue: 'Validate' }) },
+            { x:  132, y:  76, icon: FolderOpen,      label: t('login.mod.files',    { defaultValue: 'Files' }) },
+            { x:  220, y:  76, icon: Upload,          label: t('login.mod.exports',  { defaultValue: 'Exports' }) },
           ] as const).map((cell, idx) => {
             const isAccent = 'accent' in cell && cell.accent === true;
             const Icon = cell.icon;
@@ -602,12 +602,15 @@ export function LoginPage() {
                 }}
               >
                 <div
-                  className={`relative flex flex-col items-center justify-center w-[88px] h-[100px] animate-fade-in transition-transform duration-300 hover:scale-[1.05] ${
+                  className={`relative flex flex-col items-center justify-center w-[88px] animate-fade-in transition-transform duration-300 hover:scale-[1.05] ${
                     isAccent ? 'text-white' : 'text-slate-900'
                   }`}
                   style={{
                     animationDelay: `${280 + idx * 35}ms`,
                     animationFillMode: 'both',
+                    // The height comes from the width, so the cell cannot
+                    // drift off the ratio the clip path is regular in.
+                    aspectRatio: HEX_PORTRAIT_ASPECT,
                     clipPath: HEX_PORTRAIT_CLIP,
                     background: isAccent
                       ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 65%, #0369a1 100%)'

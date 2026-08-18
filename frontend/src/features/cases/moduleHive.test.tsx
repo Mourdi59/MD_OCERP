@@ -29,7 +29,13 @@ import { resolve, join, basename } from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
-import { hiveBand, HEX_PORTRAIT_CLIP, HEX_CELL_CLIP } from '@/shared/lib/honeycomb';
+import {
+  hiveBand,
+  HEX_ASPECT,
+  HEX_CELL_CLIP,
+  HEX_PORTRAIT_ASPECT,
+  HEX_PORTRAIT_CLIP,
+} from '@/shared/lib/honeycomb';
 import { modulesForPlaybook } from './playbookModules';
 import { CaseModuleHive, ModuleHive } from './ModuleHive';
 import { PLAYBOOKS } from './playbooks';
@@ -138,6 +144,99 @@ describe('the hexagon has one definition', () => {
     // And the Tailwind half of the same mistake: `start-`/`end-`, not
     // `left-`/`right-`.
     expect(source).not.toMatch(/["'\s](left|right)-/);
+  });
+});
+
+describe('the hexagons are regular', () => {
+  // A reader called the shipped portrait a stretched diamond, and they were
+  // right on both counts a clip path can be wrong.
+  //
+  // A clip path cuts percentages of whatever box it is handed, so the polygon
+  // cannot make a shape regular on its own - the box decides. The cards handed
+  // it `aspect-[7/8]` and the sign-in art handed it 88x100, against the 0.866
+  // a pointy-top regular hexagon needs, and the slanted sides came out 3.96%
+  // and 4.42% longer than the vertical ones.
+  //
+  // The polygon was independently wrong: at `50% 2%, 100% 26%` the inset
+  // shortens the slanted pair against the vertical pair whatever the box, so
+  // no amount of resizing could have made it regular.
+  //
+  // Both halves are asserted here as arithmetic rather than as string
+  // equality. A literal comparison would pin today's polygon and say nothing
+  // about whether it draws equal sides, which is the property a person sees.
+
+  /** Vertices of a `polygon(...)` clip path as fractions of its box. */
+  function vertices(clip: string): Array<[number, number]> {
+    const inner = clip.slice(clip.indexOf('(') + 1, clip.lastIndexOf(')'));
+    return inner.split(',').map((point) => {
+      const [x, y] = point.trim().split(/\s+/);
+      return [parseFloat(x) / 100, parseFloat(y) / 100] as [number, number];
+    });
+  }
+
+  /** Side lengths of the polygon drawn in a box `width` by `height`. */
+  function sides(clip: string, width: number, height: number): number[] {
+    const points = vertices(clip);
+    return points.map(([x, y], i) => {
+      const [nx, ny] = points[(i + 1) % points.length];
+      return Math.hypot((nx - x) * width, (ny - y) * height);
+    });
+  }
+
+  function spread(lengths: number[]): number {
+    return Math.max(...lengths) / Math.min(...lengths) - 1;
+  }
+
+  it('cuts six equal sides for a portrait in a box of its declared aspect', () => {
+    const lengths = sides(HEX_PORTRAIT_CLIP, HEX_PORTRAIT_ASPECT, 1);
+    expect(lengths).toHaveLength(6);
+    expect(spread(lengths)).toBeLessThan(0.001);
+  });
+
+  it('cuts six equal sides for a cell face in a box of its declared aspect', () => {
+    const lengths = sides(HEX_CELL_CLIP, 1, HEX_ASPECT);
+    expect(lengths).toHaveLength(6);
+    expect(spread(lengths)).toBeLessThan(0.001);
+  });
+
+  it('puts the two halves of the old defect on record separately', () => {
+    // A witness, not a regression guard: if the arithmetic above ever stops
+    // being able to tell an irregular hexagon from a regular one, these two
+    // numbers move and the tests before them start asserting nothing.
+    //
+    // The shipped shape was wrong twice over, and the halves are not the same
+    // size. Writing one number for both is how the first draft of this test
+    // came to claim 3.96% for a box that produces 0.78%.
+    const inset = 'polygon(50% 2%, 100% 26%, 100% 74%, 50% 98%, 0% 74%, 0% 26%)';
+
+    // Both halves together, which is what a reader actually saw.
+    expect(spread(sides(inset, 7 / 8, 1))).toBeGreaterThan(0.039);
+    // The polygon alone, in a box of the right aspect: still irregular, so it
+    // could never have been fixed by resizing.
+    expect(spread(sides(inset, HEX_PORTRAIT_ASPECT, 1))).toBeGreaterThan(0.03);
+    // The box alone, with the polygon corrected: smaller, and still visible.
+    expect(spread(sides(HEX_PORTRAIT_CLIP, 7 / 8, 1))).toBeGreaterThan(0.007);
+  });
+
+  it('constrains the box everywhere the portrait crop is applied', () => {
+    // The polygon being right is half the shape. A call site that applies the
+    // clip without fixing the box ships the stretched diamond again, and every
+    // assertion above stays green while it does.
+    const appliers = sourceFiles(SRC).filter((file) => {
+      if (basename(file) === 'honeycomb.ts' || file.endsWith('.test.tsx')) return false;
+      return readFileSync(file, 'utf-8').includes('HEX_PORTRAIT_CLIP');
+    });
+    expect(appliers.length).toBeGreaterThan(0);
+
+    // The rule is naming the constant, not writing a box that happens to be
+    // the right shape. The first draft of this test accepted a hand-written
+    // pixel pair, and matched the first `w-[..] h-[..]` anywhere in the file -
+    // an 18px icon on a line that had nothing to do with the crop. A check
+    // that can be satisfied by an unrelated line is not a check.
+    const unconstrained = appliers
+      .filter((file) => !readFileSync(file, 'utf-8').includes('HEX_PORTRAIT_ASPECT'))
+      .map((file) => basename(file));
+    expect(unconstrained).toEqual([]);
   });
 });
 

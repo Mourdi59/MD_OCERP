@@ -22,7 +22,7 @@ import { completedCount } from '@/features/cases/progress';
 import { tintFor } from '@/features/cases/categories';
 import { dealCaseFaces } from '@/features/cases/caseFaces';
 
-import { HEX_PORTRAIT_CLIP } from '@/shared/lib/honeycomb';
+import { HEX_PORTRAIT_ASPECT, HEX_PORTRAIT_CLIP } from '@/shared/lib/honeycomb';
 import { rolesForPlaybook, ROLE_BY_ID } from '@/features/cases/roles';
 import { iconFor } from '@/features/cases/icons';
 import { CaseArt } from '@/features/cases/CaseArt';
@@ -217,8 +217,8 @@ export function DashboardCasesCard() {
                       className="pointer-events-none absolute bottom-1 start-1 block w-[30%] max-w-[2.75rem]"
                     >
                       <span
-                        className="block aspect-[7/8] bg-white/90 p-[2px] shadow-sm shadow-slate-900/20"
-                        style={{ clipPath: HEX_PORTRAIT_CLIP }}
+                        className="block bg-white/90 p-[2px] shadow-sm shadow-slate-900/20"
+                        style={{ aspectRatio: HEX_PORTRAIT_ASPECT, clipPath: HEX_PORTRAIT_CLIP }}
                       >
                         <img
                           src={face}
