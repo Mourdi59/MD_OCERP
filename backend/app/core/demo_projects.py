@@ -2364,6 +2364,119 @@ _CURRENCY_SYMBOL: dict[str, str] = {
 }
 
 
+# Demo cost level by currency: (material, labour) against a euro base of 1.0.
+#
+# The shared seed blocks further down - assembly components, plant rates, the
+# resource pool - are written once in euro terms and reused by every pack. A
+# figure like 42.30 for a square metre of plaster and paint is right in Berlin
+# and absurd in Delhi, so without a factor here the whole demo catalogue prints
+# one price under thirteen different currency codes.
+#
+# THIS IS NOT AN EXCHANGE RATE and nothing in the product may read it as one.
+# It is a demo-data device: a single number carrying both the conversion and
+# the local price level, picked so a reader in that market recognises the
+# figure instead of having to convert it. Real money comes from the bill, which
+# every template hand-authors in its own currency.
+#
+# Material and labour are separate because they move apart, and the Gulf rows
+# are why: the region imports its cement at world prices and hires its crews
+# well below German wages, so one blended factor would be wrong in both
+# directions at the same time. Equipment follows the material factor - a plant
+# rate tracks the capital cost of an imported machine, not the local wage.
+_DEMO_COST_LEVEL: dict[str, tuple[float, float]] = {
+    "EUR": (1.00, 1.00),
+    "GBP": (0.90, 0.85),
+    "USD": (1.20, 1.35),
+    "CAD": (1.55, 1.65),
+    "AUD": (1.75, 2.05),
+    "NZD": (1.90, 2.15),
+    "AED": (3.00, 0.65),
+    "SAR": (3.40, 0.75),
+    "CNY": (4.00, 1.40),
+    "BRL": (5.20, 2.60),
+    "ZAR": (17.00, 5.00),
+    "MXN": (19.00, 3.20),
+    "INR": (55.00, 8.00),
+}
+
+# The words the assemblies and resources vocabularies use for people. Both
+# spellings of labour are here because the two modules disagree, and "person"
+# is what the resource pool calls the same thing.
+_DEMO_LABOUR_TYPES = frozenset({"labor", "labour", "person", "crew"})
+
+
+def _cost_level(currency: str, resource_type: str) -> float:
+    """Return the demo cost factor for one euro-denominated seed literal.
+
+    Args:
+        currency: ISO 4217 code from the template. Unknown codes stay at 1.0.
+        resource_type: The assemblies / resources word for the line
+            ("material", "labor", "equipment", "person", "subcontractor").
+            Anything not recognised as people is treated as material.
+
+    Returns:
+        The multiplier to apply to a euro literal.
+    """
+    material, labour = _DEMO_COST_LEVEL.get((currency or "").strip().upper()[:3], (1.0, 1.0))
+    return labour if (resource_type or "").strip().lower() in _DEMO_LABOUR_TYPES else material
+
+
+def _demo_rate(value: float, currency: str, resource_type: str) -> float:
+    """Level a euro-denominated seed literal into the project's own currency.
+
+    Rounds the way a price list in that currency is actually written: cents
+    while cents still mean something, whole units past a hundred, tens past a
+    thousand. Rebar at 1.35 EUR/kg is a real quote; its rupee twin at 74.2517
+    is precision nobody writes down.
+
+    Args:
+        value: The euro-denominated literal.
+        currency: ISO 4217 code from the template.
+        resource_type: The assemblies / resources word for the line.
+
+    Returns:
+        The levelled rate. A non-numeric value comes back as 0.0 rather than
+        raising, because these run inside best-effort seed blocks.
+    """
+    try:
+        scaled = float(value) * _cost_level(currency, resource_type)
+    except (TypeError, ValueError):
+        return 0.0
+    if scaled >= 1000:
+        return float(round(scaled, -1))
+    if scaled >= 100:
+        return float(round(scaled))
+    return round(scaled, 2)
+
+
+def _demo_blended_rate(value: float, currency: str) -> float:
+    """Level a whole-of-works figure, where material and labour are mixed.
+
+    A contract sum, an invoice total or a project value is not one resource
+    type, so neither column of ``_DEMO_COST_LEVEL`` is right for it on its own.
+    The mean of the two is what a job made half of bought goods and half of
+    hired hours would carry, which is close enough for demo data and is a rule
+    a reader can check rather than a number someone picked.
+
+    Args:
+        value: The euro-denominated literal.
+        currency: ISO 4217 code from the template.
+
+    Returns:
+        The levelled figure, rounded by the same rule as :func:`_demo_rate`.
+    """
+    material, labour = _DEMO_COST_LEVEL.get((currency or "").strip().upper()[:3], (1.0, 1.0))
+    try:
+        scaled = float(value) * (material + labour) / 2.0
+    except (TypeError, ValueError):
+        return 0.0
+    if scaled >= 1000:
+        return float(round(scaled, -1))
+    if scaled >= 100:
+        return float(round(scaled))
+    return round(scaled, 2)
+
+
 def _compact_budget_label(total: float, currency: str) -> str:
     """Format a numeric total as a compact catalog budget label.
 
@@ -4933,7 +5046,7 @@ def _generate_module_data(
                 except (IndexError, TypeError, ValueError):
                     continue
         if amount <= 0:
-            amount = 25000.0 + i * 5000.0
+            amount = _demo_blended_rate(25000.0 + i * 5000.0, cur)
         amount = round(amount, 2)
         status = ("paid", "approved", "sent")[i % 3]
         invoices.append(
@@ -4971,7 +5084,9 @@ def _generate_module_data(
     ei_showcase = template.einvoice_showcase or {}
     if ei_showcase.get("einvoice"):
         ei_row = dict(ei_showcase.get("invoice") or {})
-        first_amount = float(str(invoices[0]["line_items"][0]["amount"])) if invoices else 100000.0
+        first_amount = (
+            float(str(invoices[0]["line_items"][0]["amount"])) if invoices else _demo_blended_rate(100000.0, cur)
+        )
         invoices.append(
             {
                 "invoice_number": ei_row.get("invoice_number") or f"AR-{base.year}-001",
@@ -5430,7 +5545,7 @@ def _generate_module_data(
     sub_count = min(3, len(firms))
     for i in range(sub_count):
         trade = trades[i % len(trades)][1] if trades else "Works"
-        sub_value = round((contract_total * 0.15) + i * 50000.0, 2)
+        sub_value = round((contract_total * 0.15) + i * _demo_blended_rate(50000.0, cur), 2)
         # The last subcontract is still a draft. Every contract being active
         # left the register with nothing standing at the step between agreeing
         # a deal and billing it: the compliance gate and the signature only
@@ -5518,6 +5633,12 @@ def _generate_module_data(
                 "rate": 0.0,
             }
         )
+
+    # The rates above are euro literals shared by every pack. Level them into
+    # the project's own currency, or a Delhi resource pool quotes a German day
+    # rate under a rupee sign. Subcontractor rows carry 0.0 and come back 0.0.
+    for _res in resources:
+        _res["rate"] = _demo_rate(_res["rate"], cur, _res["resource_type"])
 
     # requirements - a requirement set with EAC triplets from real trades.
     #
@@ -10715,7 +10836,7 @@ async def _seed_module_data(
             except (TypeError, ValueError, IndexError):
                 continue
     if _proj_value <= 0:
-        _proj_value = 1_000_000.0
+        _proj_value = _demo_blended_rate(1_000_000.0, _ccy)
     # Kept only to recognise rows written before the codes below carried the
     # demo slug. Nothing new is named after the project UUID any more.
     _pkey = str(project_id)[:8]
@@ -10790,8 +10911,12 @@ async def _seed_module_data(
             a_total = Decimal("0")
             comp_objs = []
             for c_idx, (c_desc, c_type, c_factor, c_unit, c_cost) in enumerate(comps):
+                # The recipes above are euro literals shared by every pack, so
+                # without this a Sao Paulo assembly and a Berlin one both print
+                # 42.30 for a square metre of plaster under two currency codes.
+                c_rate = _demo_rate(c_cost, _ccy, c_type)
                 c_qty = Decimal(str(c_factor))
-                c_unit_cost = Decimal(str(c_cost))
+                c_unit_cost = Decimal(str(c_rate))
                 c_line = (c_qty * c_unit_cost).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                 a_total += c_line
                 comp_objs.append(
@@ -10803,7 +10928,7 @@ async def _seed_module_data(
                         factor=str(c_factor),
                         quantity=str(c_factor),
                         unit=c_unit,
-                        unit_cost=str(c_cost),
+                        unit_cost=str(c_rate),
                         total=str(c_line),
                         sort_order=c_idx + 1,
                         metadata_={},
@@ -10880,8 +11005,12 @@ async def _seed_module_data(
                     project_id=project_id,
                     start_date=base.strftime("%Y-%m-%d"),
                     end_date=(base + timedelta(days=90 + e_idx * 30)).strftime("%Y-%m-%d"),
-                    internal_rate_per_day=Decimal(str(day_rate)),
-                    internal_rate_per_hour=Decimal(str(hour_rate)),
+                    # Euro literals again, and a rental billed in rupees has to
+                    # read as rupees. Plant takes the material factor rather
+                    # than the labour one: the rate tracks the capital cost of
+                    # an imported machine, not the wage of whoever drives it.
+                    internal_rate_per_day=Decimal(str(_demo_rate(day_rate, _ccy, "equipment"))),
+                    internal_rate_per_hour=Decimal(str(_demo_rate(hour_rate, _ccy, "equipment"))),
                     currency=_ccy,
                     status="active",
                     metadata_={"demo_id": demo_id, "is_demo": True},
