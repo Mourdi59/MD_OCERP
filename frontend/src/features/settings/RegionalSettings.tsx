@@ -15,7 +15,7 @@ import { Globe, Ruler, FileText, Calendar, Hash, DollarSign, Search, Check } fro
 import clsx from 'clsx';
 import { Card, CardHeader, CardContent } from '@/shared/ui';
 import { apiGet, apiPatch } from '@/shared/lib/api';
-import { usePreferencesStore, resolveNumberLocale, type MeasurementSystem, type DateFormat, type NumberLocale } from '@/stores/usePreferencesStore';
+import { usePreferencesStore, resolveNumberLocale, NUMBER_LOCALES, type MeasurementSystem, type DateFormat, type NumberLocale } from '@/stores/usePreferencesStore';
 import { useToastStore } from '@/stores/useToastStore';
 import {
   CUSTOM_CURRENCY_SENTINEL,
@@ -77,18 +77,35 @@ const DATE_FORMATS: { value: DateFormat; example: string }[] = [
 
 interface NumberFormatOption {
   locale: NumberLocale;
-  label: string;
   example: string;
 }
 
-const NUMBER_FORMATS: NumberFormatOption[] = [
-  { locale: 'de-DE', label: '1.234,56', example: '1.234,56' },
-  { locale: 'en-US', label: '1,234.56', example: '1,234.56' },
-  { locale: 'fr-FR', label: '1 234,56', example: '1 234,56' },
-  { locale: 'en-GB', label: '1,234.56', example: '1,234.56' },
-  { locale: 'ru-RU', label: '1 234,56', example: '1 234,56' },
-  { locale: 'es-MX', label: '1,234.56', example: '1,234.56' },
-];
+/**
+ * The sample the buttons are labelled with.
+ *
+ * Seven digits, not four, because the difference this control exists to show
+ * only appears above four: `en-IN` writes `12,34,567.89`, grouping the lakh
+ * and the crore, and `1,234.56` hides that completely. The old sample made the
+ * Indian button indistinguishable from the American one, which is a fair part
+ * of why there was no Indian button at all.
+ */
+const NUMBER_FORMAT_SAMPLE = 1234567.89;
+
+/**
+ * One button per locale the preference can hold, built from the store's own
+ * list so the two cannot drift apart. A value the type allows and this picker
+ * has no button for is a setting nobody can reach.
+ *
+ * The example is computed rather than written down, so it says what `Intl`
+ * will actually do rather than what someone remembered it does. Some examples
+ * read alike, because for a plain number `en-US`, `en-GB`, `es-MX`, `ja-JP`
+ * and `zh-CN` genuinely agree; they part company on currency, which is the
+ * other thing this preference drives, so they are not duplicate buttons even
+ * where they are duplicate labels.
+ */
+const NUMBER_FORMATS: NumberFormatOption[] = NUMBER_LOCALES.filter((l) => l !== 'auto').map(
+  (locale) => ({ locale, example: new Intl.NumberFormat(locale).format(NUMBER_FORMAT_SAMPLE) }),
+);
 
 const CURRENCIES = [
   { code: 'EUR', symbol: '\u20AC', name: 'Euro' },
@@ -343,7 +360,7 @@ export function RegionalSettings({ animationDelay = '0ms' }: { animationDelay?: 
   // something. Showing the resolved locale keeps the control describing what
   // the money surfaces actually render with. Clicking a button turns the
   // automatic default into an explicit choice, which is the honest reading of a
-  // deliberate click. A locale outside the six (the UI has 29 languages) lights
+  // deliberate click. A locale outside the list (the UI has 29 languages) lights
   // no button, exactly as an unmapped account value already did.
   const numberFormat = resolveNumberLocale((prefs?.number_format as NumberLocale) ?? storeNumberLocale);
   // MONEY-BUG FIX: read the persisted server value from `currency_code`

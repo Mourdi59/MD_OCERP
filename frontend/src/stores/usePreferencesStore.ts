@@ -53,7 +53,8 @@ export type NumberLocale =
   | 'ar-SA'
   | 'ja-JP'
   | 'zh-CN'
-  | 'es-MX';
+  | 'es-MX'
+  | 'en-IN';
 
 interface Preferences {
   currency: string;
@@ -191,9 +192,17 @@ const NUMBER_FORMAT_TO_LOCALE: Record<string, NumberLocale> = {
   '1 234,56': 'fr-FR',
 };
 
-/** Every value `numberLocale` may hold, for validating what the server sends. */
-const NUMBER_LOCALES: readonly NumberLocale[] = [
-  'auto', 'de-DE', 'en-US', 'en-GB', 'fr-FR', 'ru-RU', 'ar-SA', 'ja-JP', 'zh-CN', 'es-MX',
+/**
+ * Every value `numberLocale` may hold, for validating what the server sends.
+ *
+ * Exported because the regional-settings picker builds its buttons from this
+ * list rather than from a second one of its own. A value the type allows and
+ * the picker has no button for is a setting the reader cannot reach: `en-IN`
+ * was missing for exactly that reason, so Indian rupees were offered as a
+ * currency while lakh and crore grouping was unreachable by any choice.
+ */
+export const NUMBER_LOCALES: readonly NumberLocale[] = [
+  'auto', 'de-DE', 'en-US', 'en-GB', 'fr-FR', 'ru-RU', 'ar-SA', 'ja-JP', 'zh-CN', 'es-MX', 'en-IN',
 ];
 
 /**
