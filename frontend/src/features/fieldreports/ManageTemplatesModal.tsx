@@ -28,6 +28,8 @@ import {
   fetchFieldReportTemplates,
   createFieldReportTemplate,
   deleteFieldReportTemplate,
+  REPORT_TYPES,
+  TEMPLATE_FIELD_TYPES,
   type FieldReportTemplate,
   type TemplateFieldType,
   type ReportType,
@@ -48,20 +50,6 @@ const FIELDREPORTS_FIELDTYPE_LABELS: Record<string, string> = {
   checkbox: 'Checkbox',
 };
 
-const REPORT_TYPES: ReportType[] = [
-  'daily',
-  'inspection',
-  'safety',
-  'concrete_pour',
-];
-const FIELD_TYPES: TemplateFieldType[] = [
-  'text',
-  'textarea',
-  'number',
-  'select',
-  'date',
-  'checkbox',
-];
 
 const inputCls =
   'w-full rounded-lg border border-border-light bg-surface-primary px-3 py-2 text-sm text-content-primary';
@@ -473,7 +461,7 @@ export function ManageTemplatesModal({
                       })}
                       className={`${inputCls} w-32`}
                     >
-                      {FIELD_TYPES.map((ft) => (
+                      {TEMPLATE_FIELD_TYPES.map((ft) => (
                         <option key={ft} value={ft}>
                           {t(`fieldreports.fieldtype_${ft}`, {
                             defaultValue: FIELDREPORTS_FIELDTYPE_LABELS[ft] ?? ft,

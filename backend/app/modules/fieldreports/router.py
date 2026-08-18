@@ -34,6 +34,7 @@ from app.core.upload_guards import reject_if_xlsx_bomb
 from app.core.validation.messages import translate
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
 from app.modules.fieldreports.schemas import (
+    WEATHER_CONDITIONS,
     FieldReportCreate,
     FieldReportResponse,
     FieldReportSummary,
@@ -417,7 +418,9 @@ _REPORT_COLUMN_ALIASES: dict[str, list[str]] = {
     ],
 }
 
-_ALLOWED_WEATHER = {"clear", "cloudy", "rain", "snow", "fog", "storm"}
+# The import guard reads the schema's vocabulary rather than restating it:
+# a row carrying a word the picker offers must not be quietly rewritten.
+_ALLOWED_WEATHER = set(WEATHER_CONDITIONS)
 
 
 def _match_report_column(header: str) -> str | None:

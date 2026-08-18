@@ -11,9 +11,29 @@ import { useAuthStore } from '@/stores/useAuthStore';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
-export type ReportType = 'daily' | 'inspection' | 'safety' | 'concrete_pour';
+// The kinds of report the register offers, in the order every picker
+// shows them. Mirrors REPORT_TYPES in
+// backend/app/modules/fieldreports/schemas.py.
+export const REPORT_TYPES = ['daily', 'inspection', 'safety', 'concrete_pour'] as const;
+export type ReportType = (typeof REPORT_TYPES)[number];
 export type ReportStatus = 'draft' | 'submitted' | 'approved';
-export type WeatherCondition = 'clear' | 'cloudy' | 'rain' | 'snow' | 'fog' | 'storm';
+// The weather a site report can record. The array is the list and the union
+// is derived from it, so a `Record<WeatherCondition, ...>` anywhere in the
+// feature stops compiling until it accounts for every word the picker
+// offers. Mirrors WEATHER_CONDITIONS in
+// backend/app/modules/fieldreports/schemas.py.
+export const WEATHER_CONDITIONS = [
+  'clear',
+  'partly_cloudy',
+  'cloudy',
+  'overcast',
+  'rain',
+  'snow',
+  'fog',
+  'hazy',
+  'storm',
+] as const;
+export type WeatherCondition = (typeof WEATHER_CONDITIONS)[number];
 
 export interface WorkforceEntry {
   trade: string;
@@ -216,13 +236,17 @@ export async function exportFieldReportPdf(id: string): Promise<void> {
 
 /* ── Report Templates ──────────────────────────────────────────────────── */
 
-export type TemplateFieldType =
-  | 'text'
-  | 'textarea'
-  | 'number'
-  | 'select'
-  | 'date'
-  | 'checkbox';
+// The field kinds a report template can hold, in the order the picker shows
+// them. Mirrors FieldType in backend/app/modules/fieldreports/schemas.py.
+export const TEMPLATE_FIELD_TYPES = [
+  'text',
+  'textarea',
+  'number',
+  'select',
+  'date',
+  'checkbox',
+] as const;
+export type TemplateFieldType = (typeof TEMPLATE_FIELD_TYPES)[number];
 
 export interface TemplateFieldDefinition {
   key: string;
@@ -404,9 +428,14 @@ export async function fetchWeather(lat: number, lon: number): Promise<WeatherDat
 }
 
 /**
- * Map an OpenWeatherMap free-text description / icon code to our coarse
- * WeatherCondition enum so a fetched forecast can prefill the modal's
+ * Map an OpenWeatherMap free-text description / icon code onto the
+ * WeatherCondition vocabulary so a fetched forecast can prefill the modal's
  * "Condition" select. Falls back to 'cloudy' for anything unrecognised.
+ *
+ * The cloud icons carry the distinction the words do: 02 is a few clouds and
+ * 03 scattered, both partly cloudy, while 04 is broken to full overcast. The
+ * atmosphere group all shares icon 50, so an icon with no description still
+ * reads as fog and only an explicit haze, smoke or dust says 'hazy'.
  */
 export function weatherConditionFromDescription(
   description?: string | null,
@@ -424,10 +453,20 @@ export function weatherConditionFromDescription(
     ic.startsWith('10')
   )
     return 'rain';
-  if (d.includes('fog') || d.includes('mist') || d.includes('haze') || ic.startsWith('50'))
-    return 'fog';
-  if (d.includes('cloud') || d.includes('overcast') || ic.startsWith('02') || ic.startsWith('03') || ic.startsWith('04'))
-    return 'cloudy';
+  if (d.includes('haze') || d.includes('smoke') || d.includes('dust') || d.includes('sand'))
+    return 'hazy';
+  if (d.includes('fog') || d.includes('mist') || ic.startsWith('50')) return 'fog';
+  if (d.includes('overcast') || d.includes('broken cloud') || ic.startsWith('04'))
+    return 'overcast';
+  if (
+    d.includes('partly') ||
+    d.includes('few cloud') ||
+    d.includes('scattered') ||
+    ic.startsWith('02') ||
+    ic.startsWith('03')
+  )
+    return 'partly_cloudy';
+  if (d.includes('cloud')) return 'cloudy';
   if (d.includes('clear') || d.includes('sun') || ic.startsWith('01')) return 'clear';
   return 'cloudy';
 }

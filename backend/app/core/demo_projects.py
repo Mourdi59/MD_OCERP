@@ -5082,10 +5082,11 @@ def _generate_module_data(
     # ── Field reports (8-12 spread across the schedule months) ───────────
     field_reports: list[dict] = []
     fr_n = min(max(months, 8), 12)
-    # The six conditions the fieldreports module defines. It draws no line
-    # between broken cloud and full overcast, so the rotation carries fog rather
-    # than the same word twice.
-    conditions = ["clear", "cloudy", "fog", "rain"]
+    # Six of the nine conditions the fieldreports module defines, rotated
+    # across the schedule. The module separates a few clouds from broken cloud
+    # and from full overcast, so the rotation carries the spread rather than
+    # the same word twice.
+    conditions = ["clear", "partly_cloudy", "cloudy", "overcast", "fog", "rain"]
     for i in range(fr_n):
         trade = trades[i % len(trades)][1] if trades else "General works"
         day = round(i * (months * 30) / fr_n) + 3
@@ -5247,7 +5248,9 @@ def _generate_module_data(
     # a KeyError that takes the whole demo install with it.
     diary_weather_note = {
         "clear": "Dry and clear, full working day.",
+        "partly_cloudy": "Bright with broken cloud, full working day.",
         "cloudy": "Cloudy but workable conditions.",
+        "overcast": "Overcast all day, work continued to programme.",
         "fog": "Morning fog, lifting operations held until visibility improved.",
         "rain": "Intermittent rain, external works paused in the afternoon.",
     }

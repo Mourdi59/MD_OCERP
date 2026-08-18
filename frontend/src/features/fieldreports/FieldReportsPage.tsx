@@ -18,6 +18,8 @@ import {
   Snowflake,
   CloudFog,
   CloudLightning,
+  Cloudy,
+  Haze,
   Users,
   FileText,
   CheckCircle2,
@@ -70,6 +72,8 @@ import {
   downloadFieldReportsTemplate,
   fetchWeather,
   weatherConditionFromDescription,
+  REPORT_TYPES,
+  WEATHER_CONDITIONS,
 } from './api';
 import type {
   FieldReport,
@@ -104,8 +108,6 @@ declare global {
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 
-const REPORT_TYPES: ReportType[] = ['daily', 'inspection', 'safety', 'concrete_pour'];
-const WEATHER_CONDITIONS: WeatherCondition[] = ['clear', 'cloudy', 'rain', 'snow', 'fog', 'storm'];
 
 const COMMON_TRADES = [
   'Concrete',
@@ -123,10 +125,13 @@ const COMMON_TRADES = [
 
 const WEATHER_ICONS: Record<WeatherCondition, typeof Sun> = {
   clear: Sun,
+  partly_cloudy: CloudSun,
   cloudy: Cloud,
+  overcast: Cloudy,
   rain: CloudRain,
   snow: Snowflake,
   fog: CloudFog,
+  hazy: Haze,
   storm: CloudLightning,
 };
 

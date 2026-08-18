@@ -29,6 +29,7 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from app.modules.correspondence.schemas import CORRESPONDENCE_TYPES, CorrespondenceCreate
+from app.modules.fieldreports.schemas import WEATHER_CONDITIONS, FieldReportCreate
 from app.modules.meetings.schemas import MEETING_TYPES, MeetingCreate
 from app.modules.submittals.schemas import SUBMITTAL_TYPES, SubmittalCreate
 
@@ -61,6 +62,13 @@ class Vocabulary:
     locale_prefix: str
     descriptions: bool
     prose_keys: tuple[str, ...]
+    # Words English carries that the translation pass has not reached yet.
+    # A vocabulary grows in English first and the other locales follow in
+    # one sweep, so between those two commits every locale legitimately
+    # holds part of the family. Naming the new words here keeps the rest of
+    # the family under the same check instead of dropping the module out of
+    # it, and the sweep that translates them deletes the entry.
+    awaiting_translation: tuple[str, ...] = ()
 
     def __str__(self) -> str:
         return self.module
@@ -124,6 +132,24 @@ REGISTRY = [
         # standing rule. A hedged list does not go stale, so there is nothing
         # here to hold in step.
         prose_keys=(),
+    ),
+    Vocabulary(
+        module="fieldreports",
+        field="weather_condition",
+        values=WEATHER_CONDITIONS,
+        create_schema=FieldReportCreate,
+        create_payload={"project_id": _A_PROJECT, "report_date": "2026-01-05"},
+        feature="fieldreports",
+        ts_const="WEATHER_CONDITIONS",
+        locale_prefix="fieldreports.weather_",
+        descriptions=False,
+        # Empty on purpose. The package docstring and the manifest line name
+        # the subject, "weather", without listing the conditions under it,
+        # which is the spelling that cannot go stale.
+        prose_keys=(),
+        # Three words this module gained after the family was already in
+        # every locale. English has them; the sweep has not run yet.
+        awaiting_translation=("partly_cloudy", "overcast", "hazy"),
     ),
 ]
 
@@ -257,6 +283,35 @@ class TestThePythonSide:
         )
         assert offenders == [], f"these spell the vocabulary out instead of building it: {offenders}"
 
+    @pytest.mark.parametrize("vocab", REGISTRY, ids=_ids)
+    def test_no_second_collection_of_the_words_either(self, vocab: Vocabulary):
+        """An alternation is one shape a copy takes and a bare collection is the other.
+
+        The field reports CSV import held ``{"clear", "cloudy", "rain", ...}``
+        beside the schema's own list and rewrote anything it did not recognise
+        to "clear", so an import naming a real condition lost it with nothing
+        printed anywhere. There is no pipe in that line, so the check above
+        cannot see it. The vocabulary's own definition is excused once, by
+        being the first literal that states it exactly; a second one is a copy.
+        """
+        import ast
+
+        excused = False
+        offenders: dict[str, list[str]] = {}
+        for path in sorted((BACKEND / vocab.module).glob("*.py")):
+            for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+                if not isinstance(node, ast.Set | ast.List | ast.Tuple):
+                    continue
+                words = [e.value for e in node.elts if isinstance(e, ast.Constant) and isinstance(e.value, str)]
+                if tuple(words) == tuple(vocab.values) and not excused:
+                    excused = True
+                    continue
+                shared = set(words) & set(vocab.values)
+                if len(shared) >= 2:
+                    offenders.setdefault(path.name, []).extend(sorted(shared))
+        assert excused, f"{vocab.module} no longer states {vocab.field} as one literal, so this check is adrift"
+        assert offenders == {}, f"these keep a second collection of the words: {offenders}"
+
 
 class TestTheTypeScriptSide:
     @pytest.mark.parametrize("vocab", REGISTRY, ids=_ids)
@@ -307,18 +362,46 @@ class TestTheLocaleSide:
 
     @pytest.mark.parametrize("vocab", REGISTRY, ids=_ids)
     def test_a_locale_speaks_all_of_the_family_or_none_of_it(self, vocab: Vocabulary):
+        # Narrowed to the vocabulary's own words, because a prefix also
+        # matches keys that are not labels at all: `fieldreports.weather_`
+        # catches `weather_filled` and `weather_unavailable`, which every
+        # locale carries, and without this no file could ever read as "the
+        # pass has not reached here yet" however little of the family it has.
+        words = set(vocab.values)
         started = {
-            name: labels
+            name: labels & words
             for name, (labels, _) in _locale_families(vocab.locale_prefix).items()
-            if labels and name not in PARTIAL_BY_DESIGN
+            if labels & words and name not in PARTIAL_BY_DESIGN
         }
         assert started, f"no locale carries any of {vocab.module}, so this check measures nothing"
-        incomplete = {
-            name: sorted(set(vocab.values) - labels)
-            for name, labels in started.items()
-            if not labels >= set(vocab.values)
-        }
+        required = words - set(vocab.awaiting_translation)
+        incomplete = {name: sorted(required - labels) for name, labels in started.items() if not labels >= required}
         assert incomplete == {}, f"these locales offer some of {vocab.module} and not the rest: {incomplete}"
+
+    @pytest.mark.parametrize("vocab", REGISTRY, ids=_ids)
+    def test_a_word_waiting_for_translation_is_really_waiting(self, vocab: Vocabulary):
+        """An exception has to read as an inclusion backwards, or it never expires.
+
+        ``awaiting_translation`` excuses a word from the check above, which
+        makes it the one place a word can be parked and forgotten. Two claims
+        keep it honest: the word has to belong to the vocabulary and be in
+        English already, and it stops being excused the moment every locale
+        carries it.
+        """
+        if not vocab.awaiting_translation:
+            pytest.skip(f"{vocab.module} has no words waiting for the translation pass")
+        families = _locale_families(vocab.locale_prefix)
+        pending = set(vocab.awaiting_translation)
+        assert pending <= set(vocab.values), f"{sorted(pending - set(vocab.values))} is not one of {vocab.module}"
+        assert pending <= families["en.ts"][0], f"{sorted(pending - families['en.ts'][0])} is not in English either"
+        elsewhere = [
+            labels for name, (labels, _) in families.items() if name not in PARTIAL_BY_DESIGN and name != "en.ts"
+        ]
+        landed = sorted(word for word in pending if all(word in labels for labels in elsewhere))
+        assert landed == [], (
+            f"every locale now carries {landed}, so drop them from {vocab.module}'s "
+            "awaiting_translation and let the check hold the whole family again"
+        )
 
     @pytest.mark.parametrize("vocab", REGISTRY, ids=_ids)
     def test_a_label_never_ships_without_its_description(self, vocab: Vocabulary):

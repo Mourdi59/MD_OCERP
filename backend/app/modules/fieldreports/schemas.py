@@ -24,6 +24,30 @@ _INT32_MAX = 2_147_483_647
 # PDF export size.
 _SIGNATURE_MAX_LEN = 2 * 1024 * 1024
 
+# The weather a site report can record. Written once, because the same
+# words are spelled again by the CSV import guard in ``router.py`` and by
+# the picker in the frontend, and a hand-copied vocabulary drifts. The
+# column is ``String(30)`` and the longest word here is ``partly_cloudy``
+# at thirteen characters, so widening the list needs no migration.
+WEATHER_CONDITIONS: tuple[str, ...] = (
+    "clear",
+    "partly_cloudy",
+    "cloudy",
+    "overcast",
+    "rain",
+    "snow",
+    "fog",
+    "hazy",
+    "storm",
+)
+WEATHER_CONDITION_PATTERN = rf"^({'|'.join(WEATHER_CONDITIONS)})$"
+
+# The kinds of report the register offers. Four schemas here constrain
+# this field, and a fifth copy sat in the page, so the words are stated
+# once and every pattern is built from them.
+REPORT_TYPES: tuple[str, ...] = ("daily", "inspection", "safety", "concrete_pour")
+REPORT_TYPE_PATTERN = rf"^({'|'.join(REPORT_TYPES)})$"
+
 
 def _check_signature_data(value: str | None) -> str | None:
     """Sniff the signature payload - accept only base64 image data URIs.
@@ -83,11 +107,11 @@ class FieldReportCreate(BaseModel):
     report_date: date
     report_type: str = Field(
         default="daily",
-        pattern=r"^(daily|inspection|safety|concrete_pour)$",
+        pattern=REPORT_TYPE_PATTERN,
     )
     weather_condition: str = Field(
         default="clear",
-        pattern=r"^(clear|cloudy|rain|snow|fog|storm)$",
+        pattern=WEATHER_CONDITION_PATTERN,
     )
     temperature_c: float | None = Field(default=None, ge=-100.0, le=100.0, allow_inf_nan=False)
     wind_speed: str | None = Field(default=None, max_length=50)
@@ -123,11 +147,11 @@ class FieldReportUpdate(BaseModel):
     report_date: date | None = None
     report_type: str | None = Field(
         default=None,
-        pattern=r"^(daily|inspection|safety|concrete_pour)$",
+        pattern=REPORT_TYPE_PATTERN,
     )
     weather_condition: str | None = Field(
         default=None,
-        pattern=r"^(clear|cloudy|rain|snow|fog|storm)$",
+        pattern=WEATHER_CONDITION_PATTERN,
     )
     temperature_c: float | None = Field(default=None, ge=-100.0, le=100.0, allow_inf_nan=False)
     wind_speed: str | None = Field(default=None, max_length=50)
@@ -355,7 +379,7 @@ class FieldReportTemplateCreate(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     report_type: str = Field(
         default="daily",
-        pattern=r"^(daily|inspection|safety|concrete_pour)$",
+        pattern=REPORT_TYPE_PATTERN,
     )
     fields: list[TemplateFieldDefinition] = Field(default_factory=list, max_length=100)
     is_active: bool = True
@@ -371,7 +395,7 @@ class FieldReportTemplateUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     report_type: str | None = Field(
         default=None,
-        pattern=r"^(daily|inspection|safety|concrete_pour)$",
+        pattern=REPORT_TYPE_PATTERN,
     )
     fields: list[TemplateFieldDefinition] | None = Field(default=None, max_length=100)
     is_active: bool | None = None
