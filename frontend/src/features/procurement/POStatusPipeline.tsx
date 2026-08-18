@@ -15,6 +15,17 @@
 // component is purely presentational and side-effect free - it reads the
 // row status string and maps it to the same FSM the backend service
 // enforces (`_PO_STATUS_TRANSITIONS` in procurement/service.py).
+//
+// COLOUR NOTE - do not "tidy" `bg-semantic-* opacity-70` back into
+// `bg-semantic-*/70`. The `semantic` palette in tailwind.config.js is
+// declared as plain `var(--oe-...)` strings rather than the channel-triplet
+// function form that `oe.blue` uses, so Tailwind emits NO rule at all for an
+// alpha-modified semantic utility. That is not a faint colour, it is no
+// background whatsoever. It made every completed stage render fully
+// transparent, so a draft PO showed five visible pips, approved four and
+// issued three: the further a PO had actually got, the less progressed it
+// looked. The cancelled bar was invisible for the same reason. Alpha comes
+// from the `opacity-*` utility here until the palette itself is converted.
 
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
@@ -80,7 +91,7 @@ export function POStatusPipeline({ status }: { status: string }) {
         aria-label={`${ariaLabel}: ${currentLabel}`}
         className="inline-flex items-center gap-1"
       >
-        <span className="inline-block h-1.5 w-6 rounded-full bg-semantic-error/70" />
+        <span className="inline-block h-1.5 w-6 rounded-full bg-semantic-error opacity-70" />
       </div>
     );
   }
@@ -101,7 +112,7 @@ export function POStatusPipeline({ status }: { status: string }) {
             className={clsx(
               'inline-block h-1.5 rounded-full transition-colors',
               current ? 'w-4' : 'w-2',
-              past && 'bg-semantic-success/70',
+              past && 'bg-semantic-success opacity-70',
               current && 'bg-oe-blue',
               !past && !current && 'bg-border',
             )}

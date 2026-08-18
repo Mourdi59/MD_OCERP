@@ -57,4 +57,39 @@ describe('<POStatusPipeline>', () => {
       expect.stringContaining('Completed'),
     );
   });
+
+  // Counting spans is not enough: the dots were all present in the DOM while
+  // the completed ones painted nothing, so a draft PO showed five visible
+  // pips and an issued one showed three. The `semantic` palette is declared
+  // in tailwind.config.js as a plain `var(--oe-...)` string rather than the
+  // channel-triplet function form, and Tailwind emits NO rule for an
+  // alpha-modified utility built on it. These two guard the paint, not the
+  // markup.
+  it.each(['draft', 'approved', 'issued', 'partially_received', 'completed', 'cancelled'])(
+    'paints every dot with a background Tailwind actually emits (%s)',
+    (status) => {
+      const { container } = render(<POStatusPipeline status={status} />);
+      for (const dot of container.querySelectorAll('span')) {
+        // An alpha modifier on the `semantic` palette compiles to nothing,
+        // which reads on screen as a stage that does not exist.
+        expect(dot.className).not.toMatch(/semantic-[a-z-]+\/\d+/);
+        // Every dot must still name some background, otherwise it is
+        // transparent for a different reason.
+        expect(dot.className).toMatch(/\bbg-[a-z-]+/);
+      }
+    },
+  );
+
+  it('distinguishes past, current and future stages from one another', () => {
+    const { container } = render(<POStatusPipeline status="issued" />);
+    const backgrounds = Array.from(container.querySelectorAll('span')).map(
+      (d) => (d.className.match(/\bbg-[a-z-]+\b/) ?? [''])[0],
+    );
+    // draft + approved are past, issued is current, the last two are future.
+    expect(backgrounds[0]).toBe('bg-semantic-success');
+    expect(backgrounds[1]).toBe('bg-semantic-success');
+    expect(backgrounds[2]).toBe('bg-oe-blue');
+    expect(backgrounds[3]).toBe('bg-border');
+    expect(new Set(backgrounds).size).toBe(3);
+  });
 });
