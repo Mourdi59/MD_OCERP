@@ -152,6 +152,26 @@ describe('GanttChart date columns', () => {
     expect(startA, 'two rows two years apart print the same date').not.toBe(startB);
   });
 
+  it('writes that year in full, not as two digits', () => {
+    // "05 Mar 26" puts a two-digit year next to a two-digit day on either side
+    // of the month, and the reader has to work out which number is which. The
+    // expected years are read off the fixture rather than typed, so this keeps
+    // meaning the same thing when the dates move.
+    const { container } = render(<GanttChart activities={MULTI_YEAR} />);
+
+    const cases: [string, string][] = [
+      ['gantt-start-a', MULTI_YEAR[0]!.start],
+      ['gantt-end-a', MULTI_YEAR[0]!.end],
+      ['gantt-start-b', MULTI_YEAR[1]!.start],
+      ['gantt-end-b', MULTI_YEAR[1]!.end],
+    ];
+
+    for (const [testId, iso] of cases) {
+      const fullYear = String(new Date(`${iso}T00:00:00Z`).getUTCFullYear());
+      expect(cellText(container, testId), `${testId} abbreviates the year`).toContain(fullYear);
+    }
+  });
+
   it('reads the span off the activities, not off the padded timeline range', () => {
     // getDateRange pads a month past the last activity when no explicit range is
     // given, so a programme ending in December spills into January. Deriving the

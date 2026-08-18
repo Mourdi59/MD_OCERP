@@ -22,6 +22,7 @@ import { AlertTriangle, CalendarClock, Plus, RefreshCw, Scale } from 'lucide-rea
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
+import { fmtDate } from '@/shared/lib/formatters';
 import { formatCurrency } from '@/shared/lib/money';
 import { getErrorMessage } from '@/shared/lib/api';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -391,7 +392,9 @@ function ClockDetail({
                 <Badge variant="neutral" size="sm">
                   {t(`payment_clock.notice_type.${n.notice_type}`, { defaultValue: n.notice_type })}
                 </Badge>
-                <span>{n.issued_at}</span>
+                {/* A notice is evidence of a date, so it says the date the
+                    reader's language writes rather than the wire's ISO. */}
+                <span>{fmtDate(n.issued_at)}</span>
                 {n.notified_amount !== null && (
                   <span className="text-content-secondary">
                     {formatCurrency(n.notified_amount, n.currency || app.currency)}

@@ -85,6 +85,13 @@ const RESIZE_HANDLE_WIDTH = 7;
  * stays inside a single year it would be the same digits on every row, which is
  * noise in a 10px column somebody scans in one pass.
  *
+ * When it is printed it is printed in full. Two digits saved a little width and
+ * spent it on a second reading: "05 Mar 26" puts two numbers either side of a
+ * month on a row whose first number is a day of that month, and the eye has to
+ * be told which is which. Every other date in the product carries four digits,
+ * so this was also the one place where the same day looked like a different
+ * kind of thing. The column widens to hold it.
+ *
  * Formatting goes through ``fmtDate`` rather than a local ``Intl`` call so a
  * date-only ``YYYY-MM-DD`` value is pinned to UTC - read in the browser's zone
  * it renders as the previous day at any negative offset.
@@ -93,7 +100,7 @@ function fmtShort(iso: string, withYear: boolean): string {
   return fmtDate(iso, {
     day: '2-digit',
     month: 'short',
-    ...(withYear ? { year: '2-digit' as const } : {}),
+    ...(withYear ? { year: 'numeric' as const } : {}),
   });
 }
 
@@ -201,7 +208,10 @@ export function GanttChart({
   // append a period or an era marker, so the two date columns grow with it and
   // the panel grows with them. Charging it to the activity name instead would
   // truncate the one column that carries the meaning.
-  const dateColWidth = showYear ? 88 : 70;
+  // 88px held "05 Mar 26"; a four-digit year needs the two characters back, and
+  // a language that writes "05. Mär. 2026" needs more than that. The dateless
+  // width is unchanged, so a single-year programme keeps the table it had.
+  const dateColWidth = showYear ? 104 : 70;
   const tableWidth = TABLE_WIDTH + 2 * (dateColWidth - 70);
 
   const rowIndex = useMemo(() => buildRowIndex(activities), [activities]);
