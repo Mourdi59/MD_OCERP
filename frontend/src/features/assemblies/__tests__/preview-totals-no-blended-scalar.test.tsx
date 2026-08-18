@@ -19,6 +19,10 @@
 
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+// Built with the formatter the footer uses, so the assertion states that each
+// currency keeps its own figure rather than pinning how a language groups the
+// thousands of it. Only the four-figure XOF total is affected.
+import { fmtFixed } from '@/shared/lib/formatters';
 import { PreviewTotalsFooter } from '../AssemblyLibraryPage';
 import type { AppliedTemplateCurrencySubtotal } from '../api';
 
@@ -59,9 +63,9 @@ describe('PreviewTotalsFooter', () => {
     // No decimals, and that is the point: XOF has no minor unit, so the two
     // digits this line used to expect were a quantity the currency cannot
     // express. Each bucket is now printed to its own currency's precision.
-    expect(cellText).toContain('1000 XOF');
+    expect(cellText).toContain(`${fmtFixed(1000, 0)} XOF`);
     // The blend this whole change removes: 100 + 1000 stamped as one currency.
-    expect(cellText.join('|')).not.toContain('1100.00');
+    expect(cellText.join('|')).not.toContain(fmtFixed(1100, 2));
   });
 
   it('says why no total is shown', () => {
