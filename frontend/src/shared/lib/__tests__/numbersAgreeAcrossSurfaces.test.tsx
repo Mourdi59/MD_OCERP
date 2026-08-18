@@ -326,8 +326,9 @@ function receiverOf(source: string, dot: number): string {
  * locale their figures should follow is the recipient's, which the record
  * already carries as a country code. That rule does not exist yet, so these
  * files keep the language they had rather than being moved somewhere they
- * would have to move again. Thirty of the thirty six counted here are numbers
- * being held; the other six are dates, which keep the language for good.
+ * would have to move again. Six of the thirty six counted here are dates,
+ * which keep the language whatever the document rule turns out to be; the
+ * other thirty are numbers waiting on it.
  *
  * The list is closed against growth: a ninth file that formats a number on the
  * language fails the screen test below, because the exemption is these names
@@ -531,23 +532,40 @@ describe('there is one place the number locale comes from', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('and every document held back is a file that still exists', () => {
+  it('and every document held back is held at the count it was held at', () => {
     // An exemption keyed to a path outlives the path. A file that is renamed
     // or split stops being exempt and nobody is told, so the names are checked
     // against the same walk the rule above uses.
     //
-    // The counts beside the names are not asserted here, and that is a debt
-    // rather than a decision. They describe the branch, and this test reads
-    // the working copy, which today carries a half-finished copy of these
-    // files in which the numbers are already converted. Asserting the count
-    // now would turn the file red on a working copy while CI stayed green,
-    // which teaches the next reader to weaken it. The counts are checked
-    // against the branch with `git grep -c toLocaleString <sha> -- <path>`
-    // until the two agree, and then they belong in an assertion here.
+    // The count beside each name is what makes the exemption shrinkable. A
+    // name on its own says this file is allowed, in any amount and for good. A
+    // name and a number say this file is allowed twenty six times, so a twenty
+    // seventh fails, and so does a twenty fifth: moving one of these to the
+    // recipient's locale is a change somebody has to write down here, which is
+    // the whole point of holding them by name instead of by rule.
+    const held: string[] = [];
+    let dates = 0;
     for (const [file] of DOCUMENT_BUILDERS) {
       expect(PRODUCT_FILES).toContain(file);
+      const source = read(file);
+      const aliases = boundTo(source, LANGUAGE);
+      let seen = 0;
+      for (const match of source.matchAll(/\.toLocaleString\(/g)) {
+        const argument = localeArgument(source, match.index + match[0].length);
+        if (!reaches(argument, LANGUAGE, aliases)) continue;
+        seen += 1;
+        if (CERTAINLY_A_DATE.test(receiverOf(source, match.index))) dates += 1;
+      }
+      held.push(`${file} ${seen}`);
     }
+    expect(held).toEqual(DOCUMENT_BUILDERS.map(([file, count]) => `${file} ${count}`));
     expect(DOCUMENT_FILES.size).toBe(DOCUMENT_BUILDERS.length);
+
+    // Six of the thirty six are dates, and a date keeps the interface language
+    // whichever way the document rule goes, so this share should not move when
+    // the rule arrives. The receiver rule proves the six; the thirty numbers
+    // are counted by reading the options argument, which this walk does not do.
+    expect(dates).toBe(6);
   });
 
   it('and no date it writes by hand is written in the number format', () => {
