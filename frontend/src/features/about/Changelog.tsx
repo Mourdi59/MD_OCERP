@@ -38,6 +38,13 @@ interface ChangelogEntry {
 // date, title and meaning intact; trim the prose, not the facts.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '15.0.0',
+    date: '2026-08-18',
+    tag: 'MILESTONE',
+    summary:
+      'The product ships for two markets it could previously only describe: nine American playbooks with Texas and California state rules and a weekly certified payroll, and twelve German ones with the statutory VOB/B and BGB payment clocks and the working time record MiLoG section 17 requires. GAEB became a format the product both reads and writes, where a plain X84 export is a Hauptangebot, imported sections keep their hierarchy, and a bill stops claiming prices it does not carry. Markups are now something an estimator can reason about, with a rate per section, bonds priced off a rate card, escalation off an index, and a stack that reports its own contradictions rather than refusing the work. Every register says how much of itself the reader is seeing, measurement from drawings speaks the reader\'s units and digits throughout, and the semantic encoder downloads in the background while telling you which of five states it is in.',
+  },
+  {
     version: '14.8.1',
     date: '2026-08-12',
     tag: 'NEW',
