@@ -18,6 +18,7 @@ import { useBrandingStore } from '@/stores/useBrandingStore';
 import { BrandingEditorModal } from '@/app/layout/CustomBranding';
 import { extractErrorMessageFromBody } from '@/shared/lib/api';
 import { isTauri } from '@/shared/lib/desktop';
+import { HEX_PORTRAIT_CLIP } from '@/shared/lib/honeycomb';
 import { APP_VERSION } from '@/shared/lib/version';
 import { AuthBackground } from './AuthBackground';
 import {
@@ -418,12 +419,12 @@ export function LoginPage() {
           Dark mode keeps the original richer blob set for depth. */}
       <div className="absolute inset-y-0 left-0 right-1/2 z-0 pointer-events-none overflow-hidden hidden lg:block">
         <div className="absolute top-[-12%] left-[-6%] w-[520px] h-[520px] rounded-full bg-sky-300/10 dark:bg-oe-blue/35 blur-[120px] animate-blob-slow-1 mix-blend-screen" />
-        <div className="absolute bottom-[-18%] right-[2%] w-[400px] h-[400px] rounded-full bg-cyan-200/8 dark:bg-violet-500/35 blur-[110px] animate-blob-slow-4 mix-blend-screen hidden dark:block" />
+        <div className="absolute bottom-[-18%] right-[2%] w-[400px] h-[400px] rounded-full bg-cyan-200/10 dark:bg-violet-500/35 blur-[110px] animate-blob-slow-4 mix-blend-screen hidden dark:block" />
       </div>
 
       {/* Mobile-only ambient blobs (single column layout) */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden lg:hidden">
-        <div className="absolute top-[-12%] left-[-6%] w-[520px] h-[520px] rounded-full bg-sky-300/12 dark:bg-oe-blue/35 blur-[110px] animate-blob-slow-1 mix-blend-screen" />
+        <div className="absolute top-[-12%] left-[-6%] w-[520px] h-[520px] rounded-full bg-sky-300/10 dark:bg-oe-blue/35 blur-[110px] animate-blob-slow-1 mix-blend-screen" />
       </div>
 
       {/* Theme + Language - top right (enlarged for /login so discoverable). */}
@@ -448,7 +449,7 @@ export function LoginPage() {
                 <button
                   key={lang.code}
                   onClick={() => { i18n.changeLanguage(lang.code); setLangOpen(false); }}
-                  className={`flex w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isActive ? 'bg-oe-blue/8 text-oe-blue font-medium' : 'text-content-primary hover:bg-surface-secondary'}`}
+                  className={`flex w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors ${isActive ? 'bg-oe-blue/10 text-oe-blue font-medium' : 'text-content-primary hover:bg-surface-secondary'}`}
                 >
                   <CountryFlag code={lang.country} size={18} />
                   <span className="truncate">
@@ -607,7 +608,7 @@ export function LoginPage() {
                   style={{
                     animationDelay: `${280 + idx * 35}ms`,
                     animationFillMode: 'both',
-                    clipPath: 'polygon(50% 2%, 100% 26%, 100% 74%, 50% 98%, 0% 74%, 0% 26%)',
+                    clipPath: HEX_PORTRAIT_CLIP,
                     background: isAccent
                       ? 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 65%, #0369a1 100%)'
                       : 'linear-gradient(180deg, rgba(255,255,255,0.97), rgba(244,250,255,0.82))',
@@ -687,7 +688,7 @@ export function LoginPage() {
           <div className="absolute inset-0 bg-gradient-to-l from-white/0 via-white/60 to-white dark:from-[#070912]/0 dark:via-[#070912]/60 dark:to-[#070912]" />
           {/* Tiny far-corner sky tint just to soften the edge - the glass
               still has something to lift off, but the field reads white. */}
-          <div className="absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-sky-100/55 dark:bg-sky-500/12 blur-[110px]" />
+          <div className="absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-sky-100/55 dark:bg-sky-500/10 blur-[110px]" />
         </div>
         <div className="w-full max-w-[380px] relative z-10">
           {/* Logo - tenant white-label (logo / company name) when set via
@@ -889,7 +890,7 @@ export function LoginPage() {
                       type="button"
                       onClick={() => handleDemoLogin(acct.email)}
                       disabled={demoLoading !== null}
-                      className="flex w-full items-center gap-3 rounded-xl border border-border-light/50 dark:border-white/12 bg-surface-secondary/50 dark:bg-white/[0.06] px-3.5 py-2.5 text-left transition-all hover:border-oe-blue/40 hover:bg-oe-blue/[0.05] dark:hover:bg-oe-blue/[0.14] hover:shadow-sm disabled:opacity-50 group"
+                      className="flex w-full items-center gap-3 rounded-xl border border-border-light/50 dark:border-white/10 bg-surface-secondary/50 dark:bg-white/[0.06] px-3.5 py-2.5 text-left transition-all hover:border-oe-blue/40 hover:bg-oe-blue/[0.05] dark:hover:bg-oe-blue/[0.14] hover:shadow-sm disabled:opacity-50 group"
                     >
                       <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${acct.color} text-white text-sm font-bold shadow-sm`}>
                         {demoLoading === acct.email ? (
@@ -1100,7 +1101,7 @@ export function LoginPage() {
                   t('about.who.students', 'Students & educators'),
                   t('about.who.freelancers', 'Freelance consultants'),
                 ].map((role) => (
-                  <span key={role} className="inline-flex items-center rounded-full bg-oe-blue/8 px-2.5 py-1 text-2xs font-medium text-oe-blue">
+                  <span key={role} className="inline-flex items-center rounded-full bg-oe-blue/10 px-2.5 py-1 text-2xs font-medium text-oe-blue">
                     {role}
                   </span>
                 ))}
