@@ -10,9 +10,9 @@ overstated the money still available.
 The correction that matters most is the one all three shared. Committed money
 was not counted anywhere. A line with 48.7 budgeted, 12.4 spent and 33.4 under
 signed order reported 36.3 of headroom in green, when what is genuinely free is
-2.9. That is not a rounding complaint: it is a cost report inviting somebody to
-spend money that is already promised, on the very screen whose job is to stop
-them.
+15.3. That is not a rounding complaint: it is a cost report inviting somebody
+to spend money that is already promised, on the very screen whose job is to
+stop them.
 """
 
 from __future__ import annotations
