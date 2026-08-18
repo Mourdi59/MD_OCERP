@@ -35,7 +35,8 @@ import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { useToastStore } from '@/stores/useToastStore';
 import { useActiveProjectId } from '@/shared/hooks/useActiveProjectId';
 import { getErrorMessage } from '@/shared/lib/api';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   listDeterminations,
   createDetermination,
@@ -64,7 +65,7 @@ function money(value: string | number, currency?: string): string {
   const n = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(n)) return String(value);
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: currency ? 'currency' : 'decimal',
       currency: currency || undefined,
       minimumFractionDigits: 2,

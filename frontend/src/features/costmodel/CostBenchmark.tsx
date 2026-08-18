@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Ruler } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/shared/ui';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -53,7 +54,7 @@ const PROJECT_TYPE_OPTIONS: ReadonlyArray<{
 function formatCurrencyValue(amount: number, currency: string): string {
   const safe = /^[A-Z]{3}$/.test(currency) ? currency : 'EUR';
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: 'currency',
       currency: safe,
       minimumFractionDigits: 0,

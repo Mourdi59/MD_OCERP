@@ -41,6 +41,7 @@ import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { ApiError, apiGet, apiPost, apiPatch, apiDelete, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
 import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -1123,7 +1124,7 @@ export function CostsPage() {
   const selectedItems = items.filter((i) => selectedIds.has(i.id));
 
   const fmt = (n: number) =>
-    new Intl.NumberFormat(getIntlLocale(), {
+    new Intl.NumberFormat(getNumberLocale(), {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(n);
@@ -1136,7 +1137,7 @@ export function CostsPage() {
     const code = (currency || regionCurrency || '').trim().toUpperCase();
     if (!code) return fmt(n);
     try {
-      return new Intl.NumberFormat(getIntlLocale(), {
+      return new Intl.NumberFormat(getNumberLocale(), {
         style: 'currency',
         currency: code,
         minimumFractionDigits: 2,
@@ -2081,7 +2082,7 @@ function AddToBOQModal({
   }, [boqId, sectionId, items, addToast, onSuccess]);
 
   const fmt = (n: number) =>
-    new Intl.NumberFormat(getIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+    new Intl.NumberFormat(getNumberLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
   // Currency-aware money formatter for the preview — selected items can
   // span EUR / AED / SAR / USD, so always render the ISO code.
@@ -2089,7 +2090,7 @@ function AddToBOQModal({
     const code = (currency || '').trim().toUpperCase();
     if (!code) return fmt(n);
     try {
-      return new Intl.NumberFormat(getIntlLocale(), {
+      return new Intl.NumberFormat(getNumberLocale(), {
         style: 'currency',
         currency: code,
         minimumFractionDigits: 2,
@@ -2373,7 +2374,7 @@ function CreateAssemblyFromCostsModal({
   }, [onClose]);
 
   const fmt = (n: number) =>
-    new Intl.NumberFormat(getIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+    new Intl.NumberFormat(getNumberLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
   // MONEY BUG FIX: the old `items.reduce((s,i)=>s+(i.rate||0),0)` blended rates
   // across distinct ISO currencies (e.g. AED + EUR) into one figure and stored
@@ -2622,7 +2623,7 @@ function MassPricingFields({
   const previewFmt = (n: number) => {
     const code = (currency || '').trim().toUpperCase();
     try {
-      return new Intl.NumberFormat(getIntlLocale(), {
+      return new Intl.NumberFormat(getNumberLocale(), {
         ...(code ? { style: 'currency' as const, currency: code } : {}),
         minimumFractionDigits: 2,
         maximumFractionDigits: 4,

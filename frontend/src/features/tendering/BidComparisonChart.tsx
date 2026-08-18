@@ -2,7 +2,8 @@
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtPercent } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { formatCompactCurrency } from '@/shared/lib/money';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -43,13 +44,13 @@ function formatFull(amount: number, currency: string): string {
   // NEVER hard-fallback to EUR (task #217): render a symbol-less number
   // when the currency is unknown.
   if (!/^[A-Z]{3}$/.test(code)) {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
   }
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: 'currency',
       currency: code,
       minimumFractionDigits: 0,

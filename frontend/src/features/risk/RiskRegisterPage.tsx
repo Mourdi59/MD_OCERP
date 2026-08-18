@@ -18,7 +18,8 @@ import { PlanningCrossLinks } from '@/features/schedule/PlanningCrossLinks';
 import SimilarItemsPanel from '@/shared/ui/SimilarItemsPanel';
 import { UserSearchInput } from '@/shared/ui/UserSearchInput';
 import { apiGet, apiPost, apiPatch, apiDelete, type Page } from '@/shared/lib/api';
-import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useTabKeyboardNav } from '@/shared/hooks/useTabKeyboardNav';
@@ -100,7 +101,7 @@ const selectCls = 'h-8 rounded-lg border border-border bg-surface-primary px-2.5
 
 function fmtCur(n: number, c = 'EUR') {
   const s = /^[A-Z]{3}$/.test(c) ? c : 'EUR';
-  try { return new Intl.NumberFormat(getIntlLocale(), { style: 'currency', currency: s, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n); }
+  try { return new Intl.NumberFormat(getNumberLocale(), { style: 'currency', currency: s, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n); }
   catch { return `${fmtFixed(n, 0)} ${s}`; }
 }
 

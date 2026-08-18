@@ -39,6 +39,7 @@ import { catalogGuide } from './catalogGuide';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
 import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { usePreferencesStore } from '@/stores/usePreferencesStore';
 import { REGION_MAP } from '@/stores/useCostDatabaseStore';
@@ -223,7 +224,7 @@ function toComponentResourceType(value: string): ResourceType | undefined {
 /* ── Number formatting ─────────────────────────────────────────────────── */
 
 const fmt = (n: number) =>
-  new Intl.NumberFormat(getIntlLocale(), {
+  new Intl.NumberFormat(getNumberLocale(), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(n);

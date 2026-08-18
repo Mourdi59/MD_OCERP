@@ -42,7 +42,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { Button, Badge } from '@/shared/ui';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import type { CostVariant, VariantStats } from './api';
 
 /* ── Types ────────────────────────────────────────────────────────────── */
@@ -104,20 +104,20 @@ function formatPrice(value: number, currency: string): string {
   // an empty string, render the bare number. Never substitute USD/EUR —
   // see the architecture guide "no hardcoded currency fallbacks".
   if (!currency) {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(value);
   }
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: 'currency',
       currency,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(value);
   } catch {
-    const n = new Intl.NumberFormat(getIntlLocale(), {
+    const n = new Intl.NumberFormat(getNumberLocale(), {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(value);

@@ -8,6 +8,7 @@ import clsx from 'clsx';
 import { boqApi, type BOQSnapshot, type ActivityEntry } from './api';
 import { useToastStore } from '@/stores/useToastStore';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Snapshot diff helpers ─────────────────────────────────────────────── */
 
@@ -234,12 +235,12 @@ export function VersionHistoryDrawer({ boqId, isOpen, onClose }: VersionHistoryD
     }
   }, []);
 
-  const fmt = new Intl.NumberFormat(getIntlLocale(), {
+  const fmt = new Intl.NumberFormat(getNumberLocale(), {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
 
-  const fmtSigned = new Intl.NumberFormat(getIntlLocale(), {
+  const fmtSigned = new Intl.NumberFormat(getNumberLocale(), {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
     signDisplay: 'always',

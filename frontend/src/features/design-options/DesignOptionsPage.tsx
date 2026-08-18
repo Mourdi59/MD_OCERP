@@ -61,7 +61,7 @@ import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   listOptionSets,
   getOptionSet,
@@ -101,10 +101,10 @@ function formatMoney(amount: string | number, currency?: string): string {
   const value = num(amount);
   const code = (currency || '').trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(code)) {
-    return new Intl.NumberFormat(getIntlLocale(), { maximumFractionDigits: 0 }).format(value);
+    return new Intl.NumberFormat(getNumberLocale(), { maximumFractionDigits: 0 }).format(value);
   }
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: 'currency',
       currency: code,
       maximumFractionDigits: 0,

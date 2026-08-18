@@ -32,7 +32,7 @@ import {
 } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { getLevelingMatrix, levelBids } from './api';
 
 interface Props {
@@ -41,7 +41,7 @@ interface Props {
 }
 
 function formatNumber(n: number, decimals = 2): string {
-  return new Intl.NumberFormat(getIntlLocale(), {
+  return new Intl.NumberFormat(getNumberLocale(), {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(n);
@@ -50,13 +50,13 @@ function formatNumber(n: number, decimals = 2): string {
 function formatCurrency(amount: number, currency?: string): string {
   const code = (currency || '').trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(code)) {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
   }
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: 'currency',
       currency: code,
       minimumFractionDigits: 0,

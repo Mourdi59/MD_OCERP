@@ -29,7 +29,8 @@ import { Card, CardContent, CardHeader, InfoHint } from '@/shared/ui';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { fetchPunchSummary, type PunchStatus } from '@/features/punchlist/api';
 import { KpiStrip } from './KpiStrip';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /**
  * Statuses the punchlist module treats as "done". Everything else counts
@@ -41,7 +42,7 @@ const DONE_STATUSES: PunchStatus[] = ['verified', 'closed'];
 function formatCount(value: number): string {
   if (!Number.isFinite(value)) return '0';
   try {
-    return new Intl.NumberFormat(getIntlLocale()).format(value);
+    return new Intl.NumberFormat(getNumberLocale()).format(value);
   } catch {
     return String(Math.round(value));
   }

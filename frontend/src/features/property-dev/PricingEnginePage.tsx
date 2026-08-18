@@ -115,6 +115,7 @@ import {
   type ReservationStatus,
 } from './api';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 const RULE_TYPES: PricingRuleType[] = [
   'early_bird',
@@ -179,7 +180,7 @@ function fmtMoney(amount: string | number, currency: string): string {
   const n = typeof amount === 'string' ? Number(amount) : amount;
   if (!Number.isFinite(n)) return String(amount);
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: 'currency',
       currency: currency || 'EUR',
       maximumFractionDigits: 2,

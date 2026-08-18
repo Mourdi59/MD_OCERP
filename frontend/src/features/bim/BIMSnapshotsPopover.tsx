@@ -17,6 +17,7 @@ import { Plus, Trash2, X, Layers, Inbox } from 'lucide-react';
 
 import { Button } from '@/shared/ui';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { useToastStore } from '@/stores/useToastStore';
 
 import {
@@ -33,7 +34,7 @@ interface BIMSnapshotsPopoverProps {
 }
 
 function formatNumber(n: number): string {
-  return new Intl.NumberFormat(getIntlLocale()).format(n);
+  return new Intl.NumberFormat(getNumberLocale()).format(n);
 }
 
 function formatDate(iso: string): string {

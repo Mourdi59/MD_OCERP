@@ -21,12 +21,13 @@ import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { fetchLabourCost } from '@/features/payroll/api';
 import { costModelApi } from '@/features/costmodel/api';
 import { KpiStrip } from './KpiStrip';
-import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 function money(value: number, currency?: string): string {
   if (!Number.isFinite(value)) return '-';
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: currency ? 'currency' : 'decimal',
       currency: currency || undefined,
       maximumFractionDigits: 0,

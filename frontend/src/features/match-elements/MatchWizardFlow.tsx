@@ -94,6 +94,7 @@ import {
   type MatchLaneId,
 } from './matchReasons';
 import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // ─────────────────────────────────────────────────────────────────────────
 //  Stage model — the single source of truth for the one-and-only rail
@@ -203,7 +204,7 @@ const STAGE_INDEX: Record<StageId, number> = STAGES.reduce(
 function fmtMoney(value: number | null | undefined, currency: string | null | undefined) {
   if (value == null) return '—';
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: currency ? 'currency' : 'decimal',
       currency: currency || undefined,
       maximumFractionDigits: 2,

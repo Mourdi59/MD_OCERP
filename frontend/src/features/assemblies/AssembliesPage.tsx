@@ -15,6 +15,7 @@ import { Button, Card, Badge, DismissibleInfo, IntroRichText, EmptyState, Skelet
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { unitLabel } from '@/shared/lib/unitLabels';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { useToastStore } from '@/stores/useToastStore';
@@ -385,7 +386,7 @@ export function AssembliesPage() {
   // Templates removed — use New / AI Generate / Clone instead
 
   const fmt = (n: number) =>
-    new Intl.NumberFormat(getIntlLocale(), {
+    new Intl.NumberFormat(getNumberLocale(), {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(n);
@@ -1496,7 +1497,7 @@ function AIGenerateModal({
   };
 
   const fmt = (n: number) =>
-    new Intl.NumberFormat(getIntlLocale(), {
+    new Intl.NumberFormat(getNumberLocale(), {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(n);
@@ -2012,7 +2013,7 @@ function QuickPreview({
   });
 
   const fmt = (n: number) =>
-    new Intl.NumberFormat(getIntlLocale(), {
+    new Intl.NumberFormat(getNumberLocale(), {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(n);

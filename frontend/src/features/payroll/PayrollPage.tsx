@@ -72,7 +72,8 @@ import type {
   DeductionMode,
   AddDeductionPayload,
 } from './api';
-import { fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Helpers ───────────────────────────────────────────────────────────── */
 
@@ -80,7 +81,7 @@ function money(value: string | number, currency?: string): string {
   const n = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(n)) return String(value);
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: currency ? 'currency' : 'decimal',
       currency: currency || undefined,
       minimumFractionDigits: 2,

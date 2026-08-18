@@ -7,6 +7,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { listRegions } from './api';
 
 /**
@@ -25,7 +26,7 @@ export function fmtMoney(value: string | number | null | undefined, currency?: s
   if (value === null || value === undefined || value === '') return currency ? `- ${currency}` : '-';
   const n = typeof value === 'number' ? value : Number(value);
   const body = Number.isFinite(n)
-    ? new Intl.NumberFormat(getIntlLocale(), { maximumFractionDigits: 2 }).format(n)
+    ? new Intl.NumberFormat(getNumberLocale(), { maximumFractionDigits: 2 }).format(n)
     : String(value);
   return currency ? `${body} ${currency}` : body;
 }

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { Badge, EmptyState } from '@/shared/ui';
 import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { classifyCell } from '@/features/tendering/analysis';
 import { CostPerAreaBenchmark } from '@/features/boq/CostPerAreaBenchmark';
 import type {
@@ -57,12 +58,12 @@ function formatMoney(amount: string | number, currency?: string): string {
   // Never hard-fallback to a currency the project does not use: an unknown or
   // blank code renders a plain grouped number with no symbol.
   if (!/^[A-Z]{3}$/.test(code)) {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       maximumFractionDigits: 0,
     }).format(value);
   }
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: 'currency',
       currency: code,
       maximumFractionDigits: 0,
@@ -74,7 +75,7 @@ function formatMoney(amount: string | number, currency?: string): string {
 
 function formatQty(amount: string | number, unit?: string): string {
   const value = num(amount);
-  const n = new Intl.NumberFormat(getIntlLocale(), {
+  const n = new Intl.NumberFormat(getNumberLocale(), {
     maximumFractionDigits: 2,
   }).format(value);
   return unit ? `${n} ${unit}` : n;

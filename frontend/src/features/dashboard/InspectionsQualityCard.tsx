@@ -28,7 +28,7 @@ import { TruncationNotice } from '@/shared/ui/TruncationNotice';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { fetchInspections, type Inspection } from '@/features/inspections/api';
 import { KpiStrip } from './KpiStrip';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 interface InspectionStats {
   total: number;
@@ -78,7 +78,7 @@ export function InspectionsQualityCard() {
   if (isLoading) return null;
   if (!data || stats.total === 0) return null;
 
-  const nf = new Intl.NumberFormat(getIntlLocale());
+  const nf = new Intl.NumberFormat(getNumberLocale());
   const hasEvaluated = stats.evaluated > 0;
 
   const rateColor =

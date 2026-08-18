@@ -59,6 +59,7 @@ import {
   type DistributeResponse,
 } from './api';
 import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   listSubcontractors,
   type Subcontractor,
@@ -182,13 +183,13 @@ function formatCurrency(amount: number | string, currency?: string): string {
   // must not render its tender amounts with a Euro sign. When the currency
   // is unknown, show a plain decimal number with no symbol.
   if (!/^[A-Z]{3}$/.test(code)) {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(num);
   }
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: 'currency',
       currency: code,
       minimumFractionDigits: 0,
@@ -200,7 +201,7 @@ function formatCurrency(amount: number | string, currency?: string): string {
 }
 
 function formatNumber(n: number, decimals: number = 2): string {
-  return new Intl.NumberFormat(getIntlLocale(), {
+  return new Intl.NumberFormat(getNumberLocale(), {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(n);

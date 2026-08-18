@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/shared/lib/api';
-import { fmtCurrency, fmtNumber, fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtCurrency, fmtNumber, fmtPercent } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   FolderOpen,
   DollarSign,
@@ -40,7 +41,7 @@ const PAGE_SIZE = 50;
 function compactCurrency(value: number, currency = 'EUR'): string {
   const safe = currency && /^[A-Z]{3}$/.test(currency) ? currency : 'EUR';
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: 'currency',
       currency: safe,
       notation: 'compact',

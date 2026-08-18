@@ -29,6 +29,7 @@ import {
 import { Button, Badge, CountryFlag } from '@/shared/ui';
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { REGION_MAP } from '@/stores/useCostDatabaseStore';
 import { localizedUnitCode } from '@/shared/lib/unitLabels';
@@ -196,7 +197,7 @@ export function AssemblyPickerModal({
   }, [onClose]);
 
   const fmt = (n: number) =>
-    new Intl.NumberFormat(getIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+    new Intl.NumberFormat(getNumberLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 animate-fade-in" onClick={onClose} aria-hidden="true">
@@ -1549,7 +1550,7 @@ export function CostDatabaseSearchModal({
   }, [cursorIndex]);
 
   const fmtRate = (n: number) =>
-    new Intl.NumberFormat(getIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+    new Intl.NumberFormat(getNumberLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
   // Compose the count label.  When ``totalCount`` is known we render the
   // canonical "{{loaded}} of {{total}}" form; while still loading more pages
@@ -2167,7 +2168,7 @@ export function CostDatabaseSearchModal({
                       'Catalog-rate × quantity for the selection. Variant picks may adjust this.',
                   })}
                 >
-                  ≈ {new Intl.NumberFormat(getIntlLocale(), {
+                  ≈ {new Intl.NumberFormat(getNumberLocale(), {
                     style: 'currency',
                     currency: selectionPreview.currency,
                     minimumFractionDigits: 0,

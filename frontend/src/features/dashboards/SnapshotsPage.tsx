@@ -36,6 +36,7 @@ import {
   Skeleton,
 } from '@/shared/ui';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { DismissibleInfo, IntroRichText } from '@/shared/ui/DismissibleInfo';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -59,7 +60,7 @@ type DashboardsView = 'list' | 'timeline' | 'diff';
 const SNAPSHOTS_PAGE_SIZE = 50;
 
 function formatNumber(n: number): string {
-  return new Intl.NumberFormat(getIntlLocale()).format(n);
+  return new Intl.NumberFormat(getNumberLocale()).format(n);
 }
 
 function formatDate(iso: string): string {

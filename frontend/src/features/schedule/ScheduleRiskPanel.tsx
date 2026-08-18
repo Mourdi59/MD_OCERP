@@ -39,6 +39,7 @@ import { Play, Loader2, TrendingUp, Activity, Target, AlertTriangle } from 'luci
 import { Button, Card, Badge, EmptyState } from '@/shared/ui';
 import { useToastStore } from '@/stores/useToastStore';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { getErrorMessage } from '@/shared/lib/api';
 import {
   scheduleRisk,
@@ -63,7 +64,7 @@ const labelCls =
 function fmtNum(n: number | null | undefined, digits = 0): string {
   if (n === null || n === undefined || !Number.isFinite(n)) return '-';
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       maximumFractionDigits: digits,
       minimumFractionDigits: 0,
     }).format(n);

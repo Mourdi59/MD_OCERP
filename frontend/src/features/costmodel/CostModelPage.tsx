@@ -48,7 +48,8 @@ import { CostSpinePanel } from './CostSpinePanel';
 import { ContractExposurePanel } from './ContractExposurePanel';
 import { costmodelGuide } from './costmodelGuide';
 import { BudgetLineThresholdEditor, parseThreshold } from './BudgetLineThresholdEditor';
-import { fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { formatCompactCurrency, formatCurrency as fmtMoney } from '@/shared/lib/money';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -1949,11 +1950,11 @@ function MonteCarloPanel({ projectId, currency }: { projectId: string; currency:
       if (!isValid) {
         // Render bare number — DON'T fall back to EUR on a USD/GBP/JPY
         // Monte-Carlo simulation, that lies about the cost unit.
-        return new Intl.NumberFormat(getIntlLocale(), {
+        return new Intl.NumberFormat(getNumberLocale(), {
           maximumFractionDigits: 0,
         }).format(n);
       }
-      return new Intl.NumberFormat(getIntlLocale(), {
+      return new Intl.NumberFormat(getNumberLocale(), {
         style: 'currency',
         currency: trimmed,
         maximumFractionDigits: 0,

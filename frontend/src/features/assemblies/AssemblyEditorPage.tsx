@@ -31,7 +31,8 @@ import clsx from 'clsx';
 import { Button, Badge, Card, Input, Breadcrumb, ConfirmDialog, DismissibleInfo } from '@/shared/ui';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { apiGet, triggerDownload } from '@/shared/lib/api';
-import { fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtPercent } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { currencyFractionDigits } from '@/shared/lib/money';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -277,7 +278,7 @@ export function AssemblyEditorPage() {
   // the number a unit price analysis carries into a tender.
   const fmtDigits = currencyFractionDigits(assembly?.currency);
   const fmt = (n: number) =>
-    new Intl.NumberFormat(getIntlLocale(), {
+    new Intl.NumberFormat(getNumberLocale(), {
       minimumFractionDigits: fmtDigits,
       maximumFractionDigits: fmtDigits,
     }).format(n);
@@ -873,7 +874,7 @@ function CostDbSearchForAssembly({
   // rather than per list: a catalogue can hold a CLP rate next to a USD one.
   const fmt = (n: number, currency?: string) => {
     const digits = currencyFractionDigits(currency);
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       minimumFractionDigits: digits,
       maximumFractionDigits: digits,
     }).format(n);
@@ -1838,7 +1839,7 @@ function BreakdownSidebar({
   // analysis a reviewer reads line by line.
   const breakdownDigits = currencyFractionDigits(currency);
   const fmt = (n: number) =>
-    new Intl.NumberFormat(getIntlLocale(), {
+    new Intl.NumberFormat(getNumberLocale(), {
       minimumFractionDigits: breakdownDigits,
       maximumFractionDigits: breakdownDigits,
     }).format(n);
@@ -2127,7 +2128,7 @@ function CatalogResourcePickerModal({
                     </td>
                     <td className="py-2 text-center text-content-secondary">{it.unit}</td>
                     <td className="py-2 text-right tabular-nums text-content-primary">
-                      {new Intl.NumberFormat(getIntlLocale(), {
+                      {new Intl.NumberFormat(getNumberLocale(), {
                         minimumFractionDigits: currencyFractionDigits(it.currency),
                         maximumFractionDigits: currencyFractionDigits(it.currency),
                       }).format(it.base_price || 0)}{' '}

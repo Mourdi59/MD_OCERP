@@ -28,7 +28,8 @@ import {
   History,
 } from 'lucide-react';
 import { Button, Card, Badge } from '@/shared/ui';
-import { fmtDate, fmtPercent, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtDate, fmtPercent } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /** Locale-aware "12. Aug. 2026, 21:16" datetime, matching DateDisplay's
  *  datetime format so the forecast stamp and the register tables agree. */
@@ -58,7 +59,7 @@ function fmtMoney(value: string, currency: string): string {
   const code = (currency || '').trim().toUpperCase();
   try {
     if (code && /^[A-Z]{3}$/.test(code)) {
-      return new Intl.NumberFormat(getIntlLocale(), {
+      return new Intl.NumberFormat(getNumberLocale(), {
         style: 'currency',
         currency: code,
         maximumFractionDigits: 0,
@@ -67,7 +68,7 @@ function fmtMoney(value: string, currency: string): string {
   } catch {
     /* fall through to plain formatting */
   }
-  return new Intl.NumberFormat(getIntlLocale(), {
+  return new Intl.NumberFormat(getNumberLocale(), {
     maximumFractionDigits: 0,
   }).format(n);
 }

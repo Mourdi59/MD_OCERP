@@ -39,7 +39,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { HardHat, Wrench, Package, Layers, Sparkles, CornerDownLeft } from 'lucide-react';
 import type { CostAutocompleteItem } from './api';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 const TOOLTIP_WIDTH = 320; // px
 const VIEWPORT_GUTTER = 8; // px — gap between dropdown and tooltip
@@ -76,7 +76,7 @@ function buildClassificationPath(classification: Record<string, string>): string
 
 /** Format a numeric value for display. Uses the active i18n locale. */
 function formatNumber(value: number): string {
-  return new Intl.NumberFormat(getIntlLocale(), {
+  return new Intl.NumberFormat(getNumberLocale(), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
