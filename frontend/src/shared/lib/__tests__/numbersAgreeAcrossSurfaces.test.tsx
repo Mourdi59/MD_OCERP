@@ -248,6 +248,56 @@ const PRODUCT_FILES = sourceFiles(SRC).map((f) => relative(SRC, f).replace(/\\/g
 const read = (rel: string) => readFileSync(join(SRC, rel), 'utf8');
 
 /**
+ * The locale argument of a formatter call: from `from` to the first comma or
+ * closing bracket. Neither character occurs inside a BCP-47 tag or inside a
+ * call to one of the resolvers, so this is the whole argument in every shape
+ * the tree uses today.
+ */
+function localeArgument(source: string, from: number): string {
+  const rest = source.slice(from);
+  return rest.slice(0, Math.min(...[rest.indexOf(','), rest.indexOf(')')].filter((i) => i >= 0)));
+}
+
+/**
+ * Every name a `const`, `let` or `var` in this file binds to something the
+ * pattern matches.
+ *
+ * A gate that judges the argument text alone reads `new Intl.NumberFormat(
+ * locale, ...)` as clean whatever `locale` holds, so `const locale =
+ * getIntlLocale()` two lines above defeats it. That is not hypothetical: three
+ * of the four sites this file caught on the day the resolution was added were
+ * written that way, and the gate had already been reported green over them.
+ *
+ * Matching by name across the whole file is deliberate over-approximation. A
+ * file that keeps a language `locale` and a number `locale` under one name gets
+ * flagged, and being asked to give one of them a different name is the right
+ * answer rather than a false alarm.
+ */
+function boundTo(source: string, pattern: RegExp): Set<string> {
+  const names = new Set<string>();
+  for (const match of source.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;\n]+)/g)) {
+    if (pattern.test(match[2])) names.add(match[1]);
+  }
+  return names;
+}
+
+/** Whether an argument reaches a resolver, directly or through a local name. */
+function reaches(argument: string, pattern: RegExp, aliases: Set<string>): boolean {
+  if (pattern.test(argument)) return true;
+  const bare = argument.trim();
+  return /^[A-Za-z_$][\w$]*$/.test(bare) && aliases.has(bare);
+}
+
+/**
+ * The two resolvers, in every spelling that reaches them. `i18n.language` is
+ * the third way to ask for the interface language and it belongs here for the
+ * same reason the other two do: a formatter cannot be excused by which door it
+ * used.
+ */
+const LANGUAGE = /\b(?:get|use)IntlLocale\b|\bi18n\.language\b/;
+const NUMBER_PREFERENCE = /\b(?:get|use)NumberLocale\b/;
+
+/**
  * The two files allowed to read the raw preference: the store, which owns it
  * and turns it into an answer, and the settings screen, which has to show the
  * reader what they picked. Everywhere else asks `useNumberLocale`.
@@ -355,26 +405,33 @@ describe('there is one place the number locale comes from', () => {
   // a property of every number formatter instead - which resolver it binds -
   // and it is a property a new formatter cannot avoid having.
   //
-  // `new Intl.NumberFormat(` only, deliberately. `x.toLocaleString(` is the
-  // same method name on `Number` and on `Date`, and all fifteen occurrences in
-  // the tree today are dates, so folding it in would gate date formatting under
-  // a number rule. Dates are a separate pass with a preference of their own.
+  // `new Intl.NumberFormat(` only, and that is a gap rather than a boundary.
+  // `x.toLocaleString(` is one method name on `Number` and on `Date`, so the
+  // shape alone cannot say which rule a call is under, and the tree carries 347
+  // of them: roughly 250 numbers, roughly 50 dates, 297 passing the interface
+  // language. Folding the method in wholesale would put date formatting under a
+  // number rule; leaving it out leaves those number sites unguarded. They are a
+  // wave of their own. The size is written down here so the next reader
+  // inherits the gap rather than the impression that it was handled, and it was
+  // counted over the committed tree rather than over somebody's working copy.
   it('no number formatter is built on the interface language', () => {
+    // 2119 product files and 108 number formatters among them when this was
+    // written. The file count is asserted because a walker that silently stops
+    // finding files would otherwise pass on an empty set, which is the one way
+    // a census can be green for the wrong reason.
+    expect(PRODUCT_FILES.length).toBeGreaterThan(1800);
+
     const offenders: string[] = [];
     for (const file of PRODUCT_FILES) {
       const source = read(file);
+      const aliases = boundTo(source, LANGUAGE);
       for (const match of source.matchAll(/new Intl\.NumberFormat\(/g)) {
-        const rest = source.slice(match.index + match[0].length);
-        const end = Math.min(...[rest.indexOf(','), rest.indexOf(')')].filter((i) => i >= 0));
-        const arg = rest.slice(0, end);
-        if (/\b(?:get|use)IntlLocale\b/.test(arg)) {
+        const argument = localeArgument(source, match.index + match[0].length);
+        if (reaches(argument, LANGUAGE, aliases)) {
           offenders.push(`${file}:${source.slice(0, match.index).split('\n').length}`);
         }
       }
     }
-    // 108 number formatters in the tree when this was written, none of them
-    // reading the language. The count is here so a walker that silently stops
-    // finding files fails loudly instead of passing on an empty set.
     expect(offenders).toEqual([]);
   });
 
@@ -386,10 +443,10 @@ describe('there is one place the number locale comes from', () => {
     const offenders: string[] = [];
     for (const file of PRODUCT_FILES) {
       const source = read(file);
+      const aliases = boundTo(source, NUMBER_PREFERENCE);
       for (const match of source.matchAll(/new Intl\.DateTimeFormat\(/g)) {
-        const rest = source.slice(match.index + match[0].length);
-        const end = Math.min(...[rest.indexOf(','), rest.indexOf(')')].filter((i) => i >= 0));
-        if (/\b(?:get|use)NumberLocale\b/.test(rest.slice(0, end))) {
+        const argument = localeArgument(source, match.index + match[0].length);
+        if (reaches(argument, NUMBER_PREFERENCE, aliases)) {
           offenders.push(`${file}:${source.slice(0, match.index).split('\n').length}`);
         }
       }

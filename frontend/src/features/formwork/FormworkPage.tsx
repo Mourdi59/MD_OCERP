@@ -60,7 +60,7 @@ import { RequiresProject } from '@/shared/auth/RequiresProject';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   listSystems,
   createSystem,
@@ -307,7 +307,7 @@ interface CyclePanelProps {
 
 function CyclePanel({ assignment, projectId, onClose }: CyclePanelProps) {
   const { t } = useTranslation();
-  const locale = getIntlLocale();
+  const locale = getNumberLocale();
   const queryClient = useQueryClient();
   const addToast = useToastStore((s) => s.addToast);
 
@@ -627,7 +627,7 @@ const EMPTY_SYSTEM_FORM: SystemFormState = {
 
 export function FormworkPage() {
   const { t, i18n } = useTranslation();
-  const locale = getIntlLocale();
+  const locale = getNumberLocale();
   const queryClient = useQueryClient();
   const { confirm, ...confirmProps } = useConfirm();
   const addToast = useToastStore((s) => s.addToast);

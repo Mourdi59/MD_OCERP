@@ -29,11 +29,12 @@ import {
   YAxis,
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
-import { fmtCompact, fmtPercent, getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
+import { fmtCompact, fmtPercent, fmtFixed } from '@/shared/lib/formatters';
 import { formatCompactCurrency } from '@/shared/lib/money';
 import { hasEnoughPoints } from '@/shared/lib/chartDataFloor';
 import type { SeriesPoint } from './aggregate';
 import type { ChartKind, ValueFormat } from './types';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 export const CHART_HEIGHT = 216;
 
@@ -74,7 +75,7 @@ export function formatCompact(v: number, format: ValueFormat = 'number', currenc
 export function formatFull(v: number, format: ValueFormat = 'number', currency?: string): string {
   if (!Number.isFinite(v)) return '-';
   if (format === 'percent') return fmtPercent(v);
-  const locale = getIntlLocale();
+  const locale = getNumberLocale();
   if (format === 'currency') {
     const code = (currency || '').trim().toUpperCase();
     if (/^[A-Z]{3}$/.test(code)) {

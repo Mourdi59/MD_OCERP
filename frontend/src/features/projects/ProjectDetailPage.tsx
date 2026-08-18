@@ -79,6 +79,7 @@ import { useRecentStore } from '@/stores/useRecentStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -217,7 +218,7 @@ function formatCurrency(value: number, currency?: string): string {
     return '—';
   }
   try {
-    return new Intl.NumberFormat(i18n.language, {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: 'currency',
       currency: trimmed,
       minimumFractionDigits: 2,
