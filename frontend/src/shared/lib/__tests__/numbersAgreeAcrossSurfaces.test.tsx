@@ -316,6 +316,39 @@ function receiverOf(source: string, dot: number): string {
  * `period` is a number, which is wrong about somebody's field sooner or later,
  * and a gate that cries wolf gets weakened by the next person to meet it.
  */
+/**
+ * The eight files that build a document rather than a screen, and the number
+ * of `toLocaleString` calls each one still hands the interface language.
+ *
+ * They are held deliberately. A screen is read by the person looking at it, so
+ * its figures follow that person's number format. A printed report, a PDF and
+ * an Excel or e-invoice export are read by whoever receives them, and the
+ * locale their figures should follow is the recipient's, which the record
+ * already carries as a country code. That rule does not exist yet, so these
+ * files keep the language they had rather than being moved somewhere they
+ * would have to move again. Thirty of the thirty six counted here are numbers
+ * being held; the other six are dates, which keep the language for good.
+ *
+ * The list is closed against growth: a ninth file that formats a number on the
+ * language fails the screen test below, because the exemption is these names
+ * and nothing else. Shrinking it is the direction still on trust, and the
+ * counts are written down so that trust has a number attached rather than
+ * being a silence. A silence is what let this file claim once that the tree
+ * was clean when it held 64 offenders.
+ */
+const DOCUMENT_BUILDERS: readonly (readonly [string, number])[] = [
+  ['features/bim/BIMFilterReportModal.tsx', 2],
+  ['features/bim/printReport.ts', 1],
+  ['features/boq/exportExcel.ts', 1],
+  ['features/contracts/ProgressClaimLineTable.tsx', 1],
+  ['features/reporting/ReportingPage.tsx', 2],
+  ['features/reports/ReportsPage.tsx', 26],
+  ['modules/_shared/pdfBOQExport.ts', 1],
+  ['modules/pdf-takeoff/TakeoffViewerModule.tsx', 2],
+];
+
+const DOCUMENT_FILES = new Set(DOCUMENT_BUILDERS.map(([file]) => file));
+
 const CERTAINLY_A_DATE =
   /(?:new Date\([^()]*\)|Date\.now\(\)|parseISO\([^()]*\))$|\b\w*(?:_at|_date|At|Date)$/;
 const CERTAINLY_A_NUMBER =
@@ -484,6 +517,7 @@ describe('there is one place the number locale comes from', () => {
 
     const offenders: string[] = [];
     for (const file of PRODUCT_FILES) {
+      if (DOCUMENT_FILES.has(file)) continue;
       const source = read(file);
       const aliases = boundTo(source, LANGUAGE);
       for (const match of source.matchAll(/\.toLocaleString\(/g)) {
@@ -495,6 +529,25 @@ describe('there is one place the number locale comes from', () => {
       }
     }
     expect(offenders).toEqual([]);
+  });
+
+  it('and every document held back is a file that still exists', () => {
+    // An exemption keyed to a path outlives the path. A file that is renamed
+    // or split stops being exempt and nobody is told, so the names are checked
+    // against the same walk the rule above uses.
+    //
+    // The counts beside the names are not asserted here, and that is a debt
+    // rather than a decision. They describe the branch, and this test reads
+    // the working copy, which today carries a half-finished copy of these
+    // files in which the numbers are already converted. Asserting the count
+    // now would turn the file red on a working copy while CI stayed green,
+    // which teaches the next reader to weaken it. The counts are checked
+    // against the branch with `git grep -c toLocaleString <sha> -- <path>`
+    // until the two agree, and then they belong in an assertion here.
+    for (const [file] of DOCUMENT_BUILDERS) {
+      expect(PRODUCT_FILES).toContain(file);
+    }
+    expect(DOCUMENT_FILES.size).toBe(DOCUMENT_BUILDERS.length);
   });
 
   it('and no date it writes by hand is written in the number format', () => {

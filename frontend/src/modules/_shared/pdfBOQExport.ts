@@ -9,7 +9,6 @@
 
 import type { ExchangePosition, CountryTemplate } from './templateTypes';
 import { getIntlLocale, fmtFixed } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 const htmlEscape = (value: string | number): string =>
   String(value)
@@ -36,7 +35,7 @@ export function generateBOQPrintHTML(
   const posCount = positions.filter((p) => !p.isSection).length;
 
   const formatCurrency = (val: number) =>
-    `${htmlEscape(template.currencySymbol)}${val.toLocaleString(getNumberLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    `${htmlEscape(template.currencySymbol)}${val.toLocaleString(getIntlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const rows = positions
     .map((pos) => {

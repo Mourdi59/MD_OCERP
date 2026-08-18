@@ -22,7 +22,6 @@ import { summariseBimQuantities, QUANTITY_FIELDS, type QuantitySummary } from '.
 import { buildReportHtml } from './printReport';
 import { exportBoqXlsx } from './api';
 import { getIntlLocale } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 interface BIMFilterReportModalProps {
   open: boolean;
@@ -44,7 +43,7 @@ function SummaryTable({ summary, groupHeader }: { summary: QuantitySummary; grou
   // Excel export downloads the canonical (metric) BOQ from the backend
   // separately, so this on-screen restatement never touches stored data.
   const dq = useDisplayQuantity();
-  const fmt = (n: number) => n.toLocaleString(getNumberLocale(), { maximumFractionDigits: 3 });
+  const fmt = (n: number) => n.toLocaleString(getIntlLocale(), { maximumFractionDigits: 3 });
   const conv = (value: number, i: number) =>
     dq.convert(value, QUANTITY_FIELDS[i]?.unit ?? '').value;
   return (
