@@ -196,6 +196,69 @@ describe('the number-format preference', () => {
     expect(container.textContent).toBe(expectedMoney('de-DE', 'USD', 180174.28));
   });
 
+  /**
+   * The half of the contract that reads backwards, which nothing asserted.
+   *
+   * Everything else in this file checks that a number follows the reader.
+   * "Follows the reader" has two clauses and only one of them was written
+   * down: with no preference the number moves with the language, and with a
+   * preference it stops moving with the language. The test above cannot see
+   * the second clause, because it renders in exactly one language - a build
+   * where the preference were ignored entirely and `de-DE` happened to be the
+   * fallback would satisfy it. Reading the same amount in four languages is
+   * what tells "the preference won" apart from "the preference agreed".
+   */
+  const readAcrossLanguages = (render1: () => string | null) =>
+    LANGUAGES.map(([language]) => {
+      speak(language);
+      const text = render1();
+      cleanup();
+      return text;
+    });
+
+  const money = () => render(<MoneyDisplay amount={180174.28} currency="USD" />).container.textContent;
+
+  it('holds a chosen format still while the language moves under it', () => {
+    usePreferencesStore.getState().setPreference('numberLocale', 'de-DE');
+    const readings = readAcrossLanguages(money);
+
+    expect(new Set(readings).size).toBe(1);
+    expect(readings[0]).toBe(expectedMoney('de-DE', 'USD', 180174.28));
+  });
+
+  it('and lets the same four languages move it when nothing was chosen', () => {
+    // The negative control, without which the test above passes on a surface
+    // that renders one frozen string for every reader.
+    //
+    // More than one rather than four: `en-US` and `ja-JP` write this amount
+    // the same way, both grouping on commas with a leading symbol, so four
+    // languages are only three readings and asserting four would be asserting
+    // a fact about Japanese that is not true.
+    expect(usePreferencesStore.getState().numberLocale).toBe('auto');
+    const readings = readAcrossLanguages(money);
+
+    expect(new Set(readings).size).toBeGreaterThan(1);
+    expect(readings[0]).toBe(expectedMoney('en-US', 'USD', 180174.28));
+    expect(readings[1]).toBe(expectedMoney('de-DE', 'USD', 180174.28));
+  });
+
+  it('holds a chosen format still for a quantity too, not only for money', () => {
+    // The wave moved quantities as well as amounts, and a quantity reaches the
+    // locale through a different component, so the contract is asserted on
+    // both rather than assumed to carry across.
+    usePreferencesStore.getState().setPreference('numberLocale', 'de-DE');
+    const readings = readAcrossLanguages(
+      () => render(<QuantityDisplay value={1234.5} unit="m³" precision={2} />).container.textContent,
+    );
+
+    expect(new Set(readings).size).toBe(1);
+    const expected = new Intl.NumberFormat('de-DE', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(1234.5);
+    expect(readings[0]).toContain(expected);
+  });
+
   // The half of the fix that is invisible from a fresh profile. `persist`
   // writes the whole preferences object on any change, so every browser that
   // ever set a currency has the old hardcoded `'de-DE'` written down. Changing
@@ -326,9 +389,10 @@ function receiverOf(source: string, dot: number): string {
  * locale their figures should follow is the recipient's, which the record
  * already carries as a country code. That rule does not exist yet, so these
  * files keep the language they had rather than being moved somewhere they
- * would have to move again. Six of the thirty six counted here are dates,
- * which keep the language whatever the document rule turns out to be; the
- * other thirty are numbers waiting on it.
+ * would have to move again. Of the thirty six counted here, six are dates,
+ * which keep the language whatever the document rule turns out to be, twenty
+ * seven are numbers waiting on it, and three the gate declines to call either
+ * way and counts as unjudged.
  *
  * The list is closed against growth: a ninth file that formats a number on the
  * language fails the screen test below, because the exemption is these names
@@ -386,6 +450,153 @@ const CERTAINLY_A_NUMBER =
   /\.length$|\b(?:Number|parseFloat|parseInt)\([^()]*\)$|\b\w*(?:_count|_total|_sum|Count|Total|Sum)$/;
 
 /**
+ * Options that exist on one of the two formatters and not on the other.
+ *
+ * These decide the question outright where the receiver could not, and they do
+ * it without anyone holding an opinion about what a field is called.
+ * `maximumFractionDigits` is not a thing a date has.
+ */
+const NUMBER_OPTION =
+  /\b(?:minimum|maximum)(?:Fraction|Integer|Significant)Digits\s*:|\b(?:useGrouping|notation|compactDisplay|currency|currencyDisplay|currencySign|unitDisplay|signDisplay|roundingMode|roundingIncrement)\s*:|\bstyle\s*:\s*['"](?:currency|decimal|percent|unit)['"]/;
+const DATE_OPTION =
+  /\b(?:year|month|day|weekday|hour|minute|second|timeZone|timeZoneName|dateStyle|timeStyle|era|hour12|hourCycle|dayPeriod|calendar|fractionalSecondDigits)\s*:/;
+
+/** The second argument of a call, read by balancing brackets from the comma. */
+function optionsArgument(source: string, from: number): string {
+  const rest = source.slice(from);
+  const comma = rest.indexOf(',');
+  const close = rest.indexOf(')');
+  if (comma < 0 || (close >= 0 && close < comma)) return '';
+  let depth = 0;
+  let i = comma + 1;
+  for (; i < rest.length; i += 1) {
+    const ch = rest[i] as string;
+    if ('{[('.includes(ch)) depth += 1;
+    else if ('}])'.includes(ch)) {
+      if (depth === 0) break;
+      depth -= 1;
+    }
+  }
+  return rest.slice(comma + 1, i);
+}
+
+/**
+ * The initialiser bound to a bare name, only when the file binds it once.
+ *
+ * Twice means two things share a name and this reading cannot say which one
+ * reached the call, so it declines rather than picking. That refusal is load
+ * bearing: `AuditLogPage` binds `d` twice and stays unjudged here, which is the
+ * correct answer, not a gap to be closed.
+ */
+function declaredOnce(source: string, name: string): string | null {
+  const bound = [...source.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;\n]+)/g)]
+    .filter((match) => match[1] === name)
+    .map((match) => (match[2] as string).trim());
+  return bound.length === 1 ? (bound[0] as string) : null;
+}
+
+/**
+ * The type annotation on a bare name, only when the file writes it once.
+ *
+ * Once, not "all of them agree", because this is a text scan with no notion of
+ * scope: an unrelated `value: number` in an interface at the top of the file
+ * would otherwise answer for a `value` that came in as a prop. Requiring the
+ * name to be annotated exactly once in the whole file is what makes the answer
+ * about the receiver rather than about a coincidence of naming.
+ */
+function annotatedOnce(source: string, name: string): string | null {
+  const written = [...source.matchAll(new RegExp(`\\b${name}\\s*\\??\\s*:\\s*([A-Za-z_$][\\w$]*)`, 'g'))].map(
+    (match) => match[1] as string,
+  );
+  return written.length === 1 ? (written[0] as string) : null;
+}
+
+type Verdict = 'number' | 'date' | 'unjudged';
+
+/**
+ * What a `toLocaleString` call is formatting, decided once for both directions.
+ *
+ * Both rules below need the same answer to the same question, and asking it
+ * twice is how the two halves drift apart: a list of number-ish names and a
+ * list of date-ish names maintained separately agree on the day they are
+ * written and never again. So this is the only place either direction reads a
+ * receiver, and the directions differ only in which verdict they call a fault.
+ *
+ * Four readings, tried in order of how little they assume:
+ *
+ *   1. the receiver itself, where it settles the matter (`rows.length`)
+ *   2. the options argument, which names one formatter or the other outright
+ *   3. the single initialiser of a bare receiver name in the same file
+ *   4. the single type annotation of a bare receiver name in the same file
+ *
+ * Anything left over is `unjudged` and is counted, not guessed at. That is the
+ * whole discipline: a gate holding opinions about whether `period` is a number
+ * is wrong about somebody's field eventually, and a gate that cries wolf gets
+ * weakened by the next person who meets it.
+ *
+ * The receiver must be a BARE name before readings 3 and 4 apply. `a.value`
+ * ends in `value` too, and resolving that against an unrelated `const value`
+ * elsewhere in the file is how a census turns into a wrong red.
+ */
+function verdictAt(source: string, dot: number, options: string): Verdict {
+  const receiver = receiverOf(source, dot);
+  if (CERTAINLY_A_NUMBER.test(receiver)) return 'number';
+  if (CERTAINLY_A_DATE.test(receiver)) return 'date';
+
+  const numberOption = NUMBER_OPTION.test(options);
+  const dateOption = DATE_OPTION.test(options);
+  if (numberOption !== dateOption) return numberOption ? 'number' : 'date';
+
+  const bare = receiver.match(/(?:^|[^\w$.])([A-Za-z_$][\w$]*)\s*$/);
+  if (!bare) return 'unjudged';
+  const name = bare[1] as string;
+
+  const initialiser = declaredOnce(source, name);
+  if (initialiser !== null) {
+    if (CERTAINLY_A_NUMBER.test(initialiser)) return 'number';
+    if (CERTAINLY_A_DATE.test(initialiser)) return 'date';
+    return 'unjudged';
+  }
+  const annotation = annotatedOnce(source, name);
+  if (annotation === 'number') return 'number';
+  if (annotation === 'Date') return 'date';
+  return 'unjudged';
+}
+
+/** Every `toLocaleString` in a file whose locale reaches `pattern`, judged. */
+function judgedCalls(source: string, pattern: RegExp): { line: number; verdict: Verdict }[] {
+  const aliases = boundTo(source, pattern);
+  const calls: { line: number; verdict: Verdict }[] = [];
+  for (const match of source.matchAll(/\.toLocaleString\(/g)) {
+    const after = match.index + match[0].length;
+    if (!reaches(localeArgument(source, after), pattern, aliases)) continue;
+    calls.push({
+      line: source.slice(0, match.index).split('\n').length,
+      verdict: verdictAt(source, match.index, optionsArgument(source, after)),
+    });
+  }
+  return calls;
+}
+
+/**
+ * A census line, so a run says what it did not judge as well as what it did.
+ *
+ * Written straight to stdout rather than through `console.log`, which is the
+ * obvious way to do this and does not work here: vitest intercepts console and
+ * hands it to the reporter, and on a green run the default reporter prints
+ * nothing, so the census was invisible in exactly the case it exists for. It
+ * only reappeared under `--disableConsoleIntercept`, which nobody passes. A
+ * report that reaches no reader is the same thing as no report, and this file
+ * already carries one lesson about a gate that printed a confident answer
+ * having looked at nothing.
+ */
+function census(label: string, counted: Verdict[]): void {
+  const of = (v: Verdict) => counted.filter((c) => c === v).length;
+  const line = `${label}: ${counted.length} seen, ${of('number')} numbers, ${of('date')} dates, ${of('unjudged')} unjudged`;
+  process.stdout.write(`${line}\n`);
+}
+
+/**
  * The two files allowed to read the raw preference: the store, which owns it
  * and turns it into an answer, and the settings screen, which has to show the
  * reader what they picked. Everywhere else asks `useNumberLocale`.
@@ -440,7 +651,7 @@ describe('there is one place the number locale comes from', () => {
       }
     }
     expect(offenders).toEqual([]);
-  });
+  }, 60_000);
 
   // The lesson of the defect above, applied to this file's own instrument.
   //
@@ -476,7 +687,7 @@ describe('there is one place the number locale comes from', () => {
       }
     }
     expect(offenders).toEqual([]);
-  });
+  }, 60_000);
 
   // An allowlist that outlives the line it was written for is a blank cheque.
   it('every argued exemption still matches its line', () => {
@@ -519,7 +730,7 @@ describe('there is one place the number locale comes from', () => {
       }
     }
     expect(offenders).toEqual([]);
-  });
+  }, 60_000);
 
   it('and no date formatter is built on the number preference', () => {
     // The same rule read backwards, because "every number in the reader's
@@ -538,29 +749,65 @@ describe('there is one place the number locale comes from', () => {
       }
     }
     expect(offenders).toEqual([]);
+  }, 60_000);
+
+  it('the classifier answers the shapes it claims to, and refuses the rest', () => {
+    // The rule has teeth and knows where they stop. Every reading `verdictAt`
+    // performs is exercised here, in both answers and in its refusal, because
+    // the census below reports a number either way and a classifier that had
+    // quietly stopped resolving anything would report a tidy one.
+    const at = (source: string, options = '') =>
+      verdictAt(source + '.toLocaleString(', source.length, options);
+
+    // 1. the receiver itself
+    expect(at('rows.length')).toBe('number');
+    expect(at('summary.item_count')).toBe('number');
+    expect(at('row.updated_at')).toBe('date');
+    // 2. the options argument, where the receiver said nothing
+    expect(at('{value', '{ maximumFractionDigits: 2 }')).toBe('number');
+    expect(at('{when', "{ dateStyle: 'medium' }")).toBe('date');
+    // 3. the single initialiser of a bare name
+    expect(at('const d = new Date(iso);\n  return d')).toBe('date');
+    expect(at('const n = Number(raw);\n  return n')).toBe('number');
+    // 4. the single annotation of a bare name
+    expect(at('const fmt = (n: number) => n')).toBe('number');
+    // and the refusals, which are the point of counting rather than guessing
+    expect(at('const total = pick(a, b);\n  return total')).toBe('unjudged');
+    expect(at('let d = a;\n  let d = b;\n  return d')).toBe('unjudged');
+    // a dotted receiver is never resolved against a same-named local
+    expect(at('const value = Number(raw);\n  return item.value')).toBe('unjudged');
   });
 
   it('no number a screen writes by hand is written in the interface language', () => {
-    // The rule has teeth and knows where they stop.
-    expect(CERTAINLY_A_NUMBER.test('rows.length')).toBe(true);
-    expect(CERTAINLY_A_NUMBER.test('summary.item_count')).toBe(true);
-    expect(CERTAINLY_A_NUMBER.test('row.updated_at')).toBe(false);
-
     const offenders: string[] = [];
+    const counted: Verdict[] = [];
     for (const file of PRODUCT_FILES) {
       if (DOCUMENT_FILES.has(file)) continue;
       const source = read(file);
-      const aliases = boundTo(source, LANGUAGE);
-      for (const match of source.matchAll(/\.toLocaleString\(/g)) {
-        const argument = localeArgument(source, match.index + match[0].length);
-        if (!reaches(argument, LANGUAGE, aliases)) continue;
-        if (CERTAINLY_A_NUMBER.test(receiverOf(source, match.index))) {
-          offenders.push(`${file}:${source.slice(0, match.index).split('\n').length}`);
-        }
+      if (!source.includes('.toLocaleString(')) continue;
+      for (const { line, verdict } of judgedCalls(source, LANGUAGE)) {
+        counted.push(verdict);
+        if (verdict === 'number') offenders.push(`${file}:${line}`);
       }
     }
+    // What the run judged and what it declined to judge, printed rather than
+    // implied. An empty offender list means one of two very different things -
+    // every number is in the right place, or nothing was recognised as a
+    // number - and only the census tells them apart. On the branch this was
+    // written against it reads 37 seen, 0 numbers, 35 dates, 2 unjudged.
+    census('screens, on the interface language', counted);
+    // Floors, not literals. The counts describe the branch while this walk
+    // reads the working tree, so an exact number turns red on a teammate's
+    // half converted copy with no way to tell that from a real regression,
+    // and the cheap repair is to edit the number until it goes green. A floor
+    // says the only two things worth failing on: the walk found sites at all,
+    // and the classifier still resolves most of them rather than having
+    // quietly decayed into answering `unjudged` to everything, which is the
+    // state in which the offender list below is empty for the wrong reason.
+    expect(counted.length).toBeGreaterThan(20);
+    expect(counted.filter((v) => v !== 'unjudged').length).toBeGreaterThan(counted.length / 2);
     expect(offenders).toEqual([]);
-  });
+  }, 60_000);
 
   it('and every document held back is held at the count it was held at', () => {
     // An exemption keyed to a path outlives the path. A file that is renamed
@@ -574,29 +821,37 @@ describe('there is one place the number locale comes from', () => {
     // recipient's locale is a change somebody has to write down here, which is
     // the whole point of holding them by name instead of by rule.
     const held: string[] = [];
-    let dates = 0;
+    const counted: Verdict[] = [];
     for (const [file] of DOCUMENT_BUILDERS) {
       expect(PRODUCT_FILES).toContain(file);
       const source = read(file);
-      const aliases = boundTo(source, LANGUAGE);
-      let seen = 0;
-      for (const match of source.matchAll(/\.toLocaleString\(/g)) {
-        const argument = localeArgument(source, match.index + match[0].length);
-        if (!reaches(argument, LANGUAGE, aliases)) continue;
-        seen += 1;
-        if (CERTAINLY_A_DATE.test(receiverOf(source, match.index))) dates += 1;
-      }
-      held.push(`${file} ${seen}`);
+      const calls = judgedCalls(source, LANGUAGE);
+      for (const { verdict } of calls) counted.push(verdict);
+      held.push(`${file} ${calls.length}`);
     }
     expect(held, DRIFTED).toEqual(DOCUMENT_BUILDERS.map(([file, count]) => `${file} ${count}`));
     expect(DOCUMENT_FILES.size).toBe(DOCUMENT_BUILDERS.length);
 
-    // Six of the thirty six are dates, and a date keeps the interface language
-    // whichever way the document rule goes, so this share should not move when
-    // the rule arrives. The receiver rule proves the six; the thirty numbers
-    // are counted by reading the options argument, which this walk does not do.
-    expect(dates).toBe(6);
-  });
+    census('documents, held on the interface language', counted);
+
+    // What is actually waiting on the document rule, counted instead of
+    // subtracted. This file used to say six of the thirty six were dates and
+    // "the other thirty are numbers", which was arithmetic rather than a
+    // reading: the walk could recognise the six and had no way to look at the
+    // rest. Reading the options argument and the local declarations answers
+    // twenty seven of them outright and still cannot answer three, so the
+    // claim is now twenty seven numbers and three the gate declines to call.
+    //
+    // These are exact rather than floors, and that is safe here for a reason
+    // that does not hold in the two rules above: `held` has already pinned the
+    // per-file totals, so once it passes the composition of those totals is
+    // fixed too. A drifted working copy fails on `held` first, with the
+    // message that tells the reader not to edit the number.
+    const of = (v: Verdict) => counted.filter((c) => c === v).length;
+    expect(of('date'), 'a date keeps the interface language whichever way the document rule goes').toBe(6);
+    expect(of('number'), 'these are the figures the recipient rule will have to move').toBe(27);
+    expect(of('unjudged'), 'the gate declines to call these, and says so rather than guessing').toBe(3);
+  }, 60_000);
 
   it('and no date it writes by hand is written in the number format', () => {
     // The direction the wave that moved 283 numbers could have broken. A date
@@ -608,20 +863,40 @@ describe('there is one place the number locale comes from', () => {
     expect(CERTAINLY_A_DATE.test('rows.length')).toBe(false);
 
     const offenders: string[] = [];
+    const counted: Verdict[] = [];
     for (const file of PRODUCT_FILES) {
       const source = read(file);
+      if (!source.includes('.toLocale')) continue;
       const aliases = boundTo(source, NUMBER_PREFERENCE);
       for (const match of source.matchAll(/\.toLocale(?:Date|Time|)String\(/g)) {
-        const argument = localeArgument(source, match.index + match[0].length);
-        if (!reaches(argument, NUMBER_PREFERENCE, aliases)) continue;
-        const named = match[0] !== '.toLocaleString(';
-        if (named || CERTAINLY_A_DATE.test(receiverOf(source, match.index))) {
-          offenders.push(`${file}:${source.slice(0, match.index).split('\n').length}`);
+        const after = match.index + match[0].length;
+        if (!reaches(localeArgument(source, after), NUMBER_PREFERENCE, aliases)) continue;
+        const line = source.slice(0, match.index).split('\n').length;
+        // The date and time methods need no receiver rule at all: what they
+        // format is in the name, so they are a fault here whatever they hold.
+        if (match[0] !== '.toLocaleString(') {
+          offenders.push(`${file}:${line}`);
+          continue;
         }
+        const verdict = verdictAt(source, match.index, optionsArgument(source, after));
+        counted.push(verdict);
+        if (verdict === 'date') offenders.push(`${file}:${line}`);
       }
     }
+    // The same census, and it reads very differently from the one above. This
+    // direction sees the whole tree rather than the screens alone, and the
+    // preference is where the wave put almost everything, so most of what it
+    // walks it cannot judge: on the branch this was written against, 269 seen,
+    // 83 numbers, 0 dates, 186 unjudged. That share is the honest state of the
+    // rule and it is printed rather than rounded up to a clean claim.
+    census('everywhere, on the number preference', counted);
+    expect(counted.length).toBeGreaterThan(100);
+    // Deliberately a low floor: unlike the screens rule, this direction judges
+    // a minority of what it sees, and pretending otherwise is what a tidy
+    // number would do.
+    expect(counted.filter((v) => v === 'number').length).toBeGreaterThan(40);
     expect(offenders).toEqual([]);
-  });
+  }, 60_000);
 
   it('the store never hands the raw preference straight to a formatter', () => {
     const store = read('stores/usePreferencesStore.ts');
