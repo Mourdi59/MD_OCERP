@@ -298,6 +298,29 @@ const LANGUAGE = /\b(?:get|use)IntlLocale\b|\bi18n\.language\b/;
 const NUMBER_PREFERENCE = /\b(?:get|use)NumberLocale\b/;
 
 /**
+ * The expression a method was called on, as the eighty characters in front of
+ * it. Enough to recognise a receiver and never enough to reach back into the
+ * previous statement, which is what the rules below need, being anchored to
+ * the end of it.
+ */
+function receiverOf(source: string, dot: number): string {
+  return source.slice(Math.max(0, dot - 80), dot);
+}
+
+/**
+ * Receivers nobody can argue about, in the two directions that matter.
+ *
+ * Deliberately narrow. `toLocaleString` on an ordinary variable stays unjudged
+ * here, because the alternative is a gate holding opinions about whether
+ * `period` is a number, which is wrong about somebody's field sooner or later,
+ * and a gate that cries wolf gets weakened by the next person to meet it.
+ */
+const CERTAINLY_A_DATE =
+  /(?:new Date\([^()]*\)|Date\.now\(\)|parseISO\([^()]*\))$|\b\w*(?:_at|_date|At|Date)$/;
+const CERTAINLY_A_NUMBER =
+  /\.length$|\b(?:Number|parseFloat|parseInt)\([^()]*\)$|\b\w*(?:_count|_total|_sum|Count|Total|Sum)$/;
+
+/**
  * The two files allowed to read the raw preference: the store, which owns it
  * and turns it into an answer, and the settings screen, which has to show the
  * reader what they picked. Everywhere else asks `useNumberLocale`.
@@ -405,15 +428,13 @@ describe('there is one place the number locale comes from', () => {
   // a property of every number formatter instead - which resolver it binds -
   // and it is a property a new formatter cannot avoid having.
   //
-  // `new Intl.NumberFormat(` only, and that is a gap rather than a boundary.
-  // `x.toLocaleString(` is one method name on `Number` and on `Date`, so the
-  // shape alone cannot say which rule a call is under, and the tree carries 347
-  // of them: roughly 250 numbers, roughly 50 dates, 297 passing the interface
-  // language. Folding the method in wholesale would put date formatting under a
-  // number rule; leaving it out leaves those number sites unguarded. They are a
-  // wave of their own. The size is written down here so the next reader
-  // inherits the gap rather than the impression that it was handled, and it was
-  // counted over the committed tree rather than over somebody's working copy.
+  // `new Intl.NumberFormat(` here, and `x.toLocaleString(` in the pair after
+  // it. That method is one name on `Number` and on `Date`, so its shape alone
+  // cannot say which rule a call is under: of the 347 in the tree, 304 are
+  // numbers and 43 are dates, and separating them took reading every one. So
+  // the two tests below judge only receivers nobody can argue about, a `new
+  // Date(...)` on one side and a `.length` on the other, and leave the middle
+  // unjudged on purpose.
   it('no number formatter is built on the interface language', () => {
     // 2119 product files and 108 number formatters among them when this was
     // written. The file count is asserted because a walker that silently stops
@@ -447,6 +468,52 @@ describe('there is one place the number locale comes from', () => {
       for (const match of source.matchAll(/new Intl\.DateTimeFormat\(/g)) {
         const argument = localeArgument(source, match.index + match[0].length);
         if (reaches(argument, NUMBER_PREFERENCE, aliases)) {
+          offenders.push(`${file}:${source.slice(0, match.index).split('\n').length}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('no number a screen writes by hand is written in the interface language', () => {
+    // The rule has teeth and knows where they stop.
+    expect(CERTAINLY_A_NUMBER.test('rows.length')).toBe(true);
+    expect(CERTAINLY_A_NUMBER.test('summary.item_count')).toBe(true);
+    expect(CERTAINLY_A_NUMBER.test('row.updated_at')).toBe(false);
+
+    const offenders: string[] = [];
+    for (const file of PRODUCT_FILES) {
+      const source = read(file);
+      const aliases = boundTo(source, LANGUAGE);
+      for (const match of source.matchAll(/\.toLocaleString\(/g)) {
+        const argument = localeArgument(source, match.index + match[0].length);
+        if (!reaches(argument, LANGUAGE, aliases)) continue;
+        if (CERTAINLY_A_NUMBER.test(receiverOf(source, match.index))) {
+          offenders.push(`${file}:${source.slice(0, match.index).split('\n').length}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('and no date it writes by hand is written in the number format', () => {
+    // The direction the wave that moved 283 numbers could have broken. A date
+    // handed the number preference goes on printing, in the wrong month name,
+    // and nothing else in this file would have noticed. The date and time
+    // methods need no receiver rule at all: what they format is in the name.
+    expect(CERTAINLY_A_DATE.test('new Date(row.created)')).toBe(true);
+    expect(CERTAINLY_A_DATE.test('row.updated_at')).toBe(true);
+    expect(CERTAINLY_A_DATE.test('rows.length')).toBe(false);
+
+    const offenders: string[] = [];
+    for (const file of PRODUCT_FILES) {
+      const source = read(file);
+      const aliases = boundTo(source, NUMBER_PREFERENCE);
+      for (const match of source.matchAll(/\.toLocale(?:Date|Time|)String\(/g)) {
+        const argument = localeArgument(source, match.index + match[0].length);
+        if (!reaches(argument, NUMBER_PREFERENCE, aliases)) continue;
+        const named = match[0] !== '.toLocaleString(';
+        if (named || CERTAINLY_A_DATE.test(receiverOf(source, match.index))) {
           offenders.push(`${file}:${source.slice(0, match.index).split('\n').length}`);
         }
       }
