@@ -82,7 +82,7 @@ import {
   type PortalKycCode,
   type PortalOverviewResponse,
 } from './api';
-import { fmtFixed } from '@/shared/lib/formatters';
+import { fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
 
 type PageState =
   | { kind: 'loading' }
@@ -1975,7 +1975,7 @@ function formatMoney(amount: string, currency: string, locale: string): string {
   const value = Number(amount);
   if (!isFinite(value)) return amount;
   try {
-    return new Intl.NumberFormat(locale || getNumberLocale(), {
+    return new Intl.NumberFormat(locale || getIntlLocale(), {
       style: 'currency',
       currency: (currency || 'EUR').toUpperCase(),
       maximumFractionDigits: 2,
@@ -1990,7 +1990,7 @@ function formatDate(iso: string, locale: string): string {
   try {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return iso;
-    return new Intl.DateTimeFormat(locale || getNumberLocale(), {
+    return new Intl.DateTimeFormat(locale || getIntlLocale(), {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
