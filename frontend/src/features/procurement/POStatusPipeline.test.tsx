@@ -60,21 +60,13 @@ describe('<POStatusPipeline>', () => {
 
   // Counting spans is not enough: the dots were all present in the DOM while
   // the completed ones painted nothing, so a draft PO showed five visible
-  // pips and an issued one showed three. The `semantic` palette is declared
-  // in tailwind.config.js as a plain `var(--oe-...)` string rather than the
-  // channel-triplet function form, and Tailwind emits NO rule for an
-  // alpha-modified utility built on it. These two guard the paint, not the
+  // pips and an issued one showed three. These two guard the paint, not the
   // markup.
   it.each(['draft', 'approved', 'issued', 'partially_received', 'completed', 'cancelled'])(
-    'paints every dot with a background Tailwind actually emits (%s)',
+    'gives every dot a background to paint (%s)',
     (status) => {
       const { container } = render(<POStatusPipeline status={status} />);
       for (const dot of container.querySelectorAll('span')) {
-        // An alpha modifier on the `semantic` palette compiles to nothing,
-        // which reads on screen as a stage that does not exist.
-        expect(dot.className).not.toMatch(/semantic-[a-z-]+\/\d+/);
-        // Every dot must still name some background, otherwise it is
-        // transparent for a different reason.
         expect(dot.className).toMatch(/\bbg-[a-z-]+/);
       }
     },

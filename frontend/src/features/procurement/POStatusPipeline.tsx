@@ -16,16 +16,20 @@
 // row status string and maps it to the same FSM the backend service
 // enforces (`_PO_STATUS_TRANSITIONS` in procurement/service.py).
 //
-// COLOUR NOTE - do not "tidy" `bg-semantic-* opacity-70` back into
-// `bg-semantic-*/70`. The `semantic` palette in tailwind.config.js is
-// declared as plain `var(--oe-...)` strings rather than the channel-triplet
-// function form that `oe.blue` uses, so Tailwind emits NO rule at all for an
-// alpha-modified semantic utility. That is not a faint colour, it is no
-// background whatsoever. It made every completed stage render fully
-// transparent, so a draft PO showed five visible pips, approved four and
-// issued three: the further a PO had actually got, the less progressed it
-// looked. The cancelled bar was invisible for the same reason. Alpha comes
-// from the `opacity-*` utility here until the palette itself is converted.
+// COLOUR NOTE - the passed stages take their alpha from `opacity-*` rather
+// than from a `bg-semantic-success/70` modifier. They once used the modifier,
+// and the `semantic` palette was then declared in tailwind.config.js as plain
+// `var(--oe-...)` strings instead of the channel-triplet function form, so
+// Tailwind emitted NO rule at all for it. That is not a faint colour, it is
+// no background whatsoever: every completed stage rendered fully transparent,
+// a draft PO showed five visible pips, approved four and issued three, and
+// the further a PO had actually got the less progressed it looked. The
+// cancelled bar was invisible for the same reason.
+//
+// The palette has since been converted to the function form, so the modifier
+// would resolve correctly here today. `opacity-*` stays because it keeps this
+// control legible without depending on the palette declaration staying right,
+// not because the modifier is still broken.
 
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
