@@ -18,6 +18,8 @@
  * tracked separately; see the task brief note.
  */
 
+import { fmtFixed } from '@/shared/lib/formatters';
+
 export type CalibrationUnit = 'm' | 'mm' | 'ft' | 'in';
 
 /** Ordered list surfaced by the unit dropdown — metric first, imperial
@@ -124,7 +126,7 @@ export function formatWithUnit(
   scale: { unitsPerPixel: number; unit: CalibrationUnit } | null | undefined,
 ): string {
   if (!scale) {
-    return `${pixels.toFixed(1)} px (uncal)`;
+    return `${fmtFixed(pixels, 1)} px (uncal)`;
   }
   const value = pixels * scale.unitsPerPixel;
   return `${formatNumeric(value)} ${scale.unit}`;
@@ -140,7 +142,7 @@ export function formatAreaWithUnit(
   scale: { unitsPerPixel: number; unit: CalibrationUnit } | null | undefined,
 ): string {
   if (!scale) {
-    return `${pixelsSquared.toFixed(0)} px\u00B2 (uncal)`;
+    return `${fmtFixed(pixelsSquared, 0)} px\u00B2 (uncal)`;
   }
   const value = pixelsSquared * scale.unitsPerPixel * scale.unitsPerPixel;
   return `${formatNumeric(value)} ${scale.unit}\u00B2`;
@@ -149,8 +151,8 @@ export function formatAreaWithUnit(
 /** Shared numeric formatter so distances / areas line up. Matches the
  *  page-level ``formatMeasurement`` precision policy. */
 function formatNumeric(value: number): string {
-  if (value >= 1000) return (value / 1000).toFixed(2) + 'k';
-  if (value < 0.01) return value.toFixed(4);
-  if (value < 1) return value.toFixed(3);
-  return value.toFixed(2);
+  if (value >= 1000) return fmtFixed(value / 1000, 2) + 'k';
+  if (value < 0.01) return fmtFixed(value, 4);
+  if (value < 1) return fmtFixed(value, 3);
+  return fmtFixed(value, 2);
 }

@@ -41,6 +41,7 @@ import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage } from '@/shared/lib/api';
+import { fmtPercent as fmtPercentInAppLanguage } from '@/shared/lib/formatters';
 import {
   listContractSecurities,
   createContractSecurity,
@@ -246,7 +247,7 @@ function percentValid(raw: string): boolean {
  */
 function fmtPercent(v: number | string): string {
   const n = Number(v);
-  return Number.isFinite(n) ? `${n.toFixed(2)} %` : String(v);
+  return Number.isFinite(n) ? fmtPercentInAppLanguage(n, 2) : String(v);
 }
 
 /**

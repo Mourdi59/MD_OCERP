@@ -9,6 +9,7 @@ import {
 } from './api';
 import { resourceAwareTotalInBase } from './boqHelpers';
 import { toDisplayQuantity, toDisplayRate } from '@/shared/lib/unitConversion';
+import { fmtPercent } from '@/shared/lib/formatters';
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
@@ -236,7 +237,7 @@ function renderCoverPage(
     ['Direct Cost', formatCurrency(options.directCost, options.currency, locale)],
     ['Markups', options.markupTotals.map((m) => `${m.name} ${m.percentage}%`).join(', ') || 'None'],
     ['Net Total', formatCurrency(options.netTotal, options.currency, locale)],
-    ['VAT', `${(options.vatRate * 100).toFixed(0)}% (${formatCurrency(options.vatAmount, options.currency, locale)})`],
+    ['VAT', `${fmtPercent(options.vatRate * 100, 0)} (${formatCurrency(options.vatAmount, options.currency, locale)})`],
   ];
 
   doc.setFontSize(9);
@@ -560,7 +561,7 @@ function renderSummary(
     ]);
   }
 
-  const vatLabel = `VAT (${(options.vatRate * 100).toFixed(0)}%)`;
+  const vatLabel = `VAT (${fmtPercent(options.vatRate * 100, 0)})`;
 
   autoTable(doc, {
     startY: afterSectionsY + 10,

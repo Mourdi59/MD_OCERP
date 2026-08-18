@@ -29,6 +29,7 @@ import {
 import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { useToastStore } from '@/stores/useToastStore';
 import { getErrorMessage } from '@/shared/lib/api';
+import { fmtPercent } from '@/shared/lib/formatters';
 import {
   populateClaimPreview,
   commitClaimLines,
@@ -301,7 +302,7 @@ function PreviewRow({
         )}
       </td>
       <td className="px-3 py-2 text-right">
-        {toNum(item.observed_pct).toFixed(2)} %
+        {fmtPercent(toNum(item.observed_pct), 2)}
       </td>
       <td className="px-3 py-2 text-right text-content-secondary">
         <MoneyDisplay

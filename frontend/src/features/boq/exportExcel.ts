@@ -16,6 +16,7 @@ import {
   type Position,
 } from './api';
 import { resourceAwareTotalInBase } from './boqHelpers';
+import { getIntlLocale, fmtPercent } from '@/shared/lib/formatters';
 
 /* ── Types ────────────────────────────────────────────────────────────── */
 
@@ -222,7 +223,7 @@ export function buildBOQSheetData(options: ExportOptions): {
   const colCount = BOQ_COLUMNS.length;
   const itemCount = positions.filter((p) => !isSection(p)).length;
   const sectionCount = grouped.sections.length;
-  const dateStr = new Date().toLocaleDateString(undefined, {
+  const dateStr = new Date().toLocaleDateString(getIntlLocale(), {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -405,7 +406,7 @@ export function buildBOQSheetData(options: ExportOptions): {
   rows.push(Array(colCount).fill(null));
   rows.push(summaryRow('Net Total', netTotal));
 
-  const vatLabel = vatRate > 0 ? `VAT (${(vatRate * 100).toFixed(0)}%)` : 'VAT (0%)';
+  const vatLabel = vatRate > 0 ? `VAT (${fmtPercent(vatRate * 100, 0)})` : 'VAT (0%)';
   rows.push(summaryRow(`  + ${vatLabel}`, vatAmount));
 
   rows.push(Array(colCount).fill(null));
@@ -434,7 +435,7 @@ export function buildSummarySheetData(options: ExportOptions): {
     baseCurrency: options.baseCurrency,
     fxRates: options.fxRates,
   });
-  const dateStr = new Date().toLocaleDateString(undefined, {
+  const dateStr = new Date().toLocaleDateString(getIntlLocale(), {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -471,7 +472,7 @@ export function buildSummarySheetData(options: ExportOptions): {
     rows.push([`  + ${m.name} (${m.percentage}%)`, null, m.amount]);
   }
   rows.push(['Net Total', null, netTotal]);
-  const vatLabel = vatRate > 0 ? `VAT (${(vatRate * 100).toFixed(0)}%)` : 'VAT (0%)';
+  const vatLabel = vatRate > 0 ? `VAT (${fmtPercent(vatRate * 100, 0)})` : 'VAT (0%)';
   rows.push([`  + ${vatLabel}`, null, vatAmount]);
   rows.push([null, null, null]);
   rows.push(['GROSS TOTAL', null, grossTotal]);

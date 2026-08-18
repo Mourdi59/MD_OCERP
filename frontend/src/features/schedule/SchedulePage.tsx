@@ -559,7 +559,11 @@ function GanttChart({
         const pct = (dayOffset / totalDays) * 100;
         if (pct >= 0 && pct <= 100) {
           markers.push({
-            label: current.toLocaleDateString(getIntlLocale(), { month: 'short', year: '2-digit' }),
+            // Four digits, not two. The month markers are the only place on
+            // this axis where a year is written at all, and a programme that
+            // runs from 2026 into 2028 is exactly the one where "Aug 26" has
+            // to be read twice - the first reading is a day of the month.
+            label: current.toLocaleDateString(getIntlLocale(), { month: 'short', year: 'numeric' }),
             offsetPct: pct,
           });
         }

@@ -1,5 +1,7 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
+import { getIntlLocale } from '@/shared/lib/formatters';
+
 export default function GenericTableRenderer({ data }: { data: unknown }) {
   const rows: Record<string, unknown>[] = Array.isArray(data) ? data : [];
 
@@ -36,7 +38,7 @@ export default function GenericTableRenderer({ data }: { data: unknown }) {
 
   function formatValue(val: unknown): string {
     if (val == null) return '-';
-    if (typeof val === 'number') return val.toLocaleString();
+    if (typeof val === 'number') return val.toLocaleString(getIntlLocale());
     if (typeof val === 'boolean') return val ? 'Yes' : 'No';
     if (typeof val === 'object') return JSON.stringify(val);
     return String(val);
