@@ -13,6 +13,18 @@ export interface MoneyDisplayProps {
   showCode?: boolean;
   className?: string;
   colorize?: boolean;
+  /**
+   * Sign policy, forwarded to `Intl`. Pass `'always'` on a delta or a movement
+   * so the plus lands where the reader's language puts it, rather than in
+   * front for everyone as a hand-written `+<MoneyDisplay …/>` would be.
+   *
+   * It does not on its own hold the sign to the figure. `+` and a currency
+   * symbol are both prefix-numeric under the Unicode line-breaking algorithm
+   * and only one prefix may open an unbreakable numeric run, so a narrow cell
+   * may break between them however the string was produced. The cell has to
+   * say `whitespace-nowrap` too.
+   */
+  signDisplay?: Intl.NumberFormatOptions['signDisplay'];
 }
 
 /**
@@ -47,6 +59,7 @@ export function MoneyDisplay({
   showCode = false,
   className,
   colorize = false,
+  signDisplay,
 }: MoneyDisplayProps) {
   // The one resolver, not the raw preference: it reads the number-format
   // setting when the reader has chosen one and the UI language when they have
@@ -135,6 +148,7 @@ export function MoneyDisplay({
         minimumFractionDigits: compact ? 0 : minorUnits,
         maximumFractionDigits: compact ? 1 : minorUnits,
         ...(compact ? { notation: 'compact' as const } : {}),
+        ...(signDisplay ? { signDisplay } : {}),
       });
       formatted = `${numFmt.format(numericValue)} ${safeCurrency}`;
     } else {
@@ -143,6 +157,7 @@ export function MoneyDisplay({
         currency: safeCurrency,
         minimumFractionDigits: compact ? 0 : minorUnits,
         maximumFractionDigits: compact ? 1 : minorUnits,
+        ...(signDisplay ? { signDisplay } : {}),
       };
       if (compact) {
         opts.notation = 'compact';
@@ -153,7 +168,11 @@ export function MoneyDisplay({
     // numericValue is guaranteed numeric (parseFloat above) but be paranoid
     // — Number.isFinite guards against ±Infinity sneaking past the NaN gate.
     const n = Number.isFinite(numericValue) ? numericValue : 0;
-    formatted = `${n.toFixed(minorUnits)} ${safeCurrency}`;
+    // The sign survives the fallback too. A caller asks for it because the
+    // alternative is writing one by hand next to the number, and a path that
+    // drops it hands that problem straight back on whichever host took it.
+    const plus = signDisplay === 'always' && n >= 0 ? '+' : '';
+    formatted = `${plus}${n.toFixed(minorUnits)} ${safeCurrency}`;
   }
 
   const colorClass = colorize

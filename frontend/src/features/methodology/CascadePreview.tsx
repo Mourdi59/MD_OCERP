@@ -276,8 +276,15 @@ function PreviewBreakdown({ preview, currency }: { preview: PreviewResult; curre
                 {t('methodology.preview.grand', { defaultValue: 'Grand total' })}
               </td>
               <td className="px-2.5 py-2 text-right text-2xs text-content-tertiary tabular-nums">
-                <span title={t('methodology.preview.markup_total', { defaultValue: 'Total markup' })}>
-                  +<MoneyDisplay amount={preview.markupTotal} currency={cur} compact />
+                {/* The sign comes from the formatter and the cell may not be
+                    broken, so the plus cannot end up on the line above its own
+                    figure. Not compacted either: the column this sits under
+                    prints its amounts in full. */}
+                <span
+                  className="whitespace-nowrap"
+                  title={t('methodology.preview.markup_total', { defaultValue: 'Total markup' })}
+                >
+                  <MoneyDisplay amount={preview.markupTotal} currency={cur} signDisplay="always" />
                 </span>
               </td>
               <td className="px-2.5 py-2 text-right text-sm font-bold tabular-nums text-content-primary">

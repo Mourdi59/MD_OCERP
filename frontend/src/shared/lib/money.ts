@@ -39,6 +39,21 @@ export interface FormatCurrencyOptions {
    * When given, it is the hard constraint: the minimum bends down to meet it.
    */
   maximumFractionDigits?: number;
+  /**
+   * Sign policy, forwarded to `Intl` verbatim.
+   *
+   * It belongs here rather than at the call site because the locale decides
+   * where the mark goes and a hand-written `+` is in front for everyone.
+   * `Intl` places it according to the locale's own pattern.
+   *
+   * What it does not do is keep the sign on the same line as the figure. `+`
+   * and `$` are both prefix-numeric under the Unicode line-breaking algorithm
+   * and only one prefix may open an unbreakable numeric run, so the break
+   * between them is legal whichever way the string was assembled - the
+   * rendered characters are identical. Forbidding it is the cell's job, and
+   * the call sites on the change-order register say `whitespace-nowrap`.
+   */
+  signDisplay?: Intl.NumberFormatOptions['signDisplay'];
 }
 
 const CURRENCY_CODE_RE = /^[A-Z]{3}$/;
@@ -214,6 +229,7 @@ export function formatCurrency(
   try {
     return new Intl.NumberFormat(loc, {
       ...(isValid ? { style: 'currency' as const, currency: code } : {}),
+      ...(options?.signDisplay ? { signDisplay: options.signDisplay } : {}),
       ...digits,
     }).format(amount);
   } catch {
@@ -223,7 +239,23 @@ export function formatCurrency(
     // safe because the ceiling is already inside [0, 20] and `toNum`
     // guarantees a finite amount. The code is appended only when it is a real
     // ISO 4217 code - never echo back a malformed one as if it were a unit.
-    const text = amount.toFixed(digits.maximumFractionDigits);
+    // The sign policy is applied here too: a caller that asked for an explicit
+    // plus asked for it because the alternative was writing one by hand, and a
+    // fallback that quietly drops it hands that problem straight back.
+    const magnitude = options?.signDisplay === 'never' ? Math.abs(amount) : amount;
+    const text = `${fallbackSign(amount, options?.signDisplay)}${magnitude.toFixed(digits.maximumFractionDigits)}`;
     return isValid ? `${text} ${code}` : text;
   }
+}
+
+/**
+ * The leading `+` the `Intl` path would have written, for the hand-rolled
+ * fallback above. Negative amounts already carry their minus from `toFixed`,
+ * and every policy other than an explicit plus writes nothing here.
+ */
+function fallbackSign(amount: number, signDisplay: Intl.NumberFormatOptions['signDisplay']): string {
+  if (amount < 0) return '';
+  if (signDisplay === 'always') return '+';
+  if (signDisplay === 'exceptZero') return amount > 0 ? '+' : '';
+  return '';
 }
