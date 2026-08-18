@@ -855,7 +855,10 @@ const InspectionRow = React.memo(function InspectionRow({
         </Badge>
 
         {/* Inspector */}
-        <span className="text-xs text-content-tertiary w-28 truncate shrink-0 hidden md:block">
+        <span
+          className="text-xs text-content-tertiary w-28 truncate shrink-0 hidden md:block"
+          title={inspection.inspector || undefined}
+        >
           {inspection.inspector || '\u2014'}
         </span>
 
@@ -875,7 +878,15 @@ const InspectionRow = React.memo(function InspectionRow({
             })}
           </Badge>
         ) : (
-          <span className="text-xs text-content-tertiary w-16 text-center">{'\u2014'}</span>
+          // A dash in the same weight as the real results reads as a result.
+          // The glyph is decorative; the label says the inspection has none.
+          <span
+            className="text-xs text-content-quaternary w-16 text-center"
+            title={t('common.not_set', { defaultValue: 'Not set' })}
+          >
+            <span aria-hidden="true">{'\u2014'}</span>
+            <span className="sr-only">{t('common.not_set', { defaultValue: 'Not set' })}</span>
+          </span>
         )}
 
         {/* Status badge */}
