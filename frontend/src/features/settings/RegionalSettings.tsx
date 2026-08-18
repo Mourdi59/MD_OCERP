@@ -15,7 +15,7 @@ import { Globe, Ruler, FileText, Calendar, Hash, DollarSign, Search, Check } fro
 import clsx from 'clsx';
 import { Card, CardHeader, CardContent } from '@/shared/ui';
 import { apiGet, apiPatch } from '@/shared/lib/api';
-import { usePreferencesStore, resolveNumberLocale, adoptServerNumberFormat, NUMBER_LOCALES, type MeasurementSystem, type DateFormat, type NumberLocale } from '@/stores/usePreferencesStore';
+import { usePreferencesStore, resolveNumberLocale, adoptServerNumberFormat, useNumberLocale, NUMBER_LOCALES, type MeasurementSystem, type DateFormat, type NumberLocale } from '@/stores/usePreferencesStore';
 import { useToastStore } from '@/stores/useToastStore';
 import {
   CUSTOM_CURRENCY_SENTINEL,
@@ -378,6 +378,34 @@ export function RegionalSettings({ animationDelay = '0ms' }: { animationDelay?: 
   // the local store, which carries the user's last-selected currency.
   const currency = prefs?.currency_code ?? storeCurrency;
 
+  // The one figure on this screen that is not a label for a button.
+  //
+  // Every example in the row below is built from its own button's locale, so
+  // the row reads identically whichever button is pressed, and somebody
+  // choosing a format is choosing blind. This reads the preference through the
+  // same resolver the rest of the product formats with, which is also the only
+  // place where "the number follows the reader" can be watched happening
+  // rather than argued about.
+  //
+  // Subscribing rather than sampling is the whole point. The snapshot reader
+  // would leave this preview showing the previous format after a click, which
+  // is precisely the failure it exists to rule out.
+  const previewLocale = useNumberLocale();
+  const numberFormatPreview = useMemo(() => {
+    try {
+      return new Intl.NumberFormat(previewLocale, {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 2,
+      }).format(NUMBER_FORMAT_SAMPLE);
+    } catch {
+      // A custom currency code somebody is still typing is not a valid ISO
+      // code and `Intl` throws on it. Falling back to the plain number keeps
+      // the preview on screen instead of blanking it mid-keystroke.
+      return new Intl.NumberFormat(previewLocale).format(NUMBER_FORMAT_SAMPLE);
+    }
+  }, [previewLocale, currency]);
+
   // Patch mutation
   const patchMutation = useMutation({
     mutationFn: (update: Partial<UserPreferencesResponse>) =>
@@ -561,6 +589,12 @@ export function RegionalSettings({ animationDelay = '0ms' }: { animationDelay?: 
               }))}
               onChange={(val) => handleChange('number_format', val)}
             />
+            <p className="mt-1.5 text-xs text-content-tertiary">
+              {t('settings.number_format_preview', {
+                example: numberFormatPreview,
+                defaultValue: 'Amounts across the app now read {{example}}',
+              })}
+            </p>
           </div>
 
           {/* Currency */}
