@@ -49,6 +49,7 @@ import {
 } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useNumberLocale, getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   AlertTriangle,
   Building2,
@@ -82,7 +83,7 @@ import {
   type PortalKycCode,
   type PortalOverviewResponse,
 } from './api';
-import { fmtFixed, getIntlLocale } from '@/shared/lib/formatters';
+import { fmtFixed } from '@/shared/lib/formatters';
 
 type PageState =
   | { kind: 'loading' }
@@ -108,6 +109,11 @@ interface PendingFile {
 export function BuyerPortalPage() {
   const { token } = useParams<{ token: string }>();
   const { t, i18n } = useTranslation();
+  // The buyer is the reader here, so their money and dates go through the
+  // same resolver as every other register rather than a second answer built
+  // in this file. `i18n.language` stays where it means the language itself:
+  // the switcher in the shell below.
+  const numberLocale = useNumberLocale();
 
   const [state, setState] = useState<PageState>({ kind: 'loading' });
   const [contactMessage, setContactMessage] = useState('');
@@ -509,7 +515,7 @@ export function BuyerPortalPage() {
                   {formatMoney(
                     data.reservation.deposit_amount,
                     data.reservation.currency,
-                    i18n.language,
+                    numberLocale,
                   )}
                 </dd>
               </div>
@@ -521,7 +527,7 @@ export function BuyerPortalPage() {
                     })}
                   </dt>
                   <dd className="text-content-primary">
-                    {formatDate(data.reservation.signed_on, i18n.language)}
+                    {formatDate(data.reservation.signed_on, numberLocale)}
                   </dd>
                 </div>
               )}
@@ -564,7 +570,7 @@ export function BuyerPortalPage() {
                   {formatMoney(
                     data.sales_contract.total_value,
                     data.sales_contract.currency,
-                    i18n.language,
+                    numberLocale,
                   )}
                 </dd>
               </div>
@@ -589,13 +595,13 @@ export function BuyerPortalPage() {
           totalOutstanding={data.payment_schedule_outstanding}
           totalValue={data.payment_schedule_total}
           currency={data.payment_schedule_currency}
-          locale={i18n.language}
+          locale={numberLocale}
         />
 
         {/* Documents + KYC */}
         <DocumentsSection
           documents={data.documents}
-          locale={i18n.language}
+          locale={numberLocale}
         />
 
         <KycSection
@@ -708,7 +714,7 @@ export function BuyerPortalPage() {
         hasPendingKyc={hasPendingKyc}
         nextDueAmount={nextDueInstalment?.amount}
         nextDueCurrency={nextDueInstalment?.currency}
-        locale={i18n.language}
+        locale={numberLocale}
       />
     </ShellWrapper>
   );
@@ -1975,7 +1981,7 @@ function formatMoney(amount: string, currency: string, locale: string): string {
   const value = Number(amount);
   if (!isFinite(value)) return amount;
   try {
-    return new Intl.NumberFormat(locale || getIntlLocale(), {
+    return new Intl.NumberFormat(locale || getNumberLocale(), {
       style: 'currency',
       currency: (currency || 'EUR').toUpperCase(),
       maximumFractionDigits: 2,
@@ -1990,7 +1996,7 @@ function formatDate(iso: string, locale: string): string {
   try {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return iso;
-    return new Intl.DateTimeFormat(locale || getIntlLocale(), {
+    return new Intl.DateTimeFormat(locale || getNumberLocale(), {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

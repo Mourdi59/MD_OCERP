@@ -104,7 +104,7 @@ import {
 import { CURRENCY_GROUPS } from '@/features/projects/CreateProjectPage';
 import { useToastStore } from '@/stores/useToastStore';
 import { useBoqDescDensityStore, BOQ_DESC_ROW_HEIGHT } from '@/stores/useBoqDescDensityStore';
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 import { VariantPicker } from '@/features/costs/VariantPicker';
 import type { CostVariant, VariantStats } from '@/features/costs/api';
@@ -1168,7 +1168,7 @@ const BOQGrid = forwardRef<BOQGridHandle, BOQGridProps>(function BOQGrid({
 
   const fmt = useMemo(
     () =>
-      new Intl.NumberFormat(locale || getIntlLocale(), {
+      new Intl.NumberFormat(locale || getNumberLocale(), {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }),

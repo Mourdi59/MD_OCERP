@@ -6,7 +6,6 @@
  *   - evaluateFormula (via ./grid/cellEditors — single source of truth)
  *   - getCurrencySymbol
  *   - getVatRate
- *   - getLocaleForRegion
  *   - computeQualityScore
  *   - groupPositionsIntoSections + isSection (via ./api)
  *   - normalizePosition / normalizePositions (via ./api)
@@ -17,7 +16,6 @@ import { evaluateFormula } from './grid/cellEditors';
 import {
   getCurrencySymbol,
   getVatRate,
-  getLocaleForRegion,
   computeQualityScore,
 } from './BOQEditorPage';
 import {
@@ -187,36 +185,6 @@ describe('getVatRate (suggestion lookup)', () => {
 
   it('returns 0 for unknown region', () => {
     expect(getVatRate('Unknown Region XYZ')).toBe(0);
-  });
-});
-
-/* ── getLocaleForRegion ──────────────────────────────────────────────────── */
-
-describe('getLocaleForRegion', () => {
-  it('falls back to user UI locale when region is missing - never a country default', () => {
-    // i18next lang in test env is 'en' → mapped to 'en-US' by getIntlLocale.
-    expect(getLocaleForRegion()).toBe('en-US');
-    expect(getLocaleForRegion(undefined)).toBe('en-US');
-  });
-
-  it('returns "de-DE" for DACH region', () => {
-    expect(getLocaleForRegion('DACH (Germany, Austria, Switzerland)')).toBe('de-DE');
-  });
-
-  it('returns "en-GB" for United Kingdom', () => {
-    expect(getLocaleForRegion('United Kingdom')).toBe('en-GB');
-  });
-
-  it('returns "en-US" for United States', () => {
-    expect(getLocaleForRegion('United States')).toBe('en-US');
-  });
-
-  it('returns "fr-FR" for France', () => {
-    expect(getLocaleForRegion('France')).toBe('fr-FR');
-  });
-
-  it('falls back to user UI locale for unknown region', () => {
-    expect(getLocaleForRegion('Unknown Region XYZ')).toBe('en-US');
   });
 });
 

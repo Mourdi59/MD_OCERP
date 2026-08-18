@@ -16,7 +16,7 @@ import { useRecentStore } from '@/stores/useRecentStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useBIMLinkSelectionStore } from '@/stores/useBIMLinkSelectionStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
-import { usePreferencesStore } from '@/stores/usePreferencesStore';
+import { usePreferencesStore, useNumberLocale } from '@/stores/usePreferencesStore';
 import { useDisplayQuantity } from '@/shared/hooks/useDisplayQuantity';
 import {
   boqApi,
@@ -80,7 +80,6 @@ import {
   type UndoEntry,
   getVatRate,
   getVatRateFromMarkups,
-  getLocaleForRegion,
   getCurrencySymbol,
   getCurrencyCode,
   createFormatter,
@@ -107,7 +106,7 @@ import { LinkedPositionsModal } from './LinkedPositionsModal';
 
 /* ── Re-exports for tests ────────────────────────────────────────────── */
 
-export { getVatRate, getLocaleForRegion, getCurrencySymbol, computeQualityScore };
+export { getVatRate, getCurrencySymbol, computeQualityScore };
 export type { QualityBreakdown };
 
 /**
@@ -213,7 +212,21 @@ export function BOQEditorPage() {
 
   const currencySymbol = useMemo(() => getCurrencySymbol(project?.currency), [project?.currency]);
   const currencyCode = useMemo(() => getCurrencyCode(project?.currency), [project?.currency]);
-  const locale = useMemo(() => getLocaleForRegion(project?.region), [project?.region]);
+  // A screen follows its reader, a document follows its project. This is the
+  // screen, so the bill is written the way the person looking at it asked for
+  // numbers to be written, exactly like every other register. It used to be
+  // written the way the project's region implied, which is why the same amount
+  // read one way here and another on the finance page of the same project.
+  //
+  // The document half of that rule is not lost, it is unbuilt. A GAEB file, a
+  // PDF offer and an invoice under EN 16931 are read by the recipient rather
+  // than by us, so those follow the project, and when one of them needs a
+  // locale it will be resolved from the country code the project stores. The
+  // map that used to answer this line could not have done that job: it was
+  // keyed by the label the project form displays while the form saves the
+  // option value, so it matched thirteen of its thirty-one regions and none of
+  // the demo projects at all.
+  const locale = useNumberLocale();
   // Issue #270 - the user's measurement-system preference, threaded into the
   // client-side Excel/PDF exports so quantities + unit labels print in the
   // chosen system (storage stays metric-canonical; only the export boundary

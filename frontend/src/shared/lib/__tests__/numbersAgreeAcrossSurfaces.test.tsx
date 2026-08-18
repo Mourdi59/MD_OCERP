@@ -304,6 +304,42 @@ describe('there is one place the number locale comes from', () => {
     expect(offenders).toEqual([]);
   });
 
+  // The lesson of the defect above, applied to this file's own instrument.
+  //
+  // The test before this one anchors the tag to the opening bracket, so it sees
+  // `new Intl.NumberFormat('de-DE'` and is blind to
+  // `new Intl.NumberFormat(ctx.locale ?? 'de-DE'`, which is the same literal
+  // doing the same thing one operator later. That is exactly how the bill grid
+  // came to name two languages in its fallbacks while every gate stayed green:
+  // a scope defined by the shape of an argument cannot see a wrong argument of
+  // another shape. So this reads the whole locale position instead.
+  it('no formatter has a locale tag hidden in its fallback either', () => {
+    const opener =
+      /(?:new Intl\.(?:NumberFormat|DateTimeFormat)|\.toLocaleString|\.toLocaleDateString|\.toLocaleTimeString)\(/g;
+    const tag = /(['"`])[a-z]{2}(?:-[A-Za-z0-9]+)*\1/;
+
+    const offenders: string[] = [];
+    for (const file of PRODUCT_FILES) {
+      const source = read(file);
+      for (const match of source.matchAll(opener)) {
+        // The locale argument runs to the first comma or the closing bracket,
+        // whichever comes first. Neither appears inside a BCP-47 tag.
+        const rest = source.slice(match.index + match[0].length);
+        const end = Math.min(...[rest.indexOf(','), rest.indexOf(')')].filter((i) => i >= 0));
+        const arg = rest.slice(0, end);
+        const found = tag.exec(arg);
+        if (!found) continue;
+        const argued = HARDCODED_LOCALE_ALLOWED.some(
+          (a) => a.file === file && source.includes(a.snippet),
+        );
+        if (!argued) {
+          offenders.push(`${file}:${source.slice(0, match.index).split('\n').length} ${match[0]}${arg.trim()}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
   // An allowlist that outlives the line it was written for is a blank cheque.
   it('every argued exemption still matches its line', () => {
     const stale = HARDCODED_LOCALE_ALLOWED.filter((a) => !read(a.file).includes(a.snippet));
@@ -407,6 +443,17 @@ describe('the bill and the finance register cannot be told different things', ()
       (code) => fmtWithCurrency(1234.5, 'en-US', code) !== registerReading(1234.5, code),
     );
     expect(disagree.filter((c) => !DECIMAL_COUNT_UNDECIDED.includes(c))).toEqual([]);
+  });
+
+  it('the bill does not resolve its locale from the project region', () => {
+    // The screen follows its reader. The document half of the rule - a GAEB
+    // file, a PDF offer, an invoice, all read by somebody who is not our user -
+    // is real and unbuilt, and when it is built it will key off the country
+    // code the project stores. What it may not do is come back here.
+    const page = read('features/boq/BOQEditorPage.tsx');
+    expect(page).toMatch(/const locale = useNumberLocale\(\)/);
+    const regionResolvers = PRODUCT_FILES.filter((f) => /getLocaleForRegion/.test(read(f)));
+    expect(regionResolvers).toEqual([]);
   });
 
   it('there is one money formatter, and the bill helper is a name for it', () => {

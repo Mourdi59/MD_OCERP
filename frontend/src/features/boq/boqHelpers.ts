@@ -10,6 +10,7 @@
 
 import type { Position, Markup } from './api';
 import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import { formatCurrency } from '@/shared/lib/money';
 import { apiGet, apiPatch } from '@/shared/lib/api';
 import { formatElapsed, type Translate as DurationTranslate } from '@/shared/lib/duration';
@@ -307,42 +308,6 @@ export function getVatRate(region?: string): number {
   return SUGGESTED_VAT_RATES[region] ?? 0;
 }
 
-/* ── Region Locales ──────────────────────────────────────────────────── */
-
-/** Map region to locale for number/date formatting. */
-const REGION_LOCALES: Record<string, string> = {
-  'DACH (Germany, Austria, Switzerland)': 'de-DE',
-  'United Kingdom': 'en-GB',
-  'France': 'fr-FR',
-  'Spain': 'es-ES',
-  'Italy': 'it-IT',
-  'Netherlands': 'nl-NL',
-  'Poland': 'pl-PL',
-  'Czech Republic': 'cs-CZ',
-  'Turkey': 'tr-TR',
-  'Russia': 'ru-RU',
-  'United States': 'en-US',
-  'Canada': 'en-CA',
-  'Brazil': 'pt-BR',
-  'China': 'zh-CN',
-  'Japan': 'ja-JP',
-  'India': 'en-IN',
-  'Gulf States (UAE, Saudi Arabia, Qatar)': 'ar-AE',
-  'Middle East (General)': 'ar-SA',
-  'Australia': 'en-AU',
-  'New Zealand': 'en-NZ',
-};
-
-export function getLocaleForRegion(region?: string): string {
-  if (region) {
-    const mapped = REGION_LOCALES[region];
-    if (mapped) return mapped;
-  }
-  // No project region (or unknown) — fall back to the user's UI language
-  // resolved from i18next. Never hard-default to a country-specific locale.
-  return getIntlLocale();
-}
-
 /* ── Currency Symbols ────────────────────────────────────────────────── */
 
 /** Map currency code to symbol. */
@@ -391,7 +356,7 @@ export function getCurrencyCode(currencyStr?: string): string {
 
 /** Locale-aware number formatter for currency-like values. */
 export function createFormatter(locale?: string): Intl.NumberFormat {
-  return new Intl.NumberFormat(locale ?? getIntlLocale(), {
+  return new Intl.NumberFormat(locale ?? getNumberLocale(), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
