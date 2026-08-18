@@ -380,21 +380,22 @@ const REGISTER_FIXTURES: readonly (readonly [number, string])[] = [
 ];
 
 /**
- * Currencies where the bill and the register still disagree, and why.
+ * The last codes on which the two surfaces disagreed, kept as data.
  *
- * Not a blessing, a boundary. The two surfaces resolve the decimal count from
- * different sources on purpose: the register reads the static ISO 4217 table in
- * `currencyMinorUnits`, the bill reads what the engine holds, and CLDR gives
- * these five zero decimals where ISO gives two. Which is right is a question
- * about money rather than about code, and it is open.
+ * They resolved the decimal count from different sources: the register read the
+ * static ISO 4217 list in `shared/ui/currencyMinorUnits`, the bill read what the
+ * engine holds, and CLDR gives these five zero decimals where ISO gives two.
+ * That was never a contest between two tables, it was a contest between a table
+ * and a reader - a Hungarian does not write forints with fillér - and on a
+ * screen the reader wins, so the register asks the engine now as well. The
+ * opposite rule holds for a document, which is read by a bank rather than by
+ * our user, and belongs with the code that writes documents.
  *
- * Asserted as an upper bound rather than an exact set, so adding a currency
- * that agrees does not fail, and any NEW disagreement does. Eleven codes used
- * to sit here - BHD CLP ISK JOD JPY KRW KWD OMR TND UGX VND - because the bill
- * asked for two decimals on everything, showing cents on yen and hiding a
- * digit on dinars.
+ * Eleven other codes used to sit beside these - BHD CLP ISK JOD JPY KRW KWD OMR
+ * TND UGX VND - because the bill asked for two decimals on everything, showing
+ * cents on yen and hiding a digit on dinars.
  */
-const DECIMAL_COUNT_UNDECIDED = ['COP', 'HUF', 'IDR', 'LBP', 'PKR'];
+const ONCE_DISAGREED = ['COP', 'HUF', 'IDR', 'LBP', 'PKR'];
 
 /** Every currency the project form offers, read from the form itself. */
 function offeredCurrencies(): string[] {
@@ -442,7 +443,27 @@ describe('the bill and the finance register cannot be told different things', ()
     const disagree = offeredCurrencies().filter(
       (code) => fmtWithCurrency(1234.5, 'en-US', code) !== registerReading(1234.5, code),
     );
-    expect(disagree.filter((c) => !DECIMAL_COUNT_UNDECIDED.includes(c))).toEqual([]);
+    expect(disagree).toEqual([]);
+  });
+
+  it('gives the codes that used to disagree the digit count the engine gives', () => {
+    speak('en');
+    for (const code of ONCE_DISAGREED) {
+      // Asked of Intl rather than written out. "The forint has no fillér" is
+      // an opinion, and the whole point of the ruling is that the opinion
+      // belongs to CLDR: a test that spells the digits out would go on
+      // passing while the product argued with the reader.
+      const digits = new Intl.NumberFormat('en-US', { style: 'currency', currency: code })
+        .resolvedOptions().maximumFractionDigits;
+      expect(registerReading(1234.5, code), code).toBe(
+        new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: code,
+          minimumFractionDigits: digits,
+          maximumFractionDigits: digits,
+        }).format(1234.5),
+      );
+    }
   });
 
   it('the bill does not resolve its locale from the project region', () => {

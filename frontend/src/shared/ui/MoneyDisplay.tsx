@@ -4,7 +4,7 @@ import clsx from 'clsx';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNumberLocale } from '../../stores/usePreferencesStore';
-import { currencyMinorUnits } from './currencyMinorUnits';
+import { currencyFractionDigits } from '../lib/money';
 
 export interface MoneyDisplayProps {
   amount: number | string | null | undefined;
@@ -135,10 +135,20 @@ export function MoneyDisplay({
 
   const safeCurrency = trimmedCurrency;
 
-  // Resolve the ISO-4217 minor-unit count. Falls back to 2 for currencies
-  // we don't have an explicit override for — matching pre-fix behaviour
-  // for the long tail of legacy/local-only currencies.
-  const minorUnits = currencyMinorUnits(safeCurrency);
+  // How many decimals this currency gets, asked of the engine rather than of a
+  // table of our own. On a screen the reader decides, and how many minor units
+  // a currency has is part of what their language considers normal for it: a
+  // Hungarian does not write forints with fillér, so a static ISO 4217 list
+  // that made us print them was arguing with the reader rather than with CLDR.
+  // The opposite rule is the right one for a document and lives with the code
+  // that writes documents, because an invoice declares its amount to a bank
+  // and a tax office, whose authority is ISO 4217 and not the locale of
+  // whoever is looking at a screen.
+  //
+  // This is the same call the bill and every other money surface make, so one
+  // currency cannot carry two decimal counts depending on which page you are
+  // on. Five codes used to do exactly that: COP, HUF, IDR, LBP and PKR.
+  const minorUnits = currencyFractionDigits(safeCurrency);
 
   let formatted: string;
   try {

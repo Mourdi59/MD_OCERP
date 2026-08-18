@@ -1,7 +1,32 @@
 // DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 // Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 /**
- * ISO-4217 minor-unit lookup — Audit I1-I3.
+ * ISO-4217 minor-unit lookup.
+ *
+ * THE RULE HAS TWO HALVES AND THIS FILE IS ONLY ONE OF THEM.
+ *
+ * On a screen the engine wins. A number is written in the reader's language,
+ * and how many minor units a currency has is part of what that language
+ * considers normal for it, so a Hungarian sees forints without fillér because
+ * CLDR says so. `currencyFractionDigits` in `shared/lib/money` is the answer
+ * for anything a person looks at, and every money surface now asks it.
+ *
+ * In a document ISO 4217 wins, and that is what this table is. An invoice
+ * under EN 16931 and any payment file declare an amount to a bank and a tax
+ * office, whose source of truth is the standard rather than the locale of
+ * whoever happens to be looking. The two rules disagree on 16 codes - AFN,
+ * ALL, COP, HUF, IDR, IQD, IRR, KPW, LAK, LBP, MGA, MMK, PKR, SOS, SYP, YER -
+ * where CLDR says zero decimals and ISO says two, so which one a caller wants
+ * is never a detail.
+ *
+ * This copy has no caller today. It was read by `MoneyDisplay`, which is a
+ * screen and now asks the engine; the e-invoice surface in the product is also
+ * a screen and formats through `formatCurrency`; and the code that actually
+ * writes a document runs on the server, where the same ISO table already
+ * lives. Its home is an open question rather than a settled one, so it is
+ * neither moved nor deleted here.
+ *
+ * Originally Audit I1-I3.
  *
  * Browsers' built-in `Intl.NumberFormat` does the right thing for most
  * currencies, but real-world Node + older browsers ship with stale
