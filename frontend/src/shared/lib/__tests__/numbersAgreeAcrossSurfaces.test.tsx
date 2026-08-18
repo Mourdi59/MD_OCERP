@@ -276,7 +276,8 @@ function localeArgument(source: string, from: number): string {
 function boundTo(source: string, pattern: RegExp): Set<string> {
   const names = new Set<string>();
   for (const match of source.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;\n]+)/g)) {
-    if (pattern.test(match[2])) names.add(match[1]);
+    const [, name, bound] = match;
+    if (name && bound && pattern.test(bound)) names.add(name);
   }
   return names;
 }
