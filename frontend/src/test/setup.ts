@@ -7,6 +7,28 @@
 // module reads the timezone.
 process.env.TZ = 'UTC';
 
+// The assignment above lands in a worker process, where Node re-reads the zone
+// after it changes. It does NOT land in a worker thread: `--pool=threads`
+// shares one process, the zone is already resolved by the time this file runs,
+// and the write is accepted and ignored. The symptom is a handful of date
+// tests failing by exactly the host's offset while every other test passes,
+// which reads like a bug in the code under test rather than in how the run was
+// invoked. Measured on this repo at +0200: default pool 39 passed, the same
+// file under `--pool=threads` 5 failed, and `TZ=UTC` in the environment before
+// node starts made those 5 pass again.
+//
+// So say it out loud instead of letting five assertions imply it. Anyone who
+// reaches for `--pool=threads` as a load workaround gets one sentence naming
+// the cause rather than a date arithmetic mystery.
+const resolvedZone = new Intl.DateTimeFormat().resolvedOptions().timeZone;
+if (process.env.TZ === 'UTC' && resolvedZone !== 'UTC' && new Date().getTimezoneOffset() !== 0) {
+  throw new Error(
+    `Tests must run in UTC, but this worker resolved ${resolvedZone}. Setting process.env.TZ ` +
+      'here cannot move a worker thread. Drop --pool=threads, or put TZ=UTC in the environment ' +
+      'before node starts.',
+  );
+}
+
 import '@testing-library/jest-dom';
 import { configure } from '@testing-library/dom';
 
