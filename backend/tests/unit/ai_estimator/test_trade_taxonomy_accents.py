@@ -88,6 +88,11 @@ def test_the_load_bearing_list_is_exactly_the_keywords_the_fold_would_ruin() -> 
     match a control word it does not match today, and only then. Respell that
     keyword long enough to be unambiguous and this test asks for it to leave
     the list; add another short accented keyword and it asks for it to join.
+
+    Its reach is ``CONTROL_WORDS`` and no further: a future keyword that folds
+    into a collision with some word not listed there is not something this can
+    see. Adding a keyword with a mark is the moment to add the ordinary words
+    it might swallow.
     """
     every_keyword = {kw for _, keywords in TRADE_KEYWORDS for kw in keywords}
     assert every_keyword >= ACCENT_IS_LOAD_BEARING, (
