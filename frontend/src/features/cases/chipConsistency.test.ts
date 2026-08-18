@@ -239,11 +239,13 @@ function englishValues(srcRoot: string): Map<string, string> {
   // and a lowercase-only pattern reported it as absent from a file that holds
   // it. A parser that cannot see a key is indistinguishable from a missing key,
   // so it has to be the wider of the two.
+  // Both groups are mandatory in these patterns, so a match carries both.
+  // The assertions say so to a compiler that reads an index as possibly absent.
   const dq = /["']([A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)+)["']\s*:\s*"((?:[^"\\]|\\.)*)"/g;
-  for (let m = dq.exec(text); m; m = dq.exec(text)) out.set(m[1], m[2].replace(/\\"/g, '"'));
+  for (let m = dq.exec(text); m; m = dq.exec(text)) out.set(m[1]!, m[2]!.replace(/\\"/g, '"'));
   const sq = /["']([A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)+)["']\s*:\s*'((?:[^'\\]|\\.)*)'/g;
   for (let m = sq.exec(text); m; m = sq.exec(text)) {
-    if (!out.has(m[1])) out.set(m[1], m[2].replace(/\\'/g, "'"));
+    if (!out.has(m[1]!)) out.set(m[1]!, m[2]!.replace(/\\'/g, "'"));
   }
   return out;
 }
