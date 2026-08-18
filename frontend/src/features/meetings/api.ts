@@ -17,13 +17,25 @@ import { useAuthStore } from '@/stores/useAuthStore';
 
 /* -- Types ----------------------------------------------------------------- */
 
-export type MeetingType =
-  | 'progress'
-  | 'design'
-  | 'safety'
-  | 'subcontractor'
-  | 'kickoff'
-  | 'closeout';
+// The vocabulary the backend validates against, in the order the pickers show
+// it. Both the meetings page and the recurring-series dialog used to keep their
+// own copy of this list, so a type could reach one dropdown and not the other.
+// `commercial` is the cost side of a job - valuations, payment applications,
+// variations and the monthly cost review.
+export const MEETING_TYPES = [
+  'progress',
+  'design',
+  'safety',
+  'subcontractor',
+  'kickoff',
+  'closeout',
+  'commercial',
+] as const;
+
+// Derived, not restated: a value that is in the list is in the type, and the
+// `Record<MeetingType, ...>` maps below the pickers then fail the build until
+// they carry an entry for it.
+export type MeetingType = (typeof MEETING_TYPES)[number];
 
 // draft is the state the API creates a meeting in when the caller does not name
 // one, and the state machine only lets it move on to scheduled or cancelled.

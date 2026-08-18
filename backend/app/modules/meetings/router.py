@@ -27,6 +27,7 @@ from app.core.content_disposition import attachment_disposition
 from app.dependencies import CurrentUserId, RequirePermission, SessionDep, verify_project_access
 from app.modules.meetings import ics as ics_builder
 from app.modules.meetings.schemas import (
+    MEETING_TYPES,
     ActionItemEntry,
     ActionRegisterItemCreate,
     ActionRegisterItemResponse,
@@ -367,9 +368,13 @@ def _infer_meeting_type(text: str) -> str:
 
     Scans for domain-specific keywords to categorize the meeting.
 
+    Every type in :data:`MEETING_TYPES` needs keywords here. A type the schema
+    accepts but this function can never return is one the import path cannot
+    reach at all, so the user has to correct the guess by hand on every
+    transcript of that kind.
+
     Returns:
-        Meeting type: 'safety', 'design', 'subcontractor', 'kickoff', 'closeout',
-        or 'progress' as default.
+        One of :data:`MEETING_TYPES`, falling back to 'progress'.
     """
     lower = text[:5000].lower()
     safety_kw = [
@@ -405,6 +410,20 @@ def _infer_meeting_type(text: str) -> str:
     ]
     kickoff_kw = ["kickoff", "kick-off", "project start", "mobilization"]
     closeout_kw = ["closeout", "close-out", "handover", "deficiency", "punchlist", "punch list"]
+    # Deliberately narrow, and deliberately tested last. A bare "cost" or
+    # "budget" belongs to a progress meeting as often as to a commercial one,
+    # so only terms that name the commercial process itself are listed here.
+    commercial_kw = [
+        "valuation",
+        "payment application",
+        "interim certificate",
+        "final account",
+        "cost report",
+        "cost review",
+        "commercial review",
+        "quantity surveyor",
+        "retention release",
+    ]
 
     if any(kw in lower for kw in safety_kw):
         return "safety"
@@ -416,6 +435,8 @@ def _infer_meeting_type(text: str) -> str:
         return "kickoff"
     if any(kw in lower for kw in closeout_kw):
         return "closeout"
+    if any(kw in lower for kw in commercial_kw):
+        return "commercial"
     return "progress"
 
 
@@ -659,7 +680,7 @@ _AI_MEETING_SYSTEM = (
     "Return valid JSON only. Be precise and extract only what is explicitly stated."
 )
 
-_AI_MEETING_PROMPT = """Analyze this meeting transcript and extract structured data.
+_AI_MEETING_PROMPT_TEMPLATE = """Analyze this meeting transcript and extract structured data.
 
 TRANSCRIPT:
 {transcript_text}
@@ -667,7 +688,7 @@ TRANSCRIPT:
 Extract the following in JSON format:
 {{
   "title": "Meeting title (derive from main topic discussed)",
-  "meeting_type": "progress|design|safety|subcontractor|kickoff|closeout",
+  "meeting_type": "__MEETING_TYPES__",
   "key_topics": ["topic 1", "topic 2"],
   "attendees": [
     {{"name": "Person Name", "company": "Company if mentioned", "role": "Role if mentioned"}}
@@ -687,9 +708,15 @@ Rules:
 - For action items, identify keywords: "will do", "action", "deadline", "by Friday", "need to", "should"
 - For decisions: "decided", "agreed", "approved", "confirmed", "let's go with"
 - For attendees: look for speaker names before colons or in brackets
-- meeting_type: infer from content (safety topics = safety, budget/cost = progress, design/drawings = design, subcontractor/trade = subcontractor, etc.)
+- meeting_type: infer from content (safety topics = safety, valuations/payment applications/cost reports = commercial, schedule and progress updates = progress, design/drawings = design, subcontractor/trade = subcontractor, etc.)
 - For construction meetings: look for RFIs, submittals, change orders, schedule updates, safety incidents, trade coordination
 """  # noqa: E501
+
+# The model can only answer with a type it was shown, so the alternation is
+# built from the schema's vocabulary rather than typed out again. A word added
+# to MEETING_TYPES and forgotten here would be a type the import path never
+# proposes to anyone.
+_AI_MEETING_PROMPT = _AI_MEETING_PROMPT_TEMPLATE.replace("__MEETING_TYPES__", "|".join(MEETING_TYPES))
 
 
 async def _extract_with_ai(
@@ -748,14 +775,7 @@ async def _extract_with_ai(
         # Merge AI results with heuristic results (AI takes priority)
         if ai_data.get("title"):
             extracted["title"] = ai_data["title"]
-        if ai_data.get("meeting_type") and ai_data["meeting_type"] in (
-            "progress",
-            "design",
-            "safety",
-            "subcontractor",
-            "kickoff",
-            "closeout",
-        ):
+        if ai_data.get("meeting_type") and ai_data["meeting_type"] in MEETING_TYPES:
             extracted["meeting_type"] = ai_data["meeting_type"]
         if ai_data.get("key_topics") and isinstance(ai_data["key_topics"], list):
             extracted["key_topics"] = [str(t)[:200] for t in ai_data["key_topics"][:15] if t]
@@ -1026,7 +1046,7 @@ async def import_meeting_summary(
         )
 
     meeting_type = extracted.get("meeting_type", "progress")
-    if meeting_type not in ("progress", "design", "safety", "subcontractor", "kickoff", "closeout"):
+    if meeting_type not in MEETING_TYPES:
         meeting_type = "progress"
 
     meeting_create = MeetingCreate(

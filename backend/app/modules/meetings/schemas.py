@@ -11,6 +11,30 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+# ── Vocabulary ────────────────────────────────────────────────────────────
+
+# The meeting types the product speaks. This tuple is the source the create,
+# update and series schemas below build their pattern from, and the one the
+# router imports for its own checks, because the list used to be typed out at
+# each of those places and a word added to one of them is an option the API
+# accepts and another layer rejects.
+#
+# ``commercial`` is the cost side of a job: valuations, variations, payment
+# applications and the monthly cost review. It was filed under ``progress``
+# before, which put the quantity surveyor's meeting in the same bucket as the
+# site walk and made the type filter useless to the person who needs it most.
+MEETING_TYPES: tuple[str, ...] = (
+    "progress",
+    "design",
+    "safety",
+    "subcontractor",
+    "kickoff",
+    "closeout",
+    "commercial",
+)
+
+MEETING_TYPE_PATTERN = rf"^({'|'.join(MEETING_TYPES)})$"
+
 # ── Nested entry schemas ──────────────────────────────────────────────────
 
 
@@ -52,10 +76,7 @@ class MeetingCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     project_id: UUID
-    meeting_type: str = Field(
-        ...,
-        pattern=r"^(progress|design|safety|subcontractor|kickoff|closeout)$",
-    )
+    meeting_type: str = Field(..., pattern=MEETING_TYPE_PATTERN)
     title: str = Field(..., min_length=1, max_length=500)
     meeting_date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
     location: str | None = Field(default=None, max_length=500)
@@ -80,10 +101,7 @@ class MeetingUpdate(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    meeting_type: str | None = Field(
-        default=None,
-        pattern=r"^(progress|design|safety|subcontractor|kickoff|closeout)$",
-    )
+    meeting_type: str | None = Field(default=None, pattern=MEETING_TYPE_PATTERN)
     title: str | None = Field(default=None, min_length=1, max_length=500)
     meeting_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     location: str | None = Field(default=None, max_length=500)
@@ -223,10 +241,7 @@ class MeetingSeriesCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     project_id: UUID
-    meeting_type: str = Field(
-        ...,
-        pattern=r"^(progress|design|safety|subcontractor|kickoff|closeout)$",
-    )
+    meeting_type: str = Field(..., pattern=MEETING_TYPE_PATTERN)
     title: str = Field(..., min_length=1, max_length=500)
     meeting_date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
     location: str | None = Field(default=None, max_length=500)

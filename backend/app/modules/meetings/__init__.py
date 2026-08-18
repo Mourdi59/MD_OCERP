@@ -3,7 +3,8 @@
 """Meetings module.
 
 Meeting minutes management - progress, design, safety, subcontractor,
-kickoff, and closeout meetings with agendas, attendees, and action items.
+kickoff, closeout and commercial meetings with agendas, attendees, and
+action items.
 """
 
 

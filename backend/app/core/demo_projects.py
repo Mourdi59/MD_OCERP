@@ -4710,16 +4710,15 @@ def _generate_module_data(
     # ── Meetings (4-5) ───────────────────────────────────────────────────
     firm_attendees = [{"name": f"{c} rep", "company": c, "status": "present"} for c, _ in firms[:3]]
     # First column is the meetings module's own type. It offers kickoff, design,
-    # progress, safety, subcontractor and closeout, so the kick-off and the
-    # weeklies say which they are instead of all reading "site". The cost review
-    # is filed as progress because the module has no commercial type; the title
-    # is what tells a reader which meeting it was.
+    # progress, safety, subcontractor, closeout and commercial, so the kick-off,
+    # the weeklies and the cost review each say which they are instead of all
+    # reading "site".
     meeting_titles = [
         ("kickoff", "Project kick-off meeting", "completed", 0),
         ("progress", "Weekly progress meeting #1", "completed", 7),
         ("design", "Design coordination workshop", "completed", 14),
         ("progress", "Weekly progress meeting #2", "scheduled", 21),
-        ("progress", "Commercial / cost review", "scheduled", 35),
+        ("commercial", "Commercial / cost review", "scheduled", 35),
     ]
     meetings: list[dict] = []
     for i, (mtype, title, status, day) in enumerate(meeting_titles):

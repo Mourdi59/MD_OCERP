@@ -32,6 +32,7 @@ import {
   PenTool,
   HardHat,
   Rocket,
+  Calculator,
   Paperclip,
   Download,
   FileText,
@@ -75,6 +76,7 @@ import {
   uploadMeetingDocument,
   fetchMeetingDocument,
   getMeetingDocumentDownloadUrl,
+  MEETING_TYPES,
   type Meeting,
   type MeetingType,
   type MeetingStatus,
@@ -113,6 +115,10 @@ const MEETING_TYPE_COLORS: Record<
   subcontractor: 'warning',
   kickoff: 'success',
   closeout: 'neutral',
+  // Seven types share five badge variants, so a repeat is unavoidable. Green
+  // pairs with commercial because the badge sits next to money on that row,
+  // and kickoff, the other green, appears once per project.
+  commercial: 'success',
 };
 
 const STATUS_CONFIG: Record<
@@ -143,15 +149,6 @@ const ATTENDEE_STATUS_ICON: Record<AttendeeStatus, React.ReactNode> = {
 
 const inputCls =
   'h-10 w-full rounded-lg border border-border bg-surface-primary px-3 text-sm focus:outline-none focus:ring-2 focus:ring-oe-blue/30 focus:border-oe-blue';
-
-const MEETING_TYPES: MeetingType[] = [
-  'progress',
-  'design',
-  'safety',
-  'subcontractor',
-  'kickoff',
-  'closeout',
-];
 
 const MEETING_TYPE_CARD_CONFIG: Record<
   MeetingType,
@@ -192,6 +189,12 @@ const MEETING_TYPE_CARD_CONFIG: Record<
     color:
       'text-gray-600 bg-gray-50 border-gray-200 dark:text-gray-400 dark:bg-gray-800/50 dark:border-gray-700',
     description: 'Project closeout / handover',
+  },
+  commercial: {
+    icon: Calculator,
+    color:
+      'text-teal-600 bg-teal-50 border-teal-200 dark:text-teal-400 dark:bg-teal-950/30 dark:border-teal-800',
+    description: 'Valuation, variations and cost review',
   },
 };
 

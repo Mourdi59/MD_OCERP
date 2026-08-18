@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { Button, WideModal, WideModalSection, WideModalField } from '@/shared/ui';
 import {
   buildRRule,
+  MEETING_TYPES,
   type CreateSeriesPayload,
   type MeetingType,
   type RecurrenceFreq,
@@ -26,15 +27,6 @@ interface RecurringSeriesDialogProps {
   isPending: boolean;
   onSubmit: (payload: CreateSeriesPayload) => void;
 }
-
-const MEETING_TYPES: MeetingType[] = [
-  'progress',
-  'design',
-  'safety',
-  'subcontractor',
-  'kickoff',
-  'closeout',
-];
 
 const FREQS: RecurrenceFreq[] = ['DAILY', 'WEEKLY', 'MONTHLY'];
 
