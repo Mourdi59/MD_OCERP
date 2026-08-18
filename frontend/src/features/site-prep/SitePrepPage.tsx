@@ -8,6 +8,7 @@ import clsx from 'clsx';
 import {
   ShieldCheck,
   ShieldAlert,
+  Shield,
   CalendarClock,
   Gauge,
   Flag,
@@ -62,6 +63,7 @@ import {
   type ReadinessReport,
   type GateStatus,
 } from './api';
+import { mobilisationGateState, type MobilisationGateState } from './mobilisationGate';
 
 /* -- Vocabulary labels ----------------------------------------------------- */
 
@@ -149,6 +151,63 @@ const textareaCls =
 
 /* -- Signal banner --------------------------------------------------------- */
 
+// Three states, not two. `undetermined` is a project whose gates are unknown
+// or undefined: it is neither a pass nor a failure, and painting it as either
+// is a claim the data does not support.
+const GATE_CARD_CLS: Record<MobilisationGateState, string> = {
+  ready: 'border-semantic-success/40 bg-semantic-success-bg/40',
+  blocked: 'border-semantic-error/40 bg-semantic-error-bg/40',
+  undetermined: 'border-border bg-surface-secondary/40',
+};
+
+const GATE_MEDALLION_CLS: Record<MobilisationGateState, string> = {
+  ready: 'bg-semantic-success/15 text-semantic-success',
+  blocked: 'bg-semantic-error/15 text-semantic-error',
+  undetermined: 'bg-surface-secondary text-content-tertiary',
+};
+
+const GATE_BADGE_VARIANT: Record<MobilisationGateState, BadgeVariant> = {
+  ready: 'success',
+  blocked: 'error',
+  undetermined: 'neutral',
+};
+
+const GATE_ICON: Record<MobilisationGateState, typeof ShieldCheck> = {
+  ready: ShieldCheck,
+  blocked: ShieldAlert,
+  undetermined: Shield,
+};
+
+/** Title, badge and description the banner prints for each gate state. */
+function gateCopy(t: Translate, state: MobilisationGateState): { title: string; badge: string; desc: string } {
+  if (state === 'ready') {
+    return {
+      title: t('site_prep.gate_ready_title', { defaultValue: 'Ready to mobilise' }),
+      badge: t('site_prep.gate_ready_badge', { defaultValue: 'Gate open' }),
+      desc: t('site_prep.gate_ready_desc', {
+        defaultValue: 'All commencement gates are satisfied. The site can be mobilised.',
+      }),
+    };
+  }
+  if (state === 'blocked') {
+    return {
+      title: t('site_prep.gate_blocked_title', { defaultValue: 'Not ready to mobilise' }),
+      badge: t('site_prep.gate_blocked_badge', { defaultValue: 'Gate closed' }),
+      desc: t('site_prep.gate_blocked_desc', {
+        defaultValue: 'Some commencement gates are still open. Clear them before starting on site.',
+      }),
+    };
+  }
+  return {
+    title: t('site_prep.gate_unknown_title', { defaultValue: 'Mobilisation readiness not established' }),
+    badge: t('site_prep.gate_unknown_badge', { defaultValue: 'No gates set' }),
+    desc: t('site_prep.gate_unknown_desc', {
+      defaultValue:
+        'No commencement gates have been defined for this project, so there is nothing to clear yet. Add the readiness items this start depends on to see whether the site can be mobilised.',
+    }),
+  };
+}
+
 function MetricTile({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-border-light bg-surface-elevated/80 px-3 py-2">
@@ -166,58 +225,36 @@ function SignalBanner({
   gate: GateStatus | undefined;
 }) {
   const { t } = useTranslation();
-  const gateReady = gate?.gate_ready ?? readiness?.gate_ready ?? true;
+  const gateState = mobilisationGateState(readiness, gate);
   const onTrack = readiness?.on_track ?? gate?.on_track ?? true;
   const days = readiness?.days_to_target ?? gate?.days_to_target ?? null;
   const gateTotal = gate?.gate_total ?? readiness?.overall.gate_total ?? 0;
   const gateReadyCount = gate?.gate_ready_count ?? 0;
   const blockers = gate?.gate_blocking ?? [];
 
+  const copy = gateCopy(t, gateState);
+  const GateIcon = GATE_ICON[gateState];
+
   return (
-    <Card
-      padding="lg"
-      className={clsx(
-        'border',
-        gateReady
-          ? 'border-semantic-success/40 bg-semantic-success-bg/40'
-          : 'border-semantic-error/40 bg-semantic-error-bg/40',
-      )}
-    >
+    <Card padding="lg" className={clsx('border', GATE_CARD_CLS[gateState])}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-4">
           <div
             className={clsx(
               'flex h-14 w-14 shrink-0 items-center justify-center rounded-full',
-              gateReady
-                ? 'bg-semantic-success/15 text-semantic-success'
-                : 'bg-semantic-error/15 text-semantic-error',
+              GATE_MEDALLION_CLS[gateState],
             )}
           >
-            {gateReady ? <ShieldCheck size={28} /> : <ShieldAlert size={28} />}
+            <GateIcon size={28} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-content-primary">
-                {gateReady
-                  ? t('site_prep.gate_ready_title', { defaultValue: 'Ready to mobilise' })
-                  : t('site_prep.gate_blocked_title', { defaultValue: 'Not ready to mobilise' })}
-              </h2>
-              <Badge variant={gateReady ? 'success' : 'error'} dot>
-                {gateReady
-                  ? t('site_prep.gate_ready_badge', { defaultValue: 'Gate open' })
-                  : t('site_prep.gate_blocked_badge', { defaultValue: 'Gate closed' })}
+              <h2 className="text-lg font-semibold text-content-primary">{copy.title}</h2>
+              <Badge variant={GATE_BADGE_VARIANT[gateState]} dot>
+                {copy.badge}
               </Badge>
             </div>
-            <p className="mt-1 max-w-xl text-sm text-content-secondary">
-              {gateReady
-                ? t('site_prep.gate_ready_desc', {
-                    defaultValue: 'All commencement gates are satisfied. The site can be mobilised.',
-                  })
-                : t('site_prep.gate_blocked_desc', {
-                    defaultValue:
-                      'Some commencement gates are still open. Clear them before starting on site.',
-                  })}
-            </p>
+            <p className="mt-1 max-w-xl text-sm text-content-secondary">{copy.desc}</p>
           </div>
         </div>
 
@@ -249,7 +286,7 @@ function SignalBanner({
         </div>
       </div>
 
-      {!gateReady && blockers.length > 0 && (
+      {gateState === 'blocked' && blockers.length > 0 && (
         <div className="mt-4 rounded-lg border border-semantic-error/30 bg-surface-elevated/70 p-3">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-semantic-error">
             <AlertTriangle size={13} />
