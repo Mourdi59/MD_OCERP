@@ -18,6 +18,17 @@ other. This file is the part that keeps it derived: it recomputes every covered
 country through both paths and fails on any disagreement the two rounding
 conventions do not fully explain.
 
+What this file proves is narrower than "the two engines agree", and the gap
+between those two statements is where a real defect lived. Every country here
+is priced with the template's own VAT on both sides. That is one branch, the
+one every project travels that never set a rate of its own, and on it the
+engines agree to a rounding tail. A project that states a ``default_vat_rate``
+takes the other branch: the bill has honoured that rate since issue #89 and the
+methodology did not, so one bill asked two ways cost two amounts, by as much as
+315,632 on a million. That half of the claim now lives in
+``tests/pg/test_methodology_takes_the_projects_vat.py``, which needs stored
+rows and so cannot run here. Neither file is the guarantee on its own.
+
 Two assertions, and they catch different regressions:
 
 * Line for line. Same count, same order, same category, same rate, same base,
@@ -47,6 +58,7 @@ from app.modules.boq.markup_templates import (
 from app.modules.boq.models import BOQMarkup
 from app.modules.boq.service import _calculate_markup_amounts
 from app.modules.methodology.cascade import compute_cascade
+from app.modules.methodology.service import MethodologyService
 from app.modules.methodology.templates import (
     NEUTRAL_METHOD_NOTE,
     TEMPLATES,
@@ -199,7 +211,12 @@ def test_the_derived_stack_matches_the_regional_table_line_for_line(country: str
 
 @pytest.mark.parametrize("country", sorted(REGION_BY_COUNTRY))
 def test_both_engines_price_the_same_country_the_same(country: str) -> None:
-    """The finish line: one country, two engines, one number."""
+    """One country, two engines, one number, on the template's own VAT.
+
+    Not the whole finish line. This is the branch where both sides read the
+    same tax rate; the project-override branch is held in the pg lane, see the
+    module docstring.
+    """
     template = _template_for(country)
     lines = region_lines_for_country(country, vat_rate=template.get("vat_rate"))
     assert lines is not None
@@ -250,4 +267,54 @@ def test_a_country_without_a_national_stack_does_not_claim_one() -> None:
     for tpl in _derived_templates():
         assert NEUTRAL_METHOD_NOTE not in str(tpl.get("description", "")), (
             f"{tpl['slug']} is derived from the regional table and must not also disclaim being national"
+        )
+
+
+@pytest.mark.parametrize("country", sorted(REGION_BY_COUNTRY))
+def test_a_single_tax_step_is_exactly_a_single_tax_line(country: str) -> None:
+    """The two engines state "one rate is a complete swap" in two vocabularies.
+
+    The bill side says it about regions: a region not in
+    :data:`NON_SINGLE_TAX_REGIONS` carries exactly one tax line, so one country
+    rate can stand in for it. The methodology side has to say it about steps,
+    because a clone the user has edited has no region left to consult, and
+    :meth:`MethodologyService._with_project_vat` therefore counts ``tax`` steps
+    instead.
+
+    Two conditions that agree today are one condition written twice, and this
+    is the assertion that keeps them from drifting apart quietly. A fifteenth
+    region that took two tax lines without being declared would split them, and
+    the project VAT override would then apply on one side and not the other.
+    """
+    template = _template_for(country)
+    steps = list(template["cascade_steps"])  # type: ignore[call-overload]
+    region = REGION_BY_COUNTRY[country]
+
+    tax_steps = [s for s in steps if str(s.get("category", "")).strip().lower() == "tax"]
+    swapped = MethodologyService._with_project_vat(steps, "25")
+
+    single_tax_line = region not in NON_SINGLE_TAX_REGIONS
+    assert (len(tax_steps) == 1) is single_tax_line, (
+        f"{country}: the steps carry {len(tax_steps)} tax lines while the regional table says "
+        f"{'one' if single_tax_line else 'not one'} for {region}. The two engines would now disagree about "
+        f"whether a project VAT rate can be applied at all."
+    )
+
+    if single_tax_line:
+        assert swapped is not steps, f"{country}: a project rate has one tax step to land on and did not land"
+        # Stated as "the tax step now reads 25 and nothing else moved" rather
+        # than "exactly one step changed", because the three Nordic templates
+        # already carry 25 and a correct override is a no-op by value there.
+        tax_index = next(
+            index for index, s in enumerate(swapped) if str(s.get("category", "")).strip().lower() == "tax"
+        )
+        assert swapped[tax_index]["rate"] == "25", (
+            f"{country}: the project rate did not reach the tax step, which still reads {swapped[tax_index]['rate']}"
+        )
+        before = [s for index, s in enumerate(steps) if index != tax_index]
+        after = [s for index, s in enumerate(swapped) if index != tax_index]
+        assert before == after, f"{country}: the override moved a step that is not the tax step"
+    else:
+        assert swapped is steps, (
+            f"{country}: {region} has no single tax line, so a project rate must leave the stack alone"
         )

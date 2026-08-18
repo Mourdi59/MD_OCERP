@@ -648,6 +648,57 @@ class MethodologyService:
             detail=f"Methodology '{slug}' not found for this project",
         )
 
+    async def _project_vat_rate(self, project_id: uuid.UUID) -> str | None:
+        """The project's own consumption-tax rate, or ``None`` if it set none.
+
+        ``default_vat_rate`` is a decimal-string percentage (e.g. ``"21"``),
+        the same column :meth:`BOQService.apply_default_markups` reads when it
+        seeds a bill. Best-effort by design: a project that cannot be loaded
+        must leave the catalogue rate standing rather than fail a computation,
+        because the template rate is a correct answer and an error is not.
+        """
+        try:
+            project = await self._get_project(project_id)
+        except Exception:  # noqa: BLE001 - best-effort, never break a computation
+            logger.debug("default_vat_rate lookup failed for project %s", project_id, exc_info=True)
+            return None
+        raw = getattr(project, "default_vat_rate", None) if project is not None else None
+        if raw is None or str(raw).strip() == "":
+            return None
+        return str(raw).strip()
+
+    @staticmethod
+    def _with_project_vat(cascade_steps: list[Any], vat_rate: str) -> list[Any]:
+        """Return the steps with the single tax line moved to ``vat_rate``.
+
+        Keyed on the steps carrying exactly one ``tax`` category, not on the
+        methodology's region. A region is the wrong handle here: a clone the
+        user has edited has no region to consult, and the property that decides
+        whether one rate is a complete swap is a property of the steps alone.
+        Where a stack carries no tax line, or more than one, a single project
+        rate cannot stand in for it and the steps are returned untouched. That
+        is the same rule the bill side applies through
+        :data:`~app.modules.boq.markup_templates.NON_SINGLE_TAX_REGIONS`, and
+        ``test_a_single_tax_step_is_exactly_a_single_tax_line`` holds the two
+        statements of it together.
+
+        The step dicts are shared with the module-level template catalogue, so
+        the one being changed is copied. Mutating it in place would re-rate
+        every later computation in the process, including other projects'.
+        """
+        tax_positions = [
+            index
+            for index, step in enumerate(cascade_steps)
+            if isinstance(step, dict) and str(step.get("category", "")).strip().lower() == "tax"
+        ]
+        if len(tax_positions) != 1:
+            return cascade_steps
+
+        patched = list(cascade_steps)
+        index = tax_positions[0]
+        patched[index] = {**patched[index], "rate": vat_rate}
+        return patched
+
     async def _aggregate_boq_resource_totals(self, boq_id: uuid.UUID) -> dict[str, Decimal]:
         """Sum a BOQ's resource costs per resource type via the BOQ service.
 
@@ -692,12 +743,27 @@ class MethodologyService:
         Returns a plain dict matching
         :class:`app.modules.methodology.schemas.ComputeEstimateResponse`.
 
+        VAT comes from the project, not from the template, whenever the project
+        states one. A template's rate is a catalogue fact about a country and it
+        stays the default; but this method is given a ``project_id``, and
+        through :meth:`build_export_data` a ``boq_id``, so at that point it is
+        pricing one project's bill and has to answer what the bill answers. The
+        bill engine has honoured ``default_vat_rate`` since issue #89, and one
+        bill asked two ways cannot cost two amounts. A project that set no rate
+        of its own is not moved by a cent, and the pure catalogue path,
+        :func:`~app.modules.methodology.templates.build_cascade_spec_from_template`,
+        does not consult a project at all and is unaffected.
+
         Raises:
             HTTPException 404: Methodology slug not resolvable for the project.
             HTTPException 422: The methodology's cascade spec is invalid.
         """
         slug = data.methodology_slug or await self.get_active_slug(data.project_id)
         config = await self._resolve_methodology_config(data.project_id, slug)
+
+        project_vat = await self._project_vat_rate(data.project_id)
+        if project_vat is not None:
+            config["cascade_steps"] = self._with_project_vat(config["cascade_steps"], project_vat)
 
         # Source the per-resource-type totals.
         if data.resource_totals is not None:
