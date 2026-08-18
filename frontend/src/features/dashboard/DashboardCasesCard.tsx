@@ -22,8 +22,7 @@ import { completedCount } from '@/features/cases/progress';
 import { tintFor } from '@/features/cases/categories';
 import { dealCaseFaces } from '@/features/cases/caseFaces';
 
-/** The honeycomb cell the Cases hub cuts its portraits to. */
-const HEX_CELL = 'polygon(50% 2%, 100% 26%, 100% 74%, 50% 98%, 0% 74%, 0% 26%)';
+import { HEX_PORTRAIT_CLIP } from '@/shared/lib/honeycomb';
 import { rolesForPlaybook, ROLE_BY_ID } from '@/features/cases/roles';
 import { iconFor } from '@/features/cases/icons';
 import { CaseArt } from '@/features/cases/CaseArt';
@@ -196,7 +195,16 @@ export function DashboardCasesCard() {
                 {/* Line-art banner on an always-light tile so the linework reads
                     the same in light and dark theme. */}
                 <div className="relative aspect-[16/9] w-full overflow-hidden border-b border-border-light bg-white ring-1 ring-inset ring-slate-900/[0.04]">
-                  <CaseArt id={pb.id} category={pb.category} fallbackIcon={Icon} fallbackClass={tint.text} alt={title} />
+                  {/* Nudged off the inline-start edge so the portrait below sits
+                      beside the drawing rather than on top of it. */}
+                  <CaseArt
+                    id={pb.id}
+                    category={pb.category}
+                    fallbackIcon={Icon}
+                    fallbackClass={tint.text}
+                    alt={title}
+                    className={face ? 'ps-[14%]' : undefined}
+                  />
                   {/* The specialist the case is written for, cut to the same
                       honeycomb cell the Cases hub and the marketing site use.
                       It sits over a corner rather than beside the diagram:
@@ -210,7 +218,7 @@ export function DashboardCasesCard() {
                     >
                       <span
                         className="block aspect-[7/8] bg-white/90 p-[2px] shadow-sm shadow-slate-900/20"
-                        style={{ clipPath: HEX_CELL }}
+                        style={{ clipPath: HEX_PORTRAIT_CLIP }}
                       >
                         <img
                           src={face}
@@ -219,7 +227,7 @@ export function DashboardCasesCard() {
                           decoding="async"
                           draggable={false}
                           className="h-full w-full object-cover object-[50%_18%]"
-                          style={{ clipPath: HEX_CELL }}
+                          style={{ clipPath: HEX_PORTRAIT_CLIP }}
                         />
                       </span>
                     </span>

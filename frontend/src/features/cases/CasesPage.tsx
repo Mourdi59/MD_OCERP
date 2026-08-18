@@ -80,9 +80,7 @@ import { RoleAvatar } from "./RoleAvatar";
 import { RoleArt } from "./RoleArt";
 import { CaseArt } from "./CaseArt";
 
-/** The honeycomb cell the marketing site cuts its portraits to. Kept identical
- *  so a case card and the page it came from show the same shape. */
-const HEX_CELL = "polygon(50% 2%, 100% 26%, 100% 74%, 50% 98%, 0% 74%, 0% 26%)";
+import { HEX_PORTRAIT_CLIP } from "@/shared/lib/honeycomb";
 import { CompanyArt } from "./CompanyArt";
 import { dealCaseFaces } from "./caseFaces";
 import {
@@ -1486,14 +1484,22 @@ function CaseCard({
           <div className="h-full w-full" aria-hidden="true" />
         ) : (
           <>
-            <CaseArt id={pb.id} category={pb.category} fallbackIcon={Icon} fallbackClass={tint.text} />
+            {/* Nudged off the inline-start edge so the specialist's hexagon below
+                sits beside the drawing rather than on top of it. */}
+            <CaseArt
+              id={pb.id}
+              category={pb.category}
+              fallbackIcon={Icon}
+              fallbackClass={tint.text}
+              className={face ? 'ps-[13%]' : undefined}
+            />
             {face && (
               <div className="pointer-events-none absolute bottom-2 start-2 w-[34%] max-w-[6.5rem]">
                 {/* The rim is the wrapper's own background showing through a
                     3px inset, because a border cannot survive a clip-path. */}
                 <div
                   className="aspect-[7/8] bg-white/90 p-[3px] shadow-md shadow-slate-900/15"
-                  style={{ clipPath: HEX_CELL }}
+                  style={{ clipPath: HEX_PORTRAIT_CLIP }}
                 >
                   <img
                     src={face}
@@ -1504,7 +1510,7 @@ function CaseCard({
                     height={480}
                     draggable={false}
                     className="h-full w-full object-cover object-[50%_18%]"
-                    style={{ clipPath: HEX_CELL }}
+                    style={{ clipPath: HEX_PORTRAIT_CLIP }}
                   />
                 </div>
               </div>

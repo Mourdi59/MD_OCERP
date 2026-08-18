@@ -33,6 +33,48 @@ export function normalizeCaseRoute(to: string): string {
   return unscoped.split('?')[0] ?? unscoped;
 }
 
+/**
+ * One module a case visits: the route that identifies it, plus the label pair
+ * the step carried. `label` is the English fallback and `labelKey` is what
+ * every other language reads, exactly as on the step chip.
+ */
+export interface CaseModuleRef {
+  /** Normalised, unscoped route base (`/boq`). The module's identity here. */
+  route: string;
+  /** English fallback label, from the first step that visits `route`. */
+  label: string;
+  /** Optional i18n key for the label, from that same step. */
+  labelKey?: string;
+}
+
+/**
+ * The distinct modules one case walks through, in the order its steps reach
+ * them.
+ *
+ * Identity is the ROUTE, not the label, and that choice is load-bearing.
+ * `types.ts` spends thirty lines on why `moduleLabel` and `moduleLabelKey` can
+ * disagree and why a half-corrected pair reads in review as the fix working.
+ * Deduplicating on the label inherits that: two steps that visit `/files` with
+ * the labels "Files" and "Documents" would count as two modules and draw two
+ * cells for one place. Two steps that visit different routes under a
+ * copy-pasted label would collapse into one. Routes cannot drift that way -
+ * they are what the runner navigates to.
+ *
+ * The label pair still comes from the first step at that route, so a cell says
+ * the same word its step chip says, in every language.
+ */
+export function modulesForPlaybook(pb: Playbook): CaseModuleRef[] {
+  const out: CaseModuleRef[] = [];
+  const seen = new Set<string>();
+  for (const step of pb.steps) {
+    const route = normalizeCaseRoute(step.to);
+    if (!route || seen.has(route)) continue;
+    seen.add(route);
+    out.push({ route, label: step.moduleLabel, labelKey: step.moduleLabelKey });
+  }
+  return out;
+}
+
 /** Lazily-built, cached map: normalised route base -> playbooks touching it. */
 let indexCache: Map<string, Playbook[]> | null = null;
 

@@ -71,6 +71,9 @@ import { useAuthoredCases } from "./useCustomCases";
 import { dealCaseFaces } from "./caseFaces";
 import { CaseArt } from "./CaseArt";
 import { regionDisplayName } from "./regions";
+import { CaseModuleHive } from "./ModuleHive";
+import { FlowGlyph, flowGlyphFor, type FlowGlyphKind } from "./flowGlyphs";
+import { normalizeCaseRoute } from "./playbookModules";
 
 /** Returns true for seeded sample projects (they carry `metadata.demo_id`). */
 function isDemoProject(p: Project): boolean {
@@ -80,6 +83,14 @@ function isDemoProject(p: Project): boolean {
 /** One side (In / Out) of a step's data flow: a titled column of chips. The In
  *  dots are quiet (raw material); the Out dots are green (the payoff), so the
  *  eye reads from what you start with to what you end up with. */
+/** One resolved flow row: the words the reader sees, and the drawing beside
+ *  them. The glyph is chosen upstream from the English label, so it is the same
+ *  picture in every language. */
+export interface FlowRow {
+  text: string;
+  glyph: FlowGlyphKind;
+}
+
 function FlowSide({
   label,
   items,
@@ -87,7 +98,7 @@ function FlowSide({
   hint,
 }: {
   label: string;
-  items: string[];
+  items: FlowRow[];
   tone: "in" | "out";
   hint?: string;
 }): ReactElement {
@@ -106,20 +117,25 @@ function FlowSide({
       {hint ? (
         <p className="mb-2.5 text-2xs leading-relaxed text-content-tertiary">{hint}</p>
       ) : null}
-      <ul className="space-y-1.5">
-        {items.map((text, i) => (
+      {/* One drawing per artefact rather than one bullet per line. A column of
+          identical dots said only "there are four of these"; the glyphs say
+          what the four are, which is the question a reader in front of an
+          unfamiliar step is actually asking. Stroke-only and in the row's own
+          colour, so they are ink and not chrome. */}
+      <ul className="space-y-2">
+        {items.map((item, i) => (
           <li
             key={i}
-            className="flex items-start gap-2 text-sm leading-snug text-content-secondary"
+            className="flex items-start gap-2.5 text-sm leading-snug text-content-secondary"
           >
-            <span
+            <FlowGlyph
+              kind={item.glyph}
               className={clsx(
-                "mt-[6px] h-2 w-2 shrink-0 rounded-full",
-                tone === "in" ? "bg-content-quaternary" : "bg-semantic-success",
+                "mt-[1px]",
+                tone === "in" ? "text-content-tertiary" : "text-semantic-success",
               )}
-              aria-hidden="true"
             />
-            <span className="min-w-0">{text}</span>
+            <span className="min-w-0">{item.text}</span>
           </li>
         ))}
       </ul>
@@ -195,8 +211,8 @@ function StepBlock({
   iconName?: string;
   what: string;
   why: string;
-  inputs: string[];
-  outputs: string[];
+  inputs: FlowRow[];
+  outputs: FlowRow[];
   inputsHint?: string;
   outputsHint?: string;
   scene: ReactElement;
@@ -743,6 +759,22 @@ export function PlaybookRunner({ playbook, onBack }: PlaybookRunnerProps) {
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
+  // Activating a hexagon in the module honeycomb goes to the first step that
+  // opens that module, which is the step the cell was named after. It answers
+  // the question the hive raises - this case touches Documents, where? - in
+  // the page the reader is already on, rather than navigating away mid-case.
+  const goToModule = useCallback(
+    (route: string) => {
+      const index = playbook.steps.findIndex(
+        (s) => normalizeCaseRoute(s.to) === route,
+      );
+      if (index < 0) return;
+      selectStep(index);
+      scrollToStep(playbook.steps[index]!.id);
+    },
+    [playbook.steps, selectStep, scrollToStep],
+  );
+
   // Open another case from the journey footer and start it from the top.
   const openCase = useCallback(
     (id: string) => {
@@ -831,10 +863,14 @@ export function PlaybookRunner({ playbook, onBack }: PlaybookRunnerProps) {
 
   // Resolve a flow item list (input / output) to display strings once.
   const resolveFlow = useCallback(
-    (step: PlaybookStep | undefined, side: "inputs" | "outputs"): string[] =>
-      (step?.[side] ?? []).map((it) =>
-        it.labelKey ? t(it.labelKey, { defaultValue: it.label }) : it.label,
-      ),
+    (step: PlaybookStep | undefined, side: "inputs" | "outputs"): FlowRow[] =>
+      (step?.[side] ?? []).map((it) => ({
+        text: it.labelKey ? t(it.labelKey, { defaultValue: it.label }) : it.label,
+        // From `it.label`, the English one, never from the string above it. A
+        // German reader and an English one must get the same picture for the
+        // same artefact.
+        glyph: flowGlyphFor(it.label),
+      })),
     [t],
   );
 
@@ -1150,6 +1186,14 @@ export function PlaybookRunner({ playbook, onBack }: PlaybookRunnerProps) {
           })}
         </ol>
       </section>
+
+      {/* ── The span of the case: every module it walks through, as one
+          honeycomb. The strip above is the case in TIME, step after step; this
+          is the case in REACH, and it is the only place the whole span is
+          visible at once. Sits between the two so the reader meets the case's
+          shape before its detail. Clicking a hexagon jumps to the step that
+          opens that module. ──────────────────────────────────────────────── */}
+      <CaseModuleHive playbook={playbook} onSelect={goToModule} />
 
       {/* ── Every step, in full, one under the other ─────────────────────── */}
       <div className="space-y-3">

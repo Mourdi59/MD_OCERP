@@ -18,6 +18,11 @@ interface CaseArtProps {
   /** Colour class for the fallback icon (discipline tint text). */
   fallbackClass?: string;
   alt?: string;
+  /** Extra classes for the drawing itself. The tile layouts use it to hold the
+   *  scene clear of the specialist's portrait, which sits over the bottom
+   *  inline-start corner: use `ps-*` so the offset mirrors in Arabic, Hebrew,
+   *  Persian and Urdu, where the portrait sits on the other side. */
+  className?: string;
 }
 
 /**
@@ -27,13 +32,20 @@ interface CaseArtProps {
  * light and dark theme on its always-light tile. A case with no scene yet falls
  * back to its discipline icon rather than a broken picture.
  */
-export function CaseArt({ id, category, fallbackIcon: Icon, fallbackClass, alt = '' }: CaseArtProps) {
+export function CaseArt({
+  id,
+  category,
+  fallbackIcon: Icon,
+  fallbackClass,
+  alt = '',
+  className,
+}: CaseArtProps) {
   if (CASE_SCENES[id]) {
-    return <CaseScene id={id} title={alt} accent={accentFor(category)} />;
+    return <CaseScene id={id} title={alt} accent={accentFor(category)} className={className} />;
   }
 
   return (
-    <div className="flex h-full w-full items-center justify-center">
+    <div className={clsx('flex h-full w-full items-center justify-center', className)}>
       <Icon size={40} strokeWidth={1.4} className={clsx('opacity-80', fallbackClass)} />
     </div>
   );
