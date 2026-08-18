@@ -52,6 +52,7 @@ import { MoneyDisplay } from '@/shared/ui/MoneyDisplay';
 import { DateDisplay } from '@/shared/ui/DateDisplay';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { PrequalModal } from './PrequalModal';
+import { RatingStars } from './RatingStars';
 import { ScorecardTile } from './ScorecardTile';
 import { LienWaiverPanel } from './LienWaiverPanel';
 import { AwardEligibilityBanner } from './AwardEligibilityBanner';
@@ -191,28 +192,6 @@ function InsuranceChip({
       {c.label}
       {expiry && state !== 'green' ? ` · ${expiry}` : ''}
     </Badge>
-  );
-}
-
-function RatingStars({ score }: { score: number | string }) {
-  const num = toNum(score);
-  // rating_score is 0..100; convert to 0..5
-  const stars = Math.round((num / 100) * 5);
-  return (
-    <span className="inline-flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          size={12}
-          className={clsx(
-            i <= stars ? 'fill-oe-blue text-oe-blue' : 'text-content-tertiary',
-          )}
-        />
-      ))}
-      <span className="ml-1.5 text-xs text-content-secondary tabular-nums">
-        {fmtFixed(num, 0)}
-      </span>
-    </span>
   );
 }
 
