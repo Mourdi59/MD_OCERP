@@ -18,7 +18,7 @@
  * different defaults. Note that the engine's own ES2023 clamping does not
  * rescue this module the way it does a formatter that omits one end.
  */
-import { getIntlLocale } from './formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   resolveFractionDigits,
   type FractionDigitOptions,
@@ -143,7 +143,7 @@ export function formatValue(
   opts: FormatOptions = {},
 ): string {
   if (value == null || !Number.isFinite(value)) return '-';
-  const locale = getIntlLocale();
+  const locale = getNumberLocale();
   const digits = resolveFractionDigits(opts, DEFAULT_FRACTION_DIGITS);
 
   if (kind === 'percent' && opts.percentAsRatio !== true) {

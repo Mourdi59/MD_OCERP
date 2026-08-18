@@ -62,8 +62,14 @@ vi.mock('@/stores/usePreferencesStore', () => ({
   usePreferencesStore: (sel?: (s: unknown) => unknown) =>
     sel ? sel(__mockPrefState) : __mockPrefState,
   // Money surfaces resolve the locale through this rather than off the raw
-  // preference, so a wholesale mock of the store has to carry it too.
+  // preference, so a wholesale mock of the store has to carry it too, and it
+  // has to carry both shapes. The hook is for components; the plain call is
+  // for the formatters in `shared/lib`, which run during render but are not
+  // components and cannot hold a hook. A mock with only one of the pair
+  // throws on the other, and the message it throws names the mock rather than
+  // the line that reached for it.
   useNumberLocale: () => __mockPrefState.numberLocale,
+  getNumberLocale: () => __mockPrefState.numberLocale,
 }));
 
 import { apiGet } from '@/shared/lib/api';

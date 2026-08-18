@@ -64,7 +64,9 @@ export function MoneyDisplay({
   // The one resolver, not the raw preference: it reads the number-format
   // setting when the reader has chosen one and the UI language when they have
   // not, which is what keeps this component agreeing with every surface that
-  // formats through `getIntlLocale()`. It is selector-scoped inside, so the
+  // formats through `getNumberLocale()`, which is now all of them. It is
+  // the hook form of that same resolver, so this component also repaints
+  // when the setting moves. It is selector-scoped inside, so the
   // component still stays out of the re-render path for unrelated
   // preferences-store mutations (v4.3 audit).
   // Note: we no longer read `currency` from the prefs store. The

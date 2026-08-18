@@ -7,12 +7,27 @@
  * re-exported below, so this module stays the place to import a formatter from
  * while the locale question has a single answer of its own.
  *
+ * NUMBERS AND DATES ASK DIFFERENT QUESTIONS, so they read different sources.
+ *
+ * A number is written the way the reader asked for it: `getNumberLocale()`,
+ * which is the `numberLocale` preference and answers with the UI language only
+ * while that preference is `'auto'`. Reading the language directly here would
+ * be a formatter deciding to ignore a setting the user changed on purpose, and
+ * a bill in one convention beside a dashboard in another is the bug this
+ * module exists to prevent.
+ *
+ * A date keeps `getIntlLocale()`, the language, and that is not an oversight.
+ * Dates have a preference of their own (`dateFormat`, applied below), and the
+ * locale is there so the month reads "Aug" or "Aug." or "août" in the reader's
+ * language. Pointing a number-format setting at a month name would answer a
+ * question nobody asked.
+ *
  * This module also hosts a small handful of file/number helpers that
  * are not AI-specific (`formatNumber`, `formatFileSize`,
  * `getFileExtension`) — they used to live inside AI feature files but
  * were lifted out so any feature can reuse them.
  */
-import { usePreferencesStore, type DateFormat } from '@/stores/usePreferencesStore';
+import { getNumberLocale, usePreferencesStore, type DateFormat } from '@/stores/usePreferencesStore';
 import { getIntlLocale } from './intlLocale';
 
 // The language-to-locale map moved to `./intlLocale`, a leaf module the
@@ -24,7 +39,7 @@ export { getIntlLocale, useIntlLocale } from './intlLocale';
 export function fmtNumber(value: number | string | null | undefined, decimals = 2): string {
   const n = typeof value === 'number' ? value : Number(value ?? 0);
   const safe = Number.isFinite(n) ? n : 0;
-  return new Intl.NumberFormat(getIntlLocale(), {
+  return new Intl.NumberFormat(getNumberLocale(), {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(safe);
@@ -50,7 +65,7 @@ export function fmtNumber(value: number | string | null | undefined, decimals = 
  */
 export function fmtFixed(value: number, decimals = 2): string {
   if (!Number.isFinite(value)) return value.toFixed(decimals);
-  return new Intl.NumberFormat(getIntlLocale(), {
+  return new Intl.NumberFormat(getNumberLocale(), {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(value);
@@ -67,7 +82,7 @@ export function fmtFixed(value: number, decimals = 2): string {
  */
 export function fmtPrecision(value: number, digits: number): string {
   if (!Number.isFinite(value)) return value.toPrecision(digits);
-  return new Intl.NumberFormat(getIntlLocale(), {
+  return new Intl.NumberFormat(getNumberLocale(), {
     maximumSignificantDigits: digits,
     minimumSignificantDigits: Math.min(digits, 2),
   }).format(value);
@@ -89,7 +104,7 @@ export function fmtPrecision(value: number, digits: number): string {
 export function fmtPercent(value: number | string | null | undefined, decimals = 1): string {
   const n = typeof value === 'number' ? value : Number(value ?? 0);
   const safe = Number.isFinite(n) ? n : 0;
-  return new Intl.NumberFormat(getIntlLocale(), {
+  return new Intl.NumberFormat(getNumberLocale(), {
     style: 'percent',
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -100,7 +115,7 @@ export function fmtPercent(value: number | string | null | undefined, decimals =
 export function fmtCompact(value: number | string | null | undefined): string {
   const n = typeof value === 'number' ? value : Number(value ?? 0);
   const safe = Number.isFinite(n) ? n : 0;
-  return new Intl.NumberFormat(getIntlLocale(), {
+  return new Intl.NumberFormat(getNumberLocale(), {
     notation: 'compact',
     maximumFractionDigits: 1,
   }).format(safe);
@@ -131,12 +146,12 @@ export function fmtCurrency(value: number | string | null | undefined, currency?
   if (!isValid) {
     // No currency known — render the number with locale grouping but
     // without a currency symbol. Prevents the EUR-on-USD-project bug.
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       maximumFractionDigits: 0,
     }).format(safe);
   }
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: 'currency',
       currency: trimmed,
       maximumFractionDigits: 0,
@@ -375,7 +390,7 @@ export function formatTemperature(
  */
 export function formatNumber(n: number, currency?: string): string {
   try {
-    return new Intl.NumberFormat(getIntlLocale(), {
+    return new Intl.NumberFormat(getNumberLocale(), {
       style: currency ? 'currency' : 'decimal',
       currency: currency || undefined,
       minimumFractionDigits: 0,

@@ -346,6 +346,57 @@ describe('there is one place the number locale comes from', () => {
     expect(stale).toEqual([]);
   });
 
+  // Single source of truth, counted over the tree rather than shown by example.
+  //
+  // Naming the formatters that were wrong on the day this was written would
+  // gate the ninth one and let the tenth in, which is the mistake the sibling
+  // gate above already made once: it looked for a call with no locale argument
+  // at all and was therefore blind to a call with the wrong one. So this counts
+  // a property of every number formatter instead - which resolver it binds -
+  // and it is a property a new formatter cannot avoid having.
+  //
+  // `new Intl.NumberFormat(` only, deliberately. `x.toLocaleString(` is the
+  // same method name on `Number` and on `Date`, and all fifteen occurrences in
+  // the tree today are dates, so folding it in would gate date formatting under
+  // a number rule. Dates are a separate pass with a preference of their own.
+  it('no number formatter is built on the interface language', () => {
+    const offenders: string[] = [];
+    for (const file of PRODUCT_FILES) {
+      const source = read(file);
+      for (const match of source.matchAll(/new Intl\.NumberFormat\(/g)) {
+        const rest = source.slice(match.index + match[0].length);
+        const end = Math.min(...[rest.indexOf(','), rest.indexOf(')')].filter((i) => i >= 0));
+        const arg = rest.slice(0, end);
+        if (/\b(?:get|use)IntlLocale\b/.test(arg)) {
+          offenders.push(`${file}:${source.slice(0, match.index).split('\n').length}`);
+        }
+      }
+    }
+    // 108 number formatters in the tree when this was written, none of them
+    // reading the language. The count is here so a walker that silently stops
+    // finding files fails loudly instead of passing on an empty set.
+    expect(offenders).toEqual([]);
+  });
+
+  it('and no date formatter is built on the number preference', () => {
+    // The same rule read backwards, because "every number in the reader's
+    // language" is easy to over-apply. A month name is not a number, the date
+    // preference is a separate setting, and pointing the number locale at
+    // `Intl.DateTimeFormat` answers a question nobody asked.
+    const offenders: string[] = [];
+    for (const file of PRODUCT_FILES) {
+      const source = read(file);
+      for (const match of source.matchAll(/new Intl\.DateTimeFormat\(/g)) {
+        const rest = source.slice(match.index + match[0].length);
+        const end = Math.min(...[rest.indexOf(','), rest.indexOf(')')].filter((i) => i >= 0));
+        if (/\b(?:get|use)NumberLocale\b/.test(rest.slice(0, end))) {
+          offenders.push(`${file}:${source.slice(0, match.index).split('\n').length}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it('the store never hands the raw preference straight to a formatter', () => {
     const store = read('stores/usePreferencesStore.ts');
     expect(store).not.toMatch(/new Intl\.NumberFormat\(\s*numberLocale\b/);
