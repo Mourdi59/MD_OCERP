@@ -69,7 +69,7 @@ vi.mock('@/stores/useProjectContextStore', () => {
   };
 });
 
-import { getIntlLocale } from '@/shared/lib/formatters';
+import { getNumberLocale } from '@/stores/usePreferencesStore';
 import {
   getCycle,
   getProjectSummary,
@@ -98,9 +98,15 @@ function panelHalf(reuses: number): number {
   return PANEL_RATE / reuses;
 }
 
-/** Locale-formatted the same way the page formats a number, for display only. */
+/**
+ * Locale-formatted the same way the page formats a number, for display only.
+ * The page reads the format preference (FormworkPage.tsx:310), so the
+ * expectation reads it too. Built on the interface language instead, these
+ * nine assertions would agree with the page only while the preference is
+ * `auto`, and would fail on a reader who picked their own number format.
+ */
 function fmt(value: number): string {
-  return new Intl.NumberFormat(getIntlLocale(), {
+  return new Intl.NumberFormat(getNumberLocale(), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);

@@ -13,11 +13,12 @@
 // which is the behaviour the fix depends on; and no module-scope formatter
 // comes back, which no rendering test can see because the freeze needs a
 // switch to show itself.
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, afterAll, beforeEach } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import i18next from 'i18next';
 import { fmtNumber, fmtCompact, fmtPercent } from '../formatters';
+import { usePreferencesStore } from '@/stores/usePreferencesStore';
 
 const SRC = join(__dirname, '..', '..', '..');
 const BUILT = /new Intl\.(?:Number|DateTime)Format\(\s*getIntlLocale\(\)/;
@@ -59,10 +60,17 @@ function sourceFiles(dir: string, found: string[] = []): string[] {
   return found;
 }
 
-describe('number helpers follow a language change', () => {
+describe('number helpers follow a language change while the preference is auto', () => {
   const original = i18next.language;
   afterAll(() => {
     void i18next.changeLanguage(original || 'en');
+  });
+
+  // These helpers read `getNumberLocale()`, and only `auto` sends that back
+  // to the language. Named rather than inherited, so the day the default
+  // moves this file reports a preference, not a broken language change.
+  beforeEach(() => {
+    usePreferencesStore.setState({ numberLocale: 'auto' });
   });
 
   it('writes the separators of the language in force at the call', async () => {

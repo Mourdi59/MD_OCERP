@@ -1,8 +1,9 @@
 import i18next from 'i18next';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { formatCompactCurrency } from '../money';
 import { fmtPercent } from '../formatters';
+import { usePreferencesStore } from '@/stores/usePreferencesStore';
 
 // The percent helper reads the live UI language off the i18next singleton,
 // which nothing else in this file needs, so it is initialised here with no
@@ -78,6 +79,13 @@ describe('formatCompactCurrency', () => {
  * the wrong side of the digits for Turkish.
  */
 describe('fmtPercent', () => {
+  // `fmtPercent` reads the format preference, not the language, and `auto`
+  // is what makes those the same answer. These four assertions are about
+  // the language, so they set the preference that entitles them to be.
+  beforeEach(() => {
+    usePreferencesStore.setState({ numberLocale: 'auto' });
+  });
+
   it('writes the separator of the reader, not of the author', () => {
     void i18next.changeLanguage('de');
     expect(fmtPercent(68.3)).toContain('68,3');
