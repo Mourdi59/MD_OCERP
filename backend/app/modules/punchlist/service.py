@@ -19,61 +19,17 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import event_bus
 from app.core.json_merge import merge_metadata
+from app.core.party_names import resolve_party_names
 from app.modules.punchlist.models import PunchItem
 from app.modules.punchlist.repository import PunchListRepository
 from app.modules.punchlist.schemas import PunchItemCreate, PunchItemUpdate, PunchStatusTransition
 
 logger = logging.getLogger(__name__)
 _logger_ev = logging.getLogger(__name__ + ".events")
-
-
-def _contact_display_name(company: str | None, legal: str | None, first: str | None, last: str | None) -> str:
-    """Name a contact the way the contacts register names it.
-
-    Company first, then the person, then the legal entity, which is the order
-    the contacts screen itself uses. A punch item assigned to a firm should
-    read as that firm on both screens rather than as its site manager on one
-    and the firm on the other.
-
-    Args:
-        company: Trading name.
-        legal: Registered name, often set when the trading name is not.
-        first: Given name of the contact person.
-        last: Family name of the contact person.
-
-    Returns:
-        The label, or an empty string when the contact has no name at all.
-    """
-    person = " ".join(part.strip() for part in (first, last) if part and part.strip())
-    return (company or "").strip() or person or (legal or "").strip()
-
-
-def _canonical_id(value: object) -> str:
-    """The form of ``value`` two ids can be compared in.
-
-    Ids reach this module as a string from a free-text column and as whatever
-    the type decorator hands back from a row - a ``uuid.UUID`` today, a string
-    on any column it could not parse. Comparing the two shapes directly works
-    right up until the day one of them changes, and it fails by resolving
-    nothing rather than by raising, so nobody would see it. Both sides go
-    through here instead.
-
-    Args:
-        value: An id in any of the shapes above.
-
-    Returns:
-        The canonical lower-case form, or ``str(value)`` for anything that is
-        not an id at all.
-    """
-    try:
-        return str(uuid.UUID(str(value)))
-    except (AttributeError, TypeError, ValueError):
-        return str(value)
 
 
 def _party_label(item: PunchItem, names: Mapping[str, str] | None) -> str:
@@ -233,20 +189,11 @@ class PunchListService:
         list printed whichever it got, so a row read "Assigned to
         3f2b8c1e-..." where a name belonged.
 
-        Resolving here rather than on the page keeps a whole page to two
-        queries whatever its length, and adds no request to the slowest screen
-        in the module. Values that are not ids are absent from the result on
-        purpose: someone typed a name into the field and that name is already
-        the answer.
-
-        A contact wins a collision with a user, which cannot happen with
-        generated ids and would mean the contacts register is the more
-        specific answer if it ever did.
-
-        Fail-soft throughout. Contacts is an optional module, a row can be
-        deleted, and an id matching nothing resolves to nothing rather than to
-        an invention. Each lookup runs in its own savepoint so a missing table
-        cannot abort the transaction the caller is still using.
+        The punch list is where that was first worked out, and every other
+        register with a person column had the same problem and no map at all,
+        so the rule itself now lives in ``app.core.party_names``. This method
+        stays because it is what the module's callers ask, and its tests are
+        the guard that moving the rule changed none of its answers.
 
         Args:
             values: Raw column values, ids and names mixed, nulls allowed.
@@ -254,68 +201,7 @@ class PunchListService:
         Returns:
             ``{raw value: display name}`` for the ids that resolved.
         """
-        wanted: dict[str, str] = {}
-        for value in values:
-            text = (value or "").strip()
-            if not text:
-                continue
-            try:
-                wanted[str(uuid.UUID(text))] = text
-            except (AttributeError, TypeError, ValueError):
-                continue  # a typed-in name, not an id
-        if not wanted:
-            return {}
-        resolved: dict[str, str] = {}
-        for name_of, rows in (
-            (lambda r: _contact_display_name(r[1], r[2], r[3], r[4]), await self._contact_rows(wanted)),
-            (lambda r: (r[1] or "").strip() or (r[2] or "").strip(), await self._user_rows(wanted)),
-        ):
-            for row in rows:
-                raw = wanted.get(_canonical_id(row[0]))
-                name = name_of(row)
-                if raw and name and raw not in resolved:
-                    resolved[raw] = name
-        return resolved
-
-    async def _contact_rows(self, wanted: dict[str, str]) -> list[Any]:
-        """Contacts among ``wanted``, or nothing if the module is not there."""
-        try:
-            from app.modules.contacts.models import Contact
-
-            async with self.session.begin_nested():
-                return (
-                    await self.session.execute(
-                        select(
-                            Contact.id,
-                            Contact.company_name,
-                            Contact.legal_name,
-                            Contact.first_name,
-                            Contact.last_name,
-                        ).where(Contact.id.in_(wanted))
-                    )
-                ).all()  # type: ignore[return-value]
-        except Exception:
-            logger.debug("Contacts unavailable, punch assignees stay unresolved", exc_info=True)
-            return []
-
-    async def _user_rows(self, wanted: dict[str, str]) -> list[Any]:
-        """Platform users among ``wanted``.
-
-        The assignment control on the punch screen is a list of users, so a
-        snag assigned through the UI carries a user id where the seeder and
-        the field integrations carry a contact id. Both are ids in the same
-        column and both have to read as a person.
-        """
-        try:
-            from app.modules.users.models import User
-
-            async with self.session.begin_nested():
-                return (
-                    await self.session.execute(select(User.id, User.full_name, User.email).where(User.id.in_(wanted)))
-                ).all()  # type: ignore[return-value]
-        except Exception:
-            logger.debug("Users unavailable, punch assignees stay unresolved", exc_info=True)
-            return []
+        return await resolve_party_names(self.session, values)
 
     # ── Read ──────────────────────────────────────────────────────────────
 

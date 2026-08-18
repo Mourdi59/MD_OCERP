@@ -1,101 +1,180 @@
 # DDC-CWICR-OE: DataDrivenConstruction · OpenConstructionERP
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
-"""Turn a stored party id into the name a person expects to read.
+"""Read a person's name out of the id a register stored for them.
 
-Several registers store *who* as a bare 36-character string: the inspector on a
-quality inspection, the assignee on a punch item, the technician on a service
-call. The column carries no foreign key, and the value it holds depends on who
-wrote the row:
+Free-text person columns are everywhere in this codebase - ``assigned_to``,
+``created_by``, ``submitted_by``, ``approved_by`` - and three different things
+legitimately land in them. Someone types a name. A seeder or a field
+integration writes a contact id. An on-screen picker writes a user id. The
+register then printed whichever it got, so rows read "Submitted by
+3f2b8c1e-9a44-..." with an avatar lettered from a hex digit.
 
-* the demo seeder writes a :class:`Contact` id, because these registers are
-  about an external party (a consultant, a subcontractor's engineer);
-* a picker in the UI writes a :class:`User` id, because the person is on the
-  team;
-* a plain text input writes whatever was typed, which is usually a name.
+This module started life inside the punch list, which is the one register
+somebody had thought about. Every other screen that prints the same kind of
+column had no map at all, and a rule written once per caller is only ever
+tested at the caller that was already right. So it lives here, and the punch
+list reads it like everybody else.
 
-Reading any one of those as if it were the others is what put a raw UUID in an
-INSPECTOR column on screen. So the resolution has to try both tables and then
-give up gracefully, and the caller has to keep the stored value as the fallback
-rather than blanking the cell: on a hand-typed row the stored value already
-*is* the name, and on a deleted party it is the only trace left.
+What it deliberately does not do:
 
-This exists as a core helper rather than per module because the same three-way
-ambiguity appears on at least inspections, punch list, service, commissioning
-and close-out. Resolving it once per module is how they drifted apart in the
-first place - one of them resolves against users only, and therefore prints a
-false "Unassigned" for every seeded row.
+- It does not resolve a value that is not an id. Somebody typed a name and
+  that name is already the answer; sending it to the database would be a query
+  that can only fail.
+- It does not invent. An id that answers to no contact and no user is absent
+  from the result, and a caller must print the record as having an owner it
+  cannot name rather than as unassigned. Telling a site manager a snag is
+  unassigned invites a second assignment.
+- It does not query per row. A caller collects a whole page of values and asks
+  once, which is two queries for any page length.
 """
 
+import logging
+import uuid
 from collections.abc import Iterable
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.contacts.models import Contact
-from app.modules.users.models import User
-
-__all__ = ["contact_display_name", "resolve_party_names", "user_display_name"]
+logger = logging.getLogger(__name__)
 
 
-def contact_display_name(c: Contact) -> str:
-    """Company first, then a person's full name, then the email.
+def contact_display_name(company: str | None, legal: str | None, first: str | None, last: str | None) -> str:
+    """Name a contact the way the contacts register names it.
 
-    Same order as ``Contact.__repr__`` and as procurement's vendor label, so a
-    party reads identically wherever it appears. The email column is
-    ``primary_email``; there is no plain ``email`` on this model.
+    Company first, then the person, then the legal entity, which is the order
+    the contacts screen itself uses. A record assigned to a firm should read as
+    that firm on both screens rather than as its site manager on one and the
+    firm on the other.
+
+    Args:
+        company: Trading name.
+        legal: Registered name, often set when the trading name is not.
+        first: Given name of the contact person.
+        last: Family name of the contact person.
+
+    Returns:
+        The label, or an empty string when the contact has no name at all.
     """
-    if c.company_name:
-        return c.company_name
-    full = f"{c.first_name or ''} {c.last_name or ''}".strip()
-    return full or c.primary_email or ""
+    person = " ".join(part.strip() for part in (first, last) if part and part.strip())
+    return (company or "").strip() or person or (legal or "").strip()
 
 
-def user_display_name(u: User) -> str:
-    """A user's own full name, falling back to the email they sign in with."""
-    return (u.full_name or "").strip() or u.email or ""
+def canonical_id(value: object) -> str:
+    """The form of ``value`` two ids can be compared in.
 
+    Ids reach this module as a string from a free-text column and as whatever
+    the type decorator hands back from a row - a ``uuid.UUID`` today, a string
+    on any column it could not parse. Comparing the two shapes directly works
+    right up until the day one of them changes, and it fails by resolving
+    nothing rather than by raising, so nobody would see it. Both sides go
+    through here instead.
 
-async def resolve_party_names(session: AsyncSession, ids: Iterable[str | None]) -> dict[str, str]:
-    """Resolve party ids to display names in at most two round trips.
+    Args:
+        value: An id in any of the shapes above.
 
-    Contacts are looked up first and users only for whatever is left over, so a
-    register whose rows are all seeded costs exactly one query. Ids that match
-    nothing are simply absent from the result; the caller is expected to fall
-    back to the stored value, which is either a typed name or the last trace of
-    a deleted party.
-
-    Values that cannot be a party id at all - a typed name, an empty string -
-    are filtered out before the query rather than passed to the database, which
-    would otherwise reject them on a UUID-typed column.
+    Returns:
+        The canonical lower-case form, or ``str(value)`` for anything that is
+        not an id at all.
     """
-    wanted = {str(i).strip() for i in ids if i and str(i).strip()}
-    # A stored name is not an id and must never reach the WHERE clause: on
-    # PostgreSQL a uuid column compared against 'Jane Cooper' raises, which
-    # would turn a cosmetic lookup into a 500 on the whole list endpoint.
-    candidates = {i for i in wanted if _looks_like_an_id(i)}
-    if not candidates:
+    try:
+        return str(uuid.UUID(str(value)))
+    except (AttributeError, TypeError, ValueError):
+        return str(value)
+
+
+async def _contact_rows(session: AsyncSession, wanted: dict[str, str]) -> list[Any]:
+    """Contacts among ``wanted``, or nothing if the module is not there."""
+    try:
+        from app.modules.contacts.models import Contact
+
+        async with session.begin_nested():
+            return (
+                await session.execute(
+                    select(
+                        Contact.id,
+                        Contact.company_name,
+                        Contact.legal_name,
+                        Contact.first_name,
+                        Contact.last_name,
+                    ).where(Contact.id.in_(wanted))
+                )
+            ).all()  # type: ignore[return-value]
+    except Exception:
+        logger.debug("Contacts unavailable, party ids stay unresolved", exc_info=True)
+        return []
+
+
+async def _user_rows(session: AsyncSession, wanted: dict[str, str]) -> list[Any]:
+    """Platform users among ``wanted``.
+
+    An assignment control on a screen is usually a list of platform users, so a
+    record assigned through the UI carries a user id where a seeder and the
+    field integrations carry a contact id. Both are ids in the same column and
+    both have to read as a person.
+    """
+    try:
+        from app.modules.users.models import User
+
+        async with session.begin_nested():
+            return (await session.execute(select(User.id, User.full_name, User.email).where(User.id.in_(wanted)))).all()  # type: ignore[return-value]
+    except Exception:
+        logger.debug("Users unavailable, party ids stay unresolved", exc_info=True)
+        return []
+
+
+async def resolve_party_names(session: AsyncSession, values: Iterable[str | None]) -> dict[str, str]:
+    """Map the ids among ``values`` onto readable names.
+
+    Contacts are asked first and users only about what is left over, so a page
+    whose rows are all seeded costs one query rather than two. That order is
+    also the tie-break: a contact wins a collision with a user, which cannot
+    happen with generated ids and would mean the contacts register is the more
+    specific answer if it ever did.
+
+    Fail-soft throughout. Contacts is an optional module, a row can be deleted,
+    and an id matching nothing resolves to nothing rather than to an invention.
+    Each lookup runs in its own savepoint, so a missing table costs a name
+    rather than aborting the transaction the caller is still using. A caught
+    exception cannot revive a session a failed statement already poisoned,
+    which is why the savepoint is required and a bare try/except is not enough.
+
+    Args:
+        session: The caller's session. Lookups run inside it, in savepoints.
+        values: Raw column values, ids and names mixed, nulls allowed.
+
+    Returns:
+        ``{raw value: display name}`` for the ids that resolved. Everything
+        else - typed-in names, blanks, ids nobody answers to - is absent.
+    """
+    wanted: dict[str, str] = {}
+    for value in values:
+        text = (value or "").strip()
+        if not text:
+            continue
+        try:
+            wanted[str(uuid.UUID(text))] = text
+        except (AttributeError, TypeError, ValueError):
+            continue  # a typed-in name, not an id
+    if not wanted:
         return {}
+    resolved: dict[str, str] = {}
+    for row in await _contact_rows(session, wanted):
+        raw = wanted.get(canonical_id(row[0]))
+        name = contact_display_name(row[1], row[2], row[3], row[4])
+        if raw and name:
+            resolved[raw] = name
 
-    rows = (await session.execute(select(Contact).where(Contact.id.in_(candidates)))).scalars().all()
-    names = {str(c.id): contact_display_name(c) for c in rows}
-
-    remaining = candidates - set(names)
-    if remaining:
-        users = (await session.execute(select(User).where(User.id.in_(remaining)))).scalars().all()
-        for u in users:
-            names[str(u.id)] = user_display_name(u)
-
-    # An empty display name is worse than no entry: it would blank a cell that
-    # still has an id to show. Drop those so the caller's fallback takes over.
-    return {k: v for k, v in names.items() if v}
-
-
-def _looks_like_an_id(value: str) -> bool:
-    """Cheap shape test for a 36-character hyphenated UUID.
-
-    Deliberately not ``uuid.UUID(value)``: this runs per row on a list endpoint
-    and the only thing it has to separate is "id" from "somebody's name".
-    """
-    if len(value) != 36:
-        return False
-    return value[8] == value[13] == value[18] == value[23] == "-"
+    # Users are asked only about the ids contacts could not name. A register
+    # whose rows all carry seeded contact ids therefore costs one query, and
+    # asking about an id that is already answered would be work spent to
+    # produce a name that loses the collision anyway.
+    remaining = {canon: raw for canon, raw in wanted.items() if raw not in resolved}
+    if not remaining:
+        return resolved
+    for row in await _user_rows(session, remaining):
+        raw = remaining.get(canonical_id(row[0]))
+        name = (row[1] or "").strip() or (row[2] or "").strip()
+        if raw and name:
+            resolved[raw] = name
+    return resolved

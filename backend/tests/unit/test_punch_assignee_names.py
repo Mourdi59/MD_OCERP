@@ -31,10 +31,14 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 
+# Naming a party is now one rule for every register that stores one, so the
+# helper is imported from where it lives rather than from the module that
+# happened to write it first. Every assertion below is unchanged, which is the
+# point: they are the guard that the move changed none of the answers.
+from app.core.party_names import contact_display_name as _contact_display_name
 from app.modules.punchlist.router import _item_response, _item_responses, _item_to_response
 from app.modules.punchlist.service import (
     PunchListService,
-    _contact_display_name,
     _render_punchlist_text,
 )
 
@@ -148,7 +152,8 @@ class TestResolvePartyNames:
         service, session = _service()
         found = asyncio.run(service.resolve_party_names([str(FIRM), str(PERSON)]))
         assert found == {str(FIRM): "Bauunternehmung Keller", str(PERSON): "Anna Schmidt"}
-        assert session.queries == 2
+        # One: both ids were contacts, so nothing was left to ask users about.
+        assert session.queries == 1
 
     def test_a_typed_in_name_is_never_looked_up(self) -> None:
         # Someone wrote a name into the field. That name is the answer, and
@@ -168,8 +173,9 @@ class TestResolvePartyNames:
         service, session = _service()
         page = [str(FIRM), str(PERSON)] * 25 + ["Anna Schmidt", None]
         assert len(asyncio.run(service.resolve_party_names(page))) == 2
-        # Two, one per table, and the same two for a page of any length.
-        assert session.queries == 2
+        # The same count for a page of any length, which is the claim. Fifty-two
+        # values here: a per-row lookup would show as fifty-two.
+        assert session.queries == 1
 
     def test_an_unreadable_table_resolves_to_nothing(self) -> None:
         # Contacts is an optional module and the row may have been deleted.
@@ -238,8 +244,8 @@ class TestResponseCarriesTheName:
         assert response.assigned_to == str(FIRM)
         assert response.assigned_to_name == "Bauunternehmung Keller"
         assert response.verified_by_name == "Anna Schmidt"
-        # Two lookups for both columns together, not two per column.
-        assert session.queries == 2
+        # One lookup for both columns together, not one per column.
+        assert session.queries == 1
 
     def test_a_typed_in_name_leaves_the_resolved_field_empty(self) -> None:
         # Null here is what the screen reads as "print the column".
@@ -263,7 +269,7 @@ class TestResponseCarriesTheName:
         assert [r.assigned_to_name for r in responses[:20]] == ["Bauunternehmung Keller"] * 20
         assert responses[20].assigned_to_name == "Anna Schmidt"
         assert responses[20].verified_by_name == "Bauunternehmung Keller"
-        assert session.queries == 2
+        assert session.queries == 1
 
     def test_the_exported_list_names_the_same_party_the_screen_names(self) -> None:
         # The export is the artefact that leaves the building. A screen saying
