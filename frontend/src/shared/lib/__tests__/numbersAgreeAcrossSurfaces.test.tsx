@@ -359,7 +359,21 @@ function reaches(argument: string, pattern: RegExp, aliases: Set<string>): boole
  * used.
  */
 const LANGUAGE = /\b(?:get|use)IntlLocale\b|\bi18n\.language\b/;
-const NUMBER_PREFERENCE = /\b(?:get|use)NumberLocale\b/;
+/**
+ * `resolveNumberLocale` is in here because it is the resolver the other two are
+ * written in terms of, not a fourth spelling of the same idea: the hook and the
+ * snapshot both return `resolveNumberLocale(...)`. Leaving it out made the two
+ * formatters the store builds for itself read as slots nobody could resolve.
+ *
+ * Widened after measuring every rule that reads this pattern, because one of
+ * them is the backward rule and it sees seven times the sites the forward one
+ * does. `resolveNumberLocale` appears in two files outside its own definition:
+ * the store builds two `Intl.NumberFormat` on it, and `RegionalSettings` binds
+ * it to a name used only as a `value` prop. Neither file contains a single
+ * `toLocaleString` or `DateTimeFormat`, so the widening moves two slots out of
+ * the unresolved column and changes no verdict anywhere else.
+ */
+const NUMBER_PREFERENCE = /\b(?:get|use)NumberLocale\b|\bresolveNumberLocale\b/;
 
 /**
  * The expression a method was called on, as the eighty characters in front of
@@ -597,6 +611,56 @@ function census(label: string, counted: Verdict[]): void {
 }
 
 /**
+ * What the gate can see in the locale slot of a formatter, which is a different
+ * question from what the formatter is formatting.
+ *
+ * The rules below judge a slot by reading it, and every reading they do assumes
+ * the resolver is in the slot as visible text, either called there or bound to a
+ * name this same file declares. A slot holding a function parameter defeats all
+ * of it, because the answer was decided in another file by whoever called in.
+ * That is not a corner: `measurement-format.ts` fell in it. Its formatters read
+ * `new Intl.NumberFormat(locale, opts)` where `locale` is the parameter of a
+ * caching helper, so for as long as those functions defaulted to the interface
+ * language the gate looked straight at them and saw nothing to say.
+ *
+ * So the slot gets a class of its own for "could not resolve", and the census
+ * prints it. An offender list is only an answer if you also know how much of
+ * the population it was drawn from, and until this existed an empty list read
+ * as "clean everywhere" when part of what it meant was "unread".
+ *
+ * Measured when written, on the whole tree: 108 `Intl.NumberFormat`, of which 93
+ * reach the preference, 1 is a literal, 1 takes the browser default and 13 are
+ * unresolved; and 19 `Intl.DateTimeFormat`, of which 8 reach the language, 1
+ * takes the default and 10 are unresolved. The date side is mostly unresolved
+ * because `formatters.ts` and the Gantt helpers take their locale as a
+ * parameter, which is the correct shape for them and unreadable from here all
+ * the same. Unreadable is not the same as wrong, and the census says unresolved
+ * rather than anything stronger for that reason.
+ */
+type Slot = 'language' | 'preference' | 'literal' | 'none' | 'unresolved';
+
+function slotClass(argument: string, langAliases: Set<string>, prefAliases: Set<string>): Slot {
+  const argued = argument.trim();
+  if (argued === '' || argued === 'undefined') return 'none';
+  if (LANGUAGE.test(argued)) return 'language';
+  if (NUMBER_PREFERENCE.test(argued)) return 'preference';
+  if (/^['"]/.test(argued)) return 'literal';
+  if (/^[A-Za-z_$][\w$]*$/.test(argued)) {
+    if (langAliases.has(argued)) return 'language';
+    if (prefAliases.has(argued)) return 'preference';
+  }
+  return 'unresolved';
+}
+
+function slotCensus(label: string, counted: Slot[]): void {
+  const of = (s: Slot) => counted.filter((c) => c === s).length;
+  const line =
+    `${label}: ${counted.length} slots, ${of('language')} language, ${of('preference')} preference, ` +
+    `${of('literal')} literal, ${of('none')} browser default, ${of('unresolved')} unresolved`;
+  process.stdout.write(`${line}\n`);
+}
+
+/**
  * The two files allowed to read the raw preference: the store, which owns it
  * and turns it into an answer, and the settings screen, which has to show the
  * reader what they picked. Everywhere else asks `useNumberLocale`.
@@ -719,16 +783,32 @@ describe('there is one place the number locale comes from', () => {
     expect(PRODUCT_FILES.length).toBeGreaterThan(1800);
 
     const offenders: string[] = [];
+    const slots: Slot[] = [];
     for (const file of PRODUCT_FILES) {
       const source = read(file);
       const aliases = boundTo(source, LANGUAGE);
+      const prefAliases = boundTo(source, NUMBER_PREFERENCE);
       for (const match of source.matchAll(/new Intl\.NumberFormat\(/g)) {
         const argument = localeArgument(source, match.index + match[0].length);
+        slots.push(slotClass(argument, aliases, prefAliases));
         if (reaches(argument, LANGUAGE, aliases)) {
           offenders.push(`${file}:${source.slice(0, match.index).split('\n').length}`);
         }
       }
     }
+    slotCensus('number formatters, by the locale slot the gate can read', slots);
+
+    // Floors, not exact counts, for the same reason the walks below use them:
+    // this reads the working tree while the numbers describe the branch. What
+    // they defend is the one way an empty offender list lies, which is a walk
+    // that found nothing to look at. A resolver that had quietly stopped
+    // resolving would report every slot unresolved and an empty offender list
+    // with it, so the second floor is the one that matters.
+    expect(slots.length, 'the walk found no number formatters at all').toBeGreaterThan(80);
+    expect(
+      slots.filter((s) => s !== 'unresolved').length,
+      'the slot reader resolved almost nothing, so an empty offender list means nothing',
+    ).toBeGreaterThan(slots.length / 2);
     expect(offenders).toEqual([]);
   }, 60_000);
 
@@ -738,18 +818,60 @@ describe('there is one place the number locale comes from', () => {
     // preference is a separate setting, and pointing the number locale at
     // `Intl.DateTimeFormat` answers a question nobody asked.
     const offenders: string[] = [];
+    const slots: Slot[] = [];
     for (const file of PRODUCT_FILES) {
       const source = read(file);
       const aliases = boundTo(source, NUMBER_PREFERENCE);
+      const langAliases = boundTo(source, LANGUAGE);
       for (const match of source.matchAll(/new Intl\.DateTimeFormat\(/g)) {
         const argument = localeArgument(source, match.index + match[0].length);
+        slots.push(slotClass(argument, langAliases, aliases));
         if (reaches(argument, NUMBER_PREFERENCE, aliases)) {
           offenders.push(`${file}:${source.slice(0, match.index).split('\n').length}`);
         }
       }
     }
+    slotCensus('date formatters, by the locale slot the gate can read', slots);
+
+    // No floor on the resolved share here, and that is deliberate rather than
+    // an omission. Most of these slots are parameters by design: `formatters.ts`
+    // and the Gantt helpers are given a locale by their callers, which is the
+    // right shape for a shared helper and unreadable from this distance. A floor
+    // would be asserting that the tree is written in a style it is not written
+    // in. The count still has to be non-empty, because that failure mode is the
+    // walker, not the style.
+    expect(slots.length, 'the walk found no date formatters at all').toBeGreaterThan(10);
     expect(offenders).toEqual([]);
   }, 60_000);
+
+  it('reads the locale slot in every shape it claims to, and admits the rest', () => {
+    const language = new Set(['uiLocale']);
+    const preference = new Set(['chosen']);
+    const at = (argument: string) => slotClass(argument, language, preference);
+
+    expect(at('getIntlLocale()')).toBe('language');
+    expect(at('useNumberLocale()')).toBe('preference');
+    expect(at('resolveNumberLocale(numberLocale')).toBe('preference');
+    expect(at('uiLocale')).toBe('language');
+    expect(at('chosen')).toBe('preference');
+    expect(at("'de-DE'")).toBe('literal');
+    expect(at('')).toBe('none');
+    expect(at('undefined')).toBe('none');
+    // The reading this class was added for. A parameter is a slot whose answer
+    // was decided in another file, and the honest report is that the gate does
+    // not know, which is what kept `measurement-format.ts` invisible while it
+    // formatted every takeoff quantity in the interface language.
+    expect(at('locale')).toBe('unresolved');
+
+    // `i18n.language` is a defect in a number formatter's slot, and it is
+    // asserted here rather than only described above the rule. It is the third
+    // door to the interface language and the one with no resolver in its name,
+    // so a reader looking for `getIntlLocale` alone would walk past it. The
+    // rule is written as a prohibition on number formatters, which is why this
+    // asks the classifier and not a list of date formatters that are allowed.
+    expect(at('i18n.language')).toBe('language');
+    expect(reaches('i18n.language', LANGUAGE, new Set())).toBe(true);
+  });
 
   it('the classifier answers the shapes it claims to, and refuses the rest', () => {
     // The rule has teeth and knows where they stop. Every reading `verdictAt`
