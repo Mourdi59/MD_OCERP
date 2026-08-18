@@ -77,7 +77,10 @@ interface ValidationReportData {
   // ran - rendered as a "not implemented" notice so the dashboard never lets
   // an unimplemented standard read as silently passed.
   unsupported_rule_sets?: string[];
-  duration_ms: number;
+  // How long the run took, or null when the report does not record it. A
+  // stored report predating the field has no duration, and defaulting that to
+  // zero printed "Duration: 0.0ms" as though the run had been timed.
+  duration_ms: number | null;
   results: ValidationResultItem[];
 }
 
@@ -244,7 +247,7 @@ function mapStoredReport(report: ValidationReportResponse): ValidationReportData
     },
     rule_sets: report.metadata?.rule_sets ?? (report.rule_set ? report.rule_set.split('+') : []),
     unsupported_rule_sets: report.metadata?.unsupported_rule_sets,
-    duration_ms: report.metadata?.duration_ms ?? 0,
+    duration_ms: report.metadata?.duration_ms ?? null,
     results,
   };
 }
@@ -499,9 +502,11 @@ function SummaryCard({ report }: { report: ValidationReportData }) {
                 'Rule sets are chosen automatically from the project’s region & classification standard.',
             })}
           </p>
-          <p className="mt-1 text-xs text-content-tertiary tabular-nums">
-            {t('validation.duration', 'Duration')}: {fmtFixed(report.duration_ms, 1)}ms
-          </p>
+          {report.duration_ms !== null && (
+            <p className="mt-1 text-xs text-content-tertiary tabular-nums">
+              {t('validation.duration', 'Duration')}: {fmtFixed(report.duration_ms, 1)}ms
+            </p>
+          )}
         </div>
       </div>
     </Card>
