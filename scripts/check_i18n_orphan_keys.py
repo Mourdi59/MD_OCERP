@@ -78,7 +78,7 @@ explicitly rather than passed in silence. The threshold was set by measuring
 the committed tree, not guessed: every finished locale sat under 5% identical
 (nl highest, at 4.83%, from ordinary overlap like numbers and codes and
 acronyms such as BOQ or MEP), en-US sat at 0% because it inherits everything,
-and the one locale genuinely mid-translation at the time sat at 40%.
+and the one locale genuinely mid-translation at the time sat at 47.23%.
 Whether a given locale belongs in SUPPORTED_LANGUAGES at all is a product
 decision this guard does not make; it only enforces whichever way that list
 currently reads.
@@ -158,9 +158,9 @@ def read_supported_languages(path: str = I18N_TS_PATH) -> set[str]:
     """
     with open(path, encoding="utf-8") as fh:
         text = fh.read()
-    start = text.index("SUPPORTED_LANGUAGES")
-    end = text.index("\n];", start)
-    return set(_SUPPORTED_CODE.findall(text[start:end]))
+    start = text.find("SUPPORTED_LANGUAGES")
+    end = text.find("\n];", start) if start >= 0 else -1
+    return set(_SUPPORTED_CODE.findall(text[start:end])) if end >= 0 else set()
 
 
 def read_en_values(path: str = EN_PATH) -> dict[str, str]:
@@ -348,6 +348,22 @@ def main() -> int:
     variants = {stem: base for stem, base in bases.items() if base}
 
     supported = read_supported_languages()
+    if "en" not in supported:
+        # "en" is structurally the first entry of SUPPORTED_LANGUAGES, so its
+        # absence means the array was not found or nothing inside it parsed,
+        # not that English was ever dropped from the picker. Refusing here
+        # matters more than the other zero-parse tripwires in this file: a
+        # silent empty set would classify every locale as unsupported and
+        # start downgrading gaps this guard exists to keep enforced, uz among
+        # them, which would go green for exactly the wrong reason.
+        print(
+            f"ERROR: could not read SUPPORTED_LANGUAGES from {I18N_TS_PATH}. "
+            "An empty or unparsed read here is not a clean read: it would "
+            "classify every locale as unsupported and start downgrading gaps "
+            "this guard exists to enforce.",
+            file=sys.stderr,
+        )
+        return 1
     en_values = read_en_values()
     in_progress, fractions, abandoned = classify_locales(
         by_locale, supported, en_values

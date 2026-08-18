@@ -410,9 +410,9 @@ def read_supported_languages(path: str = DEFAULT_I18N_TS_PATH) -> set[str]:
     """
     with open(path, encoding="utf-8") as fh:
         text = fh.read()
-    start = text.index("SUPPORTED_LANGUAGES")
-    end = text.index("\n];", start)
-    return set(_SUPPORTED_CODE.findall(text[start:end]))
+    start = text.find("SUPPORTED_LANGUAGES")
+    end = text.find("\n];", start) if start >= 0 else -1
+    return set(_SUPPORTED_CODE.findall(text[start:end])) if end >= 0 else set()
 
 
 def read_en_values(en_path: str) -> dict[str, str]:
@@ -544,6 +544,21 @@ def main(argv: list[str] | None = None) -> int:
     bases = {stem: _base_of(stem, by_locale) for stem in by_locale}
 
     supported = read_supported_languages(args.i18n_ts)
+    if "en" not in supported:
+        # "en" is structurally the first entry of SUPPORTED_LANGUAGES, so its
+        # absence means the array was not found or nothing inside it parsed,
+        # not that English was ever dropped from the picker. A silent empty
+        # set would classify every locale as unsupported and start
+        # downgrading member gaps this check exists to keep enforced, uz
+        # among them, which would go green for exactly the wrong reason.
+        print(
+            f"ERROR: could not read SUPPORTED_LANGUAGES from {args.i18n_ts}. "
+            "An empty or unparsed read here is not a clean read: it would "
+            "classify every locale as unsupported and start downgrading "
+            "member gaps this check exists to enforce.",
+            file=sys.stderr,
+        )
+        return 2
     en_values = read_en_values(args.en)
     in_progress, fractions, abandoned = classify_locales(
         by_locale, supported, en_values, args.locales
