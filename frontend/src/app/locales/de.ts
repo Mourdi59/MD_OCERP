@@ -21525,6 +21525,8 @@ const resource = {
     "methodology.subtitle": "Wie direkte Kosten zu einer endgültigen Kalkulation für {{project}} bezuschlagt werden: die Aufteilung in Bauleistungen und Ausrüstung, benannte Basismengen, die sequenziellen Prozentschritte und die MwSt.",
     "methodology.this_project": "dieses Projekt",
     "methodology.title": "Kalkulationsmethodiken",
+    "methodology.vat_from_project": "Dieses Projekt wird mit {{rate}} MwSt. abgerechnet, die es selbst festlegt. Der Steuerschritt unten speichert {{stored}}, aber das wird nicht berechnet.",
+    "methodology.vat_from_project_unreadable": "Dieses Projekt wird mit {{rate}} MwSt. abgerechnet, die es selbst festlegt. Der Steuerschritt unten enthält keinen lesbaren Satz, daher wird der Projektsatz berechnet.",
     "nav.methodologies": "Methodiken",
     "bim.auto_install_failed_body": "Sie können die automatische Installation erneut versuchen oder ihn manuell von GitHub installieren.",
     "bim.auto_install_failed_title": "Vorbereitung des {{format}}-Konverters konnte nicht abgeschlossen werden",

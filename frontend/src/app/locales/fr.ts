@@ -20771,6 +20771,8 @@ const resource = {
     "methodology.subtitle": "Comment les coûts directs sont majorés pour aboutir à une estimation finale pour {{project}} : la répartition travaux/équipements, les ensembles de base nommés, les étapes de pourcentage séquentielles et la TVA.",
     "methodology.this_project": "ce projet",
     "methodology.title": "Méthodologies d'estimation",
+    "methodology.vat_from_project": "Ce projet est facturé avec une TVA de {{rate}}, qu'il définit lui-même. L'étape de taxe ci-dessous enregistre {{stored}}, ce qui n'est pas ce qui sera facturé.",
+    "methodology.vat_from_project_unreadable": "Ce projet est facturé avec une TVA de {{rate}}, qu'il définit lui-même. L'étape de taxe ci-dessous n'indique pas de taux lisible, c'est donc le taux du projet qui sera facturé.",
     "nav.methodologies": "Méthodologies",
     "bim.auto_install_failed_body": "Vous pouvez relancer l'installation automatique ou l'installer manuellement depuis GitHub.",
     "bim.auto_install_failed_title": "Impossible de terminer la préparation du convertisseur {{format}}",

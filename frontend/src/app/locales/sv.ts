@@ -20691,6 +20691,8 @@ const resource = {
     "methodology.subtitle": "Hur direkta kostnader får påslag till en slutlig kalkyl för {{project}}: uppdelningen mellan arbeten och utrustning, namngivna basuppsättningar, de sekventiella procentstegen och momsen.",
     "methodology.this_project": "detta projekt",
     "methodology.title": "Kalkylmetodiker",
+    "methodology.vat_from_project": "Det här projektet faktureras med {{rate}} moms, som det anger själv. Skattesteget nedan lagrar {{stored}}, och det är inte det som kommer att debiteras.",
+    "methodology.vat_from_project_unreadable": "Det här projektet faktureras med {{rate}} moms, som det anger själv. Skattesteget nedan anger inte en läsbar sats, så det är projektets sats som kommer att debiteras.",
     "nav.methodologies": "Metodiker",
     "bim.auto_install_failed_body": "Du kan försöka med den automatiska installationen igen eller installera den manuellt från GitHub.",
     "bim.auto_install_failed_title": "Det gick inte att slutföra förberedelsen av {{format}}-konverteraren",

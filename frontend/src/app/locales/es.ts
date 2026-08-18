@@ -20771,6 +20771,8 @@ const resource = {
     "methodology.subtitle": "Cómo se recargan los costes directos hasta obtener un presupuesto final para {{project}}: la separación entre obras y equipos, los conjuntos base con nombre, los pasos porcentuales secuenciales y el IVA.",
     "methodology.this_project": "este proyecto",
     "methodology.title": "Metodologías de estimación",
+    "methodology.vat_from_project": "Este proyecto se factura con un IVA de {{rate}}, que él mismo establece. El paso de impuesto de abajo almacena {{stored}}, y eso no es lo que se cobrará.",
+    "methodology.vat_from_project_unreadable": "Este proyecto se factura con un IVA de {{rate}}, que él mismo establece. El paso de impuesto de abajo no indica una tasa que se pueda leer, por lo que se cobrará la tasa del proyecto.",
     "nav.methodologies": "Metodologías",
     "bim.auto_install_failed_body": "Puede reintentar la instalación automática o instalarlo manualmente desde GitHub.",
     "bim.auto_install_failed_title": "No se pudo terminar de preparar el conversor {{format}}",

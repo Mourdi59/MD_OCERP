@@ -20730,6 +20730,8 @@ const resource = {
     "methodology.subtitle": "Kako se izravni troškovi uvećavaju u konačnu procjenu za {{project}}: podjela na radove i opremu, imenovani bazni skupovi, sekvencijalni postotni koraci i PDV.",
     "methodology.this_project": "ovaj projekt",
     "methodology.title": "Metodologije procjene",
+    "methodology.vat_from_project": "Ovaj projekt se naplaćuje s {{rate}} PDV-a, koji sam određuje. Porezni korak ispod pohranjuje {{stored}}, a to nije ono što će se zapravo naplatiti.",
+    "methodology.vat_from_project_unreadable": "Ovaj projekt se naplaćuje s {{rate}} PDV-a, koji sam određuje. Porezni korak ispod ne sadrži stopu koju je moguće pročitati, pa će se naplatiti stopa projekta.",
     "nav.methodologies": "Metodologije",
     "bim.auto_install_failed_body": "Možete ponoviti automatsku instalaciju ili ga ručno instalirati s GitHuba.",
     "bim.auto_install_failed_title": "Pripremu pretvarača {{format}} nije moguće dovršiti",

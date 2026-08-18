@@ -20765,6 +20765,8 @@ const resource = {
     "methodology.subtitle": "Jak koszty bezpośrednie są przeliczane z narzutami na kosztorys końcowy dla {{project}}: podział na roboty i wyposażenie, nazwane zestawy bazowe, sekwencyjne kroki procentowe i VAT.",
     "methodology.this_project": "ten projekt",
     "methodology.title": "Metodyki kosztorysowania",
+    "methodology.vat_from_project": "Ten projekt jest rozliczany z VAT-em w wysokości {{rate}}, który ustala samodzielnie. Poniższy krok podatkowy przechowuje {{stored}}, a to nie jest wartość, która zostanie naliczona.",
+    "methodology.vat_from_project_unreadable": "Ten projekt jest rozliczany z VAT-em w wysokości {{rate}}, który ustala samodzielnie. Poniższy krok podatkowy nie zawiera odczytywalnej stawki, więc naliczona zostanie stawka projektu.",
     "nav.methodologies": "Metodyki",
     "bim.auto_install_failed_body": "Możesz ponowić instalację automatyczną lub zainstalować go ręcznie z GitHuba.",
     "bim.auto_install_failed_title": "Nie udało się zakończyć przygotowania konwertera {{format}}",

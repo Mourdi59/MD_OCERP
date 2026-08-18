@@ -18605,6 +18605,8 @@ const resource = {
     "methodology.subtitle": "How direct costs are marked up into a final estimate for {{project}}: the works vs equipment split, named base sets, the sequential percentage steps and VAT.",
     "methodology.this_project": "this project",
     "methodology.title": "Estimating methodologies",
+    "methodology.vat_from_project": "This project is billed at {{rate}} VAT, which it sets itself. The tax step below stores {{stored}}, and that is not what will be charged.",
+    "methodology.vat_from_project_unreadable": "This project is billed at {{rate}} VAT, which it sets itself. The tax step below does not state a rate that can be read, so the project rate is what will be charged.",
     "nav.methodologies": "Methodologies",
     "agents.accuracy.accurate": "accurate",
     "agents.accuracy.brier": "Brier {{score}}",

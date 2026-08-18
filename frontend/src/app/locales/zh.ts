@@ -20681,6 +20681,8 @@ const resource = {
     "methodology.subtitle": "为 {{project}} 将直接费加价为最终概预算的方式：工程与设备的拆分、具名基数集、顺序百分比步骤及增值税。",
     "methodology.this_project": "本项目",
     "methodology.title": "计价方法",
+    "methodology.vat_from_project": "此项目按其自行设定的{{rate}}增值税计费。下方的税费步骤保存的是{{stored}}，但实际计费的并不是这个值。",
+    "methodology.vat_from_project_unreadable": "此项目按其自行设定的{{rate}}增值税计费。下方的税费步骤未指定可识别的税率，因此将按项目的税率计费。",
     "nav.methodologies": "计价方法",
     "bim.auto_install_failed_body": "您可以重试自动安装，或从 GitHub 手动安装。",
     "bim.auto_install_failed_title": "无法完成 {{format}} 转换器的准备",

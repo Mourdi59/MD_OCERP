@@ -20674,6 +20674,8 @@ const resource = {
     "methodology.subtitle": "Bagaimana biaya langsung diberi markup menjadi estimasi akhir untuk {{project}}: pemisahan pekerjaan vs peralatan, himpunan basis bernama, langkah persentase berurutan, dan PPN.",
     "methodology.this_project": "proyek ini",
     "methodology.title": "Metodologi estimasi",
+    "methodology.vat_from_project": "Proyek ini ditagih dengan PPN {{rate}}, yang ditentukan sendiri oleh proyek. Langkah pajak di bawah ini menyimpan {{stored}}, dan itu bukan yang akan ditagihkan.",
+    "methodology.vat_from_project_unreadable": "Proyek ini ditagih dengan PPN {{rate}}, yang ditentukan sendiri oleh proyek. Langkah pajak di bawah ini tidak menyatakan tarif yang dapat dibaca, jadi tarif proyeklah yang akan ditagihkan.",
     "nav.methodologies": "Metodologi",
     "bim.auto_install_failed_body": "Anda dapat mencoba lagi pemasangan otomatis, atau memasangnya secara manual dari GitHub.",
     "bim.auto_install_failed_title": "Tidak dapat menyelesaikan penyiapan konverter {{format}}",

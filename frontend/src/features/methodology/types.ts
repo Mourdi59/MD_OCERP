@@ -137,11 +137,38 @@ export interface Methodology {
   base_mapping: Record<string, string[]>;
   composites: Record<string, string[]>;
   cascade_steps: MarkupStep[];
-  /** VAT percentage as a decimal string, or null when modelled as a step. */
+  /**
+   * Catalogue fact about a country, recorded when the methodology was minted.
+   * Nothing prices from it: the cascade's `tax` step computes, and a project
+   * stating its own rate replaces that step. Read `effective_vat` to learn
+   * what a project is actually charged.
+   */
   vat_rate: string | null;
   metadata: Record<string, unknown>;
   created_at: string | null;
   updated_at: string | null;
+  /**
+   * Which VAT rate this methodology is priced at for the asking project.
+   * Absent on endpoints that were not asked on behalf of a project; absence
+   * never means "no VAT applies".
+   */
+  effective_vat?: EffectiveVat | null;
+}
+
+/** The VAT rate a methodology is actually priced at for a project, and why. */
+export interface EffectiveVat {
+  /** Rate applied, as a decimal string, or null when no single tax line exists. */
+  rate: string | null;
+  /**
+   * `project` when the project's own rate is substituted for the stack's tax
+   * line, `methodology` when the stack speaks for itself, `none` when there is
+   * no single tax line to name a rate for.
+   */
+  source: 'project' | 'methodology' | 'none';
+  /** What the stored cascade says, for showing both figures side by side. */
+  stored_rate: string | null;
+  /** True only when the priced rate and the stored rate genuinely differ. */
+  differs_from_stored: boolean;
 }
 
 /** Compact methodology row for list endpoints. */

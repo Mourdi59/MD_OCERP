@@ -20713,6 +20713,8 @@ const resource = {
     "methodology.subtitle": "Kuidas otsekulud hinnastatakse projektile {{project}} lõplikuks hinnanguks: tööde vs seadmete jaotus, nimelised alusgrupid, järjestikused protsendisammud ja käibemaks.",
     "methodology.this_project": "see projekt",
     "methodology.title": "Sisukalkulatsiooni metoodikad",
+    "methodology.vat_from_project": "See projekt esitab arve käibemaksuga {{rate}}, mille projekt ise määrab. Allolev maksuetapp salvestab väärtuse {{stored}}, kuid see ei ole see, mida tegelikult arvestatakse.",
+    "methodology.vat_from_project_unreadable": "See projekt esitab arve käibemaksuga {{rate}}, mille projekt ise määrab. Allolev maksuetapp ei sisalda loetavat määra, seega arvestatakse projekti määra.",
     "nav.methodologies": "Metoodikad",
     "bim.auto_install_failed_body": "Saate automaatset installimist uuesti proovida, või installida käsitsi GitHubist.",
     "bim.auto_install_failed_title": "{{format}} teisendaja ettevalmistamist ei õnnestunud lõpetada",

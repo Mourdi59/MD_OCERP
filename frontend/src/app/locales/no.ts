@@ -20690,6 +20690,8 @@ const resource = {
     "methodology.subtitle": "Hvordan direkte kostnader får påslag inn i en endelig kalkyle for {{project}}: skillet mellom arbeider og utstyr, navngitte grunnlagssett, de sekvensielle prosenttrinnene og mva.",
     "methodology.this_project": "dette prosjektet",
     "methodology.title": "Kalkylemetodikker",
+    "methodology.vat_from_project": "Dette prosjektet faktureres med {{rate}} mva., som det setter selv. Skattetrinnet nedenfor lagrer {{stored}}, og det er ikke det som blir belastet.",
+    "methodology.vat_from_project_unreadable": "Dette prosjektet faktureres med {{rate}} mva., som det setter selv. Skattetrinnet nedenfor angir ikke en sats som kan leses, så det er prosjektets sats som blir belastet.",
     "nav.methodologies": "Metodikker",
     "bim.auto_install_failed_body": "Du kan prøve den automatiske installasjonen på nytt eller installere den manuelt fra GitHub.",
     "bim.auto_install_failed_title": "Kunne ikke fullføre klargjøringen av {{format}}-konverteren",

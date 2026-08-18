@@ -20687,6 +20687,8 @@ const resource = {
     "methodology.subtitle": "Cách chi phí trực tiếp được cộng phụ phí thành dự toán cuối cùng cho {{project}}: cách tách phần thi công và phần thiết bị, các nhóm cơ sở có tên, các bước phần trăm tuần tự và VAT.",
     "methodology.this_project": "dự án này",
     "methodology.title": "Phương pháp lập dự toán",
+    "methodology.vat_from_project": "Dự án này được tính thuế VAT {{rate}}, do chính dự án tự đặt. Bước thuế bên dưới đang lưu {{stored}}, và đó không phải là giá trị sẽ được tính.",
+    "methodology.vat_from_project_unreadable": "Dự án này được tính thuế VAT {{rate}}, do chính dự án tự đặt. Bước thuế bên dưới không nêu mức thuế có thể đọc được, vì vậy mức thuế của dự án sẽ được tính.",
     "nav.methodologies": "Phương pháp",
     "bim.auto_install_failed_body": "Bạn có thể thử lại quá trình cài đặt tự động hoặc cài đặt thủ công từ GitHub.",
     "bim.auto_install_failed_title": "Không thể hoàn tất việc chuẩn bị bộ chuyển đổi {{format}}",

@@ -20172,6 +20172,8 @@ const resource = {
     "methodology.subtitle": "כיצד עלויות ישירות מתווספות לאומדן סופי עבור {{project}}: הפיצול בין עבודות לציוד, ערכות בסיס בעלות שם, צעדי האחוזים הרציפים ומע\"מ.",
     "methodology.this_project": "פרויקט זה",
     "methodology.title": "מתודולוגיות אמידה",
+    "methodology.vat_from_project": "פרויקט זה מחויב במע\"מ של {{rate}}, שהוא קובע בעצמו. שלב המס למטה שומר את {{stored}}, וזה לא מה שיחויב בפועל.",
+    "methodology.vat_from_project_unreadable": "פרויקט זה מחויב במע\"מ של {{rate}}, שהוא קובע בעצמו. שלב המס למטה אינו כולל שיעור הניתן לקריאה, ולכן שיעור הפרויקט הוא זה שיחויב.",
     "nav.methodologies": "מתודולוגיות",
     "bim.auto_install_failed_body": "תוכלו לנסות שוב את ההתקנה האוטומטית, או להתקין ידנית מ-GitHub.",
     "bim.auto_install_failed_title": "לא ניתן היה לסיים את הכנת ממיר ה-{{format}}",

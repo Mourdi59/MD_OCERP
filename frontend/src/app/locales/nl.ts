@@ -20691,6 +20691,8 @@ const resource = {
     "methodology.subtitle": "Hoe directe kosten worden opgeslagen tot een definitieve begroting voor {{project}}: de splitsing tussen werken en uitrusting, benoemde basissets, de opeenvolgende percentagestappen en btw.",
     "methodology.this_project": "dit project",
     "methodology.title": "Begrotingsmethodieken",
+    "methodology.vat_from_project": "Dit project wordt gefactureerd met {{rate}} btw, die het zelf instelt. De belastingstap hieronder slaat {{stored}} op, en dat is niet wat er in rekening wordt gebracht.",
+    "methodology.vat_from_project_unreadable": "Dit project wordt gefactureerd met {{rate}} btw, die het zelf instelt. De belastingstap hieronder bevat geen leesbaar tarief, dus het projecttarief wordt in rekening gebracht.",
     "nav.methodologies": "Methodieken",
     "bim.auto_install_failed_body": "U kunt de automatische installatie opnieuw proberen of hem handmatig vanaf GitHub installeren.",
     "bim.auto_install_failed_title": "Voorbereiden van de {{format}}-converter kon niet worden voltooid",

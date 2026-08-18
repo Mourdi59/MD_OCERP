@@ -20159,6 +20159,8 @@ const resource = {
     "methodology.subtitle": "Kung paano nagmamarkup ang direktang gastos tungo sa final estimate para sa {{project}}: ang paghahati ng works kumpara sa equipment, mga pinangalanang base set, ang sunud-sunod na hakbang ng porsyento, at VAT.",
     "methodology.this_project": "proyektong ito",
     "methodology.title": "Mga methodology ng pagtatantya",
+    "methodology.vat_from_project": "Ang proyektong ito ay sinisingil ng {{rate}} VAT, na itinatakda nito mismo. Ang hakbang sa buwis sa ibaba ay nag-iimbak ng {{stored}}, at hindi iyon ang sisingilin.",
+    "methodology.vat_from_project_unreadable": "Ang proyektong ito ay sinisingil ng {{rate}} VAT, na itinatakda nito mismo. Ang hakbang sa buwis sa ibaba ay walang matukoy na rate, kaya ang rate ng proyekto ang sisingilin.",
     "nav.methodologies": "Mga Methodology",
     "bim.auto_install_failed_body": "Puwede mong subukan muli ang awtomatikong install, o i-install ito nang manwal mula sa GitHub.",
     "bim.auto_install_failed_title": "Hindi natapos ihanda ang {{format}} converter",

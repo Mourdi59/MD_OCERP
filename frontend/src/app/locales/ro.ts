@@ -20730,6 +20730,8 @@ const resource = {
     "methodology.subtitle": "Cum sunt majorate costurile directe într-un deviz final pentru {{project}}: separarea lucrări vs. echipamente, seturile de bază denumite, etapele procentuale secvențiale și TVA.",
     "methodology.this_project": "acest proiect",
     "methodology.title": "Metodologii de deviz",
+    "methodology.vat_from_project": "Acest proiect este facturat cu {{rate}} TVA, pe care îl stabilește singur. Pasul de taxă de mai jos stochează {{stored}}, iar aceasta nu este valoarea care va fi facturată.",
+    "methodology.vat_from_project_unreadable": "Acest proiect este facturat cu {{rate}} TVA, pe care îl stabilește singur. Pasul de taxă de mai jos nu indică o cotă care poate fi citită, așa că se va factura cota proiectului.",
     "nav.methodologies": "Metodologii",
     "bim.auto_install_failed_body": "Puteți reîncerca instalarea automată sau îl puteți instala manual de pe GitHub.",
     "bim.auto_install_failed_title": "Pregătirea convertorului {{format}} nu a putut fi finalizată",

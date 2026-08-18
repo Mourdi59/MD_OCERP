@@ -20159,6 +20159,8 @@ const resource = {
     "methodology.subtitle": "{{project}} کے لیے direct costs حتمی تخمینے میں کیسے markup ہوتی ہیں: works vs equipment تقسیم، نام شدہ بیس سیٹس، لگاتار فیصد steps اور VAT۔",
     "methodology.this_project": "یہ پروجیکٹ",
     "methodology.title": "تخمینہ methodologies",
+    "methodology.vat_from_project": "یہ پروجیکٹ {{rate}} ویٹ کے ساتھ بل کیا جاتا ہے، جو یہ خود مقرر کرتا ہے۔ نیچے دیا گیا ٹیکس مرحلہ {{stored}} محفوظ کرتا ہے، مگر وصول کی جانے والی رقم یہ نہیں ہے۔",
+    "methodology.vat_from_project_unreadable": "یہ پروجیکٹ {{rate}} ویٹ کے ساتھ بل کیا جاتا ہے، جو یہ خود مقرر کرتا ہے۔ نیچے دیا گیا ٹیکس مرحلہ کوئی پڑھی جا سکنے والی شرح نہیں بتاتا، اس لیے پروجیکٹ کی شرح وصول کی جائے گی۔",
     "nav.methodologies": "طریقہ کار",
     "bim.auto_install_failed_body": "آپ خودکار انسٹال دوبارہ کوشش کر سکتے ہیں، یا GitHub سے دستی انسٹال کر سکتے ہیں۔",
     "bim.auto_install_failed_title": "{{format}} converter تیار کرنا مکمل نہیں ہو سکا",

@@ -20681,6 +20681,8 @@ const resource = {
     "methodology.subtitle": "{{project}} の最終見積りに向けて直接費にどのように間接費が加算されるか：工事費と機器費の区分、名前付き基礎セット、順次適用される百分率ステップ、VAT。",
     "methodology.this_project": "このプロジェクト",
     "methodology.title": "積算方式",
+    "methodology.vat_from_project": "このプロジェクトは自身が設定する{{rate}}のVATで請求されます。以下の税ステップには{{stored}}が保存されていますが、それは実際に請求される値ではありません。",
+    "methodology.vat_from_project_unreadable": "このプロジェクトは自身が設定する{{rate}}のVATで請求されます。以下の税ステップには読み取れる税率が指定されていないため、プロジェクトの税率が請求されます。",
     "nav.methodologies": "積算方式",
     "bim.auto_install_failed_body": "自動インストールを再試行するか、GitHub から手動でインストールできます。",
     "bim.auto_install_failed_title": "{{format}} コンバーターの準備を完了できませんでした",

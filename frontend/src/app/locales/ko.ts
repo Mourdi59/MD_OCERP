@@ -20681,6 +20681,8 @@ const resource = {
     "methodology.subtitle": "{{project}}의 직접비가 최종 견적으로 마크업되는 방식: 공사 대 장비 구분, 명명된 기준 집합, 순차적 백분율 단계 및 부가세.",
     "methodology.this_project": "이 프로젝트",
     "methodology.title": "산정 방법론",
+    "methodology.vat_from_project": "이 프로젝트는 스스로 설정한 {{rate}} 부가세로 청구됩니다. 아래 세금 단계는 {{stored}}을(를) 저장하고 있지만, 실제로 청구되는 값은 아닙니다.",
+    "methodology.vat_from_project_unreadable": "이 프로젝트는 스스로 설정한 {{rate}} 부가세로 청구됩니다. 아래 세금 단계에는 읽을 수 있는 세율이 지정되어 있지 않으므로, 프로젝트의 세율이 청구됩니다.",
     "nav.methodologies": "방법론",
     "bim.auto_install_failed_body": "자동 설치를 다시 시도하거나 GitHub에서 수동으로 설치할 수 있습니다.",
     "bim.auto_install_failed_title": "{{format}} 변환기 준비를 완료할 수 없습니다",

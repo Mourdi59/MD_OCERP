@@ -20699,6 +20699,8 @@ const resource = {
     "methodology.subtitle": "Miten välittömistä kustannuksista muodostetaan lopullinen kustannusarvio projektille {{project}}: rakennustöiden ja laitteiden jako, nimetyt perusjoukot, peräkkäiset prosenttivaiheet ja ALV.",
     "methodology.this_project": "tämä projekti",
     "methodology.title": "Kustannusarviomenetelmät",
+    "methodology.vat_from_project": "Tälle projektille laskutetaan {{rate}} ALV, jonka projekti määrittää itse. Alla oleva verovaihe tallentaa arvon {{stored}}, mutta se ei ole se, mitä veloitetaan.",
+    "methodology.vat_from_project_unreadable": "Tälle projektille laskutetaan {{rate}} ALV, jonka projekti määrittää itse. Alla oleva verovaihe ei sisällä luettavaa prosenttia, joten veloitetaan projektin oma prosentti.",
     "nav.methodologies": "Menetelmät",
     "bim.auto_install_failed_body": "Voit yrittää automaattista asennusta uudelleen tai asentaa sen manuaalisesti GitHubista.",
     "bim.auto_install_failed_title": "{{format}}-muuntimen valmistelua ei voitu viimeistellä",

@@ -20760,6 +20760,8 @@ const resource = {
     "methodology.subtitle": "Jak se přímé náklady přirážejí na konečný rozpočet pro {{project}}: rozdělení na práce vs. zařízení, pojmenované základové sady, postupné procentní kroky a DPH.",
     "methodology.this_project": "tento projekt",
     "methodology.title": "Metodiky rozpočtování",
+    "methodology.vat_from_project": "Tento projekt fakturuje DPH {{rate}}, kterou si určuje sám. Níže uvedený daňový krok ukládá {{stored}}, což ale není hodnota, která bude skutečně účtována.",
+    "methodology.vat_from_project_unreadable": "Tento projekt fakturuje DPH {{rate}}, kterou si určuje sám. Níže uvedený daňový krok neobsahuje čitelnou sazbu, takže se bude účtovat sazba projektu.",
     "nav.methodologies": "Metodiky",
     "bim.auto_install_failed_body": "Můžete zopakovat automatickou instalaci nebo jej nainstalovat ručně z GitHubu.",
     "bim.auto_install_failed_title": "Přípravu konvertoru {{format}} se nepodařilo dokončit",

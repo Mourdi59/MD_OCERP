@@ -20698,6 +20698,8 @@ const resource = {
     "methodology.subtitle": "{{project}} için doğrudan maliyetlerin nihai bir keşfe nasıl kâr/gider eklenerek dönüştürüldüğü: işler ile ekipman ayrımı, adlandırılmış taban kümeleri, sıralı yüzde adımları ve KDV.",
     "methodology.this_project": "bu proje",
     "methodology.title": "Keşif metodolojileri",
+    "methodology.vat_from_project": "Bu proje, kendi belirlediği {{rate}} KDV ile faturalandırılır. Aşağıdaki vergi adımı {{stored}} değerini saklıyor, ancak tahsil edilecek değer bu değildir.",
+    "methodology.vat_from_project_unreadable": "Bu proje, kendi belirlediği {{rate}} KDV ile faturalandırılır. Aşağıdaki vergi adımı okunabilir bir oran belirtmiyor, bu yüzden projenin oranı tahsil edilecektir.",
     "nav.methodologies": "Metodolojiler",
     "bim.auto_install_failed_body": "Otomatik kurulumu yeniden deneyebilir veya GitHub'dan elle kurabilirsiniz.",
     "bim.auto_install_failed_title": "{{format}} dönüştürücüsünün hazırlanması tamamlanamadı",

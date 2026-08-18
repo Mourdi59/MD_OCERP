@@ -21373,6 +21373,8 @@ const resource = {
     "methodology.subtitle": "{{project}} uchun toʻgʻridan-toʻgʻri xarajatlar yakuniy smetaga qanday ustamalanadi: ishlar va jihoz boʻlinishi, nomlangan asos toʻplamlari, ketma-ket foiz qadamlari va QQS.",
     "methodology.this_project": "shu loyiha",
     "methodology.title": "Smeta hisoblash metodologiyalari",
+    "methodology.vat_from_project": "Bu loyiha o'zi belgilaydigan {{rate}} QQS bilan hisoblanadi. Quyidagi soliq bosqichi {{stored}} qiymatini saqlaydi, lekin haqiqatda hisoblanadigan qiymat bu emas.",
+    "methodology.vat_from_project_unreadable": "Bu loyiha o'zi belgilaydigan {{rate}} QQS bilan hisoblanadi. Quyidagi soliq bosqichida o'qiladigan stavka ko'rsatilmagan, shuning uchun loyihaning stavkasi hisoblanadi.",
     "nav.methodologies": "Metodologiyalar",
     "bim.auto_install_failed_body": "Avtomatik oʻrnatishni qayta urinib koʻrishingiz, yoki uni GitHub dan qoʻlda oʻrnatishingiz mumkin.",
     "bim.auto_install_failed_title": "{{format}} konvertorini tayyorlashni yakunlab boʻlmadi",

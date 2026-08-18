@@ -20730,6 +20730,8 @@ const resource = {
     "methodology.subtitle": "Como os custos diretos recebem margens até formarem uma estimativa final para {{project}}: a separação entre obras e equipamento, os conjuntos de base nomeados, as etapas percentuais sequenciais e o IVA.",
     "methodology.this_project": "este projeto",
     "methodology.title": "Metodologias de orçamentação",
+    "methodology.vat_from_project": "Este projeto é faturado com {{rate}} de IVA, que ele próprio define. O passo de imposto abaixo guarda {{stored}}, e não é isso que será cobrado.",
+    "methodology.vat_from_project_unreadable": "Este projeto é faturado com {{rate}} de IVA, que ele próprio define. O passo de imposto abaixo não indica uma taxa legível, pelo que será cobrada a taxa do projeto.",
     "nav.methodologies": "Metodologias",
     "bim.auto_install_failed_body": "Você pode tentar a instalação automática novamente ou instalá-lo manualmente pelo GitHub.",
     "bim.auto_install_failed_title": "Não foi possível concluir a preparação do conversor {{format}}",

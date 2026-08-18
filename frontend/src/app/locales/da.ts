@@ -20689,6 +20689,8 @@ const resource = {
     "methodology.subtitle": "Hvordan direkte omkostninger får tillæg lagt på og bliver til et endeligt overslag for {{project}}: opdelingen mellem arbejder og udstyr, navngivne basissæt, de sekventielle procenttrin og moms.",
     "methodology.this_project": "dette projekt",
     "methodology.title": "Kalkulationsmetoder",
+    "methodology.vat_from_project": "Dette projekt faktureres med {{rate}} moms, som det selv angiver. Skattetrinnet nedenfor gemmer {{stored}}, men det er ikke det, der bliver opkrævet.",
+    "methodology.vat_from_project_unreadable": "Dette projekt faktureres med {{rate}} moms, som det selv angiver. Skattetrinnet nedenfor angiver ikke en sats, der kan læses, så det er projektets sats, der bliver opkrævet.",
     "nav.methodologies": "Metodikker",
     "bim.auto_install_failed_body": "Du kan prøve den automatiske installation igen eller installere den manuelt fra GitHub.",
     "bim.auto_install_failed_title": "Forberedelsen af {{format}}-konverteren kunne ikke fuldføres",

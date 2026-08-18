@@ -20,6 +20,7 @@ import {
   Copy,
   FileSpreadsheet,
   FileText,
+  Info,
   Layers3,
   Lock,
   Save,
@@ -42,6 +43,7 @@ import { TabBar, tabIds } from '@/shared/ui/TabBar';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { getErrorMessage } from '@/shared/lib/api';
+import { fmtPercent } from '@/shared/lib/formatters';
 import { methodologyApi, downloadEstimate, type MethodologyExportFormat } from './api';
 import type { MarkupStep, Methodology, MethodologyUpdate } from './types';
 import { CascadeSection } from './CascadeSection';
@@ -62,6 +64,61 @@ interface Draft {
   baseMapping: Record<string, string[]>;
   composites: Record<string, string[]>;
   steps: MarkupStep[];
+}
+
+/**
+ * Says so when the tax line on screen is not the rate the project is charged.
+ *
+ * The cascade below is editable, and its tax step looks like the rate in
+ * force. It is not, whenever the project states a VAT rate of its own: pricing
+ * substitutes the project's figure, and the exports print it, so an editor
+ * showing nought can belong to a bill costed at twenty five. A methodology
+ * created by hand is the case that bites, because it is seeded with a single
+ * tax step at nought and that is exactly the shape the substitution replaces.
+ *
+ * Both the decision and the comparison come from the server, which is the same
+ * code that performs the substitution. Recomputing either here would be a
+ * second statement of one rule, free to drift from the engine it describes.
+ */
+function ProjectVatNotice({ methodology }: { methodology: Methodology }) {
+  const { t } = useTranslation();
+  const vat = methodology.effective_vat;
+
+  if (!vat?.differs_from_stored || vat.source !== 'project') return null;
+
+  // VAT rates are whole numbers far more often than not, so a blanket single
+  // decimal would print "25.0 %" on most of the world's screens. The unit and
+  // its placement come from the locale formatter rather than from the message,
+  // which is why neither string below carries a per-cent sign of its own.
+  const asPercent = (raw: string | null): string | null => {
+    const n = Number(raw);
+    if (raw === null || raw.trim() === '' || !Number.isFinite(n)) return null;
+    return fmtPercent(n, Number.isInteger(n) ? 0 : 1);
+  };
+
+  const rate = asPercent(vat.rate);
+  if (rate === null) return null;
+  const stored = asPercent(vat.stored_rate);
+
+  return (
+    <div className="flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning-strong">
+      <Info size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+      <span>
+        {stored === null
+          ? t('methodology.vat_from_project_unreadable', {
+              defaultValue:
+                'This project is billed at {{rate}} VAT, which it sets itself. The tax step below does not state a rate that can be read, so the project rate is what will be charged.',
+              rate,
+            })
+          : t('methodology.vat_from_project', {
+              defaultValue:
+                'This project is billed at {{rate}} VAT, which it sets itself. The tax step below stores {{stored}}, and that is not what will be charged.',
+              rate,
+              stored,
+            })}
+      </span>
+    </div>
+  );
 }
 
 function toDraft(m: Methodology): Draft {
@@ -457,39 +514,42 @@ export function MethodologyEditorPage() {
 
       <div role="tabpanel" id={TAB_IDS.panelId(tab)} aria-labelledby={TAB_IDS.tabId(tab)}>
         {tab === 'cascade' && (
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <CascadeSection
-              readOnly={readOnly}
-              baseMapping={draft.baseMapping}
-              composites={draft.composites}
-              steps={draft.steps}
-              onChangeBaseMapping={(baseMapping) => updateDraft({ baseMapping })}
-              onChangeComposites={(composites) => updateDraft({ composites })}
-              onChangeSteps={(steps) => updateDraft({ steps })}
-            />
-            <div className="xl:sticky xl:top-4 self-start">
-              <Card padding="lg">
-                <h3 className="text-sm font-semibold text-content-primary">
-                  {t('methodology.preview.title', { defaultValue: 'Live preview' })}
-                </h3>
-                <p className="mt-0.5 text-xs text-content-secondary">
-                  {t('methodology.preview.subtitle', {
-                    defaultValue: 'How the current cascade marks up a sample of direct costs.',
-                  })}
-                </p>
-                <div className="mt-3">
-                  <CascadePreview
-                    projectId={activeProjectId}
-                    methodologySlug={methodology.slug}
-                    baseMapping={draft.baseMapping}
-                    composites={draft.composites}
-                    steps={draft.steps}
-                    decimals={draft.decimals}
-                    currency={draft.currency}
-                    dirty={dirty}
-                  />
-                </div>
-              </Card>
+          <div className="space-y-4">
+            <ProjectVatNotice methodology={methodology} />
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+              <CascadeSection
+                readOnly={readOnly}
+                baseMapping={draft.baseMapping}
+                composites={draft.composites}
+                steps={draft.steps}
+                onChangeBaseMapping={(baseMapping) => updateDraft({ baseMapping })}
+                onChangeComposites={(composites) => updateDraft({ composites })}
+                onChangeSteps={(steps) => updateDraft({ steps })}
+              />
+              <div className="xl:sticky xl:top-4 self-start">
+                <Card padding="lg">
+                  <h3 className="text-sm font-semibold text-content-primary">
+                    {t('methodology.preview.title', { defaultValue: 'Live preview' })}
+                  </h3>
+                  <p className="mt-0.5 text-xs text-content-secondary">
+                    {t('methodology.preview.subtitle', {
+                      defaultValue: 'How the current cascade marks up a sample of direct costs.',
+                    })}
+                  </p>
+                  <div className="mt-3">
+                    <CascadePreview
+                      projectId={activeProjectId}
+                      methodologySlug={methodology.slug}
+                      baseMapping={draft.baseMapping}
+                      composites={draft.composites}
+                      steps={draft.steps}
+                      decimals={draft.decimals}
+                      currency={draft.currency}
+                      dirty={dirty}
+                    />
+                  </div>
+                </Card>
+              </div>
             </div>
           </div>
         )}

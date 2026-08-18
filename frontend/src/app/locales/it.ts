@@ -20737,6 +20737,8 @@ const resource = {
     "methodology.subtitle": "Come i costi diretti vengono ricaricati in una stima finale per {{project}}: la suddivisione tra opere e attrezzature, gli insiemi di basi denominati, i passaggi percentuali sequenziali e l'IVA.",
     "methodology.this_project": "questo progetto",
     "methodology.title": "Metodologie di stima",
+    "methodology.vat_from_project": "Questo progetto viene fatturato con un'IVA del {{rate}}, che imposta autonomamente. Il passaggio fiscale sottostante memorizza {{stored}}, e non è ciò che verrà addebitato.",
+    "methodology.vat_from_project_unreadable": "Questo progetto viene fatturato con un'IVA del {{rate}}, che imposta autonomamente. Il passaggio fiscale sottostante non indica un'aliquota leggibile, quindi verrà addebitata l'aliquota del progetto.",
     "nav.methodologies": "Metodologie",
     "bim.auto_install_failed_body": "Puoi riprovare l'installazione automatica oppure installarlo manualmente da GitHub.",
     "bim.auto_install_failed_title": "Impossibile completare la preparazione del convertitore {{format}}",
