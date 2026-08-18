@@ -244,6 +244,29 @@ function ContactRef({
 }
 
 /**
+ * Stands in for a party the entry simply does not name.
+ *
+ * The bare em dash used to be printed as ordinary text, and on the From and
+ * To columns it was also copied into the cell's `title`, so hovering an empty
+ * cell produced a tooltip whose entire content was a dash. Read straight, a
+ * dash sitting in the same colour as the real values looks like a value: the
+ * reader cannot tell "no sender was recorded" from "the sender is a dash".
+ * The glyph is now decorative and the meaning is carried by the label, so the
+ * cell announces itself as empty to a screen reader and explains itself on
+ * hover instead of repeating the punctuation.
+ */
+function NoValue({ className }: { className?: string }) {
+  const { t } = useTranslation();
+  const label = t('common.not_set', { defaultValue: 'Not set' });
+  return (
+    <span className={clsx('text-content-quaternary', className)} title={label}>
+      <span aria-hidden="true">{'—'}</span>
+      <span className="sr-only">{label}</span>
+    </span>
+  );
+}
+
+/**
  * Render a comma-joined list of party values (used for the To column,
  * which is a string[]). Each entry resolves independently.
  */
@@ -254,7 +277,7 @@ function ContactRefList({
   values: string[];
   className?: string;
 }) {
-  if (values.length === 0) return <>{'—'}</>;
+  if (values.length === 0) return <NoValue />;
   return (
     <span className={clsx('inline-flex flex-wrap items-center gap-x-1', className)}>
       {values.map((v, i) => (
@@ -973,11 +996,13 @@ const CorrespondenceRow = React.memo(function CorrespondenceRow({
   const [expanded, setExpanded] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const fromLabel = item.from_contact_id || '—';
+  // Undefined rather than a dash: these feed `title`, and a tooltip that
+  // contains only punctuation tells the reader less than no tooltip at all.
+  const fromLabel = item.from_contact_id || undefined;
   const toLabel =
     (item.to_contact_ids ?? []).length > 0
       ? (item.to_contact_ids ?? []).join(', ')
-      : '—';
+      : undefined;
   const docCount = (item.linked_document_ids ?? []).length;
   const attachments = item.attachments ?? [];
 
@@ -1087,7 +1112,7 @@ const CorrespondenceRow = React.memo(function CorrespondenceRow({
           {item.from_contact_id ? (
             <ContactRef value={item.from_contact_id} className="text-xs" />
           ) : (
-            fromLabel
+            <NoValue />
           )}
         </span>
 
@@ -1134,7 +1159,7 @@ const CorrespondenceRow = React.memo(function CorrespondenceRow({
               {item.from_contact_id ? (
                 <ContactRef value={item.from_contact_id} className="text-xs" />
               ) : (
-                '—'
+                <NoValue />
               )}
             </span>
             <span className="inline-flex items-center gap-1">
