@@ -407,12 +407,23 @@ def read_supported_languages(path: str = DEFAULT_I18N_TS_PATH) -> set[str]:
 
     Duplicated from check_i18n_orphan_keys.py rather than imported, for the
     same reason the rest of this file's helpers are.
+
+    A locale can leave SUPPORTED_LANGUAGES two ways, and both have to read as
+    absent here. mn's entry was deleted outright. uz's was commented out in
+    place, `// { code: 'uz', ... },`, so the literal text `code: 'uz'` is
+    still sitting in the file. A regex blind to `//` would match it anyway
+    and keep enforcing uz as supported for the wrong reason. Each line is cut
+    at its first `//` before matching, which is safe for this array because
+    none of its fields ever contain that sequence.
     """
     with open(path, encoding="utf-8") as fh:
         text = fh.read()
     start = text.find("SUPPORTED_LANGUAGES")
     end = text.find("\n];", start) if start >= 0 else -1
-    return set(_SUPPORTED_CODE.findall(text[start:end])) if end >= 0 else set()
+    if end < 0:
+        return set()
+    active = "\n".join(line.split("//", 1)[0] for line in text[start:end].splitlines())
+    return set(_SUPPORTED_CODE.findall(active))
 
 
 def read_en_values(en_path: str) -> dict[str, str]:

@@ -155,12 +155,24 @@ def read_supported_languages(path: str = I18N_TS_PATH) -> set[str]:
     for it while the file stayed so the work resumes from where it stopped.
     This guard's strictness has to follow what a user can select, not what
     happens to exist on disk.
+
+    A locale can leave this list two ways, and both have to read as absent
+    here. mn's entry was deleted outright. uz's was commented out in place,
+    `// { code: 'uz', ... },`, so the literal text `code: 'uz'` is still
+    sitting in the file. A regex blind to `//` would match it anyway and
+    keep enforcing uz as supported for the wrong reason, which is exactly
+    the failure this guard exists to avoid one layer up. Each line is cut at
+    its first `//` before matching, which is safe for this array because
+    none of its fields ever contain that sequence.
     """
     with open(path, encoding="utf-8") as fh:
         text = fh.read()
     start = text.find("SUPPORTED_LANGUAGES")
     end = text.find("\n];", start) if start >= 0 else -1
-    return set(_SUPPORTED_CODE.findall(text[start:end])) if end >= 0 else set()
+    if end < 0:
+        return set()
+    active = "\n".join(line.split("//", 1)[0] for line in text[start:end].splitlines())
+    return set(_SUPPORTED_CODE.findall(active))
 
 
 def read_en_values(path: str = EN_PATH) -> dict[str, str]:
