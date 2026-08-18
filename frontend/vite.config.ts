@@ -251,7 +251,10 @@ export default defineConfig({
             // are ``i18n-<code>``.  StaleWhileRevalidate keeps the
             // active locale instant-on while still pulling fresh keys
             // in the background.
-            urlPattern: ({ url }) => /\/assets\/i18n-[a-z]{2}-.*\.js$/.test(url.pathname),
+            // Regional codes carry a hyphen and a country, so the code half
+            // has to allow one or this lane silently skips en-US and the
+            // four Spanish and Portuguese variants.
+            urlPattern: ({ url }) => /\/assets\/i18n-[a-z]{2,3}(?:-[A-Z]{2})?-.*\.js$/.test(url.pathname),
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'oce-i18n-locales',
@@ -409,7 +412,17 @@ export default defineConfig({
           // keys survive minor unrelated edits.  Checked first because
           // these are source files, not node_modules (the guard below
           // would otherwise skip them).
-          const localeMatch = id.match(/[\\/]src[\\/]app[\\/]locales[\\/]([a-z]{2})\.ts$/);
+          // The code is not always two letters.  Six catalogues are named
+          // otherwise - en-US, es-MX, es-CL, es-CO, pt-BR, fil - and a
+          // two-letter pattern left every one of them unnamed here.  They
+          // still got a chunk each, because the dynamic import splits them
+          // either way, so nothing about the build looked wrong.  What they
+          // lost was the ``i18n-`` prefix, which is what ``globIgnores`` and
+          // the runtime cache lane below both key on.  Measured on the
+          // 15.0.0 build that put 15.6 MB of locale catalogues into the
+          // precache manifest, which is precisely what the comment above
+          // ``globIgnores`` says must never happen again.
+          const localeMatch = id.match(/[\\/]src[\\/]app[\\/]locales[\\/]([a-z]{2,3}(?:-[A-Z]{2})?)\.ts$/);
           if (localeMatch) return `i18n-${localeMatch[1]}`;
           // Vite's module-preload helper (`__vitePreload`) is a virtual module
           // ("\0vite/preload-helper.js"). Left unassigned, Rollup folds it into
