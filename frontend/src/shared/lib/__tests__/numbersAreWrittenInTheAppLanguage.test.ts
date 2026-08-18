@@ -80,6 +80,11 @@ const ALLOWED: ReadonlyArray<{ file: string; snippet: string; why: string }> = [
     snippet: 'new Intl.NumberFormat(undefined, base)',
     why: 'Deliberate retry after Intl rejects a malformed locale tag arriving from i18next.',
   },
+  {
+    file: 'test/setup.ts',
+    snippet: 'new Intl.DateTimeFormat().resolvedOptions().timeZone',
+    why: 'A probe, not a rendering. It asks the host which timezone this worker resolved to, and no locale argument answers that.',
+  },
 ];
 
 // `toFixed` is the same defect arriving by a different road. It takes no
@@ -531,6 +536,7 @@ describe('every number and date is written in the language the reader picked', (
       'features/reporting/ReportingPage.tsx :: ${template.name} - ${new Date().toLocaleDateString()}',
       'shared/lib/formatters.ts :: return n.toLocaleString();',
       'shared/lib/numberFormat.ts :: new Intl.NumberFormat(undefined, base)',
+      'test/setup.ts :: new Intl.DateTimeFormat().resolvedOptions().timeZone',
     ]);
     // Every exemption states why it is one.
     expect(ALLOWED.filter((a) => a.why.length < 20)).toEqual([]);
