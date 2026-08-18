@@ -350,6 +350,36 @@ const DOCUMENT_BUILDERS: readonly (readonly [string, number])[] = [
 
 const DOCUMENT_FILES = new Set(DOCUMENT_BUILDERS.map(([file]) => file));
 
+/**
+ * What this test says when it fails, because the number on its own invites the
+ * wrong repair. The counts describe the branch and this file reads the working
+ * tree, so the likeliest cause of a red run is a drifted working copy, and the
+ * cheapest thing a reader can do about that is edit the number until it goes
+ * green. That is the one move which quietly grows the exemption, which is the
+ * exact thing the list exists to stop, so the message names the cure instead of
+ * leaving it to be worked out.
+ */
+const DRIFTED = [
+  'A held document formats a different number of figures on the interface language',
+  'than this list says it does. Two things cause that and they want opposite fixes.',
+  '',
+  '1. Your working copy has drifted from the branch. This test reads the working',
+  '   tree while the counts describe the branch, so a converted or half converted',
+  '   copy of one of these files fails here while CI stays green. Look before you',
+  '   touch anything:',
+  '',
+  '     git diff HEAD -- frontend/src/<the file named in the diff below>',
+  '',
+  '   If that shows work you did not mean to keep, put the branch bytes back and',
+  '   leave the number alone. Read the diff first: restoring throws away whatever',
+  '   is on disk, and somebody else may be holding that file.',
+  '',
+  '2. You moved a figure to the recipient locale on purpose. Then this number is',
+  '   what records it, and changing it here is the point rather than a chore.',
+  '',
+  'Editing the count to match a drifted disk is the one wrong answer of the two.',
+].join('\n');
+
 const CERTAINLY_A_DATE =
   /(?:new Date\([^()]*\)|Date\.now\(\)|parseISO\([^()]*\))$|\b\w*(?:_at|_date|At|Date)$/;
 const CERTAINLY_A_NUMBER =
@@ -558,7 +588,7 @@ describe('there is one place the number locale comes from', () => {
       }
       held.push(`${file} ${seen}`);
     }
-    expect(held).toEqual(DOCUMENT_BUILDERS.map(([file, count]) => `${file} ${count}`));
+    expect(held, DRIFTED).toEqual(DOCUMENT_BUILDERS.map(([file, count]) => `${file} ${count}`));
     expect(DOCUMENT_FILES.size).toBe(DOCUMENT_BUILDERS.length);
 
     // Six of the thirty six are dates, and a date keeps the interface language
