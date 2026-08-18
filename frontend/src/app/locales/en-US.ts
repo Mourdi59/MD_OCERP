@@ -1511,6 +1511,10 @@ const resource = {
     "cases.see_every_field_mark_on_one_sheet.step.open.why": "Marks are recorded against a page, not a project, so being on the right page of the right sheet is the whole basis of what follows. The revision matters too, because a punch item raised against revision B can be describing a detail that revision C already deleted.",
     "cases.see_every_field_mark_on_one_sheet.step.pin.why": "A note that reads crack near the elevator lobby sends the next person hunting along forty meters of corridor. A pin sitting on the drawing at the point in question is unambiguous, and it still means the same thing to somebody who was not on the walk with you.",
     "price_breakdown.kind.labor": "Labor",
+    "site_prep.gate_unknown_badge": "No gates set",
+    "site_prep.gate_unknown_desc": "No commencement gates have been defined for this project, so there is nothing to clear yet. Add the readiness items this start depends on to see whether the site can be mobilized.",
+    "site_prep.gate_unknown_title": "Mobilization readiness not established",
+    "validation.duration_ms": "Duration: {{ms}}ms",
   }
 } as { translation: Record<string, string> };
 
