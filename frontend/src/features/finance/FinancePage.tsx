@@ -77,7 +77,16 @@ import { StatementsTab } from './StatementsTab';
 import { RetentionLedgerTab } from './RetentionLedgerTab';
 import { EInvoiceModal } from './EInvoiceModal';
 import { financeGuide } from './financeGuide';
-import { fmtPercent } from '@/shared/lib/formatters';
+import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
+
+// English fallbacks for the computed `finance.payment_status_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  completed: 'Completed', refunded: 'Refunded'
+};
+
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -1600,20 +1609,14 @@ function BudgetsTab({ projectId }: { projectId: string }) {
                   <td className="px-4 py-3 text-right">
                     <MoneyDisplay amount={forecastValue} currency={rowCurrency} />
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <span
-                      className={
-                        b.variance >= 0
-                          ? 'text-semantic-success font-medium'
-                          : 'text-semantic-error font-medium'
-                      }
-                    >
-                      <MoneyDisplay
-                        amount={b.variance}
-                        currency={rowCurrency}
-                        colorize
-                      />
-                    </span>
+                  {/* One authority for the colour. The wrapper span used to
+                      colour the cell from `b.variance >= 0` while MoneyDisplay
+                      coloured the number from the same value: two rules over
+                      one figure, and the outer one compared a string that
+                      arrives as money on the wire, so an empty variance read
+                      as a surplus and painted green. MoneyDisplay decides. */}
+                  <td className="px-4 py-3 text-right font-medium">
+                    <MoneyDisplay amount={b.variance} currency={rowCurrency} colorize />
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
@@ -1630,6 +1633,15 @@ function BudgetsTab({ projectId }: { projectId: string }) {
               );
             })}
           </tbody>
+          {/* The totals are written exactly like the rows they sum. They used to
+              be compacted, which sounds like a space saving and is not one:
+              German has no short currency form below a million, so a compacted
+              total of 225,297.60 came out as "225.297,6 $" - full length, one
+              decimal - directly under rows reading "133.794,64 $", and the
+              reader was asked to compare two precisions in one column. Above a
+              million the same cell collapsed to "9,4 Mio. €" instead. A column
+              is compact all the way down or not at all, and these columns are
+              wide enough not to be. */}
           {totals && (
             <tfoot>
               <tr className="bg-surface-secondary/60 font-semibold">
@@ -1637,22 +1649,22 @@ function BudgetsTab({ projectId }: { projectId: string }) {
                   {t('common.total')}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <MultiCurrencyTotal items={totals.original} variant="inline" compact />
+                  <MultiCurrencyTotal items={totals.original} variant="inline" />
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <MultiCurrencyTotal items={totals.revised} variant="inline" compact />
+                  <MultiCurrencyTotal items={totals.revised} variant="inline" />
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <MultiCurrencyTotal items={totals.committed} variant="inline" compact />
+                  <MultiCurrencyTotal items={totals.committed} variant="inline" />
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <MultiCurrencyTotal items={totals.actual} variant="inline" compact />
+                  <MultiCurrencyTotal items={totals.actual} variant="inline" />
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <MultiCurrencyTotal items={totals.forecast} variant="inline" compact />
+                  <MultiCurrencyTotal items={totals.forecast} variant="inline" />
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <MultiCurrencyTotal items={totals.variance} variant="inline" compact />
+                  <MultiCurrencyTotal items={totals.variance} variant="inline" />
                 </td>
                 <td />
               </tr>
@@ -1727,13 +1739,7 @@ function BudgetsTab({ projectId }: { projectId: string }) {
                   <span className="text-content-secondary font-medium">
                     {t('finance.variance', { defaultValue: 'Variance' })}
                   </span>
-                  <span
-                    className={
-                      b.variance >= 0
-                        ? 'text-semantic-success font-medium'
-                        : 'text-semantic-error font-medium'
-                    }
-                  >
+                  <span className="font-medium">
                     <MoneyDisplay amount={b.variance} currency={rowCurrency} colorize />
                   </span>
                 </div>
@@ -2606,11 +2612,11 @@ function InvoicesTab({ projectId }: { projectId: string }) {
                         {t('common.total')}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <MultiCurrencyTotal items={invoiceTotals.totalAmount} variant="inline" compact />
+                        <MultiCurrencyTotal items={invoiceTotals.totalAmount} variant="inline" />
                       </td>
                       <td className="px-4 py-3 text-center text-xs text-content-tertiary">
                         {t('finance.total_paid', { defaultValue: 'Paid' })}:{' '}
-                        <MultiCurrencyTotal items={invoiceTotals.totalPaid} variant="inline" compact />
+                        <MultiCurrencyTotal items={invoiceTotals.totalPaid} variant="inline" />
                       </td>
                       <td />
                     </tr>
@@ -3047,7 +3053,7 @@ function InvoicesTab({ projectId }: { projectId: string }) {
                   onChange={(e) => {
                     const sub = e.target.value;
                     const tax = invoiceForm.tax || '0';
-                    const total = (parseFloat(sub || '0') + parseFloat(tax)).toFixed(2);
+                    const total = fmtFixed(parseFloat(sub || '0') + parseFloat(tax), 2);
                     // Only auto-fill the total while the user hasn't taken it
                     // over manually; otherwise preserve their entered total.
                     setInvoiceForm((f) => ({
@@ -3074,7 +3080,7 @@ function InvoicesTab({ projectId }: { projectId: string }) {
                   onChange={(e) => {
                     const tax = e.target.value;
                     const sub = invoiceForm.subtotal || '0';
-                    const total = (parseFloat(sub) + parseFloat(tax || '0')).toFixed(2);
+                    const total = fmtFixed(parseFloat(sub) + parseFloat(tax || '0'), 2);
                     // Preserve a manually entered total; otherwise keep it in
                     // sync with subtotal+tax.
                     setInvoiceForm((f) => ({
@@ -3116,7 +3122,7 @@ function InvoicesTab({ projectId }: { projectId: string }) {
                       const sub = parseFloat(invoiceForm.subtotal || '0');
                       const tax = parseFloat(invoiceForm.tax || '0');
                       const total = (Number.isFinite(sub) ? sub : 0) + (Number.isFinite(tax) ? tax : 0);
-                      return total.toFixed(2);
+                      return fmtFixed(total, 2);
                     })()}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -3135,7 +3141,7 @@ function InvoicesTab({ projectId }: { projectId: string }) {
                     onClick={() => {
                       const sub = parseFloat(invoiceForm.subtotal || '0');
                       const tax = parseFloat(invoiceForm.tax || '0');
-                      const total = ((Number.isFinite(sub) ? sub : 0) + (Number.isFinite(tax) ? tax : 0)).toFixed(2);
+                      const total = fmtFixed((Number.isFinite(sub) ? sub : 0) + (Number.isFinite(tax) ? tax : 0), 2);
                       setAmountEditedManually(false);
                       setInvoiceForm((f) => ({ ...f, amount: total }));
                     }}
@@ -3311,7 +3317,7 @@ function PaymentsTab({
                     const status = p.status || (p.is_refund ? 'refunded' : 'completed');
                     return (
                       <Badge variant={status === 'refunded' ? 'warning' : 'success'} size="sm">
-                        {t(`finance.payment_status_${status}`, { defaultValue: status })}
+                        {t(`finance.payment_status_${status}`, { defaultValue: PAYMENT_STATUS_LABELS[status] ?? status })}
                       </Badge>
                     );
                   })()}
@@ -3326,7 +3332,7 @@ function PaymentsTab({
                   {t('common.total', { defaultValue: 'Total' })}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <MultiCurrencyTotal items={paymentTotals.total} variant="inline" compact />
+                  <MultiCurrencyTotal items={paymentTotals.total} variant="inline" />
                 </td>
                 <td colSpan={2} />
               </tr>
@@ -3634,7 +3640,7 @@ function EVMTab({
                     colorize={kpi.isVariance}
                   />
                 ) : (
-                  (kpi.value ?? 0).toFixed(2)
+                  fmtFixed(kpi.value ?? 0, 2)
                 )}
               </div>
               {kpi.isIndex && (() => {

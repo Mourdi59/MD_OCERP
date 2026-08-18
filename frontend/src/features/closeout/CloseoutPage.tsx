@@ -53,6 +53,17 @@ import {
   type CloseoutProjectType,
 } from './api';
 import BindDocumentModal from './BindDocumentModal';
+import { fmtDate } from '@/shared/lib/formatters';
+
+// English fallbacks for the computed `closeout.project_type.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const PROJECT_TYPE_LABELS: Record<string, string> = {
+  commercial: 'Commercial', residential: 'Residential', infrastructure: 'Infrastructure',
+  fitout: 'Fit-out', custom: 'Custom'
+};
+
 
 const PROJECT_TYPES: CloseoutProjectType[] = [
   'commercial',
@@ -498,7 +509,7 @@ export default function CloseoutPage() {
                   loading={createMutation.isPending && createMutation.variables === pt}
                 >
                   {t(`closeout.project_type.${pt}`, {
-                    defaultValue: pt.charAt(0).toUpperCase() + pt.slice(1),
+                    defaultValue: PROJECT_TYPE_LABELS[pt] ?? pt.charAt(0).toUpperCase() + pt.slice(1),
                   })}
                 </Button>
               ))}
@@ -528,7 +539,7 @@ export default function CloseoutPage() {
                     <p className="text-xs text-content-tertiary">
                       {t('closeout.issued_at', {
                         defaultValue: 'Issued {{when}}',
-                        when: pkg.issued_at,
+                        when: fmtDate(pkg.issued_at),
                       })}
                     </p>
                   ) : null}
@@ -579,7 +590,7 @@ export default function CloseoutPage() {
                 <p className="text-xs text-content-tertiary">
                   {t('closeout.last_built', {
                     defaultValue: 'Last built {{when}}',
-                    when: pkg.last_built_at,
+                    when: fmtDate(pkg.last_built_at),
                   })}
                 </p>
               ) : null}
@@ -736,7 +747,7 @@ export default function CloseoutPage() {
                             {slot.binding.verified_at
                               ? ` - ${t('closeout.verified_on', {
                                   defaultValue: 'verified {{when}}',
-                                  when: slot.binding.verified_at,
+                                  when: fmtDate(slot.binding.verified_at),
                                 })}`
                               : ''}
                           </p>

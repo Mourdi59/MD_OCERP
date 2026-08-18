@@ -103,6 +103,17 @@ import {
 } from './api';
 import { InsightsPanel, InsightsToggleButton, useModuleInsights } from '@/features/insights';
 import { buildContractsInsights } from './contractsInsights';
+import { getIntlLocale, fmtPercent } from '@/shared/lib/formatters';
+
+// English fallbacks for the computed `contracts.type_*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const CONTRACTS_TYPE_LABELS: Record<string, string> = {
+  lump_sum: 'Lump sum', gmp: 'GMP', cost_plus: 'Cost plus', tm: 'T&M', unit_price: 'Unit price',
+  design_build: 'Design and build', combination: 'Combination', remeasurement: 'Remeasurement'
+};
+
 
 type Tab = 'contracts' | 'claims' | 'final_accounts' | 'templates';
 
@@ -246,7 +257,7 @@ function ContractTypeChip({ type }: { type: ContractType }) {
   const c = CONTRACT_TYPE_COLORS[type] ?? CONTRACT_TYPE_FALLBACK;
   const safeType = type || 'unknown';
   const label = t(`contracts.type_${safeType}`, {
-    defaultValue: safeType === 'tm' ? 'T&M' : safeType.replace(/_/g, ' '),
+    defaultValue: CONTRACTS_TYPE_LABELS[safeType] ?? (safeType === 'tm' ? 'T&M' : safeType.replace(/_/g, ' ')),
   });
   return (
     <span
@@ -776,7 +787,7 @@ export function ContractsPage() {
             {CONTRACT_TYPES.map((tp) => (
               <option key={tp} value={tp}>
                 {t(`contracts.type_${tp}`, {
-                  defaultValue: tp === 'tm' ? 'T&M' : tp.replace(/_/g, ' '),
+                  defaultValue: CONTRACTS_TYPE_LABELS[tp] ?? (tp === 'tm' ? 'T&M' : tp.replace(/_/g, ' ')),
                 })}
               </option>
             ))}
@@ -1049,14 +1060,26 @@ function ContractTable({
               <td className="px-4 py-2 font-mono text-xs text-content-secondary">
                 {r.code}
               </td>
-              <td className="px-4 py-2 font-medium text-content-primary truncate max-w-[320px]">
+              <td
+                className="px-4 py-2 font-medium text-content-primary truncate max-w-[320px]"
+                title={r.title || undefined}
+              >
                 {r.title || '—'}
               </td>
               <td className="px-4 py-2">
                 <ContractTypeChip type={r.contract_type} />
               </td>
-              <td className="px-4 py-2 text-xs text-content-secondary capitalize">
-                {r.counterparty_type}
+              {/* The register printed `counterparty_type` here, so the column
+                  headed Counterparty answered "Client" or "Subcontractor" - the
+                  role, never the firm. CounterpartyLink already resolves the id
+                  to a firm name for the detail drawer and degrades to that same
+                  type word when it cannot; the list uses it too rather than
+                  keeping a second, worse answer. The click guard keeps the deep
+                  link from also opening the row drawer underneath it. */}
+              <td className="px-4 py-2 text-xs text-content-secondary">
+                <span onClick={(e) => e.stopPropagation()}>
+                  <CounterpartyLink type={r.counterparty_type} id={r.counterparty_id} />
+                </span>
               </td>
               <td className="px-4 py-2">
                 <div className="flex items-center gap-2">
@@ -1089,13 +1112,15 @@ function ContractTable({
               </span>
             </td>
             <td className="px-4 py-2 text-right text-sm font-medium">
+              {/* Not compacted: the Value column above prints every figure in
+                  full, and a register total written to a different precision
+                  than the column it sums makes the reader do the conversion. */}
               <MultiCurrencyTotal
                 items={rows.map((r) => ({
                   amount: r.total_value,
                   currency: r.currency,
                 }))}
                 variant="inline"
-                compact
               />
             </td>
           </tr>
@@ -1801,7 +1826,7 @@ export function ContractDetailDrawer({
                 label={t('contracts.retention_pct', {
                   defaultValue: 'Retention %',
                 })}
-                value={`${toNum(contract.retention_percent).toFixed(2)} %`}
+                value={fmtPercent(toNum(contract.retention_percent), 2)}
               />
               <Field
                 label={t('contracts.release_event', {
@@ -1887,7 +1912,7 @@ export function ContractDetailDrawer({
                           {l.description || '—'}
                         </td>
                         <td className="py-1 text-right text-content-secondary">
-                          {toNum(l.quantity).toLocaleString()} {l.unit || ''}
+                          {toNum(l.quantity).toLocaleString(getIntlLocale())} {l.unit || ''}
                         </td>
                         <td className="py-1 text-right text-content-secondary">
                           <MoneyDisplay
@@ -2273,7 +2298,7 @@ function CreateContractModal({
             {CONTRACT_TYPES.map((tp) => (
               <option key={tp} value={tp}>
                 {t(`contracts.type_${tp}`, {
-                  defaultValue: tp === 'tm' ? 'T&M' : tp.replace(/_/g, ' '),
+                  defaultValue: CONTRACTS_TYPE_LABELS[tp] ?? (tp === 'tm' ? 'T&M' : tp.replace(/_/g, ' ')),
                 })}
               </option>
             ))}
