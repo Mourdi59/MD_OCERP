@@ -390,7 +390,7 @@ export function VersionHistoryDrawer({ boqId, isOpen, onClose }: VersionHistoryD
                 </div>
               ) : isError ? (
                 <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                  <Clock size={32} className="text-semantic-error/50 mb-3" />
+                  <Clock size={32} className="text-semantic-error mb-3" />
                   <p className="text-sm text-content-secondary">
                     {t('boq.snapshots_error', { defaultValue: 'Failed to load version history.' })}
                   </p>
@@ -552,7 +552,7 @@ export function VersionHistoryDrawer({ boqId, isOpen, onClose }: VersionHistoryD
               </div>
             ) : isActError ? (
               <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                <History size={32} className="text-semantic-error/50 mb-3" />
+                <History size={32} className="text-semantic-error mb-3" />
                 <p className="text-sm text-content-secondary">
                   {t('boq.activity_error', { defaultValue: 'Failed to load field history.' })}
                 </p>

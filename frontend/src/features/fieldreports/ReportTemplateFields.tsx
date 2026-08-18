@@ -428,7 +428,7 @@ export function ReportAttachments({
                     type="button"
                     disabled={busy}
                     onClick={() => handleDelete(d.id)}
-                    className="rounded p-1 text-semantic-error/60 hover:bg-semantic-error-bg hover:text-semantic-error disabled:opacity-50"
+                    className="rounded p-1 text-content-tertiary hover:bg-semantic-error-bg hover:text-semantic-error disabled:opacity-50"
                     title={t('common.delete', { defaultValue: 'Delete' })}
                     aria-label={t('common.delete', { defaultValue: 'Delete' })}
                   >

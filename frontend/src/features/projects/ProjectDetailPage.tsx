@@ -987,7 +987,7 @@ function ImportDialog({
                         return (
                           <div className="space-y-1.5">
                             <p>{t('import.cad_converter_missing', { defaultValue: 'CAD converter not installed.' })}</p>
-                            <p className="text-xs text-semantic-error/80">
+                            <p className="text-xs text-semantic-error">
                               Download DDC converters from{' '}
                               <a
                                 href="https://github.com/datadrivenconstruction/ddc-community-toolkit/releases"
@@ -1018,7 +1018,7 @@ function ImportDialog({
                 <CheckCircle2 size={20} className="shrink-0 text-semantic-success" />
                 <div>
                   <p className="text-sm font-medium text-semantic-success">{t('import.complete', { defaultValue: 'Import complete' })}</p>
-                  <p className="text-xs text-semantic-success/80">
+                  <p className="text-xs text-semantic-success">
                     {t('import.positions_imported', { defaultValue: '{{count}} positions imported', count: result.imported })}
                     {(result.skipped ?? 0) > 0 && `, ${t('import.rows_skipped', { defaultValue: '{{count}} rows skipped', count: result.skipped })}`}
                   </p>
@@ -1078,7 +1078,7 @@ function ImportDialog({
                   <p className="text-xs font-medium text-semantic-error mb-2">{t('import.error_details', { defaultValue: 'Error details:' })}</p>
                   <div className="max-h-32 overflow-y-auto space-y-1">
                     {result.errors.map((err, i) => (
-                      <p key={`${err.row || err.item || ''}-${i}`} className="text-xs text-semantic-error/80">
+                      <p key={`${err.row || err.item || ''}-${i}`} className="text-xs text-semantic-error">
                         {err.row ? `${t('import.error_row', { defaultValue: 'Row {{row}}', row: err.row })}: ` : err.item ? `${err.item}: ` : ''}
                         {err.error}
                       </p>

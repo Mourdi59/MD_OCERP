@@ -1016,7 +1016,7 @@ export function InlinePdfAnnotator({
               variant="ghost"
               size="sm"
               onClick={() => setAnnotations([])}
-              className="text-semantic-error/70 hover:text-semantic-error"
+              className="text-semantic-error"
             >
               <Trash2 size={13} className="mr-1" />
               {t('markups.clear_all', { defaultValue: 'Clear' })}

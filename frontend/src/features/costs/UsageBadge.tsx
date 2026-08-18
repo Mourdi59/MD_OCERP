@@ -61,8 +61,8 @@ interface UsageBadgeProps {
 // Pill tints, keyed by the visible band. A "used" pill is never red - red is
 // reserved for genuine errors, and a used rate is not an error.
 const PILL_TINTS = {
-  green: 'bg-semantic-success/12 text-semantic-success ring-semantic-success/25',
-  amber: 'bg-amber-500/12 text-amber-600 dark:text-amber-400 ring-amber-500/30',
+  green: 'bg-semantic-success/10 text-semantic-success ring-semantic-success/25',
+  amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/30',
 } as const;
 
 export function UsageBadge({ count, band, className }: UsageBadgeProps) {

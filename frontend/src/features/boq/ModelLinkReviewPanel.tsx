@@ -198,7 +198,7 @@ export function ModelLinkReviewPanel({
             </div>
           ) : staleRows.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-              <CheckCircle2 size={32} className="text-semantic-success/60 mb-3" />
+              <CheckCircle2 size={32} className="text-semantic-success mb-3" />
               <p className="text-sm text-content-secondary">
                 {t('boq.model_review_all_synced', {
                   defaultValue: 'All linked quantities are in sync with the model.',

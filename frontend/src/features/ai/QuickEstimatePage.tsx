@@ -1312,10 +1312,10 @@ function CompactOptions({
 // ── Converter color map ──────────────────────────────────────────────────────
 
 const CONVERTER_COLORS: Record<string, { bg: string; border: string; icon: string }> = {
-  dwg: { bg: 'from-red-500/8 to-orange-500/8', border: 'border-red-200 dark:border-red-900/30', icon: 'bg-gradient-to-br from-red-500 to-orange-500' },
-  rvt: { bg: 'from-blue-500/8 to-indigo-500/8', border: 'border-blue-200 dark:border-blue-900/30', icon: 'bg-gradient-to-br from-blue-500 to-indigo-500' },
-  ifc: { bg: 'from-emerald-500/8 to-green-500/8', border: 'border-emerald-200 dark:border-emerald-900/30', icon: 'bg-gradient-to-br from-emerald-500 to-green-500' },
-  dgn: { bg: 'from-purple-500/8 to-violet-500/8', border: 'border-purple-200 dark:border-purple-900/30', icon: 'bg-gradient-to-br from-purple-500 to-violet-500' },
+  dwg: { bg: 'from-red-500/10 to-orange-500/10', border: 'border-red-200 dark:border-red-900/30', icon: 'bg-gradient-to-br from-red-500 to-orange-500' },
+  rvt: { bg: 'from-blue-500/10 to-indigo-500/10', border: 'border-blue-200 dark:border-blue-900/30', icon: 'bg-gradient-to-br from-blue-500 to-indigo-500' },
+  ifc: { bg: 'from-emerald-500/10 to-green-500/10', border: 'border-emerald-200 dark:border-emerald-900/30', icon: 'bg-gradient-to-br from-emerald-500 to-green-500' },
+  dgn: { bg: 'from-purple-500/10 to-violet-500/10', border: 'border-purple-200 dark:border-purple-900/30', icon: 'bg-gradient-to-br from-purple-500 to-violet-500' },
 };
 
 // ── Full Converter Section (for /data-explorer) ──────────────────────────────
@@ -2755,11 +2755,11 @@ export function QuickEstimatePage() {
               </span>
               {t('ai.connected', { defaultValue: 'AI Connected' })}
             </span>
-            <span className="text-xs text-semantic-success/70">
+            <span className="text-xs text-semantic-success">
               {aiSettings.preferred_model || 'Claude'}
             </span>
           </div>
-          <div className="flex items-center gap-2 text-2xs text-semantic-success/60">
+          <div className="flex items-center gap-2 text-2xs text-semantic-success">
             <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-semantic-success" /> Text</span>
             <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-semantic-success" /> Photo</span>
             <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-semantic-success" /> PDF</span>

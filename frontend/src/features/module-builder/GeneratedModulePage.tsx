@@ -515,7 +515,7 @@ export function GeneratedModulePage() {
                         type="button"
                         onClick={() => setPendingDelete(record)}
                         aria-label={t('common.delete', { defaultValue: 'Delete' })}
-                        className="rounded-md p-1.5 text-content-tertiary transition-colors hover:bg-semantic-error-subtle hover:text-semantic-error"
+                        className="rounded-md p-1.5 text-content-tertiary transition-colors hover:bg-semantic-error-bg hover:text-semantic-error"
                       >
                         <Trash2 size={14} />
                       </button>

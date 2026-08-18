@@ -7123,7 +7123,7 @@ export default function TakeoffViewerModule({
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap justify-center">
-                      <span className="text-[10px] font-mono px-2 py-1 rounded-md bg-oe-blue/8 text-oe-blue border border-oe-blue/15 font-semibold">.pdf</span>
+                      <span className="text-[10px] font-mono px-2 py-1 rounded-md bg-oe-blue/10 text-oe-blue border border-oe-blue/15 font-semibold">.pdf</span>
                     </div>
                     <p className="text-[10px] text-content-quaternary leading-relaxed mt-1 text-center">
                       {t('takeoff.landing_dropzone_hint', { defaultValue: 'Architectural drawings \u00B7 floor plans \u00B7 sections \u00B7 scans' })}

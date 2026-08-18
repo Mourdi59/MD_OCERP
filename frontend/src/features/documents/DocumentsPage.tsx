@@ -1009,11 +1009,11 @@ export function DocumentsPage() {
           {t('documents.supported_types', { defaultValue: 'PDF, images, Excel, DWG, IFC - any file type' })}
         </p>
         <div className="flex items-center justify-center gap-2 mt-3">
-          <span className="text-[10px] font-mono px-2 py-1 rounded-md bg-red-500/8 text-red-500 border border-red-500/15 font-semibold">.pdf</span>
-          <span className="text-[10px] font-mono px-2 py-1 rounded-md bg-emerald-500/8 text-emerald-600 border border-emerald-500/15 font-semibold">.img</span>
-          <span className="text-[10px] font-mono px-2 py-1 rounded-md bg-green-500/8 text-green-600 border border-green-500/15 font-semibold">.xlsx</span>
-          <span className="text-[10px] font-mono px-2 py-1 rounded-md bg-orange-500/8 text-orange-500 border border-orange-500/15 font-semibold">.dwg</span>
-          <span className="text-[10px] font-mono px-2 py-1 rounded-md bg-blue-500/8 text-blue-500 border border-blue-500/15 font-semibold">.ifc</span>
+          <span className="text-[10px] font-mono px-2 py-1 rounded-md bg-red-500/10 text-red-500 border border-red-500/15 font-semibold">.pdf</span>
+          <span className="text-[10px] font-mono px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 border border-emerald-500/15 font-semibold">.img</span>
+          <span className="text-[10px] font-mono px-2 py-1 rounded-md bg-green-500/10 text-green-600 border border-green-500/15 font-semibold">.xlsx</span>
+          <span className="text-[10px] font-mono px-2 py-1 rounded-md bg-orange-500/10 text-orange-500 border border-orange-500/15 font-semibold">.dwg</span>
+          <span className="text-[10px] font-mono px-2 py-1 rounded-md bg-blue-500/10 text-blue-500 border border-blue-500/15 font-semibold">.ifc</span>
         </div>
         <button
           type="button"

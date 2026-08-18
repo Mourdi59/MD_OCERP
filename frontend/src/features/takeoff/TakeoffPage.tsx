@@ -2382,7 +2382,7 @@ export function TakeoffPage() {
               <p className="text-sm font-medium text-semantic-error flex-1">{uploadErrorToast}</p>
               <button
                 onClick={() => setUploadErrorToast(null)}
-                className="shrink-0 rounded-md p-1 text-semantic-error/60 hover:text-semantic-error transition-colors"
+                className="shrink-0 rounded-md p-1 text-semantic-error transition-colors"
               >
                 <X size={14} />
               </button>

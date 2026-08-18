@@ -310,7 +310,7 @@ export function ModuleBuilderPage() {
                       setPending(module);
                     }}
                     aria-label={t('module_builder.uninstall', { defaultValue: 'Remove this module' })}
-                    className="rounded-lg p-1.5 text-content-tertiary transition-colors hover:bg-semantic-error-subtle hover:text-semantic-error"
+                    className="rounded-lg p-1.5 text-content-tertiary transition-colors hover:bg-semantic-error-bg hover:text-semantic-error"
                     data-testid={`module-builder-remove-${module.key}`}
                   >
                     <Trash2 size={14} />

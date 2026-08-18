@@ -2023,7 +2023,7 @@ function QuickPreview({
 
   return (
     <div
-      className="absolute inset-0 z-30 flex flex-col rounded-xl bg-white/98 dark:bg-gray-900/98 backdrop-blur-sm p-4 animate-fade-in overflow-hidden"
+      className="absolute inset-0 z-30 flex flex-col rounded-xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm p-4 animate-fade-in overflow-hidden"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center justify-between mb-3">

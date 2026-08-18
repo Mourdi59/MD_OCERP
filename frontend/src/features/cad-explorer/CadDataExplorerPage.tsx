@@ -4010,8 +4010,8 @@ export function CadDataExplorerPage() {
               ))}
             </g>
           </svg>
-          <div aria-hidden className="pointer-events-none absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full bg-blue-200/25 dark:bg-blue-500/8 blur-[140px]" />
-          <div aria-hidden className="pointer-events-none absolute -bottom-32 -right-32 w-[520px] h-[520px] rounded-full bg-violet-200/20 dark:bg-violet-500/8 blur-[140px]" />
+          <div aria-hidden className="pointer-events-none absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full bg-blue-200/25 dark:bg-blue-500/10 blur-[140px]" />
+          <div aria-hidden className="pointer-events-none absolute -bottom-32 -right-32 w-[520px] h-[520px] rounded-full bg-violet-200/20 dark:bg-violet-500/10 blur-[140px]" />
           <div className="absolute inset-0 overflow-y-auto overflow-x-hidden scrollbar-none z-10">
           <div className="relative max-w-7xl mx-auto px-6 pt-6 pb-4">
 

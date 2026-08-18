@@ -245,7 +245,7 @@ export default function BIMLinkedBOQPanel({
                 aria-pressed={isActive}
                 className={`w-full text-start px-4 py-2.5 border-b border-border-light transition-colors ${
                   isActive
-                    ? 'bg-oe-blue/8 border-s-2 border-s-oe-blue'
+                    ? 'bg-oe-blue/10 border-s-2 border-s-oe-blue'
                     : 'hover:bg-surface-secondary border-s-2 border-s-transparent'
                 }`}
               >

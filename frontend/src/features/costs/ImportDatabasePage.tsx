@@ -787,7 +787,7 @@ function CWICRDatabaseGrid(_props: { onLoadDatabase: (file: File) => void }) {
                     <div className="text-lg font-bold text-semantic-success tabular-nums">
                       {result.imported.toLocaleString(getIntlLocale())}
                     </div>
-                    <div className="text-2xs text-semantic-success/70">{t('costs.items_installed', { defaultValue: 'items installed' })}</div>
+                    <div className="text-2xs text-semantic-success">{t('costs.items_installed', { defaultValue: 'items installed' })}</div>
                   </div>
                   <div className="rounded-lg bg-surface-secondary px-3 py-2 text-center">
                     <div className="text-lg font-bold text-content-secondary tabular-nums">

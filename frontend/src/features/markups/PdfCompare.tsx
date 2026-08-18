@@ -884,7 +884,7 @@ export function PdfComparePage() {
         {/* Doc A picker */}
         <div className="flex items-center gap-1.5">
           <span
-            className="text-xs font-bold text-semantic-error/80 uppercase"
+            className="text-xs font-bold text-semantic-error uppercase"
             title={t('pdf_compare.doc_a_old', { defaultValue: 'Old revision (A)' })}
           >
             A
@@ -1190,7 +1190,7 @@ export function PdfComparePage() {
             <div className="flex items-center gap-2 px-2 py-1.5 border-b border-border-light bg-surface-secondary/60 shrink-0">
               <FileText size={12} className="text-content-tertiary" />
               <span className="text-xs text-content-tertiary">
-                <strong className="text-semantic-error/80">A</strong>: {docAName || t('pdf_compare.none', { defaultValue: 'none' })}
+                <strong className="text-semantic-error">A</strong>: {docAName || t('pdf_compare.none', { defaultValue: 'none' })}
                 {' '}+{' '}
                 <strong className="text-oe-blue">B</strong>: {docBName || t('pdf_compare.none', { defaultValue: 'none' })}
                 {' '}&mdash; {t('pdf_compare.opacity_b_short', { defaultValue: 'B at' })} {overlayOpacity}%
@@ -1214,7 +1214,7 @@ export function PdfComparePage() {
             <div className="flex items-center gap-2 px-2 py-1.5 border-b border-border-light bg-surface-secondary/60 shrink-0">
               <FileText size={12} className="text-content-tertiary" />
               <span className="text-xs text-content-tertiary">
-                <strong className="text-semantic-error/80">A</strong>: {docAName || t('pdf_compare.none', { defaultValue: 'none' })}
+                <strong className="text-semantic-error">A</strong>: {docAName || t('pdf_compare.none', { defaultValue: 'none' })}
                 {' '}&rarr;{' '}
                 <strong className="text-oe-blue">B</strong>: {docBName || t('pdf_compare.none', { defaultValue: 'none' })}
               </span>

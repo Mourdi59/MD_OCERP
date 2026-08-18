@@ -247,7 +247,7 @@ function ButtonsSection() {
         <Specimen no={2} name="Liquid Glass (WWDC25)" family="Modern" note="Frosted glass + верхний rim-highlight + внутренняя тень. Apple iOS 26 / visionOS.">
           <div className="relative w-full">
             <div className="absolute inset-0 -z-10 rounded-[10px] bg-gradient-to-br from-oe-blue/30 via-fuchsia-400/20 to-cyan-400/30 blur-xl" />
-            <button className="relative inline-flex h-10 items-center gap-2 px-5 rounded-[10px] text-sm font-medium text-content-primary bg-white/45 dark:bg-white/8 backdrop-blur-2xl ring-1 ring-white/50 dark:ring-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_4px_16px_rgba(0,0,0,0.08)] hover:bg-white/55 transition-all duration-normal ease-oe">
+            <button className="relative inline-flex h-10 items-center gap-2 px-5 rounded-[10px] text-sm font-medium text-content-primary bg-white/45 dark:bg-white/10 backdrop-blur-2xl ring-1 ring-white/50 dark:ring-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_4px_16px_rgba(0,0,0,0.08)] hover:bg-white/55 transition-all duration-normal ease-oe">
               <Sparkles className="h-4 w-4 text-oe-blue" /> Create BOQ
             </button>
           </div>
@@ -412,7 +412,7 @@ function IconsSection() {
         <Specimen no={10} name="Glass Floating" family="Modern" note="Frosted-glass chip с rim highlight. Поверх изображений / 3D-вьюера.">
           <div className="relative w-full grid place-items-center">
             <div className="absolute inset-0 -z-10 rounded-[10px] bg-gradient-to-br from-oe-blue/30 to-fuchsia-400/30 blur-md" />
-            <div className="grid h-12 w-12 place-items-center rounded-[10px] bg-white/45 dark:bg-white/8 backdrop-blur-xl ring-1 ring-white/50 dark:ring-white/15 text-content-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_4px_12px_rgba(0,0,0,0.08)]">
+            <div className="grid h-12 w-12 place-items-center rounded-[10px] bg-white/45 dark:bg-white/10 backdrop-blur-xl ring-1 ring-white/50 dark:ring-white/15 text-content-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_4px_12px_rgba(0,0,0,0.08)]">
               <Cpu className="h-6 w-6" strokeWidth={1.75} />
             </div>
           </div>
@@ -611,7 +611,7 @@ function BgSpecimen({
 function SampleContent({ dark = false }: { dark?: boolean }) {
   const titleColor   = dark ? 'text-white'                : 'text-content-primary';
   const subColor     = dark ? 'text-white/65'             : 'text-content-secondary';
-  const cardBg       = dark ? 'bg-white/8 backdrop-blur-xl ring-white/15' : 'bg-surface-primary/85 backdrop-blur-md ring-border-light/60';
+  const cardBg       = dark ? 'bg-white/10 backdrop-blur-xl ring-white/15' : 'bg-surface-primary/85 backdrop-blur-md ring-border-light/60';
   const btnBg        = dark ? 'bg-white text-[#0f1117]'   : 'bg-content-primary text-content-inverse';
 
   return (

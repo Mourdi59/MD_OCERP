@@ -223,7 +223,7 @@ export function ModuleBuilderWizard({ open, onClose, onInstalled }: ModuleBuilde
         {refusal && (
           <p
             role="alert"
-            className="flex items-start gap-2 rounded-lg bg-semantic-error-subtle px-3 py-2 text-sm text-semantic-error"
+            className="flex items-start gap-2 rounded-lg bg-semantic-error-bg px-3 py-2 text-sm text-semantic-error"
           >
             <AlertTriangle size={15} className="mt-px shrink-0" />
             {refusal}
@@ -354,7 +354,7 @@ function StepBar({ current, onJump }: { current: Step; onJump: (step: Step) => v
 function ProblemList({ problems }: { problems: SpecProblem[] }) {
   if (problems.length === 0) return null;
   return (
-    <ul className="space-y-1 rounded-lg bg-semantic-warning-subtle px-3 py-2 text-xs text-semantic-warning">
+    <ul className="space-y-1 rounded-lg bg-semantic-warning-bg px-3 py-2 text-xs text-semantic-warning">
       {problems.map((problem, i) => (
         <li key={`${problem.where}-${i}`} className="flex items-start gap-1.5">
           <AlertTriangle size={12} className="mt-0.5 shrink-0" />
@@ -1175,8 +1175,20 @@ function DoneStep({ installed }: { installed: InstalledModule }) {
     <div className="space-y-2 py-4 text-center" data-testid="module-builder-done">
       {/* The one moment in the wizard that is purely good news, so it is given
           the room to read as one. The ring is a halo around the mark rather
-          than a second border on it. */}
-      <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-semantic-success-subtle text-semantic-success ring-8 ring-semantic-success-subtle/40">
+          than a second border on it.
+
+          Both colours here used to name `semantic-success-subtle`, which is
+          not a token: the semantic palette defines the base hue, a `-bg` wash
+          and a `-vivid` variant, and nothing called `-subtle`. The fill
+          therefore painted nothing, and the ring was worse than nothing,
+          because `ring-8` still applies Tailwind's own default ring colour
+          when the ring-colour class is dropped. That default is blue, so the
+          success mark wore a wide blue halo on the one screen that exists to
+          say the install worked. The ring takes its alpha from the base hue
+          rather than from `-bg`, because the dark-mode `-bg` value is already
+          an rgba() wash and a modifier on it would read stronger than the
+          plain class. */}
+      <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-semantic-success-bg text-semantic-success ring-8 ring-semantic-success/20">
         <Check size={28} strokeWidth={2.5} />
       </span>
       <p className="pt-1 text-base font-semibold text-content-primary">{installed.display_name}</p>

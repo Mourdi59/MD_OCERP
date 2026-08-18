@@ -361,7 +361,7 @@ function ModelCard({ model, isActive, onClick, onDelete }: {
       }}
       className={`group relative shrink-0 w-52 text-start rounded-xl border-2 transition-all duration-200 overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-oe-blue/50 ${
         isActive
-          ? 'border-oe-blue bg-oe-blue/5 shadow-lg shadow-oe-blue/8 ring-1 ring-oe-blue/20'
+          ? 'border-oe-blue bg-oe-blue/5 shadow-lg shadow-oe-blue/10 ring-1 ring-oe-blue/20'
           : 'border-transparent bg-surface-primary hover:bg-surface-secondary hover:border-border-light shadow-sm'
       }`}
     >
@@ -1644,8 +1644,8 @@ function LandingPage({ projectId, onUploadComplete: _onUploadComplete, breadcrum
             below so the typical 1080p viewport fits everything without
             needing to scroll. */}
         <div className="absolute inset-0 overflow-y-auto overflow-x-hidden scrollbar-none z-10">
-        <div aria-hidden className="pointer-events-none absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full bg-blue-200/25 dark:bg-blue-500/8 blur-[140px]" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-32 -right-32 w-[520px] h-[520px] rounded-full bg-violet-200/20 dark:bg-violet-500/8 blur-[140px]" />
+        <div aria-hidden className="pointer-events-none absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full bg-blue-200/25 dark:bg-blue-500/10 blur-[140px]" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-32 -right-32 w-[520px] h-[520px] rounded-full bg-violet-200/20 dark:bg-violet-500/10 blur-[140px]" />
         <div className="relative max-w-7xl mx-auto px-6 pt-6 pb-4">
 
           {/* Row 1: Upload card (left) + Hero text (right) */}
@@ -1972,7 +1972,7 @@ function LandingPage({ projectId, onUploadComplete: _onUploadComplete, breadcrum
                           <p className="text-sm font-semibold text-content-primary truncate pe-6" title={m.name}>{m.name}</p>
                           <div className="flex items-center gap-2 mt-1">
                             {fmt && (
-                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-oe-blue/8 text-oe-blue border border-oe-blue/15 font-semibold leading-none">
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-oe-blue/10 text-oe-blue border border-oe-blue/15 font-semibold leading-none">
                                 .{fmt.toLowerCase()}
                               </span>
                             )}
@@ -2085,7 +2085,7 @@ function LandingPage({ projectId, onUploadComplete: _onUploadComplete, breadcrum
                       <Cuboid size={12} className="shrink-0 text-content-tertiary" />
                       <span className="text-[11px] font-semibold text-content-primary truncate">{m.name}</span>
                       {fmt && (
-                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-oe-blue/8 text-oe-blue border border-oe-blue/15 shrink-0">.{fmt.toLowerCase()}</span>
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-oe-blue/10 text-oe-blue border border-oe-blue/15 shrink-0">.{fmt.toLowerCase()}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-content-quaternary">

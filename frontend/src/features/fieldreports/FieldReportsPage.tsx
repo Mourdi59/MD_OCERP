@@ -2088,7 +2088,7 @@ function ReportModal({
                 </div>
                 <button
                   onClick={() => handleRemoveWorkforce(idx)}
-                  className="rounded p-1 text-semantic-error/60 hover:text-semantic-error hover:bg-semantic-error-bg"
+                  className="rounded p-1 text-content-tertiary hover:text-semantic-error hover:bg-semantic-error-bg"
                   title={t('common.remove', { defaultValue: 'Remove' })}
                   aria-label={t('common.remove', { defaultValue: 'Remove' })}
                 >

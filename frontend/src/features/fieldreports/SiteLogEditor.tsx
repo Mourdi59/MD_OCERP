@@ -192,7 +192,7 @@ function WorkforceLogEditor({
                       type="button"
                       disabled={busy}
                       onClick={() => handleDelete(r.id)}
-                      className="rounded p-1 text-semantic-error/60 hover:bg-semantic-error-bg hover:text-semantic-error disabled:opacity-50"
+                      className="rounded p-1 text-content-tertiary hover:bg-semantic-error-bg hover:text-semantic-error disabled:opacity-50"
                       title={t('common.delete', { defaultValue: 'Delete' })}
                       aria-label={t('common.delete', { defaultValue: 'Delete' })}
                     >
@@ -426,7 +426,7 @@ function EquipmentLogEditor({
                       type="button"
                       disabled={busy}
                       onClick={() => handleDelete(r.id)}
-                      className="rounded p-1 text-semantic-error/60 hover:bg-semantic-error-bg hover:text-semantic-error disabled:opacity-50"
+                      className="rounded p-1 text-content-tertiary hover:bg-semantic-error-bg hover:text-semantic-error disabled:opacity-50"
                       title={t('common.delete', { defaultValue: 'Delete' })}
                       aria-label={t('common.delete', { defaultValue: 'Delete' })}
                     >

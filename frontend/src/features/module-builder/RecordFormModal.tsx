@@ -204,7 +204,7 @@ export function RecordFormModal({
     >
       <div className="space-y-4">
         {spec.entity.project_scoped && !projectId && (
-          <p className="flex items-start gap-2 rounded-lg bg-semantic-warning-subtle px-3 py-2 text-xs text-semantic-warning">
+          <p className="flex items-start gap-2 rounded-lg bg-semantic-warning-bg px-3 py-2 text-xs text-semantic-warning">
             <AlertTriangle size={14} className="mt-px shrink-0" />
             {t('runtime_module.needs_project', {
               defaultValue: 'These records belong to a project. Choose one before saving.',

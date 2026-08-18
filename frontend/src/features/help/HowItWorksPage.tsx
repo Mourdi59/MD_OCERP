@@ -253,7 +253,7 @@ function ModuleCard({ module, index, expanded, onToggle, onLocate, onOpen }: Car
                 <li key={step.key} className="flex gap-2.5 text-[13px] text-content-secondary">
                   <span
                     aria-hidden="true"
-                    className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-oe-blue/12 text-[10px] font-semibold tabular-nums text-oe-blue"
+                    className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-oe-blue/10 text-[10px] font-semibold tabular-nums text-oe-blue"
                   >
                     {i + 1}
                   </span>

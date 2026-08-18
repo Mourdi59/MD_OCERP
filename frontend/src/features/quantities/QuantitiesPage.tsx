@@ -186,22 +186,22 @@ const steps = [
 // Color map for converter cards
 const CONVERTER_COLORS: Record<string, { bg: string; border: string; icon: string }> = {
   dwg: {
-    bg: 'from-red-500/8 to-orange-500/8',
+    bg: 'from-red-500/10 to-orange-500/10',
     border: 'border-red-200 dark:border-red-900/30',
     icon: 'bg-gradient-to-br from-red-500 to-orange-500',
   },
   rvt: {
-    bg: 'from-blue-500/8 to-indigo-500/8',
+    bg: 'from-blue-500/10 to-indigo-500/10',
     border: 'border-blue-200 dark:border-blue-900/30',
     icon: 'bg-gradient-to-br from-blue-500 to-indigo-500',
   },
   ifc: {
-    bg: 'from-emerald-500/8 to-green-500/8',
+    bg: 'from-emerald-500/10 to-green-500/10',
     border: 'border-emerald-200 dark:border-emerald-900/30',
     icon: 'bg-gradient-to-br from-emerald-500 to-green-500',
   },
   dgn: {
-    bg: 'from-purple-500/8 to-violet-500/8',
+    bg: 'from-purple-500/10 to-violet-500/10',
     border: 'border-purple-200 dark:border-purple-900/30',
     icon: 'bg-gradient-to-br from-purple-500 to-violet-500',
   },
@@ -236,7 +236,7 @@ function ConverterCard({
   disabled: boolean;
 }) {
   const { t } = useTranslation();
-  const colors = CONVERTER_COLORS[converter.id] ?? CONVERTER_COLORS['dwg'] ?? { bg: 'from-gray-500/8 to-gray-500/8', border: 'border-gray-200', icon: 'bg-gray-500' };
+  const colors = CONVERTER_COLORS[converter.id] ?? CONVERTER_COLORS['dwg'] ?? { bg: 'from-gray-500/10 to-gray-500/10', border: 'border-gray-200', icon: 'bg-gray-500' };
   const installed = converter.installed;
   const updateAvailable = installed && Boolean(versionEntry?.is_outdated);
   const installedShortSha = versionEntry?.installed_sha
@@ -623,7 +623,7 @@ function InstallProgressPanel({
           <div className="mt-3 grid grid-cols-2 gap-2">
             <div className="rounded-lg bg-semantic-success-bg/50 px-3 py-2 text-center">
               <div className="text-sm font-bold text-semantic-success">{converterName}</div>
-              <div className="text-2xs text-semantic-success/70">
+              <div className="text-2xs text-semantic-success">
                 {t('quantities.result_installed', { defaultValue: 'installed' })}
               </div>
             </div>
@@ -1152,7 +1152,7 @@ export function QuantitiesPage() {
         {converters.length === 0 && (
           <div className="grid gap-3 sm:grid-cols-2">
             {['dwg', 'rvt', 'ifc', 'dgn'].map((id) => {
-              const colors = CONVERTER_COLORS[id] ?? CONVERTER_COLORS['dwg'] ?? { bg: 'from-gray-500/8 to-gray-500/8', border: 'border-gray-200', icon: 'bg-gray-500' };
+              const colors = CONVERTER_COLORS[id] ?? CONVERTER_COLORS['dwg'] ?? { bg: 'from-gray-500/10 to-gray-500/10', border: 'border-gray-200', icon: 'bg-gray-500' };
               return (
                 <div
                   key={id}
