@@ -70,17 +70,38 @@ export default {
           quaternary: 'var(--oe-text-quaternary)',
           inverse: 'var(--oe-text-inverse)',
         },
+        // The same function form as `oe` and `surface` above, and for the
+        // same reason. These four were left as plain var() strings when the
+        // trap was fixed on blue in 2026-06, so the fix never reached the
+        // palette that carries the most meaning: 479 alpha-modified semantic
+        // utilities across 156 files emitted no CSS at all. A row that should
+        // wash pink to say it failed was not washed at all.
+        // The `-bg` and `-vivid` entries stay plain on purpose - see the
+        // note beside `--oe-success-ch` in index.css for why `-bg` must not
+        // take alpha, and note that `-vivid` simply has no alpha callers.
         semantic: {
-          success: 'var(--oe-success)',
+          success: ({ opacityValue }) =>
+            opacityValue === undefined
+              ? 'var(--oe-success)'
+              : `rgb(var(--oe-success-ch) / ${opacityValue})`,
           'success-bg': 'var(--oe-success-bg)',
           'success-vivid': 'var(--oe-success-vivid)',
-          warning: 'var(--oe-warning)',
+          warning: ({ opacityValue }) =>
+            opacityValue === undefined
+              ? 'var(--oe-warning)'
+              : `rgb(var(--oe-warning-ch) / ${opacityValue})`,
           'warning-bg': 'var(--oe-warning-bg)',
           'warning-vivid': 'var(--oe-warning-vivid)',
-          error: 'var(--oe-error)',
+          error: ({ opacityValue }) =>
+            opacityValue === undefined
+              ? 'var(--oe-error)'
+              : `rgb(var(--oe-error-ch) / ${opacityValue})`,
           'error-bg': 'var(--oe-error-bg)',
           'error-vivid': 'var(--oe-error-vivid)',
-          info: 'var(--oe-info)',
+          info: ({ opacityValue }) =>
+            opacityValue === undefined
+              ? 'var(--oe-info)'
+              : `rgb(var(--oe-info-ch) / ${opacityValue})`,
           'info-bg': 'var(--oe-info-bg)',
           'info-vivid': 'var(--oe-info-vivid)',
         },

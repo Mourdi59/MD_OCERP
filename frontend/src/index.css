@@ -130,6 +130,25 @@
   --oe-error-bg: #fef2f2;
   --oe-info: #0369a1;
   --oe-info-bg: #eff9fe;
+  /* Channel triplets for Tailwind alpha modifiers - same mechanism and the
+     same reason as `--oe-blue-ch` above, which see. Added 2026-08-18 after
+     the identical trap was found a second time: the semantic palette was
+     still declared as plain var() strings in tailwind.config.js, so every
+     alpha-modified semantic utility was silently DROPPED from the build.
+     479 call sites across 156 files painted nothing at all - the error,
+     warning and success tints that tell a reader a record failed. MUST stay
+     in sync with the hex values directly above.
+     Only the four base hues get a triplet. The `-bg` tints deliberately do
+     NOT, because their dark-mode values are themselves rgba() washes: a
+     triplet there would make `bg-semantic-error-bg/40` render at 0.40 alpha
+     against a base token that is only 0.12, so the modifier would come out
+     STRONGER than the unmodified class. Same call, and the same reasoning,
+     as `blue-subtle` and `purple-subtle`. Want a translucent error tint?
+     Use `bg-semantic-error/10`. */
+  --oe-success-ch: 29 122 58;
+  --oe-warning-ch: 180 83 9;
+  --oe-error-ch: 196 30 16;
+  --oe-info-ch: 3 105 161;
   /* Solid-brand variants retained for callers that need the original
      Apple-saturation hue on dark/coloured backgrounds (dots, solid
      buttons, gradient fills). Use sparingly — prefer the AA-compliant
@@ -268,6 +287,13 @@
   --oe-error-bg: rgba(239, 68, 68, 0.12);
   --oe-info: #7dd3fc;
   --oe-info-bg: rgba(56, 189, 248, 0.12);
+  /* Channel triplets - see the light-mode comment. Keep in sync with the
+     four hexes directly above. The `-bg` washes are rgba() here, which is
+     exactly why they get no triplet. */
+  --oe-success-ch: 74 222 128;
+  --oe-warning-ch: 251 191 36;
+  --oe-error-ch: 248 113 113;
+  --oe-info-ch: 125 211 252;
   /* Solid-brand variants for dark — kept brighter for use as dots /
      solid buttons / accent strips where the surface underneath is the
      base bg, not a tinted pill. */
