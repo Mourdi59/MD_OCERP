@@ -29,7 +29,14 @@ from pathlib import Path
 from types import ModuleType
 from typing import cast
 
-from app.core.embedded_pg import _boot_once, _cluster_answers
+import pytest
+
+from app.core.embedded_pg import (
+    _boot_once,
+    _cluster_answers,
+    _listens_on_tcp,
+    _unix_socket_path,
+)
 
 
 def _write_pidfile(pgdata: Path, port: int, *, pid: int | None = None) -> Path:
@@ -135,3 +142,102 @@ def test_a_healthy_attach_is_not_slowed_down(tmp_path: Path) -> None:
         elapsed = time.monotonic() - started
 
     assert elapsed < 2.0, f"proving readiness cost {elapsed:.1f}s on a healthy cluster"
+
+
+def _write_unix_only_pidfile(pgdata: Path, port: int, socket_dir: Path) -> None:
+    """A pidfile in the shape PostgreSQL writes where it has no TCP listener.
+
+    Line 5 names the unix socket directory and line 6, the first
+    ``listen_addresses`` entry, is empty. That is what pixeltable-pgserver
+    produces on Linux and macOS, and it is the shape the ready probe met in CI.
+    """
+    (pgdata / "postmaster.pid").write_text(
+        "\n".join(
+            [
+                str(os.getpid()),
+                str(pgdata),
+                str(int(time.time())),
+                str(port),
+                str(socket_dir),
+                "",
+                "",
+                "ready",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def test_a_unix_only_cluster_is_never_asked_for_a_tcp_connection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The regression that took the PostgreSQL lane red.
+
+    pixeltable-pgserver starts the postmaster with no TCP listener on Linux and
+    macOS: the server log says "listening on Unix socket" and nothing else. A
+    probe that asks 127.0.0.1 therefore reports a cluster that is up, healthy
+    and serving as dead, and the bounded retry then tears it down and rebuilds
+    it twice more before giving up. The knowledge was already in this module,
+    thirty lines above the probe, where a comment says get_uri() returns TCP on
+    Windows and a unix socket elsewhere.
+
+    Asserted as "does not ask" rather than "answers", so the case holds on a
+    machine with no unix sockets at all.
+    """
+
+    def _refuse(*args: object, **kwargs: object) -> None:
+        raise AssertionError("asked for a TCP connection on a cluster that has no TCP listener")
+
+    monkeypatch.setattr(socket, "create_connection", _refuse)
+    _write_unix_only_pidfile(tmp_path, 5432, tmp_path)
+
+    assert _cluster_answers(tmp_path, 0.0) is False
+
+
+def test_a_unix_socket_that_answers_is_enough(tmp_path: Path) -> None:
+    """And the other half: a listening unix socket makes the cluster ready."""
+    if not hasattr(socket, "AF_UNIX"):
+        pytest.skip("no unix domain sockets on this platform")
+
+    port = 5432
+    sock_path = tmp_path / (".s.PGSQL.%d" % port)
+    listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        listener.bind(str(sock_path))
+        listener.listen(1)
+        _write_unix_only_pidfile(tmp_path, port, tmp_path)
+
+        assert _cluster_answers(tmp_path, 1.0) is True
+    finally:
+        listener.close()
+        sock_path.unlink(missing_ok=True)
+
+
+def test_the_socket_is_the_one_postgresql_names(tmp_path: Path) -> None:
+    """``<socket dir>/.s.PGSQL.<port>``, and nothing where there is no socket."""
+    _write_unix_only_pidfile(tmp_path, 54321, tmp_path / "sockets")
+    assert _unix_socket_path(tmp_path) == tmp_path / "sockets" / ".s.PGSQL.54321"
+
+    # The Windows shape: line 5 empty, because there are no unix sockets there.
+    _write_pidfile(tmp_path, 54321)
+    assert _unix_socket_path(tmp_path) is not None  # helper writes a socket dir
+    (tmp_path / "postmaster.pid").write_text(
+        "\n".join([str(os.getpid()), str(tmp_path), "0", "54321", "", "127.0.0.1", "", "ready"]) + "\n",
+        encoding="utf-8",
+    )
+    assert _unix_socket_path(tmp_path) is None
+
+
+def test_a_pidfile_too_short_to_answer_does_not_rule_tcp_out(tmp_path: Path) -> None:
+    """Absent information is not evidence of absence.
+
+    A pidfile being written while the postmaster starts is truncated, and a
+    probe that reads "no listen address" out of a line that has not been written
+    yet would skip the only family a Windows cluster has.
+    """
+    (tmp_path / "postmaster.pid").write_text(
+        "\n".join([str(os.getpid()), str(tmp_path), "0", "54321"]) + "\n",
+        encoding="utf-8",
+    )
+    assert _listens_on_tcp(tmp_path) is True

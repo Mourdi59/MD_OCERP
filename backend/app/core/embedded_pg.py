@@ -747,17 +747,16 @@ def _pre_initialize_cluster(pgdata: Path) -> bool:
 
 
 def _port_from_pidfile(pgdata: Path) -> int | None:
-    """Return the TCP port the recovering postmaster is listening on, if known.
+    """Return the port the recovering postmaster is listening on, if known.
 
     During crash recovery PostgreSQL writes the port line (line 4) early, so we
     can learn the port even before the pidfile is "complete" enough for
     pixeltable's parser. Returns ``None`` if not yet present.
+
+    The port names the TCP port and the unix socket alike: the socket file is
+    ``<socket dir>/.s.PGSQL.<port>``, so one number serves both families.
     """
-    pidfile = pgdata / "postmaster.pid"
-    try:
-        lines = pidfile.read_text(encoding="utf-8", errors="ignore").splitlines()
-    except OSError:
-        return None
+    lines = _pidfile_lines(pgdata)
     if len(lines) < 4:
         return None
     try:
@@ -767,8 +766,84 @@ def _port_from_pidfile(pgdata: Path) -> int | None:
     return port if port > 0 else None
 
 
+def _pidfile_lines(pgdata: Path) -> list[str]:
+    """Return the postmaster pidfile as lines, or an empty list if unreadable."""
+    try:
+        return (pgdata / "postmaster.pid").read_text(encoding="utf-8", errors="ignore").splitlines()
+    except OSError:
+        return []
+
+
+def _unix_socket_path(pgdata: Path) -> Path | None:
+    """Return the unix socket this cluster listens on, when it listens on one.
+
+    Line 5 of the pidfile is the first entry of ``unix_socket_directories``. It
+    is empty on Windows, where PostgreSQL has no unix sockets, and holds a
+    directory on Linux and macOS. The socket inside it is named after the port.
+    """
+    lines = _pidfile_lines(pgdata)
+    if len(lines) < 5:
+        return None
+    socket_dir = lines[4].strip()
+    port = _port_from_pidfile(pgdata)
+    if not socket_dir or port is None:
+        return None
+    return Path(socket_dir) / (".s.PGSQL.%d" % port)
+
+
+def _listens_on_tcp(pgdata: Path) -> bool:
+    """Whether the pidfile says this cluster accepts TCP at all.
+
+    Line 6 is the first ``listen_addresses`` entry, empty when the postmaster
+    was started with none. Absent information is answered ``True``: a probe that
+    skips a family it cannot rule out reports a healthy cluster dead, which is
+    the failure this whole helper exists to prevent.
+    """
+    lines = _pidfile_lines(pgdata)
+    if len(lines) < 6:
+        return True
+    return bool(lines[5].strip())
+
+
+def _accepts_a_connection(pgdata: Path) -> bool:
+    """One attempt to reach this cluster, on whichever family it listens on.
+
+    The unix socket is tried first where the cluster has one. That order is not
+    a preference, it is the only reading that cannot be answered by a stranger:
+    a system PostgreSQL on 5432 would accept a TCP connect and satisfy a probe
+    asking about a cluster in a temporary directory it has never heard of. The
+    socket path comes out of this cluster's own pidfile and belongs to it alone.
+
+    TCP is tried when the pidfile reports a listen address, or when it is too
+    short to say. Windows clusters answer here; on Linux and macOS the
+    postmaster pixeltable-pgserver starts has no TCP listener at all, and asking
+    it for one is how a healthy cluster gets reported dead.
+    """
+    import socket
+
+    sock_path = _unix_socket_path(pgdata)
+    if sock_path is not None and hasattr(socket, "AF_UNIX"):
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                s.settimeout(2)
+                s.connect(str(sock_path))
+                return True
+        except OSError:
+            pass
+
+    if _listens_on_tcp(pgdata):
+        port = _port_from_pidfile(pgdata)
+        if port is not None:
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=2):
+                    return True
+            except OSError:
+                pass
+    return False
+
+
 def _cluster_answers(pgdata: Path, timeout_seconds: float) -> bool:
-    """True when something accepts a connection on the port the pidfile records.
+    """True when this cluster accepts a connection, on any family it offers.
 
     Separate from :func:`_wait_until_connectable`, which exists to sit out a
     multi minute crash recovery and deliberately pauses after it succeeds so the
@@ -777,44 +852,33 @@ def _cluster_answers(pgdata: Path, timeout_seconds: float) -> bool:
     there, so it answers the moment the socket opens and costs a healthy boot
     nothing. Always tries at least once, however small the window.
     """
-    import socket
-
     deadline = time.monotonic() + max(timeout_seconds, 0.0)
     while True:
-        port = _port_from_pidfile(pgdata)
-        if port is not None:
-            try:
-                with socket.create_connection(("127.0.0.1", port), timeout=2):
-                    return True
-            except OSError:
-                pass
+        if _accepts_a_connection(pgdata):
+            return True
         if time.monotonic() >= deadline:
             return False
         time.sleep(0.5)
 
 
 def _wait_until_connectable(pgdata: Path, deadline: float) -> bool:
-    """Block until the embedded postmaster accepts TCP connections, or deadline.
+    """Block until the embedded postmaster accepts connections, or deadline.
 
-    Probes ``127.0.0.1:<port>`` (port read from the recovering postmaster's
-    pidfile) with a raw socket connect, which succeeds as soon as recovery
-    finishes and the postmaster opens its listen socket. This is far more robust
-    than parsing the pidfile, which is incomplete while recovery runs. Returns
-    ``True`` if it became connectable before ``deadline``, else ``False``.
+    Connects with a raw socket, which succeeds as soon as recovery finishes and
+    the postmaster opens its listen socket. This is far more robust than parsing
+    the pidfile, which is incomplete while recovery runs. Returns ``True`` if it
+    became connectable before ``deadline``, else ``False``.
+
+    Shares :func:`_accepts_a_connection` with the ready-stage probe rather than
+    repeating the connect, because the address family a cluster listens on is a
+    property of the cluster and not of the reason we are asking.
     """
-    import socket
-
     while time.monotonic() < deadline:
-        port = _port_from_pidfile(pgdata)
-        if port is not None:
-            try:
-                with socket.create_connection(("127.0.0.1", port), timeout=2):
-                    # Give PostgreSQL a breath after the socket opens so the
-                    # very next get_server() attach finds status == 'ready'.
-                    time.sleep(1.0)
-                    return True
-            except OSError:
-                pass
+        if _accepts_a_connection(pgdata):
+            # Give PostgreSQL a breath after the socket opens so the very next
+            # get_server() attach finds status == 'ready'.
+            time.sleep(1.0)
+            return True
         time.sleep(2.0)
     return False
 
