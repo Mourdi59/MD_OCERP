@@ -1106,7 +1106,11 @@ _US_MEDICAL = DemoTemplate(
     region="United States",
     classification_standard="masterformat",
     currency="USD",
-    locale="en",
+    # en-US rather than en: the American overlay is where retainage, schedule of
+    # values and lien waiver are spelled the way this project's reader expects.
+    # The Denver pack already declares en-US, and two US demos disagreeing about
+    # their own locale is how one of them ends up proving the overlay unused.
+    locale="en-US",
     address={
         "street": "6500 Main Street",
         "city": "Houston",
@@ -2524,6 +2528,38 @@ def _template_total(template: DemoTemplate) -> float:
                 continue
             total += qty * rate
     return total
+
+
+def _seed_risk_score(probability: float, severity: str) -> str:
+    """Score a seeded risk the way the risk register itself scores one.
+
+    The register owns one scale, ``probability x severity_numeric`` on 0-5, and
+    ``RiskService`` writes it for every risk created through the API. This seed
+    used to write something else: ``probability * (impact_cost + days * 5000)``,
+    a cost-scaled figure in the same column. That is the heterogeneity
+    F-PFO-RISK-06 describes. The risk router and the summary endpoint both
+    answer it by throwing the stored value away and recomputing, while the
+    cross-project dashboard trusts the column and therefore ranked every seeded
+    risk above every real one.
+
+    It also did not fit. ``RiskItem.risk_score`` is ``String(10)``, and a
+    project priced in a high-denomination currency overflowed it: an INR pack
+    scored 18751482.05, eleven characters, PostgreSQL rejected the INSERT and
+    the whole install failed with a 500 and nothing written. The canonical
+    score cannot overflow, because probability is bounded to 0.0-1.0 and the
+    severity rank to 5. No cost information is lost either way - it is on the
+    same row in ``impact_cost`` and ``impact_schedule_days``.
+
+    Args:
+        probability: Likelihood of the risk, 0.0-1.0.
+        severity: Impact severity from the shared vocabulary (low ... critical).
+
+    Returns:
+        The score as the string the column stores.
+    """
+    from app.modules.risk.service import _compute_risk_score
+
+    return str(_compute_risk_score(probability, severity))
 
 
 def _catalog_entry_from_template(template: DemoTemplate) -> dict:
@@ -12142,7 +12178,7 @@ async def install_demo_project(
     risk_count = 0
     risk_data = _DEMO_RISKS.get(demo_id) or _generated.get("risks", [])
     for r_code, r_title, r_desc, r_cat, r_prob, r_cost, r_days, r_sev, r_mitig, r_status in risk_data:
-        risk_score = round(r_prob * (r_cost + r_days * 5000), 2)
+        risk_score = _seed_risk_score(r_prob, r_sev)
         risk = RiskItem(
             id=_id(),
             project_id=project.id,
@@ -12154,7 +12190,7 @@ async def install_demo_project(
             impact_cost=str(round(r_cost, 2)),
             impact_schedule_days=r_days,
             impact_severity=r_sev,
-            risk_score=str(risk_score),
+            risk_score=risk_score,
             status=r_status,
             mitigation_strategy=r_mitig,
             contingency_plan="",
