@@ -30,15 +30,37 @@ alongside it that `PYPI_API_TOKEN` is the only Actions secret configured, so
 what tag protection currently guards is one publishing path, and nothing about
 it attests to anything.
 
-**2. Every release from v14.5.0 through v14.8.0 carries a Sigstore signature.**
-That is what was measured on 2026-08-12, and it is deliberately not phrased as
-"from v14.5.0 onward". Nothing gates a release on carrying one. The signing
+**2. Every release from v14.0.0 through v14.8.1 carries a Sigstore signature.**
+Measured 2026-08-19, over 245 published releases. It is deliberately not phrased
+as "from v14.0.0 onward". Nothing gates a release on carrying one. The signing
 workflow has silently stopped producing them before, for a long stretch that
 nobody noticed at the time, so a rule stated forward would quietly become false
-the next time it happens rather than showing up as the gap it is. Earlier
-history is patchy for that same reason: of the 239 releases before v14.5.0, 26
-carry the three files. Treat a missing signature on an older release as
-ordinary, not as a sign that something went wrong with that release.
+the next time it happens rather than showing up as the gap it is.
+
+Note what moved since the 2026-08-12 reading, because it is a lesson about the
+measurement rather than about the releases. That reading named v14.5.0 as the
+start of the stretch; the stretch in fact reaches back to v14.0.0 and has since
+extended forward to v14.8.1. Read from the head of the release list, the answer
+comes out short in a way that looks confident, which is why this page tells you
+to run the command instead of trusting the text.
+
+Across the whole history 38 of the 245 releases carry all three files, in 22
+alternating stretches. The current one is the longest by a wide margin: before
+v14.0.0 there is a gap of 129 consecutive unsigned releases running back to
+v4.10.0, and everything earlier alternates every few releases. Treat a missing
+signature on an older release as ordinary, not as a sign that something went
+wrong with that release.
+
+**Backfilling older releases was considered on 2026-08-19 and declined.** The
+supported line is signed and that is what we guarantee. The reason is the one
+set out under "Regenerating this" below, plus a second that is easy to miss: a
+Sigstore certificate is short lived and the transparency log records the time of
+signing, so a signature applied today attests that these are the bytes on the
+release today. That defends against tampering from now on, which is worth
+having, but it is not what a reader assumes a release signature means, and it is
+the reader's assumption that decides whether the guarantee is honest. Sign the
+line we support, say where it starts, and do not dress a weak claim as a strong
+one.
 
 **3. No macOS build has ever been signed with a Developer ID certificate or
 notarised by Apple.** The "ever" is established from the workflow history, not
