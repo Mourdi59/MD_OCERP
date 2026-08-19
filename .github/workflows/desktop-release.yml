@@ -18,10 +18,12 @@ on:
     inputs:
       sidecar_only:
         description: >-
-          Build and smoke-test the sidecar without bundling or releasing.
-          Leave this on to check a sidecar change: the bundle step names the
-          release after the git ref, so a manual run from a branch would
-          otherwise open a draft release called "main".
+          Kept for the dispatch form and for anything that still passes it, but
+          it no longer decides anything. A dispatch bundles and releases only
+          when the tag box below holds a version tag, so a run started from a
+          branch is sidecar-only whatever this box says. It used to be the only
+          thing standing between a manual run and a public release named after
+          the branch it was started from.
         type: boolean
         default: true
       tag:
@@ -46,6 +48,23 @@ permissions:
 # reads this instead of the ref it happens to be running on.
 env:
   RELEASE_REF: ${{ inputs.tag || github.ref_name }}
+  # The Tauri CLI every bundling step runs. Nothing pinned it before: the action
+  # resolves a CLI by itself, the repository declares none, and the README told
+  # developers to `cargo install tauri-cli` with no version. So the bundler that
+  # built a release was whichever one the runner fetched that day, and a local
+  # build used whatever the developer installed months earlier.
+  #
+  # That is not only a reproducibility principle, it changes the product. The
+  # installer's translations live in the bundler, not in this repository, so the
+  # set of languages an installer speaks is a property of the CLI that built it.
+  # Unpinned, the same commit could ship a different set of translated installer
+  # messages depending on the machine, and a local build could warn that a
+  # language is untranslated while the release built from that very commit had
+  # it. 2.11.4 carries NSIS message translations for 23 languages, including a
+  # Vietnamese one that CLIs from before May 2026 do not have and silently
+  # replace with English. Of the 21 languages tauri.conf.json offers, Polish is
+  # the only one this CLI has no translation for.
+  TAURI_CLI_VERSION: "2.11.4"
 
 jobs:
   build-sidecar:
@@ -229,8 +248,16 @@ jobs:
           bin="desktop/dist/openconstructionerp-server${{ matrix.ext }}"
           chmod +x "$bin" 2>/dev/null || true
           echo "Running: $bin version"
-          out=$("$bin" version 2>&1)
-          code=$?
+          # `|| code=$?` rather than a bare assignment followed by reading $?.
+          # GitHub runs `shell: bash` as `bash --noprofile --norc -eo pipefail`,
+          # so errexit is on regardless of the `set` line above, and a bare
+          # assignment from a failing command ends the step right there. The
+          # gate still held, because the step failed either way, but the branch
+          # below never ran: the annotation naming this as the failure that
+          # would reach every user's machine could not print, and the run page
+          # said only "Process completed with exit code 1".
+          code=0
+          out=$("$bin" version 2>&1) || code=$?
           echo "--- output ---"
           echo "$out"
           echo "--- exit $code ---"
@@ -244,6 +271,36 @@ jobs:
             *)
               echo "::error title=The desktop sidecar started but said nothing recognisable::Exit was 0 but the output does not carry a version line, so the interpreter may have started without the app package."
               exit 1 ;;
+          esac
+
+          # Which version it reports, not merely that it reports one. The step
+          # above accepts any version string, so a sidecar built from the wrong
+          # commit passes it: the jobs in this workflow each check out
+          # RELEASE_REF independently, a git tag can be moved between those two
+          # checkouts, and nothing else in the pipeline compares what was built
+          # against what is being released. A v15.1.0 release carrying a 15.0.0
+          # sidecar would be green everywhere.
+          #
+          # Safe to gate on, measured rather than assumed: the frozen sidecar
+          # printed "OpenConstructionERP v15.0.0" on all three platforms in the
+          # v15.0.0 run (32222276138), so the version resolves inside a bundle
+          # where importlib.metadata does not answer.
+          #
+          # Only for a release ref. A sidecar-only dispatch from a branch has no
+          # version to be compared against and says so.
+          ref="${RELEASE_REF:-}"
+          case "$ref" in
+            v[0-9]*)
+              want="OpenConstructionERP v${ref#v}"
+              case "$out" in
+                *"$want"*)
+                  echo "OK: the sidecar reports ${ref#v}, which is the version being released." ;;
+                *)
+                  echo "::error title=The sidecar reports a different version than the tag being released::Expected the version line to read '${want}' for ${ref}, and it does not. Either this job checked out something other than ${ref}, or the tag moved after it was pushed, or the version was never bumped in the source. Shipping this would put one version number on the installer and another inside it."
+                  exit 1 ;;
+              esac ;;
+            *)
+              echo "Not a release ref (${ref:-<empty>}), so the reported version is not compared against a tag." ;;
           esac
 
       # The startup path, exercised on the frozen artefact rather than reasoned
@@ -280,6 +337,33 @@ jobs:
               echo "OK: $line" ;;
             *)
               echo "::error title=The desktop sidecar is missing its translation catalogue::${line}. app.main calls load_translations() during startup, so a bundle in this state exits before serving anything and the launcher can only report that the backend did not start in time. The catalogue is force-included into the wheel and shipped by desktop/pyinstaller.spec; check that the spec still adds backend/locales."
+              exit 1 ;;
+          esac
+
+          # The other data file the product is unusable without, read from the
+          # same report. The catalogue was made unconditional in the spec
+          # precisely because a conditional include shipped a bundle without
+          # it; the frontend dist is still conditional there
+          # (`if FRONTEND_DIST.is_dir()`), so a sidecar built beside an empty
+          # or half-written frontend/dist collects no UI, starts perfectly,
+          # answers /api/health, and serves a blank page. Nothing in this
+          # pipeline looked at that, on any platform.
+          #
+          # doctor already asks the server's own lookup, so this is a read of
+          # an existing answer rather than a new check: "ok" prints the path
+          # the UI was found at, and the "no frontend found" branch is a
+          # warning, which is invisible to a step that only reads doctor's exit
+          # code.
+          ui=$(printf '%s\n' "$out" | grep -i "Frontend bundle" || true)
+          if [ -z "$ui" ]; then
+            echo "::error title=The sidecar could not report on its bundled UI::doctor produced no 'Frontend bundle' line on ${{ matrix.os }}, so this build cannot say whether it carries the web UI at all. Either the check was removed or the sidecar failed before reaching it."
+            exit 1
+          fi
+          case "$ui" in
+            *"bundled React UI ready"*)
+              echo "OK: $ui" ;;
+            *)
+              echo "::error title=The desktop sidecar carries no web UI::${ui}. The sidecar would start and serve the API, and the desktop window would show nothing. desktop/pyinstaller.spec only bundles frontend/dist when that directory exists at build time, so check that the frontend build step ran and wrote into it before PyInstaller was invoked."
               exit 1 ;;
           esac
 
@@ -420,12 +504,23 @@ jobs:
   build-tauri:
     name: Build Desktop (${{ matrix.os }})
     needs: build-sidecar
-    # Skipped on a manual sidecar-only run. The step below names the release
-    # after the git ref, so a manual run from a branch would open a draft
-    # release called "main". A tag push never takes this branch: the input is
-    # empty there, so the condition is true. A dispatch that names a tag is
-    # repairing a release and needs the bundles whatever sidecar_only says.
-    if: github.event_name != 'workflow_dispatch' || inputs.tag != '' || inputs.sidecar_only != true
+    # Bundling is what publishes, so the condition for bundling is the
+    # condition for being allowed to publish, and only a version tag qualifies.
+    #
+    # A tag push takes the first clause and always bundles. A dispatch has to
+    # name a tag that starts with "v", which is the shape the release path
+    # assumes everywhere below.
+    #
+    # This used to read `inputs.tag != '' || inputs.sidecar_only != true`, and
+    # the second half of that was a live hazard: unticking the sidecar_only box
+    # on a run started from main passed RELEASE_REF="main" to tauri-action,
+    # which would have opened a draft release tagged "main" carrying the
+    # installers. No run ever did it (measured: the repository holds no draft
+    # releases, and the one dispatch that reached this job, 32246095283, passed
+    # tagName v15.0.0), but nothing except the default state of a checkbox was
+    # preventing it. startsWith also refuses a tag box holding a branch name,
+    # which is the same mistake typed by hand rather than left unticked.
+    if: github.event_name != 'workflow_dispatch' || startsWith(inputs.tag, 'v')
     runs-on: ${{ matrix.os }}
     # Windows 27.8 to 33.2 min, macOS 26.4 to 52.9, Linux 26.5 once the rpm is
     # out of this job. The earlier reading of 119 to 123 min for Linux was read
@@ -603,6 +698,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: desktop
+          # Run the pinned CLI instead of whichever one the action resolves.
+          tauriScript: npx --yes @tauri-apps/cli@${{ env.TAURI_CLI_VERSION }}
           # Empty on Windows and macOS, "--bundles deb,appimage" on Linux.
           args: ${{ matrix.bundles }}
           tagName: ${{ env.RELEASE_REF }}
@@ -717,16 +814,23 @@ jobs:
       # the file named in the user's failure report from clearing a run by never
       # having been opened.
       #
-      # It warns rather than fails, for now. The measurement is new here and has
-      # never been taken at this point, so nothing establishes what a healthy
-      # bundled sidecar reads as, and making a release depend on an unmeasured
-      # property is how you learn its value at tag time. The cost of the other
-      # choice is bounded but real: tauri-action uploads the installers to the
-      # draft release from inside itself, before this step runs, so failing here
-      # withholds no artifact that was going to ship, but it does turn the run
-      # red and it skips the Windows signing job, which needs build-tauri. Once
-      # one clean reading exists, turn the exit 0 at the end of the failing
-      # branch into exit 1 and this becomes a gate.
+      # It is a gate now. It used to warn on the stated grounds that the
+      # measurement was new and nothing established what a healthy bundled
+      # sidecar reads as, with the condition for promoting it written down:
+      # once one clean reading exists, fail instead of warning. That reading
+      # exists. The v14.8.1 run, 31617860264, printed "OK: inside the shipped
+      # bundle, nothing the sidecar unpacks disagrees with it about a Team ID"
+      # from this step on the macOS leg.
+      #
+      # The second half of the old reasoning has also expired. Failing here no
+      # longer skips the Windows signing job: that job's condition was changed
+      # to run whenever build-tauri reached any conclusion other than skipped.
+      #
+      # Know what a red run here costs, because it is not nothing. Release
+      # Signing triggers on a Desktop Release that concluded success, so a
+      # failure at this point leaves the release unsigned until someone
+      # dispatches the signing workflow by hand. The report job at the end of
+      # this workflow says so out loud rather than leaving it to be discovered.
       - name: Check what the bundled sidecar carries (macOS)
         if: runner.os == 'macOS'
         shell: bash
@@ -734,18 +838,24 @@ jobs:
         run: |
           set -uo pipefail
 
+          # Finding nothing to measure is a failure, not a quiet pass. These two
+          # branches used to warn and exit 0, which is the worst shape a gate
+          # can have: it examined zero items and reported success. Neither state
+          # is survivable anyway. No .app under target means the macOS bundle
+          # was not produced, and no sidecar inside Contents/MacOS means the
+          # .dmg about to ship cannot start a backend at all.
           APP=$(find desktop/src-tauri/target -path '*/bundle/macos/*.app' -type d -maxdepth 8 2>/dev/null | head -1)
           if [ -z "${APP:-}" ]; then
-            echo "::warning title=The bundled sidecar was never measured::No .app bundle was found under desktop/src-tauri/target, so the census of the artifact users install did not run. The pre-bundle census in the Build Sidecar job still holds, and it says nothing about what bundling did."
-            exit 0
+            echo "::error title=No macOS app bundle was produced::Nothing matching */bundle/macos/*.app exists under desktop/src-tauri/target, so there is no artifact to measure and none to ship. The census of the artifact users install did not run because the artifact does not exist."
+            exit 1
           fi
           echo "App bundle: $APP"
 
           SIDECAR=$(find "$APP/Contents/MacOS" -type f -name 'openconstructionerp-server*' 2>/dev/null | head -1)
           if [ -z "${SIDECAR:-}" ]; then
-            echo "::warning title=The bundled sidecar was never measured::No openconstructionerp-server binary was found in $APP/Contents/MacOS, so the census of the artifact users install did not run."
+            echo "::error title=The macOS app carries no sidecar::No openconstructionerp-server binary was found in $APP/Contents/MacOS. The bundle would install and then never start a backend. Check that the externalBin entry in tauri.conf.json still matches the file name the Build Sidecar job uploads."
             ls -la "$APP/Contents/MacOS" || true
-            exit 0
+            exit 1
           fi
           echo "Bundled sidecar: $SIDECAR"
 
@@ -794,9 +904,9 @@ jobs:
             echo "OK: inside the shipped bundle, nothing the sidecar unpacks disagrees with it about a Team ID."
             echo "Bundled sidecar census: clean." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "::warning title=The shipped sidecar disagrees with its own payload about a Team ID::The census above found inside the .app the shape that stops the app at 'Starting the application server' on a user's machine, or could not measure enough of it to rule that out. Compare it against the pre-bundle census in the Build Sidecar job: if that one was clean, bundling is what changed it. This warns rather than fails while the measurement is new."
+            echo "::error title=The shipped sidecar disagrees with its own payload about a Team ID::The census above found inside the .app the shape that stops the app at 'Starting the application server' on a user's machine, or could not measure enough of it to rule that out. Compare it against the pre-bundle census in the Build Sidecar job: if that one was clean, bundling is what changed it."
             echo "Bundled sidecar census: MISMATCH or inconclusive, see the Build Desktop (macos-latest) log." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+            exit 1
           fi
 
       # What the macOS leg publishes is ad-hoc signed and has never been
@@ -890,7 +1000,9 @@ jobs:
   build-linux-rpm:
     name: Build Linux RPM
     needs: build-sidecar
-    if: github.event_name != 'workflow_dispatch' || inputs.tag != '' || inputs.sidecar_only != true
+    # Same condition as build-tauri, and for the same reason: this job also
+    # passes a tagName to tauri-action, so it can also open a release.
+    if: github.event_name != 'workflow_dispatch' || startsWith(inputs.tag, 'v')
     runs-on: ubuntu-22.04
     # Twice the v15.0.0 payload at the measured rate, plus the half hour the
     # rest of the job takes. A cap above six hours is not available.
@@ -937,6 +1049,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: desktop
+          # Run the pinned CLI instead of whichever one the action resolves.
+          tauriScript: npx --yes @tauri-apps/cli@${{ env.TAURI_CLI_VERSION }}
           args: --bundles rpm
           # No releaseBody here. The release already exists by the time this
           # finishes and carries the notes release.yml wrote from the
@@ -1294,3 +1408,148 @@ jobs:
               --repo "${{ github.repository }}" \
               --clobber
           done
+
+  # What ended up on the release, read off the release.
+  #
+  # Every other job in this workflow reports on what it did. None of them, and
+  # nothing in release.yml or release-signing.yml either, ever looked at the
+  # thing all of them are producing. That gap is not theoretical: v15.0.0 is
+  # published today with six installers, no .rpm, no SHA256SUMS, no signature,
+  # no SBOM and no licence inventory, because its Linux leg was cancelled by a
+  # job timeout, which made the run conclude "cancelled", which meant Release
+  # Signing never triggered. Every job that ran was green. Nothing anywhere
+  # said the release was short seven files.
+  #
+  # This is the counterpart of the `confirm` job in release-signing.yml, and it
+  # exists for the same reason that one does: a guard that reasons about what
+  # should have happened cannot see a step that never ran. Reading the assets
+  # does not depend on any of that reasoning being right.
+  #
+  # always(), and deliberately not gated on the results of the jobs above. The
+  # case worth catching is precisely the one where a job did not conclude
+  # normally, so a condition that requires them all to have succeeded would
+  # stay quiet exactly when it is needed.
+  report:
+    name: Say what reached the release
+    needs: [build-sidecar, build-tauri, build-linux-rpm, sign-windows]
+    if: ${{ always() && (github.ref_type == 'tag' || startsWith(inputs.tag, 'v')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Red on the job tile, with the annotation and the summary block, but the
+    # run still concludes success. That is deliberate and it is not timidity.
+    #
+    # tauri-action uploads the installers from inside itself, so by the time
+    # this job looks, everything it can complain about is already on the
+    # release. Failing the run therefore withholds no artifact. What it would
+    # do is stop Release Signing, which only starts from a Desktop Release that
+    # concluded success, and the release would then be short an installer AND
+    # short its manifest. That is v15.0.0's exact state, reached through the
+    # gate meant to report it.
+    #
+    # The test that decides continue-on-error here: does failing prevent a bad
+    # artifact from shipping, or does it only strip the signature off one that
+    # already shipped? The bundled census in build-tauri fails the run because
+    # a broken .app is worth stopping for. This job only observes.
+    continue-on-error: true
+    steps:
+      - name: Read the assets back off the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ env.RELEASE_REF }}
+          SIDECAR_RESULT: ${{ needs.build-sidecar.result }}
+          TAURI_RESULT: ${{ needs.build-tauri.result }}
+          RPM_RESULT: ${{ needs.build-linux-rpm.result }}
+          SIGN_RESULT: ${{ needs.sign-windows.result }}
+        run: |
+          set -uo pipefail
+
+          # Bounded retry against read-after-write lag on the assets API, the
+          # same shape release-signing.yml uses. Three misses over twenty
+          # seconds is not a slow API.
+          assets=""
+          fetch_error=""
+          for attempt in 1 2 3; do
+            if assets=$(gh release view "$TAG" --repo "${{ github.repository }}" \
+                 --json assets --jq '.assets[].name' 2>fetch.err); then
+              fetch_error=""
+              [ -n "$assets" ] && break
+            else
+              fetch_error=$(tr '\n' ' ' < fetch.err)
+              assets=""
+            fi
+            [ "$attempt" != 3 ] && sleep 10
+          done
+
+          if [ -n "$fetch_error" ]; then
+            echo "::error title=Could not read the release::Reading the assets on ${TAG} failed, so this run cannot say what it published: ${fetch_error}"
+            exit 1
+          fi
+
+          echo "Assets on ${TAG}:"
+          printf '%s\n' "$assets"
+
+          have() { printf '%s\n' "$assets" | grep -q -- "$1"; }
+
+          # The installer per platform this workflow claims to build. Named as
+          # suffixes rather than counted, because counting accepts two Windows
+          # installers and no macOS one.
+          missing=""
+          for expected in 'Windows .exe:\.exe$' 'Windows .msi:\.msi$' 'macOS .dmg:\.dmg$' \
+                          'macOS .app.tar.gz:\.app\.tar\.gz$' 'Linux .deb:\.deb$' \
+                          'Linux .AppImage:\.AppImage$'; do
+            have "${expected#*:}" || missing="${missing} ${expected%%:*},"
+          done
+          missing="${missing%,}"
+
+          # The rpm is the one platform allowed to be absent. Its job is
+          # continue-on-error on purpose, because the bundler is roughly four
+          # hundred times slower than the deb at the same payload and has run
+          # out of clock before. A missing rpm costs Fedora and openSUSE users
+          # this version; it does not make the release wrong.
+          if have '\.rpm$'; then
+            rpm_line="present"
+          else
+            rpm_line="**absent** (build-linux-rpm reported \`${RPM_RESULT}\`)"
+            echo "::warning title=This release has no rpm::The rpm bundler did not deliver, so Fedora and openSUSE users have no package for ${TAG}. The other Linux packages are unaffected."
+          fi
+
+          # Whether Release Signing can even start. It triggers on a Desktop
+          # Release run that concluded success and whose head_branch begins with
+          # v, which is the tag on a tag push and a branch name on a dispatch.
+          # So a repair run never triggers it, and neither does a run where any
+          # job failed - and in both cases the release keeps whatever manifest
+          # it already had, which now covers fewer files than it holds.
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            signing="**will not run.** This was a dispatch, so Release Signing sees a branch name where it expects a tag and skips."
+            if have '^SHA256SUMS$'; then
+              echo "::warning title=The signature on this release is now stale::${TAG} already carried SHA256SUMS before this run attached files to it. That manifest describes the release as it was, and it verifies cleanly over the smaller set, which reads as a complete release. Dispatch Release Signing against ${TAG} to regenerate it."
+              signing="$signing The manifest already on the release predates the files this run attached and no longer covers them."
+            fi
+          elif [ "$SIDECAR_RESULT" = "success" ] && [ "$TAURI_RESULT" = "success" ]; then
+            signing="should run: this workflow concluded normally on a tag."
+          else
+            signing="**will not run.** Release Signing needs this run to conclude success, and build-sidecar reported \`${SIDECAR_RESULT}\`, build-tauri \`${TAURI_RESULT}\`. Dispatch Release Signing against ${TAG} by hand once the cause is fixed."
+            echo "::warning title=This release will not be signed automatically::Release Signing only starts from a Desktop Release that concluded success. Dispatch it against ${TAG} once the failing job is understood, or the release keeps no SHA256SUMS at all."
+          fi
+
+          {
+            echo "### What reached \`${TAG}\`"
+            echo
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Assets on the release | $(printf '%s\n' "$assets" | grep -c . || true) |"
+            echo "| rpm | ${rpm_line} |"
+            echo "| Windows signing job | \`${SIGN_RESULT}\` |"
+            echo "| Release Signing | ${signing} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -n "$missing" ]; then
+            echo "::error title=The release is missing installers this workflow builds::${TAG} carries no asset matching:${missing}. A release page that is short a platform looks the same as one that never built for it, and users of that platform simply find nothing to download."
+            {
+              echo
+              echo "**Missing from the release:** ${missing}"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo "OK: ${TAG} carries an installer for every platform this workflow builds."
