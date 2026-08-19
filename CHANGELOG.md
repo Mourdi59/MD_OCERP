@@ -5,7 +5,7 @@ All notable changes to OpenConstructionERP are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [15.0.0] - 2026-08-18
+## [15.0.0] - 2026-08-19
 
 The product crosses into two markets it could previously only describe. Nine playbooks written for the American market ship beside twelve written for the German one, and behind them sit the things those markets actually turn on: Texas and California packs carrying their own state rules, a weekly certified payroll for public works, the statutory payment clocks of VOB/B and BGB, and the working time record MiLoG section 17 requires, shown on the timesheet where the hours are entered rather than in a report nobody opens. American English is a locale of its own now rather than a spelling variant, and a bill of quantities is a Bid Schedule to the reader who calls it that.
 
