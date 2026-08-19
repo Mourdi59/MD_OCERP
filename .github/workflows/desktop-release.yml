@@ -1531,6 +1531,25 @@ jobs:
               echo "::warning title=The signature on this release is now stale::${TAG} already carried SHA256SUMS before this run attached files to it. That manifest describes the release as it was, and it verifies cleanly over the smaller set, which reads as a complete release. Dispatch Release Signing against ${TAG} to regenerate it."
               signing="$signing The manifest already on the release predates the files this run attached and no longer covers them."
             fi
+          elif [ "$RPM_RESULT" != "success" ] && [ "$RPM_RESULT" != "skipped" ]; then
+            # The rpm job is continue-on-error, which is documented as keeping a
+            # job that FAILS from failing the run. Whether it also covers a job
+            # that its own timeout-minutes cancels is not something this file
+            # knows, and the answer decides whether signing fires: a run that
+            # concludes cancelled does not trigger Release Signing, which is
+            # exactly how v15.0.0 ended up with no manifest.
+            #
+            # Measured, and the reason this branch exists: the v15.0.0 rpm was
+            # still bundling at 213 minutes when a 240 minute cap killed it, so
+            # the 350 minute cap on that job is a live possibility rather than a
+            # theoretical one. This branch predicted "should run" on the strength
+            # of build-sidecar and build-tauri alone, which would have been a
+            # reassuring sentence printed in precisely the case it is wrong.
+            #
+            # So say what is known and stop. Guessing either way would put a
+            # confident answer where a measurement belongs.
+            signing="**cannot be predicted from here.** build-linux-rpm reported \`${RPM_RESULT}\`. That job is continue-on-error, which covers a job that fails; whether it covers one cancelled by its own timeout is unsettled, and a run concluding cancelled does not trigger Release Signing. Read this run's conclusion before announcing the release, and dispatch Release Signing against ${TAG} by hand if it is not success."
+            echo "::warning title=Check the run conclusion before announcing this release::build-linux-rpm reported ${RPM_RESULT}. If that makes the run conclude anything other than success, Release Signing does not fire and ${TAG} ships with no SHA256SUMS, which is how v15.0.0 shipped unsigned. Read the conclusion at the top of this run and dispatch Release Signing by hand if it is not success."
           elif [ "$SIDECAR_RESULT" = "success" ] && [ "$TAURI_RESULT" = "success" ]; then
             signing="should run: this workflow concluded normally on a tag."
           else
