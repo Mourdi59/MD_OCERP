@@ -190,7 +190,7 @@ TEMPLATE = DemoTemplate(
                 ("07.2", "Centrale air medical comprime redondante (Medical air plant)", "lsum", 1, 245000.00, {"dpgf": "07"}),
                 ("07.3", "Centrale vide medical et SEGA (Medical vacuum/AGSS plant)", "lsum", 1, 215000.00, {"dpgf": "07"}),
                 ("07.4", "Réseau cuivre fluides medicaux degraisse (Copper medical gas pipework)", "m", 12500, 78.00, {"dpgf": "07"}),
-                ("07.5", "Prises murales fluides medicaux normalisees (Medical gas terminal units)", "pcs", 2400, 185.00, {"dpgf": "07"}),
+                ("07.5", "Prises murales fluides medicaux normalisées (Medical gas terminal units)", "pcs", 2400, 185.00, {"dpgf": "07"}),
                 ("07.6", "Bras et poutres techniques de soins (Medical pendants/booms)", "pcs", 96, 18500.00, {"dpgf": "07"}),
                 ("07.7", "Coffrets de detente et de coupure de zone (Zone valve/pressure boxes)", "pcs", 120, 2850.00, {"dpgf": "07"}),
                 ("07.8", "Centrale de surveillance et alarmes fluides (Gas alarm/monitoring system)", "lsum", 1, 165000.00, {"dpgf": "07"}),
