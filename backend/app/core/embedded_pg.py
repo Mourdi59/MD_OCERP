@@ -35,6 +35,13 @@ from types import ModuleType
 
 logger = logging.getLogger(__name__)
 
+# How far the recorded postmaster start time may sit from the actual creation
+# time of the process holding that PID before we call the PID recycled. The
+# two are written within the same second on a healthy cluster, so this is
+# generous rather than tight; it only has to separate the same process from a
+# different one.
+_PID_START_TOLERANCE_SECONDS = 10.0
+
 #: Module-level handle to the running server, kept so :func:`shutdown` can stop it.
 _server = None
 
@@ -408,13 +415,74 @@ def _pid_alive(pid: int) -> bool:
         return True
 
 
-def _clear_stale_pidfile(pgdata: Path) -> None:
-    """Delete ``postmaster.pid`` when it points at a process that is gone.
+def _read_pidfile_start_time(pgdata: Path) -> float | None:
+    """Return the postmaster start time recorded in ``postmaster.pid``.
 
-    A force-kill or crash leaves the pidfile behind. PostgreSQL itself refuses
-    to start while a pidfile names a live process, but a pidfile for a dead PID
-    only slows pixeltable's start path; removing it lets the clean-start path
-    run. Never removes a pidfile whose process is still alive.
+    Line three of the file is the epoch second at which the postmaster started,
+    written by PostgreSQL itself. It is what lets us tell the process that wrote
+    this file apart from whatever holds that PID now.
+    """
+    pidfile = pgdata / "postmaster.pid"
+    try:
+        lines = pidfile.read_text(encoding="utf-8", errors="ignore").splitlines()
+        return float(lines[2].strip())
+    except (OSError, IndexError, ValueError):
+        return None
+
+
+def _pid_was_recycled(pid: int, recorded_start: float | None) -> bool:
+    """True when ``pid`` is alive but is demonstrably not the process that wrote the pidfile.
+
+    Operating systems reuse process identifiers, and Windows reuses them quickly.
+    Asking only whether the number is alive therefore answers a different
+    question than the one that matters: a pidfile left behind by a force-killed
+    postmaster keeps naming a number, and once the system hands that number to
+    an unrelated service the file starts describing a process that has nothing
+    to do with this cluster. Measured on a real machine: a pidfile written in
+    July named a PID held by a licensing service, the check saw a live process,
+    kept the file, and the cluster reported itself ready on a port where nothing
+    was listening. The backend then refused to start with a connection error,
+    and the user was told the database was ready and the server was not.
+
+    Only positive evidence of recycling counts, because the opposite mistake is
+    far worse: deleting the pidfile of a genuinely live postmaster invites a
+    second one onto the same data directory. Anything unreadable or uncertain
+    therefore answers no and the file is kept.
+    """
+    try:
+        import psutil
+    except Exception:  # noqa: BLE001
+        return False
+    try:
+        proc = psutil.Process(pid)
+        created = proc.create_time()
+        name = (proc.name() or "").lower()
+    except Exception:  # noqa: BLE001
+        # Gone, or we are not allowed to look. Either way this is not evidence.
+        return False
+    if recorded_start is not None:
+        # The recorded time is the stronger signal and answers on its own, so a
+        # process whose creation matches it is the one that wrote the file even
+        # if we could not make sense of its name.
+        return abs(created - recorded_start) > _PID_START_TOLERANCE_SECONDS
+    # With no time to compare against, a name we can read that is not a
+    # postmaster settles it instead.
+    return bool(name) and "postgres" not in name and "postmaster" not in name
+
+
+def _clear_stale_pidfile(pgdata: Path) -> None:
+    """Delete ``postmaster.pid`` when the process it names is gone or is no longer it.
+
+    A force-kill or crash leaves the pidfile behind, and the installer's own
+    hooks force-kill the sidecar and its children on every install and every
+    uninstall, so this is the ordinary aftermath of upgrading rather than a rare
+    accident. PostgreSQL itself refuses to start while a pidfile names a live
+    process, and pixeltable takes a slower path for one that names a dead PID,
+    so clearing it keeps boot on the clean-start path.
+
+    Never removes a pidfile whose postmaster is still alive. A PID that is alive
+    but belongs to something else is treated as gone, because that is what it
+    is.
     """
     pidfile = pgdata / "postmaster.pid"
     if not pidfile.exists():
@@ -422,11 +490,13 @@ def _clear_stale_pidfile(pgdata: Path) -> None:
     pid = _read_pidfile_pid(pgdata)
     if pid is None:
         return
-    if _pid_alive(pid):
+    recycled = _pid_was_recycled(pid, _read_pidfile_start_time(pgdata))
+    if _pid_alive(pid) and not recycled:
         return
+    reason = "pid %d belongs to another process" % pid if recycled else "dead pid %d" % pid
     try:
         pidfile.unlink()
-        logger.info("removed stale postmaster.pid (dead pid %d) in %s", pid, pgdata)
+        logger.info("removed stale postmaster.pid (%s) in %s", reason, pgdata)
     except OSError as exc:
         logger.warning("could not remove stale postmaster.pid in %s: %r", pgdata, exc)
 
