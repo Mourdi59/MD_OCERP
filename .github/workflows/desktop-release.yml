@@ -4,9 +4,9 @@
 # Builds desktop installers for Windows, macOS, and Linux.
 #
 # Artifacts:
-#   - Windows: .exe (NSIS installer)
-#   - macOS: .dmg
-#   - Linux: .AppImage, .deb
+#   - Windows: .exe (NSIS installer), .msi
+#   - macOS: .dmg, .app.tar.gz
+#   - Linux: .deb, .AppImage, and .rpm from a job of its own (see build-linux-rpm)
 
 name: Desktop Release
 
@@ -24,9 +24,28 @@ on:
           otherwise open a draft release called "main".
         type: boolean
         default: true
+      tag:
+        description: >-
+          Rebuild the installers for a tag that already has a release, e.g.
+          v15.0.0, and attach whatever is missing. A tag push takes its
+          workflow file from the tag's own commit, so a pipeline fix landed
+          after the tag can never reach that run; this is the way in. The
+          source is checked out at the tag, only the pipeline comes from the
+          branch you dispatch from. Setting this builds the bundles whatever
+          sidecar_only says, because a repair that stopped at the sidecar
+          would be a green run that fixed nothing.
+        required: false
+        default: ""
 
 permissions:
   contents: write
+
+# The tag this run is releasing. A tag push carries it in github.ref_name; a
+# repair run is dispatched from a branch and names the tag in an input, so the
+# two cannot be read from the same place and every job that touches the release
+# reads this instead of the ref it happens to be running on.
+env:
+  RELEASE_REF: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   build-sidecar:
@@ -56,6 +75,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The source comes from the tag, the pipeline from wherever this run
+          # was started. On a tag push the two are the same commit and this
+          # line changes nothing.
+          ref: ${{ env.RELEASE_REF }}
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -288,16 +312,18 @@ jobs:
     # Skipped on a manual sidecar-only run. The step below names the release
     # after the git ref, so a manual run from a branch would open a draft
     # release called "main". A tag push never takes this branch: the input is
-    # empty there, so the condition is true.
-    if: github.event_name != 'workflow_dispatch' || inputs.sidecar_only != true
+    # empty there, so the condition is true. A dispatch that names a tag is
+    # repairing a release and needs the bundles whatever sidecar_only says.
+    if: github.event_name != 'workflow_dispatch' || inputs.tag != '' || inputs.sidecar_only != true
     runs-on: ${{ matrix.os }}
-    # Measured over the same three releases: Windows 27.8 to 29.6 min, macOS
-    # 26.4 to 36.2, Linux 119.2 to 123.5. Linux is not an outlier, it is the
-    # normal cost of building the Tauri bundle there with no Rust cache, and it
-    # is stable within four minutes across three releases. The cap is set from
-    # that leg rather than from the average, because a matrix job takes one
-    # number for every OS in it.
-    timeout-minutes: 240
+    # Windows 27.8 to 33.2 min, macOS 26.4 to 52.9, Linux 26.5 once the rpm is
+    # out of this job. The earlier reading of 119 to 123 min for Linux was read
+    # as "the normal cost of building the Tauri bundle there with no Rust
+    # cache", and that was wrong: on v14.8.1 the Rust build finished in 5m29s
+    # and the deb was written in 13 seconds. The two hours were the rpm, which
+    # now has a job of its own. The cap is a little over twice the slowest leg,
+    # because a matrix job takes one number for every OS in it.
+    timeout-minutes: 120
     strategy:
       # Build every OS even if one fails, so a single-platform break never
       # cancels the others and we still ship the installers that did build.
@@ -306,13 +332,21 @@ jobs:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            # Empty means the config's own target list, which is what Windows
+            # and macOS want: nsis and msi there, dmg and app here.
+            bundles: ""
           - os: macos-latest
             target: aarch64-apple-darwin
+            bundles: ""
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+            # Everything Linux ships except the rpm. See build-linux-rpm.
+            bundles: "--bundles deb,appimage"
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_REF }}
 
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
@@ -458,10 +492,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: "OpenConstructionERP ${{ github.ref_name }}"
+          # Empty on Windows and macOS, "--bundles deb,appimage" on Linux.
+          args: ${{ matrix.bundles }}
+          tagName: ${{ env.RELEASE_REF }}
+          releaseName: "OpenConstructionERP ${{ env.RELEASE_REF }}"
           releaseBody: |
-            ## OpenConstructionERP ${{ github.ref_name }}
+            ## OpenConstructionERP ${{ env.RELEASE_REF }}
 
             A real native desktop app. No Python, no pip, no Docker, and no database to set up. Download one file, run it, and you are ready.
 
@@ -713,6 +749,106 @@ jobs:
             echo "See \`docs/desktop/MACOS_NOTARIZATION.md\` and \`docs/desktop/RELEASE_SIGNATURE_INVENTORY.md\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # The Linux .rpm, on its own, because it costs more than everything else in
+  # this workflow put together.
+  #
+  # Measured on two releases. v14.8.1, a 369 MB sidecar: Rust finished in
+  # 5m29s, the .deb was written in 13 seconds, the .rpm took 1h48m43s and the
+  # AppImage 1m53s after it. v15.0.0, a 732 MB sidecar: the .deb took 25
+  # seconds and the .rpm was still running 3h33m later when the 240 minute job
+  # cap cancelled it, which took the whole run to "cancelled" and with it the
+  # Linux installers, SHA256SUMS and the cosign signature, none of which have
+  # anything to do with rpm. The two readings are the same throughput, about
+  # 56 KB of payload a second, so this scales with whatever the sidecar
+  # weighs and the next thing added to it moves the cap again.
+  #
+  # The rate is the point. The .deb packs the identical payload to the
+  # identical size in 25 seconds, so this is not compression: the rpm bundler
+  # is roughly four hundred times slower than gzip at the same job, and no
+  # setting we own changes that. What we can own is who waits for it. The rpm
+  # is the most downloaded Linux package we publish (15 against 9 for the deb
+  # and 4 for the AppImage on v14.8.1), so it is not something to drop; it is
+  # something to keep out of the path of the release.
+  #
+  # Hence a job of its own, needing only the sidecar so it starts alongside
+  # the others, and continue-on-error so that if it does run out of clock the
+  # release still concludes green and still gets signed. The run does wait for
+  # this job before it completes, which delays the signature by a couple of
+  # hours; that is unattended and cheap, and it is the trade that keeps a slow
+  # rpm from ever again taking a whole release with it.
+  build-linux-rpm:
+    name: Build Linux RPM
+    needs: build-sidecar
+    if: github.event_name != 'workflow_dispatch' || inputs.tag != '' || inputs.sidecar_only != true
+    runs-on: ubuntu-22.04
+    # Twice the v15.0.0 payload at the measured rate, plus the half hour the
+    # rest of the job takes. A cap above six hours is not available.
+    timeout-minutes: 350
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_REF }}
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev
+
+      - name: Download sidecar
+        uses: actions/download-artifact@v4
+        with:
+          name: sidecar-x86_64-unknown-linux-gnu
+          path: desktop/src-tauri/binaries/
+
+      - name: Make sidecar executable
+        run: chmod +x desktop/src-tauri/binaries/*
+
+      - name: Build the rpm
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: desktop
+          args: --bundles rpm
+          # No releaseBody here. The release already exists by the time this
+          # finishes and carries the notes release.yml wrote from the
+          # changelog; this job only has an asset to add to it.
+          tagName: ${{ env.RELEASE_REF }}
+          releaseName: "OpenConstructionERP ${{ env.RELEASE_REF }}"
+          releaseDraft: true
+          prerelease: false
+
+      - name: Say how long the rpm took
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          RPM=$(find desktop/src-tauri/target -path '*/bundle/rpm/*.rpm' -type f 2>/dev/null | head -1)
+          if [ -z "${RPM:-}" ]; then
+            echo "::warning title=No rpm was produced::The rpm bundler did not finish inside this job's cap, or it failed. The release keeps its .deb and .AppImage; Fedora and openSUSE users have no package for this version."
+            echo "No rpm was produced by this run." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          SIZE=$(du -h "$RPM" | cut -f1)
+          echo "Built $(basename "$RPM"), $SIZE" >> "$GITHUB_STEP_SUMMARY"
+
   # Authenticode code signing for the Windows installers.
   #
   # The tauri-action above uploads the Windows .exe (NSIS) and .msi to the
@@ -816,7 +952,7 @@ jobs:
           AZURE_KV_CLIENT_SECRET: ${{ secrets.AZURE_KV_CLIENT_SECRET }}
           AZURE_KV_TENANT_ID: ${{ secrets.AZURE_KV_TENANT_ID }}
           SIGNING_REQUIRED: ${{ vars.WINDOWS_SIGNING_REQUIRED }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ env.RELEASE_REF }}
         shell: bash
         run: |
           set -euo pipefail
@@ -903,7 +1039,7 @@ jobs:
         if: steps.preflight.outputs.mode == 'sign'
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ env.RELEASE_REF }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1025,7 +1161,7 @@ jobs:
         if: steps.preflight.outputs.mode == 'sign'
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ env.RELEASE_REF }}
         shell: bash
         run: |
           set -euo pipefail
