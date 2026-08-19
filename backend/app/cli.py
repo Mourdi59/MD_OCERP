@@ -2309,7 +2309,19 @@ def main() -> None:
         #   terminal for the startup wait.
         # * Subsequent runs - jump straight to serve (they already know).
         data_dir = Path(DEFAULT_DATA_DIR)
-        first_run = not data_dir.exists() or not (data_dir / "openestimate.db").exists()
+        # A first run is a data directory with no database behind it. This asked
+        # only whether the legacy SQLite file was missing, and embedded
+        # PostgreSQL replaced that file as the default in v6.0.0, so it is
+        # absent on every install made since and the answer was always yes. A
+        # workspace in daily use was greeted as a brand new one and re-prompted
+        # on every bare invocation, which is the sort of defect that reads as
+        # cosmetic until you notice the product cannot tell whether it has met
+        # you before. The cluster marker is the test the demo-seed question a
+        # few lines below already used; keeping both meant one question asked
+        # two ways, and the way that decided the greeting was the wrong one.
+        first_run = not data_dir.exists() or (
+            not (data_dir / "pgdata" / "PG_VERSION").exists() and not (data_dir / "openestimate.db").exists()
+        )
         args.host = DEFAULT_HOST
         args.port = DEFAULT_PORT
         args.data_dir = str(DEFAULT_DATA_DIR)
@@ -2326,10 +2338,10 @@ def main() -> None:
             # flagship/Heilbronn backfills) respects it.
             from app.core.demo_seed import read_demo_seed_choice, write_demo_seed_choice
 
-            fresh_install = (
-                not (data_dir / "pgdata" / "PG_VERSION").exists() and not (data_dir / "openestimate.db").exists()
-            )
-            if fresh_install and "SEED_DEMO" not in os.environ and read_demo_seed_choice(data_dir) is None:
+            # Reaching here means first_run above already answered this, and
+            # answering it twice is how the two drifted apart in the first
+            # place.
+            if "SEED_DEMO" not in os.environ and read_demo_seed_choice(data_dir) is None:
                 seed_choice = _prompt_seed_demo()
                 if seed_choice is not None:
                     write_demo_seed_choice(seed_choice, data_dir)
