@@ -399,7 +399,13 @@ jobs:
           set -uo pipefail
           bin="desktop/dist/openconstructionerp-server${{ matrix.ext }}"
           chmod +x "$bin" 2>/dev/null || true
-          scratch="${RUNNER_TEMP}/oe-first-run"
+          # A relative directory, deliberately. RUNNER_TEMP on Windows is a
+          # path with backslashes, and handing one to bash on one leg of a
+          # three-platform matrix is a way to fail that leg for a reason
+          # that has nothing to do with what the step checks. A relative
+          # name is resolved by the sidecar itself, the same way on all
+          # three.
+          scratch="oe-first-run-data"
           rm -rf "$scratch"
           mkdir -p "$scratch"
           echo "Running: $bin init-db --data-dir $scratch"
