@@ -42,6 +42,12 @@ logger = logging.getLogger(__name__)
 # different one.
 _PID_START_TOLERANCE_SECONDS = 10.0
 
+# How long a cluster that has just been handed back as ready gets to answer a
+# connection before we treat it as absent. A healthy one answers on the first
+# try, and a genuinely recovering one never reaches here because get_server()
+# raises and the recovery path waits it out on the patient budget instead.
+_READY_PROBE_SECONDS = 20.0
+
 #: Module-level handle to the running server, kept so :func:`shutdown` can stop it.
 _server = None
 
@@ -335,7 +341,7 @@ def _boot_once(
     while time.monotonic() < deadline:
         probe += 1
         try:
-            return pgserver.get_server(str(pgdata)), None
+            server = pgserver.get_server(str(pgdata))
         except Exception as exc:  # noqa: BLE001
             last_exc = exc
             # The first get_server() launches the postmaster, which keeps
@@ -378,6 +384,38 @@ def _boot_once(
             # open but get_server() still raised (a brief pidfile race), this
             # keeps the loop from spinning hot while the pidfile finishes.
             time.sleep(1.0)
+        else:
+            # get_server() returning means we were handed a server object. It
+            # does not mean a server is there. Attaching reads the cluster's own
+            # files, so a data directory left describing a postmaster that no
+            # longer exists hands back a perfectly well formed handle onto a
+            # port where nothing is listening, and the caller then announces the
+            # database ready and fails to connect to it in the same breath. That
+            # pair of statements is what a user actually saw, twice, on two
+            # different data directories.
+            #
+            # So the happy path proves it the same way the recovery path already
+            # does, by opening a socket. On a healthy boot the first connect
+            # succeeds and this costs nothing measurable; when it does not, the
+            # cluster is not there whatever the files say, and saying so here
+            # lets the caller's retry clear the leftovers and start one.
+            probe_window = min(_READY_PROBE_SECONDS, max(deadline - time.monotonic(), 0.0))
+            if _cluster_answers(resolved_pgdata, probe_window):
+                return server, None
+            port = _port_from_pidfile(resolved_pgdata)
+            last_exc = ConnectionError(
+                f"the cluster at {resolved_pgdata} was handed back as ready but nothing answered "
+                f"on port {port} within {probe_window:.0f}s"
+            )
+            logger.warning("embedded PostgreSQL attached but did not answer: %s", last_exc)
+            # Drop the handle pixeltable cached for this data directory, or the
+            # next attempt is given the same unusable one straight back.
+            if ps_cls is not None:
+                try:
+                    ps_cls._instances.pop(resolved_pgdata, None)
+                except Exception:  # noqa: BLE001
+                    pass
+            return None, last_exc
     return None, last_exc
 
 
@@ -727,6 +765,32 @@ def _port_from_pidfile(pgdata: Path) -> int | None:
     except ValueError:
         return None
     return port if port > 0 else None
+
+
+def _cluster_answers(pgdata: Path, timeout_seconds: float) -> bool:
+    """True when something accepts a connection on the port the pidfile records.
+
+    Separate from :func:`_wait_until_connectable`, which exists to sit out a
+    multi minute crash recovery and deliberately pauses after it succeeds so the
+    following attach finds a finished pidfile. This one asks a much smaller
+    question, whether a cluster we have just been told is ready is actually
+    there, so it answers the moment the socket opens and costs a healthy boot
+    nothing. Always tries at least once, however small the window.
+    """
+    import socket
+
+    deadline = time.monotonic() + max(timeout_seconds, 0.0)
+    while True:
+        port = _port_from_pidfile(pgdata)
+        if port is not None:
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=2):
+                    return True
+            except OSError:
+                pass
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.5)
 
 
 def _wait_until_connectable(pgdata: Path, deadline: float) -> bool:
