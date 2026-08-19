@@ -13728,7 +13728,7 @@ const resource = {
     "dashboard.procurement_rfqs": "RFQ en attente",
     "dashboard.procurement_pos_issued": "BC émis",
     "dashboard.procurement_pos_received": "BC reçus",
-    "dashboard.budget_subtitle": "Planifié vs réel sur tous les budgets",
+    "dashboard.budget_subtitle": "Prévision / Budget",
     "dashboard.budget_empty": "Aucun projet en dépassement.",
     "dashboard.budget_cta": "Ouvrir la finance",
     "dashboard.change_orders_subtitle": "Avenants ouverts et impact",

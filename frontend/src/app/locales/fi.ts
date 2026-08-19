@@ -15807,7 +15807,7 @@ const resource = {
     "country_combobox.search_placeholder": "Hae maata (englanniksi tai paikallisella kirjoituksella)…",
     "dashboard.budget_cta": "Avaa taloushallinto",
     "dashboard.budget_empty": "Ei budjettinsa ylittäviä projekteja.",
-    "dashboard.budget_subtitle": "Suunniteltu vs toteutunut eri budjeteissa",
+    "dashboard.budget_subtitle": "Ennuste / Budjetti",
     "dashboard.change_orders_cta": "Avaa muutostilaukset",
     "dashboard.change_orders_empty": "Ei avoimia muutostilauksia.",
     "dashboard.change_orders_impact": "Kokonaisvaikutus",

@@ -8528,7 +8528,7 @@ const resource = {
     "dashboard.procurement_rfqs": "Offene Anfragen",
     "dashboard.procurement_pos_issued": "Bestellungen ausgestellt",
     "dashboard.procurement_pos_received": "Bestellungen erhalten",
-    "dashboard.budget_subtitle": "Plan vs. Ist über alle Budgets",
+    "dashboard.budget_subtitle": "Prognose / Budget",
     "dashboard.budget_empty": "Keine Projekte mit Budgetüberschreitung.",
     "dashboard.budget_cta": "Finanzen öffnen",
     "dashboard.change_orders_subtitle": "Offene Nachträge und Auswirkungen",

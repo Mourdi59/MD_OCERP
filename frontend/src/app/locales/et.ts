@@ -14659,7 +14659,7 @@ const resource = {
     "dashboard.procurement_rfqs": "Ootel hinnapäringud",
     "dashboard.procurement_pos_issued": "Väljastatud ostutellimused",
     "dashboard.procurement_pos_received": "Saabunud ostutellimused",
-    "dashboard.budget_subtitle": "Planeeritud vs tegelik eelarvete lõikes",
+    "dashboard.budget_subtitle": "Prognoos / Eelarve",
     "dashboard.budget_empty": "Eelarvet ületavaid projekte pole.",
     "dashboard.budget_cta": "Ava finants",
     "dashboard.change_orders_subtitle": "Avatud muudatuskorraldused ja mõju",

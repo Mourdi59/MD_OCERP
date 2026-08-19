@@ -14447,7 +14447,7 @@ const resource = {
     "dashboard.procurement_rfqs": "Oczekujące RFQ",
     "dashboard.procurement_pos_issued": "Wystawione PO",
     "dashboard.procurement_pos_received": "Odebrane PO",
-    "dashboard.budget_subtitle": "Plan vs wykonanie we wszystkich budżetach",
+    "dashboard.budget_subtitle": "Prognoza / Budżet",
     "dashboard.budget_empty": "Brak projektów z przekroczeniem budżetu.",
     "dashboard.budget_cta": "Otwórz finanse",
     "dashboard.change_orders_subtitle": "Otwarte zlecenia zmian i wpływ",

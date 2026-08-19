@@ -9851,7 +9851,7 @@ const resource = {
     "dashboard.procurement_rfqs": "Väntande RFQ:ar",
     "dashboard.procurement_pos_issued": "IO utfärdade",
     "dashboard.procurement_pos_received": "Mottagna inköpsorder",
-    "dashboard.budget_subtitle": "Planerat vs. verkligt för budgetar",
+    "dashboard.budget_subtitle": "Prognos / Budget",
     "dashboard.budget_empty": "Inga projekt över budget.",
     "dashboard.budget_cta": "Öppna Ekonomi",
     "dashboard.change_orders_subtitle": "Öppna ändringsorder och konsekvenser",

@@ -5016,7 +5016,7 @@ const resource = {
     "dashboard.procurement_rfqs": "Күтүлүп жаткан RFQлар",
     "dashboard.procurement_pos_issued": "Чыгарылган POлор",
     "dashboard.procurement_pos_received": "Кабыл алынган POлор",
-    "dashboard.budget_subtitle": "Бюджеттер боюнча пландалган менен иш жүзүндөгү салыштыруу",
+    "dashboard.budget_subtitle": "Болжол / Бюджет",
     "dashboard.budget_empty": "Бюджеттен ашкан долбоорлор жок.",
     "dashboard.budget_cta": "Каржыны ачуу",
     "dashboard.change_orders_subtitle": "Ачык өзгөртүү буйруктары жана таасири",

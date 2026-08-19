@@ -14416,7 +14416,7 @@ const resource = {
     "dashboard.procurement_rfqs": "待处理 RFQ",
     "dashboard.procurement_pos_issued": "已开具 PO",
     "dashboard.procurement_pos_received": "已收 PO",
-    "dashboard.budget_subtitle": "所有预算的计划与实际",
+    "dashboard.budget_subtitle": "预测 / 预算",
     "dashboard.budget_empty": "没有超支项目。",
     "dashboard.budget_cta": "打开财务",
     "dashboard.change_orders_subtitle": "未结变更指令及影响",

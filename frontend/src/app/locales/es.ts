@@ -14095,7 +14095,7 @@ const resource = {
     "dashboard.procurement_rfqs": "RFQs pendientes",
     "dashboard.procurement_pos_issued": "OCs emitidas",
     "dashboard.procurement_pos_received": "OCs recibidas",
-    "dashboard.budget_subtitle": "Planificado vs real en todos los presupuestos",
+    "dashboard.budget_subtitle": "Pronóstico / Presupuesto",
     "dashboard.budget_empty": "Sin proyectos con sobrecoste.",
     "dashboard.budget_cta": "Abrir finanzas",
     "dashboard.change_orders_subtitle": "Órdenes de cambio abiertas e impacto",

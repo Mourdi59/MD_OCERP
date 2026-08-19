@@ -14105,7 +14105,7 @@ const resource = {
     "dashboard.procurement_rfqs": "زیرِ التوا RFQs",
     "dashboard.procurement_pos_issued": "جاری کردہ POs",
     "dashboard.procurement_pos_received": "موصولہ POs",
-    "dashboard.budget_subtitle": "بجٹس میں منصوبہ بند بمقابلہ حقیقی",
+    "dashboard.budget_subtitle": "پیش گوئی / بجٹ",
     "dashboard.budget_empty": "کوئی over-budget پروجیکٹ نہیں۔",
     "dashboard.budget_cta": "مالیات کھولیں",
     "dashboard.change_orders_subtitle": "کھلے change orders اور اثر",

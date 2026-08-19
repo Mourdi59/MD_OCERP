@@ -8526,7 +8526,7 @@ const resource = {
     "dashboard.procurement_rfqs": "Запитів пропозицій очікує",
     "dashboard.procurement_pos_issued": "Замовлень видано",
     "dashboard.procurement_pos_received": "Замовлень отримано",
-    "dashboard.budget_subtitle": "План проти факту за бюджетами",
+    "dashboard.budget_subtitle": "Прогноз / Бюджет",
     "dashboard.budget_empty": "Немає проєктів із перевищенням бюджету.",
     "dashboard.budget_cta": "Відкрити фінанси",
     "dashboard.change_orders_subtitle": "Відкриті замовлення на зміну та їхній вплив",

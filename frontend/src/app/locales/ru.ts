@@ -9031,7 +9031,7 @@ const resource = {
     "dashboard.procurement_rfqs": "Запросы в ожидании",
     "dashboard.procurement_pos_issued": "Заказы выпущены",
     "dashboard.procurement_pos_received": "Заказы получены",
-    "dashboard.budget_subtitle": "План против факта по всем бюджетам",
+    "dashboard.budget_subtitle": "Прогноз / Бюджет",
     "dashboard.budget_empty": "Нет проектов с превышением бюджета.",
     "dashboard.budget_cta": "Открыть финансы",
     "dashboard.change_orders_subtitle": "Открытые изменения работ и их влияние",

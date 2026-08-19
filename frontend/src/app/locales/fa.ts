@@ -14105,7 +14105,7 @@ const resource = {
     "dashboard.procurement_rfqs": "RFQهای در انتظار",
     "dashboard.procurement_pos_issued": "POهای صادرشده",
     "dashboard.procurement_pos_received": "POهای دریافتشده",
-    "dashboard.budget_subtitle": "برنامهریزیشده در برابر واقعی در سراسر بودجهها",
+    "dashboard.budget_subtitle": "پیشبینی / بودجه",
     "dashboard.budget_empty": "پروژه با تجاوز از بودجهای نیست.",
     "dashboard.budget_cta": "باز کردن مالی",
     "dashboard.change_orders_subtitle": "سفارشهای تغییر باز و تأثیر آنها",

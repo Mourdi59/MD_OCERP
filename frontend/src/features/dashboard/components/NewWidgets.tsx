@@ -462,8 +462,18 @@ export function BudgetVarianceWidget({ projects }: { projects?: ProjectRef[] }) 
             <li key={b.project_id} className="flex items-center justify-between gap-3 py-2">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-content-primary">{b.project_name}</p>
-                <p className="text-xs text-content-tertiary">
-                  {fmtMoney(b.actual, currency)} / {fmtMoney(b.planned, currency)}
+                {/* The forecast, not the spend. A job half built has spent a
+                    fraction of its budget and can still be committed past it,
+                    and the badge next to this line is measured on the forecast,
+                    so printing spend here would leave the two disagreeing. */}
+                <p
+                  className="text-xs text-content-tertiary"
+                  title={`${t('finance.actual')} ${fmtMoney(b.actual ?? '0', currency)} - ${t(
+                    'finance.committed',
+                  )} ${fmtMoney(b.committed ?? '0', currency)}`}
+                >
+                  {t('finance.forecast')} {fmtMoney(b.outturn ?? b.actual, currency)} /{' '}
+                  {fmtMoney(b.planned, currency)}
                 </p>
               </div>
               <Badge variant={b.pct > 20 ? 'error' : 'warning'} size="sm">

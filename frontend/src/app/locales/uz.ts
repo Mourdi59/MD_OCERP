@@ -8514,7 +8514,7 @@ const resource = {
     "dashboard.procurement_rfqs": "Kutilayotgan soʻrovlar",
     "dashboard.procurement_pos_issued": "Chiqarilgan buyurtmalar",
     "dashboard.procurement_pos_received": "Qabul qilingan buyurtmalar",
-    "dashboard.budget_subtitle": "Byudjetlar boʻyicha reja va haqiqiy sarf",
+    "dashboard.budget_subtitle": "Bashorat / Byudjet",
     "dashboard.budget_empty": "Byudjetdan oshgan loyihalar yoʻq.",
     "dashboard.budget_cta": "Moliyani ochish",
     "dashboard.change_orders_subtitle": "Ochiq oʻzgartirish arizalari va taʼsiri",

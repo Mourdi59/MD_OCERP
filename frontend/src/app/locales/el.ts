@@ -14105,7 +14105,7 @@ const resource = {
     "dashboard.procurement_rfqs": "Εκκρεμή RFQ",
     "dashboard.procurement_pos_issued": "Εκδοθείσες PO",
     "dashboard.procurement_pos_received": "Παραληφθείσες PO",
-    "dashboard.budget_subtitle": "Προγραμματισμένο έναντι πραγματικού σε όλους τους προϋπολογισμούς",
+    "dashboard.budget_subtitle": "Πρόβλεψη / Προϋπολογισμός",
     "dashboard.budget_empty": "Δεν υπάρχουν έργα με υπέρβαση προϋπολογισμού.",
     "dashboard.budget_cta": "Άνοιγμα Οικονομικών",
     "dashboard.change_orders_subtitle": "Ανοιχτές εντολές μεταβολής και επίπτωση",

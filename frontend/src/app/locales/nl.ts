@@ -14821,7 +14821,7 @@ const resource = {
     "dashboard.boq_zero_price": "Nulprijs",
     "dashboard.budget_cta": "Financiën openen",
     "dashboard.budget_empty": "Geen projecten boven budget.",
-    "dashboard.budget_subtitle": "Gepland vs. werkelijk per budget",
+    "dashboard.budget_subtitle": "Prognose / Budget",
     "dashboard.change_orders_cta": "Wijzigingsopdrachten openen",
     "dashboard.change_orders_empty": "Geen openstaande wijzigingsopdrachten.",
     "dashboard.change_orders_impact": "Totale impact",

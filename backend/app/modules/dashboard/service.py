@@ -26,6 +26,7 @@ from sqlalchemy import Numeric, and_, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.partner_pack.scope import scope_project_query
+from app.modules.finance.variance import expected_outturn
 from app.modules.projects.models import Project
 from app.modules.users.models import User
 
@@ -825,7 +826,15 @@ async def compute_budget_variance(
     session: AsyncSession,
     projects: list[Project],
 ) -> dict[str, Any]:
-    """Top 3 over-budget projects (revised_budget - actual)."""
+    """Top 3 projects whose expected outturn runs past the revised budget.
+
+    Spend to date was the whole test here until now, and on a job half built
+    that test reports every project comfortably under budget. Money under a
+    signed order is spoken for whether or not the invoice has landed, so a
+    project with 48.7 budgeted, 12.4 spent and 33.4 committed belongs on this
+    card, and used to be absent from it. The outturn rule lives in one place
+    for the whole product; see ``finance.variance``.
+    """
     from app.modules.finance.models import ProjectBudget  # noqa: PLC0415
 
     project_ids = [p.id for p in projects]
@@ -843,22 +852,35 @@ async def compute_budget_variance(
         ProjectBudget.currency_code,
         ProjectBudget.original_budget,
         ProjectBudget.revised_budget,
+        ProjectBudget.committed,
         ProjectBudget.actual,
+        ProjectBudget.forecast_final,
     ).where(ProjectBudget.project_id.in_(project_ids))
     rows = (await session.execute(stmt)).all()
 
     per_project: dict[uuid.UUID, dict[str, Any]] = defaultdict(
         lambda: {
             "planned": Decimal("0"),
+            "committed": Decimal("0"),
             "actual": Decimal("0"),
+            "outturn": Decimal("0"),
             "currency": "",
         },
     )
-    for project_id, currency, orig, rev, actual in rows:
+    for project_id, currency, orig, rev, committed, actual, forecast in rows:
         bucket = per_project[project_id]
         planned = _to_decimal(rev) if _to_decimal(rev) > 0 else _to_decimal(orig)
         bucket["planned"] += planned
+        bucket["committed"] += _to_decimal(committed)
         bucket["actual"] += _to_decimal(actual)
+        # Per line, not per project: one line under order and another one
+        # invoiced are two different lines, and taking the larger of the two
+        # project totals would drop whichever is smaller in its entirety.
+        bucket["outturn"] += expected_outturn(
+            forecast_final=_to_decimal(forecast),
+            committed=_to_decimal(committed),
+            actual=_to_decimal(actual),
+        )
         # Use the first non-empty currency code we encounter; fall back
         # to the project's currency when the budget row didn't stamp one.
         if not bucket["currency"] and currency:
@@ -866,7 +888,7 @@ async def compute_budget_variance(
 
     enriched: list[dict[str, Any]] = []
     for project_id, bucket in per_project.items():
-        variance = bucket["actual"] - bucket["planned"]
+        variance = bucket["outturn"] - bucket["planned"]
         if variance <= 0:
             continue
         pct = int(round(100 * variance / bucket["planned"])) if bucket["planned"] > 0 else 0
@@ -876,7 +898,9 @@ async def compute_budget_variance(
                 "project_name": project_name_by_id.get(project_id, "-"),
                 "currency": bucket["currency"] or project_currency_by_id.get(project_id, ""),
                 "planned": _money(bucket["planned"]),
+                "committed": _money(bucket["committed"]),
                 "actual": _money(bucket["actual"]),
+                "outturn": _money(bucket["outturn"]),
                 "variance": _money(variance),
                 "pct": pct,
             },

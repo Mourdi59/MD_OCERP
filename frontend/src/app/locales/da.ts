@@ -9849,7 +9849,7 @@ const resource = {
     "dashboard.procurement_rfqs": "Afventende tilbudsanmodninger",
     "dashboard.procurement_pos_issued": "IO udstedt",
     "dashboard.procurement_pos_received": "Modtagne IO'er",
-    "dashboard.budget_subtitle": "Planlagt vs. faktisk på tværs af budgetter",
+    "dashboard.budget_subtitle": "Prognose / Budget",
     "dashboard.budget_empty": "Ingen budgetoverskridende projekter.",
     "dashboard.budget_cta": "Åbn Finans",
     "dashboard.change_orders_subtitle": "Åbne ændringsordrer og konsekvens",

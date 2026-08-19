@@ -14104,7 +14104,7 @@ const resource = {
     "dashboard.procurement_rfqs": "Naghihintay na RFQ",
     "dashboard.procurement_pos_issued": "Naibigay na PO",
     "dashboard.procurement_pos_received": "Natanggap na PO",
-    "dashboard.budget_subtitle": "Plano kontra aktwal sa mga budget",
+    "dashboard.budget_subtitle": "Pagtataya / Badyet",
     "dashboard.budget_empty": "Walang proyektong lumagpas sa budget.",
     "dashboard.budget_cta": "Buksan ang Finance",
     "dashboard.change_orders_subtitle": "Mga bukas na change order at epekto",

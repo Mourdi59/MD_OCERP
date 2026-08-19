@@ -14646,7 +14646,7 @@ const resource = {
     "dashboard.procurement_rfqs": "RFQs čekající",
     "dashboard.procurement_pos_issued": "Pol. issued",
     "dashboard.procurement_pos_received": "Pol. přijato",
-    "dashboard.budget_subtitle": "Plánováno vs skutečný napříč rozpočty",
+    "dashboard.budget_subtitle": "Predikce / Rozpočet",
     "dashboard.budget_empty": "Ne over-budget projekty.",
     "dashboard.budget_cta": "Otevřít Finance",
     "dashboard.change_orders_subtitle": "Otevřít změna objednávky a dopad",

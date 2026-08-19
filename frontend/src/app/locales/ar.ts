@@ -14775,7 +14775,7 @@ const resource = {
     "dashboard.procurement_rfqs": "طلبات عروض أسعار معلقة",
     "dashboard.procurement_pos_issued": "أوامر شراء مصدرة",
     "dashboard.procurement_pos_received": "أوامر شراء مستلمة",
-    "dashboard.budget_subtitle": "المخطط مقابل الفعلي عبر جميع الميزانيات",
+    "dashboard.budget_subtitle": "التوقعات / الميزانية",
     "dashboard.budget_empty": "لا توجد مشاريع تجاوزت الميزانية.",
     "dashboard.budget_cta": "افتح المالية",
     "dashboard.change_orders_subtitle": "أوامر التغيير المفتوحة والأثر",

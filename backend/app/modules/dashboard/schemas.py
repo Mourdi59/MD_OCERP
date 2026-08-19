@@ -204,7 +204,12 @@ class BudgetByProject(BaseModel):
     project_name: str
     currency: str
     planned: str  # Decimal-as-string
+    committed: str
     actual: str
+    # What the project is expected to finish at: a recorded forecast if there
+    # is one, else the commitment, else spend. This is what ``variance`` is
+    # measured against, and what the card shows.
+    outturn: str
     variance: str
     pct: int  # percent over (positive) / under (negative)
 

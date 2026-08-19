@@ -14416,7 +14416,7 @@ const resource = {
     "dashboard.procurement_rfqs": "保留中のRFQ",
     "dashboard.procurement_pos_issued": "発行済みPO",
     "dashboard.procurement_pos_received": "受領済みPO",
-    "dashboard.budget_subtitle": "全予算の計画対実績",
+    "dashboard.budget_subtitle": "予測 / 予算",
     "dashboard.budget_empty": "予算超過のプロジェクトはありません。",
     "dashboard.budget_cta": "ファイナンスを開く",
     "dashboard.change_orders_subtitle": "オープン中の変更指示と影響",

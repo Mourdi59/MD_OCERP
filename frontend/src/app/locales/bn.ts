@@ -14104,7 +14104,7 @@ const resource = {
     "dashboard.procurement_rfqs": "মুলতুবি RFQ",
     "dashboard.procurement_pos_issued": "ইস্যুকৃত PO",
     "dashboard.procurement_pos_received": "প্রাপ্ত PO",
-    "dashboard.budget_subtitle": "বাজেট জুড়ে পরিকল্পিত বনাম প্রকৃত",
+    "dashboard.budget_subtitle": "পূর্বাভাস / বাজেট",
     "dashboard.budget_empty": "কোনো বাজেট-অতিক্রান্ত প্রকল্প নেই।",
     "dashboard.budget_cta": "ফাইন্যান্স খুলুন",
     "dashboard.change_orders_subtitle": "খোলা পরিবর্তন আদেশ ও প্রভাব",

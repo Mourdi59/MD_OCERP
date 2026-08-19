@@ -128,18 +128,50 @@ class TestOneRuleOnlyRule:
     """
 
     def test_no_module_subtracts_spend_from_budget_on_its_own(self):
+        """Two widenings, both paid for by a copy this gate had already let past.
+
+        It used to read only `app/modules/finance`, and the fourth copy of the
+        rule was on the dashboard card, one directory over. And it looked only
+        for `revised - actual`, while that copy wrote `actual - planned`: the
+        same subtraction with the operands swapped and the budget under another
+        name. A gate that names one wording of a rule tests the wording.
+        """
         import re
 
-        module = Path(__file__).resolve().parents[2] / "app" / "modules" / "finance"
-        # `revised - actual` in any spelling, which is the shape all three of
-        # the wrong copies had.
-        pattern = re.compile(r"revised\w*\s*-\s*actual\w*")
-        offenders = [
-            path.name
-            for path in module.glob("*.py")
-            if path.name != "variance.py" and pattern.search(path.read_text(encoding="utf-8"))
+        modules = Path(__file__).resolve().parents[2] / "app" / "modules"
+        # The rule governs the two models that carry `committed` and a
+        # forecast beside `actual`. Elsewhere a planned figure minus an actual
+        # one is a different measurement - savings against a requisition, a
+        # finished job's post-calculation, percent complete - and flagging
+        # those teaches the reader to skim the failure.
+        closure = ("ProjectBudget", "BudgetLine")
+        # `budget` and `budget_total`, not `budgeted`: the latter is the
+        # purchase-requisition baseline, a different quantity in a file that
+        # also happens to read budget lines.
+        budget = r"(?:revised\w*|planned\w*|budget(?:_\w+)?\b|\w+_budget\b)"
+        spend = r"(?:actual\w*|spent\w*)"
+        # Spaces around the minus, which `ruff format` guarantees in code and
+        # prose does not: without it the gate reports the phrase
+        # "budget-actual" in a comment as a defect.
+        patterns = [
+            re.compile(budget + r" - " + spend),
+            re.compile(spend + r" - " + budget),
         ]
-        assert offenders == [], f"these compute variance themselves instead of calling variance.py: {offenders}"
+        in_closure, offenders = 0, []
+        for path in sorted(modules.glob("*/*.py")):
+            if path.name == "variance.py":
+                continue
+            text = path.read_text(encoding="utf-8")
+            if not any(model in text for model in closure):
+                continue
+            in_closure += 1
+            if any(p.search(text) for p in patterns):
+                offenders.append(str(path.relative_to(modules)).replace("\\", "/"))
+        assert in_closure >= 8, f"only {in_closure} files read a budget row; the scope rule has gone stale"
+        assert offenders == [], (
+            f"of {in_closure} module files that read a budget row, these compute "
+            f"variance themselves instead of calling variance.py: {offenders}"
+        )
 
     def test_the_rule_is_defined_once(self):
         module = Path(__file__).resolve().parents[2] / "app" / "modules" / "finance"

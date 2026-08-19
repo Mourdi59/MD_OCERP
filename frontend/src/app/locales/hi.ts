@@ -15411,7 +15411,7 @@ const resource = {
     "dashboard.boq_zero_price": "शून्य मूल्य",
     "dashboard.budget_cta": "वित्त खोलें",
     "dashboard.budget_empty": "कोई बजट-अधिक प्रोजेक्ट नहीं।",
-    "dashboard.budget_subtitle": "बजट में नियोजित बनाम वास्तविक",
+    "dashboard.budget_subtitle": "पूर्वानुमान / बजट",
     "dashboard.change_orders_cta": "चेंज ऑर्डर खोलें",
     "dashboard.change_orders_empty": "कोई खुला चेंज ऑर्डर नहीं।",
     "dashboard.change_orders_impact": "कुल प्रभाव",

@@ -14623,7 +14623,7 @@ const resource = {
     "dashboard.procurement_rfqs": "RFQs na čekanju",
     "dashboard.procurement_pos_issued": "St. issued",
     "dashboard.procurement_pos_received": "St. primljeno",
-    "dashboard.budget_subtitle": "Planirano vs stvaran kroz budžeti",
+    "dashboard.budget_subtitle": "Prognoza / Budžet",
     "dashboard.budget_empty": "Ne over-budget projekti.",
     "dashboard.budget_cta": "Otvori Financije",
     "dashboard.change_orders_subtitle": "Otvori promjena narudžbe i utjecaj",

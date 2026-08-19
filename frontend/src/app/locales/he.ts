@@ -14112,7 +14112,7 @@ const resource = {
     "dashboard.procurement_rfqs": "בקשות הצעת מחיר ממתינות",
     "dashboard.procurement_pos_issued": "הזמנות רכש שהונפקו",
     "dashboard.procurement_pos_received": "הזמנות רכש שהתקבלו",
-    "dashboard.budget_subtitle": "מתוכנן מול בפועל בין התקציבים",
+    "dashboard.budget_subtitle": "תחזית / תקציב",
     "dashboard.budget_empty": "אין פרויקטים חורגים מתקציב.",
     "dashboard.budget_cta": "פתיחת כספים",
     "dashboard.change_orders_subtitle": "שינויי היקף פתוחים והשפעתם",

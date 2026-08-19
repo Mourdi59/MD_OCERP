@@ -15322,7 +15322,7 @@ const resource = {
     "dashboard.boq_zero_price": "Harga nol",
     "dashboard.budget_cta": "Buka Keuangan",
     "dashboard.budget_empty": "Tidak ada proyek yang melebihi anggaran.",
-    "dashboard.budget_subtitle": "Rencana vs aktual di seluruh anggaran",
+    "dashboard.budget_subtitle": "Prakiraan / Anggaran",
     "dashboard.change_orders_cta": "Buka Change Order",
     "dashboard.change_orders_empty": "Tidak ada change order terbuka.",
     "dashboard.change_orders_impact": "Total dampak",

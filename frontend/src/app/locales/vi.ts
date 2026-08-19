@@ -15327,7 +15327,7 @@ const resource = {
     "dashboard.boq_zero_price": "Đơn giá bằng 0",
     "dashboard.budget_cta": "Mở Tài chính",
     "dashboard.budget_empty": "Không có dự án nào vượt ngân sách.",
-    "dashboard.budget_subtitle": "Kế hoạch so với thực tế trên tất cả ngân sách",
+    "dashboard.budget_subtitle": "Dự báo / Ngân sách",
     "dashboard.change_orders_cta": "Mở Lệnh thay đổi",
     "dashboard.change_orders_empty": "Không có lệnh thay đổi đang mở.",
     "dashboard.change_orders_impact": "Tổng tác động",

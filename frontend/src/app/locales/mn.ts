@@ -15397,7 +15397,7 @@ const resource = {
     "dashboard.boq_zero_price": "Үнэ тавигдаагүй",
     "dashboard.budget_cta": "Санхүүг нээх",
     "dashboard.budget_empty": "Төсвөөс хэтэрсэн төсөл алга.",
-    "dashboard.budget_subtitle": "Төсвийн төлөвлөгөө ба бодит зардлын харьцуулалт",
+    "dashboard.budget_subtitle": "Урьдчилсан тооцоо / Төсөв",
     "dashboard.change_orders_cta": "Өөрчлөлтийн захиалгуудыг нээх",
     "dashboard.change_orders_empty": "Нээлттэй өөрчлөлтийн захиалга алга.",
     "dashboard.change_orders_impact": "Нийт нөлөөлөл",

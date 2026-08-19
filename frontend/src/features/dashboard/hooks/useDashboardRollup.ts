@@ -179,7 +179,10 @@ export interface BudgetByProject {
   project_name: string;
   currency: string;
   planned: string;
+  committed: string;
   actual: string;
+  /** Expected final cost: a recorded forecast, else the commitment, else spend. */
+  outturn: string;
   variance: string;
   pct: number;
 }

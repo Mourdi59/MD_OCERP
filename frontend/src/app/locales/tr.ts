@@ -15339,7 +15339,7 @@ const resource = {
     "dashboard.boq_zero_price": "Sıfır fiyatlı",
     "dashboard.budget_cta": "Finans'ı Aç",
     "dashboard.budget_empty": "Bütçeyi aşan proje yok.",
-    "dashboard.budget_subtitle": "Bütçeler genelinde planlanan - gerçekleşen",
+    "dashboard.budget_subtitle": "Tahmin / Bütçe",
     "dashboard.change_orders_cta": "Değişiklik Emirlerini Aç",
     "dashboard.change_orders_empty": "Açık değişiklik emri yok.",
     "dashboard.change_orders_impact": "Toplam etki",

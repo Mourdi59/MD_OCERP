@@ -14710,7 +14710,7 @@ const resource = {
     "dashboard.boq_zero_price": "Нулева цена",
     "dashboard.budget_cta": "Отвори финанси",
     "dashboard.budget_empty": "Няма проекти над бюджета.",
-    "dashboard.budget_subtitle": "Планирано спрямо реално по бюджети",
+    "dashboard.budget_subtitle": "Прогноза / Бюджет",
     "dashboard.change_orders_cta": "Отвори заповеди за промяна",
     "dashboard.change_orders_empty": "Няма отворени заповеди за промяна.",
     "dashboard.change_orders_impact": "Общо въздействие",

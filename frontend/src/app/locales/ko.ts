@@ -14416,7 +14416,7 @@ const resource = {
     "dashboard.procurement_rfqs": "대기 중인 RFQ",
     "dashboard.procurement_pos_issued": "발행된 PO",
     "dashboard.procurement_pos_received": "접수된 PO",
-    "dashboard.budget_subtitle": "모든 예산의 계획 대 실적",
+    "dashboard.budget_subtitle": "예측 / 예산",
     "dashboard.budget_empty": "예산 초과 프로젝트가 없습니다.",
     "dashboard.budget_cta": "재무 열기",
     "dashboard.change_orders_subtitle": "미결 변경 지시와 영향",

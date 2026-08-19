@@ -13911,7 +13911,7 @@ const resource = {
     "dashboard.procurement_rfqs": "RFQ in attesa",
     "dashboard.procurement_pos_issued": "OdA emessi",
     "dashboard.procurement_pos_received": "OdA ricevuti",
-    "dashboard.budget_subtitle": "Pianificato vs effettivo su tutti i budget",
+    "dashboard.budget_subtitle": "Previsione / Budget",
     "dashboard.budget_empty": "Nessun progetto in superamento di budget.",
     "dashboard.budget_cta": "Apri finanza",
     "dashboard.change_orders_subtitle": "Varianti aperte e impatto",

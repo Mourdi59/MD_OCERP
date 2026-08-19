@@ -14702,7 +14702,7 @@ const resource = {
     "dashboard.procurement_rfqs": "RFQs în așteptare",
     "dashboard.procurement_pos_issued": "Poz. issued",
     "dashboard.procurement_pos_received": "Poz. primit",
-    "dashboard.budget_subtitle": "Planificat vs real în bugete",
+    "dashboard.budget_subtitle": "Prognoză / Buget",
     "dashboard.budget_empty": "Nu over-budget proiecte.",
     "dashboard.budget_cta": "Deschide Finanțe",
     "dashboard.change_orders_subtitle": "Deschide modificare comenzi și impact",

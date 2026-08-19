@@ -14105,7 +14105,7 @@ const resource = {
     "dashboard.procurement_rfqs": "Күтудегі RFQ",
     "dashboard.procurement_pos_issued": "Шығарылған PO",
     "dashboard.procurement_pos_received": "Қабылданған PO",
-    "dashboard.budget_subtitle": "Бюджеттер бойынша жоспарлы мен нақты",
+    "dashboard.budget_subtitle": "Болжам / Бюджет",
     "dashboard.budget_empty": "Бюджеттен асып кеткен жоба жоқ.",
     "dashboard.budget_cta": "Қаржыны Ашу",
     "dashboard.change_orders_subtitle": "Ашық өзгеріс бұйрықтары мен әсер",

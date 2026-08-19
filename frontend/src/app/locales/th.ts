@@ -15386,7 +15386,7 @@ const resource = {
     "dashboard.boq_zero_price": "ราคาเป็นศูนย์",
     "dashboard.budget_cta": "เปิดการเงิน",
     "dashboard.budget_empty": "ไม่มีโครงการที่เกินงบประมาณ",
-    "dashboard.budget_subtitle": "แผนงานเทียบกับค่าใช้จ่ายจริงในทุกงบประมาณ",
+    "dashboard.budget_subtitle": "ประมาณการ / งบประมาณ",
     "dashboard.change_orders_cta": "เปิดคำสั่งเปลี่ยนแปลง",
     "dashboard.change_orders_empty": "ไม่มีคำสั่งเปลี่ยนแปลงที่เปิดอยู่",
     "dashboard.change_orders_impact": "ผลกระทบรวม",
