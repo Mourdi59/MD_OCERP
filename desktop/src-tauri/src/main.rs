@@ -827,6 +827,45 @@ fn main() {
                     if let Some(ref dir) = bundled_converters {
                         cmd = cmd.env("OE_BUNDLED_CONVERTERS_DIR", dir.as_os_str());
                     }
+                    // Give the sidecar a working directory it is allowed to
+                    // write to. Eighteen upload roots across ten modules are
+                    // declared as working-directory-relative literals and
+                    // create themselves with mkdir on first use, bypassing the
+                    // data-dir plumbing the rest of the platform goes through.
+                    // Nothing set the child's working directory, so it inherited
+                    // this process's, and the Start Menu shortcut of a
+                    // per-machine install starts the app in the install folder
+                    // under Program Files. Creating a directory there is denied
+                    // to an unelevated user, so attaching a file to a request
+                    // for information, a submittal, an inspection, a punch item,
+                    // a letter, a diary entry, a lien waiver, a closeout item or
+                    // a compliance document returned a bare 500 on every such
+                    // install, with ten registers carrying an attach button that
+                    // could not work.
+                    //
+                    // The note above about --data-dir is correct and was not
+                    // enough: it keeps the data directory writable and says
+                    // nothing about the working directory, which is a second
+                    // path the same process resolves against. Development and CI
+                    // both run with the repository root as the working
+                    // directory, which is writable, so those eighteen modules
+                    // look healthy everywhere they are ever tested.
+                    //
+                    // This moves them somewhere writable without editing the
+                    // eighteen declarations. It is a floor, not the repair: they
+                    // should answer to OE_CLI_DATA_DIR like everything else, and
+                    // until they do, a relative path written by any new module
+                    // lands here by accident rather than by design. Failing
+                    // through silently is deliberate, because an inherited
+                    // working directory is exactly what shipped, so a machine
+                    // whose home directory cannot be read is left no worse off
+                    // than it is today.
+                    if let Some(home) = home_dir() {
+                        let workdir = home.join(".openestimate");
+                        if std::fs::create_dir_all(&workdir).is_ok() {
+                            cmd = cmd.current_dir(&workdir);
+                        }
+                    }
                     cmd
                 }
                 Err(e) => {
