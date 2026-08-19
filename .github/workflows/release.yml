@@ -98,14 +98,32 @@ jobs:
       - name: Extract changelog for this version
         id: changelog
         run: |
+          set -uo pipefail
           # Extract the section for this version from CHANGELOG.md
           VERSION="${{ steps.version.outputs.version }}"
           CONTENT=$(awk "/^## \[$VERSION\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md)
+
+          # This used to fall back to the string "Release $VERSION" and carry
+          # on, which made a step named "Extract changelog for this version"
+          # unable to fail when there was no changelog for this version to
+          # extract. The result was invisible twice over: the release body read
+          # like a deliberate one-liner, and generate_release_notes appends
+          # GitHub's own commit list underneath it, so the page looked full.
+          # A tag whose CHANGELOG section is missing, or whose heading does not
+          # match the "## [X.Y.Z]" shape this awk expects, is a release that
+          # skipped the bump procedure, and that is worth stopping for.
+          #
+          # The docker job has already pushed the image by this point, so the
+          # cost of stopping here is a published image with no release page
+          # behind it. That is recoverable by adding the section and re-pushing
+          # the tag, and it is the louder of the two failures.
           if [ -z "$CONTENT" ]; then
-            CONTENT="Release $VERSION"
+            echo "::error title=CHANGELOG.md has no section for $VERSION::Nothing under a '## [$VERSION]' heading in CHANGELOG.md, so this release would be published with no notes describing it. Add the section, then move the tag. Check the heading shape too: this reads '## [$VERSION]' exactly, so '## $VERSION' or '## [v$VERSION]' extracts nothing."
+            exit 1
           fi
           # Write to file for multi-line support
           echo "$CONTENT" > /tmp/release-notes.md
+          echo "Extracted $(printf '%s\n' "$CONTENT" | grep -c . || true) non-empty lines of notes for $VERSION."
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

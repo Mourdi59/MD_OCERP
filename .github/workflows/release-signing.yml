@@ -322,3 +322,58 @@ jobs:
           fi
 
           echo "${TAG} carries SHA256SUMS, SHA256SUMS.sig and SHA256SUMS.pem."
+
+          # Present is not the same as current. The three files above can sit on
+          # a release that has since grown assets they say nothing about: a
+          # Desktop Release repair run attaches installers to an already signed
+          # tag, and it cannot trigger this workflow, because it is a dispatch
+          # and this workflow reads a tag out of head_branch. The manifest then
+          # covers a subset and verifies cleanly over it, which is the exact
+          # failure the sign job guards against on the way in ("a manifest built
+          # from some of the assets is worse than none") and which nothing
+          # guarded against afterwards.
+          #
+          # So compare the manifest against the release rather than against the
+          # download that produced it. This is the only reading in either
+          # workflow that can tell a complete signature from a stale one.
+          if ! gh release download "$TAG" --repo "${{ github.repository }}" \
+                 --pattern SHA256SUMS --dir manifest; then
+            echo "::error::${TAG} lists a SHA256SUMS asset that could not be downloaded, so this run cannot say what the signature covers."
+            exit 1
+          fi
+          # sha256sum writes "<hash>  <name>" and marks binary reads with a
+          # star, so strip the hash and either separator rather than splitting
+          # on whitespace, which would truncate any name containing a space.
+          covered=$(sed -E 's/^[0-9a-f]+[ ]+[* ]?//' manifest/SHA256SUMS)
+          echo "The manifest covers $(printf '%s\n' "$covered" | grep -c . || true) files."
+
+          # read rather than word splitting, so a name with a space in it is
+          # compared as one name instead of two that both look missing.
+          uncovered=""
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            case "$name" in
+              SHA256SUMS|SHA256SUMS.sig|SHA256SUMS.pem) continue ;;
+            esac
+            printf '%s\n' "$covered" | grep -qxF "$name" || uncovered="${uncovered} ${name}"
+          done <<EOF
+          $assets
+          EOF
+
+          if [ -n "$uncovered" ]; then
+            echo "::error::The signature on ${TAG} does not cover:${uncovered}"
+            {
+              echo "### \`${TAG}\` carries a signature that does not cover the whole release"
+              echo
+              echo "On the release but absent from \`SHA256SUMS\`:${uncovered}"
+              echo
+              echo "A manifest over part of a release verifies cleanly and reads as a complete one."
+              echo "The usual cause is a Desktop Release repair run, which attaches installers to a"
+              echo "tag that was already signed and cannot trigger this workflow. Re-run this"
+              echo "workflow against \`${TAG}\` to regenerate the manifest over everything now"
+              echo "published."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo "The manifest covers every asset on ${TAG}."
