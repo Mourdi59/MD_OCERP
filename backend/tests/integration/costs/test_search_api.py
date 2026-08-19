@@ -34,12 +34,29 @@ async def app_instance():
     app = create_app()
 
     async with app.router.lifespan_context(app):
+        from sqlalchemy import delete
+
         from app.database import Base, async_session_factory, engine
         from app.modules.costs import models as _costs_models  # noqa: F401
         from app.modules.costs.models import CostItem
 
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+
+        # This module owns the cost table, because every total asserted below
+        # counts against the twenty rows seeded here and nothing else. Startup
+        # fills an empty cost table with fifty universal baseline rows so a
+        # fresh install never opens an empty BOQ editor, which is right for the
+        # product and fatal for an assertion that the total is twenty. Those
+        # rows have been landing here since the starter seed was wired into the
+        # lifespan, and no one heard about it because tests/integration runs in
+        # no lane that blocks a merge. Clearing them by source keeps the
+        # precondition local and visible, rather than switching the seed off
+        # through the environment and leaving the flag behind for whatever runs
+        # next in the same session.
+        async with async_session_factory() as s:
+            await s.execute(delete(CostItem).where(CostItem.source == "starter"))
+            await s.commit()
 
         # Seed ~20 rows across two regions with a 4-level classification
         # tree. Codes are A001…A015 (DE_BERLIN) and B001…B005 (GB_LONDON).
