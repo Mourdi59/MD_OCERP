@@ -468,6 +468,80 @@ def check_frontend_bundled() -> Check:
         )
 
 
+def check_locales_bundled() -> Check:
+    """Report the translation catalogue the server would actually load.
+
+    Asks ``load_translations`` instead of testing the directory, for the reason
+    spelled out on :func:`check_frontend_bundled` above: a check that
+    reimplements the lookup it is checking is right only by coincidence. Here
+    the lookup is a single line, which is what makes copying it tempting and
+    what makes copying it wrong, because the path resolves to a directory NEXT
+    TO the app package and therefore lands somewhere different in a source
+    tree, a wheel and a frozen bundle.
+
+    This is the twin of the frontend check and should always have existed
+    beside it. Both are force-included into the wheel precisely because the
+    package walk cannot see them, which makes them the two files most likely to
+    be missing from a build; one of them had a preflight line and the other did
+    not. The desktop sidecar shipped without the catalogue for the whole life of
+    the desktop build and nothing said so, because the loader used to refill the
+    directory from an embedded copy carrying 20 of the languages and a much
+    smaller key set. The only symptom was a catalogue quietly missing most of
+    its strings, which no check could see: every file present, parsing, and
+    agreeing with the others.
+
+    Error rather than warning, because the server treats it as one. When the
+    catalogue is absent ``load_translations`` raises, startup aborts, and a
+    desktop user is told only that the backend did not start in time. The point
+    of this line is to say the true sentence before the server has to.
+    """
+    try:
+        from app.core.i18n import get_available_locales, load_translations
+
+        load_translations()
+        locales = get_available_locales()
+        loaded = [entry for entry in locales if entry["loaded"]]
+    except FileNotFoundError as exc:
+        return Check(
+            "Translation catalogue",
+            "error",
+            f"missing: {exc}",
+            _repair_hint(
+                "Reinstall the pip package. If this is the desktop app, the build itself was "
+                "assembled without the catalogue and only a corrected build fixes it: the bundle "
+                "unpacks itself into a fresh temporary directory on every launch, so there is "
+                "nowhere to put the files back."
+            ),
+        )
+    except Exception as exc:
+        # Broad on purpose, exactly as the frontend check above is: this
+        # function is a reporter, and an exception escaping it would replace
+        # every other line of the report with a traceback.
+        return Check(
+            "Translation catalogue",
+            "error",
+            f"the catalogue could not be loaded: {type(exc).__name__}: {exc}",
+            _repair_hint("Reinstall the pip package: this install cannot load its own translations."),
+        )
+
+    if not loaded:
+        return Check(
+            "Translation catalogue",
+            "error",
+            "the directory is there and no locale in it could be read",
+            _repair_hint("Reinstall the pip package: the translation files are unreadable or empty."),
+        )
+    if len(loaded) < len(locales):
+        missing = ", ".join(sorted(str(entry["code"]) for entry in locales if not entry["loaded"]))
+        return Check(
+            "Translation catalogue",
+            "warn",
+            f"{len(loaded)} of {len(locales)} locales loaded, absent: {missing}",
+            _repair_hint("Reinstall the pip package to get the whole catalogue."),
+        )
+    return Check("Translation catalogue", "ok", f"all {len(loaded)} locales loaded")
+
+
 def check_env_overrides() -> Check:
     """Warn if DATABASE_URL / JWT_SECRET look wrong."""
     db = os.environ.get("DATABASE_URL", "")
@@ -893,6 +967,7 @@ def run_preflight(
         check_data_dir(data_dir),
         check_port_free(host, port),
         check_frontend_bundled(),
+        check_locales_bundled(),
         check_env_overrides(),
     ]
     # Base tabular deps (pandas, pyarrow) are ERROR-level: the onboarding

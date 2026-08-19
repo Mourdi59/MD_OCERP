@@ -212,7 +212,16 @@ jobs:
       # This runs on all three platforms. The same "does it start at all"
       # question catches the issue #419 class of break more directly than
       # reading the archive does, and it costs seconds.
-      - name: Check the sidecar starts
+      # Narrower than its old name ("Check the sidecar starts") claimed, and
+      # renamed because the gap between the two shipped a broken release. This
+      # runs the `version` subcommand, which proves the bootloader unpacks, the
+      # interpreter runs and the app package imports. It does NOT run the server
+      # startup path, so every data file that path reads is outside what this
+      # step measures. A sidecar missing its translation catalogue passed here
+      # on all three platforms and then failed on users' machines at "Starting
+      # the application server". The step below covers that; keep the two
+      # separate so neither name overstates what it checked.
+      - name: Check the sidecar runs and reports its version
         shell: bash
         timeout-minutes: 10
         run: |
@@ -234,6 +243,43 @@ jobs:
               echo "OK: the sidecar starts and reports its version." ;;
             *)
               echo "::error title=The desktop sidecar started but said nothing recognisable::Exit was 0 but the output does not carry a version line, so the interpreter may have started without the app package."
+              exit 1 ;;
+          esac
+
+      # The startup path, exercised on the frozen artefact rather than reasoned
+      # about from the spec. `doctor` asks app.core.i18n to load the catalogue
+      # with the same call app.main makes, so this fails here for the same
+      # reason it would fail on a user's machine, one build earlier.
+      #
+      # The exit code is deliberately not the gate. `doctor` reports on the
+      # whole install and legitimately flags things a frozen bundle cannot
+      # answer, importlib.metadata among them, so a non-zero exit here would be
+      # noise. The assertion is on the one line this step is about, and the
+      # wording it requires is the one the "all loaded" branch prints: a bundle
+      # carrying only some of the catalogue says "N of M" and fails, which is
+      # the state the desktop build sat in, undetected, for its whole life.
+      - name: Check the sidecar carries the data its startup reads
+        shell: bash
+        timeout-minutes: 10
+        run: |
+          set -uo pipefail
+          bin="desktop/dist/openconstructionerp-server${{ matrix.ext }}"
+          chmod +x "$bin" 2>/dev/null || true
+          echo "Running: $bin doctor"
+          out=$("$bin" doctor 2>&1) || true
+          echo "--- output ---"
+          echo "$out"
+          echo "--- end ---"
+          line=$(printf '%s\n' "$out" | grep -i "Translation catalogue" || true)
+          if [ -z "$line" ]; then
+            echo "::error title=The sidecar could not report on its translation catalogue::doctor produced no 'Translation catalogue' line on ${{ matrix.os }}, so this build cannot say whether it carries one. Either the preflight check was removed or the sidecar failed before reaching it. See the output above."
+            exit 1
+          fi
+          case "$line" in
+            *"all "*" locales loaded"*)
+              echo "OK: $line" ;;
+            *)
+              echo "::error title=The desktop sidecar is missing its translation catalogue::${line}. app.main calls load_translations() during startup, so a bundle in this state exits before serving anything and the launcher can only report that the backend did not start in time. The catalogue is force-included into the wheel and shipped by desktop/pyinstaller.spec; check that the spec still adds backend/locales."
               exit 1 ;;
           esac
 

@@ -868,6 +868,12 @@ tools block newly installed programs; allow OpenConstructionERP and try again."
             }
 
             let backend_ready = Arc::new(AtomicBool::new(false));
+            // Separate from readiness on purpose. Readiness means the backend
+            // answered a health check, so it is only ever set on success and
+            // says nothing about whether a failure has already been explained.
+            // This one means the user has been shown a precise reason, which is
+            // the question the startup timeout below actually needs answered.
+            let fatal_reported = Arc::new(AtomicBool::new(false));
             let last_stderr = Arc::new(Mutex::new(String::new()));
             // Latch the real startup failure cause so the database-shutdown
             // noise that follows a crash cannot mask it: a STAGE:server:fail
@@ -880,6 +886,7 @@ tools block newly installed programs; allow OpenConstructionERP and try again."
             // stderr so a startup crash can be shown to the user verbatim.
             {
                 let ready = backend_ready.clone();
+                let fatal_flag = fatal_reported.clone();
                 let stderr_buf = last_stderr.clone();
                 let latched = latched_fail.clone();
                 let traceback = traceback.clone();
@@ -999,6 +1006,10 @@ this keeps happening send it to info@datadrivenconstruction.io."
                                     // Attribute the failure to the server step so
                                     // the checklist shows a clear red mark.
                                     report_fatal_stage(&handle_evt, "server", &detail);
+                                    // Record that the user now has the real
+                                    // reason, so the startup timeout does not
+                                    // replace it with a vaguer one later.
+                                    fatal_flag.store(true, Ordering::SeqCst);
                                 }
                                 break;
                             }
@@ -1014,6 +1025,7 @@ this keeps happening send it to info@datadrivenconstruction.io."
             // be slow on a cold machine, so allow up to 240 seconds.
             let handle_clone = handle.clone();
             let ready_flag = backend_ready.clone();
+            let fatal_flag_wait = fatal_reported.clone();
             tauri::async_runtime::spawn(async move {
                 // A first run that has to recover a large local database (WAL
                 // replay + fsync) can take several minutes, so allow a generous
@@ -1044,10 +1056,20 @@ this keeps happening send it to info@datadrivenconstruction.io."
                     }
                 } else {
                     log_line("backend did not become healthy within the startup window");
-                    // If the sidecar already reported termination, that handler
-                    // showed a precise error; only show the generic timeout if
-                    // startup is genuinely still pending.
-                    if !ready_flag.load(Ordering::SeqCst) {
+                    // Only say "slow" when nothing better has been said. The
+                    // termination handler above names the real cause the moment
+                    // the sidecar dies, and this branch used to guard on the
+                    // readiness flag, which is set only when the backend goes
+                    // healthy. A backend that died during startup therefore left
+                    // readiness false and satisfied this condition, so the
+                    // timeout fired minutes afterwards and overwrote a message
+                    // carrying the actual exception with one that said only that
+                    // the backend had not started in time. A user whose sidecar
+                    // exited with a FileNotFoundError nine minutes earlier read
+                    // the second message, looked for the fault on their own
+                    // machine, and had no way to know the first had ever been
+                    // shown.
+                    if !ready_flag.load(Ordering::SeqCst) && !fatal_flag_wait.load(Ordering::SeqCst) {
                         report_fatal_stage(
                             &handle_clone,
                             "server",

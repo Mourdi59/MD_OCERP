@@ -148,6 +148,31 @@ if FRONTEND_DIST.is_dir():
 # Build from a clean tree before weighing an artefact or quoting what it holds.
 datas.append((str(BACKEND / "app"), "app"))
 
+# The backend UI locale catalogue. app/core/i18n.py resolves it as
+# ``Path(__file__).parent.parent.parent / "locales"``, a directory that sits
+# NEXT TO the app package rather than inside it, so shipping backend/app just
+# above does not carry it: in a frozen bundle that path is
+# ``sys._MEIPASS/locales``, and no desktop build had ever contained it.
+#
+# It survived that long because a missing catalogue used to be a warning that
+# refilled the directory from an embedded copy, so the sidecar started and
+# served a partial catalogue instead of failing. The copy knew 20 of the
+# languages and a much smaller key set, which is why refilling was replaced by
+# a hard error, and the error is right: recovering the wrong catalogue is
+# worse than not recovering. What it also did was convert this omission from a
+# quietly degraded desktop build into one that exits during startup, with the
+# launcher able to report only that the backend did not start in time.
+#
+# The wheel force-includes the same folder at the same top-level path for the
+# same reason (backend/pyproject.toml), and the two have to stay in step;
+# backend/tests/unit/test_desktop_spec_ships_wheel_data.py checks that they do.
+#
+# Deliberately unconditional, unlike the frontend dist above. That one is
+# absent on a tree nobody has built yet, this one is tracked in git, so a
+# missing directory here means the build is wrong and PyInstaller should stop
+# rather than produce another bundle that cannot start.
+datas.append((str(BACKEND / "locales"), "locales"))
+
 # Ship pyproject.toml next to the bundled app package. _detect_version()
 # reads the version from the source tree first and only falls back to the
 # installed-wheel metadata if it cannot find a pyproject. In a frozen build

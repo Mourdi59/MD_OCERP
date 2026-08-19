@@ -117,9 +117,13 @@ def load_translations(locales_dir: Path | None = None) -> None:
         # have can see, because the files agree with each other. Recovering the
         # wrong data is worse than not recovering, so it says so instead.
         raise FileNotFoundError(
-            f"Locales directory not found: {scan_dir}. It is tracked in git and force-included in "
-            f"the wheel, so it should never be absent. Restore it with 'git checkout -- backend/locales' "
-            f"in a source tree, or reinstall the package."
+            f"Locales directory not found: {scan_dir}. Every way of shipping the platform carries it, "
+            f"so an absence here is a defect in the build that produced this install rather than "
+            f"anything wrong with the machine running it. In a source tree restore it with "
+            f"'git checkout -- backend/locales'; in an installed copy reinstall the package. If this "
+            f"path is inside a temporary directory the process unpacked itself into, it is a desktop "
+            f"build that was assembled without the catalogue, no local step can put it back, and the "
+            f"only fix is a corrected build."
         )
 
     for locale_file in scan_dir.glob("*.json"):
