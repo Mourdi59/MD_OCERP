@@ -127,7 +127,7 @@ describe('the currency the panel saves', () => {
     fireEvent.click(screen.getByRole('button', { name: '$ USD - US Dollar' }));
 
     await waitFor(() => expect(apiPatchMock).toHaveBeenCalledTimes(1));
-    const [path, payload] = apiPatchMock.mock.calls[0];
+    const [path, payload] = apiPatchMock.mock.calls[0] ?? [];
     expect(path).toBe('/v1/users/me/preferences/');
     expect(payload).toEqual({ currency_code: 'USD' });
     // Stated separately from the equality above, because this is the bug: the
@@ -193,7 +193,7 @@ describe('the custom currency code', () => {
 
     fireEvent.blur(input);
     await waitFor(() => expect(apiPatchMock).toHaveBeenCalledTimes(1));
-    expect(apiPatchMock.mock.calls[0][1]).toEqual({ currency_code: 'XOF' });
+    expect(apiPatchMock.mock.calls[0]?.[1]).toEqual({ currency_code: 'XOF' });
   });
 });
 
