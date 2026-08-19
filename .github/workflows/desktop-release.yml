@@ -283,6 +283,71 @@ jobs:
               exit 1 ;;
           esac
 
+      # The stage the outage happened at, on the frozen artefact. Everything
+      # above either reads the archive or starts the interpreter; none of it
+      # boots a database. "Starting the local database" and "Preparing the
+      # database" are two of the four stages the launcher reports to the user,
+      # and until this step nothing in this pipeline reached either of them on
+      # any platform. A readiness probe that asked an address the embedded
+      # postmaster does not listen on took CI (PostgreSQL) red on Linux while
+      # every check in this job stayed green on all three, which is how a
+      # start-path defect passes a release.
+      #
+      # init-db is the launcher's own path rather than a stand-in for it: the
+      # same helper boots the cluster, the same wait decides it is ready, and
+      # then every module's tables are created. It exits non-zero if any of
+      # that fails. The data directory is a scratch one, so the run starts from
+      # nothing the way a first install does and cannot be satisfied by a
+      # cluster some earlier step left behind.
+      #
+      # The assertion is on the line naming the embedded cluster, not on the
+      # exit code alone. A runner that happened to carry DATABASE_URL would
+      # give a green init-db against an external database and prove nothing
+      # about the thing being shipped.
+      #
+      # This is the only place in the pipeline that starts PostgreSQL, so on
+      # macOS and Windows it is the only evidence the desktop start path works
+      # at all. Linux is covered here and in CI (PostgreSQL).
+      - name: Check the sidecar starts its database and prepares it
+        shell: bash
+        timeout-minutes: 20
+        run: |
+          set -uo pipefail
+          bin="desktop/dist/openconstructionerp-server${{ matrix.ext }}"
+          chmod +x "$bin" 2>/dev/null || true
+          scratch="${RUNNER_TEMP}/oe-first-run"
+          rm -rf "$scratch"
+          mkdir -p "$scratch"
+          echo "Running: $bin init-db --data-dir $scratch"
+          code=0
+          out=$("$bin" init-db --data-dir "$scratch" 2>&1) || code=$?
+          echo "--- output ---"
+          echo "$out"
+          echo "--- exit $code ---"
+          if [ "$code" -ne 0 ]; then
+            echo "=== PostgreSQL's own log, which carries the cause when the cluster is the problem ==="
+            if [ -d "$scratch/pgdata/log" ]; then
+              for f in "$scratch/pgdata/log"/*; do
+                echo "--- $f ---"
+                tail -n 200 "$f" || true
+              done
+            elif [ -f "$scratch/pgdata/log" ]; then
+              tail -n 200 "$scratch/pgdata/log" || true
+            else
+              echo "(no log at $scratch/pgdata/log)"
+            fi
+            echo "::error title=The desktop sidecar cannot start its own database::init-db exits ${code} on ${{ matrix.os }}. On a user's machine this is the launcher stopping at 'Starting the local database' or 'Starting the application server', which is the failure v15.0.0 shipped. The output and the PostgreSQL log above carry the cause."
+            exit 1
+          fi
+          case "$out" in
+            *"embedded PostgreSQL at"*)
+              echo "OK: the sidecar brought up its own PostgreSQL and created the schema." ;;
+            *)
+              echo "::error title=init-db succeeded without the embedded database::Exit was 0 but the report does not name an embedded cluster, so this run proved nothing about the database the installer ships. Check whether DATABASE_URL is set on this runner."
+              exit 1 ;;
+          esac
+          rm -rf "$scratch"
+
       # Printed on every macOS run, green or red, because it is the evidence for
       # the paragraph above. It describes the wrapper and the machine that built
       # it, which is useful context and is not the thing dyld compares at launch.
