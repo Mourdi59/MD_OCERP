@@ -1177,3 +1177,227 @@ describe('the bill and the finance register cannot be told different things', ()
     expect(body.slice(0, body.indexOf('\n}'))).not.toMatch(/new Intl\.NumberFormat/);
   });
 });
+
+/* ── Half three: one answer for how many decimals a currency gets ─────────── */
+
+/**
+ * The one module allowed to work out how many minor units a currency has.
+ *
+ * It used to be two. `<MoneyDisplay>` took the count from a static ISO 4217
+ * table the tree carried at `shared/ui/currencyMinorUnits`, `formatCurrency`
+ * asked the formatting engine, and each file carried a comment arguing that it
+ * was the correct one. They agreed on every currency the product offers except
+ * the five in `ONCE_DISAGREED` above, where CLDR says the currency has no
+ * subunit in circulation and ISO says it has two. So one amount read
+ * `1234,50 Ft` on the finance register and `1235 Ft` on the bill, and both
+ * files were right about their own rule.
+ *
+ * The tests above pin the outcome: those five codes, those two surfaces. That
+ * is a fact about today and it is worth pinning, but it does not stop a third
+ * surface from working the count out for itself tomorrow. This half pins the
+ * property instead. Whatever the number turns out to be, one module derives it
+ * and everything else asks that module, because a second source cannot
+ * disagree with the first if it never gets written.
+ *
+ * The document half of the rule is deliberately out of scope here. An invoice
+ * declares its amount to a bank and a tax office rather than to our user, so it
+ * follows ISO rather than the reader's convention, and it is stated and acted
+ * on in `money_decimals` in the backend einvoice rules. Nothing on a screen is
+ * a document, and nothing under this directory should start reading that rule.
+ */
+const MINOR_UNIT_RESOLVER = 'shared/lib/money.ts';
+
+/**
+ * Sites that ask an engine how many minor units a currency has.
+ *
+ * The question has one shape in JavaScript: build a currency-styled
+ * `Intl.NumberFormat` and read `resolvedOptions()` back off it. The window is
+ * the 400 characters before the read, which is wider than any option object in
+ * this tree and narrower than the gap to an unrelated formatter. Reading
+ * backwards rather than forwards is deliberate: the style and the currency are
+ * always written before the call is resolved, never after.
+ */
+function minorUnitProbes(source: string): number[] {
+  const found: number[] = [];
+  for (const match of source.matchAll(/resolvedOptions\s*\(\s*\)/g)) {
+    const before = source.slice(Math.max(0, match.index - 400), match.index);
+    if (/style\s*:\s*['"]currency['"]/.test(before)) found.push(match.index);
+  }
+  return found;
+}
+
+/**
+ * A static table from ISO codes to digit counts, which is what the deleted file
+ * was and what must not come back.
+ *
+ * Three entries rather than one. A lone `'EUR': 2` is far more likely to be a
+ * rate, a fixture or a column width than a currency table, and a table worth
+ * the name covers more than a single code. Measured across the whole tree when
+ * this was written: zero files.
+ */
+function currencyDigitTableEntries(source: string): number {
+  return (source.match(/['"][A-Z]{3}['"]\s*:\s*\d\b/g) || []).length;
+}
+
+/** The text of every `new Intl.NumberFormat(...)` call, brace and paren matched. */
+function numberFormatCalls(source: string): { text: string; index: number }[] {
+  const calls: { text: string; index: number }[] = [];
+  for (const match of source.matchAll(/new Intl\.NumberFormat\(/g)) {
+    let depth = 1;
+    for (let i = match.index + match[0].length; i < source.length; i++) {
+      if (source[i] === '(') depth++;
+      else if (source[i] === ')') {
+        depth--;
+        if (depth === 0) {
+          calls.push({ text: source.slice(match.index, i), index: match.index });
+          break;
+        }
+      }
+    }
+  }
+  return calls;
+}
+
+/**
+ * Formatters that pin an arbitrary currency to two decimal places.
+ *
+ * This is the deleted table's answer written out by hand. `minimumFractionDigits`
+ * and `maximumFractionDigits` both at 2, on a currency the call receives as a
+ * variable, is a claim that every currency that can arrive here has two minor
+ * units, which is the exact claim the ruling settled against. It prints
+ * `1235,00 Ft` for a currency with no fillér, and unlike a ceiling on its own it
+ * does so even when the amount is a whole number: `maximumFractionDigits: 2`
+ * with no floor inherits the currency's own minimum, so it only leaks a digit
+ * on an amount that already had a fraction.
+ *
+ * A matching pair at 0 is not the same claim and is not counted. Rounding a
+ * chart axis or a headline tile to whole units is a decision about that tile,
+ * taken by somebody who can see it, and it is right for every currency rather
+ * than wrong for five of them.
+ *
+ * Judged by count and by owning file rather than by a snippet, because these
+ * five lines sit in files other people are editing and a snippet exemption
+ * expires the moment the line moves. A count and a file set survive a
+ * reformat, and still fail on a sixth site or a new file.
+ */
+function pinsTwoDecimalsOnAnyCurrency(text: string): boolean {
+  if (!/style\s*:\s*['"]currency['"]/.test(text)) return false;
+  // The property has two spellings and both had to be read: `currency: code`
+  // and the shorthand `currency`, which two of the five sites use. Matching
+  // only the first spelling silently passed them, which is the same shape of
+  // miss this whole file is about. The leading `[{,]` keeps the pattern off the
+  // `'currency'` inside `style: 'currency'`, which is a value and not a key.
+  const currency = text.match(/(?:[{,]|^)\s*currency\s*(?::\s*(['"][A-Za-z]{3}['"]|[\w$.]+)|(?=\s*[,}]))/);
+  // A literal code is a statement about that one currency, made by somebody who
+  // knew which it was. A variable, shorthand included, makes it a statement
+  // about every currency that can reach the call.
+  if (!currency) return false;
+  if (currency[1] && /^['"]/.test(currency[1])) return false;
+  const minimum = text.match(/minimumFractionDigits\s*:\s*(\d+)/);
+  const maximum = text.match(/maximumFractionDigits\s*:\s*(\d+)/);
+  return Boolean(minimum && maximum && minimum[1] === '2' && maximum[1] === '2');
+}
+
+/** One match, kept as its parts rather than as a `file:line` string. */
+interface Site {
+  file: string;
+  line: number;
+}
+
+/** The 1-based line `index` falls on, for a census a person has to act on. */
+function siteAt(file: string, source: string, index: number): Site {
+  return { file, line: source.slice(0, index).split('\n').length };
+}
+
+const label = (site: Site) => `${site.file}:${site.line}`;
+
+/**
+ * Where that shape still lives, and how much of it each file may hold.
+ *
+ * These are money surfaces that never asked anybody: they predate the resolver
+ * and were not part of the register-versus-bill disagreement, so routing them
+ * is a separate change on files that are currently being edited elsewhere. They
+ * are listed here so the gate below is a debt with an address rather than a
+ * bare number.
+ *
+ * A ceiling per file rather than one total, because a total cannot see a site
+ * moving between two files that are both already named. Counting per file
+ * costs nothing in churn: a count changes only when somebody adds or removes
+ * one of these calls, which is the event worth failing on. Reformatting, or
+ * any other edit to these four files, moves the line numbers and leaves every
+ * count where it was.
+ *
+ * A file absent from this map has a ceiling of zero, so the shape appearing
+ * anywhere new fails wherever it lands. Fixing one of the five lowers a count
+ * and keeps passing, which is the direction this is meant to move.
+ */
+const PINS_TWO_DECIMALS: Readonly<Record<string, number>> = {
+  'features/costs/CostsPage.tsx': 2,
+  'features/costs/MultiVariantPicker.tsx': 1,
+  'features/costs/VariantPicker.tsx': 1,
+  'features/projects/ProjectDetailPage.tsx': 1,
+};
+
+describe('one module decides how many decimals a currency gets', () => {
+  it('nothing but the resolver asks an engine for a currency digit count', () => {
+    // The denominator is asserted for the same reason the census next door
+    // asserts it: a walker that quietly stopped finding files would report an
+    // empty offender list, and an empty list is the answer this test gives when
+    // it passes. A gate that examined nothing must not be able to look like a
+    // gate that examined everything.
+    expect(PRODUCT_FILES.length).toBeGreaterThan(1800);
+
+    const sites: Site[] = [];
+    for (const file of PRODUCT_FILES) {
+      const source = read(file);
+      for (const index of minorUnitProbes(source)) {
+        sites.push(siteAt(file, source, index));
+      }
+    }
+    const owners = [...new Set(sites.map((site) => site.file))];
+
+    process.stdout.write(
+      `minor units: ${PRODUCT_FILES.length} files scanned, ${sites.length} engine probe(s) ` +
+        `in ${owners.length} file(s): ${sites.map(label).join(', ') || 'none'}\n`,
+    );
+    expect(owners).toEqual([MINOR_UNIT_RESOLVER]);
+  });
+
+  it('no module keeps a currency table of its own', () => {
+    const tables = PRODUCT_FILES.filter((file) => currencyDigitTableEntries(read(file)) >= 3);
+    process.stdout.write(
+      `minor units: ${tables.length} static code-to-digit table(s) across ${PRODUCT_FILES.length} files\n`,
+    );
+    expect(tables).toEqual([]);
+  });
+
+  it('no new surface pins an arbitrary currency to two decimals', () => {
+    const sites: Site[] = [];
+    for (const file of PRODUCT_FILES) {
+      const source = read(file);
+      for (const call of numberFormatCalls(source)) {
+        if (pinsTwoDecimalsOnAnyCurrency(call.text)) {
+          sites.push(siteAt(file, source, call.index));
+        }
+      }
+    }
+
+    const perFile = new Map<string, number>();
+    for (const site of sites) perFile.set(site.file, (perFile.get(site.file) ?? 0) + 1);
+
+    process.stdout.write(
+      `minor units: ${sites.length} site(s) pinning any currency to two decimals, ` +
+        `in ${perFile.size} file(s): ${sites.map(label).join(', ') || 'none'}\n`,
+    );
+
+    // A ratchet, not an allowlist: one comparison that pins which files may
+    // carry this shape and how many each may carry. Five sites in four files
+    // when this was written. An unlisted file has a ceiling of zero, so a new
+    // one fails wherever it lands, and so does a site that moves from a listed
+    // file into another listed file.
+    const overBudget = [...perFile]
+      .filter(([file, count]) => count > (PINS_TWO_DECIMALS[file] ?? 0))
+      .map(([file, count]) => `${file}: ${count} of at most ${PINS_TWO_DECIMALS[file] ?? 0}`);
+    expect(overBudget).toEqual([]);
+  });
+});
