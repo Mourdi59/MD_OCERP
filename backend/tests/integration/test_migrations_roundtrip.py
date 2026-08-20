@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import ast
 import os
+import re
 import uuid
 from collections.abc import Iterator
 from pathlib import Path
@@ -576,13 +577,21 @@ def test_recent_migrations_have_real_downgrade_bodies() -> None:
     for revision in RECENT_REVISIONS:
         if revision in NOOP_BOTH_REVS:
             continue
-        # Locate the migration file by matching the canonical
-        # ``revision: str = "<id>"`` line — substring matches in
-        # ``down_revision`` tuples on merge nodes would give false
-        # positives (e.g. eb1cef6f5fce mentions both v260_jobs_runner
-        # and v261_eac_alias_catalog_seed in its down_revision).
-        marker = f'revision: str = "{revision}"'
-        candidates = [p for p in versions_dir.glob("*.py") if marker in p.read_text(encoding="utf-8")]
+        # Locate the migration file by matching the revision assignment at the
+        # start of a line — substring matches in ``down_revision`` tuples on
+        # merge nodes would give false positives (e.g. eb1cef6f5fce mentions
+        # both v260_jobs_runner and v261_eac_alias_catalog_seed in its
+        # down_revision), and ``down_revision = "<id>"`` literally contains
+        # ``revision = "<id>"``, so the anchor is what keeps the two apart.
+        #
+        # Both spellings of the assignment live in the tree: the annotated
+        # ``revision: str = ...`` alembic's template emits now, and the bare
+        # ``revision = ...`` that 51 older files still carry. Matching only the
+        # annotated one made this guard fail the moment the newest-revision
+        # window slid over one of those older files, which says nothing about
+        # the downgrade bodies it is here to check.
+        marker = re.compile(rf'^revision(?::\s*str)?\s*=\s*"{re.escape(revision)}"', re.MULTILINE)
+        candidates = [p for p in versions_dir.glob("*.py") if marker.search(p.read_text(encoding="utf-8"))]
         assert candidates, f"Couldn't locate migration file for {revision}"
         src = candidates[0].read_text(encoding="utf-8")
 
