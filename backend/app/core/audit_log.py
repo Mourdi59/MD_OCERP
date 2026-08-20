@@ -368,13 +368,29 @@ async def log_activity(
     # blocking model download starved the connection pool, the flush timed
     # out, and the caller then failed on a session this function had
     # already poisoned. ``begin_nested`` confines the loss to this row.
+    # A session that cannot open a savepoint is a test stub, not a database.
+    # The fallback matters: the stub records the row in its own list and the
+    # audit tests of several modules read it from exactly that list, so opening
+    # the savepoint first and giving up when it is missing drops the write
+    # those tests exist to assert. The savepoint guards a real session; it is
+    # never a reason to skip a fake one.
+    savepoint = None
+    if hasattr(session, "begin_nested"):
+        try:
+            savepoint = session.begin_nested()
+        except (AttributeError, TypeError):
+            savepoint = None
+
     try:
-        async with session.begin_nested():
+        if savepoint is None:
             session.add(entry)
             await session.flush()
+        else:
+            async with savepoint:
+                session.add(entry)
+                await session.flush()
     except (AttributeError, TypeError):
-        # Stub sessions in tests - ``_StubSession`` has neither
-        # ``begin_nested`` nor ``add``.
+        # Stub sessions in tests - ``_StubSession`` has no ``add``.
         logger.debug(
             "activity_log: skipped (session does not support add) %s:%s %s",
             entity_type,
