@@ -29,6 +29,27 @@ exactly that case today, and its absence is deliberate on both sides: the
 frozen bundle carries no ``alembic/`` script directory, so shipping the ini
 alone would turn ``stamp_head_if_unstamped``'s graceful "cannot locate it, skip
 stamping" into an exception raised during startup.
+
+That reads as a tidy-up somebody will eventually propose, so here is what it
+would actually cost, measured rather than reasoned. The ini sets
+``script_location = %(here)s/alembic``. Copy it into a directory with no
+``alembic/`` beside it and ``ScriptDirectory.from_config`` raises
+``CommandError: Path doesn't exist``. In ``stamp_head_if_unstamped`` that raise
+lands AFTER ``ensure_wide_version_table`` has issued its ALTER, and main.py runs
+the whole thing inside one ``async with engine.begin()``, so the transaction
+rolls back and the version-table widening of issue #399 is undone on every boot
+of an upgraded database - while the caller's ``except Exception:
+logger.debug(...)`` keeps it off the log. The health check would start warning
+on every 30s poll as well. Neither deployment gains anything in exchange:
+``pip install`` and the desktop app never run migrations at all (create_all plus
+``postgres_auto_migrate`` plus the stamp), and the Docker image, which is the
+one deployment that does, carries both halves: ``tests/unit/test_dockerignore.py``
+names ``backend/alembic.ini`` AND ``backend/alembic/env.py`` among the paths the
+build context must keep, and ``alembic.ini`` AND ``alembic/env.py`` among the
+paths that must be present inside the image. The ini is shipped
+exactly where its script tree is and withheld exactly where it is not. If that
+is ever to change, both have to move together and the 327 version files are the
+real cost, not this line.
 """
 
 from __future__ import annotations
