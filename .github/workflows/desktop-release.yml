@@ -724,9 +724,9 @@ jobs:
 
             | Platform | File | Notes |
             | --- | --- | --- |
-            | Windows | `.exe` installer, 64-bit | WebView2 is fetched automatically if it is missing |
+            | Windows | `.exe` installer, 64-bit | The web view runtime is inside the installer, so setup needs no internet |
             | macOS | `.dmg`, Apple Silicon | Drag the app to Applications, then see "Opening on macOS" below |
-            | Linux | `.deb` or `.AppImage`, 64-bit | `.deb` for Debian and Ubuntu, `.AppImage` runs anywhere |
+            | Linux | `.deb`, `.rpm` or `.AppImage`, 64-bit | `.deb` for Debian and Ubuntu, `.rpm` for Fedora and openSUSE, `.AppImage` runs anywhere |
 
             The files are attached below under Assets. You can also always get the newest build at https://openconstructionerp.com/download which detects your operating system for you.
 
