@@ -31,6 +31,7 @@ if TYPE_CHECKING:
         LocationCreate,
         MovementCreate,
         StockItemCreate,
+        StockItemUpdate,
     )
 
 _ZERO = Decimal("0")
@@ -95,6 +96,8 @@ class SiteInventoryService:
         """Create a stock item / material record, validating cross-module links."""
         if payload.boq_position_id is not None:
             await self._require_boq_position_in_project(project_id, payload.boq_position_id)
+        if payload.procurement_req_item_id is not None:
+            await self._require_req_item_in_project(project_id, payload.procurement_req_item_id)
         if payload.default_location_id is not None:
             await self._require_location_in_project(project_id, payload.default_location_id)
 
@@ -127,6 +130,44 @@ class SiteInventoryService:
         """Load one item, scoped to the project (``None`` if foreign/absent)."""
         stmt = select(StockItem).where(StockItem.id == item_id, StockItem.project_id == project_id)
         return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def update_item(
+        self,
+        project_id: uuid.UUID,
+        item_id: uuid.UUID,
+        payload: StockItemUpdate,
+    ) -> StockItem:
+        """Patch a stock item, re-validating any cross-module link it changes.
+
+        Only the fields present in the request body are written, so linking an
+        existing item to the BoQ position that priced it does not disturb
+        anything else on the record. A link may also be cleared by sending
+        ``null`` explicitly - that is how a wrong attribution gets corrected.
+        """
+        item = await self.get_item(project_id, item_id)
+        if item is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock item not found in this project")
+
+        fields = payload.model_dump(exclude_unset=True)
+
+        if fields.get("boq_position_id") is not None:
+            await self._require_boq_position_in_project(project_id, fields["boq_position_id"])
+        if fields.get("procurement_req_item_id") is not None:
+            await self._require_req_item_in_project(project_id, fields["procurement_req_item_id"])
+        if fields.get("default_location_id") is not None:
+            await self._require_location_in_project(project_id, fields["default_location_id"])
+
+        # Money and quantities arrive as strings and have to land in the column
+        # as Decimal. The schema carries no ``metadata`` field, so a patch can
+        # never reach into the record's metadata blob.
+        for name in ("standard_unit_cost", "reorder_point"):
+            if name in fields and fields[name] is not None:
+                fields[name] = _to_decimal(fields[name])
+
+        for name, value in fields.items():
+            setattr(item, name, value)
+        await self.session.flush()
+        return item
 
     # -- Movements ----------------------------------------------------------
 
@@ -245,9 +286,18 @@ class SiteInventoryService:
         }
 
     async def material_variance_report(self, project_id: uuid.UUID) -> dict:
-        """Per-position material-cost variance: actual consumed vs BoQ budget."""
+        """Per-position material-cost variance: actual consumed vs BoQ budget.
+
+        Attribution is resolved before the budgets are looked up: a consumption
+        movement that carries no position of its own inherits the position of
+        the item it moved. Deriving the budget set from the raw movements
+        instead would price every inherited line against a zero budget and make
+        the report read as broken on exactly the rows the item link enables.
+        """
         rows = await self._all_movements(project_id)
-        movements = [_to_ledger_movement(r) for r in rows]
+        raw = [_to_ledger_movement(r) for r in rows]
+        items = [_to_ledger_item(i) for i in await self.list_items(project_id)]
+        movements = ledger.resolve_positions(raw, items)
 
         consumed_position_ids = {
             m.boq_position_id
@@ -259,6 +309,56 @@ class SiteInventoryService:
         payload = summary.to_dict()
         payload["project_id"] = str(project_id)
         return payload
+
+    async def unfixed_value_report(self, project_id: uuid.UUID) -> dict:
+        """Value of the material standing on site and not yet installed.
+
+        Per item: stock on hand times the unit cost actually paid on receipt
+        (falling back to the item's standard cost). Totals are split by currency
+        and never blended, and items with nothing to value them by are counted
+        rather than valued at zero.
+        """
+        rows = await self._all_movements(project_id)
+        movements = [_to_ledger_movement(r) for r in rows]
+        items = [_to_ledger_item(i) for i in await self.list_items(project_id)]
+
+        payload = ledger.unfixed_value(movements, items).to_dict()
+        payload["project_id"] = str(project_id)
+        return payload
+
+    async def position_coverage_report(self, project_id: uuid.UUID) -> dict:
+        """Per BoQ position: ordered against delivered against the bill.
+
+        Joins three sources the platform already holds - the bill position that
+        priced the material, the requisition line it was ordered on, and this
+        module's own movement ledger - so the page can answer how much of what
+        was bought is still to arrive and how much of the bill quantity has
+        actually landed. Quantity comparisons are withheld wherever the units
+        behind them are not known to agree.
+        """
+        rows = await self._all_movements(project_id)
+        raw = [_to_ledger_movement(r) for r in rows]
+        item_rows = await self.list_items(project_id)
+        items = [_to_ledger_item(i) for i in item_rows]
+        movements = ledger.resolve_positions(raw, items)
+
+        wanted_positions = {m.boq_position_id for m in movements if m.boq_position_id}
+        wanted_positions |= {i.boq_position_id for i in items if i.boq_position_id}
+        positions = await self._position_refs(project_id, wanted_positions)
+        ordered = await self._ordered_refs(
+            project_id,
+            {i.procurement_req_item_id for i in items if i.procurement_req_item_id},
+        )
+
+        lines = ledger.position_coverage(movements, items, positions, ordered)
+        return {
+            "project_id": str(project_id),
+            "position_count": len(lines),
+            "unmatched_unit_count": sum(
+                1 for line in lines if line.bill_unit_agreement == ledger.UnitAgreement.MISMATCH.value
+            ),
+            "lines": [line.to_dict() for line in lines],
+        }
 
     async def waste_report(
         self,
@@ -323,6 +423,27 @@ class SiteInventoryService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="BoQ position not found in this project",
+            )
+
+    async def _require_req_item_in_project(self, project_id: uuid.UUID, req_item_id: uuid.UUID) -> None:
+        """Confirm a procurement requisition line belongs to the project, else 404.
+
+        The database FK only rejects an id that does not exist; it happily
+        accepts another project's requisition line. Since the ordered quantity
+        on that line is read straight into this project's coverage report, the
+        ownership check has to happen here.
+        """
+        from app.modules.procurement.models import MaterialRequisition, MaterialRequisitionItem
+
+        stmt = (
+            select(MaterialRequisitionItem.id)
+            .join(MaterialRequisition, MaterialRequisitionItem.requisition_id == MaterialRequisition.id)
+            .where(MaterialRequisitionItem.id == req_item_id, MaterialRequisition.project_id == project_id)
+        )
+        if (await self.session.execute(stmt)).first() is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Requisition line not found in this project",
             )
 
     async def _require_goods_receipt_in_project(self, project_id: uuid.UUID, goods_receipt_id: uuid.UUID) -> None:
@@ -391,6 +512,114 @@ class SiteInventoryService:
             budgets[str(pid)] = budget
         return budgets
 
+    async def _position_refs(
+        self,
+        project_id: uuid.UUID,
+        position_ids: set[str | None],
+    ) -> dict[str, ledger.PositionRef]:
+        """Load the BoQ positions behind a set of ids, scoped to the project.
+
+        Positions are read with an explicit ``select`` rather than through an ORM
+        relationship on :class:`StockItem`: this module points at the BoQ by id
+        and never navigates into it, which is also what keeps a lazy load from
+        firing inside the async session.
+        """
+        as_uuid = _as_uuid_list(position_ids)
+        if not as_uuid:
+            return {}
+
+        from app.modules.boq.models import BOQ, Position
+
+        stmt = (
+            select(
+                Position.id,
+                Position.ordinal,
+                Position.description,
+                Position.unit,
+                Position.quantity,
+                Position.unit_rate,
+                Position.total,
+            )
+            .join(BOQ, Position.boq_id == BOQ.id)
+            .where(Position.id.in_(as_uuid), BOQ.project_id == project_id)
+        )
+        refs: dict[str, ledger.PositionRef] = {}
+        for pid, ordinal, description, unit, quantity, unit_rate, total in (await self.session.execute(stmt)).all():
+            refs[str(pid)] = ledger.PositionRef(
+                position_id=str(pid),
+                ordinal=ordinal or "",
+                description=description or "",
+                unit=unit or "",
+                quantity=_to_decimal(quantity),
+                unit_rate=_to_decimal(unit_rate),
+                total=_to_decimal(total),
+            )
+        return refs
+
+    async def _ordered_refs(
+        self,
+        project_id: uuid.UUID,
+        req_item_ids: set[uuid.UUID | None],
+    ) -> dict[str, ledger.OrderedRef]:
+        """Load the ordered quantity of a set of requisition lines, in-project.
+
+        The project scope is applied in the query, so a requisition line that
+        belongs to another project contributes nothing even if an id for it ever
+        reached the column.
+        """
+        as_uuid = _as_uuid_list(req_item_ids)
+        if not as_uuid:
+            return {}
+
+        from app.modules.procurement.models import MaterialRequisition, MaterialRequisitionItem
+
+        stmt = (
+            select(
+                MaterialRequisitionItem.id,
+                MaterialRequisitionItem.unit,
+                MaterialRequisitionItem.quantity_ordered,
+            )
+            .join(MaterialRequisition, MaterialRequisitionItem.requisition_id == MaterialRequisition.id)
+            .where(MaterialRequisitionItem.id.in_(as_uuid), MaterialRequisition.project_id == project_id)
+        )
+        refs: dict[str, ledger.OrderedRef] = {}
+        for rid, unit, quantity_ordered in (await self.session.execute(stmt)).all():
+            refs[str(rid)] = ledger.OrderedRef(
+                req_item_id=str(rid),
+                unit=unit or "",
+                quantity_ordered=_to_decimal(quantity_ordered),
+            )
+        return refs
+
+
+def _as_uuid_list(values: set[str | None] | set[uuid.UUID | None]) -> list[uuid.UUID]:
+    """Coerce a set of ids to ``UUID``, dropping blanks and unparsable entries."""
+    out: list[uuid.UUID] = []
+    for value in values:
+        if not value:
+            continue
+        if isinstance(value, uuid.UUID):
+            out.append(value)
+            continue
+        try:
+            out.append(uuid.UUID(str(value)))
+        except (ValueError, TypeError):
+            continue
+    return out
+
+
+def _to_ledger_item(row: StockItem) -> ledger.StockItemRef:
+    """Project a persisted stock item onto the pure :class:`ledger.StockItemRef`."""
+    return ledger.StockItemRef(
+        item_id=str(row.id),
+        name=row.name or "",
+        unit=row.unit or "",
+        boq_position_id=str(row.boq_position_id) if row.boq_position_id is not None else None,
+        procurement_req_item_id=(str(row.procurement_req_item_id) if row.procurement_req_item_id is not None else None),
+        standard_unit_cost=_to_decimal(row.standard_unit_cost) if row.standard_unit_cost is not None else None,
+        currency=row.currency or "",
+    )
+
 
 def _to_ledger_movement(row: StockMovement) -> ledger.Movement:
     """Project a persisted movement row onto the pure :class:`ledger.Movement`."""
@@ -398,6 +627,7 @@ def _to_ledger_movement(row: StockMovement) -> ledger.Movement:
         movement_type=str(row.movement_type),
         quantity=_to_decimal(row.quantity),
         unit_cost=_to_decimal(row.unit_cost),
+        currency=row.currency or "",
         item_id=str(row.item_id) if row.item_id is not None else None,
         location_id=str(row.location_id) if row.location_id is not None else None,
         to_location_id=str(row.to_location_id) if row.to_location_id is not None else None,

@@ -131,6 +131,37 @@ class StockItemCreate(BaseModel):
         return _validate_non_negative(v)
 
 
+class StockItemUpdate(BaseModel):
+    """Patch a stock item: only the fields sent are written.
+
+    Every field is optional and ``exclude_unset`` is what the service reads, so
+    an omitted link is left alone while an explicit ``null`` clears it. That
+    distinction is the whole point of the schema: linking an item to the BoQ
+    position that priced it must not blank the rest of the record, and a wrong
+    link must still be correctable.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    sku: str | None = Field(default=None, max_length=64)
+    unit: str | None = Field(default=None, max_length=20)
+    boq_position_id: UUID | None = None
+    procurement_req_item_id: UUID | None = None
+    default_location_id: UUID | None = None
+    standard_unit_cost: str | None = Field(default=None, max_length=50)
+    currency: str | None = Field(default=None, max_length=10)
+    reorder_point: str | None = Field(default=None, max_length=50)
+    is_active: bool | None = None
+
+    @field_validator("standard_unit_cost", "reorder_point")
+    @classmethod
+    def _check_non_negative_optional(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return _validate_non_negative(v)
+
+
 class StockItemResponse(BaseModel):
     """A stock item returned from the API."""
 

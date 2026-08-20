@@ -34,6 +34,7 @@ from app.modules.site_inventory.schemas import (
     MovementResponse,
     StockItemCreate,
     StockItemResponse,
+    StockItemUpdate,
 )
 from app.modules.site_inventory.service import SiteInventoryService
 
@@ -134,6 +135,24 @@ async def list_items(
     return await service.list_items(project_id)  # type: ignore[return-value]
 
 
+@router.patch(
+    "/projects/{project_id}/items/{item_id}",
+    response_model=StockItemResponse,
+    dependencies=[_WRITE],
+)
+async def update_item(
+    project_id: uuid.UUID,
+    item_id: uuid.UUID,
+    payload: StockItemUpdate,
+    user_id: CurrentUserId,
+    session: SessionDep,
+) -> StockItemResponse:
+    """Patch a stock item - the endpoint that links it to its BoQ position."""
+    await verify_project_access(project_id, user_id, session)
+    service = _get_service(session)
+    return await service.update_item(project_id, item_id, payload)  # type: ignore[return-value]
+
+
 # -- Movements --------------------------------------------------------------
 
 
@@ -215,6 +234,38 @@ async def get_material_variance(
     await verify_project_access(project_id, user_id, session)
     service = _get_service(session)
     return await service.material_variance_report(project_id)
+
+
+@router.get(
+    "/projects/{project_id}/reports/position-coverage",
+    response_model=None,
+    dependencies=[_READ],
+)
+async def get_position_coverage(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+) -> dict:
+    """Per BoQ position: ordered against delivered against the bill quantity."""
+    await verify_project_access(project_id, user_id, session)
+    service = _get_service(session)
+    return await service.position_coverage_report(project_id)
+
+
+@router.get(
+    "/projects/{project_id}/reports/unfixed-value",
+    response_model=None,
+    dependencies=[_READ],
+)
+async def get_unfixed_value(
+    project_id: uuid.UUID,
+    user_id: CurrentUserId,
+    session: SessionDep,
+) -> dict:
+    """Value of the material standing on site and not yet installed."""
+    await verify_project_access(project_id, user_id, session)
+    service = _get_service(session)
+    return await service.unfixed_value_report(project_id)
 
 
 @router.get(
