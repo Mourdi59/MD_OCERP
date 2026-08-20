@@ -3,18 +3,27 @@
 /**
  * Construction cost benchmark data.
  *
- * Sources (typical planning benchmarks compiled from public datasets, not a live feed):
- * - German building-cost benchmark 2024 (Germany)
- * - Statistik Austria Baukostenindex 2024 (Austria)
- * - SIA / BFS Schweiz 2024 (Switzerland)
- * - UK construction cost index 2024 (United Kingdom)
- * - US construction cost index 2024 (United States)
- * - French unit-price reference 2024 (France)
- * - Bouwkosten Kompas 2024 (Netherlands)
- * - ITeC BEDEC 2024 (Spain)
- * - DEI Tipologie Edilizie 2024 (Italy)
- * - Rawlinsons Construction Handbook 2024 (Australia)
- * - Altus Construction Cost Guide 2024 (Canada)
+ * These numbers are written by us. They are indicative planning bands set to
+ * sit in the right place for each market, calibrated in 2024. They are not
+ * taken from any published price book, cost index or statistical release.
+ *
+ * The `source` string on every region therefore names no publication, and
+ * that is deliberate in BOTH directions. It used to credit each region to a
+ * named publisher, which told the user something false: it read as though a
+ * publisher had supplied the figure. Six regions were later reworded to
+ * generic wording and five kept publisher names, which left the table
+ * claiming two different things about numbers of identical origin. All
+ * eleven now carry the same neutral string.
+ *
+ * Do not "restore" the removed names. Some of them were public bodies rather
+ * than commercial publishers, so a brand-scrubbing pass would have left them
+ * alone; they went because attributing a hand-authored number to any outside
+ * body is wrong regardless of who that body is. If real licensed data ever
+ * arrives, the fix is to replace these values and then name the source.
+ *
+ * `sourceYear` is the year these bands were calibrated, not a publication
+ * year. It is rendered as "(2024)" next to `source`, so `source` must never
+ * carry a year of its own or the UI prints it twice.
  *
  * All values are cost per m2 GFA (gross floor area) for DIN 276 KG300+400
  * (construction works plus technical building systems). The KG300 vs KG400
@@ -455,19 +464,28 @@ const AREA_PER_UNIT: Partial<Record<BuildingType, { unitId: string; label: strin
   senior_care: { unitId: 'bed', label: 'per bed', area: 55, typicalCount: 80 },
 };
 
-/** Provenance per region (source string, year, currency). */
+/**
+ * Provenance per region (source string, calibration year, currency).
+ *
+ * `source` is the same sentence for every region because the origin is the
+ * same for every region: we wrote them. The region is already named beside
+ * this string everywhere it renders, so repeating it here would add nothing.
+ * Currency and year stay per region because those do differ.
+ */
+const INDICATIVE_BAND = 'Indicative planning band, compiled by DataDrivenConstruction';
+
 const PROVENANCE: Record<BenchmarkRegion, { source: string; sourceYear: number; currency: CurrencyCode }> = {
-  DE: { source: 'German building-cost benchmark (2024)', sourceYear: 2024, currency: 'EUR' },
-  AT: { source: 'Statistik Austria Baukostenindex 2024', sourceYear: 2024, currency: 'EUR' },
-  CH: { source: 'SIA / BFS Schweiz 2024', sourceYear: 2024, currency: 'CHF' },
-  UK: { source: 'UK construction cost index 2024', sourceYear: 2024, currency: 'GBP' },
-  US: { source: 'US construction cost index (2024)', sourceYear: 2024, currency: 'USD' },
-  FR: { source: 'French unit-price reference (2024)', sourceYear: 2024, currency: 'EUR' },
-  NL: { source: 'Bouwkosten Kompas 2024', sourceYear: 2024, currency: 'EUR' },
-  ES: { source: 'ITeC BEDEC 2024', sourceYear: 2024, currency: 'EUR' },
-  IT: { source: 'DEI Tipologie Edilizie 2024', sourceYear: 2024, currency: 'EUR' },
-  AU: { source: 'Rawlinsons Construction Handbook 2024', sourceYear: 2024, currency: 'AUD' },
-  CA: { source: 'Altus Construction Cost Guide 2024', sourceYear: 2024, currency: 'CAD' },
+  DE: { source: INDICATIVE_BAND, sourceYear: 2024, currency: 'EUR' },
+  AT: { source: INDICATIVE_BAND, sourceYear: 2024, currency: 'EUR' },
+  CH: { source: INDICATIVE_BAND, sourceYear: 2024, currency: 'CHF' },
+  UK: { source: INDICATIVE_BAND, sourceYear: 2024, currency: 'GBP' },
+  US: { source: INDICATIVE_BAND, sourceYear: 2024, currency: 'USD' },
+  FR: { source: INDICATIVE_BAND, sourceYear: 2024, currency: 'EUR' },
+  NL: { source: INDICATIVE_BAND, sourceYear: 2024, currency: 'EUR' },
+  ES: { source: INDICATIVE_BAND, sourceYear: 2024, currency: 'EUR' },
+  IT: { source: INDICATIVE_BAND, sourceYear: 2024, currency: 'EUR' },
+  AU: { source: INDICATIVE_BAND, sourceYear: 2024, currency: 'AUD' },
+  CA: { source: INDICATIVE_BAND, sourceYear: 2024, currency: 'CAD' },
 };
 
 /**

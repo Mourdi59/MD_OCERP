@@ -86,6 +86,54 @@ Data Driven Construction (DDC) CWICR Database
 - 900,225 resource component rows
 - https://github.com/datadrivenconstruction/OpenConstructionEstimate-DDC-CWICR
 
-## License
+The `cwicr_*.csv` files above are an extract of the global CWICR base. The
+per-region catalogues in `regions/` come from several different bases, and
+they do not all share one origin. Eleven of them (`AR_DUBAI`, `DE_BERLIN`,
+`ENG_TORONTO`, `FR_PARIS`, `HI_MUMBAI`, `PT_SAOPAULO`, `RU_STPETERSBURG`,
+`SP_BARCELONA`, `UK_GBP`, `USA_USD`, `ZH_SHANGHAI`) are the same global base
+translated and repriced per market, sharing 6,671 of 6,674 resource codes.
+A file named for a city is that market's prices over the global base, not a
+price book published in that country. The remaining five are separate
+national bases.
 
-AGPL-3.0 (same as OpenConstructionERP)
+## Licence and attribution
+
+Each base derives from a cost standard published by a public sector body.
+The derived data carries item descriptions, the classification tree and, in
+several bases, the published code numbers. Prices are aggregates computed
+across price variants and converted per market, not transcribed figures.
+
+| Base / region | Source publication | Basis |
+|---|---|---|
+| Global CWICR (the 11 market catalogues and `cwicr_*.csv`) | GESN / FER / TER norm structure (CIS) | **PENDING, see note below** |
+| `ZH_SHANGHAI` | China, Beijing 2012 + Bole 2022 construction quota (Dinge) | Official government tariff |
+| `TR_NATIONAL` | Turkiye, CSB national unit prices (Birim Fiyat) | Official publication, FSEK Art. 31 |
+| `BR_NATIONAL` | Brazil, SINAPI analytical compositions (CAIXA/IBGE) | Open data, Decreto 7.983/2013 |
+| `ES_ANDALUCIA` | Spain, Base de Costes de la Construccion de Andalucia (BCCA 2023) | Open institutional publication |
+| `IT_TOSCANA` | Italy, Prezzario dei Lavori Pubblici della Toscana (edizione 2026) | CC BY 4.0, attribution below |
+| `GR_NATIONAL` | Greece, analytical price lists for works (GGDE) | Public document, Law 2121/1993 |
+
+The basis for the global CWICR base is **PENDING** and is left open rather
+than assumed. It is the largest dataset here and the one base with no
+written basis recorded. Settling it needs the edition of the norms used and
+the terms that edition was published under. Do not read the other rows as
+covering it.
+
+### Attribution required by CC BY 4.0
+
+"Prezzario dei Lavori Pubblici della Toscana, edizione 2026", published by
+Regione Toscana, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+**This work has been modified by DataDrivenConstruction.** Source items were
+parsed into the CWICR canonical schema, resource components restructured,
+unit labels normalised, descriptions translated into further languages, and
+aggregate price columns computed. Regione Toscana does not endorse this
+project or its use of the material.
+
+### Licence of these files
+
+The extraction and transformation code, the canonical schema and the
+compilation as published here are AGPL-3.0, the same as OpenConstructionERP.
+That covers this project's own contribution only. It does not override the
+terms of the source publications listed above, and it does not apply to any
+base whose basis is still marked pending.

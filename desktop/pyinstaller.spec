@@ -20,7 +20,14 @@ block_cipher = None
 ROOT = Path(SPECPATH).parent
 BACKEND = ROOT / "backend"
 FRONTEND_DIST = ROOT / "frontend" / "dist"
-DATA_CATALOG = ROOT / "data" / "catalog"
+# NOTE: do not add ``data/catalog`` to ``datas`` below. There used to be a
+# DATA_CATALOG constant here, defined and never used, which read like a
+# bundling step somebody had started. It is 77 MB of regional cost catalogues
+# derived from public sector norm systems, and the sidecar deliberately does
+# not carry it: the catalog module downloads a region on demand and caches it
+# under ~/.openestimator. Putting it in the installer would ship that data
+# inside a signed artifact, which is a licensing decision and not a packaging
+# one. See the Data Sources section of NOTICE before changing this.
 
 # Collect all backend module packages for hidden imports
 modules_dir = BACKEND / "app" / "modules"

@@ -155,12 +155,71 @@ Section 43(a).
 Data Sources
 ------------------------------------------------------------------------
 
-The CWICR cost database aggregated and published with this software was
-compiled by DataDrivenConstruction from public, licensed, and originally
-collected sources. Classification codes (e.g., DIN 276 cost-group numbers,
-CSI MasterFormat division numbers, NRM element codes) are used as factual
-references; no standard's copyrighted descriptive text has been copied
-into the database without permission.
+The CWICR cost database aggregated and published with this software is
+compiled by DataDrivenConstruction from cost standards published by public
+sector bodies. Each base is derived from a national or regional norm system
+issued by a state authority.
+
+Deriving a base reproduces material from the source publication. Item
+descriptions, the arrangement of the classification tree, and in several
+bases the published code numbers are carried into the derived data, so the
+data does contain descriptive text taken from those publications. Prices
+are not carried through: the rate columns are aggregates computed across
+price variants and then converted per market, not figures transcribed from
+a source. Every base and the basis relied on for it is listed below.
+
+  Base / region   Source publication                        Basis
+  -------------   ----------------------------------------  ---------------
+  Global CWICR    GESN / FER / TER norm structure (CIS)     PENDING, see the
+                                                            note below
+  ZH_CHINA        China, Beijing 2012 + Bole 2022           Official
+                  construction quota (Dinge)                government tariff
+  TR_NATIONAL     Turkiye, CSB national unit prices         Official
+                  (Birim Fiyat)                             publication,
+                                                            FSEK Art. 31
+  BR_NATIONAL     Brazil, SINAPI analytical compositions    Open data,
+                  (CAIXA / IBGE)                            Decreto
+                                                            7.983/2013
+  ES_ANDALUCIA    Spain, Base de Costes de la Construccion  Open
+                  de Andalucia (BCCA 2023)                  institutional
+                                                            publication
+  IT_TOSCANA      Italy, Prezzario dei Lavori Pubblici      CC BY 4.0, see
+                  della Toscana (edizione 2026)             attribution below
+  GR_NATIONAL     Greece, analytical price lists for works  Public document,
+                  (GGDE)                                    Law 2121/1993
+  VN_NATIONAL     Vietnam, Dinh muc (TT 12/2021/TT-BXD)     Not subject to
+                                                            copyright, IP Law
+                                                            art. 15
+  ID_NATIONAL     Indonesia, AHSP (Permen PUPR 2016/2022)   Not subject to
+                                                            copyright,
+                                                            UU 28/2014
+
+Attribution required by CC BY 4.0, for the Italian base:
+
+  "Prezzario dei Lavori Pubblici della Toscana, edizione 2026", published
+  by Regione Toscana, licensed under Creative Commons Attribution 4.0
+  International (CC BY 4.0),
+  https://creativecommons.org/licenses/by/4.0/
+
+  This work has been MODIFIED by DataDrivenConstruction. The source items
+  were parsed into the CWICR canonical schema, resource components were
+  restructured, unit labels were normalised, descriptions were translated
+  into additional languages, and aggregate price columns were computed.
+  Regione Toscana does not endorse this project or its use of the material.
+
+The basis for the global CWICR base (GESN / FER / TER) is PENDING and is
+deliberately left open rather than assumed. That base is the largest single
+dataset here, 55,719 work items repriced into 30 markets, and it is the one
+base for which no written basis has been recorded. Settling it needs two
+facts: which edition of the norms was used, and the terms under which that
+edition was published. Until both are recorded here, treat this row as
+unresolved. Do not read the surrounding rows as covering it.
+
+Classification codes (e.g., DIN 276 cost-group numbers, CSI MasterFormat
+division numbers, NRM element codes) are used as factual references. No
+standards body's copyrighted descriptive text is reproduced in the database;
+the descriptive text noted above comes from the public sector cost
+publications in the table, not from the classification standards.
 
 ------------------------------------------------------------------------
 Cryptographic Notice
