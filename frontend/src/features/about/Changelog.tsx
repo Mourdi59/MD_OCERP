@@ -38,6 +38,13 @@ interface ChangelogEntry {
 // date, title and meaning intact; trim the prose, not the facts.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '15.2.0',
+    date: '2026-08-20',
+    tag: 'NEW',
+    summary:
+      'The Windows installer carries the web view runtime instead of fetching it during setup, so an install no longer depends on reaching Microsoft from a site network, and Windows now offers one installer rather than two that each recorded the same application separately. The update notice names the file that fits the machine it is running on and asks this installation\'s own server rather than GitHub from every browser tab, a purchase order commits against the cost line the estimate priced so committed against remaining stops reading zero on every project, and a bill position can be asked in one row what the estimate allowed, what is committed, what was installed and what left the store. A backend that has started and reports that it cannot do its job is no longer indistinguishable from one still coming up, so the window stops opening on top of a server whose every action will fail.',
+  },
+  {
     version: '15.1.0',
     date: '2026-08-20',
     tag: 'FIX',
