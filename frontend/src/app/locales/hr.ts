@@ -21901,6 +21901,8 @@ const resource = {
     "bcf.no_comments": "Nema komentara još. Započnite diskusiju.",
     "bcf.no_match": "Nema problema koji odgovaraju vašoj pretrazi.",
     "bcf.no_snapshot": "Nema snimka iz ovog pogleda.",
+    "bcf.snapshot_failed": "Snimka se nije mogla učitati.",
+    "bcf.viewpoint_none": "Nema točke pogleda za ovaj problem.",
     "bcf.no_view": "Nema snimljenog pogleda za ovaj problem.",
     "bcf.overdue": "Prekoračen rok",
     "bcf.post_comment": "Objavi komentar",

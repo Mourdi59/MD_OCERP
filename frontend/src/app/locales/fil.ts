@@ -21330,6 +21330,8 @@ const resource = {
     "bcf.no_comments": "Wala pang komento. Simulan ang usapan.",
     "bcf.no_match": "Walang isyung tumutugma sa paghahanap mo.",
     "bcf.no_snapshot": "Walang nakuhang snapshot mula sa view na ito.",
+    "bcf.snapshot_failed": "Hindi ma-load ang snapshot.",
+    "bcf.viewpoint_none": "Walang viewpoint sa isyung ito.",
     "bcf.no_view": "Walang naka-save na view para sa isyung ito.",
     "bcf.overdue": "Lampas sa Deadline",
     "bcf.post_comment": "I-post ang komento",

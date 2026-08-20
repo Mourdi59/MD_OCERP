@@ -21847,6 +21847,8 @@ const resource = {
     "bcf.no_comments": "Belum ada komentar. Mulai diskusi.",
     "bcf.no_match": "Tidak ada masalah yang cocok dengan pencarian Anda.",
     "bcf.no_snapshot": "Tidak ada snapshot yang ditangkap dari tampilan ini.",
+    "bcf.snapshot_failed": "Snapshot tidak dapat dimuat.",
+    "bcf.viewpoint_none": "Tidak ada viewpoint untuk masalah ini.",
     "bcf.no_view": "Tidak ada tampilan yang disimpan untuk masalah ini.",
     "bcf.overdue": "Terlambat",
     "bcf.post_comment": "Posting komentar",

@@ -22061,6 +22061,8 @@ const resource = {
     "bcf.no_comments": "لا توجد تعليقات حتى الآن. ابدأ النقاش.",
     "bcf.no_match": "لا توجد مشاكل تطابق البحث.",
     "bcf.no_snapshot": "لم يتم التقاط لقطة شاشة من هذا العرض.",
+    "bcf.snapshot_failed": "تعذر تحميل لقطة الشاشة.",
+    "bcf.viewpoint_none": "لا توجد كاميرا محفوظة لهذه المشكلة.",
     "bcf.no_view": "لا يوجد عرض محفوظ لهذه المشكلة.",
     "bcf.overdue": "متأخرة",
     "bcf.post_comment": "نشر تعليق",

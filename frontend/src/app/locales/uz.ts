@@ -22539,6 +22539,8 @@ const resource = {
     "bcf.no_comments": "Hali izoh yoʻq. Muhokamani boshlang.",
     "bcf.no_match": "Qidiruvingizga mos muammo yoʻq.",
     "bcf.no_snapshot": "Bu koʻrinishdan skrinshot olinmagan.",
+    "bcf.snapshot_failed": "Skrinshotni yuklab boʻlmadi.",
+    "bcf.viewpoint_none": "Bu muammoda koʻrinish nuqtasi yoʻq.",
     "bcf.no_view": "Bu muammo uchun saqlangan koʻrinish yoʻq.",
     "bcf.overdue": "Muddati oʻtgan",
     "bcf.post_comment": "Izohni joylashtirish",

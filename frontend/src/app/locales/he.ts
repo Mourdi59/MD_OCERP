@@ -21343,6 +21343,8 @@ const resource = {
     "bcf.no_comments": "אין עדיין תגובות. התחילו את הדיון.",
     "bcf.no_match": "אין בעיות תואמות לחיפוש שלכם.",
     "bcf.no_snapshot": "לא נלכד תצלום מתצוגה זו.",
+    "bcf.snapshot_failed": "לא ניתן היה לטעון את התצלום.",
+    "bcf.viewpoint_none": "אין נקודת תצפית עבור בעיה זו.",
     "bcf.no_view": "אין תצוגה שמורה עבור בעיה זו.",
     "bcf.overdue": "באיחור",
     "bcf.post_comment": "פרסום תגובה",

@@ -21929,6 +21929,8 @@ const resource = {
     "bcf.no_comments": "Zatím žádné komentáře. Spusťte diskusi.",
     "bcf.no_match": "Žádné problémy neodpovídají vašemu hledání.",
     "bcf.no_snapshot": "Z tohoto zobrazení nebyl zachycen žádný snímek.",
+    "bcf.snapshot_failed": "Snímek se nepodařilo načíst.",
+    "bcf.viewpoint_none": "Pro tento problém neexistuje viewpoint.",
     "bcf.no_view": "Pro tento problém neexistuje uložený pohled.",
     "bcf.overdue": "Po termínu",
     "bcf.post_comment": "Zveřejnit komentář",

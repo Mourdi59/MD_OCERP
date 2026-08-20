@@ -21330,6 +21330,8 @@ const resource = {
     "bcf.no_comments": "ابھی تک کوئی تبصرہ نہیں۔ بحث شروع کریں۔",
     "bcf.no_match": "آپ کی تلاش سے کوئی issue میل نہیں کھاتا۔",
     "bcf.no_snapshot": "اس ویو سے کوئی snapshot کیپچر نہیں ہوا۔",
+    "bcf.snapshot_failed": "snapshot لوڈ نہیں ہو سکا۔",
+    "bcf.viewpoint_none": "اس issue پر کوئی ویو پوائنٹ نہیں۔",
     "bcf.no_view": "اس issue کے لیے کوئی محفوظ ویو نہیں۔",
     "bcf.overdue": "میعاد گزشتہ",
     "bcf.post_comment": "تبصرہ پوسٹ کریں",

@@ -21868,6 +21868,8 @@ const resource = {
     "bcf.no_comments": "Henüz yorum yok. Tartışmayı başlatın.",
     "bcf.no_match": "Aramanızla eşleşen sorun yok.",
     "bcf.no_snapshot": "Bu görünümden yakalanan anlık görüntü yok.",
+    "bcf.snapshot_failed": "Anlık görüntü yüklenemedi.",
+    "bcf.viewpoint_none": "Bu sorun için görünüm noktası yok.",
     "bcf.no_view": "Bu sorun için kaydedilmiş görünüm yok.",
     "bcf.overdue": "Zamanı geçmiş",
     "bcf.post_comment": "Yorum gönder",

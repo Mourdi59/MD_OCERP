@@ -22699,6 +22699,8 @@ const resource = {
     "bcf.no_comments": "Noch keine Kommentare. Starten Sie die Diskussion.",
     "bcf.no_match": "Keine Probleme entsprechen Ihrer Suche.",
     "bcf.no_snapshot": "Kein Snapshot von dieser Ansicht erfasst.",
+    "bcf.snapshot_failed": "Snapshot konnte nicht geladen werden.",
+    "bcf.viewpoint_none": "Kein Ansichtspunkt für dieses Problem.",
     "bcf.no_view": "Keine gespeicherte Ansicht für dieses Problem.",
     "bcf.overdue": "Überfällig",
     "bcf.post_comment": "Kommentar posten",

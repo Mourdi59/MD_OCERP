@@ -98,18 +98,25 @@ function BcfSnapshot({
   viewpoint,
   className,
   alt,
+  withCaption = false,
 }: {
   projectId: string;
   topicGuid: string;
   viewpoint: Viewpoint | null;
   className?: string;
   alt: string;
+  /** Spell the empty state out in words. Set where the box is tall enough to
+   *  hold a line of text; the list thumbnail is not and relies on the title. */
+  withCaption?: boolean;
 }) {
+  const { t } = useTranslation();
   const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
   const hasSnapshot = Boolean(viewpoint?.has_snapshot);
   const vpGuid = viewpoint?.guid;
 
   useEffect(() => {
+    setFailed(false);
     if (!hasSnapshot || !vpGuid) {
       setUrl(null);
       return;
@@ -124,7 +131,10 @@ function BcfSnapshot({
         setUrl(objUrl);
       })
       .catch(() => {
-        /* best-effort thumbnail; a failure just shows the placeholder */
+        // A thumbnail is best-effort, but the reader still has to be told
+        // which kind of nothing they are looking at rather than being left
+        // with a skeleton that never resolves.
+        if (!cancelled) setFailed(true);
       });
     return () => {
       cancelled = true;
@@ -133,15 +143,46 @@ function BcfSnapshot({
     };
   }, [projectId, topicGuid, vpGuid, hasSnapshot]);
 
-  if (!hasSnapshot) {
+  // Three different nothings, and they used to be drawn as one. A crossed-out
+  // image is a failure affordance, so painting it for a viewpoint that simply
+  // never had a PNG made a register of perfectly good issues read as a grid of
+  // broken pictures - which is exactly how it was reported. The states are:
+  //
+  //   failed        the PNG exists and would not load. A real failure, and the
+  //                 only one that earns the crossed-out glyph.
+  //   no viewpoint  the issue was raised outside a viewer. Nothing is wrong and
+  //                 nothing is missing; there is simply no view to show.
+  //   no snapshot   there IS a viewpoint - a camera the reader can fly the model
+  //                 to - it just carries no image. That is ordinary: the BCF
+  //                 schema makes the snapshot optional, and an issue whose
+  //                 viewpoint came from a clash result never had a picture. The
+  //                 crosshair says what is really there rather than what is not.
+  //
+  // Each names itself in the accessible name and the tooltip, and in the caption
+  // wherever the box is tall enough to hold a line of text.
+  if (failed || !hasSnapshot) {
+    const label = failed
+      ? t('bcf.snapshot_failed', { defaultValue: 'Snapshot could not be loaded.' })
+      : viewpoint
+        ? t('bcf.no_snapshot', { defaultValue: 'No snapshot captured from this view.' })
+        : t('bcf.viewpoint_none', { defaultValue: 'No viewpoint on this issue.' });
     return (
       <div
+        role="img"
+        aria-label={label}
+        title={label}
         className={clsx(
-          'flex items-center justify-center bg-surface-secondary text-content-quaternary',
+          'flex flex-col items-center justify-center gap-1 bg-surface-secondary px-2',
+          'text-center text-content-quaternary',
           className,
         )}
       >
-        <ImageOff size={18} />
+        {failed ? (
+          <ImageOff size={18} className="shrink-0" />
+        ) : viewpoint ? (
+          <Crosshair size={18} className="shrink-0" />
+        ) : null}
+        {withCaption && <span className="text-2xs leading-tight">{label}</span>}
       </div>
     );
   }
@@ -429,6 +470,7 @@ function BcfTopicDetail({
               viewpoint={vp}
               alt={t('bcf.snapshot_alt', { defaultValue: 'Captured view snapshot' })}
               className="h-56 w-full"
+              withCaption
             />
           ) : (
             <div className="flex h-32 flex-col items-center justify-center gap-1.5 text-content-quaternary">

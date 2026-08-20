@@ -21852,6 +21852,8 @@ const resource = {
     "bcf.no_comments": "아직 댓글이 없습니다. 토론을 시작하세요.",
     "bcf.no_match": "검색과 일치하는 이슈가 없습니다.",
     "bcf.no_snapshot": "이 뷰에서 캡처한 스냅샷이 없습니다.",
+    "bcf.snapshot_failed": "스냅샷을 불러올 수 없습니다.",
+    "bcf.viewpoint_none": "이 이슈에 뷰포인트가 없습니다.",
     "bcf.no_view": "이 이슈에 대한 저장된 뷰가 없습니다.",
     "bcf.overdue": "기한 만료",
     "bcf.post_comment": "댓글 게시",

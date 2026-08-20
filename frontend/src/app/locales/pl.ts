@@ -21936,6 +21936,8 @@ const resource = {
     "bcf.no_comments": "Brak komentarzy. Rozpocznij dyskusję.",
     "bcf.no_match": "Żaden problem nie pasuje do twojego wyszukiwania.",
     "bcf.no_snapshot": "Brak migawki przechwycenia z tego widoku.",
+    "bcf.snapshot_failed": "Nie udało się wczytać migawki.",
+    "bcf.viewpoint_none": "Brak punktu widzenia dla tego problemu.",
     "bcf.no_view": "Brak zapisanego widoku dla tego problemu.",
     "bcf.overdue": "Zaległy",
     "bcf.post_comment": "Opublikuj komentarz",

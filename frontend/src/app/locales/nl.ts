@@ -21860,6 +21860,8 @@ const resource = {
     "bcf.no_comments": "Nog geen opmerkingen. Start de discussie.",
     "bcf.no_match": "Geen problemen komen overeen met uw zoekopdracht.",
     "bcf.no_snapshot": "Geen snapshot vastgelegd vanuit deze weergave.",
+    "bcf.snapshot_failed": "Snapshot kon niet worden geladen.",
+    "bcf.viewpoint_none": "Geen opgeslagen camera voor dit probleem.",
     "bcf.no_view": "Geen opgeslagen weergave voor dit probleem.",
     "bcf.overdue": "Achterstallig",
     "bcf.post_comment": "Opmerking plaatsen",

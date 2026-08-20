@@ -21330,6 +21330,8 @@ const resource = {
     "bcf.no_comments": "هنوز نظری نیست. گفتگو را شروع کنید.",
     "bcf.no_match": "مسئلهای با جستجوی شما مطابقت ندارد.",
     "bcf.no_snapshot": "عکس فوریای از این نما ثبت نشده.",
+    "bcf.snapshot_failed": "عکس فوری بارگذاری نشد.",
+    "bcf.viewpoint_none": "نقطه دیدی برای این مسئله نیست.",
     "bcf.no_view": "نمای ذخیرهشدهای برای این مسئله نیست.",
     "bcf.overdue": "معوق",
     "bcf.post_comment": "ارسال نظر",

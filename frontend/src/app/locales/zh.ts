@@ -21844,6 +21844,8 @@ const resource = {
     "bcf.no_comments": "还没有评论。开始讨论。",
     "bcf.no_match": "没有问题与您的搜索匹配。",
     "bcf.no_snapshot": "未从此视图捕获快照。",
+    "bcf.snapshot_failed": "快照加载失败。",
+    "bcf.viewpoint_none": "此问题没有视点。",
     "bcf.no_view": "此问题没有保存的视图。",
     "bcf.overdue": "逾期",
     "bcf.post_comment": "发布评论",

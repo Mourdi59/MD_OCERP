@@ -21863,6 +21863,8 @@ const resource = {
     "bcf.no_comments": "Ingen kommentarer endnu. Start diskussionen.",
     "bcf.no_match": "Ingen sager matcher dit søg.",
     "bcf.no_snapshot": "Intet øjebliksbillede fanget fra denne visning.",
+    "bcf.snapshot_failed": "Øjebliksbilledet kunne ikke indlæses.",
+    "bcf.viewpoint_none": "Intet synspunkt for denne sag.",
     "bcf.no_view": "Ingen gemt visning for denne sag.",
     "bcf.overdue": "Forfaldne",
     "bcf.post_comment": "Indlæg kommentar",

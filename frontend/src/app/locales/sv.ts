@@ -21865,6 +21865,8 @@ const resource = {
     "bcf.no_comments": "Inga kommentarer än. Starta diskussionen.",
     "bcf.no_match": "Inga problem matchar din sökning.",
     "bcf.no_snapshot": "Ingen ögonblicksbild registrerad från denna vy.",
+    "bcf.snapshot_failed": "Ögonblicksbilden kunde inte läsas in.",
+    "bcf.viewpoint_none": "Ingen visningspunkt för detta problem.",
     "bcf.no_view": "Ingen sparad vy för detta problem.",
     "bcf.overdue": "Försenad",
     "bcf.post_comment": "Publicera kommentar",

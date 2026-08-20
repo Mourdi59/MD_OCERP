@@ -21852,6 +21852,8 @@ const resource = {
     "bcf.no_comments": "まだコメントはありません。議論を開始してください。",
     "bcf.no_match": "検索と一致する問題はありません。",
     "bcf.no_snapshot": "このビューからキャプチャされたスナップショットはありません。",
+    "bcf.snapshot_failed": "スナップショットを読み込めませんでした。",
+    "bcf.viewpoint_none": "この問題にビューポイントはありません。",
     "bcf.no_view": "この問題の保存されたビューはありません。",
     "bcf.overdue": "期限超過",
     "bcf.post_comment": "コメントを投稿",

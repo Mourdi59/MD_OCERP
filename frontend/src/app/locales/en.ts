@@ -20976,6 +20976,8 @@ const resource = {
     "bcf.create_issue": "Create issue",
     "bcf.snapshot_alt": "Captured view snapshot",
     "bcf.no_snapshot": "No snapshot captured from this view.",
+    "bcf.snapshot_failed": "Snapshot could not be loaded.",
+    "bcf.viewpoint_none": "No viewpoint on this issue.",
     "bcf.selection_count": "{{count}} element(s) selected",
     "bcf.camera_captured": "Camera position captured",
     "bcf.camera_missing": "No camera captured",

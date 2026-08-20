@@ -20015,6 +20015,8 @@ const resource = {
     "bcf.create_issue": "Маселе түзүү",
     "bcf.snapshot_alt": "Тартылган көрүнүш сүрөтү",
     "bcf.no_snapshot": "Бул көрүнүштөн эч кандай сүрөт тартылган эмес.",
+    "bcf.snapshot_failed": "Сүрөттү жүктөө мүмкүн болгон жок.",
+    "bcf.viewpoint_none": "Бул маселе үчүн сакталган камера жок.",
     "bcf.selection_count": "{{count}} элемент(тер) тандалды",
     "bcf.camera_captured": "Камеранын позициясы тартылды",
     "bcf.camera_missing": "Камера тартылган жок",

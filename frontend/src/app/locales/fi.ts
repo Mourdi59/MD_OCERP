@@ -21870,6 +21870,8 @@ const resource = {
     "bcf.no_comments": "Ei kommentteja vielä. Aloita keskustelu.",
     "bcf.no_match": "Mikään ongelma ei vastaa hakuasi.",
     "bcf.no_snapshot": "Tästä näkymästä ei otettu kuvaketta.",
+    "bcf.snapshot_failed": "Tilannekuvaa ei voitu ladata.",
+    "bcf.viewpoint_none": "Tälle ongelmalle ei ole näkymää.",
     "bcf.no_view": "Tälle ongelmalle ei ole tallennettua näkymää.",
     "bcf.overdue": "Erääntynyt",
     "bcf.post_comment": "Lähetä kommentti",

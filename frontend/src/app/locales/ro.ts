@@ -21901,6 +21901,8 @@ const resource = {
     "bcf.no_comments": "Niciun comentariu încă. Porniți discuția.",
     "bcf.no_match": "Nicio problemă se potrivește căutării dvs.",
     "bcf.no_snapshot": "Nicio captură de ecran din această vizualizare.",
+    "bcf.snapshot_failed": "Captura de ecran nu a putut fi încărcată.",
+    "bcf.viewpoint_none": "Nicio cameră salvată pentru această problemă.",
     "bcf.no_view": "Nicio vizualizare salvată pentru această problemă.",
     "bcf.overdue": "Scadent",
     "bcf.post_comment": "Postare comentariu",

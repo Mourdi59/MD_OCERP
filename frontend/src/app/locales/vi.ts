@@ -21858,6 +21858,8 @@ const resource = {
     "bcf.no_comments": "Chưa có bình luận. Bắt đầu thảo luận.",
     "bcf.no_match": "Không có sự cố nào khớp với tìm kiếm của bạn.",
     "bcf.no_snapshot": "Không có ảnh chụp nào được chụp từ chế độ xem này.",
+    "bcf.snapshot_failed": "Không thể tải ảnh chụp.",
+    "bcf.viewpoint_none": "Không có điểm nhìn nào cho sự cố này.",
     "bcf.no_view": "Không có chế độ xem đã lưu cho sự cố này.",
     "bcf.overdue": "Quá hạn",
     "bcf.post_comment": "Đăng bình luận",

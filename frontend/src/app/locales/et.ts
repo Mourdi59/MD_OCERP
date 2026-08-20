@@ -21884,6 +21884,8 @@ const resource = {
     "bcf.no_comments": "Kommentaare pole veel. Alustage arutelu.",
     "bcf.no_match": "Ükski probleem ei vasta teie otsingule.",
     "bcf.no_snapshot": "Sellest vaatest pole hetketõmmist salvestatud.",
+    "bcf.snapshot_failed": "Hetketõmmist ei õnnestunud laadida.",
+    "bcf.viewpoint_none": "Sellel probleemil pole vaatepunkti.",
     "bcf.no_view": "Sellel probleemil pole salvestatud vaadet.",
     "bcf.overdue": "Tähtaeg möödas",
     "bcf.post_comment": "Postita kommentaar",

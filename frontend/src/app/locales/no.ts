@@ -21864,6 +21864,8 @@ const resource = {
     "bcf.no_comments": "Ingen kommentarer ennå. Start diskusjonen.",
     "bcf.no_match": "Ingen problemer samsvarer med søket ditt.",
     "bcf.no_snapshot": "Ingen øyeblikksbilde tatt fra denne visningen.",
+    "bcf.snapshot_failed": "Øyeblikksbildet kunne ikke lastes inn.",
+    "bcf.viewpoint_none": "Ingen visningspunkt for dette problemet.",
     "bcf.no_view": "Ingen lagret visning for dette problemet.",
     "bcf.overdue": "Forfalt",
     "bcf.post_comment": "Legg ut kommentar",

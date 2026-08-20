@@ -21895,6 +21895,8 @@ const resource = {
     "bcf.no_comments": "Sem comentários ainda. Inicie a discussão.",
     "bcf.no_match": "Nenhum problema corresponde à sua pesquisa.",
     "bcf.no_snapshot": "Nenhum snapshot capturado desta visualização.",
+    "bcf.snapshot_failed": "Não foi possível carregar o snapshot.",
+    "bcf.viewpoint_none": "Nenhum ponto de vista para este problema.",
     "bcf.no_view": "Nenhuma visualização salva para este problema.",
     "bcf.overdue": "Atrasado",
     "bcf.post_comment": "Postar comentário",

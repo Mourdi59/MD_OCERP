@@ -21942,6 +21942,8 @@ const resource = {
     "bcf.no_comments": "Sin comentarios aún. Inicia la discusión.",
     "bcf.no_match": "Ningún problema coincide con tu búsqueda.",
     "bcf.no_snapshot": "Sin captura de pantalla capturada desde esta vista.",
+    "bcf.snapshot_failed": "No se pudo cargar la captura de pantalla.",
+    "bcf.viewpoint_none": "Sin punto de vista para este problema.",
     "bcf.no_view": "Sin vista guardada para este problema.",
     "bcf.overdue": "Vencido",
     "bcf.post_comment": "Publicar comentario",
