@@ -11942,6 +11942,7 @@ const resource = {
     "procurement.item_position": "BOQ позициясы",
     "procurement.item_position_for": "{{line}} жолы үшін BOQ позициясы",
     "procurement.item_position_none": "Көлемдер ведомостісіне байланыстырылмаған",
+    "procurement.item_position_truncated": "Алғашқы {{count}} көрсетілген. BOQ қалғанына жету үшін іздеңіз.",
     "procurement.item_qty": "Саны",
     "procurement.item_rate": "Баға",
     "procurement.item_unit": "Бірлік",

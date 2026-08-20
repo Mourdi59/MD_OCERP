@@ -9713,6 +9713,7 @@ const resource = {
     "procurement.item_position": "Item da planilha",
     "procurement.item_position_for": "Item da planilha para linha {{line}}",
     "procurement.item_position_none": "Não vinculado à planilha orçamentária",
+    "procurement.item_position_truncated": "Mostrando os primeiros {{count}}. Pesquise para chegar ao restante da planilha.",
     "procurement.no_gr": "Nenhum recebimento de mercadorias",
     "procurement.no_gr_desc": "Os recebimentos de mercadorias aparecerão aqui após serem registrados.",
     "procurement.no_po": "Nenhuma ordem de compra",

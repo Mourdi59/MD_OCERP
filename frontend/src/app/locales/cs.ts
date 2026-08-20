@@ -10614,6 +10614,7 @@ const resource = {
     "procurement.item_position": "Položka rozpočtu",
     "procurement.item_position_for": "Položka rozpočtu řádku {{line}}",
     "procurement.item_position_none": "Nepropojeno s rozpočtem",
+    "procurement.item_position_truncated": "Zobrazeno prvních {{count}}. Zbytek rozpočtu najdete hledáním.",
     "procurement.no_gr": "Žádné příjemky zboží",
     "procurement.no_gr_desc": "Příjemky zboží se zobrazí zde, jakmile budou zaznamenány.",
     "procurement.no_po": "Žádné objednávky",

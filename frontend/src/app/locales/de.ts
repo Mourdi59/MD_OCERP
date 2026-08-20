@@ -10766,6 +10766,7 @@ const resource = {
     "procurement.item_position": "LV-Position",
     "procurement.item_position_for": "LV-Position für Zeile {{line}}",
     "procurement.item_position_none": "Nicht mit dem Leistungsverzeichnis verknüpft",
+    "procurement.item_position_truncated": "Die ersten {{count}} werden angezeigt. Suchen Sie, um das restliche LV zu erreichen.",
     "procurement.no_gr": "Keine Wareneingänge",
     "procurement.no_gr_desc": "Wareneingänge erscheinen hier nach Erfassung.",
     "procurement.no_po": "Keine Bestellungen",

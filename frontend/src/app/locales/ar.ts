@@ -12600,6 +12600,7 @@ const resource = {
     "procurement.item_position": "بند جدول الكميات",
     "procurement.item_position_for": "بند جدول الكميات للسطر {{line}}",
     "procurement.item_position_none": "غير مرتبط بجدول الكميات",
+    "procurement.item_position_truncated": "يتم عرض أول {{count}}. ابحث للوصول إلى بقية جدول الكميات.",
     "procurement.item_qty": "الكمية",
     "procurement.item_rate": "السعر",
     "procurement.item_unit": "الوحدة",

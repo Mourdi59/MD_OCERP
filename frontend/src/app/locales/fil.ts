@@ -11941,6 +11941,7 @@ const resource = {
     "procurement.item_position": "BOQ Position",
     "procurement.item_position_for": "BOQ Position para sa linya {{line}}",
     "procurement.item_position_none": "Hindi naka-link sa BOQ",
+    "procurement.item_position_truncated": "Ipinapakita ang unang {{count}}. Maghanap para marating ang iba pang bahagi ng BOQ.",
     "procurement.item_qty": "Dami",
     "procurement.item_rate": "Taripa",
     "procurement.item_unit": "Yunit",

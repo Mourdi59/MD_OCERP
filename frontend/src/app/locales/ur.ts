@@ -11942,6 +11942,7 @@ const resource = {
     "procurement.item_position": "مقدار کے بل کی پوزیشن",
     "procurement.item_position_for": "لائن {{line}} کے لیے مقدار کے بل کی پوزیشن",
     "procurement.item_position_none": "مقدار کے بل سے جڑا نہیں",
+    "procurement.item_position_truncated": "پہلی {{count}} دکھائی جا رہی ہیں۔ مقدار کے بل کے باقی حصے تک پہنچنے کے لیے تلاش کریں۔",
     "procurement.item_qty": "مقدار",
     "procurement.item_rate": "شرح",
     "procurement.item_unit": "اکائی",

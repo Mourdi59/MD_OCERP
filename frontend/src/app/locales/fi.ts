@@ -10546,6 +10546,7 @@ const resource = {
     "procurement.item_position": "Määräluettelon nimike",
     "procurement.item_position_for": "Määräluettelon nimike riville {{line}}",
     "procurement.item_position_none": "Ei linkitetty määräluetteloon",
+    "procurement.item_position_truncated": "Näytetään ensimmäiset {{count}}. Hae päästäksesi määräluettelon loppuosaan.",
     "procurement.no_gr": "Ei tavaravastaanottokirjauksia",
     "procurement.no_gr_desc": "Tavaravastaanotot näkyvät tässä, kun ne on kirjattu.",
     "procurement.no_po": "Ei ostotilauksia",

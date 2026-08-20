@@ -3,13 +3,21 @@
 //
 // Tests for <BillPositionPicker> and the cost-spine helpers behind it.
 //
-// The behaviour worth pinning down is what the picker does when there is
-// nothing to pick: a project whose cost spine has never been generated must
-// get no control at all rather than an empty dropdown, because a permanent
-// empty control on the order form is furniture for a choice nobody can make.
+// Two behaviours carry the weight here and neither is about the happy path.
+//
+// What the picker does when there is nothing to pick: a project whose cost
+// spine has never been generated must get no control at all rather than an
+// empty dropdown, because a permanent empty control on the order form is
+// furniture for a choice nobody can make.
+//
+// What it does when there is more to pick than it can hold: the search goes to
+// the server, so the assertions are about the request that leaves rather than
+// about a list being filtered in the browser. A test that only checks the
+// rendered options would pass just as well against a filter over a capped page,
+// which is the defect this control was rewritten to remove.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -18,7 +26,12 @@ import {
   optionLabel,
   type BillPositionPickerProps,
 } from './BillPositionPicker';
-import { billPositionOptions, matchesQuery, type CostSpineLine } from './costSpineApi';
+import {
+  SPINE_PAGE_SIZE,
+  fetchBillPositions,
+  fetchPositionLine,
+  type CostSpineLine,
+} from './costSpineApi';
 
 vi.mock('@/shared/lib/api', () => ({
   apiGet: vi.fn(),
@@ -26,6 +39,8 @@ vi.mock('@/shared/lib/api', () => ({
 }));
 
 import { apiGet } from '@/shared/lib/api';
+
+const mockGet = vi.mocked(apiGet);
 
 function line(over: Partial<CostSpineLine> = {}): CostSpineLine {
   return {
@@ -46,6 +61,18 @@ function line(over: Partial<CostSpineLine> = {}): CostSpineLine {
   };
 }
 
+/** `n` distinct positions, numbered so the sort has something to do. */
+function bill(n: number): CostSpineLine[] {
+  return Array.from({ length: n }, (_, i) =>
+    line({ id: `cl-${i}`, code: `1.${i + 1}`, boq_position_id: `pos-${i}` }),
+  );
+}
+
+/** Every URL `apiGet` was asked for, in order. */
+function requestedUrls(): string[] {
+  return mockGet.mock.calls.map((call) => String(call[0]));
+}
+
 function renderPicker(props: Partial<BillPositionPickerProps> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -55,157 +82,254 @@ function renderPicker(props: Partial<BillPositionPickerProps> = {}) {
   );
 }
 
-describe('cost spine helpers', () => {
-  it('drops spine lines that answer to no bill position', () => {
-    // A hand-made cost line has no position. Offering it would put the buyer
-    // back in front of the vocabulary the server exists to keep away from them.
-    const options = billPositionOptions([
-      line({ id: 'a', code: '1.1' }),
-      line({ id: 'b', code: '2.1', boq_position_id: null }),
+beforeEach(() => {
+  mockGet.mockReset();
+});
+
+describe('fetchBillPositions', () => {
+  it('asks the server for linked positions only, so the rows and the count agree', async () => {
+    mockGet.mockResolvedValue([]);
+    await fetchBillPositions('p1');
+
+    const url = requestedUrls()[0];
+    expect(url).toContain('/v1/costmodel/projects/p1/spine/lines/');
+    expect(url).toContain('linked_to_position=true');
+    expect(url).toContain('status=active');
+    expect(url).toContain(`limit=${SPINE_PAGE_SIZE}`);
+  });
+
+  it('omits the search parameter entirely when nothing was typed', async () => {
+    // The endpoint declares search with min_length=1. Sending an empty string
+    // for a cleared box answers 422, which would turn "show everything again"
+    // into an error the buyer cannot get out of.
+    mockGet.mockResolvedValue([]);
+    await fetchBillPositions('p1', '');
+    await fetchBillPositions('p1', '   ');
+
+    for (const url of requestedUrls()) {
+      expect(url).not.toContain('search=');
+    }
+  });
+
+  it('sends the trimmed term when something was typed', async () => {
+    mockGet.mockResolvedValue([]);
+    await fetchBillPositions('p1', '  concrete  ');
+
+    expect(requestedUrls()[0]).toContain('search=concrete');
+  });
+
+  it('calls a full page truncated and a short page whole', async () => {
+    mockGet.mockResolvedValueOnce(bill(SPINE_PAGE_SIZE));
+    expect((await fetchBillPositions('p1')).truncated).toBe(true);
+
+    mockGet.mockResolvedValueOnce(bill(3));
+    expect((await fetchBillPositions('p1')).truncated).toBe(false);
+  });
+
+  it('orders a page the way the bill numbers it, not as text', async () => {
+    mockGet.mockResolvedValue([
+      line({ id: 'a', code: '1.10' }),
+      line({ id: 'b', code: '1.2' }),
+      line({ id: 'c', code: '1.1' }),
     ]);
-    expect(options.map((o) => o.id)).toEqual(['a']);
+
+    const page = await fetchBillPositions('p1');
+    expect(page.positions.map((p) => p.code)).toEqual(['1.1', '1.2', '1.10']);
+  });
+});
+
+describe('fetchPositionLine', () => {
+  it('resolves one position by its own id', async () => {
+    mockGet.mockResolvedValue([line({ id: 'cl-9', boq_position_id: 'pos-9' })]);
+
+    const found = await fetchPositionLine('p1', 'pos-9');
+
+    expect(found?.id).toBe('cl-9');
+    expect(requestedUrls()[0]).toContain('boq_position_id=pos-9');
   });
 
-  it('orders positions the way the bill numbers them, not as text', () => {
-    const options = billPositionOptions([
-      line({ id: 'c', code: '10.1' }),
-      line({ id: 'a', code: '2.1' }),
-    ]);
-    // Plain string ordering would put 10.1 before 2.1 and scatter the bill.
-    expect(options.map((o) => o.code)).toEqual(['2.1', '10.1']);
+  it('answers null for a position that is off the spine', async () => {
+    mockGet.mockResolvedValue([]);
+    expect(await fetchPositionLine('p1', 'pos-none')).toBeNull();
+  });
+});
+
+describe('optionLabel', () => {
+  it('reads the way the bill reads', () => {
+    expect(optionLabel(line({ code: '1.1' }))).toBe('1.1 - Reinforced concrete C30/37 (m3)');
   });
 
-  it('matches on the code and on the description', () => {
-    const l = line({ code: '3.4', description: 'Reinforced concrete C30/37' });
-    expect(matchesQuery(l, '3.4')).toBe(true);
-    expect(matchesQuery(l, 'CONCRETE')).toBe(true);
-    expect(matchesQuery(l, 'timber')).toBe(false);
-    expect(matchesQuery(l, '   ')).toBe(true);
-  });
-
-  it('reads an option the way the bill does', () => {
-    expect(optionLabel(line({ code: '1.1', description: 'Blinding', unit: 'm2' }))).toBe(
-      '1.1 - Blinding (m2)',
-    );
-    expect(optionLabel(line({ code: '1.2', description: 'Provisional sum', unit: null }))).toBe(
-      '1.2 - Provisional sum',
+  it('leaves out the brackets when the position has no unit', () => {
+    expect(optionLabel(line({ code: '2', description: 'Preliminaries', unit: null }))).toBe(
+      '2 - Preliminaries',
     );
   });
 });
 
 describe('<BillPositionPicker>', () => {
-  beforeEach(() => {
-    vi.mocked(apiGet).mockReset();
-  });
-
-  it('renders nothing when the project has no cost spine', async () => {
-    vi.mocked(apiGet).mockResolvedValue([]);
+  it('renders nothing at all for a project with no cost spine', async () => {
+    mockGet.mockResolvedValue([]);
     const { container } = renderPicker();
-    await vi.waitFor(() => expect(apiGet).toHaveBeenCalled());
-    expect(container.querySelector('select')).toBeNull();
+
+    await waitFor(() => expect(mockGet).toHaveBeenCalled());
+    await waitFor(() => expect(container).toBeEmptyDOMElement());
   });
 
-  it('renders nothing when the spine cannot be read at all', async () => {
-    // The cost model module is a plugin and may not be installed, in which
-    // case the endpoint is not there. That is the same silence to a buyer.
-    vi.mocked(apiGet).mockRejectedValue(new Error('404'));
+  it('renders nothing when the read fails, because to a buyer that is the same thing', async () => {
+    mockGet.mockRejectedValue(new Error('module not installed'));
     const { container } = renderPicker();
-    await vi.waitFor(() => expect(apiGet).toHaveBeenCalled());
-    expect(container.querySelector('select')).toBeNull();
+
+    await waitFor(() => expect(mockGet).toHaveBeenCalled());
+    await waitFor(() => expect(container).toBeEmptyDOMElement());
   });
 
-  it('offers the bill positions and an unlinked choice', async () => {
-    vi.mocked(apiGet).mockResolvedValue([
-      line({ id: 'a', code: '1.1', description: 'Blinding' }),
-      line({ id: 'b', code: '1.2', description: 'Slab', boq_position_id: 'pos-2' }),
-    ]);
+  it('offers the positions and an unlinked choice', async () => {
+    mockGet.mockResolvedValue([line({ code: '1.1' })]);
     renderPicker();
+
     const select = await screen.findByRole('combobox');
     const options = Array.from(select.querySelectorAll('option'));
-    // The empty option first, then one per position.
-    expect(options).toHaveLength(3);
+    expect(options).toHaveLength(2);
     expect(options[0].value).toBe('');
     expect(options[1].value).toBe('pos-1');
-    expect(options[2].value).toBe('pos-2');
   });
 
-  it('hands back the bill position and never the cost line', async () => {
-    // The server resolves the money link when the order line is written.
-    // Sending the cost line this page happens to hold would freeze a value
-    // that may already be stale.
-    vi.mocked(apiGet).mockResolvedValue([line({ id: 'cl-99', boq_position_id: 'pos-1' })]);
+  it('emits the position id, never the cost line', async () => {
+    mockGet.mockResolvedValue([line({ id: 'cl-1', boq_position_id: 'pos-1' })]);
     const onChange = vi.fn();
     renderPicker({ onChange });
+
     const select = await screen.findByRole('combobox');
     await userEvent.selectOptions(select, 'pos-1');
+
     expect(onChange).toHaveBeenCalledWith('pos-1');
-    expect(onChange).not.toHaveBeenCalledWith('cl-99');
   });
 
-  it('reports a cleared choice as null rather than an empty string', async () => {
-    vi.mocked(apiGet).mockResolvedValue([line()]);
+  it('emits null when the buyer unlinks the line', async () => {
+    mockGet.mockResolvedValue([line()]);
     const onChange = vi.fn();
-    renderPicker({ value: 'pos-1', onChange });
+    renderPicker({ onChange, value: 'pos-1' });
+
     const select = await screen.findByRole('combobox');
     await userEvent.selectOptions(select, '');
+
     expect(onChange).toHaveBeenCalledWith(null);
   });
 
-  it('names the line it belongs to, so eight of them are distinguishable', async () => {
-    vi.mocked(apiGet).mockResolvedValue([line()]);
+  it('names each control by its line number so a form of eight is usable', async () => {
+    mockGet.mockResolvedValue([line()]);
     renderPicker({ line: 3 });
-    const select = await screen.findByRole('combobox');
-    expect(select.getAttribute('aria-label')).toContain('3');
+
+    expect(await screen.findByLabelText(/line 3/i)).toBeTruthy();
   });
 
-  it('shows no filter box for a short bill', async () => {
-    vi.mocked(apiGet).mockResolvedValue([line({ id: 'a' }), line({ id: 'b', code: '1.2' })]);
-    const { container } = renderPicker();
-    await screen.findByRole('combobox');
-    expect(container.querySelector('input[type="search"]')).toBeNull();
-  });
-
-  it('filters a long bill without dropping the buyer’s own choice', async () => {
-    // Typing in the filter must never silently unlink a line that is already
-    // attributed, so the selected position stays in the list even when the
-    // query excludes it.
-    const many = Array.from({ length: 20 }, (_, i) =>
-      line({ id: `cl-${i}`, code: `1.${i}`, description: `Item ${i}`, boq_position_id: `pos-${i}` }),
-    );
-    vi.mocked(apiGet).mockResolvedValue(many);
-    const { container } = renderPicker({ value: 'pos-7' });
-
-    const select = await screen.findByRole('combobox');
-    expect(container.querySelector('input[type="search"]')).not.toBeNull();
-    expect(select.querySelectorAll('option')).toHaveLength(21);
-
-    await userEvent.type(screen.getByRole('searchbox'), 'Item 12');
-    const options = Array.from(select.querySelectorAll('option')).map((o) => o.value);
-    expect(options).toContain('pos-12');
-    expect(options).toContain('pos-7');
-    expect(options).not.toContain('pos-3');
-  });
-
-  it('walks the endpoint pages instead of showing only the first two hundred', async () => {
-    // The endpoint caps limit at 200 and takes no search parameter, so a bill
-    // longer than that would otherwise end at position 200 and the buyer would
-    // conclude theirs does not exist.
-    const page = (start: number, count: number) =>
-      Array.from({ length: count }, (_, i) =>
-        line({
-          id: `cl-${start + i}`,
-          code: `1.${start + i}`,
-          boq_position_id: `pos-${start + i}`,
-        }),
-      );
-    vi.mocked(apiGet)
-      .mockResolvedValueOnce(page(0, 200))
-      .mockResolvedValueOnce(page(200, 5));
-
+  it('hides the search box for a bill short enough to read', async () => {
+    mockGet.mockResolvedValue(bill(4));
     renderPicker();
-    const select = await screen.findByRole('combobox');
-    await vi.waitFor(() => expect(select.querySelectorAll('option')).toHaveLength(206));
-    expect(apiGet).toHaveBeenCalledTimes(2);
-    expect(vi.mocked(apiGet).mock.calls[1][0]).toContain('offset=200');
+
+    await screen.findByRole('combobox');
+    expect(screen.queryByRole('searchbox')).toBeNull();
+  });
+
+  it('shows the search box once the bill is longer than the eye', async () => {
+    mockGet.mockResolvedValue(bill(40));
+    renderPicker();
+
+    expect(await screen.findByRole('searchbox')).toBeTruthy();
+  });
+
+  it('says so when the list on screen is only a page of the register', async () => {
+    mockGet.mockResolvedValue(bill(SPINE_PAGE_SIZE));
+    renderPicker();
+
+    expect(await screen.findByText(/showing the first/i)).toBeTruthy();
+  });
+
+  it('says nothing of the sort when the whole bill fits', async () => {
+    mockGet.mockResolvedValue(bill(5));
+    renderPicker();
+
+    await screen.findByRole('combobox');
+    expect(screen.queryByText(/showing the first/i)).toBeNull();
+  });
+
+  it('sends the typed term to the server rather than filtering what it loaded', async () => {
+    mockGet.mockResolvedValue(bill(SPINE_PAGE_SIZE));
+    renderPicker();
+    const box = await screen.findByRole('searchbox');
+
+    await userEvent.type(box, 'concrete');
+
+    await waitFor(() => {
+      expect(requestedUrls().some((u) => u.includes('search=concrete'))).toBe(true);
+    });
+  });
+
+  it('does not send an empty search when the box is cleared', async () => {
+    // The regression this guards: a debounced box that posts search= on clear
+    // gets a 422, and the buyer is left looking at an error instead of the
+    // list they started from.
+    mockGet.mockResolvedValue(bill(SPINE_PAGE_SIZE));
+    renderPicker();
+    const box = await screen.findByRole('searchbox');
+
+    await userEvent.type(box, 'abc');
+    await waitFor(() => {
+      expect(requestedUrls().some((u) => u.includes('search=abc'))).toBe(true);
+    });
+    await userEvent.clear(box);
+
+    await waitFor(() => {
+      expect(requestedUrls().every((u) => !/[?&]search=(&|$)/.test(u))).toBe(true);
+    });
+  });
+
+  it('stays on screen when a search matches nothing, so it can be corrected', async () => {
+    // The render-nothing rule reads the unsearched page, never the results. A
+    // control that vanished on a typo would take the buyer's line attribution
+    // with it and give them no way back.
+    mockGet.mockResolvedValue(bill(SPINE_PAGE_SIZE));
+    renderPicker();
+    const box = await screen.findByRole('searchbox');
+
+    mockGet.mockResolvedValue([]);
+    await userEvent.type(box, 'no such position');
+
+    await waitFor(() => {
+      expect(requestedUrls().some((u) => u.includes('search=no'))).toBe(true);
+    });
+    expect(screen.getByRole('combobox')).toBeTruthy();
+  });
+
+  it('fetches a selection the loaded page does not contain', async () => {
+    // An order raised against position 900 of a 2000-line bill. The page does
+    // not hold it, and a control that cannot find its own value renders as
+    // unlinked, which the next save would write back.
+    mockGet.mockImplementation(async (url: unknown) => {
+      if (String(url).includes('boq_position_id=pos-900')) {
+        return [line({ id: 'cl-900', code: '9.1', description: 'Screed', boq_position_id: 'pos-900' })];
+      }
+      return bill(SPINE_PAGE_SIZE);
+    });
+
+    renderPicker({ value: 'pos-900' });
+
+    const select = (await screen.findByRole('combobox')) as HTMLSelectElement;
+    await waitFor(() => {
+      expect(
+        Array.from(select.querySelectorAll('option')).some((o) => o.value === 'pos-900'),
+      ).toBe(true);
+    });
+    expect(select.value).toBe('pos-900');
+  });
+
+  it('asks for nothing extra when the selection is already on the page', async () => {
+    mockGet.mockResolvedValue(bill(20));
+    renderPicker({ value: 'pos-3' });
+
+    await screen.findByRole('combobox');
+    await waitFor(() => {
+      expect(requestedUrls().every((u) => !u.includes('boq_position_id='))).toBe(true);
+    });
   });
 });

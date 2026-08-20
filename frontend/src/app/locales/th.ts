@@ -11202,6 +11202,7 @@ const resource = {
     "procurement.item_position": "รายการ BOQ",
     "procurement.item_position_for": "รายการ BOQ สำหรับบรรทัด {{line}}",
     "procurement.item_position_none": "ไม่ได้เชื่อมโยงกับบัญชีปริมาณงาน",
+    "procurement.item_position_truncated": "กำลังแสดง {{count}} รายการแรก ค้นหาเพื่อเข้าถึงรายการ BOQ ที่เหลือ",
     "procurement.no_gr": "ไม่มีใบรับสินค้า",
     "procurement.no_gr_desc": "ใบรับสินค้าจะปรากฏที่นี่เมื่อบันทึกแล้ว",
     "procurement.no_po": "ไม่มีคำสั่งซื้อ",

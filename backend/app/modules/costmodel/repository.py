@@ -15,7 +15,7 @@ caller cannot re-invent its own rules.
 import uuid
 from decimal import Decimal, InvalidOperation
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm.util import identity_key
@@ -705,6 +705,16 @@ class ControlAccountRepository:
         return (await self.session.execute(stmt)).scalar_one()
 
 
+def _escape_like(term: str) -> str:
+    """Escape the ``ILIKE`` wildcards so a typed ``%`` or ``_`` matches itself.
+
+    Without this a buyer searching for a code containing an underscore gets
+    every code with any character in that place. Pair the returned pattern with
+    ``.ilike(pattern, escape="\\\\")``.
+    """
+    return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 class CostLineRepository:
     """Data access for CostLine (the canonical scope item)."""
 
@@ -721,6 +731,9 @@ class CostLineRepository:
         *,
         control_account_id: uuid.UUID | None = None,
         status: str | None = None,
+        search: str | None = None,
+        linked_to_position: bool | None = None,
+        boq_position_id: uuid.UUID | None = None,
         offset: int = 0,
         limit: int = 200,
     ) -> tuple[list[CostLine], int]:
@@ -728,12 +741,38 @@ class CostLineRepository:
 
         Returns a ``(lines, total_count)`` tuple where ``total_count`` reflects
         the filter set, not the page.
+
+        ``search`` narrows on code or description as an escaped substring, so a
+        caller offering a picker over a large bill can find a line that sorts
+        past the first page instead of paging the whole project into a browser.
+        ``linked_to_position`` selects the lines that carry a BOQ position
+        (``True``) or those that do not (``False``); a caller that hands back a
+        position id needs the first set, and narrowing it here rather than after
+        the fact keeps the returned count and the returned rows describing the
+        same thing. ``boq_position_id`` resolves one known position, which is how
+        a picker showing a page of a large bill can still name the selection it
+        was opened on when that line sorts past the page it fetched.
         """
         base = select(CostLine).where(CostLine.project_id == project_id)
         if control_account_id is not None:
             base = base.where(CostLine.control_account_id == control_account_id)
         if status is not None:
             base = base.where(CostLine.status == status)
+        if linked_to_position is not None:
+            base = base.where(
+                CostLine.boq_position_id.is_not(None) if linked_to_position else CostLine.boq_position_id.is_(None)
+            )
+        if boq_position_id is not None:
+            base = base.where(CostLine.boq_position_id == boq_position_id)
+        term = (search or "").strip()
+        if term:
+            pattern = f"%{_escape_like(term)}%"
+            base = base.where(
+                or_(
+                    CostLine.code.ilike(pattern, escape="\\"),
+                    CostLine.description.ilike(pattern, escape="\\"),
+                )
+            )
 
         count_stmt = select(func.count()).select_from(base.subquery())
         total = (await self.session.execute(count_stmt)).scalar_one()

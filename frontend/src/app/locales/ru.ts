@@ -10783,6 +10783,7 @@ const resource = {
     "procurement.item_position": "Позиция сметы",
     "procurement.item_position_for": "Позиция сметы для строки {{line}}",
     "procurement.item_position_none": "Не привязано к смете",
+    "procurement.item_position_truncated": "Показаны первые {{count}}. Чтобы дойти до остальной сметы, воспользуйтесь поиском.",
     "procurement.no_gr": "Приходных накладных нет",
     "procurement.no_gr_desc": "Приходные накладные появятся здесь после их фиксации.",
     "procurement.no_po": "Заявок на закупку нет",

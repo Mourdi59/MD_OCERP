@@ -10605,6 +10605,7 @@ const resource = {
     "procurement.item_position": "清单项",
     "procurement.item_position_for": "{{line}}行的清单项",
     "procurement.item_position_none": "未关联工程量清单",
+    "procurement.item_position_truncated": "仅显示前 {{count}} 项。搜索可查看清单中的其余项。",
     "procurement.no_gr": "暂无收货单",
     "procurement.no_gr_desc": "收货单记录后将在此显示。",
     "procurement.no_po": "暂无采购订单",

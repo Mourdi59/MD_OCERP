@@ -10564,6 +10564,7 @@ const resource = {
     "procurement.item_position": "内訳書項目",
     "procurement.item_position_for": "行{{line}}の内訳書項目",
     "procurement.item_position_none": "内訳書にリンクなし",
+    "procurement.item_position_truncated": "最初の{{count}}件を表示しています。残りの内訳書は検索してください。",
     "procurement.no_gr": "入荷検収がありません",
     "procurement.no_gr_desc": "記録後、入荷検収がここに表示されます。",
     "procurement.no_po": "発注書がありません",

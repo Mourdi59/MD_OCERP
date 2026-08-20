@@ -11941,6 +11941,7 @@ const resource = {
     "procurement.item_position": "BOQ পজিশন",
     "procurement.item_position_for": "লাইন {{line}} এর BOQ পজিশন",
     "procurement.item_position_none": "বিল অফ কোয়ান্টিটিজের সাথে লিংকযুক্ত নয়",
+    "procurement.item_position_truncated": "প্রথম {{count}}টি দেখানো হচ্ছে। বাকি BOQ-তে পৌঁছাতে খুঁজুন।",
     "procurement.item_qty": "পরিমাণ",
     "procurement.item_rate": "রেট",
     "procurement.item_unit": "একক",

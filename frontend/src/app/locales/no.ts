@@ -13011,6 +13011,7 @@ const resource = {
     "procurement.item_position": "Mengdepost",
     "procurement.item_position_for": "Mengdepost for linje {{line}}",
     "procurement.item_position_none": "Ikke koblet til mengdefortegnelsen",
+    "procurement.item_position_truncated": "Viser de første {{count}}. Søk for å nå resten av mengdefortegnelsen.",
     "procurement.item_qty": "Antall",
     "procurement.item_rate": "Pris",
     "procurement.item_unit": "Enhet",

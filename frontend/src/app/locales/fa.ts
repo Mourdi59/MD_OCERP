@@ -11942,6 +11942,7 @@ const resource = {
     "procurement.item_position": "ردیف صورت مقادیر",
     "procurement.item_position_for": "ردیف صورت مقادیر برای خط {{line}}",
     "procurement.item_position_none": "به صورت مقادیر مرتبط نیست",
+    "procurement.item_position_truncated": "اولین {{count}} مورد نمایش داده میشود. برای رسیدن به بقیه صورت مقادیر جستوجو کنید.",
     "procurement.item_qty": "تعداد",
     "procurement.item_rate": "نرخ",
     "procurement.item_unit": "واحد",

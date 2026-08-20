@@ -11947,6 +11947,7 @@ const resource = {
     "procurement.item_position": "סעיף כתב הכמויות",
     "procurement.item_position_for": "סעיף כתב הכמויות לשורה {{line}}",
     "procurement.item_position_none": "לא מקושר לכתב הכמויות",
+    "procurement.item_position_truncated": "מוצגים {{count}} הראשונים. חפש כדי להגיע לשאר כתב הכמויות.",
     "procurement.item_qty": "כמות",
     "procurement.item_rate": "מחיר יחידה",
     "procurement.item_unit": "יחידה",

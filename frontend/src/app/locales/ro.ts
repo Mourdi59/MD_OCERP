@@ -11108,6 +11108,7 @@ const resource = {
     "procurement.item_position": "Articol din antemăsurătoare",
     "procurement.item_position_for": "Articol din antemăsurătoare pentru linia {{line}}",
     "procurement.item_position_none": "Nelegat de antemăsurătoare",
+    "procurement.item_position_truncated": "Se afișează primele {{count}}. Caută pentru a ajunge la restul antemăsurătorii.",
     "procurement.no_gr": "Nicio recepție de mărfuri",
     "procurement.no_gr_desc": "Recepțiile de mărfuri vor apărea aici odată înregistrate.",
     "procurement.no_po": "Nicio comandă de achiziție",

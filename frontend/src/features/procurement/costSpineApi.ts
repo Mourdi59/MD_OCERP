@@ -15,10 +15,17 @@
  * page loaded, which may already be stale.
  * `backend/app/modules/procurement/cost_spine.py` sets out why.
  *
- * The endpoint caps `limit` at 200 and takes no search parameter, so a bill of
- * two thousand positions would otherwise show its first two hundred and leave
- * the buyer to conclude their position does not exist. This pages until the
- * server stops filling a page, and filtering happens over the loaded set.
+ * Narrowing happens on the server, not here. A bill can run to thousands of
+ * positions and the endpoint serves at most two hundred at a time, so a filter
+ * that could only see what had been loaded would answer "no such position" for
+ * a position the register holds, which is a worse answer than an error. The
+ * three parameters below exist for that: `search` reaches the whole bill,
+ * `linked_to_position` makes the returned rows and their count describe the
+ * same set, and `boq_position_id` resolves a selection that sorts past the
+ * page so an already attributed line can still be named.
+ *
+ * The one thing that stays partial is the unsearched list, which is a page of
+ * a possibly longer register. `truncated` says so, and the picker prints it.
  */
 
 import { apiGet } from '@/shared/lib/api';
@@ -40,64 +47,77 @@ export interface CostSpineLine {
   status: string;
 }
 
-/** The page size the endpoint allows. Larger values are rejected with a 422. */
-const PAGE_SIZE = 200;
+/** The largest page the endpoint serves. Larger values are rejected with a 422. */
+export const SPINE_PAGE_SIZE = 200;
 
-/**
- * How many pages to walk before giving up.
- *
- * A bill of 20 000 positions is already far past what a dropdown can serve,
- * and an unbounded loop against a paginated endpoint is one off-by-one on the
- * server away from never terminating. The cap is a stop, not a limit we expect
- * to reach.
- */
-const MAX_PAGES = 100;
+/** A page of bill positions, and whether it is the whole of what matched. */
+export interface BillPositionPage {
+  positions: CostSpineLine[];
+  /**
+   * The server filled the page exactly, so there is very likely more behind it.
+   * A full page is not proof of more (the register may hold exactly this many)
+   * but it is the strongest thing a caller can know without a count, and
+   * over-warning here is safe where under-warning is not.
+   */
+  truncated: boolean;
+}
 
-/**
- * Every active cost line of a project, following the endpoint's paging.
- *
- * Stops as soon as a page comes back short, so the ordinary project costs one
- * request. Only lines carrying a `boq_position_id` are useful to the picker,
- * but the filtering happens at the call site rather than here so the shape
- * stays the endpoint's own.
- */
-export async function listCostSpineLines(projectId: string): Promise<CostSpineLine[]> {
-  const out: CostSpineLine[] = [];
-  for (let page = 0; page < MAX_PAGES; page += 1) {
-    const params = new URLSearchParams({
-      status: 'active',
-      offset: String(page * PAGE_SIZE),
-      limit: String(PAGE_SIZE),
-    });
-    const batch = await apiGet<CostSpineLine[]>(
-      `/v1/costmodel/projects/${projectId}/spine/lines/?${params.toString()}`,
-    );
-    out.push(...batch);
-    if (batch.length < PAGE_SIZE) break;
-  }
-  return out;
+function spineUrl(projectId: string, params: URLSearchParams): string {
+  return `/v1/costmodel/projects/${projectId}/spine/lines/?${params.toString()}`;
 }
 
 /**
- * The bill positions an order line can be attributed to, in bill order.
+ * Sort a page the way a bill reads: 1.2 before 1.10, not after it.
  *
- * A spine line with no `boq_position_id` was created by hand and answers to no
- * position, so it is dropped: this picker offers positions, and offering a
- * bare cost line would put the buyer back in front of the vocabulary the
- * server exists to keep away from them.
+ * The server orders by code as text, which is right for paging and wrong for
+ * reading. This reorders within the page it was given and never across pages,
+ * so the set on screen is exactly the set the server chose.
  */
-export function billPositionOptions(lines: CostSpineLine[]): CostSpineLine[] {
-  return lines
-    .filter((line) => Boolean(line.boq_position_id))
-    .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+function inBillOrder(lines: CostSpineLine[]): CostSpineLine[] {
+  return [...lines].sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
 }
 
-/** Case-insensitive match over the code and the description. */
-export function matchesQuery(line: CostSpineLine, query: string): boolean {
-  const needle = query.trim().toLowerCase();
-  if (!needle) return true;
-  return (
-    line.code.toLowerCase().includes(needle) ||
-    line.description.toLowerCase().includes(needle)
-  );
+/**
+ * The bill positions an order line can be attributed to.
+ *
+ * `search` is sent only when something was typed. The endpoint declares the
+ * parameter with `min_length=1`, so posting an empty string for a cleared
+ * filter box would answer 422 and turn "show me everything again" into an
+ * error.
+ */
+export async function fetchBillPositions(projectId: string, search = ''): Promise<BillPositionPage> {
+  const params = new URLSearchParams({
+    status: 'active',
+    linked_to_position: 'true',
+    offset: '0',
+    limit: String(SPINE_PAGE_SIZE),
+  });
+  const term = search.trim();
+  if (term) params.set('search', term);
+
+  const lines = await apiGet<CostSpineLine[]>(spineUrl(projectId, params));
+  return { positions: inBillOrder(lines), truncated: lines.length >= SPINE_PAGE_SIZE };
+}
+
+/**
+ * The one spine line a position resolves to, or null when it is off the spine.
+ *
+ * Used to name a selection the picker was opened on. An order raised months ago
+ * against position 900 of a 2000-line bill would otherwise load a page that
+ * does not contain it, and a control that cannot find its own value falls back
+ * to showing none, which is how a saved attribution gets silently dropped on
+ * the next save.
+ */
+export async function fetchPositionLine(
+  projectId: string,
+  boqPositionId: string,
+): Promise<CostSpineLine | null> {
+  const params = new URLSearchParams({
+    status: 'active',
+    boq_position_id: boqPositionId,
+    offset: '0',
+    limit: '1',
+  });
+  const lines = await apiGet<CostSpineLine[]>(spineUrl(projectId, params));
+  return lines[0] ?? null;
 }

@@ -10618,6 +10618,7 @@ const resource = {
     "procurement.item_position": "Pozycja kosztorysu",
     "procurement.item_position_for": "Pozycja kosztorysu dla linii {{line}}",
     "procurement.item_position_none": "Niepowiązane z kosztorysem",
+    "procurement.item_position_truncated": "Pokazano pierwsze {{count}}. Wyszukaj, aby dotrzeć do reszty kosztorysu.",
     "procurement.no_gr": "Brak przyjęć towaru",
     "procurement.no_gr_desc": "Przyjęcia towaru pojawią się tutaj po ich zarejestrowania.",
     "procurement.no_po": "Brak zamówień zakupu",

@@ -10761,6 +10761,7 @@ const resource = {
     "procurement.item_position": "Позиція відомості обсягів робіт",
     "procurement.item_position_for": "Позиція відомості обсягів робіт для рядка {{line}}",
     "procurement.item_position_none": "Не пов'язано з відомостію обсягів робіт",
+    "procurement.item_position_truncated": "Показано перші {{count}}. Щоб дістатися решти відомості обсягів робіт, скористайтеся пошуком.",
     "procurement.no_gr": "Немає прибуткових накладних",
     "procurement.no_gr_desc": "Прибуткові накладні з'являться тут після реєстрації.",
     "procurement.no_po": "Немає замовлень на закупівлю",

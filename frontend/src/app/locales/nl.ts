@@ -9673,6 +9673,7 @@ const resource = {
     "procurement.item_position": "Ramingspost",
     "procurement.item_position_for": "Ramingspost voor regel {{line}}",
     "procurement.item_position_none": "Niet gekoppeld aan de raming",
+    "procurement.item_position_truncated": "De eerste {{count}} worden getoond. Zoek om de rest van de raming te bereiken.",
     "procurement.no_gr": "Geen goederenontvangsten",
     "procurement.no_gr_desc": "Goederenontvangsten verschijnen hier zodra ze zijn geregistreerd.",
     "procurement.no_po": "Geen inkooporders",

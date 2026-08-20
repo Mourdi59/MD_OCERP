@@ -12496,6 +12496,7 @@ const resource = {
     "procurement.item_position": "Mahutabeli positsioon",
     "procurement.item_position_for": "Mahutabeli positsioon reale {{line}}",
     "procurement.item_position_none": "Mahutabeliga sidumata",
+    "procurement.item_position_truncated": "Kuvatakse esimesed {{count}}. Ülejäänud mahutabelini jõudmiseks otsi.",
     "procurement.item_qty": "Kogus",
     "procurement.item_rate": "Hind",
     "procurement.item_unit": "Ühik",

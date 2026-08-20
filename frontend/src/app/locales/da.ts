@@ -13070,6 +13070,7 @@ const resource = {
     "procurement.item_position": "Mængdepost",
     "procurement.item_position_for": "Mængdepost for linje {{line}}",
     "procurement.item_position_none": "Ikke forbundet til tilbudslisten",
+    "procurement.item_position_truncated": "Viser de første {{count}}. Søg for at nå resten af mængdefortegnelsen.",
     "procurement.item_qty": "Antal",
     "procurement.item_rate": "Pris",
     "procurement.item_unit": "Enhed",

@@ -10590,6 +10590,7 @@ const resource = {
     "procurement.item_position": "Metraj kalemi",
     "procurement.item_position_for": "{{line}} satırının metraj kalemi",
     "procurement.item_position_none": "Keşif özetine bağlı değil",
+    "procurement.item_position_truncated": "İlk {{count}} tanesi gösteriliyor. Metrajın geri kalanına ulaşmak için arayın.",
     "procurement.no_gr": "Mal kabul belgesi yok",
     "procurement.no_gr_desc": "Kaydedildikten sonra mal kabul belgeleri burada görünecektir.",
     "procurement.no_po": "Satın alma siparişi yok",

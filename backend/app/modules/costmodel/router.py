@@ -797,16 +797,37 @@ async def list_cost_lines(
     session: SessionDep,
     control_account_id: uuid.UUID | None = Query(default=None, description="Filter by control account"),
     line_status: str | None = Query(default=None, alias="status", description="Filter by cost-line status"),
+    search: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=200,
+        description="Narrow by code or description (case-insensitive substring)",
+    ),
+    linked_to_position: bool | None = Query(
+        default=None,
+        description="True for lines carrying a BOQ position, False for those without",
+    ),
+    boq_position_id: uuid.UUID | None = Query(default=None, description="Resolve the line for one BOQ position"),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
     service: CostSpineService = Depends(_get_spine_service),
 ) -> list[CostLineResponse]:
-    """List cost lines for a project, optionally filtered by account/status."""
+    """List cost lines for a project, optionally filtered by account/status/search.
+
+    ``search`` exists so a client offering a picker over a large bill can find a
+    line that sorts past the first page. Without it the only way to reach the
+    two-thousandth position is to page the whole project into the browser, and a
+    client that pages only the first page shows a partial list as though it were
+    the whole register.
+    """
     await verify_project_access(project_id, user_id, session)
     return await service.list_lines(
         project_id,
         control_account_id=control_account_id,
         status=line_status,
+        search=search,
+        linked_to_position=linked_to_position,
+        boq_position_id=boq_position_id,
         offset=offset,
         limit=limit,
     )

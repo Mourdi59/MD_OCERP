@@ -11175,6 +11175,7 @@ const resource = {
     "procurement.item_position": "Hạng mục BOQ",
     "procurement.item_position_for": "Hạng mục BOQ cho hàng {{line}}",
     "procurement.item_position_none": "Chưa liên kết với bảng khối lượng",
+    "procurement.item_position_truncated": "Đang hiển thị {{count}} mục đầu tiên. Tìm kiếm để đến phần còn lại của BOQ.",
     "procurement.no_gr": "Không có phiếu nhập kho",
     "procurement.no_gr_desc": "Phiếu nhập kho sẽ xuất hiện ở đây sau khi được ghi lại.",
     "procurement.no_po": "Không có đơn đặt hàng",

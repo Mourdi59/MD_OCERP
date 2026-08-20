@@ -9132,6 +9132,7 @@ const resource = {
     "procurement.item_position": "BOQ позициясы",
     "procurement.item_position_for": "{{line}} сабы үчүн BOQ позициясы",
     "procurement.item_position_none": "Смета ведомосуна байланышкан эмес",
+    "procurement.item_position_truncated": "Алгачкы {{count}} көрсөтүлдү. BOQ калганына жетүү үчүн издеңиз.",
     "procurement.item_qty": "Саны",
     "procurement.item_rate": "Баа",
     "procurement.item_unit": "Бирдик",

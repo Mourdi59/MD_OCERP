@@ -10604,6 +10604,7 @@ const resource = {
     "procurement.item_position": "मात्रा विवरण की मद",
     "procurement.item_position_for": "लाइन {{line}} के लिए मात्रा विवरण की मद",
     "procurement.item_position_none": "मात्रा विवरण से जुड़ा नहीं",
+    "procurement.item_position_truncated": "पहली {{count}} दिखाई जा रही हैं। शेष मात्रा विवरण तक पहुँचने के लिए खोजें।",
     "procurement.no_gr": "कोई माल प्राप्तियाँ नहीं",
     "procurement.no_gr_desc": "दर्ज किए जाने के बाद माल प्राप्तियाँ यहाँ दिखाई देंगी।",
     "procurement.no_po": "कोई खरीद आदेश नहीं",

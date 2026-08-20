@@ -9640,6 +9640,7 @@ const resource = {
     "procurement.item_position": "Position du DQE",
     "procurement.item_position_for": "Position du DQE pour la ligne {{line}}",
     "procurement.item_position_none": "Non liée au devis quantitatif",
+    "procurement.item_position_truncated": "Les {{count}} premières sont affichées. Recherchez pour atteindre le reste du DQE.",
     "procurement.no_gr": "Aucun bon de réception",
     "procurement.no_gr_desc": "Les bons de réception apparaîtront ici une fois enregistrés.",
     "procurement.no_po": "Aucun bon de commande",

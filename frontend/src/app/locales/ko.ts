@@ -10582,6 +10582,7 @@ const resource = {
     "procurement.item_position": "내역서 항목",
     "procurement.item_position_for": "라인 {{line}}의 내역서 항목",
     "procurement.item_position_none": "내역서에 연결되지 않음",
+    "procurement.item_position_truncated": "처음 {{count}}개를 표시하고 있습니다. 나머지 내역서는 검색하세요.",
     "procurement.no_gr": "입고 검수가 없습니다",
     "procurement.no_gr_desc": "기록되면 입고 검수가 여기에 표시됩니다.",
     "procurement.no_po": "발주서가 없습니다",

@@ -9711,6 +9711,7 @@ const resource = {
     "procurement.item_position": "Voce del CME",
     "procurement.item_position_for": "Voce del CME per riga {{line}}",
     "procurement.item_position_none": "Non collegata al computo metrico",
+    "procurement.item_position_truncated": "Sono mostrate le prime {{count}}. Cerca per raggiungere il resto del CME.",
     "procurement.no_gr": "Nessuna ricevuta merci",
     "procurement.no_gr_desc": "Le ricevute merci appariranno qui una volta registrate.",
     "procurement.no_po": "Nessun ordine di acquisto",

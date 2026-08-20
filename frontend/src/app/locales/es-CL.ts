@@ -9837,6 +9837,7 @@ const resource = {
     "procurement.item_position": "Partida del presupuesto",
     "procurement.item_position_for": "Partida del presupuesto para línea {{line}}",
     "procurement.item_position_none": "No vinculada al presupuesto",
+    "procurement.item_position_truncated": "Mostrando las primeras {{count}}. Busque para llegar al resto del presupuesto.",
     "procurement.no_gr": "Sin recepciones",
     "procurement.no_gr_desc": "Las recepciones aparecerán aquí una vez registradas.",
     "procurement.no_po": "Sin órdenes de compra",

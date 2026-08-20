@@ -11072,6 +11072,7 @@ const resource = {
     "procurement.item_position": "Stavka troškovnika",
     "procurement.item_position_for": "Stavka troškovnika za liniju {{line}}",
     "procurement.item_position_none": "Nije povezano s troškovnikom",
+    "procurement.item_position_truncated": "Prikazano je prvih {{count}}. Pretražite kako biste došli do ostatka troškovnika.",
     "procurement.no_gr": "Nema primki robe",
     "procurement.no_gr_desc": "Primke robe prikazat će se ovdje nakon evidentiranja.",
     "procurement.no_po": "Nema narudžbenica",

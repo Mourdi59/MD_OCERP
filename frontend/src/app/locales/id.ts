@@ -11175,6 +11175,7 @@ const resource = {
     "procurement.item_position": "Item BOQ",
     "procurement.item_position_for": "Item BOQ untuk baris {{line}}",
     "procurement.item_position_none": "Tidak ditautkan ke daftar kuantitas",
+    "procurement.item_position_truncated": "Menampilkan {{count}} pertama. Cari untuk menjangkau sisa BOQ.",
     "procurement.no_gr": "Tidak ada tanda terima barang",
     "procurement.no_gr_desc": "Tanda terima barang akan muncul di sini setelah dicatat.",
     "procurement.no_po": "Tidak ada pesanan pembelian",

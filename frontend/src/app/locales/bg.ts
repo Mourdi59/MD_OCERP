@@ -10576,6 +10576,7 @@ const resource = {
     "procurement.item_position": "Позиция от КСС",
     "procurement.item_position_for": "Позиция от КСС за ред {{line}}",
     "procurement.item_position_none": "Несвързано с количествената сметка",
+    "procurement.item_position_truncated": "Показани са първите {{count}}. Търсете, за да стигнете до останалата част от КСС.",
     "procurement.no_gr": "Няма разписки за стоки",
     "procurement.no_gr_desc": "Разписките за стоки ще се появят тук след записването им.",
     "procurement.no_po": "Няма поръчки за покупка",

@@ -10730,6 +10730,7 @@ const resource = {
     "procurement.item_position": "BOQ pozitsiyasi",
     "procurement.item_position_for": "{{line}}-qator uchun BOQ pozitsiyasi",
     "procurement.item_position_none": "Hajmlar jadvaliga bogʻlanmagan",
+    "procurement.item_position_truncated": "Birinchi {{count}} tasi ko'rsatilmoqda. BOQ ning qolgan qismiga yetish uchun qidiring.",
     "procurement.no_gr": "Tovar qabul qilish hujjati yoʻq",
     "procurement.no_gr_desc": "Qayd etilgach, tovar qabul qilish hujjatlari bu yerda koʻrinadi.",
     "procurement.no_po": "Xarid buyurtmasi yoʻq",

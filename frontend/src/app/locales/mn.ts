@@ -12155,6 +12155,7 @@ const resource = {
     "procurement.item_position": "БМЖ байрлал",
     "procurement.item_position_for": "{{line}} шугамын БМЖ байрлал",
     "procurement.item_position_none": "Ажил материалын жагсаалттай холбоогүй",
+    "procurement.item_position_truncated": "Эхний {{count}}-г харуулж байна. БМЖ-ийн үлдсэн хэсэгт хүрэхийн тулд хайна уу.",
     "procurement.item_qty": "Тоо",
     "procurement.item_rate": "Үнэлгээ",
     "procurement.item_unit": "Нэгж",

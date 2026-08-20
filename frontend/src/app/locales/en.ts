@@ -9275,6 +9275,7 @@ const resource = {
     "procurement.item_position": "Bill position",
     "procurement.item_position_for": "Bill position for line {{line}}",
     "procurement.item_position_none": "Not linked to the estimate",
+    "procurement.item_position_truncated": "Showing the first {{count}}. Search to reach the rest of the bill.",
     "procurement.item_qty": "Qty",
     "procurement.item_rate": "Rate",
     "procurement.item_unit": "Unit",

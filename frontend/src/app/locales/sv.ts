@@ -13072,6 +13072,7 @@ const resource = {
     "procurement.item_position": "Mängdförteckningspost",
     "procurement.item_position_for": "Mängdförteckningspost för rad {{line}}",
     "procurement.item_position_none": "Ej länkad till mängdförteckningen",
+    "procurement.item_position_truncated": "Visar de första {{count}}. Sök för att nå resten av mängdförteckningen.",
     "procurement.item_qty": "Antal",
     "procurement.item_rate": "Pris",
     "procurement.item_unit": "Enhet",

@@ -1952,14 +1952,20 @@ class CostSpineService:
         *,
         control_account_id: uuid.UUID | None = None,
         status: str | None = None,
+        search: str | None = None,
+        linked_to_position: bool | None = None,
+        boq_position_id: uuid.UUID | None = None,
         offset: int = 0,
         limit: int = 200,
     ) -> list[CostLineResponse]:
-        """List cost lines for a project with optional account/status filters."""
+        """List cost lines for a project with optional account/status/search filters."""
         lines, _ = await self.line_repo.list_for_project(
             project_id,
             control_account_id=control_account_id,
             status=status,
+            search=search,
+            linked_to_position=linked_to_position,
+            boq_position_id=boq_position_id,
             offset=offset,
             limit=limit,
         )

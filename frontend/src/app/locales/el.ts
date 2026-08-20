@@ -11942,6 +11942,7 @@ const resource = {
     "procurement.item_position": "Θέση BOQ",
     "procurement.item_position_for": "Θέση BOQ για τη γραμμή {{line}}",
     "procurement.item_position_none": "Μη συνδεδεμένο με τον πίνακα ποσοτήτων",
+    "procurement.item_position_truncated": "Εμφανίζονται οι πρώτες {{count}}. Αναζητήστε για να φτάσετε στο υπόλοιπο BOQ.",
     "procurement.item_qty": "Ποσ.",
     "procurement.item_rate": "Τιμή",
     "procurement.item_unit": "Μονάδα",
