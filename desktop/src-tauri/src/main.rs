@@ -28,6 +28,11 @@ use tauri::{
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
+/// Asks GitHub, once per start, whether a newer release exists, and offers it in
+/// the failure window. Kept in its own file because it must be able to speak
+/// when nothing else in this one worked.
+mod update_check;
+
 struct AppState {
     /// Handle to the spawned backend process so it survives past setup() and
     /// can be killed when the app exits.
@@ -39,6 +44,20 @@ struct AppState {
     /// hand the user the exact same address the app window is showing, even
     /// though the port is chosen dynamically at startup.
     app_url: Mutex<Option<String>>,
+    /// Set the moment the app decides to exit, before the sidecar is stopped.
+    ///
+    /// Everything that watches the backend has to be able to tell a crash from
+    /// a shutdown we asked for. Without this flag the watchers below would see
+    /// the very kill we just issued and announce to a user who is closing the
+    /// app that their backend has died.
+    shutting_down: Arc<AtomicBool>,
+    /// Set by the output pump when the sidecar process is observed to exit, so
+    /// the exit path can wait for the process to really be gone rather than
+    /// assume it.
+    backend_exited: Arc<AtomicBool>,
+    /// Set by whichever watcher first told the user the backend was lost, so
+    /// the same failure is never reported twice through two channels.
+    backend_lost_reported: Arc<AtomicBool>,
 }
 
 /// How long to give the platform opener a chance to report failure.
@@ -275,22 +294,35 @@ fn js_escape(s: &str) -> String {
         .replace('\r', " ")
 }
 
-/// Run a snippet of JavaScript in the splash window, retried a few times.
+/// Run a snippet of JavaScript in the main window, retried a few times.
 ///
-/// setup() may run before the splash page has finished loading its inline
-/// script, so we retry the eval over ~2 seconds. The splash boot functions are
-/// idempotent (they just set DOM state), so repeated calls are harmless.
-fn eval_in_splash(handle: &tauri::AppHandle, js: String) {
+/// setup() may run before the page has finished loading its inline script, so
+/// we retry the eval over ~2 seconds. Every snippet sent through here must
+/// therefore be idempotent, because it will run up to eight times.
+///
+/// `raise_window` brings the window to the front on each attempt. That is right
+/// while the splash is up and the window is what the user just asked for, and
+/// wrong afterwards: an app sitting in the tray would be yanked onto the screen
+/// by a message that could have waited.
+fn eval_retrying(handle: &tauri::AppHandle, js: String, raise_window: bool) {
     let handle = handle.clone();
     tauri::async_runtime::spawn(async move {
         for _ in 0..8 {
             if let Some(window) = handle.get_webview_window("main") {
-                let _ = window.show();
+                if raise_window {
+                    let _ = window.show();
+                }
                 let _ = window.eval(&js);
             }
             tokio::time::sleep(std::time::Duration::from_millis(250)).await;
         }
     });
+}
+
+/// Run a snippet in the splash window. The splash boot functions are idempotent
+/// (they just set DOM state), so repeated calls are harmless.
+fn eval_in_splash(handle: &tauri::AppHandle, js: String) {
+    eval_retrying(handle, js, true);
 }
 
 /// Tell the splash where the diagnostic log lives so a failure message can point
@@ -327,6 +359,13 @@ fn boot_stage(handle: &tauri::AppHandle, id: &str, status: &str, detail: &str) {
 fn report_fatal_stage(handle: &tauri::AppHandle, stage: &str, message: &str) {
     log_line(&format!("FATAL [{stage}]: {message}"));
     report_log_path(handle);
+    // Every way startup can fail comes through here, so this is the one place
+    // that has to carry the offer of a newer version. For a user whose
+    // installed build cannot start at all, that sentence is the entire fix, and
+    // the application's own update notice can never reach them: it is served by
+    // the backend that just failed. Adds nothing to the failure path but a flag
+    // read, and shows nothing unless an answer has already come back.
+    update_check::note_startup_failed(handle, env!("CARGO_PKG_VERSION"));
     let stage_js = js_escape(stage);
     let msg = js_escape(message);
     eval_in_splash(
@@ -338,6 +377,215 @@ fn report_fatal_stage(handle: &tauri::AppHandle, stage: &str, message: &str) {
             }})()"
         ),
     );
+}
+
+/// Tell the user the backend is gone, in whatever page the window is showing.
+///
+/// The splash reporting above is unusable once startup has succeeded. The
+/// moment the webview navigates to the application the splash document is torn
+/// down with every function the launcher talks to it through, so `failStage`
+/// and `setError` are no longer defined and the `typeof` guards turn every
+/// later report into a silent no-op. A backend that died an hour into the
+/// session therefore had no way at all to reach the person using it: the window
+/// kept showing the last screen it had rendered while every action on it failed.
+///
+/// So this builds its own overlay out of plain DOM instead of calling into the
+/// page, which works on the splash and on the application alike, and needs
+/// nothing from the frontend bundle. It is idempotent by element id because
+/// `eval_retrying` will run it up to eight times.
+fn report_backend_lost(
+    handle: &tauri::AppHandle,
+    reported: &AtomicBool,
+    headline: &str,
+    detail: &str,
+) {
+    // First reporter wins. The process pump and the liveness watch can both
+    // see the same death, and the user should hear about it once.
+    if reported
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
+        return;
+    }
+
+    log_line(&format!("BACKEND LOST: {headline} {detail}"));
+    let log_hint = log_path()
+        .map(|p| format!(" The launcher log is at {}.", p.display()))
+        .unwrap_or_default();
+    let head_js = js_escape(headline);
+    let body_js = js_escape(&format!("{detail}{log_hint}"));
+
+    eval_retrying(
+        handle,
+        format!(
+            "(function(){{\
+                var d=document;\
+                if(!d||d.getElementById('oe-backend-lost')){{return;}}\
+                var host=d.body||d.documentElement;\
+                if(!host){{return;}}\
+                var o=d.createElement('div');\
+                o.id='oe-backend-lost';\
+                o.setAttribute('style','position:fixed;top:0;left:0;right:0;bottom:0;\
+z-index:2147483647;background:rgba(15,17,21,0.94);color:#f5f7fa;display:flex;\
+align-items:center;justify-content:center;padding:32px;text-align:left;\
+font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;\
+line-height:1.55');\
+                var c=d.createElement('div');\
+                c.setAttribute('style','max-width:620px');\
+                var h=d.createElement('div');\
+                h.setAttribute('style','font-size:20px;font-weight:600;margin-bottom:12px');\
+                h.textContent='{head_js}';\
+                var p=d.createElement('div');\
+                p.textContent='{body_js}';\
+                c.appendChild(h);c.appendChild(p);o.appendChild(c);host.appendChild(o);\
+            }})()"
+        ),
+        false,
+    );
+}
+
+/// Show or clear the notice that says the backend has gone quiet.
+///
+/// Deliberately not the modal above. Silence is a symptom that can end: a long
+/// import holding the database pool keeps the health check waiting on a backend
+/// that is working perfectly well, and telling that person their app is dead,
+/// behind a sheet they cannot dismiss, would cost them the very work that
+/// caused the delay. So this is a strip along the bottom that takes no clicks
+/// (`pointer-events:none`) and is removed again the moment the backend answers.
+fn set_backend_silent_notice(handle: &tauri::AppHandle, shown: bool) {
+    let js = if shown {
+        let text = js_escape(
+            "The application backend has not answered for about two minutes. It may be working \
+through a long operation, such as a large import, and this notice will disappear as soon as it \
+responds. If the window stays unusable, close it and start OpenConstructionERP again.",
+        );
+        format!(
+            "(function(){{\
+                var d=document;\
+                if(!d||d.getElementById('oe-backend-silent')){{return;}}\
+                var host=d.body||d.documentElement;\
+                if(!host){{return;}}\
+                var o=d.createElement('div');\
+                o.id='oe-backend-silent';\
+                o.setAttribute('style','position:fixed;left:0;right:0;bottom:0;\
+z-index:2147483646;pointer-events:none;background:rgba(15,17,21,0.94);color:#f5f7fa;\
+padding:14px 20px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;\
+font-size:14px;line-height:1.5');\
+                o.textContent='{text}';\
+                host.appendChild(o);\
+            }})()"
+        )
+    } else {
+        "(function(){\
+            var d=document;if(!d){return;}\
+            var e=d.getElementById('oe-backend-silent');\
+            if(e&&e.parentNode){e.parentNode.removeChild(e);}\
+        })()"
+            .to_string()
+    };
+    eval_retrying(handle, js, false);
+}
+
+/// How often the liveness watch asks the backend whether it is still there.
+const LIVENESS_POLL_INTERVAL: Duration = Duration::from_secs(10);
+/// How long one liveness probe may take before it counts as unanswered.
+const LIVENESS_PROBE_TIMEOUT: Duration = Duration::from_secs(5);
+/// Consecutive refused connections before the backend is called dead. A refusal
+/// is an immediate and unambiguous answer from the operating system: nothing is
+/// listening on that port any more.
+const LIVENESS_REFUSED_STRIKES: u32 = 2;
+/// Consecutive unanswered probes before the user is told the backend has gone
+/// quiet. Silence is much weaker evidence than a refusal, because a machine
+/// waking from sleep, a heavy import or a long migration can all keep a request
+/// waiting, so this threshold is deliberately several times longer and what it
+/// triggers is a reversible notice rather than a verdict. Two minutes is not
+/// generous by accident: the health check takes a database connection, and a
+/// large import holding the pool keeps every probe waiting on a backend that is
+/// working perfectly well.
+const LIVENESS_SILENT_STRIKES: u32 = 12;
+
+/// Keep watching the backend AFTER it has answered its first health check.
+///
+/// Readiness was the end of the launcher's attention: past that point nothing
+/// asked whether the backend was still alive. When it went away the window
+/// stayed exactly as it was, so a user went on clicking a screen whose every
+/// request was failing, with no message anywhere saying why.
+///
+/// This is also the only cover for the attach path, where the backend belongs
+/// to another process entirely: there is no child to wait on and no output to
+/// pump, so its death is invisible by construction.
+async fn watch_backend_liveness(
+    handle: tauri::AppHandle,
+    port: u16,
+    shutting_down: Arc<AtomicBool>,
+    reported: Arc<AtomicBool>,
+) {
+    let client = reqwest::Client::new();
+    let url = format!("http://127.0.0.1:{port}/api/health");
+    let mut refused: u32 = 0;
+    let mut silent: u32 = 0;
+    let mut silent_notice = false;
+
+    loop {
+        tokio::time::sleep(LIVENESS_POLL_INTERVAL).await;
+        // A shutdown we asked for is not a failure, and a death already
+        // reported by the process pump does not need saying twice.
+        if shutting_down.load(Ordering::SeqCst) || reported.load(Ordering::SeqCst) {
+            return;
+        }
+
+        match client.get(&url).timeout(LIVENESS_PROBE_TIMEOUT).send().await {
+            // Any answer at all, including an error status, proves the process
+            // is alive and serving. Only absence is evidence of death here.
+            Ok(_) => {
+                refused = 0;
+                silent = 0;
+                if silent_notice {
+                    silent_notice = false;
+                    log_line("liveness: the backend is answering again");
+                    set_backend_silent_notice(&handle, false);
+                }
+            }
+            Err(e) if e.is_connect() => {
+                refused += 1;
+                silent = 0;
+                log_line(&format!(
+                    "liveness: connection to the backend refused ({}/{})",
+                    refused, LIVENESS_REFUSED_STRIKES
+                ));
+            }
+            Err(e) => {
+                silent += 1;
+                log_line(&format!(
+                    "liveness: backend did not answer ({}/{}): {e}",
+                    silent, LIVENESS_SILENT_STRIKES
+                ));
+            }
+        }
+
+        if refused >= LIVENESS_REFUSED_STRIKES {
+            if silent_notice {
+                set_backend_silent_notice(&handle, false);
+            }
+            report_backend_lost(
+                &handle,
+                &reported,
+                "The application backend has stopped",
+                "Nothing is listening on the local address any more, so this window can no \
+longer load or save anything. Please close it and start OpenConstructionERP again. If this \
+keeps happening, send the log file to info@datadrivenconstruction.io.",
+            );
+            return;
+        }
+        // Silence is not a verdict, so the watch does not end here. It says
+        // what it sees, keeps polling, and takes the notice down again if the
+        // backend comes back. Only a refusal, above, is final.
+        if silent >= LIVENESS_SILENT_STRIKES && !silent_notice {
+            silent_notice = true;
+            log_line("liveness: the backend has gone quiet, telling the user");
+            set_backend_silent_notice(&handle, true);
+        }
+    }
 }
 
 /// Parse a backend ``STAGE:<id>:<status>[:<detail>]`` marker line.
@@ -418,10 +666,32 @@ impl TracebackCapture {
     }
 }
 
-/// Find an available port for the backend server, with a fixed fallback so a
-/// picker failure never aborts startup.
+/// The port the desktop app serves on whenever it can have it.
+///
+/// It is also one of the ports the attach probe below looks at, so a backend
+/// left over from a previous run is found and reused instead of becoming a
+/// second owner of the same PostgreSQL cluster.
+const DEFAULT_BACKEND_PORT: u16 = 8732;
+
+/// Find a port for the backend server, preferring a STABLE one.
+///
+/// The webview loads the application from `http://127.0.0.1:<port>/`, so the
+/// port is the browser origin, and everything the app stores per origin lives
+/// and dies with it: the saved session, the chosen interface language, the
+/// user's own translation overrides. Picking a fresh random port on every run
+/// therefore signed the user out and reset their language on every restart,
+/// with nothing on screen to connect the two. Take the default port whenever it
+/// is free and only fall back to a picked one when something else holds it.
+///
+/// Binding and dropping a listener is the only honest way to ask: the bind
+/// releases the port at the end of the expression, which leaves the usual tiny
+/// race between the check and the sidecar's own bind. That race is what the
+/// picker has always had, so this is no weaker than what it replaces.
 fn find_available_port() -> u16 {
-    portpicker::pick_unused_port().unwrap_or(8732)
+    if std::net::TcpListener::bind(("127.0.0.1", DEFAULT_BACKEND_PORT)).is_ok() {
+        return DEFAULT_BACKEND_PORT;
+    }
+    portpicker::pick_unused_port().unwrap_or(DEFAULT_BACKEND_PORT)
 }
 
 /// Resolve the bundled read-only converters directory shipped as an app
@@ -579,21 +849,141 @@ async fn find_existing_backend(client: &reqwest::Client) -> Option<u16> {
     None
 }
 
-/// Wait for the backend health endpoint to respond.
+/// What one health answer said about the backend.
+enum HealthProbe {
+    /// No usable answer: nothing listening yet, no reply in time, or a non-2xx.
+    Unreachable,
+    /// Fit to open the application against.
+    Ready,
+    /// Answered, and named a fault that makes the application unusable.
+    Broken(String),
+}
+
+/// The outcome of waiting for the backend to become ready.
+enum StartupOutcome {
+    Ready,
+    /// The backend is up and says it cannot do its job; carries the reason.
+    Broken(String),
+    TimedOut,
+}
+
+/// How long one health probe may take before it counts as no answer.
 ///
-/// Polls `/api/health` every ~500ms until it succeeds or the timeout elapses.
-/// While waiting, updates the splash screen so the user sees progress; first-run
-/// embedded-PostgreSQL setup can be slow.
-async fn wait_for_backend(handle: &tauri::AppHandle, port: u16, timeout_secs: u64) -> bool {
+/// Without a per-request bound a backend that accepts the connection and then
+/// never answers holds the poll open forever. The deadline below is only tested
+/// between polls, so that single hung request outlived the entire startup
+/// window: the user waited on the spinner with no timeout message ever shown,
+/// because the code that would have shown it never got another turn.
+///
+/// Generous on purpose. The bound exists to stop one request holding the loop,
+/// not to judge how quick the backend is, and this endpoint does real work: a
+/// database round trip, a walk of the whole Alembic version tree and a process
+/// memory reading. A tight bound would turn a slow first answer on a cold disk
+/// into a startup timeout, which is the same lie in the other direction. At
+/// twelve seconds there are still dozens of polls inside the startup window.
+const HEALTH_PROBE_TIMEOUT: Duration = Duration::from_secs(12);
+
+/// How long the backend may keep reporting a fault that makes it unusable
+/// before we stop waiting for it to sort itself out and say so. Startup states
+/// clear in seconds; a fault still standing after this is the real state.
+const DEGRADED_GRACE: Duration = Duration::from_secs(30);
+
+/// Judge one health body, and fail OPEN.
+///
+/// The health endpoint answers 200 whether it is healthy or degraded, and the
+/// old check read only the status code. So a backend that had answered
+/// "degraded, database: error" was treated as ready, the webview was pointed at
+/// it, and the user got the application shell with every request inside it
+/// failing and nothing to say why. The two faults tested here are the ones that
+/// leave nothing working: no database, and an installation with no application
+/// files to serve, which answers every route in the app with a 404.
+///
+/// Everything else stays open on purpose. This function decides whether anyone
+/// can start the app at all, so an unreadable body, a missing field, a renamed
+/// field or a status word we do not know all mean ready. Only a fault the
+/// backend positively reports may hold a user out of their own installation,
+/// and stale migrations do not qualify: that is a real problem, and it is one
+/// the user can still see and act on from inside the app.
+fn judge_health(body: &str) -> HealthProbe {
+    let json: serde_json::Value = match serde_json::from_str(body) {
+        Ok(v) => v,
+        Err(_) => return HealthProbe::Ready,
+    };
+
+    let status = json.get("status").and_then(|v| v.as_str()).unwrap_or("");
+    if status != "degraded" {
+        return HealthProbe::Ready;
+    }
+
+    let database_down = json
+        .get("database")
+        .and_then(|v| v.as_str())
+        .map(|s| s != "ok")
+        .unwrap_or(false);
+    if database_down {
+        return HealthProbe::Broken("the local database is not answering".to_string());
+    }
+
+    let frontend_missing = json
+        .get("frontend_dist_present")
+        .and_then(|v| v.as_bool())
+        .map(|present| !present)
+        .unwrap_or(false);
+    if frontend_missing {
+        return HealthProbe::Broken(
+            "this installation is missing the application files it serves".to_string(),
+        );
+    }
+
+    HealthProbe::Ready
+}
+
+/// Wait for the backend to become fit to open.
+///
+/// Polls `/api/health` every ~500ms until it is ready, reports a standing fault,
+/// or the timeout elapses. While waiting, updates the splash screen so the user
+/// sees progress; first-run embedded-PostgreSQL setup can be slow.
+async fn wait_for_backend(
+    handle: &tauri::AppHandle,
+    port: u16,
+    timeout_secs: u64,
+) -> StartupOutcome {
     let client = reqwest::Client::new();
     let url = format!("http://127.0.0.1:{port}/api/health");
-    let start = std::time::Instant::now();
+    let start = Instant::now();
     let mut progress_shown = false;
+    let mut broken_since: Option<Instant> = None;
+    let mut broken_logged = false;
 
     while start.elapsed().as_secs() < timeout_secs {
-        if let Ok(resp) = client.get(&url).send().await {
-            if resp.status().is_success() {
-                return true;
+        let probe = match client.get(&url).timeout(HEALTH_PROBE_TIMEOUT).send().await {
+            Ok(resp) if resp.status().is_success() => match resp.text().await {
+                Ok(body) => judge_health(&body),
+                // The status line arrived and the body did not. Something is
+                // serving; do not hold the user out over a lost read.
+                Err(_) => HealthProbe::Ready,
+            },
+            _ => HealthProbe::Unreachable,
+        };
+
+        match probe {
+            HealthProbe::Ready => return StartupOutcome::Ready,
+            HealthProbe::Broken(reason) => {
+                if !broken_logged {
+                    broken_logged = true;
+                    log_line(&format!("backend answered but reports a fatal fault: {reason}"));
+                }
+                let since = *broken_since.get_or_insert_with(Instant::now);
+                if since.elapsed() >= DEGRADED_GRACE {
+                    return StartupOutcome::Broken(reason);
+                }
+            }
+            HealthProbe::Unreachable => {
+                // A backend that has stopped answering is starting or dying,
+                // not degraded, so an earlier degraded reading must not be held
+                // against the next one.
+                broken_since = None;
+                broken_logged = false;
             }
         }
 
@@ -606,7 +996,7 @@ async fn wait_for_backend(handle: &tauri::AppHandle, port: u16, timeout_secs: u6
 
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     }
-    false
+    StartupOutcome::TimedOut
 }
 
 fn main() {
@@ -630,16 +1020,33 @@ fn main() {
         .manage(AppState {
             backend_child: Mutex::new(None),
             app_url: Mutex::new(None),
+            shutting_down: Arc::new(AtomicBool::new(false)),
+            backend_exited: Arc::new(AtomicBool::new(false)),
+            backend_lost_reported: Arc::new(AtomicBool::new(false)),
         })
         .invoke_handler(tauri::generate_handler![
             open_log_file,
             open_app_in_browser,
             open_external_url,
-            get_app_url
+            get_app_url,
+            update_check::set_update_check_enabled,
+            update_check::decline_update_version
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
             log_line(&format!("setup() running; backend port = {port}"));
+
+            // Take the shared flags out of managed state once, here in
+            // synchronous code, and hand the tasks below plain Arcs. A
+            // `State` borrow lives on the handle it came from, and the tasks
+            // that need these flags are async and long-lived.
+            let (shutting_down, backend_lost) = {
+                let state = handle.state::<AppState>();
+                (
+                    state.shutting_down.clone(),
+                    state.backend_lost_reported.clone(),
+                )
+            };
 
             // Resolve the bundled read-only converters dir (Windows ships the
             // DDC IFC converter as an app resource) BEFORE the attach/spawn
@@ -656,6 +1063,15 @@ fn main() {
             report_log_path(&handle);
             boot_stage(&handle, "launcher", "done", "");
             boot_stage(&handle, "sidecar", "active", "Locating the backend");
+
+            // Ask, in the background, whether a newer release exists. Started
+            // here rather than when a failure is reported because a failure can
+            // arrive in milliseconds - a sidecar binary that is not there fails
+            // long before any request could finish - and a user staring at an
+            // error is not going to be made to wait for a web request on top of
+            // it. Never awaited, never blocking, and silent unless startup
+            // fails: see the file for what it does and does not do.
+            update_check::spawn(handle.clone(), env!("CARGO_PKG_VERSION").to_string());
 
             // Tray icon with a right-click menu. The menu is the always-present
             // home for the "open in your browser" choice the founder asked for:
@@ -788,9 +1204,19 @@ fn main() {
                                 else{{window.location.replace('{url_js}');}}}})()"
                         ));
                     }
+                    update_check::note_app_started(&handle_nav, env!("CARGO_PKG_VERSION"));
                 });
-                // We did not spawn a sidecar, so there is no child to manage and
-                // nothing more for setup() to do.
+                // We did not spawn a sidecar, so there is no child to manage.
+                // That is exactly why the liveness watch matters most here: the
+                // backend belongs to another process, nothing reports its exit
+                // to us, and without this its death would leave the window
+                // showing an application that no longer has a server.
+                tauri::async_runtime::spawn(watch_backend_liveness(
+                    handle.clone(),
+                    existing,
+                    shutting_down.clone(),
+                    backend_lost.clone(),
+                ));
                 return Ok(());
             }
 
@@ -901,10 +1327,11 @@ tools block newly installed programs; allow OpenConstructionERP and try again."
             boot_stage(&handle, "pg", "active", "Starting the local database");
 
             // Keep the child handle alive (and killable on exit).
-            {
+            let backend_exited = {
                 let state = handle.state::<AppState>();
                 *state.backend_child.lock().unwrap() = Some(child);
-            }
+                state.backend_exited.clone()
+            };
 
             let backend_ready = Arc::new(AtomicBool::new(false));
             // Separate from readiness on purpose. Readiness means the backend
@@ -930,6 +1357,9 @@ tools block newly installed programs; allow OpenConstructionERP and try again."
                 let latched = latched_fail.clone();
                 let traceback = traceback.clone();
                 let handle_evt = handle.clone();
+                let exited_flag = backend_exited.clone();
+                let deliberate = shutting_down.clone();
+                let lost_flag = backend_lost.clone();
                 tauri::async_runtime::spawn(async move {
                     while let Some(event) = rx.recv().await {
                         match event {
@@ -987,12 +1417,25 @@ tools block newly installed programs; allow OpenConstructionERP and try again."
                             }
                             CommandEvent::Error(err) => {
                                 log_line(&format!("[backend:error] {err}"));
+                                // A failure reading the child's own pipes went
+                                // to the log and nowhere else, so on a startup
+                                // that then failed the user was shown a tail of
+                                // stderr with no sign of it. Add it to that tail
+                                // rather than latching it as the cause: it is
+                                // usually a symptom of the crash, and it must
+                                // not displace the exception that explains it.
+                                let mut buf = stderr_buf.lock().unwrap();
+                                buf.push_str(&format!("launcher: {err}\n"));
                             }
                             CommandEvent::Terminated(payload) => {
                                 log_line(&format!(
                                     "[backend] terminated: code={:?} signal={:?}",
                                     payload.code, payload.signal
                                 ));
+                                // Record the exit before anything else, so the
+                                // shutdown path can wait for the process to
+                                // really be gone instead of assuming it.
+                                exited_flag.store(true, Ordering::SeqCst);
                                 // If the backend died before ever becoming
                                 // healthy, surface it now instead of leaving the
                                 // user staring at the spinner for the full timeout.
@@ -1049,11 +1492,53 @@ this keeps happening send it to info@datadrivenconstruction.io."
                                     // reason, so the startup timeout does not
                                     // replace it with a vaguer one later.
                                     fatal_flag.store(true, Ordering::SeqCst);
+                                } else if !deliberate.load(Ordering::SeqCst) {
+                                    // The backend had already gone healthy, and
+                                    // nobody asked it to stop. This case was
+                                    // silent: readiness was the end of the
+                                    // launcher's attention, so a sidecar that
+                                    // died an hour in left the window showing
+                                    // the last screen it had rendered while
+                                    // every request inside it failed, and the
+                                    // only record was a line in a log file the
+                                    // user had no reason to open.
+                                    report_backend_lost(
+                                        &handle_evt,
+                                        &lost_flag,
+                                        "The application backend has stopped",
+                                        &format!(
+                                            "The backend exited unexpectedly (exit code {:?}), so \
+this window can no longer load or save anything. Please close it and start \
+OpenConstructionERP again. If this keeps happening, send the log file to \
+info@datadrivenconstruction.io.",
+                                            payload.code
+                                        ),
+                                    );
                                 }
                                 break;
                             }
                             _ => {}
                         }
+                    }
+
+                    // The event channel can also just end: the sender is
+                    // dropped and no Terminated event ever arrives. Reaching
+                    // here means we have stopped watching the backend, and
+                    // saying nothing would leave whoever is using it to find
+                    // out from a screen that no longer works.
+                    if !exited_flag.load(Ordering::SeqCst)
+                        && !deliberate.load(Ordering::SeqCst)
+                        && ready.load(Ordering::SeqCst)
+                    {
+                        log_line("backend event stream ended without a termination event");
+                        report_backend_lost(
+                            &handle_evt,
+                            &lost_flag,
+                            "The connection to the application backend was lost",
+                            "The launcher can no longer see the backend it started, so this \
+window may stop working. Please close it and start OpenConstructionERP again. If this keeps \
+happening, send the log file to info@datadrivenconstruction.io.",
+                        );
                     }
                 });
             }
@@ -1065,6 +1550,8 @@ this keeps happening send it to info@datadrivenconstruction.io."
             let handle_clone = handle.clone();
             let ready_flag = backend_ready.clone();
             let fatal_flag_wait = fatal_reported.clone();
+            let shutting_down_wait = shutting_down.clone();
+            let backend_lost_wait = backend_lost.clone();
             tauri::async_runtime::spawn(async move {
                 // A first run that has to recover a large local database (WAL
                 // replay + fsync) can take several minutes, so allow a generous
@@ -1072,50 +1559,84 @@ this keeps happening send it to info@datadrivenconstruction.io."
                 // for up to ~10 minutes; keep the health wait comfortably above
                 // its own previous 240s so we never abandon a backend that is
                 // still legitimately recovering.
-                if wait_for_backend(&handle_clone, port, 600).await {
-                    ready_flag.store(true, Ordering::SeqCst);
-                    log_line("backend healthy; navigating to app");
-                    boot_stage(&handle_clone, "server", "done", "");
-                    boot_stage(&handle_clone, "open", "done", "Ready");
-                    let url = format!("http://127.0.0.1:{port}/");
-                    set_app_url(&handle_clone, &url);
-                    if let Some(window) = handle_clone.get_webview_window("main") {
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                        // Let the splash offer the one-time "app window or
-                        // browser" choice; if that helper is missing for any
-                        // reason, fall straight through to the app window so the
-                        // user is never left on the splash.
-                        let url_js = js_escape(&url);
-                        let _ = window.eval(&format!(
-                            "(function(){{if(typeof offerLaunchChoice==='function'){{\
-                                offerLaunchChoice('{url_js}');}}\
-                                else{{window.location.replace('{url_js}');}}}})()"
+                match wait_for_backend(&handle_clone, port, 600).await {
+                    StartupOutcome::Ready => {
+                        ready_flag.store(true, Ordering::SeqCst);
+                        log_line("backend healthy; navigating to app");
+                        boot_stage(&handle_clone, "server", "done", "");
+                        boot_stage(&handle_clone, "open", "done", "Ready");
+                        let url = format!("http://127.0.0.1:{port}/");
+                        set_app_url(&handle_clone, &url);
+                        if let Some(window) = handle_clone.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                            // Let the splash offer the one-time "app window or
+                            // browser" choice; if that helper is missing for any
+                            // reason, fall straight through to the app window so
+                            // the user is never left on the splash.
+                            let url_js = js_escape(&url);
+                            let _ = window.eval(&format!(
+                                "(function(){{if(typeof offerLaunchChoice==='function'){{\
+                                    offerLaunchChoice('{url_js}');}}\
+                                    else{{window.location.replace('{url_js}');}}}})()"
+                            ));
+                        }
+                        update_check::note_app_started(&handle_clone, env!("CARGO_PKG_VERSION"));
+                        // Readiness is where the launcher used to stop looking.
+                        // Keep watching, so a backend that goes away later is
+                        // reported instead of being left for the user to find.
+                        tauri::async_runtime::spawn(watch_backend_liveness(
+                            handle_clone.clone(),
+                            port,
+                            shutting_down_wait,
+                            backend_lost_wait,
                         ));
                     }
-                } else {
-                    log_line("backend did not become healthy within the startup window");
-                    // Only say "slow" when nothing better has been said. The
-                    // termination handler above names the real cause the moment
-                    // the sidecar dies, and this branch used to guard on the
-                    // readiness flag, which is set only when the backend goes
-                    // healthy. A backend that died during startup therefore left
-                    // readiness false and satisfied this condition, so the
-                    // timeout fired minutes afterwards and overwrote a message
-                    // carrying the actual exception with one that said only that
-                    // the backend had not started in time. A user whose sidecar
-                    // exited with a FileNotFoundError nine minutes earlier read
-                    // the second message, looked for the fault on their own
-                    // machine, and had no way to know the first had ever been
-                    // shown.
-                    if !ready_flag.load(Ordering::SeqCst) && !fatal_flag_wait.load(Ordering::SeqCst) {
-                        report_fatal_stage(
-                            &handle_clone,
-                            "server",
-                            "The application backend did not start in time. Please close this \
-window and try again. If the problem persists, please send the log file to \
+                    StartupOutcome::Broken(reason) => {
+                        // The backend is answering and telling us it cannot do
+                        // its job. Opening the app on top of that hands the user
+                        // a shell whose every action fails, which is how this
+                        // ended up looking like the product was broken rather
+                        // than the installation.
+                        log_line(&format!("backend is up but not fit to serve: {reason}"));
+                        if !fatal_flag_wait.load(Ordering::SeqCst) {
+                            report_fatal_stage(
+                                &handle_clone,
+                                "server",
+                                &format!(
+                                    "The backend started, but {reason}, so the app cannot open. \
+Please close this window and try again. If the problem persists, please send the log file to \
+info@datadrivenconstruction.io."
+                                ),
+                            );
+                        }
+                    }
+                    StartupOutcome::TimedOut => {
+                        log_line("backend did not become healthy within the startup window");
+                        // Only say "slow" when nothing better has been said. The
+                        // termination handler above names the real cause the
+                        // moment the sidecar dies, and this branch used to guard
+                        // on the readiness flag, which is set only when the
+                        // backend goes healthy. A backend that died during
+                        // startup therefore left readiness false and satisfied
+                        // this condition, so the timeout fired minutes afterwards
+                        // and overwrote a message carrying the actual exception
+                        // with one that said only that the backend had not
+                        // started in time. A user whose sidecar exited with a
+                        // FileNotFoundError nine minutes earlier read the second
+                        // message, looked for the fault on their own machine, and
+                        // had no way to know the first had ever been shown.
+                        if !ready_flag.load(Ordering::SeqCst)
+                            && !fatal_flag_wait.load(Ordering::SeqCst)
+                        {
+                            report_fatal_stage(
+                                &handle_clone,
+                                "server",
+                                "The application backend did not start in time. Please close \
+this window and try again. If the problem persists, please send the log file to \
 info@datadrivenconstruction.io.",
-                        );
+                            );
+                        }
                     }
                 }
             });
@@ -1125,20 +1646,11 @@ info@datadrivenconstruction.io.",
         .build(tauri::generate_context!());
 
     match app {
-        Ok(app) => app.run(|app_handle, event| {
-            if let RunEvent::ExitRequested { .. } = event {
-                // Stop the backend sidecar so it does not linger after close.
-                // Take the child out in its own statement so the MutexGuard
-                // temporary is dropped at the semicolon, before `state` (the
-                // State borrow it is taken from) goes out of scope. Holding the
-                // guard across the `if let` body borrowed `state` too long and
-                // failed to compile (E0597) in the release build.
-                let state = app_handle.state::<AppState>();
-                let child = state.backend_child.lock().unwrap().take();
-                if let Some(child) = child {
-                    let _ = child.kill();
-                }
-            }
+        Ok(app) => app.run(|app_handle, event| match event {
+            // Both events, because nothing the sidecar owns may outlive the
+            // launcher on any exit path, and stopping it twice is a no-op.
+            RunEvent::ExitRequested { .. } | RunEvent::Exit => stop_backend(app_handle),
+            _ => {}
         }),
         Err(e) => {
             // Building the Tauri app itself failed. There is no Tauri window to
@@ -1152,6 +1664,116 @@ info@datadrivenconstruction.io.",
             // exists.
             show_startup_failure_dialog(&message);
         }
+    }
+}
+
+/// How long the launcher waits for the backend to actually be gone.
+///
+/// A window that is already closed while its process lingers reads as a hang,
+/// and at session logoff Windows gives an application very little time before it
+/// is killed anyway, so this is a short wait for confirmation and not a budget
+/// for the backend to finish work in.
+const BACKEND_STOP_WAIT: Duration = Duration::from_secs(5);
+
+/// Ask the operating system to stop the backend process and everything it
+/// started.
+///
+/// `taskkill /T` is the same tool and the same reason as the installer hooks in
+/// `windows/hooks.nsh`, which already stop the sidecar tree so a reinstall can
+/// replace the locked files. The launcher had no equivalent, which is how the
+/// database server outlived the app that started it.
+#[cfg(target_os = "windows")]
+fn request_backend_stop(pid: u32) {
+    use std::os::windows::process::CommandExt;
+
+    /// `CREATE_NO_WINDOW`: a console process spawned from a windowed one puts a
+    /// black console on screen, and a console flashing up as the app closes is
+    /// the last thing a user should see of it.
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+    let pid_arg = pid.to_string();
+    match std::process::Command::new("taskkill")
+        .args(["/PID", pid_arg.as_str(), "/T", "/F"])
+        .creation_flags(CREATE_NO_WINDOW)
+        .status()
+    {
+        Ok(status) => log_line(&format!("backend stop: taskkill on pid {pid} exited {status}")),
+        Err(e) => log_line(&format!("backend stop: could not run taskkill on pid {pid}: {e}")),
+    }
+}
+
+/// Ask the backend to stop, the way this platform asks.
+///
+/// SIGTERM is a real request rather than a kill: the server runs its own
+/// shutdown handler, which stops the embedded PostgreSQL cluster cleanly, so
+/// the next start has no write-ahead log to replay. The kill below is only the
+/// backstop for a process that ignores it.
+#[cfg(not(target_os = "windows"))]
+fn request_backend_stop(pid: u32) {
+    let pid_arg = pid.to_string();
+    match std::process::Command::new("kill")
+        .args(["-TERM", pid_arg.as_str()])
+        .status()
+    {
+        Ok(status) => log_line(&format!("backend stop: SIGTERM to pid {pid} exited {status}")),
+        Err(e) => log_line(&format!("backend stop: could not signal pid {pid}: {e}")),
+    }
+}
+
+/// Stop the backend sidecar on the way out, and take its children with it.
+///
+/// Why a tree stop and not just the handle we hold: `CommandChild::kill` is
+/// `TerminateProcess` on Windows, which stops that one process and nothing it
+/// started. The sidecar starts the embedded PostgreSQL postmaster as a child of
+/// its own, and the shipped sidecar is a one-file bundle whose bootloader runs
+/// the real interpreter as a further child, so the process the launcher holds a
+/// handle to need not be the process holding the database open. What was left
+/// behind kept running with nobody to stop it: a postmaster still attached to
+/// the cluster after the app had closed, killed eventually by the operating
+/// system at logoff, which is an unclean stop, which is why the next launch
+/// found a cluster to recover and spent minutes replaying its log before the
+/// window would open.
+///
+/// What this does NOT fix: a forced stop is still an unclean stop for
+/// PostgreSQL. The clean path is the backend's own shutdown handler, and
+/// reaching it needs a request Windows can deliver to a console process whose
+/// parent has no console. On Unix the signal sent above is exactly that request
+/// and the handler does run; on Windows the honest answer is a shutdown the
+/// backend serves for itself, which is a change on that side of the line.
+fn stop_backend(app_handle: &tauri::AppHandle) {
+    let state = app_handle.state::<AppState>();
+    // Announce the shutdown before causing it. Every watcher treats a backend
+    // that disappears as a failure worth telling the user about, and the stop
+    // below is a disappearance; without this flag, closing the app would end
+    // with a message claiming the backend had crashed.
+    state.shutting_down.store(true, Ordering::SeqCst);
+    let exited = state.backend_exited.clone();
+    // Take the child out in its own statement so the MutexGuard temporary is
+    // dropped at the semicolon, before `state` (the State borrow it is taken
+    // from) goes out of scope. Holding the guard across the body below borrowed
+    // `state` too long and failed to compile (E0597) in the release build.
+    let child = state.backend_child.lock().unwrap().take();
+    let child = match child {
+        Some(child) => child,
+        // Nothing to stop: either we attached to a backend somebody else owns,
+        // or this has already run once on the way out.
+        None => return,
+    };
+
+    // Read the pid BEFORE kill(), which consumes the handle.
+    let pid = child.pid();
+    log_line(&format!("stopping the backend sidecar (pid {pid})"));
+    request_backend_stop(pid);
+
+    let deadline = Instant::now() + BACKEND_STOP_WAIT;
+    while !exited.load(Ordering::SeqCst) && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    if exited.load(Ordering::SeqCst) {
+        log_line("the backend sidecar has exited");
+    } else {
+        log_line("the backend sidecar did not exit in time; killing the process handle");
+        let _ = child.kill();
     }
 }
 
