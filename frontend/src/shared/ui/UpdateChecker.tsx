@@ -3,38 +3,45 @@
 /**
  * UpdateNotification — Sidebar widget showing when a new version is available.
  *
- * Polls the GitHub Releases API for the upstream repository and shows a
- * compact card in the sidebar when the latest tag is newer than the
- * currently running version. The card surfaces grouped highlights and a
- * one-click jump to either the full in-app changelog or the GitHub release.
+ * Reads `GET /api/system/version-check`, our own backend, and shows a compact
+ * card in the sidebar when that endpoint says an update is available. The card
+ * surfaces the release highlights and a one-click jump to the release.
  *
  * Implementation notes:
  *
- * - **Caching.** The GitHub response is cached in localStorage with a 1-hour
- *   TTL keyed by URL. Multiple tabs / sessions reuse the cached payload so
- *   we don't hammer the unauthenticated GitHub API (which is rate-limited
- *   to 60 req/hour per IP).
+ * - **Where the answer comes from.** The server asks PyPI, falls back to the
+ *   GitHub release, compares versions itself and caches the result for four
+ *   hours. This used to be a browser call straight to api.github.com, which
+ *   costs the anonymous rate limit — 60 requests an hour per IP, shared by
+ *   everyone in an office — and cannot be answered at all on an air-gapped
+ *   install, where it failed once an hour per tab and logged every attempt.
+ *   The server also knows things the browser cannot see: which version is
+ *   really installed, and whether this build can upgrade itself.
  *
- * - **First check.** Runs ~2 seconds after mount so the user sees the card
- *   almost immediately on a fresh load if there is an update. Subsequent
- *   checks happen every hour.
+ * - **Caching.** The query holds the answer for the same four hours the
+ *   server caches it, so mounting the widget again costs nothing and a
+ *   long-lived tab still notices a release that lands while it is open.
  *
- * - **Dismiss.** Per-version dismiss state is stored in localStorage; once
+ * - **Failure.** Anything other than a well-formed answer — offline, a proxy
+ *   answering with its own page, a slow endpoint, an error — renders nothing
+ *   at all. The notice can never be the reason a screen fails.
+ *
+ * - **Dismiss.** Per-version dismiss state is stored in sessionStorage; once
  *   the user closes the card for v0.8.0 they will not see it again until
  *   v0.8.1 (or higher) appears.
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import {
   Sparkles, X, ExternalLink, Copy, Check,
   Plus, Wrench, Palette, Loader2, Download, RotateCcw,
 } from 'lucide-react';
-import { APP_VERSION } from '@/shared/lib/version';
 import { apiGet, apiPost, ApiError } from '@/shared/lib/api';
 import { copyToClipboard } from '@/shared/lib/browser';
-import { isTauri } from '@/shared/lib/desktop';
+import { isTauri, openExternalUrl, openInNewTab } from '@/shared/lib/desktop';
 import { getIntlLocale } from '@/shared/lib/formatters';
 
 /* ── One-click upgrade — starts `pip install --upgrade` server-side ───
@@ -93,47 +100,62 @@ async function readUpgradeStatus(): Promise<UpgradeJob> {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const CURRENT_VERSION = APP_VERSION;
-const CHECK_INTERVAL_MS = 60 * 60 * 1000;       // 1 hour between polls
-const FIRST_CHECK_DELAY_MS = 2_000;             // first check ~2s after mount
-const CACHE_TTL_MS = 60 * 60 * 1000;            // 1 hour
-const CACHE_KEY = 'oe_update_cache_v1';
+const VERSION_CHECK_URL = '/api/system/version-check';
+/** Matches the server's own cache window, so holding the answer here costs
+ *  the server nothing and asking again inside it would gain nothing. */
+const VERSION_CHECK_TTL_MS = 4 * 60 * 60 * 1000;
 // Dismiss now lives in sessionStorage — every fresh app open shows the
 // banner again, but the user can hide it for the current tab/session.
 const DISMISS_KEY = 'oe_update_dismissed_version_session';
-
-const GITHUB_RELEASES_API =
-  'https://api.github.com/repos/datadrivenconstruction/OpenConstructionERP/releases/latest';
+/** The endpoint truncates the release body at this many characters, so notes
+ *  arriving at exactly this length are a cut, not a short release. */
+const NOTES_CAP = 500;
 
 /**
  * Skip the release check entirely.
  *
- * An install with no outbound internet - an on-premise deployment behind a
- * proxy, an air-gapped site, a machine being recorded - cannot reach
- * api.github.com, and there is no answer we would show it anyway. Without
- * this it asks once an hour, per tab, forever, and the browser logs the
- * failed request every time.
+ * Kept from when this widget called api.github.com itself, where a site with
+ * no outbound internet asked once an hour, per tab, forever, and the browser
+ * logged the failed request every time. The request is same-origin now and
+ * the server answers an air-gapped install without reaching anywhere, so this
+ * is no longer a remedy for anything; it stays as the way to switch the
+ * update notice off for a deployment that does not want one - a demo, a
+ * recording, a managed install upgraded by its own pipeline.
  */
 const UPDATE_CHECK_DISABLED = Boolean(import.meta.env.VITE_DISABLE_UPDATE_CHECK);
 
-interface ReleaseInfo {
-  version: string;
-  notes: string;
-  url: string;
-  publishedAt: string;
+/** The answer from ``GET /api/system/version-check``.
+ *
+ *  ``update_available`` is the server's comparison, not ours: it parses both
+ *  versions as integer tuples, so 5.2.10 sorts above 5.2.9 where a string
+ *  compare puts it below, and a pre-release sorts below the release it
+ *  precedes. Comparing again here would be a second implementation of one
+ *  decision, and the copy is the one that goes wrong.
+ *
+ *  ``self_upgrade_supported`` answers whether ``sys.executable`` can run
+ *  ``-m pip``, which a frozen bundle cannot. It is a property of the build,
+ *  and only the build can report it.
+ */
+export interface VersionCheck {
+  current_version: string;
+  latest_version: string;
+  update_available: boolean;
+  release_url: string;
+  release_notes: string;
+  published_at: string;
+  /** Installers published with the release. Empty when the endpoint could
+   *  not stand behind them, which it decides the same way it decides the
+   *  notes: only a GitHub release naming `latest_version` is quoted. */
+  assets: ReleaseAsset[];
+  self_upgrade_supported: boolean;
+  upgrade_command: string;
 }
 
-interface CachedRelease {
-  fetched_at: number;
-  /**
-   * ``null`` records a check that ran and produced nothing to show: GitHub
-   * answered 403 because the anonymous rate limit is per IP and an office
-   * shares one, or the network refused the call. Without this the failure was
-   * not cached at all, so every mount in every tab asked again and the console
-   * collected one failed request after another. A negative entry expires on
-   * the same TTL as a positive one.
-   */
-  data: ReleaseInfo | null;
+/** One published installer: what it is called, where it is, how big it is. */
+export interface ReleaseAsset {
+  name: string;
+  url: string;
+  size: number;
 }
 
 interface GroupedHighlights {
@@ -144,15 +166,125 @@ interface GroupedHighlights {
   totalCount: number;
 }
 
-/** Compare semver strings — returns true if `a` is strictly newer than `b`. */
-function isNewer(a: string, b: string): boolean {
-  const pa = a.split('.').map(Number);
-  const pb = b.split('.').map(Number);
-  for (let i = 0; i < 3; i++) {
-    if ((pa[i] ?? 0) > (pb[i] ?? 0)) return true;
-    if ((pa[i] ?? 0) < (pb[i] ?? 0)) return false;
+/** Keep only the asset entries that carry all three fields we would render.
+ *  An older backend answers no ``assets`` at all, which is the same thing to
+ *  a reader as a release that published none: no download to offer, and the
+ *  release page below still gets them there. */
+function parseAssets(raw: unknown): ReleaseAsset[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ReleaseAsset[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const a = entry as Partial<ReleaseAsset>;
+    if (typeof a.name !== 'string' || !a.name) continue;
+    if (typeof a.url !== 'string' || !a.url) continue;
+    out.push({ name: a.name, url: a.url, size: typeof a.size === 'number' ? a.size : 0 });
   }
-  return false;
+  return out;
+}
+
+/** The three platforms Desktop Release publishes an installer for. `null`
+ *  covers everything else, phones included, where there is nothing to run. */
+type InstallerPlatform = 'windows' | 'macos' | 'linux' | null;
+
+/**
+ * Which machine is the reader sitting at.
+ *
+ * Read from the browser and never from the server. The desktop build serves
+ * its API to any browser that can reach the port, so the platform this
+ * process runs on is not reliably the platform of the person reading, and
+ * that mismatch is exactly what the endpoint declines to guess at.
+ *
+ * Order is load-bearing twice over. Android user agents contain "Linux", and
+ * iPhone and iPad ones contain "Mac OS X", so both mobile families have to be
+ * answered before the desktop tests they would otherwise match. Neither has
+ * an installer to be offered.
+ */
+function readInstallerPlatform(): InstallerPlatform {
+  if (typeof navigator === 'undefined') return null;
+  const ua = navigator.userAgent || '';
+  if (/Windows/i.test(ua)) return 'windows';
+  if (/Android|iPhone|iPad|iPod/i.test(ua)) return null;
+  if (/Macintosh|Mac OS X/i.test(ua)) return 'macos';
+  if (/Linux|X11/i.test(ua)) return 'linux';
+  return null;
+}
+
+/**
+ * Extensions to offer per platform, best first.
+ *
+ * macOS is matched on `.dmg` alone even though the release also carries an
+ * `.app.tar.gz`: that second file is the updater bundle, not something a
+ * person installs, and a substring test would hand it over. Linux has up to
+ * three, and one button can only be one of them - `.AppImage` leads because
+ * it runs on any distribution where `.deb` is Debian and Ubuntu only, and
+ * the `.rpm` is last because its build routinely runs out of job time and is
+ * simply absent from a release. Windows has shipped one installer, the NSIS
+ * `.exe`, since 15.2.0.
+ */
+const INSTALLER_SUFFIXES: Record<Exclude<InstallerPlatform, null>, string[]> = {
+  windows: ['.exe'],
+  macos: ['.dmg'],
+  linux: ['.AppImage', '.deb', '.rpm'],
+};
+
+/**
+ * The installer this reader should be offered, or ``null`` when the release
+ * published nothing that fits.
+ *
+ * Matched on the end of the file name rather than anywhere inside it, which
+ * is what keeps `.app.tar.gz` from answering for `.dmg` and a detached
+ * `.exe.sig` signature from answering for the installer it signs.
+ */
+function pickInstaller(assets: ReleaseAsset[], platform: InstallerPlatform): ReleaseAsset | null {
+  if (!platform) return null;
+  for (const suffix of INSTALLER_SUFFIXES[platform]) {
+    const hit = assets.find((a) => a.name.toLowerCase().endsWith(suffix.toLowerCase()));
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/**
+ * Ask the backend whether this install is behind, answering ``null`` for
+ * every way that can fail to produce a usable answer.
+ *
+ * Nothing here rejects, and nothing here throws: a rejected promise would
+ * put React Query into an error state that a caller could render, and the
+ * one thing this notice must never do is become the reason a screen fails.
+ * Offline, a 500, a gateway answering 200 with its own login page, a body
+ * whose shape moved - all of them are the same thing to a reader, which is
+ * nothing to show.
+ */
+async function fetchVersionCheck(): Promise<VersionCheck | null> {
+  try {
+    const r = await fetch(VERSION_CHECK_URL, { headers: { Accept: 'application/json' } });
+    if (!r.ok) return null;
+    const data: unknown = await r.json();
+    if (!data || typeof data !== 'object') return null;
+    const body = data as Partial<VersionCheck>;
+    // Shape check rather than a cast. Without it a body that answers 200 with
+    // something else entirely renders "v undefined → v undefined".
+    if (typeof body.latest_version !== 'string' || !body.latest_version) return null;
+    if (typeof body.update_available !== 'boolean') return null;
+    return {
+      current_version: typeof body.current_version === 'string' ? body.current_version : '',
+      latest_version: body.latest_version,
+      update_available: body.update_available,
+      release_url: typeof body.release_url === 'string' ? body.release_url : '',
+      release_notes: typeof body.release_notes === 'string' ? body.release_notes : '',
+      published_at: typeof body.published_at === 'string' ? body.published_at : '',
+      assets: parseAssets(body.assets),
+      // A build that does not say either way is treated as unable to upgrade
+      // itself, because the failure modes are not symmetric: an installer
+      // instruction reaches a pip install too, while a pip command reaches a
+      // frozen build as advice it cannot carry out.
+      self_upgrade_supported: body.self_upgrade_supported === true,
+      upgrade_command: typeof body.upgrade_command === 'string' ? body.upgrade_command : '',
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -244,93 +376,77 @@ function groupHighlights(notes: string): GroupedHighlights {
   return result;
 }
 
-/* ── Cache helpers ─────────────────────────────────────────────────── */
-
-function readCache(): CachedRelease | null {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const cached = JSON.parse(raw) as CachedRelease;
-    // `data` may be null on purpose — that is the negative entry. Only its
-    // absence means the payload is from some other writer and unusable.
-    if (!cached?.fetched_at || cached.data === undefined) return null;
-    if (Date.now() - cached.fetched_at > CACHE_TTL_MS) return null;
-    return cached;
-  } catch {
-    return null;
-  }
+/**
+ * The opening of the release notes, as prose.
+ *
+ * The endpoint caps the body at {@link NOTES_CAP} characters and this
+ * project's releases open with paragraphs rather than bullets, so
+ * `groupHighlights` usually finds nothing to group in what arrives. An empty
+ * panel would be the wrong answer to that: the paragraph itself says what the
+ * release is about. What it must not do is print the half-finished word a cut
+ * at a fixed character count leaves behind, so the text is trimmed back to a
+ * word boundary and marked as continuing.
+ */
+function isProseLine(line: string): boolean {
+  // Headings, bullets and anything carrying a URL are not prose. The release
+  // body ends with the list GitHub generates - one commit subject and a
+  // compare link per line - and read as a paragraph those print raw URLs and
+  // commit prefixes at the reader.
+  return (
+    Boolean(line) &&
+    !line.startsWith('#') &&
+    !line.startsWith('-') &&
+    !line.startsWith('*') &&
+    !line.includes('://')
+  );
 }
 
-function writeCache(data: ReleaseInfo | null): void {
-  try {
-    const payload: CachedRelease = { fetched_at: Date.now(), data };
-    localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
-  } catch {
-    /* localStorage quota or disabled — silent */
-  }
+function notesExcerpt(notes: string, limit = 320): string {
+  const lines = notes.split('\n').map((line) => line.trim());
+  const clean = stripMarkdown(lines.filter(isProseLine).join(' '));
+  if (!clean) return '';
+  // The endpoint hands back the first NOTES_CAP characters of the body, so
+  // where that cut landed decides whether the last thing we quote is whole.
+  // Inside a heading or a bullet, the paragraph above it survives intact and
+  // is printed as written; inside the paragraph itself, its last word is a
+  // fragment and has to go.
+  const endsMidWord = notes.length >= NOTES_CAP && isProseLine(lines[lines.length - 1] ?? '');
+  if (clean.length <= limit && !endsMidWord) return clean;
+  const cut = clean.slice(0, Math.min(limit, clean.length));
+  const lastSpace = cut.lastIndexOf(' ');
+  return `${lastSpace > 0 ? cut.slice(0, lastSpace) : cut}…`;
 }
 
 /* ── Component ─────────────────────────────────────────────────────── */
 
 /**
  * Public hook so other pages (About, Settings) can show the same update
- * card without duplicating the fetch logic. Returns the release info if a
- * newer version is available, otherwise null. Uses the same in-memory
- * cache + localStorage TTL as the sidebar widget.
+ * card without duplicating the fetch logic. Returns the server's answer when
+ * it says an update is available, otherwise null.
+ *
+ * One query key for the whole app, so the sidebar card, the About page and
+ * the Settings panel share one answer and one request between them. The
+ * query is never retried and its failure is held for the same window as its
+ * success: a site that cannot reach the endpoint would otherwise ask again on
+ * every mount, which is the retry storm the browser-side GitHub call used to
+ * produce.
  */
-export function useUpdateCheck(): ReleaseInfo | null {
-  const [release, setRelease] = useState<ReleaseInfo | null>(null);
+export function useUpdateCheck(): VersionCheck | null {
+  const { data } = useQuery<VersionCheck | null>({
+    queryKey: ['system-version-check'],
+    queryFn: fetchVersionCheck,
+    enabled: !UPDATE_CHECK_DISABLED,
+    staleTime: VERSION_CHECK_TTL_MS,
+    // No interval. A tab left open for days will not hear about a release
+    // until it is reloaded, and that is the trade this widget should make: a
+    // timer asks again forever, including on the install that can never be
+    // answered, which is the shape of the storm this change removed. A
+    // release is worth knowing about within the session that follows it.
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      if (UPDATE_CHECK_DISABLED) return;
-      // A fresh cache entry answers the question whether or not it names a
-      // newer release. Returning only on the newer case sent every up to date
-      // install - which is most of them, most of the time - straight back to
-      // GitHub on every mount, so the cache guarded nothing.
-      const cached = readCache();
-      if (cached) {
-        if (!cancelled && cached.data && isNewer(cached.data.version, CURRENT_VERSION)) {
-          setRelease(cached.data);
-        }
-        return;
-      }
-      try {
-        const resp = await fetch(GITHUB_RELEASES_API);
-        if (!resp.ok) {
-          writeCache(null);
-          return;
-        }
-        const data = await resp.json();
-        const latest = (data.tag_name ?? '').replace(/^v/, '');
-        if (!latest) {
-          writeCache(null);
-          return;
-        }
-        const info: ReleaseInfo = {
-          version: latest,
-          notes: data.body ?? '',
-          url:
-            data.html_url ??
-            'https://github.com/datadrivenconstruction/openconstructionerp/releases',
-          publishedAt: data.published_at ?? '',
-        };
-        writeCache(info);
-        if (!cancelled && isNewer(latest, CURRENT_VERSION)) setRelease(info);
-      } catch {
-        /* Network error. Cached as a failure so the next mount does not
-           repeat it inside the TTL. */
-        writeCache(null);
-      }
-    };
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return release;
+  return data && data.update_available ? data : null;
 }
 
 interface UpdateNotificationProps {
@@ -343,90 +459,41 @@ interface UpdateNotificationProps {
 
 export function UpdateNotification({ forceShow = false, hideDismiss = false }: UpdateNotificationProps = {}) {
   const { t } = useTranslation();
-  const [release, setRelease] = useState<ReleaseInfo | null>(null);
-  const [dismissed, setDismissed] = useState(false);
+  const release = useUpdateCheck();
+  // The version a dismissal was about, not the fact that one happened. Read
+  // from storage at mount rather than when the answer arrives, so a card
+  // dismissed in this session stays down when the widget mounts again on
+  // another route with the answer already cached.
+  const [dismissedVersion, setDismissedVersion] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem(DISMISS_KEY);
+    } catch {
+      return null;
+    }
+  });
   const [showFullModal, setShowFullModal] = useState(false);
 
-  const checkForUpdate = useCallback(async () => {
-    if (UPDATE_CHECK_DISABLED) return;
-
-    // 1. Try cache first — avoids hitting GitHub API when multiple tabs are open.
-    const cached = readCache();
-    if (cached) {
-      const dismissedVersion = sessionStorage.getItem(DISMISS_KEY);
-      if (
-        cached.data &&
-        dismissedVersion !== cached.data.version &&
-        isNewer(cached.data.version, CURRENT_VERSION)
-      ) {
-        setRelease(cached.data);
-      }
-      return;
-    }
-
-    // 2. Cache miss → fetch from GitHub.
-    try {
-      const resp = await fetch(GITHUB_RELEASES_API);
-      if (!resp.ok) {
-        writeCache(null);
-        return;
-      }
-      const data = await resp.json();
-      const latest = (data.tag_name ?? '').replace(/^v/, '');
-      if (!latest) {
-        writeCache(null);
-        return;
-      }
-
-      const info: ReleaseInfo = {
-        version: latest,
-        notes: data.body ?? '',
-        url:
-          data.html_url ??
-          'https://github.com/datadrivenconstruction/OpenConstructionERP/releases',
-        publishedAt: data.published_at ?? '',
-      };
-      writeCache(info);
-
-      if (!isNewer(latest, CURRENT_VERSION)) return;
-
-      const dismissedVersion = sessionStorage.getItem(DISMISS_KEY);
-      if (dismissedVersion === latest) return;
-
-      setRelease(info);
-    } catch {
-      /* Network error. Recorded as a failure so the next mount does not
-         repeat it inside the TTL; the polling tick still retries after it. */
-      writeCache(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(checkForUpdate, FIRST_CHECK_DELAY_MS);
-    const interval = setInterval(checkForUpdate, CHECK_INTERVAL_MS);
-    return () => {
-      clearTimeout(timer);
-      clearInterval(interval);
-    };
-  }, [checkForUpdate]);
-
   const handleDismiss = useCallback(() => {
-    setDismissed(true);
-    if (release) {
-      sessionStorage.setItem(DISMISS_KEY, release.version);
+    if (!release) return;
+    setDismissedVersion(release.latest_version);
+    try {
+      sessionStorage.setItem(DISMISS_KEY, release.latest_version);
+    } catch {
+      /* storage unavailable — the card simply reappears next mount */
     }
   }, [release]);
 
   const grouped = useMemo<GroupedHighlights | null>(
-    () => (release ? groupHighlights(release.notes) : null),
+    () => (release ? groupHighlights(release.release_notes) : null),
     [release],
   );
 
   if (!release) return null;
-  if (dismissed && !forceShow) return null;
+  // Scoped to the version dismissed: the next release speaks up on its own.
+  if (dismissedVersion === release.latest_version && !forceShow) return null;
 
-  const relativeDate = release.publishedAt
-    ? new Date(release.publishedAt).toLocaleDateString(getIntlLocale())
+  const relativeDate = release.published_at
+    ? new Date(release.published_at).toLocaleDateString(getIntlLocale())
     : '';
 
   return (
@@ -441,7 +508,7 @@ export function UpdateNotification({ forceShow = false, hideDismiss = false }: U
           onClick={() => setShowFullModal(true)}
           aria-label={t('update.open_details', {
             defaultValue: 'View update details for v{{version}}',
-            version: release.version,
+            version: release.latest_version,
           })}
           className="w-full text-left"
         >
@@ -465,7 +532,12 @@ export function UpdateNotification({ forceShow = false, hideDismiss = false }: U
                 </div>
               </div>
               <span className="flex-1 text-[13px] font-bold text-blue-900 dark:text-sky-100 tabular-nums leading-tight break-words">
-                v{CURRENT_VERSION} → v{release.version}
+                {/* The arrow needs both ends to mean anything. A body that
+                    named the new version but not the running one would
+                    otherwise read "v → v15.1.0". */}
+                {release.current_version
+                  ? `v${release.current_version} → v${release.latest_version}`
+                  : `v${release.latest_version}`}
               </span>
               <span className="shrink-0 inline-flex items-center rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
                 {t('update.new_available', { defaultValue: 'available' })}
@@ -579,7 +651,7 @@ function UpdateFullModal({
   grouped,
   onClose,
 }: {
-  release: ReleaseInfo;
+  release: VersionCheck;
   grouped: GroupedHighlights | null;
   onClose: () => void;
 }) {
@@ -601,7 +673,7 @@ function UpdateFullModal({
     setUpgradeStatus('running');
     setUpgradeError(null);
     try {
-      let job = await startRuntimeUpgrade(release.version);
+      let job = await startRuntimeUpgrade(release.latest_version);
       setUpgradeResult(job);
 
       const ceiling = Date.now() + UPGRADE_POLL_CEILING_MS;
@@ -640,7 +712,7 @@ function UpdateFullModal({
       }
       setUpgradeStatus('error');
     }
-  }, [release.version]);
+  }, [release.latest_version]);
 
   const copy = useCallback(async (key: string, text: string) => {
     try {
@@ -660,26 +732,65 @@ function UpdateFullModal({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const relativeDate = release.publishedAt
-    ? new Date(release.publishedAt).toLocaleDateString(getIntlLocale())
+  const relativeDate = release.published_at
+    ? new Date(release.published_at).toLocaleDateString(getIntlLocale())
     : '';
 
-  const methods: Array<{ key: string; title: string; subtitle: string; cmd: string }> = [
-    {
-      key: 'pip',
-      title: t('update.method_pip', { defaultValue: 'pip / PyPI' }),
-      subtitle: t('update.method_pip_sub', { defaultValue: 'Recommended for Python installs' }),
-      cmd: 'pip install --upgrade openconstructionerp',
-    },
-    {
-      key: 'source',
-      title: t('update.method_source', { defaultValue: 'Source (git)' }),
-      subtitle: t('update.method_source_sub', {
-        defaultValue: 'For self-hosted installs from source',
-      }),
-      cmd: 'git pull && cd frontend && npm ci && npm run build && cd ../backend && pip install -e .',
-    },
-  ];
+  // What the reader can actually do, decided by the build rather than by the
+  // browser. `self_upgrade_supported` is false inside a frozen bundle, where
+  // `sys.executable` is the app binary and a pip command feeds its own tokens
+  // back into this application's CLI (issue #403). This used to be decided
+  // here from `isTauri`, which is a guess about the window rather than a fact
+  // about the build: the desktop app's server is reachable from an ordinary
+  // browser, and read there the guess said "pip" to a build that has none.
+  //
+  // The pip command itself comes from the server too, for the reason
+  // backend/app/core/self_upgrade.py gives about its own wording: two places
+  // writing one instruction drift, and the second is always written by
+  // somebody who has not read the first.
+  const methods: Array<{ key: string; title: string; subtitle: string; cmd: string }> =
+    release.self_upgrade_supported
+      ? [
+          {
+            key: 'pip',
+            title: t('update.method_pip', { defaultValue: 'pip / PyPI' }),
+            subtitle: t('update.method_pip_sub', { defaultValue: 'Recommended for Python installs' }),
+            cmd: release.upgrade_command || 'pip install --upgrade openconstructionerp',
+          },
+          {
+            key: 'source',
+            title: t('update.method_source', { defaultValue: 'Source (git)' }),
+            subtitle: t('update.method_source_sub', {
+              defaultValue: 'For self-hosted installs from source',
+            }),
+            cmd: 'git pull && cd frontend && npm ci && npm run build && cd ../backend && pip install -e .',
+          },
+        ]
+      : [];
+
+  // The installer for the machine this is being read on, when the release
+  // published one. The release page lists every platform at once, so someone
+  // who cannot upgrade in place is otherwise asked to work out which of six
+  // files is theirs; naming it turns the page into a download.
+  const installer = pickInstaller(release.assets, readInstallerPlatform());
+
+  // The desktop shell renders in a webview where a plain target="_blank" can
+  // land nowhere, so the native bridge opens the reader's real browser. In an
+  // ordinary browser the anchor is left to do its own job, which also keeps
+  // right-click and copy-link working.
+  const openDownload = async (e: ReactMouseEvent<HTMLAnchorElement>, url: string): Promise<void> => {
+    if (!isTauri) return;
+    e.preventDefault();
+    const opened = await openExternalUrl(url);
+    if (!opened) openInNewTab(url);
+  };
+
+  /** The opening paragraph of the notes, shown when there are no bullets to
+   *  group - which is the usual case, because the release body opens with
+   *  prose and the endpoint returns only its first {@link NOTES_CAP}
+   *  characters. */
+  const excerpt =
+    grouped && grouped.totalCount > 0 ? '' : notesExcerpt(release.release_notes);
 
   // Portal to <body> so the modal escapes the Sidebar's stacking context.
   // AppLayout applies `translate-x-0` on the sidebar wrapper, which
@@ -714,7 +825,7 @@ function UpdateFullModal({
               >
                 {t('update.popup_title', {
                   defaultValue: 'Update available - v{{version}}',
-                  version: release.version,
+                  version: release.latest_version,
                 })}
               </h2>
               <div className="flex items-center gap-2 mt-1 text-sm text-content-secondary">
@@ -730,10 +841,17 @@ function UpdateFullModal({
                     </span>
                   </>
                 )}
-                <span aria-hidden="true">·</span>
-                <span className="tabular-nums">
-                  {t('update.currently_on', { defaultValue: 'you have v{{version}}', version: CURRENT_VERSION })}
-                </span>
+                {release.current_version && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="tabular-nums">
+                      {t('update.currently_on', {
+                        defaultValue: 'you have v{{version}}',
+                        version: release.current_version,
+                      })}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
             <button
@@ -800,14 +918,30 @@ function UpdateFullModal({
             </section>
           )}
 
+          {/* Prose opening of the notes, for the releases whose body carries
+              no bullets to group. Empty whenever the groups above have
+              something, so exactly one of the two renders. */}
+          {excerpt && (
+            <section>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary mb-3">
+                {t('update.whats_new', { defaultValue: "What's new" })}
+              </h3>
+              <p className="text-sm leading-relaxed text-content-primary">{excerpt}</p>
+            </section>
+          )}
+
           {/* One-click upgrade — server-side ``pip install --upgrade`` in the
               same venv as the running uvicorn. The 403 fallback below shows
               when ALLOW_RUNTIME_UPGRADE is off (managed installs).
 
-              Deliberately still shown in the desktop build even though the
-              route refuses there (frozen sidecar, no pip - issue #403): the
-              409 carries the instruction the user needs, and hiding the
-              button would hide the instruction with it. */}
+              Shown only where the server says this build can upgrade itself.
+              It used to be shown everywhere, deliberately, because the 409 a
+              frozen build answers carries the instruction the reader needs
+              and hiding the button hid the instruction with it (issue #403).
+              That reasoning held while the instruction lived in the refusal;
+              it is now printed up front by the installer card below, so the
+              reader gets it without pressing a button that cannot work. */}
+          {release.self_upgrade_supported && (
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary mb-3">
               {t('update.apply_now', { defaultValue: 'Apply update' })}
@@ -819,7 +953,7 @@ function UpdateFullModal({
                     <div className="text-sm font-semibold text-content-primary">
                       {t('update.one_click_title', {
                         defaultValue: 'Install v{{version}} now',
-                        version: release.version,
+                        version: release.latest_version,
                       })}
                     </div>
                     <div className="text-2xs text-content-tertiary mt-0.5">
@@ -893,10 +1027,87 @@ function UpdateFullModal({
               )}
             </div>
           </section>
+          )}
 
-          {/* Install commands — hidden in the desktop build, where there is no
-              venv and no pip to run them in (issue #403). */}
-          {!isTauri && (
+          {/* How to update. A build that can run pip gets the commands; a
+              frozen one gets the only route that works for it, said plainly,
+              rather than a command whose first effect would be to teach the
+              reader that the tool telling them about the update cannot apply
+              it either.
+
+              `isTauri` widens this beyond frozen builds rather than replacing
+              the test, and the two are not the same question. Whether pip can
+              run is a fact about the build; whether the reader is sitting in
+              the desktop shell is a fact about the window. A desktop build
+              backed by a real venv answers yes to both, and it keeps the pip
+              route below - what it gains here is the installer, which works
+              for it either way. Nothing promises to install anything: we ship
+              no updater, and on Windows the installer wants administrator
+              rights that a download cannot grant itself. */}
+          {(!release.self_upgrade_supported || isTauri) && (
+            <section>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary mb-3">
+                {t('update.how_to_update', { defaultValue: 'How to update' })}
+              </h3>
+              <div className="rounded-xl border border-border bg-surface-base px-3 py-3">
+                <div className="text-sm font-semibold text-content-primary">
+                  {t('update.method_installer')}
+                </div>
+                <p className="mt-1 text-2xs leading-relaxed text-content-tertiary">
+                  {installer
+                    ? t('update.download_installer_hint')
+                    : t('update.method_installer_advice')}
+                </p>
+                {/* The file itself when we can name it. The name is shown
+                    because it is the thing that will land in the downloads
+                    folder, and a reader who can see it is not taking our word
+                    for which platform we decided they are on. */}
+                {installer && (
+                  <div className="mt-2">
+                    <a
+                      href={installer.url}
+                      onClick={(e) => void openDownload(e, installer.url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-sm font-semibold text-white transition-colors"
+                    >
+                      <Download size={13} />
+                      {t('update.download_installer')}
+                    </a>
+                    <div className="mt-1.5 flex items-center gap-2 text-2xs text-content-tertiary">
+                      <span className="font-mono break-all">{installer.name}</span>
+                      {installer.size > 0 && (
+                        <span className="tabular-nums whitespace-nowrap">
+                          {t('update.installer_size', {
+                            size: Math.round(installer.size / (1024 * 1024)),
+                          })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {/* The way there, next to the instruction that names it. The
+                    footer link says "Release notes", and a reader sent to
+                    fetch an installer should not have to work out that those
+                    are the same page. Kept even when the download above is
+                    offered: it is the only route left when we picked the
+                    wrong platform, or when someone wants the package the one
+                    button could not be. */}
+                <a
+                  href={release.release_url}
+                  onClick={(e) => void openDownload(e, release.release_url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-sky-400 dark:hover:text-sky-300"
+                >
+                  {t('update.open_release_page')}
+                  <ExternalLink size={12} />
+                </a>
+              </div>
+            </section>
+          )}
+
+          {methods.length > 0 && (
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-content-tertiary mb-3">
               {t('update.how_to_update', { defaultValue: 'How to update' })}
@@ -943,7 +1154,7 @@ function UpdateFullModal({
         {/* Footer — release link + primary dismiss */}
         <div className="px-6 py-4 bg-surface-secondary/40 border-t border-border flex items-center justify-between gap-3">
           <a
-            href={release.url}
+            href={release.release_url}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-sky-400 dark:hover:text-sky-300"
