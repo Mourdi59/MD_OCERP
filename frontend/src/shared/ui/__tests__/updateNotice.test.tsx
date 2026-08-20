@@ -308,20 +308,35 @@ describe('the download offered is the one this machine can run', () => {
     return label ? (label.closest('a')?.getAttribute('href') ?? null) : null;
   }
 
+  /** The release page link inside the same card. Reads only, so a test that
+   *  wants both hrefs calls `downloadHref` first and leaves the card open. */
+  function releasePageHref(): string | null {
+    const label = screen.queryByText('update.open_release_page');
+    return label ? (label.closest('a')?.getAttribute('href') ?? null) : null;
+  }
+
+  /** Every asset Desktop Release can produce for one version. Declared as its
+   *  own const rather than inline, so a test can hand over a subset and still
+   *  be type checked: `versionCheck` takes loose overrides, and an asset list
+   *  built inside that call arrives as an array of nothing in particular. */
+  const ALL_ASSETS = [
+    { name: 'OpenConstructionERP_15.1.0_aarch64.app.tar.gz', url: 'https://x.test/mac-updater', size: 700 },
+    { name: 'OpenConstructionERP_15.1.0_aarch64.dmg', url: 'https://x.test/mac-dmg', size: 734003200 },
+    { name: 'OpenConstructionERP_15.1.0_x64-setup.exe.sig', url: 'https://x.test/win-sig', size: 500 },
+    { name: 'OpenConstructionERP_15.1.0_x64-setup.exe', url: 'https://x.test/win-exe', size: 629145600 },
+    { name: 'open-construction-erp_15.1.0_amd64.deb', url: 'https://x.test/linux-deb', size: 650000000 },
+    { name: 'OpenConstructionERP_15.1.0_amd64.AppImage', url: 'https://x.test/linux-appimage', size: 660000000 },
+    { name: 'open-construction-erp-15.1.0.x86_64.rpm', url: 'https://x.test/linux-rpm', size: 655000000 },
+  ];
+
+  /** A release that published exactly these assets and nothing else. */
+  function releaseWith(assets: typeof ALL_ASSETS) {
+    return versionCheck({ self_upgrade_supported: false, assets });
+  }
+
   /** A release that published every asset Desktop Release can produce. */
   function fullRelease() {
-    return versionCheck({
-      self_upgrade_supported: false,
-      assets: [
-        { name: 'OpenConstructionERP_15.1.0_aarch64.app.tar.gz', url: 'https://x.test/mac-updater', size: 700 },
-        { name: 'OpenConstructionERP_15.1.0_aarch64.dmg', url: 'https://x.test/mac-dmg', size: 734003200 },
-        { name: 'OpenConstructionERP_15.1.0_x64-setup.exe.sig', url: 'https://x.test/win-sig', size: 500 },
-        { name: 'OpenConstructionERP_15.1.0_x64-setup.exe', url: 'https://x.test/win-exe', size: 629145600 },
-        { name: 'open-construction-erp_15.1.0_amd64.deb', url: 'https://x.test/linux-deb', size: 650000000 },
-        { name: 'OpenConstructionERP_15.1.0_amd64.AppImage', url: 'https://x.test/linux-appimage', size: 660000000 },
-        { name: 'open-construction-erp-15.1.0.x86_64.rpm', url: 'https://x.test/linux-rpm', size: 655000000 },
-      ],
-    });
+    return releaseWith(ALL_ASSETS);
   }
 
   afterEach(() => {
@@ -374,6 +389,37 @@ describe('the download offered is the one this machine can run', () => {
 
     expect(await downloadHref()).toBeNull();
     expect(await screen.findByText('update.method_installer_advice')).toBeTruthy();
+    expect(releasePageHref()).toContain('/releases/tag/v15.1.0');
+  });
+
+  it('takes the package that is there when the preferred one is not', async () => {
+    // The .rpm is allowed to be missing from a release: its build can run for
+    // hours and is permitted to miss the deadline. The same is true of any
+    // one package, so the Linux list is a preference and not a promise, and
+    // the proof of that is a release where the first choice is simply absent.
+    usingUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36');
+    const noAppImage = ALL_ASSETS.filter((a) => !a.name.endsWith('.AppImage'));
+    vi.stubGlobal('fetch', answering(releaseWith(noAppImage)));
+
+    renderNotice();
+
+    expect(await downloadHref()).toBe('https://x.test/linux-deb');
+  });
+
+  it('sends a reader whose platform published nothing to the release page', async () => {
+    // Not the same case as a release with no assets at all: here the loop runs
+    // over six real files and matches none of them. It has to end where the
+    // empty release ends, at a working link, rather than at a button wired to
+    // undefined.
+    usingUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36');
+    const noLinux = ALL_ASSETS.filter((a) => !/\.(AppImage|deb|rpm)$/.test(a.name));
+    vi.stubGlobal('fetch', answering(releaseWith(noLinux)));
+
+    renderNotice();
+
+    expect(await downloadHref()).toBeNull();
+    expect(releasePageHref()).toContain('/releases/tag/v15.1.0');
+    expect(screen.getByText('update.method_installer_advice')).toBeTruthy();
   });
 
   it('offers no download to a phone, whose user agent names a desktop OS', async () => {
