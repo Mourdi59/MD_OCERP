@@ -19,6 +19,13 @@
   },
   {
     "locale_set": [
+      "en-US"
+    ],
+    "key_count_at_seed": 79,
+    "note": "en-US is a delta locale over en and carries only overrides, so every key it does not override is identical to en by construction. This set grows with any wave that adds keys en-US has no American spelling for."
+  },
+  {
+    "locale_set": [
       "es-MX"
     ],
     "key_count_at_seed": 4
@@ -28,6 +35,12 @@
       "fi"
     ],
     "key_count_at_seed": 4
+  },
+  {
+    "locale_set": [
+      "fil"
+    ],
+    "key_count_at_seed": 59
   },
   {
     "locale_set": [
@@ -88,13 +101,6 @@
       "pl"
     ],
     "key_count_at_seed": 3
-  },
-  {
-    "locale_set": [
-      "pt",
-      "pt-BR"
-    ],
-    "key_count_at_seed": 13
   },
   {
     "locale_set": [
@@ -205,14 +211,6 @@
   {
     "locale_set": [
       "da",
-      "pt",
-      "pt-BR"
-    ],
-    "key_count_at_seed": 3
-  },
-  {
-    "locale_set": [
-      "da",
       "ro"
     ],
     "key_count_at_seed": 3
@@ -261,20 +259,46 @@
   },
   {
     "locale_set": [
-      "de",
-      "pt",
-      "pt-BR"
+      "en-US",
+      "fr"
+    ],
+    "key_count_at_seed": 3,
+    "note": "French words spelled identically in English: Description, Verdict. en-US rides along for the delta-locale reason above."
+  },
+  {
+    "locale_set": [
+      "et",
+      "sv"
     ],
     "key_count_at_seed": 3
   },
   {
     "locale_set": [
-      "es",
-      "es-CL",
-      "es-CO",
-      "es-MX"
+      "fil",
+      "fr"
     ],
-    "key_count_at_seed": 32
+    "key_count_at_seed": 11
+  },
+  {
+    "locale_set": [
+      "fil",
+      "id"
+    ],
+    "key_count_at_seed": 11
+  },
+  {
+    "locale_set": [
+      "fil",
+      "nl"
+    ],
+    "key_count_at_seed": 4
+  },
+  {
+    "locale_set": [
+      "fil",
+      "ro"
+    ],
+    "key_count_at_seed": 4
   },
   {
     "locale_set": [
@@ -296,14 +320,6 @@
       "nl"
     ],
     "key_count_at_seed": 36
-  },
-  {
-    "locale_set": [
-      "fr",
-      "pt",
-      "pt-BR"
-    ],
-    "key_count_at_seed": 8
   },
   {
     "locale_set": [
@@ -346,14 +362,6 @@
       "no"
     ],
     "key_count_at_seed": 5
-  },
-  {
-    "locale_set": [
-      "id",
-      "pt",
-      "pt-BR"
-    ],
-    "key_count_at_seed": 8
   },
   {
     "locale_set": [
@@ -407,14 +415,6 @@
   {
     "locale_set": [
       "nl",
-      "pt",
-      "pt-BR"
-    ],
-    "key_count_at_seed": 3
-  },
-  {
-    "locale_set": [
-      "nl",
       "ro"
     ],
     "key_count_at_seed": 24
@@ -429,10 +429,9 @@
   {
     "locale_set": [
       "pt",
-      "pt-BR",
-      "ro"
+      "pt-BR"
     ],
-    "key_count_at_seed": 3
+    "key_count_at_seed": 13
   },
   {
     "locale_set": [
@@ -446,6 +445,14 @@
       "cs",
       "da",
       "hr"
+    ],
+    "key_count_at_seed": 3
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "fr"
     ],
     "key_count_at_seed": 3
   },
@@ -523,20 +530,19 @@
   },
   {
     "locale_set": [
-      "de",
-      "fr",
-      "nl"
+      "da",
+      "pt",
+      "pt-BR"
     ],
-    "key_count_at_seed": 44
+    "key_count_at_seed": 3
   },
   {
     "locale_set": [
       "de",
       "fr",
-      "pt",
-      "pt-BR"
+      "nl"
     ],
-    "key_count_at_seed": 3
+    "key_count_at_seed": 44
   },
   {
     "locale_set": [
@@ -580,34 +586,35 @@
   },
   {
     "locale_set": [
-      "es",
-      "es-CL",
-      "es-CO",
-      "es-MX",
-      "it"
-    ],
-    "key_count_at_seed": 6
-  },
-  {
-    "locale_set": [
-      "es",
-      "es-CL",
-      "es-CO",
-      "es-MX",
+      "de",
       "pt",
       "pt-BR"
     ],
-    "key_count_at_seed": 5
+    "key_count_at_seed": 3
   },
   {
     "locale_set": [
-      "es",
-      "es-CL",
-      "es-CO",
-      "es-MX",
-      "ro"
+      "et",
+      "id",
+      "ky"
     ],
-    "key_count_at_seed": 16
+    "key_count_at_seed": 3
+  },
+  {
+    "locale_set": [
+      "et",
+      "sv",
+      "tr"
+    ],
+    "key_count_at_seed": 9
+  },
+  {
+    "locale_set": [
+      "fil",
+      "id",
+      "vi"
+    ],
+    "key_count_at_seed": 3
   },
   {
     "locale_set": [
@@ -620,6 +627,14 @@
   {
     "locale_set": [
       "fr",
+      "pt",
+      "pt-BR"
+    ],
+    "key_count_at_seed": 8
+  },
+  {
+    "locale_set": [
+      "fr",
       "ro",
       "tr"
     ],
@@ -628,16 +643,31 @@
   {
     "locale_set": [
       "id",
-      "nl",
-      "pt",
-      "pt-BR"
+      "pl",
+      "ro"
     ],
-    "key_count_at_seed": 6
+    "key_count_at_seed": 3
   },
   {
     "locale_set": [
       "id",
-      "pl",
+      "pt",
+      "pt-BR"
+    ],
+    "key_count_at_seed": 8
+  },
+  {
+    "locale_set": [
+      "nl",
+      "pt",
+      "pt-BR"
+    ],
+    "key_count_at_seed": 3
+  },
+  {
+    "locale_set": [
+      "pt",
+      "pt-BR",
       "ro"
     ],
     "key_count_at_seed": 3
@@ -725,10 +755,7 @@
   },
   {
     "locale_set": [
-      "es",
-      "es-CL",
-      "es-CO",
-      "es-MX",
+      "de",
       "fr",
       "pt",
       "pt-BR"
@@ -740,33 +767,27 @@
       "es",
       "es-CL",
       "es-CO",
-      "es-MX",
-      "nl",
-      "ro"
+      "es-MX"
     ],
-    "key_count_at_seed": 13
+    "key_count_at_seed": 32
   },
   {
     "locale_set": [
-      "es",
-      "es-CL",
-      "es-CO",
-      "es-MX",
-      "pt",
-      "pt-BR",
-      "ro"
+      "et",
+      "hi",
+      "id",
+      "uk"
     ],
-    "key_count_at_seed": 4
+    "key_count_at_seed": 3
   },
   {
     "locale_set": [
       "id",
-      "it",
+      "nl",
       "pt",
-      "pt-BR",
-      "ro"
+      "pt-BR"
     ],
-    "key_count_at_seed": 3
+    "key_count_at_seed": 6
   },
   {
     "locale_set": [
@@ -802,22 +823,21 @@
     "locale_set": [
       "da",
       "de",
-      "nl",
-      "pt",
-      "pt-BR",
-      "sv"
-    ],
-    "key_count_at_seed": 4
-  },
-  {
-    "locale_set": [
-      "da",
-      "de",
       "no",
       "pl",
       "sv"
     ],
     "key_count_at_seed": 12
+  },
+  {
+    "locale_set": [
+      "da",
+      "et",
+      "nl",
+      "no",
+      "sv"
+    ],
+    "key_count_at_seed": 5
   },
   {
     "locale_set": [
@@ -835,12 +855,9 @@
       "es-CL",
       "es-CO",
       "es-MX",
-      "fr",
-      "id",
-      "pt",
-      "pt-BR"
+      "it"
     ],
-    "key_count_at_seed": 3
+    "key_count_at_seed": 6
   },
   {
     "locale_set": [
@@ -848,23 +865,19 @@
       "es-CL",
       "es-CO",
       "es-MX",
+      "ro"
+    ],
+    "key_count_at_seed": 16
+  },
+  {
+    "locale_set": [
       "id",
+      "it",
       "pt",
       "pt-BR",
       "ro"
     ],
-    "key_count_at_seed": 9
-  },
-  {
-    "locale_set": [
-      "fr",
-      "id",
-      "it",
-      "nl",
-      "pt",
-      "pt-BR"
-    ],
-    "key_count_at_seed": 8
+    "key_count_at_seed": 3
   },
   {
     "locale_set": [
@@ -913,6 +926,270 @@
   {
     "locale_set": [
       "da",
+      "de",
+      "it",
+      "nl",
+      "no",
+      "sv"
+    ],
+    "key_count_at_seed": 4,
+    "note": "English loanwords that are the ordinary business word in Germanic and Italian: live, Lead, Team. Checked each value rather than the count."
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "nl",
+      "pt",
+      "pt-BR",
+      "sv"
+    ],
+    "key_count_at_seed": 4
+  },
+  {
+    "locale_set": [
+      "es",
+      "es-CL",
+      "es-CO",
+      "es-MX",
+      "nl",
+      "ro"
+    ],
+    "key_count_at_seed": 13
+  },
+  {
+    "locale_set": [
+      "es",
+      "es-CL",
+      "es-CO",
+      "es-MX",
+      "pt",
+      "pt-BR"
+    ],
+    "key_count_at_seed": 5
+  },
+  {
+    "locale_set": [
+      "fr",
+      "id",
+      "it",
+      "nl",
+      "pt",
+      "pt-BR"
+    ],
+    "key_count_at_seed": 8
+  },
+  {
+    "locale_set": [
+      "cs",
+      "de",
+      "fr",
+      "it",
+      "nl",
+      "ro",
+      "sv"
+    ],
+    "key_count_at_seed": 6
+  },
+  {
+    "locale_set": [
+      "da",
+      "fr",
+      "id",
+      "it",
+      "nl",
+      "no",
+      "sv"
+    ],
+    "key_count_at_seed": 3
+  },
+  {
+    "locale_set": [
+      "es",
+      "es-CL",
+      "es-CO",
+      "es-MX",
+      "fr",
+      "pt",
+      "pt-BR"
+    ],
+    "key_count_at_seed": 3
+  },
+  {
+    "locale_set": [
+      "es",
+      "es-CL",
+      "es-CO",
+      "es-MX",
+      "pt",
+      "pt-BR",
+      "ro"
+    ],
+    "key_count_at_seed": 4
+  },
+  {
+    "locale_set": [
+      "cs",
+      "da",
+      "hr",
+      "id",
+      "nl",
+      "pl",
+      "ro",
+      "tr"
+    ],
+    "key_count_at_seed": 11
+  },
+  {
+    "locale_set": [
+      "cs",
+      "de",
+      "fil",
+      "fr",
+      "it",
+      "nl",
+      "ro",
+      "sv"
+    ],
+    "key_count_at_seed": 6
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "hr",
+      "id",
+      "nl",
+      "no",
+      "pl",
+      "sv"
+    ],
+    "key_count_at_seed": 71
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "hr",
+      "it",
+      "nl",
+      "pt",
+      "pt-BR",
+      "sv"
+    ],
+    "key_count_at_seed": 3
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "hr",
+      "nl",
+      "no",
+      "pl",
+      "ro",
+      "sv"
+    ],
+    "key_count_at_seed": 12
+  },
+  {
+    "locale_set": [
+      "da",
+      "et",
+      "fr",
+      "id",
+      "it",
+      "nl",
+      "no",
+      "sv"
+    ],
+    "key_count_at_seed": 3
+  },
+  {
+    "locale_set": [
+      "es",
+      "es-CL",
+      "es-CO",
+      "es-MX",
+      "fr",
+      "id",
+      "pt",
+      "pt-BR"
+    ],
+    "key_count_at_seed": 3
+  },
+  {
+    "locale_set": [
+      "es",
+      "es-CL",
+      "es-CO",
+      "es-MX",
+      "id",
+      "pt",
+      "pt-BR",
+      "ro"
+    ],
+    "key_count_at_seed": 9
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "et",
+      "hr",
+      "nl",
+      "no",
+      "pl",
+      "ro",
+      "sv"
+    ],
+    "key_count_at_seed": 12
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "fr",
+      "hr",
+      "id",
+      "no",
+      "pl",
+      "ro",
+      "sv"
+    ],
+    "key_count_at_seed": 9
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "hr",
+      "id",
+      "nl",
+      "no",
+      "pl",
+      "ro",
+      "sv"
+    ],
+    "key_count_at_seed": 15
+  },
+  {
+    "locale_set": [
+      "da",
+      "de",
+      "id",
+      "nl",
+      "no",
+      "pl",
+      "pt",
+      "pt-BR",
+      "sv"
+    ],
+    "key_count_at_seed": 14
+  },
+  {
+    "locale_set": [
+      "da",
       "es",
       "es-CL",
       "es-CO",
@@ -940,28 +1217,18 @@
   },
   {
     "locale_set": [
-      "cs",
-      "de",
-      "fr",
-      "it",
-      "nl",
-      "ro",
-      "sv"
-    ],
-    "key_count_at_seed": 6
-  },
-  {
-    "locale_set": [
       "da",
       "de",
       "hr",
-      "it",
+      "id",
       "nl",
+      "no",
+      "pl",
       "pt",
       "pt-BR",
       "sv"
     ],
-    "key_count_at_seed": 3
+    "key_count_at_seed": 34
   },
   {
     "locale_set": [
@@ -975,18 +1242,6 @@
       "pt",
       "pt-BR",
       "ro"
-    ],
-    "key_count_at_seed": 3
-  },
-  {
-    "locale_set": [
-      "da",
-      "fr",
-      "id",
-      "it",
-      "nl",
-      "no",
-      "sv"
     ],
     "key_count_at_seed": 3
   },
@@ -1022,59 +1277,6 @@
   },
   {
     "locale_set": [
-      "cs",
-      "da",
-      "hr",
-      "id",
-      "nl",
-      "pl",
-      "ro",
-      "tr"
-    ],
-    "key_count_at_seed": 11
-  },
-  {
-    "locale_set": [
-      "da",
-      "de",
-      "hr",
-      "id",
-      "nl",
-      "no",
-      "pl",
-      "sv"
-    ],
-    "key_count_at_seed": 71
-  },
-  {
-    "locale_set": [
-      "da",
-      "de",
-      "hr",
-      "nl",
-      "no",
-      "pl",
-      "ro",
-      "sv"
-    ],
-    "key_count_at_seed": 12
-  },
-  {
-    "locale_set": [
-      "da",
-      "de",
-      "id",
-      "nl",
-      "no",
-      "pl",
-      "pt",
-      "pt-BR",
-      "sv"
-    ],
-    "key_count_at_seed": 14
-  },
-  {
-    "locale_set": [
       "da",
       "es",
       "es-CL",
@@ -1091,52 +1293,46 @@
   },
   {
     "locale_set": [
+      "cs",
       "da",
       "de",
       "fr",
       "hr",
       "id",
-      "no",
-      "pl",
-      "ro",
-      "sv"
-    ],
-    "key_count_at_seed": 9
-  },
-  {
-    "locale_set": [
-      "da",
-      "de",
-      "hr",
-      "id",
-      "nl",
-      "no",
-      "pl",
-      "pt",
-      "pt-BR",
-      "sv"
-    ],
-    "key_count_at_seed": 34
-  },
-  {
-    "locale_set": [
-      "da",
-      "de",
-      "hr",
-      "id",
+      "it",
       "nl",
       "no",
       "pl",
       "ro",
       "sv"
     ],
-    "key_count_at_seed": 15
+    "key_count_at_seed": 3
   },
   {
     "locale_set": [
       "cs",
       "da",
       "de",
+      "et",
+      "fr",
+      "hr",
+      "id",
+      "it",
+      "nl",
+      "no",
+      "pl",
+      "ro",
+      "sv"
+    ],
+    "key_count_at_seed": 3
+  },
+  {
+    "locale_set": [
+      "cs",
+      "da",
+      "de",
+      "et",
+      "fil",
       "fr",
       "hr",
       "id",
@@ -1177,175 +1373,6 @@
       "th",
       "tr",
       "vi"
-    ],
-    "key_count_at_seed": 3
-  },
-  {
-    "locale_set": [
-      "da",
-      "de",
-      "et",
-      "hr",
-      "nl",
-      "no",
-      "pl",
-      "ro",
-      "sv"
-    ],
-    "key_count_at_seed": 12
-  },
-  {
-    "locale_set": [
-      "et",
-      "sv",
-      "tr"
-    ],
-    "key_count_at_seed": 9
-  },
-  {
-    "locale_set": [
-      "da",
-      "et",
-      "nl",
-      "no",
-      "sv"
-    ],
-    "key_count_at_seed": 5
-  },
-  {
-    "locale_set": [
-      "cs",
-      "da",
-      "de",
-      "et",
-      "fr",
-      "hr",
-      "id",
-      "it",
-      "nl",
-      "no",
-      "pl",
-      "ro",
-      "sv"
-    ],
-    "key_count_at_seed": 3
-  },
-  {
-    "locale_set": [
-      "da",
-      "et",
-      "fr",
-      "id",
-      "it",
-      "nl",
-      "no",
-      "sv"
-    ],
-    "key_count_at_seed": 3
-  },
-  {
-    "locale_set": [
-      "et",
-      "id",
-      "ky"
-    ],
-    "key_count_at_seed": 3
-  },
-  {
-    "locale_set": [
-      "et",
-      "sv"
-    ],
-    "key_count_at_seed": 3
-  },
-  {
-    "locale_set": [
-      "fil"
-    ],
-    "key_count_at_seed": 59
-  },
-  {
-    "locale_set": [
-      "fil",
-      "fr"
-    ],
-    "key_count_at_seed": 11
-  },
-  {
-    "locale_set": [
-      "fil",
-      "id"
-    ],
-    "key_count_at_seed": 11
-  },
-  {
-    "locale_set": [
-      "cs",
-      "de",
-      "fil",
-      "fr",
-      "it",
-      "nl",
-      "ro",
-      "sv"
-    ],
-    "key_count_at_seed": 6
-  },
-  {
-    "locale_set": [
-      "fil",
-      "nl"
-    ],
-    "key_count_at_seed": 4
-  },
-  {
-    "locale_set": [
-      "fil",
-      "ro"
-    ],
-    "key_count_at_seed": 4
-  },
-  {
-    "locale_set": [
-      "fil",
-      "id",
-      "vi"
-    ],
-    "key_count_at_seed": 3
-  },
-  {
-    "locale_set": [
-      "cs",
-      "da",
-      "de",
-      "et",
-      "fil",
-      "fr",
-      "hr",
-      "id",
-      "it",
-      "nl",
-      "no",
-      "pl",
-      "ro",
-      "sv"
-    ],
-    "key_count_at_seed": 3
-  },
-  {
-    "locale_set": [
-      "da",
-      "de",
-      "fr"
-    ],
-    "key_count_at_seed": 3
-  },
-  {
-    "locale_set": [
-      "et",
-      "hi",
-      "id",
-      "uk"
     ],
     "key_count_at_seed": 3
   }
