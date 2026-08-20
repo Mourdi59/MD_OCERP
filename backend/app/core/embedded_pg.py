@@ -29,9 +29,11 @@ from __future__ import annotations
 
 import logging
 import os
+import subprocess
 import time
 from pathlib import Path
 from types import ModuleType
+from typing import NamedTuple
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +56,13 @@ _server = None
 #: Set by :func:`retain` when something outside the application owns the cluster's
 #: lifetime, so an application shutdown inside that owner's run leaves it running.
 _retained = False
+
+#: Set by :func:`boot` when it can name the reason it refused to start. The CLI
+#: prints this in place of its generic "reinstall and try again" advice, which is
+#: wrong for the failures we can diagnose precisely - see
+#: :func:`data_dir_version_conflict`, where reinstalling makes the mismatch worse
+#: rather than better. ``None`` means "no specific diagnosis", not "no failure".
+_fatal_detail: str | None = None
 
 _TRUTHY = {"1", "true", "yes", "on"}
 _FALSY = {"0", "false", "no", "off"}
@@ -125,6 +134,18 @@ def is_running() -> bool:
     return _server is not None
 
 
+def last_fatal_detail() -> str | None:
+    """Return the specific reason the last :func:`boot` refused, when it had one.
+
+    :func:`boot` never raises and reports failure as ``False``, which tells the
+    caller that something went wrong and nothing about what. For the failures it
+    can actually name it also records the explanation here, so the CLI can print
+    that instead of the generic advice it would otherwise give. ``None`` means
+    boot had no specific diagnosis to offer, not that it succeeded.
+    """
+    return _fatal_detail
+
+
 def boot(data_dir: Path | str) -> bool:
     """Boot embedded PostgreSQL and point DATABASE_URL/DATABASE_SYNC_URL at it.
 
@@ -133,9 +154,10 @@ def boot(data_dir: Path | str) -> bool:
     ``False`` here is fatal at the CLI layer (``_setup_env`` exits with an
     actionable message). Returns ``True`` on success.
     """
-    global _server
+    global _server, _fatal_detail
     if _server is not None:
         return True
+    _fatal_detail = None
 
     try:
         import pixeltable_pgserver as pgserver
@@ -154,6 +176,34 @@ def boot(data_dir: Path | str) -> bool:
         pgdata.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
         logger.error("embedded PostgreSQL data dir unavailable at %s: %r", pgdata, exc)
+        return False
+
+    # Settle major-version compatibility before anything touches the cluster.
+    # The postmaster would refuse this directory anyway, but it refuses from
+    # inside the retry loop below, where the reason is buried under three
+    # attempts and reported as "the local database could not be started" - and
+    # the generic advice attached to that failure is to reinstall, which on a
+    # version bump is what caused it. Answering here means the user is told
+    # which two versions disagree while every byte of their data is still on
+    # disk, and is offered the recoveries that keep it before the one that does
+    # not. A directory we cannot read a version from is not a conflict, so a
+    # fresh install (no PG_VERSION yet) walks straight past this.
+    conflict = data_dir_version_conflict(pgdata)
+    if conflict is not None:
+        _fatal_detail = conflict.message
+        # The stage detail names both versions, not just the fact that they
+        # differ. This is the desktop app's failure - a bundled-PG bump is what
+        # strands an existing cluster - and on the desktop the only surface the
+        # user sees is the launcher checklist, which renders this string. The
+        # paragraph below it goes to the log file, which somebody stuck on a
+        # window that will not open is not reading.
+        emit_stage(
+            "pg",
+            "fail",
+            f"The local database was created by PostgreSQL {conflict.found}; "
+            f"this build ships PostgreSQL {conflict.expected}",
+        )
+        logger.error("%s", conflict.message)
         return False
 
     # pixeltable-pgserver hard-codes a 10s ``pg_ctl start -w`` timeout
@@ -601,6 +651,161 @@ def _initdb_args(pgdata: Path) -> tuple[str, ...]:
         "-D",
         str(pgdata),
     )
+
+
+def _postgres_major(version: str) -> str | None:
+    """Reduce a PostgreSQL version string to the major that decides file format.
+
+    PostgreSQL changed how it numbers releases at 10. From then on the first
+    component alone is the major, so ``16.11``, ``16.2`` and ``16`` are all
+    major 16 and share one on-disk format. Before 10 the second component was
+    part of the major: ``9.5`` and ``9.6`` are as incompatible with each other
+    as 15 is with 16, so both components have to survive here or a 9.5 cluster
+    would be reported as a 9.6 one.
+
+    Returns ``None`` when the string carries no leading number, which is what an
+    empty, truncated or corrupted ``PG_VERSION`` looks like. That is deliberately
+    not treated as a mismatch: we cannot say what wrote the directory, and a
+    guard that guesses would block a boot on no evidence.
+    """
+    parts = version.strip().split(".")
+    if not parts or not parts[0].isdigit():
+        return None
+    if parts[0] == "9" and len(parts) > 1 and parts[1].isdigit():
+        return f"9.{parts[1]}"
+    return parts[0]
+
+
+def _major_sort_key(major: str) -> tuple[int, ...]:
+    """Order two majors so the message can say which side is the newer one."""
+    return tuple(int(part) for part in major.split(".") if part.isdigit())
+
+
+def _data_dir_major(pgdata: Path) -> str | None:
+    """Return the PostgreSQL major that created ``pgdata``, or ``None``.
+
+    Every cluster carries its major in ``PG_VERSION``, written by initdb and
+    never updated in place - a major upgrade is a new directory plus pg_upgrade
+    or a dump/restore, never an edit of this file. ``None`` covers both "the
+    directory is not a cluster yet" (no file, the fresh-install path) and "the
+    file is there but says nothing usable".
+    """
+    try:
+        raw = (pgdata / "PG_VERSION").read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return None
+    return _postgres_major(raw)
+
+
+def _bundled_major() -> str | None:
+    """Return the PostgreSQL major the bundled binaries provide, or ``None``.
+
+    ``pg_config --version`` prints one line, ``PostgreSQL 16.11``, and it ships
+    in the same ``pginstall/bin`` directory as initdb and the postmaster, so it
+    is present wherever they are - including the frozen desktop bundle, whose
+    hook collects that whole tree (``desktop/hooks/hook-pixeltable_pgserver.py``).
+
+    Fails open on everything: a missing package, a missing binary, a non-zero
+    exit, a timeout, output in a shape we do not recognise. The caller uses this
+    only to refuse a boot, and refusing because we could not interrogate our own
+    installation would break working machines to guard against a broken one.
+    """
+    try:
+        from pixeltable_pgserver.utils import POSTGRES_BIN_PATH
+    except Exception:  # noqa: BLE001
+        return None
+    exe = Path(POSTGRES_BIN_PATH) / ("pg_config.exe" if os.name == "nt" else "pg_config")
+    if not exe.is_file():
+        return None
+    try:
+        completed = subprocess.run(  # noqa: S603
+            [str(exe), "--version"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=True,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("could not read the bundled PostgreSQL version from %s: %r", exe, exc)
+        return None
+    tokens = completed.stdout.strip().split()
+    if not tokens:
+        return None
+    return _postgres_major(tokens[-1])
+
+
+class VersionConflict(NamedTuple):
+    """A data directory and the bundled binaries disagreeing, with both numbers.
+
+    The prose message is the useful thing for a log or a terminal, but the two
+    majors have to survive as values as well: the launcher checklist gets one
+    short line per stage, and building that line by re-parsing the paragraph -
+    or by re-running ``pg_config`` - would be two ways of asking a question
+    already answered here.
+    """
+
+    found: str
+    expected: str
+    message: str
+
+
+def data_dir_version_conflict(pgdata: Path | str) -> VersionConflict | None:
+    """Explain why the cluster on disk cannot be opened by the bundled binaries.
+
+    A PostgreSQL data directory is readable only by the major version that wrote
+    it. The postmaster refuses in both directions and it refuses immediately, so
+    an application that bumps its bundled PostgreSQL leaves every existing
+    installation unable to start - and the raw refusal surfaces here after
+    several layers of retry, as "the local database could not be started".
+
+    Only the *presence* of ``PG_VERSION`` was ever read before this function
+    existed. That is enough to decide whether initdb still has to run and tells
+    nobody anything about compatibility, so the one recovery anybody could name
+    was ``init-db --reset``, which deletes the cluster. This says what the two
+    versions are while the data is still on disk, and names the recoveries that
+    keep it before the one that does not.
+
+    Returns a :class:`VersionConflict` on a mismatch and ``None`` otherwise -
+    including when either version cannot be read, which is not evidence of a
+    conflict.
+    """
+    pgdata = Path(pgdata)
+    found = _data_dir_major(pgdata)
+    if found is None:
+        return None
+    expected = _bundled_major()
+    if expected is None or found == expected:
+        return None
+
+    if _major_sort_key(found) > _major_sort_key(expected):
+        cause = (
+            "Nothing ever downgrades a data directory, so this normally means the application "
+            "was downgraded: an older release is running against a directory a newer one has "
+            "already opened. Installing that newer release again is the shortest way back."
+        )
+    else:
+        cause = (
+            "This normally means the application was upgraded across a PostgreSQL version bump: "
+            f"the directory was written by the PostgreSQL {found} the previous release carried, "
+            "and nothing migrates it on its own."
+        )
+
+    message = (
+        f"The local database at {pgdata} was created by PostgreSQL {found}, and this build ships "
+        f"PostgreSQL {expected}. PostgreSQL cannot open a data directory written by a different "
+        f"major version, so the cluster stays exactly as it is until one of the two sides moves. "
+        f"{cause} "
+        f"To keep the data: install PostgreSQL {found}, start it on {pgdata}, and point the "
+        f"application at it by setting DATABASE_URL - or use that PostgreSQL {found} to run "
+        f"pg_dump, then restore the dump into a fresh directory here. Setting DATABASE_URL is "
+        f"enough on its own, with one exception: '--embedded-pg' and a truthy OE_USE_EMBEDDED_PG "
+        f"both override it and send the application back to this directory, so drop them if you "
+        f"are using them. "
+        f"'openconstructionerp init-db --reset' also clears the conflict, and it clears it by "
+        f"DELETING the cluster at {pgdata}: every project, price, document and user in it is gone "
+        f"permanently. Run it only after a dump, or if this installation holds nothing you need."
+    )
+    return VersionConflict(found=found, expected=expected, message=message)
 
 
 def _clear_incomplete_cluster(pgdata: Path) -> None:

@@ -218,6 +218,13 @@ def _setup_env(data_dir: Path, host: str, port: int) -> None:
             if status.startswith("migrated"):
                 print(_green(_u("✓ ", "OK ")) + status)
             print(_green(_u("✓ ", "OK ")) + "Database: embedded PostgreSQL 16 (no Docker)")
+        elif embedded_pg.last_fatal_detail():
+            # boot() named the cause. The generic advice below would be actively
+            # wrong for those: a data directory written by another PostgreSQL
+            # major is not repaired by reinstalling, and reinstalling is how it
+            # got there. Print what boot worked out instead of talking over it.
+            print(_red(_u("✗ ", "X ")) + str(embedded_pg.last_fatal_detail()))
+            raise SystemExit(1)
         else:
             # pixeltable-pgserver missing or initdb failed. There is no SQLite
             # fallback anymore: PostgreSQL is required, so fail loudly with an
