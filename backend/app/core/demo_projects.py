@@ -2320,6 +2320,49 @@ _COUNTRY_ISO2: dict[str, str] = {
     "United Arab Emirates": "AE",
 }
 
+# Who really receives a notice of commencement, per country. Named because a
+# correspondence register that addresses "the authority" in Heidelberg, Delhi
+# and Sao Paulo alike is not a register of anything. The value is the local
+# proper noun where one is what a reader would see on the letter, which is why
+# some entries are not English - these are data, not prose.
+_AUTHORITY_BY_COUNTRY: dict[str, str] = {
+    "AU": "the principal certifier",
+    "NZ": "the territorial authority",
+    "CA": "the municipal building department",
+    "DE": "the Bauaufsichtsamt",
+    "CN": "the construction administration department",
+    "BR": "the Prefeitura",
+    "IN": "the municipal corporation",
+    "MX": "the municipal works authority",
+    "NL": "the gemeente",
+    "SA": "the municipality",
+    "ZA": "the local building control officer",
+    "GB": "the local authority building control",
+    "US": "the building department",
+    "FR": "the mairie",
+    "AE": "the municipality",
+}
+
+# The provision a formal notice is raised under, per country, so the register's
+# clause column points at the standard form that jurisdiction actually uses.
+# Contract standards are standards, not brands. Countries whose usual form we
+# cannot name with confidence are absent on purpose: an empty clause reference
+# is honest, an invented clause number is not, and a quantity surveyor reading
+# the demo would catch a wrong one immediately.
+_NOTICE_CLAUSE_BY_COUNTRY: dict[str, str] = {
+    "GB": "NEC4 cl. 15.1 early warning",
+    "US": "AIA A201 art. 15.1 claims",
+    "DE": "VOB/B § 6 Abs. 1 Behinderungsanzeige",
+    "FR": "CCAG Travaux, notification",
+    "AE": "FIDIC cl. 20.1 notice of claim",
+    "SA": "FIDIC cl. 20.1 notice of claim",
+    "IN": "FIDIC cl. 20.1 notice of claim",
+    "AU": "AS 4000 cl. 34 delay",
+    "NZ": "NZS 3910, written notice",
+    "CA": "CCDC 2, notice in writing",
+    "NL": "UAV 2012, kennisgeving",
+}
+
 # Friendly project archetype label per pack demo project.
 _PACK_DEMO_TYPE: dict[str, str] = {
     "mixed-use-sydney": "Mixed-use",
@@ -5312,29 +5355,137 @@ def _generate_module_data(
             }
         )
 
-    # ── Correspondence (6-10) ────────────────────────────────────────────
-    # The last element names the party the letter is with, as a contact role.
-    # It is a field on the seed rather than something read back out of the
-    # subject line. The subjects do name the party, and parsing them is the
-    # obvious shortcut, but they are English prose written to be read on a
-    # screen and they get reworded. A parser keyed on the word "Authority"
-    # would go on producing rows after a rewording, pointing at the wrong
-    # contact or at none, and there is no gate that would notice.
-    corr_seeds = [
-        ("outgoing", "Notice of commencement to authority", "letter", 0, "authority"),
-        ("incoming", "Authority acknowledgement of commencement", "letter", 7, "authority"),
-        ("outgoing", "Submission of insurance and bonds", "letter", 12, "client"),
-        ("incoming", "Client instruction on scope clarification", "letter", 20, "client"),
-        ("outgoing", "Monthly progress report to client", "report", 30, "client"),
-        ("incoming", "Consultant design clarification", "email", 24, "consultant"),
-        ("outgoing", "Request for information log update", "email", 28, "consultant"),
-        ("incoming", "Subcontractor early-warning notice", "letter", 35, "subcontractor"),
-        ("outgoing", "Interim valuation cover letter", "letter", 31, "client"),
-        ("incoming", "Authority inspection report", "report", 45, "authority"),
+    # ── Correspondence (10) ──────────────────────────────────────────────
+    # A register belongs to one project or it is not a register. These ten
+    # letters used to be a fixed list of subjects applied verbatim to every
+    # generated project, so four demos on three continents carried the same
+    # references, the same subjects and the same dates, and only the party
+    # names moved. Everything below is derived instead: the authority is the
+    # one that would really receive the notice in this country, the letters
+    # cite this project's own trades and its own tender firms, the valuation
+    # names its currency, the formal notice carries the response period its
+    # jurisdiction's standard form gives, and the days are spread across the
+    # real programme instead of the first six weeks of any programme.
+    #
+    # ``party`` names the contact role the letter is with. It is a field on
+    # the seed rather than something read back out of the subject line. The
+    # subjects do name the party, and parsing them is the obvious shortcut,
+    # but they are English prose written to be read on a screen and they get
+    # reworded. A parser keyed on the word "Authority" would go on producing
+    # rows after a rewording, pointing at the wrong contact or at none, and
+    # there is no gate that would notice.
+    authority = _AUTHORITY_BY_COUNTRY.get(cc, "the building authority")
+    clause = _NOTICE_CLAUSE_BY_COUNTRY.get(cc, "")
+
+    def _trade(i: int) -> str:
+        """A trade off this project's own bill, or a neutral stand-in."""
+        return trades[i % len(trades)][1] if trades else "the works"
+
+    def _firm(i: int) -> str:
+        """A firm off this project's own tender list, or a neutral stand-in."""
+        return firms[i % len(firms)][0] if firms else "the main contractor"
+
+    def _at(fraction: float) -> int:
+        """A day offset at ``fraction`` of the real programme.
+
+        Fixed offsets put the whole register inside the first six weeks of a
+        thirty-month job, which is what test data looks like. These follow
+        the programme the project actually declares.
+        """
+        return int(round(max(months, 1) * 30 * fraction))
+
+    notice_day = _at(0.42)
+    corr_seeds: list[dict] = [
+        {
+            "direction": "outgoing",
+            "subject": f"Notice of commencement to {authority}",
+            "type": "letter",
+            "day": 0,
+            "party": "authority",
+            "status": "closed",
+        },
+        {
+            "direction": "incoming",
+            "subject": f"{authority} acknowledgement of commencement",
+            "type": "letter",
+            "day": _at(0.03),
+            "party": "authority",
+            "status": "closed",
+        },
+        {
+            "direction": "outgoing",
+            "subject": "Submission of insurance certificates and performance bond",
+            "type": "letter",
+            "day": _at(0.06),
+            "party": "client",
+            "status": "closed",
+        },
+        {
+            "direction": "incoming",
+            "subject": f"Client instruction - scope clarification, {_trade(0)}",
+            "type": "letter",
+            "day": _at(0.14),
+            "party": "client",
+            "status": "responded",
+        },
+        {
+            "direction": "incoming",
+            "subject": f"Design clarification from the consultant - {_trade(1)}",
+            "type": "email",
+            "day": _at(0.19),
+            "party": "consultant",
+            "status": "responded",
+        },
+        {
+            "direction": "outgoing",
+            "subject": f"Drawing transmittal cover - {_trade(2)} package",
+            "type": "memo",
+            "day": _at(0.23),
+            "party": "consultant",
+            "status": "closed",
+        },
+        {
+            "direction": "outgoing",
+            "subject": f"Monthly progress report to the client, month {max(1, months // 3)}",
+            "type": "report",
+            "day": _at(0.30),
+            "party": "client",
+            "status": "closed",
+        },
+        {
+            "direction": "outgoing",
+            "subject": f"Interim valuation cover letter ({cur})" if cur else "Interim valuation cover letter",
+            "type": "letter",
+            "day": _at(0.36),
+            "party": "client",
+            "status": "responded",
+        },
+        {
+            # The one row that gives the register a reason to exist: a formal
+            # notice with a live response window. Without it the status column
+            # is the same word ten times over and nothing is ever outstanding.
+            "direction": "incoming",
+            "subject": f"Early-warning notice from {_firm(0)} - {_trade(3)}",
+            "type": "notice",
+            "day": notice_day,
+            "party": "subcontractor",
+            "status": "awaiting_response",
+            "response_required_by": _d(notice_day + 14),
+            "clause": clause,
+        },
+        {
+            "direction": "incoming",
+            "subject": f"{authority} inspection report",
+            "type": "report",
+            "day": _at(0.55),
+            "party": "authority",
+            "status": "open",
+        },
     ]
     correspondence: list[dict] = []
     out_i = in_i = 0
-    for i, (direction, subject, ctype, day, party) in enumerate(corr_seeds):
+    for spec in corr_seeds:
+        direction = spec["direction"]
         if direction == "outgoing":
             out_i += 1
             ref = f"OUT-{base.year}-{out_i:03d}"
@@ -5345,14 +5496,17 @@ def _generate_module_data(
             {
                 "reference_number": ref,
                 "direction": direction,
-                "subject": subject,
-                "correspondence_type": ctype,
-                "date_sent": _d(day) if direction == "outgoing" else None,
-                "date_received": _d(day) if direction == "incoming" else None,
-                "notes": f"{subject} - {proj}.",
+                "subject": spec["subject"],
+                "correspondence_type": spec["type"],
+                "date_sent": _d(spec["day"]) if direction == "outgoing" else None,
+                "date_received": _d(spec["day"]) if direction == "incoming" else None,
+                "notes": f"{spec['subject']} - {proj}.",
+                "status": spec["status"],
+                "response_required_by": spec.get("response_required_by"),
+                "contract_clause_ref": spec.get("clause") or None,
                 # Resolved to a contact id by the writer, which is where the
                 # ids are minted. Not a column on the record.
-                "party": party,
+                "party": spec["party"],
             }
         )
 
@@ -10442,9 +10596,43 @@ async def _seed_module_data(
         ],
     }
 
+    # Documents this project already carries. They are seeded and flushed one
+    # step before this function runs, so the ids exist and can be linked. A
+    # register whose DOCS column reads 0 on every row says the letters arrived
+    # with nothing attached, which is not what a construction register looks
+    # like: a transmittal carries drawings, a report is the report.
+    project_doc_ids: list[str] = [
+        str(doc_id)
+        for doc_id in (
+            await session.execute(select(Document.id).where(Document.project_id == project_id).order_by(Document.name))
+        )
+        .scalars()
+        .all()
+    ]
+
+    def _docs_for(spec: dict, position: int) -> list[str]:
+        """Attach documents to the letters that would really carry them.
+
+        Only the kinds that travel with paperwork: a transmittal memo, a
+        report, and the valuation cover. A letter that would arrive on its
+        own keeps an empty list rather than an invented attachment, so the
+        column still distinguishes one row from another.
+        """
+        if not project_doc_ids:
+            return []
+        kind = spec.get("correspondence_type")
+        subject = str(spec.get("subject") or "")
+        if kind == "memo":
+            # A drawing transmittal carries a package, not one sheet.
+            start = position % max(len(project_doc_ids) - 2, 1)
+            return project_doc_ids[start : start + 3]
+        if kind == "report" or "valuation" in subject.lower():
+            return [project_doc_ids[position % len(project_doc_ids)]]
+        return []
+
     try:
         corr_list = _CORRESPONDENCE.get(demo_id) or generated.get("correspondence", [])
-        for c in corr_list:
+        for corr_position, c in enumerate(corr_list):
             # Which contact this letter is with. The seed names a role and the
             # id is resolved here, because the ids are minted a few blocks up
             # and the generator that writes the letters runs before any row
@@ -10468,6 +10656,15 @@ async def _seed_module_data(
                     from_contact_id=None if outgoing else party_id,
                     to_contact_ids=[party_id] if outgoing and party_id else [],
                     notes=c.get("notes"),
+                    # Lifecycle. The hand-curated demos carry no status and
+                    # fall to the column default, which is "open"; the
+                    # generated register states each letter's own standing so
+                    # the status column distinguishes rows instead of
+                    # repeating one word down the page.
+                    status=c.get("status") or "open",
+                    response_required_by=c.get("response_required_by"),
+                    contract_clause_ref=c.get("contract_clause_ref"),
+                    linked_document_ids=_docs_for(c, corr_position),
                     created_by=owner_str,
                     metadata_={"demo_id": demo_id},
                 )
