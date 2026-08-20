@@ -26,6 +26,7 @@ from app.core.i18n import get_locale
 from app.core.json_merge import merge_metadata
 from app.core.sql_numeric import numeric_value
 from app.core.validation.engine import ValidationReport, validation_engine
+from app.modules.procurement.cost_spine import resolve_cost_line_ids
 from app.modules.procurement.models import (
     GoodsReceipt,
     GoodsReceiptItem,
@@ -535,6 +536,18 @@ class ProcurementService:
                 proj_currency = None
             currency_code = proj_currency or ""
 
+        # Resolve every line's cost-spine link before the PO row exists, so a
+        # bad or foreign position id is a 404 over a request that wrote
+        # nothing, rather than a 404 with a numbered PO already behind it. The
+        # answer is frozen here and copied onto the items below: an order
+        # commits against the scope as it stood on the day it was raised, and
+        # re-pointing the position tomorrow must not rewrite that.
+        item_cost_line_ids = await resolve_cost_line_ids(
+            self.session,
+            data.project_id,
+            [(item.cost_line_id, item.boq_position_id) for item in data.items],
+        )
+
         explicit_po_number = data.po_number
         # Mirrors changeorders BUG-354: MAX(po_number)+1 is not atomic, so two
         # concurrent creates can compute the same suffix and one would 500 on
@@ -560,6 +573,7 @@ class ProcurementService:
                 amount=item_data.amount,
                 wbs_id=item_data.wbs_id,
                 cost_category=item_data.cost_category,
+                cost_line_id=item_cost_line_ids[idx],
                 sort_order=item_data.sort_order if item_data.sort_order else idx,
             )
             await self.po_item_repo.create(item)
@@ -2224,6 +2238,17 @@ class MaterialRequisitionService:
             project_id: the project this requisition belongs to.
             items: optional list of dicts with keys description, quantity_requested,
                    unit_cost - extended_cost is computed as qty * unit_cost.
+                   An item may also carry ``boq_position_id`` or ``cost_line_id``
+                   to link the line to the cost spine, resolved on write by
+                   :func:`app.modules.procurement.cost_spine.resolve_cost_line_ids`
+                   exactly as a purchase-order line is.
+
+        Requisition lines take their spine link from a dict rather than from a
+        schema because this path has no schema and no HTTP surface: the module
+        exposes no requisition endpoint, so there is no ``RequisitionItemCreate``
+        to add a field to. The resolution is wired here so the link is already
+        correct on the day the endpoint lands, rather than being a second
+        omission to discover then.
         """
         est_delivery = _compute_delivery_date(required_date, lead_time_days)
         # Insert the requisition with a per-project sequential req_number, retrying
@@ -2242,7 +2267,12 @@ class MaterialRequisitionService:
 
         # Optionally create line items
         if items:
-            for item_data in items:
+            cost_line_ids = await resolve_cost_line_ids(
+                self.session,
+                project_id,
+                [(item.get("cost_line_id"), item.get("boq_position_id")) for item in items],
+            )
+            for idx, item_data in enumerate(items):
                 qty = _safe_decimal_str(item_data.get("quantity_requested", "0"))
                 ucost = _safe_decimal_str(item_data.get("unit_cost", "0"))
                 extended = str(Decimal(qty) * Decimal(ucost) if (qty and ucost) else Decimal("0"))
@@ -2253,6 +2283,7 @@ class MaterialRequisitionService:
                     unit_cost=Decimal(ucost) if ucost else Decimal("0"),
                     extended_cost=Decimal(extended),
                     currency_code=item_data.get("currency_code", ""),
+                    cost_line_id=cost_line_ids[idx],
                 )
                 self.session.add(mr_item)
             await self.session.flush()

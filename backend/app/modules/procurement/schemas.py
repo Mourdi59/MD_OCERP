@@ -42,6 +42,22 @@ class POItemCreate(BaseModel):
     amount: str = Field(default="0", max_length=50)
     wbs_id: str | None = Field(default=None, max_length=36)
     cost_category: str | None = Field(default=None, max_length=100)
+    # ── Cost Spine linkage ───────────────────────────────────────────────
+    # An input field, deliberately not a column. The buyer picks a bill
+    # position because that is the language of the job; the money row stores
+    # only the cost line that position rolls up into, resolved when the item
+    # is written. app.modules.procurement.cost_spine holds the full reasoning
+    # and the reason a money table never grows a boq_position_id column.
+    boq_position_id: str | None = Field(
+        default=None,
+        max_length=36,
+        description="BoQ position this line is bought against. Resolved to a cost line on write.",
+    )
+    cost_line_id: str | None = Field(
+        default=None,
+        max_length=36,
+        description="Cost line to commit against. Takes precedence over boq_position_id.",
+    )
     sort_order: int = Field(default=0, ge=0)
 
     @field_validator("quantity", "unit_rate", "amount")
@@ -141,6 +157,12 @@ class POItemResponse(BaseModel):
     amount: str = "0"
     wbs_id: str | None = None
     cost_category: str | None = None
+    # Read back so the caller can tell a line that reached the cost spine from
+    # one that did not. A position on a project whose spine has not been
+    # generated resolves to null, which is a legitimate outcome rather than an
+    # error, and silence about it is what let the committed report read zero
+    # for as long as it did.
+    cost_line_id: UUID | None = None
     sort_order: int = 0
     created_at: datetime
     updated_at: datetime
