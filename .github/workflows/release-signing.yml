@@ -34,19 +34,35 @@ jobs:
     name: Resolve the tag
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Two ways a Desktop Release completion is not something to sign. It also
-    # runs from workflow_dispatch against a branch, where head_branch is a
-    # branch name and there is no release behind it. And `types: [completed]`
-    # includes a failed run: if one platform fails, the release is short an
-    # installer, and the asset-count check below cannot tell, because it
-    # compares the download against the release rather than the release against
-    # the platforms it should have. Signing that produces a manifest which
-    # verifies cleanly over an incomplete release, which reads as a complete
-    # one. The recovery is to re-run Desktop Release, not this workflow.
+    # A Desktop Release completion is not automatically something to sign: it
+    # also runs from workflow_dispatch against a branch, where head_branch is a
+    # branch name and there is no release behind it. That is what the tag test
+    # below is for, and it stays.
+    #
+    # What was here as well, and is now gone, is a test on the run's
+    # conclusion. The reasoning behind it was sound and the instrument was not:
+    # `types: [completed]` includes a run that failed or was cancelled, such a
+    # run may leave the release short an installer, and signing an incomplete
+    # release produces a manifest that verifies cleanly over it and therefore
+    # reads as a complete one. All true. But a conclusion is a fact about the
+    # run, and the thing that has to be judged is the release. The two come
+    # apart in both directions: a green run can be short an asset (a bundler
+    # that failed inside a `fail-fast: false` matrix), and a cancelled one can
+    # carry every installer that matters.
+    #
+    # v15.0.0 is the second case. The rpm bundler, which desktop-release.yml
+    # already isolates because it can run for hours where the .deb takes
+    # seconds, was still going when the run ended `cancelled`. Every job in this
+    # workflow was skipped by a condition that had never looked at the release,
+    # and the tag was published with no signature, no certificate, no SHA256SUMS
+    # and no SBOM - none of which the rpm has anything to do with.
+    #
+    # So the completeness question moves to the `inventory` job below, which
+    # reads the assets off the release. A failed or cancelled Desktop Release
+    # now reaches it and gets an answer about what is actually published.
     if: >-
       github.event_name != 'workflow_run' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       startsWith(github.event.workflow_run.head_branch, 'v'))
+      startsWith(github.event.workflow_run.head_branch, 'v')
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
     steps:
@@ -59,6 +75,105 @@ jobs:
             echo "tag=${{ github.event.workflow_run.head_branch }}" >> "$GITHUB_OUTPUT"
           else
             echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Does the release carry an installer for every platform Desktop Release
+  # builds? This is the question `resolve` used to answer by proxy, and it is
+  # the only one that decides whether a manifest over this release would be
+  # honest. It is a separate job rather than a step inside `resolve` on purpose:
+  # `confirm` at the bottom gates on `needs.resolve.result == 'success'`, so
+  # failing resolve would take the reporting down with the signing and nobody
+  # would be told why the release is unsigned.
+  #
+  # The rpm is deliberately not required. desktop-release.yml builds it in a job
+  # of its own precisely because it can run for hours where the .deb takes
+  # seconds, and that job already declares its own absence survivable: "The
+  # release keeps its .deb and .AppImage; Fedora and openSUSE users have no
+  # package for this version." Requiring it here would overrule a decision made
+  # there, and would withhold the signature from five installers over a sixth
+  # that is documented as optional. That is precisely the trade v15.0.0 lost.
+  #
+  # Skipped on a backfill. A backfill is a deliberate manual act against an
+  # older release, whose platform set is whatever was being built at the time,
+  # and refusing it because a years-old tag predates a platform would be this
+  # job overreaching. `sign` accepts a skipped inventory for that reason and
+  # only that reason.
+  inventory:
+    name: Check the release carries its installers
+    needs: resolve
+    if: ${{ !inputs.backfill }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Account for every platform on the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+        run: |
+          # Failing to read the release is not a verdict on the release. Left to
+          # `set -e` this step would die here with no output at all, and the
+          # confirmation downstream would read the bare failure as "short a
+          # platform" - an API flake reported as a fact about the artefacts.
+          if ! assets=$(gh release view "$TAG" --repo "${{ github.repository }}" \
+               --json assets --jq '.assets[].name' 2>view.err); then
+            reason=$(tr '\n' ' ' < view.err)
+            echo "::error::Could not read the assets on ${TAG}, so this run never judged it: ${reason}"
+            {
+              echo "### \`${TAG}\`: not measured, so not signed"
+              echo
+              echo "\`gh release view\` failed, so nothing here knows what the release carries."
+              echo "This is not a finding about the installers and Desktop Release is not the"
+              echo "repair. Re-run this workflow; if it keeps failing, check that the tag has a"
+              echo "release behind it at all."
+              echo
+              echo "\`\`\`"
+              echo "${reason}"
+              echo "\`\`\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          count=$(printf '%s\n' "$assets" | grep -c . || true)
+          echo "${TAG} lists ${count} assets:"
+          printf '%s\n' "$assets"
+
+          # One artefact per platform family, not one per format. The format
+          # list is decided in desktop/src-tauri/tauri.conf.json and changes
+          # there (the .msi is under review) should not have to be mirrored
+          # here. What must never pass unnoticed is a whole platform missing,
+          # because that is the release a signature would misrepresent.
+          missing=""
+          printf '%s\n' "$assets" | grep -qE '\.(exe|msi)$' || missing="${missing} Windows (.exe or .msi)"
+          printf '%s\n' "$assets" | grep -qE '\.dmg$' || missing="${missing} macOS (.dmg)"
+          printf '%s\n' "$assets" | grep -qE '\.deb$' || missing="${missing} Linux (.deb)"
+          printf '%s\n' "$assets" | grep -qE '\.AppImage$' || missing="${missing} Linux (.AppImage)"
+
+          if [ -n "$missing" ]; then
+            echo "::error::${TAG} has no installer for:${missing}. Not signing an incomplete release."
+            {
+              echo "### \`${TAG}\` is short a platform, so it was not signed"
+              echo
+              echo "Nothing on the release covers:${missing}"
+              echo
+              echo "Signing is not the repair. A manifest over part of a release verifies cleanly"
+              echo "and reads as a complete one, which is worse than an unsigned release. Re-run"
+              echo "**Desktop Release** for \`${TAG}\` until the platform is there, then re-run"
+              echo "this workflow."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          if printf '%s\n' "$assets" | grep -qE '\.rpm$'; then
+            echo "Every platform is represented, rpm included."
+          else
+            echo "::warning title=No rpm on this release::${TAG} carries no .rpm. Desktop Release treats that as survivable - Fedora and openSUSE users have no package for this version - so signing proceeds over what is published."
+            {
+              echo "### \`${TAG}\` carries no \`.rpm\`"
+              echo
+              echo "Signing proceeds over the platforms that are there. Fedora and openSUSE users"
+              echo "have no package for this version; the repair is a Desktop Release run for the"
+              echo "rpm followed by a re-run of this workflow, which regenerates the manifest over"
+              echo "everything then published."
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
 
   # The licence inventory used to hang off the same dead release event as this
@@ -91,7 +206,7 @@ jobs:
 
   sign:
     name: Sign release artefacts
-    needs: [resolve, sbom]
+    needs: [resolve, sbom, inventory]
     # Signing proceeds even when the inventory job fails. A manifest over the
     # installers alone is what every release since v8.0.0 would have had, and
     # withholding signatures because a licence list broke helps nobody. The run
@@ -104,7 +219,17 @@ jobs:
     # behaviour and it is not restated here as a fact, because if it is ever
     # wrong this job silently does not run. The `confirm` job below settles it
     # by observation instead.
-    if: ${{ !cancelled() && needs.resolve.result == 'success' }}
+    #
+    # `inventory` is required rather than merely survived: a release short a
+    # platform is the one case where not signing is the correct outcome, and it
+    # is spelled out as the two states that are allowed rather than as "not
+    # failed", so a cancelled or otherwise unfinished inventory does not read as
+    # permission. `skipped` is allowed for exactly one reason, the backfill path
+    # documented on that job.
+    if: >-
+      ${{ !cancelled()
+      && needs.resolve.result == 'success'
+      && (needs.inventory.result == 'success' || needs.inventory.result == 'skipped') }}
     runs-on: ubuntu-latest
     # Observed at 2.8 and 0.6 minutes, the difference being how much of the
     # 2.6 GB of installers the runner had to pull. This is a backstop against
@@ -254,7 +379,7 @@ jobs:
   # right.
   confirm:
     name: Confirm the release carries a signature
-    needs: [resolve, sign]
+    needs: [resolve, inventory, sign]
     if: ${{ always() && needs.resolve.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -264,6 +389,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.resolve.outputs.tag }}
           SIGN_RESULT: ${{ needs.sign.result }}
+          INVENTORY_RESULT: ${{ needs.inventory.result }}
         run: |
           # Bounded retry against read-after-write lag on the assets API, not
           # against a missing upload. Three misses over twenty seconds is not a
@@ -306,17 +432,58 @@ jobs:
             exit 1
           fi
 
+          # An unsigned release has two quite different causes and one symptom,
+          # so they are told apart here rather than left to whoever reads this
+          # to work out. "The release is short a platform" is this workflow
+          # doing its job and the repair is in Desktop Release; anything else is
+          # a wiring failure and the repair is here. Printing one message for
+          # both is how the first gets diagnosed as the second.
+          #
+          # A red inventory is not on its own evidence of which one it was: that
+          # job also goes red when it cannot read the release. So the platform
+          # question is asked again here, off the asset list already in hand,
+          # and the answer rather than the neighbouring job's colour is what
+          # decides the message. The two lists have to stay identical, which is
+          # not left to care - tests/unit/test_release_signing_trigger.py reads
+          # both out of this file and fails when they diverge.
+          absent_platforms=""
+          printf '%s\n' "$assets" | grep -qE '\.(exe|msi)$' || absent_platforms="${absent_platforms} Windows (.exe or .msi)"
+          printf '%s\n' "$assets" | grep -qE '\.dmg$' || absent_platforms="${absent_platforms} macOS (.dmg)"
+          printf '%s\n' "$assets" | grep -qE '\.deb$' || absent_platforms="${absent_platforms} Linux (.deb)"
+          printf '%s\n' "$assets" | grep -qE '\.AppImage$' || absent_platforms="${absent_platforms} Linux (.AppImage)"
+
+          if [ -n "$missing" ] && [ "${INVENTORY_RESULT}" = "failure" ] && [ -n "$absent_platforms" ]; then
+            echo "::error::${TAG} is missing:${missing}, because the release does not carry an installer for:${absent_platforms}. That is a deliberate refusal, not a signing failure."
+            {
+              echo "### \`${TAG}\` was not signed, and that was the right outcome"
+              echo
+              echo "Missing from the release:${missing}"
+              echo
+              echo "No installer on the release covers:${absent_platforms}"
+              echo
+              echo "The inventory job refused: the release is short a platform, and its summary"
+              echo "above says which. A signature over part of a release verifies cleanly and"
+              echo "reads as a complete one. Re-run **Desktop Release** for \`${TAG}\`, then"
+              echo "re-run this workflow. Do not reach for the signing job."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
           if [ -n "$missing" ]; then
-            echo "::error::${TAG} is missing:${missing}. The signing job reported '${SIGN_RESULT}'."
+            echo "::error::${TAG} is missing:${missing}. The signing job reported '${SIGN_RESULT}' and the inventory '${INVENTORY_RESULT}'."
             {
               echo "### \`${TAG}\` was not signed by this run"
               echo
               echo "Missing from the release:${missing}"
               echo
-              echo "The signing job reported \`${SIGN_RESULT}\`. If that reads \`skipped\` while"
-              echo "the rest of the run is green, look at the job graph before looking at"
-              echo "cosign: \`sign\` needs \`sbom\`, a backfill skips \`sbom\`, and a skipped"
-              echo "dependency skips its dependants unless the \`if\` on \`sign\` overrides it."
+              echo "The signing job reported \`${SIGN_RESULT}\`, the inventory"
+              echo "\`${INVENTORY_RESULT}\`. Every platform is present on the release, so a red"
+              echo "inventory here means it could not read the release rather than that it judged"
+              echo "one - its own summary says which, and re-running this workflow is the repair."
+              echo "If \`sign\` reads \`skipped\` while the rest of the"
+              echo "run is green, look at the job graph before looking at cosign: \`sign\` needs"
+              echo "\`sbom\` and \`inventory\`, a backfill skips both, and a skipped dependency"
+              echo "skips its dependants unless the \`if\` on \`sign\` overrides it."
             } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
