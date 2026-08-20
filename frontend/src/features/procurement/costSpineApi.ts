@@ -107,13 +107,19 @@ export async function fetchBillPositions(projectId: string, search = ''): Promis
  * does not contain it, and a control that cannot find its own value falls back
  * to showing none, which is how a saved attribution gets silently dropped on
  * the next save.
+ *
+ * Deliberately unfiltered by status, unlike the list above. The list offers
+ * choices, so it offers live ones. This names a choice already made, and the
+ * line it was made against can since have been closed -- `CostLineUpdate`
+ * carries `status`, so any PATCH can do it. Filtering here would answer "no
+ * such line" for a link the order really holds and reintroduce the blank
+ * control this function exists to prevent.
  */
 export async function fetchPositionLine(
   projectId: string,
   boqPositionId: string,
 ): Promise<CostSpineLine | null> {
   const params = new URLSearchParams({
-    status: 'active',
     boq_position_id: boqPositionId,
     offset: '0',
     limit: '1',
