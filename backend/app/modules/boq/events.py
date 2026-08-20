@@ -15,6 +15,7 @@ import logging
 import uuid
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from app.core.cache import _RateLimitedLogger
@@ -149,25 +150,60 @@ async def _log_boq_activity(event: Event) -> None:
         except (ValueError, AttributeError):
             user_id = None
 
-    entry = BOQActivityLog(
-        project_id=_extract_project_id(data),
-        boq_id=_extract_boq_id(data),
-        user_id=user_id,
-        action=event.name.removeprefix("boq."),
-        target_type=_resolve_target(event.name),
-        target_id=_extract_target_id(event.name, data),
-        description=_build_description(event.name, data),
-        changes=data.get("changes", {}),
-        metadata_={
+    # The BOQ's own deletion is the one event whose parent row is provably
+    # gone. ``delete_boq`` removes the row and publishes afterwards, and this
+    # handler commits in a session of its own, so there is no ordering in
+    # which oe_boq_boq still holds the id: either the delete is committed and
+    # the row is gone, or it is not committed and this session cannot see it.
+    # ``boq_id`` is a foreign key, so writing it makes PostgreSQL reject the
+    # whole entry, and the deletion - the most audit-relevant thing that can
+    # happen to a BOQ - never reaches the trail at all. Nothing is lost by
+    # dropping it: ``target_id`` carries the same id and has no foreign key,
+    # precisely so it can outlive what it names. Same correction as the one
+    # made one column over for ``user_id``.
+    boq_id = _extract_boq_id(data)
+    if event.name == "boq.boq.deleted":
+        boq_id = None
+
+    fields = {
+        "project_id": _extract_project_id(data),
+        "boq_id": boq_id,
+        "user_id": user_id,
+        "action": event.name.removeprefix("boq."),
+        "target_type": _resolve_target(event.name),
+        "target_id": _extract_target_id(event.name, data),
+        "description": _build_description(event.name, data),
+        "changes": data.get("changes", {}),
+        "metadata_": {
             "event_id": event.id,
             "source_module": event.source_module,
         },
-    )
+    }
+
+    async def _write(row: dict) -> None:
+        # A fresh instance per attempt: an ORM object that has been through a
+        # failed commit is not reusable in a second session.
+        async with async_session_factory() as session:
+            session.add(BOQActivityLog(**row))
+            await session.commit()
 
     try:
-        async with async_session_factory() as session:
-            session.add(entry)
-            await session.commit()
+        await _write(fields)
+    except IntegrityError:
+        # A scope column pointed at a row that is no longer there - the
+        # project deleted while the event was still in flight, say. The
+        # entry is worth more without its scope than not at all, so write it
+        # again unscoped. What was acted on lives in ``target_id`` and
+        # survives either way; only the "show me everything under this
+        # project" filter loses the row.
+        logger.warning(
+            "Activity log for event '%s' named a row that no longer exists; writing it unscoped",
+            event.name,
+        )
+        try:
+            await _write({**fields, "project_id": None, "boq_id": None})
+        except Exception:
+            logger.exception("Failed to write unscoped activity log for event '%s'", event.name)
     except Exception:
         logger.exception("Failed to write activity log for event '%s'", event.name)
 

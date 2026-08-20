@@ -23,6 +23,7 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from app.core import cache as cache_mod
 from app.core.events import Event, event_bus
@@ -217,6 +218,151 @@ class TestVectorIndexFailureLogging:
         records = [rec for rec in caplog.records if "boq.vector.delete" in rec.getMessage()]
         assert records
         assert records[0].levelno == logging.WARNING
+
+
+# ---------------------------------------------------------------------------
+# Activity-log scope columns are foreign keys
+# ---------------------------------------------------------------------------
+
+
+class _FakeSession:
+    """Records what was added and lets a test decide what commit does."""
+
+    def __init__(self, on_commit=None):
+        self.added: list = []
+        self._on_commit = on_commit
+
+    def add(self, obj) -> None:
+        self.added.append(obj)
+
+    async def commit(self) -> None:
+        if self._on_commit is not None:
+            raise self._on_commit
+
+
+class _SessionCtx:
+    def __init__(self, session: _FakeSession):
+        self._session = session
+
+    async def __aenter__(self) -> _FakeSession:
+        return self._session
+
+    async def __aexit__(self, *exc) -> bool:
+        return False
+
+
+class _FactoryStub:
+    """Stands in for ``async_session_factory``, one session per call.
+
+    ``commit_effects`` are raised in turn, one per session opened, so a test
+    can make the first write fail and the retry succeed.
+    """
+
+    def __init__(self, *commit_effects):
+        self.sessions: list[_FakeSession] = []
+        self._effects = list(commit_effects)
+
+    def __call__(self) -> _SessionCtx:
+        effect = self._effects.pop(0) if self._effects else None
+        session = _FakeSession(effect)
+        self.sessions.append(session)
+        return _SessionCtx(session)
+
+    @property
+    def rows(self) -> list:
+        return [row for session in self.sessions for row in session.added]
+
+
+def _integrity_error() -> IntegrityError:
+    return IntegrityError("INSERT INTO oe_boq_activity_log ...", {}, Exception("foreign key violation"))
+
+
+class TestActivityLogScopeColumns:
+    """``project_id`` and ``boq_id`` are foreign keys, and the trail is the
+    thing that must survive - not the scope filter it would be nice to have.
+    """
+
+    @pytest.mark.asyncio
+    async def test_deleting_a_boq_is_recorded_without_the_scope_that_is_gone(self):
+        """The one event whose parent row is provably absent.
+
+        ``delete_boq`` removes the row and publishes afterwards, and the
+        handler commits in a session of its own, so PostgreSQL rejects the
+        entry outright if it carries the id in the FK column - which loses the
+        deletion from the audit trail entirely. The id belongs in
+        ``target_id``, which has no foreign key on it.
+        """
+        import app.modules.boq.events as mod  # noqa: I001
+
+        boq_id = uuid.uuid4()
+        project_id = uuid.uuid4()
+        factory = _FactoryStub()
+        with patch.object(mod, "async_session_factory", factory):
+            await mod._log_boq_activity(
+                Event(
+                    name="boq.boq.deleted",
+                    data={"boq_id": str(boq_id), "project_id": str(project_id)},
+                    source_module="oe_boq",
+                )
+            )
+
+        assert len(factory.rows) == 1, "the deletion has to reach the trail"
+        row = factory.rows[0]
+        assert row.boq_id is None
+        assert row.target_id == boq_id, "the id survives where no foreign key can reject it"
+        assert row.project_id == project_id, "the project is still there and still scopes the entry"
+        assert row.action == "boq.deleted"
+
+    @pytest.mark.asyncio
+    async def test_a_living_boq_keeps_its_scope(self):
+        """The guard is about the deletion, not about the column.
+
+        Every other event names a BOQ that exists, and the per-BOQ activity
+        feed reads that column, so nulling it wholesale would empty the feed.
+        """
+        import app.modules.boq.events as mod  # noqa: I001
+
+        boq_id = uuid.uuid4()
+        factory = _FactoryStub()
+        with patch.object(mod, "async_session_factory", factory):
+            await mod._log_boq_activity(
+                Event(
+                    name="boq.position.created",
+                    data={"boq_id": str(boq_id), "position_id": str(uuid.uuid4())},
+                    source_module="oe_boq",
+                )
+            )
+
+        assert factory.rows[0].boq_id == boq_id
+
+    @pytest.mark.asyncio
+    async def test_a_missing_scope_row_costs_the_scope_not_the_entry(self, caplog):
+        """A row deleted while the event was in flight is a race, not a rule.
+
+        There is no ordering to fix it with, so the entry is written again
+        without the scope. An audit trail that drops entries when a parent
+        disappears is worse than one that keeps them unscoped.
+        """
+        import app.modules.boq.events as mod  # noqa: I001
+
+        boq_id = uuid.uuid4()
+        project_id = uuid.uuid4()
+        factory = _FactoryStub(_integrity_error())
+        with caplog.at_level(logging.WARNING), patch.object(mod, "async_session_factory", factory):
+            await mod._log_boq_activity(
+                Event(
+                    name="boq.position.updated",
+                    data={"boq_id": str(boq_id), "project_id": str(project_id)},
+                    source_module="oe_boq",
+                )
+            )
+
+        assert len(factory.sessions) == 2, "the failed write is retried once"
+        retried = factory.sessions[1].added[0]
+        assert retried.boq_id is None
+        assert retried.project_id is None
+        assert retried.action == "position.updated"
+        assert any("no longer exists" in rec.getMessage() for rec in caplog.records)
 
 
 # ---------------------------------------------------------------------------
