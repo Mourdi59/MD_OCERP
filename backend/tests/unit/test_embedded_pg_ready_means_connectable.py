@@ -201,7 +201,7 @@ def test_a_unix_socket_that_answers_is_enough(tmp_path: Path) -> None:
         pytest.skip("no unix domain sockets on this platform")
 
     port = 5432
-    sock_path = tmp_path / (".s.PGSQL.%d" % port)
+    sock_path = tmp_path / f".s.PGSQL.{port}"
     listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     try:
         listener.bind(str(sock_path))

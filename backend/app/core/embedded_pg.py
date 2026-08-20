@@ -581,7 +581,7 @@ def _clear_stale_pidfile(pgdata: Path) -> None:
     recycled = _pid_was_recycled(pid, _read_pidfile_start_time(pgdata))
     if _pid_alive(pid) and not recycled:
         return
-    reason = "pid %d belongs to another process" % pid if recycled else "dead pid %d" % pid
+    reason = f"pid {pid} belongs to another process" if recycled else f"dead pid {pid}"
     try:
         pidfile.unlink()
         logger.info("removed stale postmaster.pid (%s) in %s", reason, pgdata)
@@ -993,7 +993,7 @@ def _unix_socket_path(pgdata: Path) -> Path | None:
     port = _port_from_pidfile(pgdata)
     if not socket_dir or port is None:
         return None
-    return Path(socket_dir) / (".s.PGSQL.%d" % port)
+    return Path(socket_dir) / f".s.PGSQL.{port}"
 
 
 def _listens_on_tcp(pgdata: Path) -> bool:

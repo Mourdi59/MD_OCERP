@@ -190,8 +190,7 @@ def test_every_shipped_locale_carries_the_mark(script):
     unmarked = [
         p.name
         for p in paths
-        if f"Revit{R}" not in text_of[p.stem]
-        and not (base_of(p.stem) and f"Revit{R}" in text_of[base_of(p.stem)])  # type: ignore[index]
+        if f"Revit{R}" not in text_of[p.stem] and not (base_of(p.stem) and f"Revit{R}" in text_of[base_of(p.stem)])  # type: ignore[index]
     ]
     assert unmarked == [], f"locale(s) carrying no marked mention at all: {unmarked}"
 
