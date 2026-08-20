@@ -208,6 +208,12 @@ _TEXT_SUFFIXES = {
     ".rs",
     ".vue",
     ".svelte",
+    # An SVG is markup, not a picture, and a logo traced into one carries the
+    # name in its title, its id and its class attributes. Leaving the suffix out
+    # meant the gate listed all 94 tracked SVGs and then dropped every one of
+    # them on the way in. Measured at zero hits across those 94 before adding
+    # it, so this closes a hole rather than declaring an amnesty.
+    ".svg",
 }
 _SKIP_PARTS = {
     ".git",
