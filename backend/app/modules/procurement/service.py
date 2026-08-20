@@ -781,6 +781,23 @@ class ProcurementService:
                         "the received quantities are linked to the existing line items."
                     ),
                 )
+            # Resolve the spine links before the existing rows are destroyed,
+            # for the same reason create_po resolves before the PO exists: a
+            # foreign position id must refuse the PATCH rather than take the
+            # old line items down with it.
+            #
+            # This replace is why the resolution cannot live only in create_po.
+            # The rows are rebuilt from scratch, so a rebuild that did not
+            # resolve would strip the cost line off every line of the order the
+            # first time somebody corrected a quantity, and that order would
+            # drop out of the committed report for good. The link has to be
+            # re-derived on every write that recreates the row, not only on the
+            # first one.
+            item_cost_line_ids = await resolve_cost_line_ids(
+                self.session,
+                po.project_id,
+                [(item.cost_line_id, item.boq_position_id) for item in data.items],
+            )
             await self.po_item_repo.delete_by_po(po_id)
             item_amounts: list[Decimal] = []
             for idx, item_data in enumerate(data.items):
@@ -808,6 +825,7 @@ class ProcurementService:
                     amount=item_data.amount,
                     wbs_id=item_data.wbs_id,
                     cost_category=item_data.cost_category,
+                    cost_line_id=item_cost_line_ids[idx],
                     sort_order=item_data.sort_order if item_data.sort_order else idx,
                 )
                 await self.po_item_repo.create(item)

@@ -30,7 +30,7 @@ from app.modules.boq.models import BOQ, Position
 from app.modules.costmodel.models import CostLine
 from app.modules.costmodel.repository import CostSpineRepository
 from app.modules.procurement.models import PurchaseOrder
-from app.modules.procurement.schemas import POCreate, POItemCreate
+from app.modules.procurement.schemas import POCreate, POItemCreate, POUpdate
 from app.modules.procurement.service import MaterialRequisitionService, ProcurementService
 from tests._pg import transactional_session
 
@@ -217,8 +217,6 @@ async def test_a_position_that_is_not_on_the_spine_leaves_the_line_unlinked(
     assert await committed(session, project_id) == {}
 
     # And nothing was invented on the spine to make the link possible.
-    minted = await session.get(CostLine, position.id)
-    assert minted is None
     assert (await session.execute(CostLine.__table__.select())).first() is None, (
         "raising a purchase order created a cost line. Procurement reads the spine, it does not write it."
     )
@@ -258,6 +256,50 @@ async def test_the_link_is_frozen_when_the_order_is_written(session: AsyncSessio
         f"committed before the change, so the link is being derived on read rather than frozen on "
         f"write."
     )
+
+
+async def test_correcting_a_quantity_does_not_strip_the_link(session: AsyncSession, project_id: uuid.UUID) -> None:
+    """The edit path rebuilds the rows, so it has to re-derive the link.
+
+    ``update_po`` replaces the line items outright rather than patching them,
+    which means a rebuild that forgot the cost line would silently unlink the
+    whole order the first time somebody corrected a quantity. That order would
+    then be missing from the committed report for good, and the header totals
+    would still look right, so nothing on screen would say what had happened.
+
+    Reading the committed aggregate rather than only the column is what makes
+    this test discriminating: a resolver that runs on the edit path and returns
+    null would leave the column exactly as an absent resolver does.
+    """
+    position, cost_line = await make_position(session, project_id)
+    assert cost_line is not None
+    cost_line_id = cost_line.id
+
+    service = ProcurementService(session)
+    po = await service.create_po(po_payload(project_id, boq_position_id=str(position.id)))
+    await commit_po(session, po)
+    assert await committed(session, project_id) == {str(cost_line_id): Decimal("1800.00")}
+
+    corrected = await service.update_po(
+        po.id,
+        POUpdate(
+            items=[
+                POItemCreate(
+                    description="Reinforced concrete, C30/37",
+                    quantity="12",
+                    unit="m3",
+                    unit_rate="180.00",
+                    boq_position_id=str(position.id),
+                )
+            ]
+        ),
+    )
+
+    assert corrected.items[0].cost_line_id == cost_line_id, (
+        "correcting the quantity rebuilt the line without its cost line, so the order has silently "
+        "left the committed report"
+    )
+    assert await committed(session, project_id) == {str(cost_line_id): Decimal("2160.00")}
 
 
 # ── Ownership ────────────────────────────────────────────────────────────────
