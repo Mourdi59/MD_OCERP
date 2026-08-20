@@ -254,6 +254,7 @@ const ROUTE_BACKEND_MODULE: Record<string, string> = {
   // Delivery-lifecycle registers (v11.11 backend, surfaced in this wave).
   '/site-prep': 'oe_site_prep',
   '/site-inventory': 'oe_site_inventory',
+  '/postcalc': 'oe_postcalc',
   '/temporary-works': 'oe_temporary_works',
   '/interface-management': 'oe_interface_management',
   '/defects-liability': 'oe_defects_liability',

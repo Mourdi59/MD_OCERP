@@ -9,18 +9,22 @@ manifest = ModuleManifest(
     display_name="Post-calculation",
     description=(
         "Reconciles the estimate against site actuals into planned-vs-actual "
-        "labour productivity: a factor per BoQ line and per resource category, a "
-        "project rollup, and a ranked list of productivity factors to feed back "
-        "into estimating. Reads existing BoQ positions, field timesheets and "
-        "progress readings; a stateless analysis layer that adds no table."
+        "labour productivity and material cost: a factor per BoQ line and per "
+        "resource category, the material really consumed against what the "
+        "estimate allowed, a project rollup, and a ranked list of productivity "
+        "factors to feed back into estimating. Reads existing BoQ positions, "
+        "field timesheets, progress readings and the site material ledger; a "
+        "stateless analysis layer that adds no table."
     ),
     author="OpenConstructionERP Core Team",
     category="business",
     # The estimate side (BoQ positions and their stored resource split) is
-    # required. Field-time and progress supply the actuals; they are optional so
-    # the report still renders (estimate-only) when either is absent or disabled.
+    # required. Field-time, progress and the site material ledger supply the
+    # actuals; they are optional so the report still renders (estimate-only)
+    # when any of them is absent or disabled, saying it does not know rather
+    # than reporting a zero.
     depends=["oe_boq"],
-    optional_depends=["oe_field_time", "oe_progress"],
+    optional_depends=["oe_field_time", "oe_progress", "oe_site_inventory"],
     auto_install=True,
     enabled=True,
 )

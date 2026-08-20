@@ -29,6 +29,7 @@ int / float / Decimal / None and are coerced):
         "actual_plant_hours": "40",     # booked plant hours matched to this line
         "actual_labour_cost": "13800",  # optional, from field-time rate rollup
         "actual_plant_cost": "3400",    # optional
+        "actual_material_cost": "9900", # optional, from the site inventory ledger
     }
 
 Labour ``quantity`` is hours per position unit (the platform prices labour per
@@ -150,6 +151,63 @@ def _classify(factor: Decimal, tolerance: Decimal) -> str:
     return STATUS_ON_PLAN
 
 
+# ── Material actuals from the site material ledger ──────────────────────────
+
+
+def consumed_material_cost(
+    movements: Sequence[Any],
+    items: Sequence[Any],
+    *,
+    project_currency: str = "",
+) -> dict[str, Decimal]:
+    """Priced material consumed per BoQ position, from site inventory movements.
+
+    Pure: it takes the site-inventory module's own DB-free value objects
+    (:class:`~app.modules.site_inventory.ledger.Movement` and
+    :class:`~app.modules.site_inventory.ledger.StockItemRef`) and returns
+    ``{position_id: consumed cost}``. The DB loader on
+    :class:`PostCalcService` does nothing but read the rows and call this.
+
+    Attribution and the consumption-only filter are the inventory module's own
+    rule, so this figure and the one that module's material-variance screen
+    reports can never disagree. What is added on top is honesty about what
+    cannot be priced: a position is left out of the result entirely - unknown,
+    never zero - when any of its consumption carries no unit cost, or when its
+    money is labelled in more than one currency or in one the project does not
+    report in. A position nothing was consumed against is absent for the same
+    reason: an unmetered position is not a position that used no material.
+    """
+    from app.modules.site_inventory import ledger
+
+    wanted = (project_currency or "").strip().upper()
+    costs: dict[str, Decimal] = {}
+    priced: dict[str, bool] = {}
+    currencies: dict[str, set[str]] = {}
+    for movement in ledger.resolve_positions(movements, items):
+        if movement.movement_type != ledger.MovementType.CONSUMPTION.value:
+            continue
+        key = movement.boq_position_id
+        if not key:
+            continue
+        costs[key] = costs.get(key, Decimal("0")) + movement.line_cost
+        priced[key] = priced.get(key, True) and movement.unit_cost > 0
+        code = (movement.currency or "").strip().upper()
+        if code:
+            currencies.setdefault(key, set()).add(code)
+
+    out: dict[str, Decimal] = {}
+    for key, cost in costs.items():
+        if not priced.get(key, False):
+            continue
+        labels = currencies.get(key, set())
+        if len(labels) > 1:
+            continue
+        if labels and wanted and next(iter(labels)) != wanted:
+            continue
+        out[key] = cost
+    return out
+
+
 # ── Per-line productivity ───────────────────────────────────────────────────
 
 
@@ -171,6 +229,12 @@ def compute_line_productivity(
 
     Only a line with a baseline, installed quantity and booked hours yields a
     factor. Money is ``Decimal`` throughout.
+
+    Material rides alongside on cost only. ``actual_material_cost`` comes from
+    the site material ledger and stays ``None`` when the site recorded no priced
+    consumption for the line, because an unmetered position and a position that
+    used no material are two different statements and only one of them is worth
+    a number.
     """
     resources = _resources_of(line)
     planned_quantity = _dec(line.get("planned_quantity"))
@@ -178,8 +242,12 @@ def compute_line_productivity(
     labour_per_unit = _per_unit_hours(resources, ResourceKind.LABOUR)
     planned_hours = labour_per_unit * planned_quantity
     actual_hours = _dec(line.get("actual_labour_hours"))
-    planned_labour_cost = _per_unit_cost_of_kind(resources, ResourceKind.LABOUR) * planned_quantity
+    labour_cost_per_unit = _per_unit_cost_of_kind(resources, ResourceKind.LABOUR)
+    planned_labour_cost = labour_cost_per_unit * planned_quantity
     actual_labour_cost = _opt_dec(line.get("actual_labour_cost"))
+    material_cost_per_unit = _per_unit_cost_of_kind(resources, ResourceKind.MATERIAL)
+    planned_material_cost = material_cost_per_unit * planned_quantity
+    actual_material_cost = _opt_dec(line.get("actual_material_cost"))
 
     has_baseline = planned_quantity > 0 and planned_hours > 0
     has_progress = actual_quantity > 0
@@ -213,6 +281,15 @@ def compute_line_productivity(
         status = _classify(productivity_factor, tolerance)
 
     labour_cost_variance = (actual_labour_cost - planned_labour_cost) if actual_labour_cost is not None else None
+    material_cost_variance = (
+        (actual_material_cost - planned_material_cost) if actual_material_cost is not None else None
+    )
+
+    # Money the estimate allowed for the quantity actually installed. Only
+    # meaningful where the line was priced per unit at all, so a line with no
+    # planned quantity earns nothing rather than earning its whole budget.
+    earned_labour_cost = (labour_cost_per_unit * actual_quantity) if planned_quantity > 0 else None
+    earned_material_cost = (material_cost_per_unit * actual_quantity) if planned_quantity > 0 else None
 
     return LineProductivity(
         ref=str(line.get("ref") or "").strip(),
@@ -233,6 +310,11 @@ def compute_line_productivity(
         actual_labour_cost=actual_labour_cost,
         labour_cost_variance=labour_cost_variance,
         status=status,
+        earned_labour_cost=earned_labour_cost,
+        planned_material_cost=planned_material_cost,
+        earned_material_cost=earned_material_cost,
+        actual_material_cost=actual_material_cost,
+        material_cost_variance=material_cost_variance,
     )
 
 
@@ -249,9 +331,18 @@ def aggregate_resources(
     Labour and machinery are measured in hours, so they carry a real productivity
     factor (earned vs actual hours). Actual labour hours come from the line's
     ``actual_labour_hours`` and actual machinery hours from ``actual_plant_hours``.
-    Material, equipment, subcontract and other are compared on cost only. Only the
-    categories that actually appear in the estimate (or carry booked hours) are
-    returned, ordered by :data:`app.modules.postcalc.model.KIND_ORDER`.
+    Material, equipment, subcontract and other are compared on cost only, and
+    material's actual cost comes from the line's ``actual_material_cost`` (the
+    site material ledger). Equipment, subcontract and other have no actuals
+    source anywhere in the platform today, so they keep reporting ``None`` -
+    unknown - rather than a zero that would read as money nobody spent.
+
+    Only the categories that actually appear in the estimate, carry booked hours
+    or carry a known actual cost are returned, ordered by
+    :data:`app.modules.postcalc.model.KIND_ORDER`. That last condition is not
+    decoration: material consumption can be booked against a position whose
+    estimate carries no material line at all, and without it the category would
+    be dropped and its spend would vanish from the report.
     """
     from app.modules.postcalc.model import KIND_ORDER
 
@@ -265,6 +356,7 @@ def aggregate_resources(
                 "earned_hours": Decimal("0"),
                 "actual_hours": Decimal("0"),
                 "planned_cost": Decimal("0"),
+                "earned_cost": Decimal("0"),
                 "actual_cost": Decimal("0"),
                 "actual_cost_known": False,
                 "seen": False,
@@ -282,10 +374,16 @@ def aggregate_resources(
             slot = _bucket(kind)
             slot["seen"] = True
             per_unit_hours = _per_unit_hours(resources, kind)
+            per_unit_cost = _per_unit_cost_of_kind(resources, kind)
             slot["planned_hours"] += per_unit_hours * planned_quantity
-            slot["planned_cost"] += _per_unit_cost_of_kind(resources, kind) * planned_quantity
-            if kind in (ResourceKind.LABOUR, ResourceKind.MACHINERY) and actual_quantity > 0:
-                slot["earned_hours"] += per_unit_hours * actual_quantity
+            slot["planned_cost"] += per_unit_cost * planned_quantity
+            if actual_quantity > 0:
+                # What the estimate allowed for the quantity installed. Earned
+                # money applies to every category, unlike earned hours, which
+                # only the two hour-based ones can have.
+                slot["earned_cost"] += per_unit_cost * actual_quantity
+                if kind in (ResourceKind.LABOUR, ResourceKind.MACHINERY):
+                    slot["earned_hours"] += per_unit_hours * actual_quantity
 
         # Actual hours + cost come from the field side, keyed by category.
         labour = _bucket(ResourceKind.LABOUR)
@@ -302,20 +400,33 @@ def aggregate_resources(
             plant["actual_cost"] += plant_cost
             plant["actual_cost_known"] = True
 
+        # Material actuals come from the site inventory ledger: the priced
+        # consumption booked against this position. Absent, the category keeps
+        # reporting unknown, which is the whole point of the flag.
+        material_cost = _opt_dec(line.get("actual_material_cost"))
+        if material_cost is not None:
+            material = _bucket(ResourceKind.MATERIAL)
+            material["actual_cost"] += material_cost
+            material["actual_cost_known"] = True
+
     out: list[ResourceProductivity] = []
     for kind in KIND_ORDER:
         slot = acc.get(kind)
         if slot is None:
             continue
-        # Skip a category we only touched to seed actual-hour buckets but which
-        # carries no estimate demand and no booked hours (keeps the table tidy).
-        if not slot["seen"] and slot["actual_hours"] <= 0:
+        # Skip a category we only touched to seed actual buckets but which
+        # carries no estimate demand, no booked hours and no known spend (keeps
+        # the table tidy). Money counts here as well as hours: material booked
+        # against a position the estimate priced without a material line is real
+        # spend, and dropping the row would hide it.
+        if not slot["seen"] and slot["actual_hours"] <= 0 and not slot["actual_cost_known"]:
             continue
 
         planned_hours = slot["planned_hours"]
         earned_hours = slot["earned_hours"]
         actual_hours = slot["actual_hours"]
         planned_cost = slot["planned_cost"]
+        earned_cost = slot["earned_cost"]
         actual_cost = slot["actual_cost"] if slot["actual_cost_known"] else None
 
         factor: Decimal | None = None
@@ -347,6 +458,7 @@ def aggregate_resources(
                 actual_cost=actual_cost,
                 cost_variance=cost_variance,
                 status=status,
+                earned_cost=earned_cost,
             )
         )
     return out
@@ -470,6 +582,23 @@ def compute_project_postcalc(
     known_costs = [lp.actual_labour_cost for lp in line_prods if lp.actual_labour_cost is not None]
     total_actual_labour_cost = sum(known_costs, Decimal("0")) if known_costs else None
 
+    total_earned_labour_cost = sum(
+        (lp.earned_labour_cost for lp in line_prods if lp.earned_labour_cost is not None),
+        Decimal("0"),
+    )
+    total_planned_material_cost = sum((lp.planned_material_cost for lp in line_prods), Decimal("0"))
+    # Earned material is summed over the lines the site could price, not over
+    # every line: an earned total covering forty lines against an actual total
+    # covering three is a comparison of two different jobs.
+    priced_lines = [lp for lp in line_prods if lp.actual_material_cost is not None]
+    total_earned_material_cost = sum(
+        (lp.earned_material_cost for lp in priced_lines if lp.earned_material_cost is not None),
+        Decimal("0"),
+    )
+    total_actual_material_cost = (
+        sum((lp.actual_material_cost for lp in priced_lines), Decimal("0")) if priced_lines else None
+    )
+
     status_counts: dict[str, int] = {}
     for lp in line_prods:
         status_counts[lp.status] = status_counts.get(lp.status, 0) + 1
@@ -497,6 +626,11 @@ def compute_project_postcalc(
         line_count=len(line_prods),
         compared_line_count=compared_line_count,
         status_counts=status_counts,
+        total_earned_labour_cost=total_earned_labour_cost,
+        total_planned_material_cost=total_planned_material_cost,
+        total_earned_material_cost=total_earned_material_cost,
+        total_actual_material_cost=total_actual_material_cost,
+        material_priced_line_count=len(priced_lines),
         lines=line_prods,
         resources=resources,
         feedback_factors=feedback,
@@ -553,6 +687,7 @@ class PostCalcService:
 
         actuals = await self._load_field_actuals(project_id, code_to_pid, wbs_to_pid)
         installed = await self._load_installed_quantities(project_id, positions)
+        material = await self._load_material_actuals(project_id, positions, currency)
 
         lines: list[dict[str, Any]] = []
         for pos in positions:
@@ -572,6 +707,7 @@ class PostCalcService:
                     "actual_plant_hours": act["plant_hours"] if act else Decimal("0"),
                     "actual_labour_cost": act["labour_cost"] if act else None,
                     "actual_plant_cost": act["plant_cost"] if act else None,
+                    "actual_material_cost": material.get(pid),
                 }
             )
 
@@ -756,6 +892,106 @@ class PostCalcService:
                 logger.debug("Plant-rate lookup unavailable for %s", project_id, exc_info=True)
 
         return labour_rates, plant_rates
+
+    # ── Actual side: material consumed on site ───────────────────────────────
+
+    async def _load_material_actuals(
+        self,
+        project_id: uuid.UUID,
+        positions: Sequence[Any],
+        currency: str,
+    ) -> dict[uuid.UUID, Decimal]:
+        """Priced material consumed per position, from the site inventory ledger.
+
+        The estimate says what a position's material should cost; the store
+        records what was actually drawn against it and what it was bought for.
+        Reconciling the two is the half of a post-calculation that a labour
+        factor cannot see, and until this existed the report said material cost
+        was unknown on every project that had metered its yard.
+
+        Attribution follows the inventory module's own rule
+        (:func:`app.modules.site_inventory.ledger.resolve_positions`): a
+        movement's own position wins, and otherwise it inherits the position of
+        the item it moved. Only ``CONSUMPTION`` counts, exactly as
+        :func:`~app.modules.site_inventory.ledger.material_cost_variance` does,
+        so this report and the inventory module's own variance screen can never
+        disagree about what a position's material cost.
+
+        A position is left out of the result - unknown, never zero - when:
+
+        * nothing was consumed against it (an unmetered position is not a
+          position that used no material);
+        * any of its consumption carries no unit cost, because a zero-priced
+          issue makes the total an understatement rather than a figure;
+        * its money is labelled in a currency the project does not report in, or
+          in more than one, because two currencies have no common sum.
+
+        Returns ``{position_id: consumed cost}`` for the positions that pass.
+        """
+        position_ids = {pos.id for pos in positions}
+        if not position_ids:
+            return {}
+        try:
+            from sqlalchemy import select
+
+            from app.modules.site_inventory import ledger
+            from app.modules.site_inventory.models import StockItem, StockMovement
+
+            # Column selects, not entity selects: loading ``StockItem`` rows
+            # would pull every movement a second time through the item's
+            # selectin relationship.
+            item_rows = (
+                await self.session.execute(
+                    select(StockItem.id, StockItem.boq_position_id).where(StockItem.project_id == project_id)
+                )
+            ).all()
+            movement_rows = (
+                await self.session.execute(
+                    select(
+                        StockMovement.item_id,
+                        StockMovement.movement_type,
+                        StockMovement.quantity,
+                        StockMovement.unit_cost,
+                        StockMovement.currency,
+                        StockMovement.boq_position_id,
+                    ).where(StockMovement.project_id == project_id)
+                )
+            ).all()
+        except Exception:
+            logger.debug("Site inventory actuals unavailable for %s", project_id, exc_info=True)
+            return {}
+
+        if not movement_rows:
+            return {}
+
+        items = [
+            ledger.StockItemRef(
+                item_id=str(item_id),
+                boq_position_id=str(position_id) if position_id else None,
+            )
+            for item_id, position_id in item_rows
+        ]
+        movements = [
+            ledger.Movement(
+                movement_type=str(movement_type),
+                quantity=_dec(quantity),
+                unit_cost=_dec(unit_cost),
+                currency=str(mv_currency or "").strip(),
+                item_id=str(item_id),
+                boq_position_id=str(position_id) if position_id else None,
+            )
+            for item_id, movement_type, quantity, unit_cost, mv_currency, position_id in movement_rows
+        ]
+
+        out: dict[uuid.UUID, Decimal] = {}
+        for key, cost in consumed_material_cost(movements, items, project_currency=currency).items():
+            try:
+                position_id = uuid.UUID(key)
+            except (ValueError, AttributeError, TypeError):
+                continue
+            if position_id in position_ids:
+                out[position_id] = cost
+        return out
 
     # ── Actual side: installed quantities ────────────────────────────────────
 

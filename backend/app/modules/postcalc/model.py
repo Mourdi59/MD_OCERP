@@ -105,9 +105,24 @@ class LineProductivity:
     Labour hours are the classic post-calculation metric: an estimate's unit rate
     is built on a labour norm (hours per unit), and the site books the hours it
     actually took. This compares the two for the quantity that was actually
-    installed. Plant, material and subcontract demand roll up per category in
-    :class:`ResourceProductivity`; this line view stays focused on the labour
-    factor an estimator tunes.
+    installed. Plant and subcontract demand roll up per category in
+    :class:`ResourceProductivity`; this line view carries the labour factor an
+    estimator tunes and, beside it, the material money - the half of a position
+    that usually loses the money and that a labour factor alone cannot see.
+
+    Material is compared on cost only, never on quantity. A position is measured
+    in one unit and the material issued against it in another (the bill prices
+    "m2" of formwork while the store counts "pcs" of panels), so a quantity delta
+    across the two would be arithmetic on two different things. Money has no such
+    problem. ``actual_material_cost`` is ``None`` - unknown, not zero - wherever
+    the site recorded no priced consumption for the line.
+
+    Two comparisons are offered for each of the two money categories, and they
+    answer different questions. ``*_cost_variance`` is against the whole line as
+    priced, which is the budget question. The ``*_cost_variance_earned``
+    properties are against ``earned_*_cost``, the money the estimate allowed for
+    the quantity that was actually installed, which is the performance question
+    and the only fair one on a line that is half built.
     """
 
     ref: str
@@ -128,6 +143,30 @@ class LineProductivity:
     actual_labour_cost: Decimal | None
     labour_cost_variance: Decimal | None
     status: str
+    # Money the estimate allowed for the quantity actually installed. ``None``
+    # when the line has no baseline to earn against. Defaulted so a caller that
+    # predates the material half of this report still constructs.
+    earned_labour_cost: Decimal | None = None
+    planned_material_cost: Decimal = Decimal("0")
+    earned_material_cost: Decimal | None = None
+    # From the site material ledger. ``None`` means no priced consumption was
+    # recorded for the line, which is not the same as nothing having been used.
+    actual_material_cost: Decimal | None = None
+    material_cost_variance: Decimal | None = None
+
+    @property
+    def labour_cost_variance_earned(self) -> Decimal | None:
+        """Actual labour money against what the installed quantity earned."""
+        if self.actual_labour_cost is None or self.earned_labour_cost is None:
+            return None
+        return self.actual_labour_cost - self.earned_labour_cost
+
+    @property
+    def material_cost_variance_earned(self) -> Decimal | None:
+        """Actual material money against what the installed quantity earned."""
+        if self.actual_material_cost is None or self.earned_material_cost is None:
+            return None
+        return self.actual_material_cost - self.earned_material_cost
 
     @property
     def is_under_productive(self) -> bool:
@@ -165,8 +204,15 @@ class LineProductivity:
             "productivity_factor": _q(self.productivity_factor, _FACTOR_Q),
             "variance_pct": _q(self.variance_pct, _PCT_Q),
             "planned_labour_cost": _q(self.planned_labour_cost, _MONEY_Q),
+            "earned_labour_cost": _q(self.earned_labour_cost, _MONEY_Q),
             "actual_labour_cost": _q(self.actual_labour_cost, _MONEY_Q),
             "labour_cost_variance": _q(self.labour_cost_variance, _MONEY_Q),
+            "labour_cost_variance_earned": _q(self.labour_cost_variance_earned, _MONEY_Q),
+            "planned_material_cost": _q(self.planned_material_cost, _MONEY_Q),
+            "earned_material_cost": _q(self.earned_material_cost, _MONEY_Q),
+            "actual_material_cost": _q(self.actual_material_cost, _MONEY_Q),
+            "material_cost_variance": _q(self.material_cost_variance, _MONEY_Q),
+            "material_cost_variance_earned": _q(self.material_cost_variance_earned, _MONEY_Q),
             "status": self.status,
             "status_i18n_key": STATUS_I18N_KEYS.get(self.status, ""),
         }
@@ -181,6 +227,16 @@ class ResourceProductivity:
     equipment, subcontract and other, hours do not apply, so only the planned
     (and, where known, actual) cost is meaningful and ``productivity_factor`` is
     ``None``.
+
+    ``actual_cost`` is ``None`` for a category no actuals source can price, and
+    that ``None`` is load-bearing: labour and plant are priced from approved
+    timesheets, material from the site inventory ledger, and subcontract,
+    equipment and other from nothing at all today. A category with no source
+    keeps saying it does not know rather than reporting a zero that would read
+    as money nobody spent.
+
+    ``earned_cost`` is the money the estimate allowed for the quantity actually
+    installed, so a half-built line does not look like a saving.
     """
 
     kind: ResourceKind
@@ -193,6 +249,14 @@ class ResourceProductivity:
     actual_cost: Decimal | None
     cost_variance: Decimal | None
     status: str
+    earned_cost: Decimal = Decimal("0")
+
+    @property
+    def cost_variance_earned(self) -> Decimal | None:
+        """Actual money against what the installed quantity earned."""
+        if self.actual_cost is None:
+            return None
+        return self.actual_cost - self.earned_cost
 
     @property
     def label(self) -> str:
@@ -217,8 +281,10 @@ class ResourceProductivity:
             "productivity_factor": _q(self.productivity_factor, _FACTOR_Q),
             "variance_pct": _q(self.variance_pct, _PCT_Q),
             "planned_cost": _q(self.planned_cost, _MONEY_Q),
+            "earned_cost": _q(self.earned_cost, _MONEY_Q),
             "actual_cost": _q(self.actual_cost, _MONEY_Q),
             "cost_variance": _q(self.cost_variance, _MONEY_Q),
+            "cost_variance_earned": _q(self.cost_variance_earned, _MONEY_Q),
             "status": self.status,
         }
 
@@ -280,6 +346,18 @@ class ProjectPostCalc:
     line_count: int
     compared_line_count: int
     status_counts: dict[str, int]
+    # Money side of the report. The earned totals are what the estimate allowed
+    # for the quantity installed, and the actual totals are ``None`` where no
+    # source can price the category. Defaulted so a caller that predates the
+    # material half of this report still constructs.
+    total_earned_labour_cost: Decimal = Decimal("0")
+    total_planned_material_cost: Decimal = Decimal("0")
+    total_earned_material_cost: Decimal = Decimal("0")
+    total_actual_material_cost: Decimal | None = None
+    # How many lines the site could price the material of. A total built from
+    # three of forty lines is a different statement from one built from all
+    # forty, and the difference is invisible in the total itself.
+    material_priced_line_count: int = 0
     lines: list[LineProductivity] = field(default_factory=list)
     resources: list[ResourceProductivity] = field(default_factory=list)
     feedback_factors: list[FeedbackFactor] = field(default_factory=list)
@@ -294,7 +372,12 @@ class ProjectPostCalc:
             "overall_productivity_factor": _q(self.overall_productivity_factor, _FACTOR_Q),
             "overall_variance_pct": _q(self.overall_variance_pct, _PCT_Q),
             "total_planned_labour_cost": _q(self.total_planned_labour_cost, _MONEY_Q),
+            "total_earned_labour_cost": _q(self.total_earned_labour_cost, _MONEY_Q),
             "total_actual_labour_cost": _q(self.total_actual_labour_cost, _MONEY_Q),
+            "total_planned_material_cost": _q(self.total_planned_material_cost, _MONEY_Q),
+            "total_earned_material_cost": _q(self.total_earned_material_cost, _MONEY_Q),
+            "total_actual_material_cost": _q(self.total_actual_material_cost, _MONEY_Q),
+            "material_priced_line_count": self.material_priced_line_count,
             "total_planned_value": _q(self.total_planned_value, _MONEY_Q),
             "line_count": self.line_count,
             "compared_line_count": self.compared_line_count,
@@ -345,7 +428,16 @@ def render_markdown(report: ProjectPostCalc) -> str:
     out.append(f"| Productivity factor (actual / earned) | {_fmt(_q(report.overall_productivity_factor, _FACTOR_Q))} |")
     out.append(f"| Variance | {_fmt(_q(report.overall_variance_pct, _PCT_Q))} % |")
     out.append(f"| Planned labour cost | {_fmt(_q(report.total_planned_labour_cost, _MONEY_Q))} {cur} |")
+    out.append(
+        f"| Earned labour cost (for installed qty) | {_fmt(_q(report.total_earned_labour_cost, _MONEY_Q))} {cur} |"
+    )
     out.append(f"| Actual labour cost | {_fmt(_q(report.total_actual_labour_cost, _MONEY_Q))} {cur} |")
+    out.append(f"| Planned material cost | {_fmt(_q(report.total_planned_material_cost, _MONEY_Q))} {cur} |")
+    out.append(
+        f"| Earned material cost (for installed qty) | {_fmt(_q(report.total_earned_material_cost, _MONEY_Q))} {cur} |"
+    )
+    out.append(f"| Actual material cost | {_fmt(_q(report.total_actual_material_cost, _MONEY_Q))} {cur} |")
+    out.append(f"| Lines with priced material | {report.material_priced_line_count} / {report.line_count} |")
     out.append(f"| Lines compared / total | {report.compared_line_count} / {report.line_count} |")
     out.append("")
 
@@ -378,11 +470,52 @@ def render_markdown(report: ProjectPostCalc) -> str:
         )
     out.append("")
 
+    # ── Material money per line ──────────────────────────────────────────────
+    #
+    # Kept as its own table rather than as four more columns on the one above.
+    # The hours table answers how fast the crew worked and this one answers what
+    # the material cost, and a reader looking for the second question should not
+    # have to scroll past ten columns of the first. Compared against earned
+    # rather than planned money, because a line that is half built has spent
+    # about half its material budget and that is not a saving.
+    out.append("## Material cost by line")
+    out.append("")
+    priced = [line for line in report.lines if line.actual_material_cost is not None]
+    if priced:
+        out.append(
+            "| Ref | Description | Unit | Planned qty | Installed qty | Earned material | Actual material | Variance |"
+        )
+        out.append("| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |")
+        for line in priced:
+            out.append(
+                _row(
+                    [
+                        line.ref or "-",
+                        line.description or "-",
+                        line.unit or "-",
+                        _fmt(_q(line.planned_quantity, _QTY_Q)),
+                        _fmt(_q(line.actual_quantity, _QTY_Q)),
+                        _fmt(_q(line.earned_material_cost, _MONEY_Q)),
+                        _fmt(_q(line.actual_material_cost, _MONEY_Q)),
+                        _fmt(_q(line.material_cost_variance_earned, _MONEY_Q)),
+                    ]
+                )
+            )
+    else:
+        out.append(
+            "No material consumption has been priced against these lines yet, so the "
+            "material half of the estimate cannot be checked."
+        )
+    out.append("")
+
     # ── Resource categories ──────────────────────────────────────────────────
     out.append("## Productivity by resource")
     out.append("")
-    out.append("| Resource | Planned h | Earned h | Actual h | Factor | Variance % | Planned cost | Actual cost |")
-    out.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+    out.append(
+        "| Resource | Planned h | Earned h | Actual h | Factor | Variance % | "
+        "Planned cost | Earned cost | Actual cost |"
+    )
+    out.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
     for res in report.resources:
         out.append(
             _row(
@@ -394,6 +527,7 @@ def render_markdown(report: ProjectPostCalc) -> str:
                     _fmt(_q(res.productivity_factor, _FACTOR_Q)),
                     _fmt(_q(res.variance_pct, _PCT_Q)),
                     _fmt(_q(res.planned_cost, _MONEY_Q)),
+                    _fmt(_q(res.earned_cost, _MONEY_Q)),
                     _fmt(_q(res.actual_cost, _MONEY_Q)),
                 ]
             )

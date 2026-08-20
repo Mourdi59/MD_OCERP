@@ -220,6 +220,11 @@ const InspectionsPage = lazy(() =>
 const NCRPage = lazy(() =>
   import('@/features/ncr/NCRPage').then((m) => ({ default: m.NCRPage }))
 );
+// Post-calculation (backend module oe_postcalc): the estimate reconciled
+// against what the site actually booked and consumed.
+const PostCalcPage = lazy(() =>
+  import('@/features/postcalc/PostCalcPage').then((m) => ({ default: m.PostCalcPage }))
+);
 // Delivery-lifecycle registers (backend modules oe_site_inventory / oe_site_prep /
 // oe_temporary_works / oe_interface_management / oe_defects_liability).
 const SiteInventoryPage = lazy(() =>
@@ -1297,6 +1302,8 @@ export default function App() {
         <Route path="/inspections" element={<P title="Inspections"><InspectionsPage /></P>} />
         <Route path="/projects/:projectId/ncr" element={<P title="NCR"><NCRPage /></P>} />
         <Route path="/ncr" element={<P title="NCR"><NCRPage /></P>} />
+        <Route path="/projects/:projectId/postcalc" element={<P title="Post-calculation"><PostCalcPage /></P>} />
+        <Route path="/postcalc" element={<P title="Post-calculation"><PostCalcPage /></P>} />
         <Route path="/projects/:projectId/site-inventory" element={<P title="Site Inventory"><SiteInventoryPage /></P>} />
         <Route path="/site-inventory" element={<P title="Site Inventory"><SiteInventoryPage /></P>} />
         <Route path="/projects/:projectId/site-prep" element={<P title="Site Mobilisation"><SitePrepPage /></P>} />
