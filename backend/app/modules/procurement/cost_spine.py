@@ -64,7 +64,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -162,6 +162,50 @@ async def _cost_lines_in_project(
     stmt = select(CostLine.id).where(CostLine.project_id == project_id, CostLine.id.in_(sorted(candidates)))
     rows = await session.execute(stmt)
     return set(rows.scalars().all())
+
+
+async def positions_for_cost_lines(
+    session: AsyncSession,
+    cost_line_ids: Iterable[uuid.UUID | None],
+) -> dict[str, uuid.UUID]:
+    """Name the bill position behind each cost line, for the read side.
+
+    Keyed by the cost line id as text, because that is how a response carries a
+    foreign id and how every other map in this layer is keyed. A cost line with
+    no position of its own simply does not appear, so a caller that finds
+    nothing has the same answer as one that asked about a line off the bill.
+
+    Why this is not the read-time resolution the module docstring rules out
+    ----------------------------------------------------------------------
+
+    That rule is about *what an order committed against*, and it still holds:
+    ``cost_line_id`` is frozen on write and nothing here recomputes it. This
+    only answers the next question, which is what to show a person reopening
+    the order. They picked a position, the order stored a cost line, and a form
+    that cannot turn that back into a position renders its picker empty and
+    saves the emptiness. Accepting a field on write that cannot be returned on
+    read is what makes an edit form forget the user's own choice.
+
+    The honest limitation, since it is invisible later
+    -------------------------------------------------
+
+    What comes back is the position the cost line names *today*. ``CostLine``
+    carries ``boq_position_id`` and an update can re-point it, so this is a
+    derivation and not a record of what was typed. It is the right answer in
+    every ordinary case and there is no better one available, because the money
+    row deliberately does not store the position. A caller editing an order it
+    did not change should send back the ``cost_line_id`` it was given rather
+    than this position; ``resolve_cost_line_ids`` gives an explicit cost line
+    priority precisely so that round trip is lossless.
+    """
+    wanted = {cid for cid in cost_line_ids if cid is not None}
+    if not wanted:
+        return {}
+    from app.modules.costmodel.models import CostLine
+
+    stmt = select(CostLine.id, CostLine.boq_position_id).where(CostLine.id.in_(sorted(wanted)))
+    rows = await session.execute(stmt)
+    return {str(line_id): position_id for line_id, position_id in rows.all() if position_id is not None}
 
 
 async def resolve_cost_line_ids(

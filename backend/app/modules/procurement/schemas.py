@@ -163,6 +163,12 @@ class POItemResponse(BaseModel):
     # error, and silence about it is what let the committed report read zero
     # for as long as it did.
     cost_line_id: UUID | None = None
+    # The position behind that cost line, derived rather than stored: the money
+    # row holds no position column, by design. Returned because ``POItemCreate``
+    # accepts a position, and a field a caller may write but never read back is
+    # how an edit form loses the choice the user made. Absent for a line off the
+    # bill, and for one whose cost line was generated from no position.
+    boq_position_id: UUID | None = None
     sort_order: int = 0
     created_at: datetime
     updated_at: datetime

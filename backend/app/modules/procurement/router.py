@@ -33,6 +33,7 @@ from app.dependencies import (
     verify_project_access,
 )
 from app.modules.contacts.models import Contact
+from app.modules.procurement.cost_spine import positions_for_cost_lines
 from app.modules.procurement.models import PurchaseOrder
 from app.modules.procurement.schemas import (
     GRCreate,
@@ -82,7 +83,20 @@ async def _fetch_vendor_names(session: AsyncSession, vendor_ids: Iterable[str | 
     return {str(c.id): _contact_display_name(c) for c in rows}
 
 
-def _po_to_response(po: PurchaseOrder, vendor_names: dict[str, str]) -> POResponse:
+async def _fetch_line_positions(session: AsyncSession, pos: Iterable[PurchaseOrder]) -> dict[str, uuid.UUID]:
+    """Resolve ``cost_line_id`` → bill position for every line of these orders, in one round trip.
+
+    Batched across the whole list rather than per order, so a page of purchase
+    orders costs one query and not one per row.
+    """
+    return await positions_for_cost_lines(session, [item.cost_line_id for po in pos for item in (po.items or [])])
+
+
+def _po_to_response(
+    po: PurchaseOrder,
+    vendor_names: dict[str, str],
+    line_positions: dict[str, uuid.UUID],
+) -> POResponse:
     resp = POResponse.model_validate(po)
     if po.vendor_contact_id:
         resp.vendor_name = vendor_names.get(po.vendor_contact_id)
@@ -95,7 +109,25 @@ def _po_to_response(po: PurchaseOrder, vendor_names: dict[str, str]) -> PORespon
     # the service gate on create/update as a transient attribute. Absent on a
     # plain list read, so default to empty.
     resp.vendor_warnings = list(getattr(po, "vendor_warnings", []) or [])
+    # The position a line was ordered against. Derived from the cost line the
+    # order froze on write, never recomputed from the position; see
+    # ``cost_spine.positions_for_cost_lines``.
+    for item in resp.items:
+        if item.cost_line_id is not None:
+            item.boq_position_id = line_positions.get(str(item.cost_line_id))
     return resp
+
+
+async def _po_response(session: AsyncSession, po: PurchaseOrder) -> POResponse:
+    """One purchase order with both of the lookups its response needs.
+
+    The two were spelled out at every endpoint that returns a single order, and
+    a new endpoint that copied only the first would answer null for every
+    position, which reads as "this line was never coded" rather than as a
+    missing lookup. Keeping the pair in one place is what stops that.
+    """
+    vendor_names = await _fetch_vendor_names(session, [po.vendor_contact_id])
+    return _po_to_response(po, vendor_names, await _fetch_line_positions(session, [po]))
 
 
 # ── Purchase Orders (list / create) ─────────────────────────────────────────
@@ -126,8 +158,9 @@ async def list_purchase_orders(
         limit=limit,
     )
     vendor_names = await _fetch_vendor_names(service.session, (po.vendor_contact_id for po in items))
+    line_positions = await _fetch_line_positions(service.session, items)
     return POListResponse(
-        items=[_po_to_response(po, vendor_names) for po in items],
+        items=[_po_to_response(po, vendor_names, line_positions) for po in items],
         total=total,
         offset=offset,
         limit=limit,
@@ -154,8 +187,7 @@ async def create_purchase_order(
     # on ``create_goods_receipt`` / ``create_invoice_from_po``.
     await verify_project_access(data.project_id, str(user_id), session)
     po = await service.create_po(data, user_id=user_id)
-    vendor_names = await _fetch_vendor_names(service.session, [po.vendor_contact_id])
-    return _po_to_response(po, vendor_names)
+    return await _po_response(service.session, po)
 
 
 # ── Stats ────────────────────────────────────────────────────────────────────
@@ -385,8 +417,7 @@ async def get_purchase_order(
     """Get a single purchase order by ID."""
     po = await service.get_po(po_id)
     await verify_project_access(po.project_id, str(user_id), session)
-    vendor_names = await _fetch_vendor_names(service.session, [po.vendor_contact_id])
-    return _po_to_response(po, vendor_names)
+    return await _po_response(service.session, po)
 
 
 @router.patch(
@@ -405,8 +436,7 @@ async def update_purchase_order(
     existing = await service.get_po(po_id)
     await verify_project_access(existing.project_id, str(user_id), session)
     po = await service.update_po(po_id, data)
-    vendor_names = await _fetch_vendor_names(service.session, [po.vendor_contact_id])
-    return _po_to_response(po, vendor_names)
+    return await _po_response(service.session, po)
 
 
 @router.post(
@@ -709,8 +739,7 @@ async def approve_purchase_order(
     existing = await service.get_po(po_id)
     await verify_project_access(existing.project_id, str(user_id), session)
     po = await service.approve_po(po_id, approver_id=str(user_id))
-    vendor_names = await _fetch_vendor_names(service.session, [po.vendor_contact_id])
-    return _po_to_response(po, vendor_names)
+    return await _po_response(service.session, po)
 
 
 @router.post(
@@ -728,8 +757,7 @@ async def issue_purchase_order(
     existing = await service.get_po(po_id)
     await verify_project_access(existing.project_id, str(user_id), session)
     po = await service.issue_po(po_id)
-    vendor_names = await _fetch_vendor_names(service.session, [po.vendor_contact_id])
-    return _po_to_response(po, vendor_names)
+    return await _po_response(service.session, po)
 
 
 # ── Retainage (Gap F) ────────────────────────────────────────────────────────
