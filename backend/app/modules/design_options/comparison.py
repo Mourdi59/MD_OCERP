@@ -6,6 +6,14 @@ Turns a set of design options into the side-by-side comparison the UI renders:
 one column per option, a by-trade delta table, a transparent recommendation and a
 set-level fairness banner.
 
+A design option is a whole alternative, so a column answers more than cost: the
+programme figures come from the schedule the option links and the embodied-carbon
+figures from the inventory it links. Both are carried as "answered or not" rather
+than as a bare number, because an option nobody has programmed and an option that
+finishes today both read zero days. A delta is computed only when both sides of
+the subtraction are answered, and the banner says how many options really carry a
+column when only some of them do.
+
 Every option in a set is an alternative design for the SAME project, so the
 options share one project base currency and one gross floor area. The aggregator
 reads each option's OWN bill of quantities through the BOQ module's
@@ -115,6 +123,17 @@ class _OptionAcc:
     validation_status: str
     delta: Decimal = Decimal("0")
     delta_pct: Decimal | None = None
+    # Programme and carbon are held as "answered or not", never as a bare number:
+    # an option nobody has programmed and an option that finishes today both read
+    # zero days, and only the flag tells them apart.
+    has_programme: bool = False
+    duration_days: Decimal = Decimal("0")
+    finish_date: str = ""
+    delta_days: Decimal | None = None
+    has_carbon: bool = False
+    embodied_carbon: Decimal = Decimal("0")
+    carbon_per_m2: Decimal = Decimal("0")
+    delta_carbon: Decimal | None = None
 
 
 class DesignOptionComparator:
@@ -186,6 +205,14 @@ class DesignOptionComparator:
                     priced=priced,
                     position_count=leaf_count,
                     validation_status=opt.validation_status or "pending",
+                    # Presence of the reference, not the size of the number, is
+                    # what makes the programme and carbon cells answerable.
+                    has_programme=opt.schedule_id is not None,
+                    duration_days=_parse_decimal(opt.duration_days),
+                    finish_date=opt.finish_date or "",
+                    has_carbon=opt.carbon_inventory_id is not None,
+                    embodied_carbon=_parse_decimal(opt.embodied_carbon_kg),
+                    carbon_per_m2=_parse_decimal(opt.carbon_per_m2),
                 )
             )
             buckets_by_option[opt.id] = self._bucket_positions(positions, base_currency, fx_map, preferred, fx_factor)
@@ -199,6 +226,17 @@ class DesignOptionComparator:
                 continue
             c.delta = _cents(c.grand - baseline_grand)
             c.delta_pct = _cents(c.delta / baseline_grand * Decimal("100")) if baseline_grand > 0 else None
+
+        # Programme and carbon deltas are subtractions between two answers. When
+        # either side is unanswered the delta stays null rather than being
+        # measured from a zero nobody supplied, which would read as a schedule
+        # saving the size of the whole programme.
+        if baseline_col is not None:
+            for c in columns:
+                if c.has_programme and baseline_col.has_programme:
+                    c.delta_days = c.duration_days - baseline_col.duration_days
+                if c.has_carbon and baseline_col.has_carbon:
+                    c.delta_carbon = _cents(c.embodied_carbon - baseline_col.embodied_carbon)
 
         recommendation = self._recommend(columns)
         fairness_warnings = self._fairness_warnings(
@@ -493,6 +531,17 @@ class DesignOptionComparator:
         if len(distinct_gfa) > 1:
             warnings.append(_warn("mixedGfa", "info"))
 
+        # A column answered for some options and blank for the rest invites the
+        # reader to rank on it anyway, so the banner says how many options really
+        # carry it. Silence when none of them do: a comparison that never claimed
+        # to weigh carbon owes nobody a notice about carbon.
+        programmed = sum(1 for c in columns if c.has_programme)
+        if 0 < programmed < len(columns):
+            warnings.append(_warn("partialProgramme", "info", {"answered": programmed, "total": len(columns)}))
+        weighed = sum(1 for c in columns if c.has_carbon)
+        if 0 < weighed < len(columns):
+            warnings.append(_warn("partialCarbon", "info", {"answered": weighed, "total": len(columns)}))
+
         return warnings
 
     def _fairness_banner(self, warnings: list[DesignOptionFairnessWarning]) -> DesignOptionFairness:
@@ -614,4 +663,13 @@ class DesignOptionComparator:
             element_count=int(c.option.element_count or 0),
             position_count=c.position_count,
             validation_status=c.validation_status,
+            boq_source=c.option.boq_source or "",
+            has_programme=c.has_programme,
+            duration_days=_money_str(c.duration_days),
+            finish_date=c.finish_date,
+            delta_days_vs_baseline=_money_str(c.delta_days) if c.delta_days is not None else None,
+            has_carbon=c.has_carbon,
+            embodied_carbon_kg=_money_str(c.embodied_carbon),
+            carbon_per_m2=_money_str(c.carbon_per_m2),
+            delta_carbon_vs_baseline=_money_str(c.delta_carbon) if c.delta_carbon is not None else None,
         )

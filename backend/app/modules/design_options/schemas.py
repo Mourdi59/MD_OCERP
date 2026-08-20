@@ -53,10 +53,14 @@ class DesignOptionCreate(BaseModel):
 
 
 class DesignOptionResponse(BaseModel):
-    """One design option: its source pairing, priced totals and validation state.
+    """One design option: its references, priced totals and validation state.
 
     Money, quantity and ratio fields are plain decimal strings (never floats).
     ``breakdown`` is the by-element cost snapshot (RomElementBreakdown shape).
+    ``duration_days`` / ``finish_date`` are read off the linked schedule and
+    ``embodied_carbon_kg`` / ``carbon_per_m2`` off the linked carbon inventory;
+    they stay zero and blank while nothing is linked, which is the difference
+    between "this option finishes on day zero" and "nobody has programmed it".
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -70,12 +74,19 @@ class DesignOptionResponse(BaseModel):
     bim_model_id: UUID | None = None
     boq_id: UUID | None = None
     match_session_id: UUID | None = None
+    schedule_id: UUID | None = None
+    carbon_inventory_id: UUID | None = None
+    boq_source: str = ""
     status: str = "draft"
     error: str = ""
     direct_cost: str = "0"
     markups_total: str = "0"
     grand_total: str = "0"
     cost_per_m2: str = "0"
+    duration_days: str = "0"
+    finish_date: str = ""
+    embodied_carbon_kg: str = "0"
+    carbon_per_m2: str = "0"
     gfa: str = "0"
     gfa_unit: str = "m2"
     currency: str = ""
@@ -133,6 +144,41 @@ class AttachModelRequest(BaseModel):
             "is adopted; otherwise the document is recorded so the BIM hub can convert "
             "it and the option re-attached to the resulting model."
         ),
+    )
+
+
+class DesignOptionLinkRequest(BaseModel):
+    """Point an option at things the project already holds.
+
+    A design option is a whole alternative, so it is not only a model: the
+    estimate that prices it, the programme that dates it and the carbon inventory
+    that weighs it may all exist in the project already. This links them instead
+    of asking anyone to upload or retype what is on the platform.
+
+    Presence, not value, decides what changes. A field left out of the request
+    body is left alone; a field sent as ``null`` clears that reference. That
+    distinction is read off Pydantic's ``model_fields_set``, so unlinking a
+    schedule and leaving one alone are two different requests rather than the
+    same one, and a partial update can never silently drop a reference it did not
+    mention.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    boq_id: UUID | None = Field(
+        default=None,
+        description=(
+            "Bill of quantities in the same project to price this option from. "
+            "Linking one prices the option immediately - no model is required."
+        ),
+    )
+    schedule_id: UUID | None = Field(
+        default=None,
+        description="Schedule in the same project giving this option its duration and finish date.",
+    )
+    carbon_inventory_id: UUID | None = Field(
+        default=None,
+        description="Carbon inventory in the same project giving this option its embodied carbon.",
     )
 
 
@@ -240,6 +286,15 @@ class DesignOptionColumn(BaseModel):
     baseline or the baseline total is zero (no meaningful percentage). A draft
     option that has not been priced yet still appears here with zero totals so the
     full set of options is always visible.
+
+    Beyond cost the column answers the other two questions asked of a design
+    alternative, and only from what the option really references. ``duration_days``
+    / ``finish_date`` come from the linked schedule and ``embodied_carbon_kg`` /
+    ``carbon_per_m2`` from the linked carbon inventory. ``has_programme`` and
+    ``has_carbon`` say whether anything is linked at all, because a zero and an
+    unanswered question look identical in a number and must not read the same on
+    screen. The deltas against the baseline are ``null`` whenever either side of
+    the subtraction is unanswered rather than being quietly measured from zero.
     """
 
     option_id: UUID
@@ -255,6 +310,16 @@ class DesignOptionColumn(BaseModel):
     element_count: int = 0
     position_count: int = 0
     validation_status: str = "pending"
+    boq_source: str = ""
+    has_programme: bool = False
+    duration_days: str = "0"
+    finish_date: str = ""
+    delta_days_vs_baseline: str | None = None
+    has_carbon: bool = False
+    embodied_carbon_kg: str = "0"
+    carbon_per_m2: str = "0"
+    carbon_unit: str = "kgCO2e"
+    delta_carbon_vs_baseline: str | None = None
 
 
 class TradeDeltaOptionCell(BaseModel):

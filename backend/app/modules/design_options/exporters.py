@@ -124,6 +124,12 @@ _FAIRNESS_TEXT: dict[str, str] = {
     ),
     "designOptions.fairness.mixedGfa": ("Options use different gross floor areas, so read the cost per m2 with care."),
     "designOptions.fairness.validationPending": "No option has been validated yet.",
+    "designOptions.fairness.partialProgramme": (
+        "{answered} of {total} options link a schedule, so the duration column does not rank the whole set."
+    ),
+    "designOptions.fairness.partialCarbon": (
+        "{answered} of {total} options link a carbon inventory, so the carbon column does not rank the whole set."
+    ),
 }
 
 _CLASSIFICATION_LABEL: dict[str, str] = {
@@ -263,7 +269,7 @@ def _write_matrix_sheet(ws: Worksheet, comparison: DesignOptionComparisonRespons
     options = list(comparison.options)
     ccy = (comparison.comparison_currency or "").strip()
     money_suffix = f" ({ccy})" if ccy else ""
-    span = 13
+    span = 18
 
     names = {col.option_id: (col.name or "") for col in options}
     baseline_id = comparison.baseline_option_id
@@ -293,6 +299,11 @@ def _write_matrix_sheet(ws: Worksheet, comparison: DesignOptionComparisonRespons
         "Delta %",
         f"Cost per m2{money_suffix}",
         "GFA (m2)",
+        "Duration (days)",
+        "Finish",
+        "Delta days vs baseline",
+        "Embodied carbon A1-A5 (kgCO2e)",
+        "Carbon per m2 (kgCO2e/m2)",
         "Elements",
         "Positions",
         "Validation",
@@ -309,6 +320,11 @@ def _write_matrix_sheet(ws: Worksheet, comparison: DesignOptionComparisonRespons
             roles.append("Baseline")
         if recommended_id is not None and col.option_id == recommended_id:
             roles.append("Recommended")
+        # Says where the option's money came from. A linked bill is shared with
+        # whatever else in the project uses it, which a reader of the appraisal
+        # should know before treating the figure as this module's own.
+        if (col.boq_source or "") == "linked":
+            roles.append("Linked estimate")
 
         ws.cell(row=row, column=1, value=line_no).number_format = _COUNT_FORMAT
         name_cell = _text_cell(ws, row, 2, col.name or "")
@@ -322,10 +338,21 @@ def _write_matrix_sheet(ws: Worksheet, comparison: DesignOptionComparisonRespons
             _num_cell(ws, row, 7, col.delta_pct, _PCT_FORMAT)
         _num_cell(ws, row, 8, col.cost_per_m2, _MONEY_FORMAT)
         _num_cell(ws, row, 9, col.gfa, _QTY_FORMAT)
-        ws.cell(row=row, column=10, value=int(col.element_count or 0)).number_format = _COUNT_FORMAT
-        ws.cell(row=row, column=11, value=int(col.position_count or 0)).number_format = _COUNT_FORMAT
-        _text_cell(ws, row, 12, col.validation_status or "pending")
-        _text_cell(ws, row, 13, ", ".join(roles))
+        # Programme and carbon cells stay EMPTY when the option links no schedule
+        # or no inventory. A zero in a spreadsheet is a measurement, and a reader
+        # sorting on the column would rank an unprogrammed option fastest.
+        if col.has_programme:
+            _num_cell(ws, row, 10, col.duration_days, _COUNT_FORMAT)
+            _text_cell(ws, row, 11, col.finish_date or "")
+            if col.delta_days_vs_baseline is not None:
+                _num_cell(ws, row, 12, col.delta_days_vs_baseline, _COUNT_FORMAT)
+        if col.has_carbon:
+            _num_cell(ws, row, 13, col.embodied_carbon_kg, _MONEY_FORMAT)
+            _num_cell(ws, row, 14, col.carbon_per_m2, _MONEY_FORMAT)
+        ws.cell(row=row, column=15, value=int(col.element_count or 0)).number_format = _COUNT_FORMAT
+        ws.cell(row=row, column=16, value=int(col.position_count or 0)).number_format = _COUNT_FORMAT
+        _text_cell(ws, row, 17, col.validation_status or "pending")
+        _text_cell(ws, row, 18, ", ".join(roles))
 
         if is_baseline:
             for c in range(1, span + 1):

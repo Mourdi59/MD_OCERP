@@ -31,6 +31,8 @@ anything. Only a non-dry-run call applies the matches and prices the option.
 
 import logging
 import uuid
+from dataclasses import dataclass
+from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from fastapi import HTTPException, status
@@ -45,6 +47,7 @@ from app.modules.design_options.schemas import (
     DesignOptionGeneratePreviewLine,
     DesignOptionGenerateRequest,
     DesignOptionGenerateResponse,
+    DesignOptionLinkRequest,
     DesignOptionSetCreate,
 )
 
@@ -118,6 +121,29 @@ def _parse_decimal(value: object) -> Decimal:
         return Decimal("0")
 
 
+def _parse_iso_date(value: object) -> date | None:
+    """Parse a stored schedule date into a ``date``, or ``None`` when unusable.
+
+    Schedule dates are stored as free-form strings, so they arrive as plain
+    ``YYYY-MM-DD`` from one importer and as a full ISO timestamp from another.
+    Both read as the same day here; anything else is treated as absent rather
+    than guessed at, because a misread date silently moves a completion.
+    """
+    # datetime is a subclass of date, and mixing the two blows up on comparison,
+    # so narrow it first rather than letting one through as if it were a day.
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        return None
+
+
 def _money_str(value: object) -> str:
     """Render a value as a plain decimal string, guarding non-finite values."""
     dec = value if isinstance(value, Decimal) else _parse_decimal(value)
@@ -166,6 +192,50 @@ def _classify_bucket(classification: object, preferred: str) -> tuple[str, str, 
         else:  # free-form trade tag
             return _slug(code), code, "trade"
     return "unclassified", "Unclassified", "none"
+
+
+@dataclass
+class _PricedOption:
+    """One option's headline figures, rolled up from its own bill of quantities.
+
+    The single result of :meth:`DesignOptionsService._price_from_boq`, shared by
+    the two ways an option comes by a bill: generated from the matched model, or
+    linked from an estimate the project already held. Both paths persist these
+    same fields, so a linked option and a generated one can never drift into
+    reporting the same bill two different ways.
+
+    Every money and quantity value is a Decimal here and leaves as a plain
+    decimal string; ``currency`` is the project base the BOQ rollup converted to.
+    """
+
+    direct: Decimal
+    markups: Decimal
+    grand: Decimal
+    cost_per_m2: Decimal
+    gfa: str
+    gfa_unit: str
+    currency: str
+    is_mixed: bool
+    position_count: int
+    breakdown: list[dict]
+    warnings: list[str]
+
+    def as_fields(self, *, boq_source: str) -> dict[str, object]:
+        """The option columns these figures write, ready for a repository update."""
+        return {
+            "direct_cost": _money_str(self.direct),
+            "markups_total": _money_str(self.markups),
+            "grand_total": _money_str(self.grand),
+            "cost_per_m2": _money_str(self.cost_per_m2),
+            "gfa": self.gfa,
+            "gfa_unit": self.gfa_unit,
+            "currency": self.currency,
+            "position_count": self.position_count,
+            "breakdown": self.breakdown,
+            "boq_source": boq_source,
+            "status": "priced",
+            "error": "",
+        }
 
 
 class DesignOptionsService:
@@ -374,6 +444,268 @@ class DesignOptionsService:
         await self.session.flush()
         return await self.get_option(option.id)
 
+    # ── Link what the project already holds ──────────────────────────────
+
+    async def link_references(self, option: DesignOption, data: DesignOptionLinkRequest) -> DesignOption:
+        """Point an option at a bill, a schedule and a carbon inventory it already has.
+
+        This is the answer to "why can I only give an option a model": an option
+        is a whole design alternative, and the estimate, the programme and the
+        carbon inventory that describe it usually exist on the platform before
+        anyone opens this page. Each reference is guarded against the option's own
+        project, so a record from another tenant reads 404 rather than 403 and an
+        option id cannot be used to probe foreign estimates.
+
+        Only the fields actually present in the request body are touched
+        (``model_fields_set``), so clearing a schedule and leaving it alone are
+        different requests. Linking a bill prices the option there and then
+        through the same rollup ``generate`` uses - no model required, which is
+        what makes a hand-built option estimate a first-class option.
+
+        Args:
+            option: The option to update.
+            data: The references to link; a field sent as ``null`` clears it.
+
+        Returns:
+            The reloaded option.
+
+        Raises:
+            HTTPException: 400 when nothing was asked for, 404 when a referenced
+                record is missing or belongs to another project.
+        """
+        provided = data.model_fields_set
+        if not provided:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Provide at least one of boq_id, schedule_id or carbon_inventory_id.",
+            )
+
+        fields: dict[str, object] = {}
+        price_boq_id: uuid.UUID | None = None
+        # Read before anything is written. ``update_option_fields`` is an ORM
+        # bulk UPDATE, which synchronises the instance already in the session, so
+        # by the time the bill is priced below ``option.boq_id`` is the NEW id
+        # and cannot answer "was this the bill it had before".
+        previous_boq_id = option.boq_id
+
+        if "boq_id" in provided:
+            if data.boq_id is None:
+                # Unlinking a bill also unpriced the option: leaving the totals in
+                # place would show a priced column sourced from nothing.
+                fields.update(
+                    boq_id=None,
+                    boq_source="",
+                    direct_cost="0",
+                    markups_total="0",
+                    grand_total="0",
+                    cost_per_m2="0",
+                    position_count=0,
+                    breakdown=[],
+                    status="model_attached" if option.bim_model_id is not None else "draft",
+                )
+            else:
+                boq = await self._project_scoped(option, "boq", data.boq_id)
+                fields["boq_id"] = boq.id
+                price_boq_id = boq.id
+
+        if "schedule_id" in provided:
+            if data.schedule_id is None:
+                fields.update(schedule_id=None, duration_days="0", finish_date="")
+            else:
+                schedule = await self._project_scoped(option, "schedule", data.schedule_id)
+                duration, finish = await self._schedule_metrics(schedule)
+                fields.update(schedule_id=schedule.id, duration_days=duration, finish_date=finish)
+
+        if "carbon_inventory_id" in provided:
+            if data.carbon_inventory_id is None:
+                fields.update(carbon_inventory_id=None, embodied_carbon_kg="0", carbon_per_m2="0")
+            else:
+                inventory = await self._project_scoped(option, "carbon", data.carbon_inventory_id)
+                embodied, per_m2 = await self._carbon_metrics(option, inventory.id)
+                fields.update(
+                    carbon_inventory_id=inventory.id,
+                    embodied_carbon_kg=embodied,
+                    carbon_per_m2=per_m2,
+                )
+
+        await self.repo.update_option_fields(option.id, **fields)
+        await self.session.flush()
+
+        if price_boq_id is not None:
+            from app.modules.projects.models import Project
+
+            project = await self.session.get(Project, option.project_id)
+            priced = await self._price_from_boq(option, price_boq_id, project)
+            # Re-sending the bill an option already carries is a refresh, not a
+            # change of provenance. Keeping "generated" there matters: a bill this
+            # module wrote must not be relabelled as somebody else's just because
+            # the user moved the schedule next to it, or the refusal above would
+            # start blocking a regeneration this module is entitled to.
+            source = option.boq_source if price_boq_id == previous_boq_id and option.boq_source else "linked"
+            await self.repo.update_option_fields(option.id, **priced.as_fields(boq_source=source))
+            await self.session.flush()
+            logger.info(
+                "Design option priced from a linked bill: option=%s boq=%s grand=%s %s",
+                option.id,
+                price_boq_id,
+                priced.grand,
+                priced.currency,
+            )
+
+        logger.info("Design option %s references updated: %s", option.id, sorted(provided))
+        return await self.get_option(option.id)
+
+    async def _project_scoped(self, option: DesignOption, kind: str, record_id: uuid.UUID) -> object:
+        """Load a cross-module record and prove it belongs to the option's project.
+
+        Every reference an option can hold points at another module's table, so the
+        guard has to be the same in all of them: unknown id and foreign-project id
+        both read as 404, never 403, so nothing here can be used to discover that a
+        record exists in a project the caller cannot see.
+        """
+        if kind == "boq":
+            from app.modules.boq.models import BOQ
+
+            record: object | None = await self.session.get(BOQ, record_id)
+            label = "Bill of quantities"
+        elif kind == "schedule":
+            from app.modules.schedule.models import Schedule
+
+            record = await self.session.get(Schedule, record_id)
+            label = "Schedule"
+        else:
+            from app.modules.carbon.models import CarbonInventory
+
+            record = await self.session.get(CarbonInventory, record_id)
+            label = "Carbon inventory"
+
+        if record is None or getattr(record, "project_id", None) != option.project_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{label} not found")
+        return record
+
+    async def _schedule_metrics(self, schedule: object) -> tuple[str, str]:
+        """Read a schedule's duration in days and its finish date.
+
+        The activities are the truth: a schedule row's own start/end are metadata
+        an import may never have filled in, while the activities are what the
+        planner actually moved. So the span is taken from the earliest activity
+        start to the latest activity finish, and the schedule's own dates are only
+        the fallback for a schedule with no activities yet.
+
+        Returns:
+            ``(duration_days, finish_date)`` as a decimal string and an ISO date,
+            both zero/blank when the schedule carries no usable dates - an
+            unanswered question, not a zero-day programme.
+        """
+        from app.modules.schedule.models import Activity
+
+        rows = (
+            await self.session.execute(
+                select(Activity.start_date, Activity.end_date).where(
+                    Activity.schedule_id == getattr(schedule, "id", None)
+                )
+            )
+        ).all()
+        starts = [parsed for row in rows if (parsed := _parse_iso_date(row[0])) is not None]
+        finishes = [parsed for row in rows if (parsed := _parse_iso_date(row[1])) is not None]
+
+        start = min(starts) if starts else _parse_iso_date(getattr(schedule, "start_date", None))
+        finish = max(finishes) if finishes else _parse_iso_date(getattr(schedule, "end_date", None))
+        if start is None or finish is None or finish < start:
+            return "0", finish.isoformat() if finish is not None else ""
+        # Inclusive of both end days: a task that starts and finishes on the same
+        # day lasts one day, not zero.
+        return str((finish - start).days + 1), finish.isoformat()
+
+    async def _carbon_metrics(self, option: DesignOption, inventory_id: uuid.UUID) -> tuple[str, str]:
+        """Read an inventory's embodied carbon and the same figure over the area.
+
+        A1-A5 (cradle to practical completion) is the figure a design alternative
+        is judged on: it is the carbon the choice of scheme actually commits,
+        where the operational stages depend on how the finished building is run.
+        The totals come from the carbon module's own fresh rollup so this module
+        never re-implements a factor calculation.
+
+        Returns:
+            ``(embodied_carbon_kg, carbon_per_m2)`` as decimal strings; the second
+            is ``"0"`` when the project has no gross floor area to divide by.
+        """
+        from app.modules.carbon.service import CarbonService
+
+        totals = await CarbonService(self.session).compute_inventory_totals_fresh(inventory_id)
+        embodied = _parse_decimal(totals.get("embodied_a1a5", 0))
+
+        gfa = _parse_decimal(option.gfa)
+        if gfa <= 0:
+            from app.modules.projects.models import Project
+
+            project = await self.session.get(Project, option.project_id)
+            gfa = _parse_decimal(getattr(project, "gross_floor_area", None))
+        per_m2 = _cents(embodied / gfa) if gfa > 0 else Decimal("0")
+        return _money_str(_cents(embodied)), _money_str(per_m2)
+
+    async def _price_from_boq(
+        self,
+        option: DesignOption,
+        boq_id: uuid.UUID,
+        project: object,
+    ) -> _PricedOption:
+        """Roll a bill up into the option's headline figures, FX-correct.
+
+        The one place an option's totals are computed, whether the bill was
+        generated from the matched model or linked from the project. The rollup is
+        the BOQ module's own currency-aware ``compute_boq_totals``: lines priced in
+        a foreign currency are converted to the project base BEFORE they are
+        summed, never blended, and a bill that mixes currencies inside itself comes
+        back flagged rather than silently added up.
+
+        Args:
+            option: The option being priced (its ``gfa_unit`` is preserved).
+            boq_id: The bill to total.
+            project: The option's project, for the base currency, the FX map and
+                the gross floor area behind cost per m2.
+
+        Returns:
+            The figures plus the warnings worth telling the caller about.
+        """
+        from app.modules.boq.service import BOQService, _project_fx_map
+
+        warnings: list[str] = []
+        totals = await BOQService(self.session).compute_boq_totals([boq_id])
+        totals_row = totals.get(boq_id, {})
+        base_currency = (totals_row.get("base_currency") or getattr(project, "currency", "") or "").upper()
+        direct = _cents(_parse_decimal(totals_row.get("direct_cost", 0)))
+        markups = _cents(_parse_decimal(totals_row.get("markups_total", 0)))
+        grand = _cents(_parse_decimal(totals_row.get("grand_total", 0)))
+        is_mixed = bool(totals_row.get("is_mixed_currency", False))
+        if is_mixed:
+            warnings.append("mixed_currency")
+
+        fx_map = _project_fx_map(project)
+        breakdown = await self._build_trade_breakdown(boq_id, project, base_currency, fx_map)
+        position_count = await self._count_positions(boq_id)
+
+        gfa_dec = _parse_decimal(getattr(project, "gross_floor_area", None))
+        if gfa_dec > 0:
+            cost_per_m2 = _cents(direct / gfa_dec)
+        else:
+            cost_per_m2 = Decimal("0")
+            warnings.append("no_gfa")
+
+        return _PricedOption(
+            direct=direct,
+            markups=markups,
+            grand=grand,
+            cost_per_m2=cost_per_m2,
+            gfa=_money_str(gfa_dec) if gfa_dec > 0 else "0",
+            gfa_unit=option.gfa_unit or "m2",
+            currency=base_currency,
+            is_mixed=is_mixed,
+            position_count=position_count,
+            breakdown=breakdown,
+            warnings=warnings,
+        )
+
     # ── Generate (match -> preview/apply -> price) ───────────────────────
 
     async def generate(
@@ -407,6 +739,23 @@ class DesignOptionsService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Attach a BIM model to this option before generating its estimate.",
+            )
+
+        # A linked bill belongs to whoever built it. Step 5 applies the matched
+        # positions into ``boq_id`` through ``target_boq_id``, so generating over
+        # a linked bill would write this module's guesses into somebody else's
+        # estimate - and the same bill may be the tender, the budget or the
+        # contract sum elsewhere in the project. Attaching a model to an option
+        # that is already priced from a linked bill is a perfectly ordinary
+        # thing to do, which is exactly why the refusal has to live here and not
+        # only in the button that offers it.
+        if (option.boq_source or "") == "linked" and option.boq_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "This option is priced from a bill of quantities linked from the project. "
+                    "Unlink it before generating an estimate, so the linked bill is not overwritten."
+                ),
             )
 
         from app.modules.projects.models import Project
@@ -558,52 +907,23 @@ class DesignOptionsService:
             )
 
         # ── 6b. Apply: authoritative FX-correct rollup + persist ─────────
-        from app.modules.boq.service import BOQService, _project_fx_map
-
-        totals = await BOQService(self.session).compute_boq_totals([boq_id])
-        totals_row = totals.get(boq_id, {})
-        base_currency = (totals_row.get("base_currency") or getattr(project, "currency", "") or "").upper()
-        direct = _cents(_parse_decimal(totals_row.get("direct_cost", 0)))
-        markups = _cents(_parse_decimal(totals_row.get("markups_total", 0)))
-        grand = _cents(_parse_decimal(totals_row.get("grand_total", 0)))
-        is_mixed = bool(totals_row.get("is_mixed_currency", False))
-        if is_mixed:
-            warnings.append("mixed_currency")
-
-        fx_map = _project_fx_map(project)
-        breakdown = await self._build_trade_breakdown(boq_id, project, base_currency, fx_map)
-        position_count = await self._count_positions(boq_id)
-
-        if gfa_dec > 0:
-            cost_per_m2 = _cents(direct / gfa_dec)
-        else:
-            cost_per_m2 = Decimal("0")
-            warnings.append("no_gfa")
+        priced = await self._price_from_boq(option, boq_id, project)
+        warnings.extend(priced.warnings)
 
         await self.repo.update_option_fields(
             option.id,
-            direct_cost=_money_str(direct),
-            markups_total=_money_str(markups),
-            grand_total=_money_str(grand),
-            cost_per_m2=_money_str(cost_per_m2),
-            gfa=gfa_str,
-            gfa_unit=gfa_unit,
-            currency=base_currency,
+            **priced.as_fields(boq_source="generated"),
             element_count=element_count,
-            position_count=position_count,
-            breakdown=breakdown,
-            status="priced",
-            error="",
         )
         await self.session.flush()
         logger.info(
             "Design option priced: option=%s boq=%s direct=%s grand=%s %s (mixed=%s)",
             option.id,
             boq_id,
-            direct,
-            grand,
-            base_currency,
-            is_mixed,
+            priced.direct,
+            priced.grand,
+            priced.currency,
+            priced.is_mixed,
         )
 
         return DesignOptionGenerateResponse(
@@ -614,18 +934,18 @@ class DesignOptionsService:
             status="priced",
             positions_created=apply_res.positions_created,
             element_count=element_count,
-            position_count=position_count,
+            position_count=priced.position_count,
             groups_total=groups_total,
             groups_confirmed=groups_confirmed,
-            direct_cost=_money_str(direct),
-            markups_total=_money_str(markups),
-            grand_total=_money_str(grand),
-            cost_per_m2=_money_str(cost_per_m2),
-            gfa=gfa_str,
-            gfa_unit=gfa_unit,
-            currency=base_currency,
-            is_mixed_currency=is_mixed,
-            breakdown=breakdown,
+            direct_cost=_money_str(priced.direct),
+            markups_total=_money_str(priced.markups),
+            grand_total=_money_str(priced.grand),
+            cost_per_m2=_money_str(priced.cost_per_m2),
+            gfa=priced.gfa,
+            gfa_unit=priced.gfa_unit,
+            currency=priced.currency,
+            is_mixed_currency=priced.is_mixed,
+            breakdown=priced.breakdown,
             preview=preview_lines,
             warnings=warnings,
         )

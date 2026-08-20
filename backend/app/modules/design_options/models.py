@@ -82,6 +82,15 @@ class DesignOption(Base):
     ``direct_cost`` / ``markups_total`` / ``grand_total``, all rebased to the
     set's comparison currency. ``breakdown`` is the by-element cost snapshot
     (RomElementBreakdown shape) used for the by-trade delta rows.
+
+    A design option is a whole alternative, not a model. The bill is what makes it
+    estimable and it can be either generated from the attached model or linked
+    from an estimate the project already holds (``boq_source`` records which),
+    which is the difference between comparing models and comparing options. The
+    schedule and carbon-inventory references add the other two questions a client
+    asks of an alternative - when it finishes and what it emits - by pointing at
+    the project's existing programme and inventory rather than by asking anyone to
+    re-enter either here.
     """
 
     __tablename__ = "oe_design_options_option"
@@ -105,6 +114,20 @@ class DesignOption(Base):
     boq_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     match_session_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True)
 
+    # Records the project's own programme and carbon work against this option, so
+    # a design alternative is weighed on what it costs, when it finishes and what
+    # it emits rather than on cost alone. Same cross-module convention as the
+    # source pairing above: plain GUIDs, no ForeignKey.
+    schedule_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
+    carbon_inventory_id: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
+
+    # How the option came by its bill: ``generated`` when the match pipeline wrote
+    # it from the attached model, ``linked`` when an estimate the project already
+    # held was pointed at, empty while the option has no bill. The distinction is
+    # not cosmetic - a linked bill is shared with whatever else uses it, so
+    # regenerating over it would overwrite an estimate this module does not own.
+    boq_source: Mapped[str] = mapped_column(String(20), nullable=False, default="", server_default="")
+
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="draft", server_default="draft")
     error: Mapped[str] = mapped_column(String(500), nullable=False, default="", server_default="")
 
@@ -117,6 +140,19 @@ class DesignOption(Base):
     gfa: Mapped[str] = mapped_column(String(50), nullable=False, default="0", server_default="0")
     gfa_unit: Mapped[str] = mapped_column(String(20), nullable=False, default="m2", server_default="m2")
     currency: Mapped[str] = mapped_column(String(10), nullable=False, default="", server_default="")
+
+    # Programme figures read off the linked schedule at link time. Duration is a
+    # Decimal-as-string day count and ``finish_date`` an ISO date, both blank/zero
+    # while no schedule is linked - which is what keeps the comparison honest
+    # about an option nobody has programmed yet.
+    duration_days: Mapped[str] = mapped_column(String(20), nullable=False, default="0", server_default="0")
+    finish_date: Mapped[str] = mapped_column(String(40), nullable=False, default="", server_default="")
+
+    # Carbon figures read off the linked inventory at link time: cradle-to-
+    # practical-completion embodied carbon (A1-A5) in kgCO2e, and the same figure
+    # over the gross floor area. Decimal-as-string, like every other number here.
+    embodied_carbon_kg: Mapped[str] = mapped_column(String(50), nullable=False, default="0", server_default="0")
+    carbon_per_m2: Mapped[str] = mapped_column(String(50), nullable=False, default="0", server_default="0")
 
     element_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     position_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
