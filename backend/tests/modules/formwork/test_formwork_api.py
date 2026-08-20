@@ -725,7 +725,18 @@ async def test_seeding_is_idempotent_and_counts_the_real_catalogue(
     client: AsyncClient,
     header: dict[str, str],
 ):
-    """``total_after`` is counted from the table, not derived from a name set."""
+    """``total_after`` is counted from the table, not derived from a name set.
+
+    The expected counts are the LENGTH of the shipped catalogue, not a literal.
+    They were literal tens until the catalogue grew from ten rows to eighteen,
+    at which point the number under test was a property of the assertion rather
+    than of the endpoint: adding a system to the starter library is a normal
+    product change and it should not fail a test about idempotency.
+    """
+    from app.modules.formwork.schemas import default_seed_systems
+
+    shipped = len(default_seed_systems())
+
     tenant_id = str(uuid.uuid4())
     first = await client.post(
         "/api/v1/formwork/systems/seed-defaults",
@@ -734,9 +745,9 @@ async def test_seeding_is_idempotent_and_counts_the_real_catalogue(
     )
     assert first.status_code == 201, first.text
     body = first.json()
-    assert body["inserted"] == 10
+    assert body["inserted"] == shipped
     assert body["skipped"] == 0
-    assert body["total_after"] >= 10
+    assert body["total_after"] >= shipped
 
     second = await client.post(
         "/api/v1/formwork/systems/seed-defaults",
@@ -745,7 +756,7 @@ async def test_seeding_is_idempotent_and_counts_the_real_catalogue(
     )
     repeat = second.json()
     assert repeat["inserted"] == 0
-    assert repeat["skipped"] == 10
+    assert repeat["skipped"] == shipped
     assert repeat["total_after"] == body["total_after"]
 
 

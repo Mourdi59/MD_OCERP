@@ -15,7 +15,9 @@ insert never depends on a DB-side default, and the matching migration
 (``v3132_formwork_init`` plus ``v3262_formwork_rate_buildup``) carries the
 equivalent ``server_default`` so raw-SQL inserts and column backfills on an
 existing database are safe too. Losing either half is how the v3119
-fresh-install cascade happened, so keep both in step.
+fresh-install cascade happened, so keep both in step. The migrations that
+carry this table are ``v3132_formwork_init``, ``v3262_formwork_rate_buildup``,
+``v3271_formwork_debrand`` and ``v3300_formwork_system_choice``.
 
 Relationship loading is declared explicitly on every ``relationship()`` per
 ``.claude/rules/backend-modules.md``: the pour cycle is the point of an
@@ -62,6 +64,25 @@ class FormworkSystem(Base):
     so a schedule that turns the same set around faster than this is not
     buildable - the ``formwork.strip_time_respected`` validation rule checks
     exactly that.
+
+    Three columns describe the system as a *choice* rather than as a price,
+    because choosing between systems is the decision this module exists to
+    support and a catalogue that carries only a rate cannot support it:
+
+    * ``rate_basis`` says what ``unit_rate`` MEANS, and it is the one of the
+      three that changes the arithmetic. A purchase rate buys the panels once
+      and amortises over the reuses; a per-use hire rate and an all-in
+      supply-and-fix subcontract rate are already per-use and must not be
+      divided a second time. See :func:`app.modules.formwork.service.compute_cost`.
+    * ``typical_reuses`` is the planning figure - what this system usually
+      delivers on a normal job - as opposed to ``reuses_max``, which is the
+      physical limit the panels survive. Nullable on purpose: NULL reads as
+      "no published figure", which is honestly different from zero, and the
+      chooser falls back to ``reuses_max`` for the hint.
+    * ``cycle_days`` is the pour-to-pour turnaround the system delivers with a
+      normal crew. It is NOT ``strip_time_days``: striking is the floor on the
+      cycle, the cycle is strip plus clean, move, set and align. A climbing
+      system strikes in 3 days and still turns around in 7.
     """
 
     __tablename__ = "oe_formwork_system"
@@ -96,6 +117,27 @@ class FormworkSystem(Base):
     )
     # Minimum days from pour to strike. Drives the cycle-feasibility check.
     strip_time_days: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # What ``unit_rate`` means. "purchase" amortises over the reuses; the
+    # per-use bases do not. Defaults to "purchase" so every row written before
+    # this column existed keeps the arithmetic it was priced with.
+    rate_basis: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="purchase",
+        server_default="purchase",
+        index=True,
+    )
+    # Planning reuse figure. NULL means "no published figure" - deliberately
+    # nullable rather than 0, so a caller never has to guess whether zero is a
+    # real answer or a missing one.
+    typical_reuses: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Pour-to-pour turnaround in days, crew-normal. Strip time is its floor.
+    cycle_days: Mapped[Decimal] = mapped_column(
+        Numeric(6, 2),
+        nullable=False,
+        default=Decimal("0"),
+        server_default="0",
+    )
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="")
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(

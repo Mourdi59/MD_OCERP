@@ -6,11 +6,13 @@ Mounted at ``/api/v1/formwork/`` by the module loader.
 
 Endpoint groups:
     /systems/                              - catalogue CRUD + seed + usage
+    /systems/compare                       - price one area in every system at once
     /systems/{id}/reprice                  - re-price everything using a system
     /assignments/                          - per-project assignment CRUD
     /assignments/{id}/cycle                - reuse economics of the pour schedule
     /assignments/{id}/derive-from-schedule - write the derived area + reuse count
     /assignments/{id}/validate             - the ``formwork`` rule set, one assignment
+    /assignments/{id}/push-to-boq          - write the priced result into a bill
     /assignments/{id}/schedule-lines/      - pour-cycle sub-resource
     /schedule-lines/{id}                   - schedule-line update + delete
     /summary                               - project rollup with the reuse saving
@@ -40,6 +42,10 @@ from app.modules.formwork.schemas import (
     FormworkAssignmentDetail,
     FormworkAssignmentResponse,
     FormworkAssignmentUpdate,
+    FormworkBoqPushRequest,
+    FormworkBoqPushResult,
+    FormworkCompareRequest,
+    FormworkCompareResult,
     FormworkCycleAnalysis,
     FormworkDeriveResult,
     FormworkProjectSummary,
@@ -56,8 +62,10 @@ from app.modules.formwork.schemas import (
     FormworkValidationReport,
 )
 from app.modules.formwork.service import (
+    BoqProjectMismatchError,
     FieldNotNullableError,
     FormworkService,
+    OrdinalSpaceExhaustedError,
     ReuseCountExceedsMaxError,
 )
 
@@ -112,6 +120,9 @@ def _assignment_to_detail(
         detail.system_unit_rate = system.unit_rate
         detail.erect_strike_rate = system.erect_strike_rate
         detail.strip_time_days = system.strip_time_days
+        detail.rate_basis = system.rate_basis
+        detail.typical_reuses = system.typical_reuses
+        detail.cycle_days = system.cycle_days
         detail.currency = system.currency
     return detail
 
@@ -441,6 +452,77 @@ async def get_assignment_cycle(
     service = FormworkService(session)
     obj, system = await _assignment_with_system(service, assignment_id)
     return await service.analyse_cycle(obj, system)
+
+
+@router.post(
+    "/systems/compare",
+    response_model=FormworkCompareResult,
+)
+async def compare_systems(
+    data: FormworkCompareRequest,
+    session: SessionDep,
+    _user_id: CurrentUserId,
+) -> FormworkCompareResult:
+    """Price one contact area in every candidate system at once.
+
+    The endpoint behind choosing a system. The client sends the area, the
+    waste allowance and the reuse count it intends to assume, and gets back
+    one priced row per catalogue system, sorted cheapest first.
+
+    It is a POST because it takes a body of estimating assumptions, not
+    because it writes anything: nothing is persisted here.
+
+    Deliberately server-side. The alternative - shipping the rate build-up to
+    the client and computing the preview there - puts a second implementation
+    of the formula next to the first, in a language whose numbers are floats,
+    and the two drift. The visible symptom of that drift would be the rate on
+    the chooser disagreeing with the rate that lands in the bill, which is
+    exactly the sort of thing nobody reports and everybody stops trusting.
+    """
+    service = FormworkService(session)
+    return await service.compare_systems(data)
+
+
+@router.post(
+    "/assignments/{assignment_id}/push-to-boq",
+    response_model=FormworkBoqPushResult,
+    status_code=status.HTTP_200_OK,
+)
+async def push_assignment_to_boq(
+    assignment_id: uuid.UUID,
+    data: FormworkBoqPushRequest,
+    session: SessionDep,
+    user_id: CurrentUserId,
+) -> FormworkBoqPushResult:
+    """Send a priced assignment to a bill of quantities as a position.
+
+    The contact area becomes the quantity, the reuse-aware unit cost becomes
+    the rate, and the position is stamped ``source="formwork"`` so the number
+    can be traced back to the system and the assumptions that produced it.
+
+    Idempotent by design: a second push re-prices the position the first one
+    created instead of adding another. Returns ``created=false`` in that case,
+    so the caller can say "updated" rather than implying a new line.
+    """
+    await _verify_assignment_access(session, assignment_id, user_id)
+    service = FormworkService(session)
+    try:
+        return await service.push_assignment_to_boq(assignment_id, data, actor_id=user_id)
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Formwork assignment not found",
+        ) from exc
+    except BoqProjectMismatchError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="The target BOQ belongs to a different project",
+        ) from exc
+    except OrdinalSpaceExhaustedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No free formwork position number is left in this BOQ",
+        ) from exc
 
 
 @router.post(

@@ -191,6 +191,123 @@ def test_single_use_cost_is_the_no_reuse_counterfactual():
     assert real.total == Decimal("22830.00")
 
 
+# ── rate basis ──────────────────────────────────────────────────────────────
+#
+# ``rate_basis`` is the one input that changes the SHAPE of the formula rather
+# than its inputs, so it gets its own block. The claim under test is narrow and
+# it is the whole reason the field is not just a label: a rate that is already
+# quoted per use must not be divided by the reuse count a second time.
+
+
+def test_purchase_basis_is_the_default_and_the_historical_arithmetic():
+    """Omitting the basis prices exactly as the module always did.
+
+    Every row written before ``rate_basis`` existed defaults to ``purchase``,
+    so this is the test that says the migration re-prices nothing.
+    """
+    explicit = compute_cost(
+        unit_rate=Decimal("65.00"),
+        area_m2=Decimal("200"),
+        waste_pct=Decimal("5"),
+        reuse_count=10,
+        erect_strike_rate=Decimal("16.00"),
+        rate_basis="purchase",
+    )
+    implied = compute_cost(
+        unit_rate=Decimal("65.00"),
+        area_m2=Decimal("200"),
+        waste_pct=Decimal("5"),
+        reuse_count=10,
+        erect_strike_rate=Decimal("16.00"),
+    )
+    assert explicit == implied
+    assert implied.material == Decimal("6.83")
+
+
+@pytest.mark.parametrize("basis", ["hire_per_use", "subcontract"])
+def test_a_per_use_rate_is_not_amortised(basis: str):
+    """9.50 per use stays 9.50 per use whether you use it once or forty times.
+
+    On a purchase basis the same numbers would give 0.24, which is the bug this
+    branch exists to prevent: the estimator claims more reuses and the price
+    falls, even though the hire invoice is per use and does not.
+    """
+    once = compute_cost(
+        unit_rate=Decimal("9.50"),
+        area_m2=Decimal("100"),
+        waste_pct=Decimal("0"),
+        reuse_count=1,
+        rate_basis=basis,
+    )
+    forty = compute_cost(
+        unit_rate=Decimal("9.50"),
+        area_m2=Decimal("100"),
+        waste_pct=Decimal("0"),
+        reuse_count=40,
+        rate_basis=basis,
+    )
+    assert once.material == Decimal("9.50")
+    assert forty.material == Decimal("9.50")
+    assert once == forty
+
+
+def test_waste_still_loads_a_per_use_rate():
+    """Not amortising is not the same as not being loaded for waste.
+
+    Panels get damaged and offcut on a hired set exactly as on a bought one;
+    what changes is only the divisor.
+    """
+    cost = compute_cost(
+        unit_rate=Decimal("10.00"),
+        area_m2=Decimal("100"),
+        waste_pct=Decimal("5"),
+        reuse_count=8,
+        rate_basis="hire_per_use",
+    )
+    assert cost.material == Decimal("10.50")
+
+
+def test_a_per_use_basis_reports_no_reuse_saving():
+    """The counterfactual equals the real total, so the saving is zero.
+
+    Reporting a saving here would credit the estimator with money the hire
+    invoice never gives back.
+    """
+    real = compute_cost(
+        unit_rate=Decimal("9.50"),
+        area_m2=Decimal("1000"),
+        waste_pct=Decimal("0"),
+        reuse_count=20,
+        erect_strike_rate=Decimal("16.00"),
+        rate_basis="hire_per_use",
+    )
+    naive = single_use_cost(
+        unit_rate=Decimal("9.50"),
+        area_m2=Decimal("1000"),
+        waste_pct=Decimal("0"),
+        erect_strike_rate=Decimal("16.00"),
+        rate_basis="hire_per_use",
+    )
+    assert naive == real.total
+
+
+def test_an_unknown_basis_falls_back_to_purchase():
+    """A row from a future revision keeps pricing, it does not take a sweep down.
+
+    The schema pattern rejects unknown values on the way in, so this can only
+    be reached by a stored row this build does not know about. Refusing to
+    price it would fail a whole re-pricing run over one unrecognised string.
+    """
+    unknown = compute_cost(
+        unit_rate=Decimal("40.00"),
+        area_m2=Decimal("10"),
+        waste_pct=Decimal("0"),
+        reuse_count=4,
+        rate_basis="hire_monthly_someday",
+    )
+    assert unknown.material == Decimal("10.00")
+
+
 # ── derive_cycle ────────────────────────────────────────────────────────────
 
 

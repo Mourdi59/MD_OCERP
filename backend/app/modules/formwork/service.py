@@ -14,8 +14,19 @@ The two halves matter because only the first one amortises. Panels are bought
 once and turned around ``reuse_count`` times; the labour and consumables to
 set and strike them are paid on every one of those turnarounds.
 
-Three things follow from that, and this module owns all three:
+``rate_basis`` decides whether the first line amortises at all: a purchase
+rate is divided by the reuses, a per-use hire rate and an all-in subcontract
+rate are already per-use and are not divided again.
 
+Five things follow from that, and this module owns all five:
+
+* choosing the system is the decision the module exists to support, so every
+  candidate is priced against one set of assumptions by one function
+  (:meth:`FormworkService.compare_systems`) rather than by whatever arithmetic
+  a client happens to implement;
+* a priced assignment can leave for the bill
+  (:meth:`FormworkService.push_assignment_to_boq`), because a calculation that
+  never reaches the tender is a calculator, not a module;
 * a catalogue rate change re-prices every assignment that depends on it
   (:meth:`FormworkService.reprice_for_system`), because a stored total that no
   longer matches its own catalogue row is worse than no total at all;
@@ -47,6 +58,11 @@ from app.modules.formwork.repository import (
 from app.modules.formwork.schemas import (
     FormworkAssignmentCreate,
     FormworkAssignmentUpdate,
+    FormworkBoqPushRequest,
+    FormworkBoqPushResult,
+    FormworkCompareCandidate,
+    FormworkCompareRequest,
+    FormworkCompareResult,
     FormworkCycleAnalysis,
     FormworkCycleConflict,
     FormworkProjectSummary,
@@ -64,9 +80,14 @@ from app.modules.formwork.validators import evaluate_assignment, evaluate_projec
 
 _TWO_DP = Decimal("0.01")
 
+# Rate bases whose ``unit_rate`` is quoted per use and therefore does NOT
+# amortise over the reuse count. Everything not in here is treated as a
+# purchase rate, which is the historical behaviour and the safe fallback.
+_PER_USE_BASES = frozenset({"hire_per_use", "subcontract"})
+
 # Fields on FormworkSystem that are nullable in the database. Anything else
 # rejects an explicit ``null`` instead of writing one and failing at flush.
-_NULLABLE_SYSTEM_FIELDS = frozenset({"supplier", "notes"})
+_NULLABLE_SYSTEM_FIELDS = frozenset({"supplier", "notes", "typical_reuses"})
 _NULLABLE_ASSIGNMENT_FIELDS = frozenset({"boq_position_id", "notes"})
 _NULLABLE_SCHEDULE_FIELDS = frozenset({"pour_date", "notes"})
 
@@ -86,6 +107,34 @@ class ReuseCountExceedsMaxError(ValueError):
         super().__init__(
             f"reuse_count {reuse_count} exceeds the system reuses_max {reuses_max}",
         )
+
+
+class BoqProjectMismatchError(ValueError):
+    """Raised when a push names a bill belonging to a different project.
+
+    The caller supplies the target bill by id, so nothing but this check stops
+    a formwork line priced on one project from landing in another project's
+    tender. Refusing by name beats a foreign-key error the caller cannot act
+    on, because there is deliberately no FK from the assignment to the bill.
+    """
+
+    def __init__(self, boq_id: uuid.UUID, project_id: uuid.UUID) -> None:
+        self.boq_id = boq_id
+        self.project_id = project_id
+        super().__init__(f"BOQ {boq_id} does not belong to project {project_id}")
+
+
+class OrdinalSpaceExhaustedError(RuntimeError):
+    """Raised when no free ``FW.nn`` ordinal is left in the target bill.
+
+    Only reachable with hundreds of formwork positions already in one bill, at
+    which point the numbering scheme is the wrong shape and the estimator
+    should be told so rather than served a thousand-iteration loop.
+    """
+
+    def __init__(self, boq_id: uuid.UUID) -> None:
+        self.boq_id = boq_id
+        super().__init__(f"no free formwork ordinal left in BOQ {boq_id}")
 
 
 class FieldNotNullableError(ValueError):
@@ -181,10 +230,11 @@ def compute_cost(
     waste_pct: Decimal,
     reuse_count: int,
     erect_strike_rate: Decimal = Decimal("0"),
+    rate_basis: str = "purchase",
 ) -> FormworkCost:
     """Return the full rate build-up for one assignment.
 
-    Formula:
+    Formula, on the default ``purchase`` basis:
 
         material = unit_rate * (1 + waste_pct/100) / reuse_count
         labour   = erect_strike_rate
@@ -196,6 +246,27 @@ def compute_cost(
     driven by the area formed and is paid on every reuse. That is why the
     labour component is NOT divided by ``reuse_count``: forming 1000 m2 with a
     100 m2 set means ten sets of erect-and-strike, not one.
+
+    ``rate_basis`` decides whether the panel component amortises at all, and
+    it is the only input that changes the shape of the formula:
+
+    * ``purchase`` - the rate buys the panels. Divide by ``reuse_count``.
+    * ``hire_per_use`` / ``subcontract`` - the rate is quoted PER USE already,
+      so the divisor is 1:
+
+          material = unit_rate * (1 + waste_pct/100)
+
+      Dividing a per-use price by the reuse count would amortise a number that
+      was never a capital cost, and the answer would fall as the estimator
+      claimed more reuses even though the invoice does not. That is the whole
+      reason this argument exists rather than being a label on the catalogue
+      row. A monthly hire rate is a third model - it needs a duration on site,
+      not a reuse count - and is deliberately NOT accepted here.
+
+    An unrecognised basis falls back to ``purchase`` rather than raising: the
+    schema pattern already rejects unknown values on the way in, and a stored
+    row from a future revision should keep pricing the way it always did
+    instead of taking a re-pricing sweep down with it.
 
     Every component is persisted and shown, so each is rounded to 2 dp before
     the next one uses it, and ``total`` is derived from the **rounded**
@@ -209,8 +280,10 @@ def compute_cost(
     import paths that bypass Pydantic.
     """
     reuses = max(int(reuse_count), 1)
+    # A per-use rate is already the cost of one use, so nothing is amortised.
+    divisor = Decimal(reuses) if rate_basis not in _PER_USE_BASES else Decimal("1")
     waste_factor = Decimal("1") + (Decimal(waste_pct) / Decimal("100"))
-    material = _q((Decimal(unit_rate) * waste_factor) / Decimal(reuses))
+    material = _q((Decimal(unit_rate) * waste_factor) / divisor)
     labour = _q(Decimal(erect_strike_rate))
     unit_cost = _q(material + labour)
     total = _q(Decimal(area_m2) * unit_cost)
@@ -223,12 +296,18 @@ def single_use_cost(
     area_m2: Decimal,
     waste_pct: Decimal,
     erect_strike_rate: Decimal = Decimal("0"),
+    rate_basis: str = "purchase",
 ) -> Decimal:
     """What the same area costs if every pour needs brand-new panels.
 
     The counterfactual behind the reuse assumption. Subtracting the real total
     from this gives the money the reuse claim is worth, which is the figure a
     reviewer challenges first.
+
+    On a per-use basis this equals the real total, and correctly so: nothing
+    was amortised, so the reuse assumption was never worth anything. Reporting
+    a saving there would credit the estimator with money the hire invoice does
+    not give back.
     """
     return compute_cost(
         unit_rate=unit_rate,
@@ -236,6 +315,7 @@ def single_use_cost(
         waste_pct=waste_pct,
         reuse_count=1,
         erect_strike_rate=erect_strike_rate,
+        rate_basis=rate_basis,
     ).total
 
 
@@ -404,12 +484,240 @@ class FormworkService:
             waste_pct=assignment.waste_pct,
             reuse_count=assignment.reuse_count,
             erect_strike_rate=system.erect_strike_rate,
+            rate_basis=system.rate_basis,
         )
         assignment.computed_unit_cost = cost.unit_cost
         assignment.material_unit_cost = cost.material
         assignment.labour_unit_cost = cost.labour
         assignment.computed_total = cost.total
         return cost
+
+    async def _free_ordinal(self, boq_service: Any, boq_id: uuid.UUID) -> str:
+        """Return an ordinal not already used in ``boq_id``.
+
+        ``add_position`` raises 409 on a collision rather than resolving it,
+        and ``bulk_add_positions`` rejects the whole batch, so the caller owns
+        the allocation. The ``FW.nn`` prefix groups every formwork line the
+        module contributes and stays readable in an exported bill.
+
+        The probe is bounded: at a thousand formwork lines in one bill the
+        assumption behind the prefix has broken down, and looping forever
+        while holding a transaction open is the worse failure.
+        """
+        for n in range(1, 1000):
+            candidate = f"FW.{n:02d}"
+            if not await boq_service.position_repo.ordinal_exists(boq_id, candidate):
+                return candidate
+        raise OrdinalSpaceExhaustedError(boq_id)
+
+    async def push_assignment_to_boq(
+        self,
+        assignment_id: uuid.UUID,
+        data: FormworkBoqPushRequest,
+        *,
+        # ``CurrentUserId`` resolves to a ``str``, and the BOQ router hands its
+        # own ``update_position`` the same string, so this is the established
+        # shape rather than a missing conversion. Annotated honestly instead of
+        # claiming a UUID nothing on this path actually produces.
+        actor_id: uuid.UUID | str | None = None,
+    ) -> FormworkBoqPushResult:
+        """Write one priced assignment into a bill of quantities.
+
+        A formwork calculation whose result never reaches the bill is a
+        calculator, not a module. This is the exit: the assignment's contact
+        area becomes the position quantity, its reuse-aware unit cost becomes
+        the position rate, and ``source="formwork"`` records where the number
+        came from so a reviewer can trace the rate back to the system, the
+        reuse count and the waste allowance that produced it.
+
+        Pushing twice does NOT bill the same formwork twice. The assignment
+        remembers the position it created in ``boq_position_id``; a second
+        push re-prices that position in place and reports ``created=False``.
+        That matters because re-pricing is the normal case - the estimator
+        changes the system or the reuse count and pushes again - and an
+        endpoint that appended every time would quietly double a concrete
+        frame's biggest single cost.
+
+        The target bill is named explicitly. A project can carry several bills
+        (there is no unique constraint on ``oe_boq_boq.project_id``), and the
+        one the estimator meant is not derivable from the assignment.
+        """
+        from app.modules.boq.schemas import PositionCreate, PositionUpdate  # noqa: PLC0415
+        from app.modules.boq.service import BOQService  # noqa: PLC0415
+
+        assignment = await self.assignment_repo.get_with_system(assignment_id)
+        if assignment is None:
+            raise LookupError("assignment_not_found")
+        system = assignment.system
+
+        boq_service = BOQService(self.session)
+        # Raises 404 when the bill does not exist. Checking that it belongs to
+        # the assignment's project is the point: without it, a caller could
+        # post a formwork line from project A into project B's tender.
+        boq = await boq_service.get_boq(data.boq_id)
+        if boq.project_id != assignment.project_id:
+            raise BoqProjectMismatchError(data.boq_id, assignment.project_id)
+
+        description = data.description or (
+            f"Formwork to {system.system_type}, {system.name}, {assignment.reuse_count} use(s)"
+        )
+        quantity = Decimal(assignment.area_m2 or 0)
+        unit_rate = Decimal(assignment.computed_unit_cost or 0)
+
+        existing = None
+        if assignment.boq_position_id is not None:
+            existing = await boq_service.position_repo.get_by_id(assignment.boq_position_id)
+            # A position deleted out from under the link is not an error: the
+            # link is deliberately loose (no FK), so the honest response is to
+            # write a fresh line rather than to fail.
+            if existing is not None and existing.boq_id != data.boq_id:
+                existing = None
+
+        if existing is not None:
+            updated = await boq_service.update_position(
+                existing.id,
+                PositionUpdate(
+                    description=description,
+                    quantity=float(quantity),
+                    unit_rate=unit_rate,
+                ),
+                actor_id=actor_id,
+            )
+            return FormworkBoqPushResult(
+                assignment_id=assignment.id,
+                boq_id=data.boq_id,
+                boq_position_id=updated.id,
+                ordinal=updated.ordinal,
+                quantity=quantity,
+                unit_rate=unit_rate,
+                total=_q(quantity * unit_rate),
+                created=False,
+            )
+
+        ordinal = await self._free_ordinal(boq_service, data.boq_id)
+        position = await boq_service.add_position(
+            PositionCreate(
+                boq_id=data.boq_id,
+                parent_id=data.parent_id,
+                ordinal=ordinal,
+                description=description,
+                # Formwork is priced per square metre of CONTACT AREA - the
+                # face the concrete touches - which is what ``area_m2`` holds.
+                unit="m2",
+                quantity=float(quantity),
+                unit_rate=unit_rate,
+                source="formwork",
+            )
+        )
+        await self.assignment_repo.update_fields(
+            assignment.id,
+            boq_position_id=position.id,
+        )
+        return FormworkBoqPushResult(
+            assignment_id=assignment.id,
+            boq_id=data.boq_id,
+            boq_position_id=position.id,
+            ordinal=position.ordinal,
+            quantity=quantity,
+            unit_rate=unit_rate,
+            total=_q(quantity * unit_rate),
+            created=True,
+        )
+
+    async def compare_systems(
+        self,
+        data: FormworkCompareRequest,
+        *,
+        tenant_id: uuid.UUID | None = None,
+    ) -> FormworkCompareResult:
+        """Price one area in every candidate system, on one set of assumptions.
+
+        This is the method the whole module exists to serve. The same wall in a
+        different system has a different rate and a different cycle, so
+        "which system" is the estimator's actual decision - and a decision
+        cannot be made against a list of names, only against numbers computed
+        the same way for every option.
+
+        Every candidate is priced at the SAME ``reuse_count``. Pricing each
+        system at its own published figure and then calling the lowest total
+        "cheapest" would just rank the catalogue by how boldly each row claims
+        to be reusable, which is a claim rather than a measurement. Holding the
+        assumption constant and reporting each system's own limit alongside
+        turns that into the useful statement instead: this system is cheaper,
+        and this one cannot actually deliver what you assumed.
+
+        Two winners are named because they can differ, and the difference is
+        the interesting part: ``cheapest_system_id`` is the lowest total of
+        all, ``cheapest_buildable_system_id`` is the lowest total among the
+        systems whose panels survive the assumed reuse count. A single-use
+        column liner priced at forty reuses wins the first and is excluded
+        from the second.
+        """
+        systems = await self.system_repo.list_filtered(
+            tenant_id=tenant_id,
+            system_type=data.system_type,
+            # The catalogue is a product library, not per-project data, so the
+            # whole of it is the comparison set. The cap is a guard against a
+            # tenant with a pathological catalogue, not a pagination window:
+            # a comparison that silently dropped candidates would recommend
+            # the cheapest of an arbitrary subset.
+            limit=500,
+        )
+        candidates: list[FormworkCompareCandidate] = []
+        for system in systems:
+            cost = compute_cost(
+                unit_rate=system.unit_rate,
+                area_m2=data.area_m2,
+                waste_pct=data.waste_pct,
+                reuse_count=data.reuse_count,
+                erect_strike_rate=system.erect_strike_rate,
+                rate_basis=system.rate_basis,
+            )
+            once = single_use_cost(
+                unit_rate=system.unit_rate,
+                area_m2=data.area_m2,
+                waste_pct=data.waste_pct,
+                erect_strike_rate=system.erect_strike_rate,
+                rate_basis=system.rate_basis,
+            )
+            typical = system.typical_reuses
+            candidates.append(
+                FormworkCompareCandidate(
+                    system_id=system.id,
+                    name=system.name,
+                    system_type=system.system_type,
+                    material=system.material,
+                    rate_basis=system.rate_basis,
+                    currency=system.currency,
+                    reuses_max=system.reuses_max,
+                    typical_reuses=typical,
+                    cycle_days=Decimal(system.cycle_days or 0),
+                    strip_time_days=system.strip_time_days,
+                    unit_cost=cost.unit_cost,
+                    material_unit_cost=cost.material,
+                    labour_unit_cost=cost.labour,
+                    total=cost.total,
+                    single_use_total=once,
+                    reuse_saving=_q(once - cost.total),
+                    exceeds_reuses_max=data.reuse_count > system.reuses_max,
+                    above_typical_reuses=typical is not None and data.reuse_count > typical,
+                )
+            )
+
+        # Cheapest total first, then by name so two systems that price
+        # identically come back in a stable order rather than in whatever
+        # order the database happened to return them.
+        candidates.sort(key=lambda c: (c.total, c.name))
+        buildable = [c for c in candidates if not c.exceeds_reuses_max]
+        return FormworkCompareResult(
+            area_m2=data.area_m2,
+            reuse_count=data.reuse_count,
+            waste_pct=data.waste_pct,
+            system_type=data.system_type,
+            candidates=candidates,
+            cheapest_system_id=candidates[0].system_id if candidates else None,
+            cheapest_buildable_system_id=buildable[0].system_id if buildable else None,
+        )
 
     async def create_assignment(
         self,
@@ -682,6 +990,7 @@ class FormworkService:
                     area_m2=area,
                     waste_pct=row.waste_pct,
                     erect_strike_rate=system.erect_strike_rate,
+                    rate_basis=system.rate_basis,
                 )
                 bucket = by_type.setdefault(
                     system.system_type,

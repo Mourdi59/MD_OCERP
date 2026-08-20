@@ -567,7 +567,14 @@ class FormworkBoqPositionLinked(ValidationRule):
                     f"{a.get('computed_total')} never reaches the bill of quantities."
                 ),
                 element_ref=ref,
-                suggestion="Link the assignment to the concrete-pour BOQ position it belongs to.",
+                # Names the action that fixes it. The rule used to say "link
+                # it" when nothing in the product could: the assignment carried
+                # a BOQ position id no screen ever wrote. "Send to bill" now
+                # creates the position and stores the link in one step.
+                suggestion=(
+                    "Send the assignment to a bill of quantities, or link it to the "
+                    "concrete-pour position it belongs to."
+                ),
                 details={"linked": False, "computed_total": a.get("computed_total")},
             )
         ]
