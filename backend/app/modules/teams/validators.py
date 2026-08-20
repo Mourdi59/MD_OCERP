@@ -44,6 +44,18 @@ pass over four queries rather than one query per rule.
                                       not enforced. Saying so is the honest
                                       alternative to letting the UI imply a
                                       lock that is not there.
+* ``teams.roster_ticket_valid``     - WARNING. Somebody on the roster is
+                                      working on a ticket that has run out.
+* ``teams.roster_window``           - WARNING. An active roster line whose last
+                                      day has passed, so the roster answers
+                                      "who is on site" with somebody who left.
+* ``teams.roster_site_lead``        - WARNING. A roster with nobody in a
+                                      supervisory role cannot say who runs the
+                                      job.
+* ``teams.roster_covers_access``    - WARNING. Somebody can open the project
+                                      but is on no roster line, so their name
+                                      lands on records with no trade or firm
+                                      behind it.
 
 Every rule reads the snapshot only. None of them queries, so none of them can
 fail on a session that has already been rolled back, and the whole set is
@@ -56,6 +68,7 @@ import logging
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -72,7 +85,8 @@ from app.core.validation.engine import (
     validation_engine,
 )
 from app.modules.teams.entity_types import enforced_entity_type_keys, is_known_entity_type
-from app.modules.teams.models import EntityVisibility, Team, TeamMembership
+from app.modules.teams.models import EntityVisibility, RosterMember, Team, TeamMembership
+from app.modules.teams.roster_vocab import supervisory_site_role_keys
 from app.modules.teams.schemas import TeamsValidationFinding, TeamsValidationReport
 
 logger = logging.getLogger(__name__)
@@ -112,12 +126,36 @@ class RestrictionSnapshot:
 
 
 @dataclass
+class RosterSnapshot:
+    """One person on the project roster, flattened for the rules.
+
+    Expiry and "has this person left" are resolved by the collector, against
+    one ``today``, so the rules stay pure reads over the snapshot and cannot
+    disagree with each other about what day it is.
+    """
+
+    id: str
+    display_name: str
+    is_active: bool
+    site_role: str
+    #: True when the person's stated last day on the project is already past.
+    window_ended: bool = False
+    #: The tickets on this line that have run out, by their ``kind``.
+    expired_certifications: list[str] = field(default_factory=list)
+    #: Set when the line names a platform user.
+    user_id: str | None = None
+
+
+@dataclass
 class ProjectTeamsSnapshot:
     """Everything the teams rule set reads about one project."""
 
     project_id: str
     teams: list[TeamSnapshot] = field(default_factory=list)
     restrictions: list[RestrictionSnapshot] = field(default_factory=list)
+    roster: list[RosterSnapshot] = field(default_factory=list)
+    #: Users holding project access who appear nowhere on the roster.
+    unrostered_user_ids: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         """The shape the rules receive as ``context.data``."""
@@ -126,14 +164,45 @@ class ProjectTeamsSnapshot:
             "project_id": self.project_id,
             "teams": [t.__dict__ for t in self.teams],
             "restrictions": [r.__dict__ for r in self.restrictions],
+            "roster": [r.__dict__ for r in self.roster],
+            "unrostered_user_ids": list(self.unrostered_user_ids),
         }
+
+
+def _roster_line(member: RosterMember, today: date) -> RosterSnapshot:
+    """Flatten one roster row, resolving expiry against a single ``today``."""
+    expired: list[str] = []
+    raw = member.certifications if isinstance(member.certifications, list) else []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        valid_until = entry.get("valid_until")
+        if not isinstance(valid_until, str) or not valid_until:
+            continue
+        try:
+            expires = date.fromisoformat(valid_until[:10])
+        except ValueError:
+            # A hand-edited value that is not a date says nothing about
+            # expiry, and guessing would either invent a breach or hide one.
+            continue
+        if expires < today:
+            expired.append(str(entry.get("kind") or "").strip() or "certification")
+    return RosterSnapshot(
+        id=str(member.id),
+        display_name=member.display_name,
+        is_active=bool(member.is_active),
+        site_role=member.site_role or "",
+        window_ended=bool(member.ends_on and member.ends_on < today),
+        expired_certifications=expired,
+        user_id=str(member.user_id) if member.user_id else None,
+    )
 
 
 async def collect_project_snapshot(
     session: AsyncSession,
     project_id: uuid.UUID,
 ) -> ProjectTeamsSnapshot:
-    """Read one project's whole access configuration in four queries.
+    """Read one project's whole access configuration and roster in five queries.
 
     Deliberately unauthenticated: the caller has already established that the
     requester may see this project. Keeping the gate out of here means the
@@ -225,6 +294,15 @@ async def collect_project_snapshot(
             )
         )
 
+    today = datetime.now(UTC).date()
+    roster_rows = list(
+        (await session.execute(select(RosterMember).where(RosterMember.project_id == project_id))).scalars().all()
+    )
+    snapshot.roster = [_roster_line(member, today) for member in roster_rows]
+    rostered_user_ids = {str(member.user_id) for member in roster_rows if member.user_id}
+    project_member_ids = {str(user_id) for members in members_by_team.values() for user_id in members}
+    snapshot.unrostered_user_ids = sorted(project_member_ids - rostered_user_ids)
+
     return snapshot
 
 
@@ -253,6 +331,20 @@ def _restrictions(context: ValidationContext) -> list[dict[str, Any]]:
     data = context.data
     rows = data.get("restrictions") if isinstance(data, dict) else None
     return [r for r in rows if isinstance(r, dict)] if isinstance(rows, list) else []
+
+
+def _roster(context: ValidationContext) -> list[dict[str, Any]]:
+    """The roster snapshots on the context (or an empty list)."""
+    data = context.data
+    rows = data.get("roster") if isinstance(data, dict) else None
+    return [r for r in rows if isinstance(r, dict)] if isinstance(rows, list) else []
+
+
+def _unrostered_user_ids(context: ValidationContext) -> list[str]:
+    """Users with project access who are absent from the roster."""
+    data = context.data
+    rows = data.get("unrostered_user_ids") if isinstance(data, dict) else None
+    return [r for r in rows if isinstance(r, str)] if isinstance(rows, list) else []
 
 
 def _result(
@@ -535,6 +627,135 @@ class TeamsRestrictionEnforced(ValidationRule):
         return results
 
 
+class TeamsRosterTicketValid(ValidationRule):
+    rule_id = "teams.roster_ticket_valid"
+    name = "Roster Tickets Are In Date"
+    standard = "teams"
+    severity = Severity.WARNING
+    category = RuleCategory.COMPLIANCE
+    description = "Somebody on the roster is working on an expired ticket or competency."
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        if _scope(context) != "project_teams":
+            return []
+        active = [r for r in _roster(context) if r.get("is_active")]
+        if not active:
+            return []
+        lapsed = [r for r in active if r.get("expired_certifications")]
+        if not lapsed:
+            return [_result(self, True, "OK", details={"people": len(active)})]
+        return [
+            _result(
+                self,
+                False,
+                (
+                    f"{row.get('display_name')} is on the roster with an expired "
+                    f"{', '.join(row.get('expired_certifications') or [])}"
+                ),
+                element_ref=str(row.get("id")),
+                suggestion="Record the renewed ticket, or take the person off the roster until it is renewed.",
+                details={
+                    "roster_member_id": row.get("id"),
+                    "expired": row.get("expired_certifications") or [],
+                },
+            )
+            for row in lapsed
+        ]
+
+
+class TeamsRosterWindow(ValidationRule):
+    rule_id = "teams.roster_window"
+    name = "Roster Dates Match Who Is Here"
+    standard = "teams"
+    severity = Severity.WARNING
+    category = RuleCategory.COMPLETENESS
+    description = "An active roster line whose last day on the project has already passed."
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        if _scope(context) != "project_teams":
+            return []
+        active = [r for r in _roster(context) if r.get("is_active")]
+        if not active:
+            return []
+        overdue = [r for r in active if r.get("window_ended")]
+        if not overdue:
+            return [_result(self, True, "OK", details={"people": len(active)})]
+        return [
+            _result(
+                self,
+                False,
+                f"{row.get('display_name')} is still on the roster although their last day has passed",
+                element_ref=str(row.get("id")),
+                suggestion="Extend the end date if they are still here, otherwise mark the line as left.",
+                details={"roster_member_id": row.get("id")},
+            )
+            for row in overdue
+        ]
+
+
+class TeamsRosterSiteLead(ValidationRule):
+    rule_id = "teams.roster_site_lead"
+    name = "Roster Names Somebody In Charge"
+    standard = "teams"
+    severity = Severity.WARNING
+    category = RuleCategory.COMPLETENESS
+    description = "A roster with nobody in a supervisory site role cannot say who runs the job."
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        if _scope(context) != "project_teams":
+            return []
+        active = [r for r in _roster(context) if r.get("is_active")]
+        if not active:
+            # An empty roster has not been filled in yet rather than filled in
+            # wrongly. The screen's own empty state is the right place to say so.
+            return []
+        supervisory = supervisory_site_role_keys()
+        leads = [r for r in active if str(r.get("site_role") or "") in supervisory]
+        if leads:
+            return [_result(self, True, "OK", details={"lead_count": len(leads)})]
+        return [
+            _result(
+                self,
+                False,
+                "Nobody on this roster holds a supervisory site role",
+                suggestion="Give the project manager, site manager, superintendent or foreman their role.",
+                details={"people": len(active)},
+            )
+        ]
+
+
+class TeamsRosterCoversAccess(ValidationRule):
+    rule_id = "teams.roster_covers_access"
+    name = "Everybody With Access Is On The Roster"
+    standard = "teams"
+    severity = Severity.WARNING
+    category = RuleCategory.COMPLETENESS
+    description = "Somebody holds access to this project but appears nowhere on its roster."
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        if _scope(context) != "project_teams":
+            return []
+        if not _roster(context):
+            # Nothing to reconcile against. Reporting every member as missing
+            # from a roster nobody has started would be noise, not a finding.
+            return []
+        missing = _unrostered_user_ids(context)
+        if not missing:
+            return [_result(self, True, "OK")]
+        return [
+            _result(
+                self,
+                False,
+                (
+                    f"{len(missing)} person(s) can open this project but are not on the roster, "
+                    f"so their name appears on records with no trade, firm or role behind it"
+                ),
+                suggestion="Add them to the roster, or take their project access away.",
+                details={"user_ids": missing},
+            )
+        ]
+
+
 _TEAMS_RULES: tuple[ValidationRule, ...] = (
     TeamsDefaultTeamPresent(),
     TeamsRestrictionHasViewer(),
@@ -542,6 +763,10 @@ _TEAMS_RULES: tuple[ValidationRule, ...] = (
     TeamsEmptyTeam(),
     TeamsDuplicateTeamName(),
     TeamsRestrictionEnforced(),
+    TeamsRosterTicketValid(),
+    TeamsRosterWindow(),
+    TeamsRosterSiteLead(),
+    TeamsRosterCoversAccess(),
 )
 
 

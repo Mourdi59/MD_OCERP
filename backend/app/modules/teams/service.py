@@ -55,7 +55,12 @@ from app.core.audit_log import log_activity
 from app.core.events import event_bus
 from app.modules.teams.entity_types import enforced_entity_type_keys, is_known_entity_type
 from app.modules.teams.models import EntityVisibility, Team, TeamMembership
-from app.modules.teams.repository import MembershipRepository, TeamRepository, VisibilityRepository
+from app.modules.teams.repository import (
+    MembershipRepository,
+    RosterRepository,
+    TeamRepository,
+    VisibilityRepository,
+)
 from app.modules.teams.schemas import (
     ELEVATED_TEAM_ROLES,
     AccessMatrixMember,
@@ -104,6 +109,7 @@ class TeamService:
         self.team_repo = TeamRepository(session)
         self.membership_repo = MembershipRepository(session)
         self.visibility_repo = VisibilityRepository(session)
+        self.roster_repo = RosterRepository(session)
 
     # ── RBAC helpers ─────────────────────────────────────────────────────
 
@@ -449,6 +455,11 @@ class TeamService:
         # invalidate any per-user permission cache they keep.
         member_ids = [str(m.user_id) for m in (team.memberships or [])]
         restriction_count = len(await self.visibility_repo.list_for_team(team_id))
+        # The roster is NOT cascaded. Those people are still on the project;
+        # they have merely stopped being grouped, so their lines are detached
+        # here rather than left to a database-level SET NULL that only fires
+        # where foreign keys are enforced.
+        released_roster = await self.roster_repo.clear_team(team_id)
         await self.team_repo.delete(team_id)
         await self._record_audit(
             actor_id=actor_id,
@@ -458,6 +469,7 @@ class TeamService:
                 "project_id": str(team.project_id),
                 "member_count": len(member_ids),
                 "released_restrictions": restriction_count,
+                "detached_roster_lines": released_roster,
             },
         )
         await self._publish_event(

@@ -29,6 +29,16 @@ Record restrictions
     GET    /project/{project_id}/access-matrix  - Who can still open what
     GET    /project/{project_id}/validate       - Run the teams rule set
 
+Project roster (see :mod:`app.modules.teams.roster_router`)
+    GET    /roster/vocabulary                   - Trades and site roles
+    GET    /project/{project_id}/roster         - Who is on this job
+    GET    /project/{project_id}/roster/summary - What the roster adds up to
+    GET    /project/{project_id}/roster/candidates
+                                                - Users and contacts to pick from
+    POST   /project/{project_id}/roster         - Add people
+    PATCH  /project/{project_id}/roster/{member_id}
+    DELETE /project/{project_id}/roster/{member_id}
+
 Authorisation
 ~~~~~~~~~~~~~
 Every route resolves the caller before it touches data, and every one of them
@@ -54,6 +64,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies import CurrentUserId, SessionDep, verify_project_access
+from app.modules.teams.roster_router import roster_router
 from app.modules.teams.schemas import (
     AccessMatrixResponse,
     AddMemberRequest,
@@ -494,3 +505,12 @@ async def validate_project_teams(
     nothing a member cannot already list.
     """
     return await service.validate_project(project_id, actor_id=user_id)
+
+
+# ── Roster ───────────────────────────────────────────────────────────────
+#
+# Included last on purpose. FastAPI matches routes in registration order, and
+# every roster path is either project-scoped or begins with the literal
+# "roster", so none of them can be swallowed by the ``/{team_id}`` patterns
+# declared above - checked segment by segment rather than assumed.
+router.include_router(roster_router)

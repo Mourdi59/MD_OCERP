@@ -21,7 +21,7 @@ from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm.util import identity_key
 from sqlalchemy.sql.elements import ClauseElement
 
-from app.modules.teams.models import EntityVisibility, Team, TeamMembership
+from app.modules.teams.models import EntityVisibility, RosterMember, Team, TeamMembership
 from app.modules.users.models import User
 
 
@@ -442,3 +442,131 @@ class VisibilityRepository:
         result = await self.session.execute(stmt)
         await self.session.flush()
         return int(result.rowcount or 0)  # type: ignore[union-attr]
+
+
+class RosterRepository:
+    """Data access for the project roster.
+
+    Scoped by ``project_id`` on every read and every write. A roster line is
+    reached through the project it belongs to and never through its id alone,
+    so an id from another project cannot be edited by guessing it.
+    """
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def list_for_project(
+        self,
+        project_id: uuid.UUID,
+        *,
+        include_inactive: bool = True,
+    ) -> list[tuple[RosterMember, Team | None, User | None]]:
+        """The whole roster, with each line's team and linked user row.
+
+        Both joins are OUTER. A line for somebody with no login has no user
+        row, and a line whose team was deleted has no team row; either one
+        disappearing from the list would hide a person who is still on site.
+
+        Ordered so the screen reads like a roster and not like a table: teams
+        in their configured order, unassigned people last, and inside a team
+        the supervisory roles first is left to the service, which knows the
+        role ranking.
+        """
+        stmt = (
+            select(RosterMember, Team, User)
+            .outerjoin(Team, Team.id == RosterMember.team_id)
+            .outerjoin(User, User.id == RosterMember.user_id)
+            .where(RosterMember.project_id == project_id)
+        )
+        if not include_inactive:
+            stmt = stmt.where(RosterMember.is_active.is_(True))
+        stmt = stmt.order_by(RosterMember.display_name)
+        return [(m, t, u) for m, t, u in (await self.session.execute(stmt)).all()]
+
+    async def get_in_project(
+        self,
+        project_id: uuid.UUID,
+        member_id: uuid.UUID,
+    ) -> RosterMember | None:
+        """One roster line, only if it belongs to ``project_id``."""
+        stmt = select(RosterMember).where(
+            RosterMember.id == member_id,
+            RosterMember.project_id == project_id,
+        )
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def linked_ids(self, project_id: uuid.UUID) -> tuple[set[uuid.UUID], set[uuid.UUID]]:
+        """The user ids and contact ids already on this project's roster.
+
+        Read before an add so the candidate list can mark who is already there,
+        and so a bulk add can skip a duplicate instead of failing the whole
+        request on one unique-index violation.
+        """
+        stmt = select(RosterMember.user_id, RosterMember.contact_id).where(RosterMember.project_id == project_id)
+        user_ids: set[uuid.UUID] = set()
+        contact_ids: set[uuid.UUID] = set()
+        for user_id, contact_id in (await self.session.execute(stmt)).all():
+            if user_id is not None:
+                user_ids.add(user_id)
+            if contact_id is not None:
+                contact_ids.add(contact_id)
+        return user_ids, contact_ids
+
+    async def add(self, member: RosterMember) -> RosterMember:
+        """Insert one roster line."""
+        self.session.add(member)
+        await self.session.flush()
+        return member
+
+    async def add_all(self, members: list[RosterMember]) -> list[RosterMember]:
+        """Insert several roster lines in one flush."""
+        if not members:
+            return []
+        self.session.add_all(members)
+        await self.session.flush()
+        return members
+
+    async def update_fields(self, member: RosterMember, fields: dict[str, object]) -> RosterMember:
+        """Write the named columns onto an already-loaded roster line.
+
+        Assigns on the instance rather than issuing a bulk UPDATE: the row was
+        just read through :meth:`get_in_project`, so a bulk statement would
+        leave that copy stale, and the blanket ``expire_all`` that would fix it
+        turns the caller's next attribute read into a ``MissingGreenlet``.
+        """
+        for name, value in fields.items():
+            setattr(member, name, value)
+        await self.session.flush()
+        return member
+
+    async def delete(self, member: RosterMember) -> None:
+        """Remove one roster line."""
+        await self.session.delete(member)
+        await self.session.flush()
+
+    async def clear_team(self, team_id: uuid.UUID) -> int:
+        """Detach every roster line from a team that is about to be deleted.
+
+        Deleting a team must not delete the people: they are still on the
+        project, just no longer grouped. The column is cleared here, in the
+        same transaction as the delete, rather than left to a database-level
+        ``ON DELETE SET NULL`` that only fires where foreign keys are actually
+        enforced.
+        """
+        stmt = update(RosterMember).where(RosterMember.team_id == team_id).values(team_id=None)
+        result = await self.session.execute(stmt)
+        await self.session.flush()
+        return int(result.rowcount or 0)  # type: ignore[union-attr]
+
+    async def count_by_team(self, project_id: uuid.UUID) -> dict[uuid.UUID, int]:
+        """Active roster headcount per team, in one round trip."""
+        stmt = (
+            select(RosterMember.team_id, func.count(RosterMember.id))
+            .where(
+                RosterMember.project_id == project_id,
+                RosterMember.team_id.is_not(None),
+                RosterMember.is_active.is_(True),
+            )
+            .group_by(RosterMember.team_id)
+        )
+        return {team_id: int(count) for team_id, count in (await self.session.execute(stmt)).all()}

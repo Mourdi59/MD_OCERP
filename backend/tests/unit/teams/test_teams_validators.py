@@ -59,7 +59,20 @@ async def test_the_rule_set_is_registered_and_actually_runs(session) -> None:
     from app.core.validation.engine import rule_registry
 
     ids = {rule.rule_id for rule in rule_registry.get_rules_for_sets([TEAMS_RULE_SET])}
-    assert len(ids) == 6
+    # Named rather than counted: when a rule is added and forgotten here, the
+    # failure should say which one is missing instead of "expected 6, got 7".
+    assert ids == {
+        "teams.default_team_present",
+        "teams.restriction_has_viewer",
+        "teams.restriction_scope",
+        "teams.empty_team",
+        "teams.duplicate_team_name",
+        "teams.restriction_enforced",
+        "teams.roster_ticket_valid",
+        "teams.roster_window",
+        "teams.roster_site_lead",
+        "teams.roster_covers_access",
+    }
 
     _owner, _member, project, _team = await _clean_project(session)
     report = await evaluate_project_teams(session, project.id)

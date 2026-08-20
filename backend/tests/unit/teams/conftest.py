@@ -11,7 +11,7 @@ The session fixture runs against the shared PostgreSQL unit database from
 Foreign keys stay ON: the module's guards resolve real ``User`` and ``Project``
 rows, and the delete cascade under test is a real FK chain.
 
-The module's six validation rules are registered here. The application
+The module's validation rules are registered here. The application
 registers them from its ``on_startup`` hook, which no test process runs, so
 without this the ``teams`` rule set resolves to zero rules and the engine
 reports it as ``unsupported`` - which is indistinguishable from "the rules ran
