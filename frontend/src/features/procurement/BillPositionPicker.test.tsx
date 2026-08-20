@@ -152,6 +152,20 @@ describe('fetchPositionLine', () => {
     mockGet.mockResolvedValue([]);
     expect(await fetchPositionLine('p1', 'pos-none')).toBeNull();
   });
+
+  it('does not filter by status, so a closed line still names the link that exists', async () => {
+    // The list filters on active because it offers choices. This names a choice
+    // already made, and CostLineUpdate carries status, so any PATCH can close
+    // the line an order was attributed to months ago. Filtering here would
+    // answer "no such line" for a link the order really holds, the control
+    // would render blank, and the next save would write the blank back.
+    mockGet.mockResolvedValue([line({ id: 'cl-9', boq_position_id: 'pos-9', status: 'closed' })]);
+
+    const found = await fetchPositionLine('p1', 'pos-9');
+
+    expect(found?.id).toBe('cl-9');
+    expect(requestedUrls()[0]).not.toContain('status=');
+  });
 });
 
 describe('optionLabel', () => {
@@ -190,8 +204,7 @@ describe('<BillPositionPicker>', () => {
     const select = await screen.findByRole('combobox');
     const options = Array.from(select.querySelectorAll('option'));
     expect(options).toHaveLength(2);
-    expect(options[0].value).toBe('');
-    expect(options[1].value).toBe('pos-1');
+    expect(options.map((o) => o.value)).toEqual(['', 'pos-1']);
   });
 
   it('emits the position id, never the cost line', async () => {
