@@ -4,7 +4,7 @@
 # Builds desktop installers for Windows, macOS, and Linux.
 #
 # Artifacts:
-#   - Windows: .exe (NSIS installer), .msi
+#   - Windows: .exe (NSIS installer)
 #   - macOS: .dmg, .app.tar.gz
 #   - Linux: .deb, .AppImage, and .rpm from a job of its own (see build-linux-rpm)
 
@@ -544,11 +544,16 @@ jobs:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            # Empty means the config's own target list, which is what Windows
-            # and macOS want: nsis and msi there, dmg and app here.
-            bundles: ""
+            # Windows ships the NSIS installer only. The .msi was a second
+            # installer for the same platform, which meant two downloads to
+            # choose between, two things to sign and two ways for a release to
+            # be half Windows. The NSIS one is the one that carries our hooks,
+            # our language selector and the per-machine install mode.
+            bundles: "--bundles nsis"
           - os: macos-latest
             target: aarch64-apple-darwin
+            # Empty means the config's own target list, which is what macOS
+            # wants: the dmg and the app archive.
             bundles: ""
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
@@ -832,11 +837,21 @@ jobs:
       # longer skips the Windows signing job: that job's condition was changed
       # to run whenever build-tauri reached any conclusion other than skipped.
       #
-      # Know what a red run here costs, because it is not nothing. Release
-      # Signing triggers on a Desktop Release that concluded success, so a
-      # failure at this point leaves the release unsigned until someone
-      # dispatches the signing workflow by hand. The report job at the end of
-      # this workflow says so out loud rather than leaving it to be discovered.
+      # Know what a red run here costs, and know that it is less than it was.
+      # This used to read "Release Signing triggers on a Desktop Release that
+      # concluded success, so a failure at this point leaves the release
+      # unsigned until someone dispatches the signing workflow by hand", and
+      # that has not been true since the conclusion gate came out of
+      # release-signing.yml - a run's conclusion is a fact about the run and
+      # the thing being judged is the release, which that workflow's inventory
+      # job now reads directly. request-signing below follows the same rule as
+      # sign-windows and starts the signing workflow whenever this job reached
+      # any conclusion other than skipped, so a red census here does not
+      # withhold the signature. What it does mean is that the macOS installer
+      # on the release is one this gate refused, and the inventory will sign a
+      # release carrying it, because a bundle that exists is what a manifest
+      # describes. The report job at the end of this workflow says what
+      # reached the release rather than leaving it to be discovered.
       - name: Check what the bundled sidecar carries (macOS)
         if: runner.os == 'macOS'
         shell: bash
@@ -990,19 +1005,44 @@ jobs:
   # weighs and the next thing added to it moves the cap again.
   #
   # The rate is the point. The .deb packs the identical payload to the
-  # identical size in 25 seconds, so this is not compression: the rpm bundler
-  # is roughly four hundred times slower than gzip at the same job, and no
-  # setting we own changes that. What we can own is who waits for it. The rpm
-  # is the most downloaded Linux package we publish (15 against 9 for the deb
-  # and 4 for the AppImage on v14.8.1), so it is not something to drop; it is
-  # something to keep out of the path of the release.
+  # identical size in 25 seconds, so this is not the compression algorithm:
+  # the rpm bundler is roughly four hundred times slower than gzip at the same
+  # job. This used to say "and no setting we own changes that", and that was
+  # not true: a setting exists and had never been tried. It is worth naming,
+  # because the sentence closed off the only cheap repair there is. Upstream
+  # puts the cost in the packer rather than in the algorithm - tauri-apps/tauri
+  # issue 11478 is this same symptom on this same runner image, and a Tauri
+  # maintainer answers that the compression in the rpm-rs crate is much slower
+  # than whatever the deb bundler uses - and tauri exposes that packer's
+  # compression as bundle.linux.rpm.compression, absent from tauri.conf.json
+  # until now and therefore Gzip level 6, the bundler's own default. It is set
+  # to {"type": "none"} there now.
+  #
+  # Which should cost close to nothing in bytes, because this payload does not
+  # compress. v14.8.1 shipped a 369 MB sidecar inside a 394 MB .deb and a 394
+  # MB .rpm; v15.0.0 a 732 MB sidecar inside a 743 MB .deb. Both packages come
+  # out larger than the binary they carry, so gzip is spending hours to save a
+  # low single-digit percentage of a package that is mostly a PyInstaller
+  # onefile archive, which is already compressed.
+  #
+  # Read the next run rather than this comment. "none" is also the cleanest
+  # experiment available: if the rpm is suddenly minutes, the compressor was
+  # the whole cost, and if it is still hours the cost is elsewhere in rpm-rs
+  # and the setting can go back. Either way the release no longer waits on the
+  # answer, which is the other half of this and is the part that does not
+  # depend on a measurement we have not taken yet.
+  #
+  # The rpm is the most downloaded Linux package we publish (15 against 9 for
+  # the deb and 4 for the AppImage on v14.8.1), so it is not something to
+  # drop; it is something to keep out of the path of the release.
   #
   # Hence a job of its own, needing only the sidecar so it starts alongside
   # the others, and continue-on-error so that if it does run out of clock the
-  # release still concludes green and still gets signed. The run does wait for
-  # this job before it completes, which delays the signature by a couple of
-  # hours; that is unattended and cheap, and it is the trade that keeps a slow
-  # rpm from ever again taking a whole release with it.
+  # release still concludes green. The run still waits for this job before it
+  # completes, but the signature no longer does: request-signing below starts
+  # Release Signing as soon as the installers are attached, and this run's
+  # eventual completion starts it a second time so the manifest ends up
+  # covering the rpm too.
   build-linux-rpm:
     name: Build Linux RPM
     needs: build-sidecar
@@ -1082,7 +1122,7 @@ jobs:
 
   # Authenticode code signing for the Windows installers.
   #
-  # The tauri-action above uploads the Windows .exe (NSIS) and .msi to the
+  # The tauri-action above uploads the Windows .exe (NSIS) to the
   # release as a draft, so the assets are never visible to users until the
   # founder publishes the release by hand. This job runs on the Windows
   # runner after the build, signs each Windows installer with the founder's
@@ -1116,7 +1156,7 @@ jobs:
     # with fail-fast disabled, so one leg failing marks the whole job failed
     # while the other legs still attach their installers to the release. A
     # macOS leg that failed after the Windows leg had already uploaded its
-    # .exe and .msi would therefore leave signed-looking Windows installers on
+    # .exe would therefore leave a signed-looking Windows installer on
     # a release that this job never looked at, and WINDOWS_SIGNING_REQUIRED
     # could not fire because nothing ran to read it. That is the same silence
     # this job just removed from the inside, relocated to its own boundary.
@@ -1128,8 +1168,8 @@ jobs:
     runs-on: windows-latest
     # Measured at 0.3 to 0.6 min, because there are no signing secrets and the
     # job downloads nothing. The cap is deliberately far above that: if the
-    # secrets ever arrive this job starts downloading and re-uploading two
-    # installers of about 350 MB each, and the timeout should not be the thing
+    # secrets ever arrive this job starts downloading and re-uploading an
+    # installer of about 650 MB, and the timeout should not be the thing
     # that discovers it.
     timeout-minutes: 30
     steps:
@@ -1217,7 +1257,7 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
               exit 1
             fi
-            echo "::warning title=Windows installers are not code signed::None of the five AZURE_KV_* secrets are set, so the .exe and .msi on this release are unsigned. Windows SmartScreen will warn every person who runs them. See docs/desktop/WINDOWS_SIGNING.md."
+            echo "::warning title=The Windows installer is not code signed::None of the five AZURE_KV_* secrets are set, so the .exe on this release is unsigned. Windows SmartScreen will warn every person who runs it. See docs/desktop/WINDOWS_SIGNING.md."
             # A heading rather than a line, because this is the one branch
             # that ships an unsigned artifact and stays green. It has to be
             # the first thing read on the run page, not something found by
@@ -1227,7 +1267,7 @@ jobs:
               echo
               echo "# WINDOWS INSTALLERS ON THIS RELEASE ARE NOT CODE SIGNED"
               echo
-              echo "> The \`.exe\` and \`.msi\` this run attached to \`${TAG:-this tag}\` carry **no Authenticode signature**."
+              echo "> The \`.exe\` this run attached to \`${TAG:-this tag}\` carries **no Authenticode signature**."
               echo "> Windows SmartScreen will warn every person who runs them, and nothing in the files"
               echo "> identifies who published them. Every release of this project so far has shipped in"
               echo "> this state. It is written here so that it reads as a decision and not as a silence."
@@ -1290,21 +1330,20 @@ jobs:
             --repo "${{ github.repository }}" \
             --dir signing \
             --pattern '*.exe' \
-            --pattern '*.msi' \
             --skip-existing
 
           ls -la signing
 
-          # Composition, not count. Counting files would accept two .exe and no
-          # .msi, which is the shape a half finished Windows build leaves
-          # behind, and the missing installer would then ship unsigned while
-          # this job stayed green. Both kinds have to be present.
+          # Windows ships one installer now, so the question is no longer which
+          # kinds arrived but whether the one kind did. Zero is the answer that
+          # has to fail: an empty directory here would let the signing step
+          # below find nothing, exit zero, and take the job green having signed
+          # nothing at all.
           shopt -s nullglob
           exes=(signing/*.exe)
-          msis=(signing/*.msi)
-          echo "downloaded ${#exes[@]} .exe and ${#msis[@]} .msi"
-          if [ ${#exes[@]} -eq 0 ] || [ ${#msis[@]} -eq 0 ]; then
-            echo "::error title=Windows installers are missing from the release::Expected at least one .exe and at least one .msi on $TAG, found ${#exes[@]} and ${#msis[@]}. Signing only what arrived would publish a release with one signed installer and one unsigned one, which is harder to notice than a release with neither." >&2
+          echo "downloaded ${#exes[@]} .exe"
+          if [ ${#exes[@]} -eq 0 ]; then
+            echo "::error title=The Windows installer is missing from the release::Expected at least one .exe on $TAG and found none. There is nothing to sign, and a green signing job over an empty directory reads as a signed release." >&2
             exit 1
           fi
 
@@ -1326,7 +1365,7 @@ jobs:
           echo "Windows code signing: running against Azure Key Vault." >> "$GITHUB_STEP_SUMMARY"
 
           shopt -s nullglob
-          files=(signing/*.exe signing/*.msi)
+          files=(signing/*.exe)
           if [ ${#files[@]} -eq 0 ]; then
             echo "::error title=Nothing to sign::The download step verified that installers were present and this step found none." >&2
             exit 1
@@ -1373,7 +1412,7 @@ jobs:
           echo "using $signtool"
 
           shopt -s nullglob
-          files=(signing/*.exe signing/*.msi)
+          files=(signing/*.exe)
           if [ ${#files[@]} -eq 0 ]; then
             echo "::error title=Nothing to verify::The signing step reported success and left no installers behind." >&2
             exit 1
@@ -1398,7 +1437,7 @@ jobs:
           set -euo pipefail
 
           shopt -s nullglob
-          files=(signing/*.exe signing/*.msi)
+          files=(signing/*.exe)
           if [ ${#files[@]} -eq 0 ]; then
             echo "::error title=Nothing to upload::Verification passed over a set of installers that is now empty." >&2
             exit 1
@@ -1414,6 +1453,147 @@ jobs:
               --repo "${{ github.repository }}" \
               --clobber
           done
+
+  # Start Release Signing now, rather than when this run finally ends.
+  #
+  # Release Signing also triggers on a `workflow_run` completion of Desktop
+  # Release, and that trigger stays exactly as it is. What it cannot do is fire
+  # early: a run is not complete until every job in it is, build-linux-rpm
+  # above runs for two to four hours, and so a release sat with six installers
+  # and no SHA256SUMS, no signature, no certificate, no SBOM and no licence
+  # inventory for as long as the slowest optional package took. v15.1.0
+  # published its installers at 14:28 UTC and was still carrying none of those
+  # five files four hours later. Giving the rpm a job of its own bought nothing
+  # by itself, because the trigger was never separated with it.
+  #
+  # workflow_dispatch is one of the two events a GITHUB_TOKEN is allowed to
+  # raise. Events produced by a GITHUB_TOKEN do not start workflow runs, which
+  # is the recursion guard, and workflow_dispatch and repository_dispatch are
+  # the documented exceptions to it. So this job can ask for the signature at
+  # the moment there is something to sign.
+  #
+  # It is dispatched against the default branch rather than against the tag, on
+  # purpose and for the same reason the `tag` input at the top of this file
+  # exists: a tag carries the pipeline as it was when the tag was cut, and a
+  # fix landed afterwards can never reach it. The late `workflow_run` pass
+  # already runs from the default branch, and the two passes have to be the
+  # same pipeline or the second one silently repairs or breaks what the first
+  # one did.
+  #
+  # It needs sign-windows as well as build-tauri, and that is not tidiness. The
+  # day the Azure Key Vault secrets are set, sign-windows replaces the .exe on
+  # the release with a signed copy of itself. A manifest taken before that
+  # would carry the hash of bytes nobody can download any more, and it would
+  # verify cleanly against nothing, which is the worst way for a checksum file
+  # to be wrong.
+  #
+  # It does not require either of them to have succeeded, deliberately. Whether
+  # a release is worth signing is a question about the release, and
+  # release-signing.yml has a job that reads the assets and answers it. A
+  # condition here demanding green would put a run-shaped gate back in front of
+  # the signature one file over from the test that forbids it, and that gate is
+  # what cost v15.0.0 seven files.
+  #
+  # Two signing runs per release is the intended outcome rather than a side
+  # effect. The early one covers the installers. The late one, started by this
+  # run finally completing, regenerates the manifest over the release as it
+  # then stands, which is how the rpm gets inside it. Signing is idempotent by
+  # construction: it re-downloads every asset on the release and clobbers all
+  # three of its files, and the SBOM job it calls clobbers its three too.
+  request-signing:
+    name: Start Release Signing
+    needs: [build-tauri, sign-windows]
+    if: ${{ !cancelled() && needs.build-tauri.result != 'skipped' && (github.ref_type == 'tag' || startsWith(inputs.tag, 'v')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Narrower than the `contents: write` this workflow grants by default.
+    # Declaring permissions on a job replaces the whole set for that job's
+    # token, so this one can start a workflow and read the repository and can
+    # touch neither the release nor the code.
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Ask Release Signing to run against this tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ env.RELEASE_REF }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          branch="${DEFAULT_BRANCH:-main}"
+          if [ -z "${DEFAULT_BRANCH:-}" ]; then
+            echo "::warning title=The event carried no default branch::Falling back to 'main'. If the default branch is not main, this dispatch runs the wrong copy of release-signing.yml or fails outright."
+          fi
+          echo "Dispatching Release Signing for ${TAG} from ${branch}"
+
+          # The newest run of the signing workflow before we ask for another
+          # one. Run ids increase per repository, so a larger one afterwards is
+          # a run that did not exist when this step started. Without this
+          # reading the step below would find the previous release's run and
+          # call it ours.
+          before=$(gh run list --workflow release-signing.yml --repo "$REPO" \
+            --limit 1 --json databaseId --jq '.[0].databaseId // 0')
+          echo "newest Release Signing run before the dispatch: ${before}"
+
+          # No `|| true`. A refused dispatch is a real failure with a real
+          # cause, usually the actions: write scope or a workflow file that is
+          # not on the default branch, and it has to be visible as one.
+          gh workflow run release-signing.yml \
+            --repo "$REPO" \
+            --ref "$branch" \
+            -f tag="$TAG"
+
+          # Read it back. "gh workflow run" reports that the API accepted the
+          # request, which is not the same claim as a run existing, and this
+          # whole job is worth nothing if the difference between the two goes
+          # unnoticed.
+          started=""
+          for attempt in 1 2 3 4 5 6; do
+            sleep 10
+            latest=$(gh run list --workflow release-signing.yml --repo "$REPO" \
+              --limit 1 --json databaseId,url --jq '.[0] | "\(.databaseId) \(.url)"' || true)
+            id="${latest%% *}"
+            if [ -n "$id" ] && [ "$id" != "$before" ]; then
+              started="$latest"
+              break
+            fi
+            echo "attempt ${attempt}: no new run yet"
+          done
+
+          if [ -n "$started" ]; then
+            echo "Release Signing started: ${started}"
+            {
+              echo "### Release Signing started early for \`${TAG}\`"
+              echo
+              echo "${started#* }"
+              echo
+              echo "It ran against the installers rather than waiting for this run to finish, so"
+              echo "the checksums, signature, certificate, SBOM and licence inventory do not wait"
+              echo "on \`build-linux-rpm\`. When this run does complete, Release Signing runs again"
+              echo "and regenerates the manifest over everything then published, including the rpm."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # Not a failure, and saying which kind of not-a-failure matters. The
+          # `workflow_run` trigger on release-signing.yml is untouched, so the
+          # signature still arrives when this run completes. What is lost is
+          # only the head start, which puts the release back where every
+          # release before this change already was.
+          echo "::warning title=Release Signing did not start early::The dispatch was accepted but no new run appeared within a minute. ${TAG} is not left unsigned: Release Signing still triggers when this run completes, which is after build-linux-rpm, so the signature arrives hours later instead of minutes. Check the actions: write scope on this job and that release-signing.yml on ${branch} still declares workflow_dispatch."
+          {
+            echo "### Release Signing did not start early for \`${TAG}\`"
+            echo
+            echo "The dispatch was accepted and no new run appeared within a minute."
+            echo
+            echo "The release is not left unsigned. \`release-signing.yml\` still triggers on this"
+            echo "run completing, so the signature arrives after \`build-linux-rpm\` rather than"
+            echo "after the installers. To sign now, dispatch **Release Signing** against"
+            echo "\`${TAG}\` by hand."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # What ended up on the release, read off the release.
   #
@@ -1437,7 +1617,7 @@ jobs:
   # stay quiet exactly when it is needed.
   report:
     name: Say what reached the release
-    needs: [build-sidecar, build-tauri, build-linux-rpm, sign-windows]
+    needs: [build-sidecar, build-tauri, build-linux-rpm, sign-windows, request-signing]
     if: ${{ always() && (github.ref_type == 'tag' || startsWith(inputs.tag, 'v')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -1446,11 +1626,16 @@ jobs:
     #
     # tauri-action uploads the installers from inside itself, so by the time
     # this job looks, everything it can complain about is already on the
-    # release. Failing the run therefore withholds no artifact. What it would
-    # do is stop Release Signing, which only starts from a Desktop Release that
-    # concluded success, and the release would then be short an installer AND
-    # short its manifest. That is v15.0.0's exact state, reached through the
-    # gate meant to report it.
+    # release. Failing the run therefore withholds no artifact.
+    #
+    # The reason written here used to be that failing would stop Release
+    # Signing, "which only starts from a Desktop Release that concluded
+    # success", leaving the release short an installer AND short its manifest.
+    # That reason has expired twice over: the conclusion gate is gone from
+    # release-signing.yml, and request-signing above has already asked for the
+    # signature by the time this job runs. Keeping continue-on-error is still
+    # right, for the plainer reason that a job which only observes should not
+    # be able to colour a run it did not produce.
     #
     # The test that decides continue-on-error here: does failing prevent a bad
     # artifact from shipping, or does it only strip the signature off one that
@@ -1466,6 +1651,7 @@ jobs:
           TAURI_RESULT: ${{ needs.build-tauri.result }}
           RPM_RESULT: ${{ needs.build-linux-rpm.result }}
           SIGN_RESULT: ${{ needs.sign-windows.result }}
+          DISPATCH_RESULT: ${{ needs.request-signing.result }}
         run: |
           set -uo pipefail
 
@@ -1497,10 +1683,10 @@ jobs:
           have() { printf '%s\n' "$assets" | grep -q -- "$1"; }
 
           # The installer per platform this workflow claims to build. Named as
-          # suffixes rather than counted, because counting accepts two Windows
-          # installers and no macOS one.
+          # suffixes rather than counted, because counting accepts two Linux
+          # packages and no macOS one.
           missing=""
-          for expected in 'Windows .exe:\.exe$' 'Windows .msi:\.msi$' 'macOS .dmg:\.dmg$' \
+          for expected in 'Windows .exe:\.exe$' 'macOS .dmg:\.dmg$' \
                           'macOS .app.tar.gz:\.app\.tar\.gz$' 'Linux .deb:\.deb$' \
                           'Linux .AppImage:\.AppImage$'; do
             have "${expected#*:}" || missing="${missing} ${expected%%:*},"
@@ -1519,43 +1705,43 @@ jobs:
             echo "::warning title=This release has no rpm::The rpm bundler did not deliver, so Fedora and openSUSE users have no package for ${TAG}. The other Linux packages are unaffected."
           fi
 
-          # Whether Release Signing can even start. It triggers on a Desktop
-          # Release run that concluded success and whose head_branch begins with
-          # v, which is the tag on a tag push and a branch name on a dispatch.
-          # So a repair run never triggers it, and neither does a run where any
-          # job failed - and in both cases the release keeps whatever manifest
-          # it already had, which now covers fewer files than it holds.
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
-            signing="**will not run.** This was a dispatch, so Release Signing sees a branch name where it expects a tag and skips."
-            if have '^SHA256SUMS$'; then
-              echo "::warning title=The signature on this release is now stale::${TAG} already carried SHA256SUMS before this run attached files to it. That manifest describes the release as it was, and it verifies cleanly over the smaller set, which reads as a complete release. Dispatch Release Signing against ${TAG} to regenerate it."
-              signing="$signing The manifest already on the release predates the files this run attached and no longer covers them."
-            fi
-          elif [ "$RPM_RESULT" != "success" ] && [ "$RPM_RESULT" != "skipped" ]; then
-            # The rpm job is continue-on-error, which is documented as keeping a
-            # job that FAILS from failing the run. Whether it also covers a job
-            # that its own timeout-minutes cancels is not something this file
-            # knows, and the answer decides whether signing fires: a run that
-            # concludes cancelled does not trigger Release Signing, which is
-            # exactly how v15.0.0 ended up with no manifest.
-            #
-            # Measured, and the reason this branch exists: the v15.0.0 rpm was
-            # still bundling at 213 minutes when a 240 minute cap killed it, so
-            # the 350 minute cap on that job is a live possibility rather than a
-            # theoretical one. This branch predicted "should run" on the strength
-            # of build-sidecar and build-tauri alone, which would have been a
-            # reassuring sentence printed in precisely the case it is wrong.
-            #
-            # So say what is known and stop. Guessing either way would put a
-            # confident answer where a measurement belongs.
-            signing="**cannot be predicted from here.** build-linux-rpm reported \`${RPM_RESULT}\`. That job is continue-on-error, which covers a job that fails; whether it covers one cancelled by its own timeout is unsettled, and a run concluding cancelled does not trigger Release Signing. Read this run's conclusion before announcing the release, and dispatch Release Signing against ${TAG} by hand if it is not success."
-            echo "::warning title=Check the run conclusion before announcing this release::build-linux-rpm reported ${RPM_RESULT}. If that makes the run conclude anything other than success, Release Signing does not fire and ${TAG} ships with no SHA256SUMS, which is how v15.0.0 shipped unsigned. Read the conclusion at the top of this run and dispatch Release Signing by hand if it is not success."
-          elif [ "$SIDECAR_RESULT" = "success" ] && [ "$TAURI_RESULT" = "success" ]; then
-            signing="should run: this workflow concluded normally on a tag."
-          else
-            signing="**will not run.** Release Signing needs this run to conclude success, and build-sidecar reported \`${SIDECAR_RESULT}\`, build-tauri \`${TAURI_RESULT}\`. Dispatch Release Signing against ${TAG} by hand once the cause is fixed."
-            echo "::warning title=This release will not be signed automatically::Release Signing only starts from a Desktop Release that concluded success. Dispatch it against ${TAG} once the failing job is understood, or the release keeps no SHA256SUMS at all."
-          fi
+          # When Release Signing ran, which is no longer something this job has
+          # to predict from the shape of the run. request-signing dispatches it
+          # as soon as the installers are on the release and reads back whether
+          # a run appeared, so this reports that job's result instead of
+          # reasoning about a trigger.
+          #
+          # Everything this block used to say about a run's conclusion is gone
+          # with the conclusion gate it described. release-signing.yml judges
+          # the release rather than the run, so a Desktop Release that ends
+          # failed or cancelled still reaches it. build-sidecar and build-tauri
+          # results are therefore no longer part of this answer; they are still
+          # printed by their own job tiles, and what they can cost the release
+          # is an installer, which the missing-platform check below reports.
+          case "${DISPATCH_RESULT}" in
+            success)
+              signing="**started early**, when the installers reached the release rather than when this run ends."
+              if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+                # A dispatch cannot trigger the second pass. Release Signing
+                # reads its tag out of head_branch on a workflow_run event, and
+                # on a dispatch that is a branch name, so its resolve job
+                # refuses. The early pass is the only one a repair run gets.
+                signing="$signing This was a dispatch, so there is no second pass: the manifest covers the release as it stood when signing ran. If \`build-linux-rpm\` attaches an rpm after that, dispatch Release Signing against ${TAG} again."
+                if [ "$RPM_RESULT" = "success" ]; then
+                  echo "::warning title=The signature on this release may not cover the rpm::request-signing started Release Signing when the installers were attached, and build-linux-rpm reported success, so the rpm may have landed after the manifest was written. A dispatch cannot trigger the second signing pass. Dispatch Release Signing against ${TAG} to regenerate the manifest over everything now published."
+                fi
+              else
+                signing="$signing It runs a second time when this run completes, which is what puts the rpm inside the manifest."
+              fi
+              ;;
+            skipped)
+              signing="not requested by this run: \`request-signing\` was skipped, which is the sidecar-only path where there is no release to sign."
+              ;;
+            *)
+              signing="**not started early**: \`request-signing\` reported \`${DISPATCH_RESULT}\`, and that job's summary says what it saw. ${TAG} is not left unsigned - Release Signing still triggers when this run completes, after \`build-linux-rpm\` - so the signature arrives hours later instead of minutes."
+              echo "::warning title=The signature on this release will be late::request-signing reported ${DISPATCH_RESULT}, so ${TAG} waits for this whole run, build-linux-rpm included, before it gets its checksums, signature, certificate, SBOM and licence inventory. Dispatch Release Signing against ${TAG} by hand rather than waiting."
+              ;;
+          esac
 
           {
             echo "### What reached \`${TAG}\`"
@@ -1564,6 +1750,8 @@ jobs:
             echo "| --- | --- |"
             echo "| Assets on the release | $(printf '%s\n' "$assets" | grep -c . || true) |"
             echo "| rpm | ${rpm_line} |"
+            echo "| Build Sidecar | \`${SIDECAR_RESULT}\` |"
+            echo "| Build Desktop | \`${TAURI_RESULT}\` |"
             echo "| Windows signing job | \`${SIGN_RESULT}\` |"
             echo "| Release Signing | ${signing} |"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -98,6 +98,10 @@ MIN_TAGS = 320  # measured 325 on 2026-08-12
 # the manifest, the signature over it, and the certificate to check it with.
 COSIGN_TRIO = ("SHA256SUMS", "SHA256SUMS.sig", "SHA256SUMS.pem")
 
+# The .msi stopped being built in 15.2.0. It stays in this tuple because this
+# script reads historical releases too, and every release up to 15.1.0 carries
+# one. The tuple is a recogniser, not a requirement: `has_windows` is an any(),
+# so a release with only the .exe answers yes.
 WINDOWS_SUFFIXES = (".exe", ".msi")
 MACOS_SUFFIXES = (".dmg", ".app.tar.gz")
 DESKTOP_SUFFIXES = (*WINDOWS_SUFFIXES, *MACOS_SUFFIXES, ".AppImage", ".deb", ".rpm")

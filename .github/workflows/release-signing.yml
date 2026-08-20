@@ -136,13 +136,18 @@ jobs:
           echo "${TAG} lists ${count} assets:"
           printf '%s\n' "$assets"
 
-          # One artefact per platform family, not one per format. The format
-          # list is decided in desktop/src-tauri/tauri.conf.json and changes
-          # there (the .msi is under review) should not have to be mirrored
-          # here. What must never pass unnoticed is a whole platform missing,
-          # because that is the release a signature would misrepresent.
+          # One artefact per platform family, not one per format. What must
+          # never pass unnoticed is a whole platform missing, because that is
+          # the release a signature would misrepresent.
+          #
+          # Windows used to be written '\.(exe|msi)$' so that dropping a format
+          # would not have to be mirrored here. The mirroring is not optional in
+          # practice: test_release_signing_trigger.py asserts this list equals
+          # the formats we build, so the alternative to editing it was a test
+          # that requires an installer nobody produces. The .msi went in 15.2.0
+          # and both moved together.
           missing=""
-          printf '%s\n' "$assets" | grep -qE '\.(exe|msi)$' || missing="${missing} Windows (.exe or .msi)"
+          printf '%s\n' "$assets" | grep -qE '\.exe$' || missing="${missing} Windows (.exe)"
           printf '%s\n' "$assets" | grep -qE '\.dmg$' || missing="${missing} macOS (.dmg)"
           printf '%s\n' "$assets" | grep -qE '\.deb$' || missing="${missing} Linux (.deb)"
           printf '%s\n' "$assets" | grep -qE '\.AppImage$' || missing="${missing} Linux (.AppImage)"
@@ -447,7 +452,7 @@ jobs:
           # not left to care - tests/unit/test_release_signing_trigger.py reads
           # both out of this file and fails when they diverge.
           absent_platforms=""
-          printf '%s\n' "$assets" | grep -qE '\.(exe|msi)$' || absent_platforms="${absent_platforms} Windows (.exe or .msi)"
+          printf '%s\n' "$assets" | grep -qE '\.exe$' || absent_platforms="${absent_platforms} Windows (.exe)"
           printf '%s\n' "$assets" | grep -qE '\.dmg$' || absent_platforms="${absent_platforms} macOS (.dmg)"
           printf '%s\n' "$assets" | grep -qE '\.deb$' || absent_platforms="${absent_platforms} Linux (.deb)"
           printf '%s\n' "$assets" | grep -qE '\.AppImage$' || absent_platforms="${absent_platforms} Linux (.AppImage)"

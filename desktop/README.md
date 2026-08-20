@@ -16,7 +16,7 @@ So a finished installer contains two things stitched together: the Tauri shell a
 
 You need three toolchains on the build machine.
 
-Rust stable with Cargo, plus the Tauri CLI (`cargo install tauri-cli` or use `cargo tauri` via the project). This compiles the native shell.
+Rust stable with Cargo, plus the Tauri CLI. Install the same version the release workflow pins, `cargo install tauri-cli --version 2.11.4 --locked`, and keep the two in step whenever either moves. The version matters beyond reproducibility: the installer's own message translations ship inside the CLI rather than in this repository, so a different CLI produces an installer that speaks a different set of languages. The pin lives in `TAURI_CLI_VERSION` in `.github/workflows/desktop-release.yml`.
 
 Node.js (the workflow uses Node 20) for building the React frontend. The frontend is built and shipped inside the sidecar.
 
@@ -63,7 +63,7 @@ You do not normally build all three platforms by hand. The workflow at `.github/
 
 ## Signing the Windows installers
 
-The Windows `.exe` and `.msi` are not signed. No code signing certificate exists for this project yet, so every Windows installer published so far is unsigned, and Windows SmartScreen warns each person who runs one. The release workflow states that on the run page rather than passing over it in silence.
+The Windows `.exe` is not signed. No code signing certificate exists for this project yet, so every Windows installer published so far is unsigned, and Windows SmartScreen warns each person who runs one. The release workflow states that on the run page rather than passing over it in silence.
 
 The pipeline that will sign them is already in place and waiting on credentials. It signs through Azure Key Vault with AzureSignTool, so the private key stays inside the vault and never reaches the runner, then re-uploads the signed files over the unsigned ones while the release is still a draft. Turning it on takes five repository secrets and one repository variable, and no code change.
 
