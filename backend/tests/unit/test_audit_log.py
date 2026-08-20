@@ -282,3 +282,49 @@ async def test_recent_activity_is_newest_first(session: AsyncSession) -> None:
     assert len(rows) == 2
     seqs = {r.metadata_["seq"] for r in rows}
     assert seqs == {1, 2}
+
+
+@pytest.mark.asyncio
+async def test_failed_audit_flush_leaves_the_caller_transaction_usable(
+    session: AsyncSession,
+) -> None:
+    """A dropped audit row must not take the caller's business write with it.
+
+    ``log_activity`` promises that a failed audit write leaves the caller's
+    transaction intact. Catching the exception is not enough to keep that
+    promise: a failed ``flush`` puts the session into a rolled-back state
+    where every later statement raises ``PendingRollbackError``, so before
+    the savepoint the caller was handed a broken session and a swallowed
+    error. The savepoint is what confines the loss to the audit row.
+
+    The failure here is a real one. ``entity_type`` is ``String(64)`` and
+    PostgreSQL rejects a longer value at flush time. A patched ``flush``
+    that merely raises would not put the session into the rolled-back state
+    this test is about, so such a test would pass with or without the fix
+    and prove nothing.
+    """
+    dropped = await log_activity(
+        session,
+        actor_id=None,
+        entity_type="x" * 100,
+        entity_id="too-long",
+        action="audit_row_that_cannot_land",
+    )
+    assert dropped is not None  # returned rather than raised
+
+    survivor = await log_activity(
+        session,
+        actor_id=None,
+        entity_type="boq",
+        entity_id="written-after-the-failure",
+        action="status_changed",
+        metadata={"after": True},
+    )
+    await session.flush()
+    assert survivor.id is not None
+
+    rows = await get_activity_for_entity(session, entity_type="boq", entity_id="written-after-the-failure")
+    assert [r.action for r in rows] == ["status_changed"]
+
+    over_long = await get_activity_for_entity(session, entity_type="x" * 100, entity_id="too-long")
+    assert over_long == []
