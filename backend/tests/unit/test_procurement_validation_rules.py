@@ -20,6 +20,7 @@ Pure-Python, no database.
 from __future__ import annotations
 
 import inspect
+import uuid
 from typing import Any
 
 import pytest
@@ -40,6 +41,8 @@ from app.core.validation.rules import (
     register_builtin_rules,
 )
 from app.modules.procurement import validators as po_checks
+from app.modules.procurement.models import PurchaseOrder, PurchaseOrderItem
+from app.modules.procurement.service import ProcurementService
 
 PROCUREMENT_RULES = [
     ProcurementPOHasLines,
@@ -525,3 +528,71 @@ class TestEngineContract:
         report = await self._report(_po())
         assert report.unsupported_rule_sets == []
         assert report.supported_rule_sets == ["procurement"]
+
+
+# ---------------------------------------------------------------------------
+# 4. The payload builder: does the cost link actually reach the rule?
+# ---------------------------------------------------------------------------
+
+
+class TestTheCostLinkReachesTheRule:
+    """Every test above hands the rule a dict written by hand in this file.
+
+    ``check_line_cost_coded`` counts ``cost_line_id`` as one of three codings,
+    but the dict it reads is built by ``ProcurementService._validation_payload``
+    from an explicit field list, and no test in this file can see that list. If
+    the field were dropped there, ``test_cost_line_link_alone_is_enough`` above
+    would keep passing while a line correctly attributed to a cost line carried
+    a permanent uncoded warning.
+
+    That failure is worse than the noise the rule was written to remove. A
+    warning nobody can clear is a warning the reader learns to skip, and the
+    rule then stops working for the lines that really are uncoded.
+
+    The control comes first. Asserting that a linked line is clean proves
+    nothing on its own, because a payload carrying no lines at all is also
+    clean.
+    """
+
+    @staticmethod
+    def _payload(**item_fields: Any) -> dict[str, Any]:
+        """The dict the service really builds, for a PO with one line.
+
+        No database. The builder only reads attributes off the instances, and a
+        repository constructor only stores the session it is handed, so an
+        unsaved order and no session are enough.
+        """
+        item = PurchaseOrderItem(
+            description="C30/37 ready-mix concrete",
+            quantity="10",
+            unit="m3",
+            unit_rate="120.00",
+            amount="1200.00",
+            sort_order=0,
+            **item_fields,
+        )
+        po = PurchaseOrder(
+            project_id=uuid.UUID("22222222-2222-2222-2222-222222222222"),
+            po_number="PO-0042",
+            status="draft",
+            currency_code="EUR",
+        )
+        po.items = [item]
+        return ProcurementService(None)._validation_payload(po)  # type: ignore[arg-type]
+
+    def test_a_line_with_no_coding_at_all_is_flagged_through_the_real_payload(self) -> None:
+        """The control: the rule does reach a line built this way."""
+        payload = self._payload(wbs_id=None, cost_category=None, cost_line_id=None)
+
+        assert len(po_checks.check_line_cost_coded(payload)) == 1
+
+    def test_a_line_coded_only_by_its_cost_link_is_clean(self) -> None:
+        """The one that fails if the builder stops copying the column out."""
+        payload = self._payload(
+            wbs_id=None,
+            cost_category=None,
+            cost_line_id=uuid.UUID("44444444-4444-4444-4444-444444444444"),
+        )
+
+        assert payload["items"][0]["cost_line_id"] == "44444444-4444-4444-4444-444444444444"
+        assert po_checks.check_line_cost_coded(payload) == []
