@@ -5,7 +5,7 @@ All notable changes to OpenConstructionERP are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [15.0.1] - 2026-08-20
+## [15.1.0] - 2026-08-20
 
 The Windows desktop application of 15.0.0 did not start. It stopped with a missing locales directory before it ever drew a window, on every machine, and reinstalling could not help because the directory was absent from the build itself. The catalogue the server reads while starting sits beside the application package rather than inside it, so packaging the package left it behind. The wheel force-included it and the frozen bundle did not, which is why the same version installed from PyPI worked and the desktop build did not. The bundle carries it now, and a test refuses any release whose frozen build ships less than the wheel declares.
 
@@ -15,7 +15,7 @@ A data directory the bundled PostgreSQL cannot open is now refused before anythi
 
 Release 15.0.0 shipped without its signature, checksums, software bill of materials and rpm, because the signing job asked the desktop build for a verdict and that run ended cancelled. The artefacts existed; the sentence about them did not. Signing now reads the assets a run produced, an inventory step refuses a release with a platform missing, and a failed read of the asset list is reported as not measured rather than as a judgement.
 
-Away from the desktop, the activity trail keeps the deletions it was silently dropping, because a bill's audit entry named the bill by a column carrying a foreign key and the row was already gone by the time the entry was written. A budget is judged by what the job will finish at rather than by what has been invoiced so far. Brazilian demo bills are written with the letters they are written with, American English answers the British spellings an American reader trips on, and the demo correspondence register belongs to the project it sits in rather than repeating one fixed list of letters in every project on the platform.
+Away from the desktop, the activity trail keeps the deletions it was silently dropping, because a bill's audit entry named the bill by a column carrying a foreign key and the row was already gone by the time the entry was written. A budget is judged by what the job will finish at rather than by what has been invoiced so far. Brazilian demo bills are written with the letters they are written with, American English answers the British spellings an American reader trips on, and the demo correspondence register belongs to the project it sits in rather than repeating one fixed list of letters in every project on the platform. The BCF issue register stopped drawing three different nothings as one broken picture: a snapshot that will not load keeps the crossed-out glyph, a viewpoint carrying no image gets a crosshair because the schema makes the image optional, and an issue raised outside a viewer gets neither.
 
 ## [15.0.0] - 2026-08-19
 

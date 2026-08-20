@@ -38,11 +38,11 @@ interface ChangelogEntry {
 // date, title and meaning intact; trim the prose, not the facts.
 const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '15.0.1',
+    version: '15.1.0',
     date: '2026-08-20',
     tag: 'FIX',
     summary:
-      'The Windows desktop application starts. 15.0.0 stopped on a missing locales directory before it drew a window, because the catalogue the server reads while starting sits beside the application package rather than inside it, and a test now refuses any release whose frozen build ships less than the wheel declares. Everything else that could block a first run went with it: the server starts where it is allowed to write, ignores a pidfile whose number now belongs to something else, waits for the database to answer before announcing it, asks the cluster on the address family it listens on, and refuses a data directory a new PostgreSQL major cannot open with the routes that keep your data named first.',
+      'The Windows desktop application starts. 15.0.0 stopped on a missing locales directory before it drew a window, because the catalogue the server reads while starting sits beside the application package rather than inside it, and a test now refuses any release whose frozen build ships less than the wheel declares. Everything else that could block a first run went with it: the server starts where it is allowed to write, ignores a pidfile whose number now belongs to something else, waits for the database to answer before announcing it, asks the cluster on the address family it listens on, and refuses a data directory a new PostgreSQL major cannot open with the routes that keep your data named first. The BCF issue register also stops showing healthy issues as broken pictures, telling a snapshot that failed to load apart from a viewpoint that never carried one.',
   },
   {
     version: '15.0.0',
