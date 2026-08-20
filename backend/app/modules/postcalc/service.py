@@ -357,6 +357,7 @@ def aggregate_resources(
                 "actual_hours": Decimal("0"),
                 "planned_cost": Decimal("0"),
                 "earned_cost": Decimal("0"),
+                "earned_cost_compared": Decimal("0"),
                 "actual_cost": Decimal("0"),
                 "actual_cost_known": False,
                 "seen": False,
@@ -369,23 +370,9 @@ def aggregate_resources(
         planned_quantity = _dec(line.get("planned_quantity"))
         actual_quantity = _dec(line.get("actual_quantity"))
 
-        kinds_here = {_res_kind(r) for r in resources}
-        for kind in kinds_here:
-            slot = _bucket(kind)
-            slot["seen"] = True
-            per_unit_hours = _per_unit_hours(resources, kind)
-            per_unit_cost = _per_unit_cost_of_kind(resources, kind)
-            slot["planned_hours"] += per_unit_hours * planned_quantity
-            slot["planned_cost"] += per_unit_cost * planned_quantity
-            if actual_quantity > 0:
-                # What the estimate allowed for the quantity installed. Earned
-                # money applies to every category, unlike earned hours, which
-                # only the two hour-based ones can have.
-                slot["earned_cost"] += per_unit_cost * actual_quantity
-                if kind in (ResourceKind.LABOUR, ResourceKind.MACHINERY):
-                    slot["earned_hours"] += per_unit_hours * actual_quantity
-
-        # Actual hours + cost come from the field side, keyed by category.
+        # Actual hours + cost come from the field side, keyed by category. Read
+        # before the estimate side because whether this line's actual is known
+        # decides which earned bucket the estimate side may contribute to.
         labour = _bucket(ResourceKind.LABOUR)
         labour["actual_hours"] += _dec(line.get("actual_labour_hours"))
         labour_cost = _opt_dec(line.get("actual_labour_cost"))
@@ -409,6 +396,34 @@ def aggregate_resources(
             material["actual_cost"] += material_cost
             material["actual_cost_known"] = True
 
+        # Which categories this line can be compared on. A category missing here
+        # still accrues planned and earned money, it just may not feed the
+        # earned side of a subtraction whose other side does not cover it.
+        priced_here = {
+            ResourceKind.LABOUR: labour_cost is not None,
+            ResourceKind.MACHINERY: plant_cost is not None,
+            ResourceKind.MATERIAL: material_cost is not None,
+        }
+
+        kinds_here = {_res_kind(r) for r in resources}
+        for kind in kinds_here:
+            slot = _bucket(kind)
+            slot["seen"] = True
+            per_unit_hours = _per_unit_hours(resources, kind)
+            per_unit_cost = _per_unit_cost_of_kind(resources, kind)
+            slot["planned_hours"] += per_unit_hours * planned_quantity
+            slot["planned_cost"] += per_unit_cost * planned_quantity
+            if actual_quantity > 0:
+                # What the estimate allowed for the quantity installed. Earned
+                # money applies to every category, unlike earned hours, which
+                # only the two hour-based ones can have.
+                earned_here = per_unit_cost * actual_quantity
+                slot["earned_cost"] += earned_here
+                if priced_here.get(kind, False):
+                    slot["earned_cost_compared"] += earned_here
+                if kind in (ResourceKind.LABOUR, ResourceKind.MACHINERY):
+                    slot["earned_hours"] += per_unit_hours * actual_quantity
+
     out: list[ResourceProductivity] = []
     for kind in KIND_ORDER:
         slot = acc.get(kind)
@@ -428,6 +443,7 @@ def aggregate_resources(
         planned_cost = slot["planned_cost"]
         earned_cost = slot["earned_cost"]
         actual_cost = slot["actual_cost"] if slot["actual_cost_known"] else None
+        earned_cost_compared = slot["earned_cost_compared"] if slot["actual_cost_known"] else None
 
         factor: Decimal | None = None
         variance_pct: Decimal | None = None
@@ -459,6 +475,7 @@ def aggregate_resources(
                 cost_variance=cost_variance,
                 status=status,
                 earned_cost=earned_cost,
+                earned_cost_compared=earned_cost_compared,
             )
         )
     return out
@@ -579,22 +596,31 @@ def compute_project_postcalc(
         overall_factor = compared_actual_hours / total_earned_hours
         overall_variance_pct = (overall_factor - _ONE) * _HUNDRED
 
-    known_costs = [lp.actual_labour_cost for lp in line_prods if lp.actual_labour_cost is not None]
-    total_actual_labour_cost = sum(known_costs, Decimal("0")) if known_costs else None
+    # Each category gets an earned total over every baselined line, which is the
+    # figure the planned total may be read against, and a second one over the
+    # lines the field could actually price, which is the only figure the actual
+    # total may be subtracted from. An earned total covering forty lines against
+    # an actual total covering three is a comparison of two different jobs, and
+    # it reports the thirty-seven nobody measured as a saving.
+    def _earned_over(lines_in: list[LineProductivity], pick: str) -> Decimal:
+        return sum(
+            (value for lp in lines_in if (value := getattr(lp, pick)) is not None),
+            Decimal("0"),
+        )
 
-    total_earned_labour_cost = sum(
-        (lp.earned_labour_cost for lp in line_prods if lp.earned_labour_cost is not None),
-        Decimal("0"),
+    labour_priced_lines = [lp for lp in line_prods if lp.actual_labour_cost is not None]
+    total_actual_labour_cost = (
+        sum((lp.actual_labour_cost for lp in labour_priced_lines), Decimal("0")) if labour_priced_lines else None
     )
+    total_earned_labour_cost = _earned_over(line_prods, "earned_labour_cost")
+    total_earned_labour_cost_compared = (
+        _earned_over(labour_priced_lines, "earned_labour_cost") if labour_priced_lines else None
+    )
+
     total_planned_material_cost = sum((lp.planned_material_cost for lp in line_prods), Decimal("0"))
-    # Earned material is summed over the lines the site could price, not over
-    # every line: an earned total covering forty lines against an actual total
-    # covering three is a comparison of two different jobs.
     priced_lines = [lp for lp in line_prods if lp.actual_material_cost is not None]
-    total_earned_material_cost = sum(
-        (lp.earned_material_cost for lp in priced_lines if lp.earned_material_cost is not None),
-        Decimal("0"),
-    )
+    total_earned_material_cost = _earned_over(line_prods, "earned_material_cost")
+    total_earned_material_cost_compared = _earned_over(priced_lines, "earned_material_cost") if priced_lines else None
     total_actual_material_cost = (
         sum((lp.actual_material_cost for lp in priced_lines), Decimal("0")) if priced_lines else None
     )
@@ -627,9 +653,12 @@ def compute_project_postcalc(
         compared_line_count=compared_line_count,
         status_counts=status_counts,
         total_earned_labour_cost=total_earned_labour_cost,
+        total_earned_labour_cost_compared=total_earned_labour_cost_compared,
         total_planned_material_cost=total_planned_material_cost,
         total_earned_material_cost=total_earned_material_cost,
+        total_earned_material_cost_compared=total_earned_material_cost_compared,
         total_actual_material_cost=total_actual_material_cost,
+        labour_priced_line_count=len(labour_priced_lines),
         material_priced_line_count=len(priced_lines),
         lines=line_prods,
         resources=resources,

@@ -74,7 +74,12 @@ export interface ResourceRollup {
   productivity_factor: string | null;
   variance_pct: string | null;
   planned_cost: string;
+  /** Earned over every line the estimate priced for this category. Pairs with
+   *  `planned_cost`. Never subtract `actual_cost` from this one. */
   earned_cost: string;
+  /** Earned over the lines whose actual is known, and the only earned figure
+   *  that pairs with `actual_cost`. `null` when nothing prices the category. */
+  earned_cost_compared: string | null;
   /** `null` where no actuals source can price the category. */
   actual_cost: string | null;
   cost_variance: string | null;
@@ -105,13 +110,20 @@ export interface ProductivityReport {
   overall_productivity_factor: string | null;
   overall_variance_pct: string | null;
   total_planned_labour_cost: string;
+  /** Earned over every baselined line. Read against the planned total. */
   total_earned_labour_cost: string;
+  /** Earned over the lines with a known actual, and the only figure the actual
+   *  total may be subtracted from. `null` when no line is priced. */
+  total_earned_labour_cost_compared: string | null;
   total_actual_labour_cost: string | null;
   total_planned_material_cost: string;
   total_earned_material_cost: string;
+  total_earned_material_cost_compared: string | null;
   total_actual_material_cost: string | null;
-  /** How many lines the site could price the material of. A total built from
-   *  three of forty lines is a different statement from one built from forty. */
+  /** How many lines the field could price. A total built from three of forty
+   *  lines is a different statement from one built from forty, and the
+   *  difference is invisible in the total itself. */
+  labour_priced_line_count: number;
   material_priced_line_count: number;
   total_planned_value: string;
   line_count: number;

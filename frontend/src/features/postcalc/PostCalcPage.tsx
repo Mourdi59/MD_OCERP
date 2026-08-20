@@ -23,7 +23,7 @@
  * category the platform cannot price says so instead of showing a zero that
  * reads as money nobody spent.
  */
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
@@ -197,10 +197,16 @@ function Headline({ report }: { report: ProductivityReport }) {
 
   const factor = num(report.overall_productivity_factor);
   const hoursDelta = num(report.total_actual_hours) - num(report.total_earned_hours);
+  // Both money tiles subtract the *compared* earned total, the one covering the
+  // same lines as the actual beside it. Against the full earned total, a project
+  // that priced three lines out of forty would report the other thirty-seven as
+  // a saving, and the bigger the unmeasured part the better the news would look.
   const materialActual = num(report.total_actual_material_cost);
-  const materialDelta = materialActual - num(report.total_earned_material_cost);
+  const materialEarned = num(report.total_earned_material_cost_compared);
+  const materialDelta = materialActual - materialEarned;
   const labourActual = num(report.total_actual_labour_cost);
-  const labourDelta = labourActual - num(report.total_earned_labour_cost);
+  const labourEarned = num(report.total_earned_labour_cost_compared);
+  const labourDelta = labourActual - labourEarned;
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -238,8 +244,10 @@ function Headline({ report }: { report: ProductivityReport }) {
         sub={
           Number.isNaN(labourActual)
             ? t('postcalc.kpi_no_source_labour')
-            : t('postcalc.kpi_money_sub', {
-                earned: formatCurrency(num(report.total_earned_labour_cost), currency),
+            : t('postcalc.kpi_money_priced_sub', {
+                priced: report.labour_priced_line_count,
+                total: report.line_count,
+                earned: formatCurrency(labourEarned, currency),
                 actual: formatCurrency(labourActual, currency),
               })
         }
@@ -253,10 +261,10 @@ function Headline({ report }: { report: ProductivityReport }) {
         sub={
           Number.isNaN(materialActual)
             ? t('postcalc.kpi_no_source_material')
-            : t('postcalc.kpi_material_sub', {
+            : t('postcalc.kpi_money_priced_sub', {
                 priced: report.material_priced_line_count,
                 total: report.line_count,
-                earned: formatCurrency(num(report.total_earned_material_cost), currency),
+                earned: formatCurrency(materialEarned, currency),
                 actual: formatCurrency(materialActual, currency),
               })
         }
@@ -564,7 +572,16 @@ function ResourceTable({ resources, currency }: { resources: ResourceRollup[]; c
                   <Figure value={row.planned_cost} kind="currency" currency={currency} unknown={unknown} />
                 </td>
                 <td className="px-3 py-2 text-right">
-                  <Figure value={row.earned_cost} kind="currency" currency={currency} unknown={unknown} />
+                  {/* The earned figure that covers the same lines as the actual
+                      next to it, so Earned minus Actual is the delta shown at
+                      the end of the row. Falls back to the full earned total
+                      where there is no actual to compare against. */}
+                  <Figure
+                    value={row.earned_cost_compared ?? row.earned_cost}
+                    kind="currency"
+                    currency={currency}
+                    unknown={unknown}
+                  />
                 </td>
                 <td className="px-3 py-2 text-right">
                   <Figure value={row.actual_cost} kind="currency" currency={currency} unknown={unknown} />

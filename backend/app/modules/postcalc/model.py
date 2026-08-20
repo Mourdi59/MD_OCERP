@@ -236,7 +236,16 @@ class ResourceProductivity:
     as money nobody spent.
 
     ``earned_cost`` is the money the estimate allowed for the quantity actually
-    installed, so a half-built line does not look like a saving.
+    installed, so a half-built line does not look like a saving. It covers every
+    line the estimate priced for this category, which is what makes it
+    comparable to ``planned_cost``.
+
+    ``earned_cost_compared`` covers only the lines whose actual for this category
+    is known, and it is the one the variance is built from. The two differ
+    whenever the field can price some lines and not others: material consumption
+    metered against three positions out of forty earns three positions' worth of
+    budget, and subtracting it from forty positions' worth would report a saving
+    of the thirty-seven nobody measured.
     """
 
     kind: ResourceKind
@@ -250,13 +259,19 @@ class ResourceProductivity:
     cost_variance: Decimal | None
     status: str
     earned_cost: Decimal = Decimal("0")
+    earned_cost_compared: Decimal | None = None
 
     @property
     def cost_variance_earned(self) -> Decimal | None:
-        """Actual money against what the installed quantity earned."""
-        if self.actual_cost is None:
+        """Actual money against what the same lines earned.
+
+        Both sides cover the lines this category could be priced on, so the
+        answer is over or under on comparable work rather than on the gap
+        between what was measured and what was not.
+        """
+        if self.actual_cost is None or self.earned_cost_compared is None:
             return None
-        return self.actual_cost - self.earned_cost
+        return self.actual_cost - self.earned_cost_compared
 
     @property
     def label(self) -> str:
@@ -282,6 +297,7 @@ class ResourceProductivity:
             "variance_pct": _q(self.variance_pct, _PCT_Q),
             "planned_cost": _q(self.planned_cost, _MONEY_Q),
             "earned_cost": _q(self.earned_cost, _MONEY_Q),
+            "earned_cost_compared": _q(self.earned_cost_compared, _MONEY_Q),
             "actual_cost": _q(self.actual_cost, _MONEY_Q),
             "cost_variance": _q(self.cost_variance, _MONEY_Q),
             "cost_variance_earned": _q(self.cost_variance_earned, _MONEY_Q),
@@ -350,13 +366,23 @@ class ProjectPostCalc:
     # for the quantity installed, and the actual totals are ``None`` where no
     # source can price the category. Defaulted so a caller that predates the
     # material half of this report still constructs.
+    #
+    # Each category carries two earned totals. The plain one covers every line
+    # with a baseline and belongs next to the planned total; the ``_compared``
+    # one covers only the lines whose actual is known and is the only one that
+    # may be subtracted from the actual. Comparing a forty-line earned total
+    # against a three-line actual reports the thirty-seven unmeasured lines as a
+    # saving, which is the single easiest way to make this page lie.
     total_earned_labour_cost: Decimal = Decimal("0")
+    total_earned_labour_cost_compared: Decimal | None = None
     total_planned_material_cost: Decimal = Decimal("0")
     total_earned_material_cost: Decimal = Decimal("0")
+    total_earned_material_cost_compared: Decimal | None = None
     total_actual_material_cost: Decimal | None = None
-    # How many lines the site could price the material of. A total built from
-    # three of forty lines is a different statement from one built from all
-    # forty, and the difference is invisible in the total itself.
+    # How many lines the field could price. A total built from three of forty
+    # lines is a different statement from one built from all forty, and the
+    # difference is invisible in the total itself.
+    labour_priced_line_count: int = 0
     material_priced_line_count: int = 0
     lines: list[LineProductivity] = field(default_factory=list)
     resources: list[ResourceProductivity] = field(default_factory=list)
@@ -373,10 +399,13 @@ class ProjectPostCalc:
             "overall_variance_pct": _q(self.overall_variance_pct, _PCT_Q),
             "total_planned_labour_cost": _q(self.total_planned_labour_cost, _MONEY_Q),
             "total_earned_labour_cost": _q(self.total_earned_labour_cost, _MONEY_Q),
+            "total_earned_labour_cost_compared": _q(self.total_earned_labour_cost_compared, _MONEY_Q),
             "total_actual_labour_cost": _q(self.total_actual_labour_cost, _MONEY_Q),
             "total_planned_material_cost": _q(self.total_planned_material_cost, _MONEY_Q),
             "total_earned_material_cost": _q(self.total_earned_material_cost, _MONEY_Q),
+            "total_earned_material_cost_compared": _q(self.total_earned_material_cost_compared, _MONEY_Q),
             "total_actual_material_cost": _q(self.total_actual_material_cost, _MONEY_Q),
+            "labour_priced_line_count": self.labour_priced_line_count,
             "material_priced_line_count": self.material_priced_line_count,
             "total_planned_value": _q(self.total_planned_value, _MONEY_Q),
             "line_count": self.line_count,
@@ -431,10 +460,22 @@ def render_markdown(report: ProjectPostCalc) -> str:
     out.append(
         f"| Earned labour cost (for installed qty) | {_fmt(_q(report.total_earned_labour_cost, _MONEY_Q))} {cur} |"
     )
+    # The compared earned total is the one that pairs with the actual below it.
+    # Printing only the full one next to a partial actual invites the reader to
+    # subtract two figures that cover different sets of lines.
+    out.append(
+        f"| Earned labour cost (lines with an actual) | "
+        f"{_fmt(_q(report.total_earned_labour_cost_compared, _MONEY_Q))} {cur} |"
+    )
     out.append(f"| Actual labour cost | {_fmt(_q(report.total_actual_labour_cost, _MONEY_Q))} {cur} |")
+    out.append(f"| Lines with priced labour | {report.labour_priced_line_count} / {report.line_count} |")
     out.append(f"| Planned material cost | {_fmt(_q(report.total_planned_material_cost, _MONEY_Q))} {cur} |")
     out.append(
         f"| Earned material cost (for installed qty) | {_fmt(_q(report.total_earned_material_cost, _MONEY_Q))} {cur} |"
+    )
+    out.append(
+        f"| Earned material cost (lines with an actual) | "
+        f"{_fmt(_q(report.total_earned_material_cost_compared, _MONEY_Q))} {cur} |"
     )
     out.append(f"| Actual material cost | {_fmt(_q(report.total_actual_material_cost, _MONEY_Q))} {cur} |")
     out.append(f"| Lines with priced material | {report.material_priced_line_count} / {report.line_count} |")
@@ -513,9 +554,9 @@ def render_markdown(report: ProjectPostCalc) -> str:
     out.append("")
     out.append(
         "| Resource | Planned h | Earned h | Actual h | Factor | Variance % | "
-        "Planned cost | Earned cost | Actual cost |"
+        "Planned cost | Earned cost | Earned (compared) | Actual cost | Lost or saved |"
     )
-    out.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+    out.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
     for res in report.resources:
         out.append(
             _row(
@@ -528,7 +569,9 @@ def render_markdown(report: ProjectPostCalc) -> str:
                     _fmt(_q(res.variance_pct, _PCT_Q)),
                     _fmt(_q(res.planned_cost, _MONEY_Q)),
                     _fmt(_q(res.earned_cost, _MONEY_Q)),
+                    _fmt(_q(res.earned_cost_compared, _MONEY_Q)),
                     _fmt(_q(res.actual_cost, _MONEY_Q)),
+                    _fmt(_q(res.cost_variance_earned, _MONEY_Q)),
                 ]
             )
         )

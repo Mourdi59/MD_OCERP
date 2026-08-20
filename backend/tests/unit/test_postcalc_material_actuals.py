@@ -288,11 +288,45 @@ def test_the_project_total_covers_only_the_lines_the_site_priced() -> None:
     assert report.material_priced_line_count == 1
     assert report.line_count == 2
     assert report.total_actual_material_cost == Decimal("6000")
-    # Earned counts the priced line only, not both.
-    assert report.total_earned_material_cost == Decimal("5500")
+    # The compared total counts the priced line only, and it is the one the
+    # actual may be subtracted from: 6000 spent against 5500 earned is 500 over.
+    assert report.total_earned_material_cost_compared == Decimal("5500")
+    # The plain earned total counts both lines, because it belongs next to the
+    # planned total rather than next to the actual.
+    assert report.total_earned_material_cost == Decimal("11000")
     # Planned is the whole estimate either way - it is a statement about the
     # bill, not about what the site metered.
     assert report.total_planned_material_cost == Decimal("22000")
+
+
+def test_the_labour_total_covers_only_the_lines_with_a_timesheet() -> None:
+    """The same coverage rule, on the half that was already shipping.
+
+    Labour actuals come from approved timesheets, and a project routinely has
+    positions nobody has booked against yet. Subtracting a two-line earned total
+    from a one-line actual would report the unbooked line as a saving, and the
+    less the site had booked the better the project would look.
+    """
+    report = compute_project_postcalc(
+        [_line(), _line(ref="01.02.0040", actual_labour_cost=None)],
+        currency="EUR",
+    )
+    assert report.labour_priced_line_count == 1
+    assert report.line_count == 2
+    assert report.total_actual_labour_cost == Decimal("1650")
+    assert report.total_earned_labour_cost_compared == Decimal("1500")
+    assert report.total_earned_labour_cost == Decimal("3000")
+
+
+def test_a_project_with_no_priced_line_has_no_compared_total() -> None:
+    """Nothing to compare is not zero earned, and both halves have to say so."""
+    report = compute_project_postcalc([_line(actual_labour_cost=None)], currency="EUR")
+    assert report.total_actual_labour_cost is None
+    assert report.total_earned_labour_cost_compared is None
+    assert report.total_actual_material_cost is None
+    assert report.total_earned_material_cost_compared is None
+    assert report.labour_priced_line_count == 0
+    assert report.material_priced_line_count == 0
 
 
 def test_a_project_with_no_ledger_reports_no_material_actual() -> None:
@@ -305,7 +339,10 @@ def test_the_report_dict_exports_the_material_totals() -> None:
     data = compute_project_postcalc([_line(actual_material_cost="6000")], currency="EUR").to_dict()
     assert data["total_actual_material_cost"] == "6000.00"
     assert data["total_earned_material_cost"] == "5500.00"
+    assert data["total_earned_material_cost_compared"] == "5500.00"
+    assert data["total_earned_labour_cost_compared"] == "1500.00"
     assert data["material_priced_line_count"] == 1
+    assert data["labour_priced_line_count"] == 1
 
 
 def test_the_markdown_states_the_material_money() -> None:
@@ -319,3 +356,72 @@ def test_the_markdown_says_so_when_nothing_was_metered() -> None:
     """An empty table reads as zero spend; a sentence reads as no data."""
     body = render_markdown(compute_project_postcalc([_line()], currency="EUR"))
     assert "No material consumption has been priced" in body
+
+
+# ── Coverage: an earned total may only be read against a matching actual ────
+
+
+def _material_of(lines: list[dict[str, object]]) -> object:
+    rows = {row.kind: row for row in aggregate_resources(lines)}
+    return rows[ResourceKind.MATERIAL]
+
+
+def test_the_category_rollup_earns_only_over_the_lines_it_can_price() -> None:
+    """Two lines, one metered: the unmetered one must not become a saving.
+
+    This is the arithmetic that decides the headline figure on the page. Both
+    lines are priced at 110 EUR of material per m3 with 50 m3 installed, so each
+    earns 5500. Only the first has a ledger, and it consumed 6000. The answer is
+    500 over on the work that was measured, not 5000 saved on the work that was
+    not, and the positive one-line case passes either way, which is why this
+    test carries a second line that nobody metered.
+    """
+    material = _material_of([_line(actual_material_cost="6000"), _line(ref="01.02.0040")])
+    assert material.actual_cost == Decimal("6000")
+    assert material.earned_cost_compared == Decimal("5500")
+    assert material.cost_variance_earned == Decimal("500")
+    # The plain earned total still covers both lines: it answers the budget
+    # question, next to a planned cost that also covers both.
+    assert material.earned_cost == Decimal("11000")
+    assert material.planned_cost == Decimal("22000")
+
+
+def test_the_category_rollup_holds_the_same_line_for_labour() -> None:
+    rows = {row.kind: row for row in aggregate_resources([_line(), _line(ref="01.02.0040", actual_labour_cost=None)])}
+    labour = rows[ResourceKind.LABOUR]
+    assert labour.actual_cost == Decimal("1650")
+    assert labour.earned_cost_compared == Decimal("1500")
+    assert labour.cost_variance_earned == Decimal("150")
+    assert labour.earned_cost == Decimal("3000")
+
+
+def test_a_category_with_no_actuals_has_no_compared_earned_total() -> None:
+    """Zero earned would read as an estimate that allowed nothing."""
+    rows = {row.kind: row for row in aggregate_resources([_line(actual_labour_cost=None)])}
+    material = rows[ResourceKind.MATERIAL]
+    assert material.actual_cost is None
+    assert material.earned_cost_compared is None
+    assert material.cost_variance_earned is None
+    # The estimate's own figures survive: nothing was measured, but the bill
+    # still allowed 11000 for the whole line and 5500 for what is installed.
+    assert material.earned_cost == Decimal("5500")
+    assert material.planned_cost == Decimal("11000")
+
+
+def test_the_rollup_dict_exports_the_compared_earned_total() -> None:
+    data = _material_of([_line(actual_material_cost="6000"), _line(ref="01.02.0040")]).to_dict()
+    assert data["earned_cost"] == "11000.00"
+    assert data["earned_cost_compared"] == "5500.00"
+    assert data["cost_variance_earned"] == "500.00"
+
+
+def test_the_markdown_prints_both_earned_totals() -> None:
+    """A reader who subtracts two columns must land on the delta beside them."""
+    report = compute_project_postcalc(
+        [_line(actual_material_cost="6000"), _line(ref="01.02.0040")],
+        currency="EUR",
+    )
+    body = render_markdown(report)
+    assert "Earned material cost (lines with an actual)" in body
+    assert "Earned labour cost (lines with an actual)" in body
+    assert "Lines with priced labour | 2 / 2" in body
