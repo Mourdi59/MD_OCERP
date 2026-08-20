@@ -5,6 +5,7 @@
 Mounted at ``/api/v1/estimate-basis``. Drafts, stores, edits and exports the
 basis-of-estimate for a project:
 
+    GET  /classes                       - the AACE class table and its bands
     POST /generate                      - draft a fresh basis from the estimate
     GET  /projects/{project_id}         - list a project's basis documents
     GET  /documents/{document_id}       - fetch one document
@@ -36,6 +37,7 @@ from app.modules.estimate_basis.models import EstimateBasis
 from app.modules.estimate_basis.schemas import (
     EstimateBasisListResponse,
     EstimateBasisResponse,
+    EstimateClassCatalog,
     GenerateRequest,
     UpdateRequest,
 )
@@ -69,6 +71,17 @@ async def _load_owned_document(
     # 404 (not 403) on forbidden - same non-disclosure policy as the rest of the app.
     await verify_project_access(doc.project_id, user_id, session)
     return doc
+
+
+@router.get("/classes", response_model=EstimateClassCatalog, dependencies=[_READ])
+async def list_classes() -> EstimateClassCatalog:
+    """List the AACE 18R-97 estimate classes and their published accuracy bands.
+
+    Served so a client never hardcodes a standard's numbers. The table is the
+    platform's single copy, shared with the BOQ module's classification
+    endpoint. Project-independent, so no project check applies.
+    """
+    return EstimateBasisService.class_catalog()
 
 
 @router.post("/generate", response_model=EstimateBasisResponse, dependencies=[_GENERATE])

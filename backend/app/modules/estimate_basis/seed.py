@@ -17,6 +17,14 @@ estimator would really make - a standard exclusion switched off because the
 scope does include it, and a project-specific assumption typed in by hand. That
 is what turns the screen from a generated list into a document somebody owns.
 
+Every version also carries the three judgements the platform will not make on
+anybody's behalf: the AACE estimate class, what the market was doing when the
+estimate was priced, and why the contingency is the size it is. They are seeded
+rather than left blank because a demo whose class reads "not stated" shows the
+reader the empty state instead of the feature, and because the class is what a
+version history is really a history of - the concept issue is a class 4 and the
+tender issue is a class 2, and the accuracy band on screen moves with it.
+
 Every write goes through :class:`EstimateBasisService`, the same layer the API
 uses, so a document this seeder cannot produce is a document the application
 would have rejected too.
@@ -66,12 +74,22 @@ class _Version:
     ``age_days`` is how far back the generation is stamped, ``status`` is where
     the document ended up, and ``notes`` is the estimator's own commentary on
     the version.
+
+    ``estimate_class`` is the AACE class the estimator STATED on that version -
+    the judgement the platform suggests but never makes. It is seeded because a
+    demo document with the class left unanswered would show the reader the
+    empty state rather than the feature, and because the class is what the
+    version history is really a history of. ``market_conditions`` and
+    ``contingency_rationale`` are the two paragraphs no derivation can write.
     """
 
     title: str
     age_days: int
     status: str
     notes: str
+    estimate_class: int
+    market_conditions: str
+    contingency_rationale: str
 
 
 # The history a project carries, newest last. Every project gets the concept and
@@ -86,6 +104,17 @@ _CONCEPT = _Version(
         "Issued with the concept cost plan. Superseded by the tender issue; retained "
         "because the client's approval was given against these qualifications."
     ),
+    estimate_class=4,
+    market_conditions=(
+        "Priced against the published regional rate base with no market test. Tender "
+        "competition at concept stage was assumed to be three to four bidders on an "
+        "open list, with no allowance for a constrained supply chain."
+    ),
+    contingency_rationale=(
+        "Contingency set at the upper end of the concept range because the structural "
+        "grid and the services strategy were both still open at this stage. It covers "
+        "design development within the agreed area schedule, not scope growth beyond it."
+    ),
 )
 _TENDER = _Version(
     title="Basis of estimate - tender issue",
@@ -95,6 +124,17 @@ _TENDER = _Version(
         "Issued with the tender return. Exclusions unchanged from concept; the "
         "allowances were re-sized against the co-ordinated design."
     ),
+    estimate_class=2,
+    market_conditions=(
+        "Rates are the returned tender prices, not a rate base. Four returns were "
+        "received against the full bill and the analysis sits within a normal spread. "
+        "No allowance is made for a bidder withdrawing before award."
+    ),
+    contingency_rationale=(
+        "Contingency reduced against the concept figure: the design is co-ordinated "
+        "and the quantities are measured from it. What remains covers the "
+        "provisional sums still open and the ground risk carried below."
+    ),
 )
 _CURRENT = _Version(
     title="Basis of estimate - current estimate",
@@ -103,6 +143,17 @@ _CURRENT = _Version(
     notes=(
         "Working draft against the current estimate. Not yet issued - the ground "
         "conditions line is still with the geotechnical engineer."
+    ),
+    estimate_class=2,
+    market_conditions=(
+        "Held at the tender basis. Material prices have moved since the returns were "
+        "opened and the movement is inside the band below; if it continues past the "
+        "stated pricing date the estimate is to be re-based rather than stretched."
+    ),
+    contingency_rationale=(
+        "Unchanged from the tender issue pending the geotechnical report. If the "
+        "report confirms the assumed bearing stratum the contingency can come down; "
+        "if it does not, the ground exclusion below becomes a priced item."
     ),
 )
 
@@ -166,7 +217,7 @@ async def _priced_position_count(session: AsyncSession, project_id: uuid.UUID) -
             select(func.count())
             .select_from(Position)
             .join(BOQ, Position.boq_id == BOQ.id)
-            .where(BOQ.project_id == project_id, Position.unit != "")
+            .where(BOQ.project_id == project_id, Position.unit.notin_(("", "section")))
         )
         return int((await session.execute(stmt)).scalar_one())
     except Exception:
@@ -232,6 +283,9 @@ def _estimator_edit(doc: EstimateBasis, version: _Version) -> UpdateRequest:
         notes=version.notes,
         exclusions=exclusions,
         assumptions=assumptions,
+        estimate_class=version.estimate_class,
+        market_conditions=version.market_conditions,
+        contingency_rationale=version.contingency_rationale,
     )
 
 
@@ -289,7 +343,13 @@ async def _seed_project(
             payload = _estimator_edit(doc, version)
             counts["edits"] += 1
         else:
-            payload = UpdateRequest(status=version.status, notes=version.notes)
+            payload = UpdateRequest(
+                status=version.status,
+                notes=version.notes,
+                estimate_class=version.estimate_class,
+                market_conditions=version.market_conditions,
+                contingency_rationale=version.contingency_rationale,
+            )
         await service.update_document(doc, payload)
 
         counts["documents"] += 1

@@ -356,6 +356,477 @@ def derive_trades(positions: list[dict]) -> TradeCoverage:
     return coverage
 
 
+# ── Line provenance (where the priced lines came from) ──────────────────────
+#
+# ``Position.source`` records how a line entered the bill. Its vocabulary is
+# fifteen values wide (see the pattern on ``boq.schemas.PositionBase.source``),
+# which is too fine to read at a glance and too coarse to ignore: an estimate
+# whose quantities were taken off a model is a different animal from one typed
+# by hand, and that difference is the first thing a reviewer asks about. The
+# fifteen values are therefore folded into four families a cost engineer already
+# thinks in. An unknown value folds to ``manual`` - the conservative reading,
+# since nothing about it evidences a measurement.
+
+SOURCE_FAMILIES: dict[str, str] = {
+    # Quantities taken off a drawing or a model.
+    "cad_import": "measured",
+    "cad_import_ai": "measured",
+    "ai_takeoff": "measured",
+    "takeoff": "measured",
+    # Lines that arrived inside somebody else's bill or spreadsheet.
+    "gaeb_import": "imported",
+    "excel_import": "imported",
+    "bc3_import": "imported",
+    "smart_import": "imported",
+    "smart_import_ai": "imported",
+    # Lines generated from a reference cost database, assembly or price match.
+    "cost_database": "catalogue",
+    "assembly": "catalogue",
+    "cwicr": "catalogue",
+    "ai_match": "catalogue",
+    "enriched": "catalogue",
+    # Typed by an estimator.
+    "manual": "manual",
+}
+
+# Display order, strongest evidence first.
+FAMILY_ORDER: tuple[str, ...] = ("measured", "imported", "catalogue", "manual")
+
+# The sources that mean a model proposed the line or its price. Kept separate
+# from the family fold: an AI-assisted takeoff is still a measurement, it just
+# carries a confidence a human should have looked at.
+AI_SOURCES: frozenset[str] = frozenset({"ai_takeoff", "cad_import_ai", "smart_import_ai", "ai_match"})
+
+# Below this, an AI-proposed line is reported as needing review. Matches the
+# threshold the copilot uses to decide a proposal cannot be applied unattended.
+LOW_CONFIDENCE_THRESHOLD: Decimal = Decimal("0.7")
+
+# Word-shaped confidence values persisted by older seeds and importers. The BOQ
+# grid coerces the same three words (``boq.router._CONFIDENCE_LABELS``); the map
+# is repeated rather than imported because this engine is stdlib-only by
+# contract and must load without the app graph.
+_CONFIDENCE_WORDS: dict[str, Decimal] = {
+    "high": Decimal("0.9"),
+    "medium": Decimal("0.6"),
+    "med": Decimal("0.6"),
+    "low": Decimal("0.3"),
+}
+
+
+def source_family(raw: object) -> str:
+    """Fold a ``Position.source`` value into its basis-of-estimate family.
+
+    Args:
+        raw: The stored source string, or anything else.
+
+    Returns:
+        One of ``measured`` / ``imported`` / ``catalogue`` / ``manual``. An
+        unrecognised or empty value folds to ``manual``.
+    """
+    return SOURCE_FAMILIES.get(str(raw or "").strip().lower(), "manual")
+
+
+def parse_confidence(raw: object) -> Decimal | None:
+    """Parse a stored confidence into a 0-1 Decimal, or ``None`` when absent.
+
+    Accepts the numeric 0-1 contract and the ``high`` / ``medium`` / ``low``
+    words legacy rows carry. Anything else - including an out-of-range number -
+    yields ``None`` rather than a fabricated score, so an unreadable value is
+    reported as "no confidence recorded" instead of quietly counting as good.
+    """
+    if raw is None:
+        return None
+    text = str(raw).strip().lower()
+    if not text:
+        return None
+    if text in _CONFIDENCE_WORDS:
+        return _CONFIDENCE_WORDS[text]
+    try:
+        parsed = Decimal(text)
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+    if not parsed.is_finite() or parsed < 0 or parsed > 1:
+        return None
+    return parsed
+
+
+@dataclass
+class ProvenanceBucket:
+    """One ``Position.source`` value, with its line count and value."""
+
+    source: str
+    family: str
+    position_count: int = 0
+    total: Decimal = field(default_factory=lambda: Decimal("0"))
+    share_pct: Decimal = field(default_factory=lambda: Decimal("0"))
+
+
+@dataclass
+class FamilyShare:
+    """One provenance family, rolled up across its sources."""
+
+    family: str
+    position_count: int = 0
+    total: Decimal = field(default_factory=lambda: Decimal("0"))
+    share_pct: Decimal = field(default_factory=lambda: Decimal("0"))
+
+
+@dataclass
+class ProvenanceSummary:
+    """Where the estimate's lines came from, by count and by value.
+
+    ``share_basis`` names what the percentages are a share OF. Normally that is
+    value; a bill that carries no money at all would make every value share
+    zero, which reads as "nothing is measured" rather than "there is nothing to
+    measure", so the shares fall back to line counts and say so. A reader is
+    never left to guess which of the two they are looking at.
+    """
+
+    buckets: list[ProvenanceBucket] = field(default_factory=list)
+    families: list[FamilyShare] = field(default_factory=list)
+    total_positions: int = 0
+    priced_total: Decimal = field(default_factory=lambda: Decimal("0"))
+    share_basis: str = "value"  # "value" | "count"
+    ai_position_count: int = 0
+    ai_total: Decimal = field(default_factory=lambda: Decimal("0"))
+    scored_position_count: int = 0
+    low_confidence_count: int = 0
+    low_confidence_total: Decimal = field(default_factory=lambda: Decimal("0"))
+    model_linked_positions: int = 0
+    stale_links: int = 0
+    broken_links: int = 0
+
+    def family_share(self, family: str) -> Decimal:
+        """Return the share of one family, or zero when it contributes nothing."""
+        for entry in self.families:
+            if entry.family == family:
+                return entry.share_pct
+        return Decimal("0")
+
+    def family_positions(self, family: str) -> int:
+        """Return the line count of one family, or zero when it has none."""
+        for entry in self.families:
+            if entry.family == family:
+                return entry.position_count
+        return 0
+
+
+def _pct(part: Decimal, whole: Decimal) -> Decimal:
+    """Percentage of ``part`` in ``whole``, to one decimal; zero whole yields zero."""
+    if whole == 0:
+        return Decimal("0")
+    return (part / whole * Decimal("100")).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+
+
+def derive_provenance(
+    rows: list[dict],
+    *,
+    link_counts: dict | None = None,
+) -> ProvenanceSummary:
+    """Summarise where the estimate's lines came from.
+
+    Args:
+        rows: One dict per ``(source, confidence)`` group, each carrying
+            ``source``, ``confidence``, ``position_count`` and ``total``. The
+            service produces these with a SQL ``GROUP BY`` over *every* position
+            of the estimate - deliberately not over the capped scan the trade
+            coverage reads, because a share computed off the first 20 000 lines
+            of a longer bill would be a false statement about the whole.
+        link_counts: Optional ``{"active": n, "stale": n, "broken": n}`` from the
+            BOQ model-quantity links, so the summary can say how many quantities
+            a model still drives and how many of those bindings have drifted.
+
+    Returns:
+        A :class:`ProvenanceSummary`. An empty input yields an empty summary
+        whose shares are zero and whose ``share_basis`` stays ``value``.
+    """
+    buckets: dict[str, ProvenanceBucket] = {}
+    summary = ProvenanceSummary()
+
+    for row in rows:
+        raw_source = str(row.get("source") or "").strip().lower() or "manual"
+        family = source_family(raw_source)
+        count = int(row.get("position_count") or 0)
+        if count <= 0:
+            continue
+        total = to_decimal(row.get("total"))
+
+        bucket = buckets.get(raw_source)
+        if bucket is None:
+            bucket = ProvenanceBucket(source=raw_source, family=family)
+            buckets[raw_source] = bucket
+        bucket.position_count += count
+        bucket.total += total
+
+        summary.total_positions += count
+        summary.priced_total += total
+
+        if raw_source in AI_SOURCES:
+            summary.ai_position_count += count
+            summary.ai_total += total
+
+        score = parse_confidence(row.get("confidence"))
+        if score is not None:
+            summary.scored_position_count += count
+            if score < LOW_CONFIDENCE_THRESHOLD:
+                summary.low_confidence_count += count
+                summary.low_confidence_total += total
+
+    # A bill with no money in it cannot be shared out by value without every
+    # family reading zero, so fall back to line counts and record which it is.
+    # An estimate with no lines at all is left on "value": there is nothing to
+    # share out either way, and naming a fallback nobody took would be noise.
+    by_value = summary.priced_total > 0 or summary.total_positions == 0
+    summary.share_basis = "value" if by_value else "count"
+    whole = summary.priced_total if by_value else Decimal(summary.total_positions)
+
+    for bucket in buckets.values():
+        part = bucket.total if by_value else Decimal(bucket.position_count)
+        bucket.share_pct = _pct(part, whole)
+
+    family_rollup: dict[str, FamilyShare] = {}
+    for bucket in buckets.values():
+        entry = family_rollup.setdefault(bucket.family, FamilyShare(family=bucket.family))
+        entry.position_count += bucket.position_count
+        entry.total += bucket.total
+    for entry in family_rollup.values():
+        part = entry.total if by_value else Decimal(entry.position_count)
+        entry.share_pct = _pct(part, whole)
+
+    family_order = {name: i for i, name in enumerate(FAMILY_ORDER)}
+    summary.families = sorted(family_rollup.values(), key=lambda f: family_order.get(f.family, 99))
+    summary.buckets = sorted(
+        buckets.values(),
+        key=lambda b: (family_order.get(b.family, 99), -b.total, b.source),
+    )
+
+    counts = link_counts or {}
+    summary.stale_links = int(counts.get("stale") or 0)
+    summary.broken_links = int(counts.get("broken") or 0)
+    summary.model_linked_positions = int(counts.get("active") or 0) + summary.stale_links + summary.broken_links
+    return summary
+
+
+# ── Markups actually applied ────────────────────────────────────────────────
+#
+# The standard qualification set drafts "value added tax is excluded" and "price
+# escalation is excluded" because that is true of most estimates. It is not true
+# of an estimate whose bill carries a tax or an escalation markup, and a basis
+# of estimate that contradicts the bill it describes is worse than none. The
+# markup picture below lets the drafter state what was really applied and drop
+# the boilerplate that the bill disproves.
+
+
+@dataclass
+class MarkupFact:
+    """One active markup line of the bill."""
+
+    name: str
+    category: str
+    markup_type: str
+    percentage: Decimal = field(default_factory=lambda: Decimal("0"))
+    fixed_amount: Decimal = field(default_factory=lambda: Decimal("0"))
+
+
+@dataclass
+class MarkupPicture:
+    """The active markups, plus the three the qualifications care about."""
+
+    lines: list[MarkupFact] = field(default_factory=list)
+    has_tax: bool = False
+    has_contingency: bool = False
+    has_escalation: bool = False
+
+
+def summarise_markups(markups: list[dict]) -> MarkupPicture:
+    """Read the bill's active markup lines into a :class:`MarkupPicture`.
+
+    Args:
+        markups: Markup dicts carrying ``name``, ``category``, ``markup_type``,
+            ``percentage`` and ``fixed_amount``. All keys are defended.
+
+    Returns:
+        The picture. ``category`` drives the tax and contingency flags (the
+        vocabulary the markup templates write); escalation is a ``markup_type``
+        rather than a category, so it is read from there.
+    """
+    picture = MarkupPicture()
+    for markup in markups:
+        category = str(markup.get("category") or "").strip().lower()
+        markup_type = str(markup.get("markup_type") or "").strip().lower()
+        picture.lines.append(
+            MarkupFact(
+                name=str(markup.get("name") or "").strip(),
+                category=category,
+                markup_type=markup_type,
+                percentage=to_decimal(markup.get("percentage")),
+                fixed_amount=to_decimal(markup.get("fixed_amount")),
+            )
+        )
+        if category == "tax":
+            picture.has_tax = True
+        if category == "contingency":
+            picture.has_contingency = True
+        if markup_type == "escalation":
+            picture.has_escalation = True
+    return picture
+
+
+# ── Estimate class (AACE 18R-97) ────────────────────────────────────────────
+#
+# The class table and the rule that reads a bill's completeness live in the BOQ
+# module (``boq.service._AACE_CLASSES`` / ``_determine_aace_class``), which is
+# where the platform already exposes them at
+# ``GET /boqs/{id}/classification/``. They are deliberately NOT copied here: one
+# standard, one table. What this engine adds is the part that table cannot see -
+# a completeness rule counts filled-in cells, and a bill of hand-typed
+# quantities can be 100% filled in and still not be a definitive estimate.
+
+
+@dataclass
+class ClassReason:
+    """One piece of evidence behind a class suggestion.
+
+    ``code`` is an enum key the UI translates; ``value`` carries the number that
+    goes in the sentence. Nothing here is English, so the reasoning survives
+    translation instead of being frozen into the language it was drafted in.
+    """
+
+    code: str
+    value: str = ""
+
+    def to_dict(self) -> dict:
+        """Serialise to the JSON shape stored on the model / returned to the UI."""
+        return {"code": self.code, "value": self.value}
+
+
+@dataclass
+class ClassSuggestion:
+    """A suggested AACE class, the completeness class it started from, and why.
+
+    A suggestion is never applied on its own: the stored ``estimate_class`` stays
+    empty until an estimator confirms or overrides it. This dataclass is the
+    proposal, not the decision.
+    """
+
+    suggested_class: int
+    base_class: int
+    reasons: list[ClassReason] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        """Serialise to the JSON shape stored on the model / returned to the UI."""
+        return {
+            "suggested_class": self.suggested_class,
+            "base_class": self.base_class,
+            "reasons": [r.to_dict() for r in self.reasons],
+        }
+
+
+# How well measured the quantities have to be before a class may claim to be
+# that firm. Read as "to be suggested at class N or better, at least P% of the
+# estimate's value must come from a takeoff". Ordered strictest first.
+_MEASUREMENT_CEILINGS: tuple[tuple[Decimal, int], ...] = (
+    (Decimal("50"), 1),
+    (Decimal("25"), 2),
+)
+# What is left when no ceiling is met: a budget-grade estimate at best.
+_UNMEASURED_CEILING_CLASS: int = 3
+
+
+def suggest_estimate_class(
+    base_class: int,
+    provenance: ProvenanceSummary,
+    coverage: TradeCoverage | None = None,
+) -> ClassSuggestion:
+    """Suggest an AACE class from the completeness class and the provenance.
+
+    Args:
+        base_class: The class the BOQ module's completeness rule returned (1-5,
+            lower is more defined).
+        provenance: Where the lines came from.
+        coverage: Optional trade coverage, read only for the evidence lines.
+
+    Returns:
+        A :class:`ClassSuggestion`. The suggestion never claims to be firmer
+        than the measurement evidence supports: a bill that is fully priced but
+        whose quantities were typed rather than taken off cannot be suggested
+        below class 3. It never runs the other way - poor measurement can only
+        widen a class, never tighten one.
+    """
+    # ``or 5`` would be wrong here: 0 is falsy, and a caller who hands over a
+    # nonsense 0 would silently get the LEAST defined class rather than a clamp.
+    # Only a missing value defaults, and it defaults to the conservative end.
+    raw_class = 5 if base_class is None else int(base_class)
+    base = max(1, min(5, raw_class))
+    measured = provenance.family_share("measured")
+
+    ceiling = _UNMEASURED_CEILING_CLASS
+    for threshold, allowed in _MEASUREMENT_CEILINGS:
+        if measured >= threshold:
+            ceiling = allowed
+            break
+
+    suggested = max(base, ceiling)
+    reasons: list[ClassReason] = [
+        ClassReason("completeness_class", str(base)),
+        ClassReason("measured_share", fmt_pct(measured)),
+    ]
+    manual = provenance.family_share("manual")
+    if manual > 0:
+        reasons.append(ClassReason("manual_share", fmt_pct(manual)))
+    if suggested > base:
+        reasons.append(ClassReason("capped_by_measurement", str(base)))
+    if provenance.low_confidence_count:
+        reasons.append(ClassReason("low_confidence_lines", str(provenance.low_confidence_count)))
+    if provenance.stale_links:
+        reasons.append(ClassReason("stale_model_links", str(provenance.stale_links)))
+    if provenance.share_basis == "count":
+        reasons.append(ClassReason("share_by_count", str(provenance.total_positions)))
+    if coverage is not None and coverage.zero_rate_positions:
+        reasons.append(ClassReason("unpriced_lines", str(coverage.zero_rate_positions)))
+    return ClassSuggestion(suggested_class=suggested, base_class=base, reasons=reasons)
+
+
+def fmt_pct(value: Decimal) -> str:
+    """Render a percentage as a plain one-decimal string (never scientific)."""
+    return str(value.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+
+
+def parse_accuracy_pct(raw: object) -> Decimal:
+    """Parse a signed accuracy percentage such as ``"-20%"`` or ``"+30"``.
+
+    Returns ``0`` for anything unreadable, so a malformed bound collapses the
+    range to the point estimate instead of inventing one.
+    """
+    text = str(raw or "").strip().replace("%", "").replace("+", "")
+    if not text:
+        return Decimal("0")
+    try:
+        parsed = Decimal(text)
+    except (InvalidOperation, ValueError, TypeError):
+        return Decimal("0")
+    return parsed if parsed.is_finite() else Decimal("0")
+
+
+def accuracy_range(total: Decimal, low_pct: Decimal, high_pct: Decimal) -> tuple[Decimal, Decimal]:
+    """Apply a signed accuracy band to a point estimate.
+
+    Args:
+        total: The point estimate.
+        low_pct: Signed lower bound percentage (e.g. ``Decimal("-20")``).
+        high_pct: Signed upper bound percentage (e.g. ``Decimal("30")``).
+
+    Returns:
+        ``(low_amount, high_amount)``, always ordered low-then-high even when the
+        two percentages arrive the wrong way round.
+    """
+    hundred = Decimal("100")
+    first = total * (hundred + low_pct) / hundred
+    second = total * (hundred + high_pct) / hundred
+    low, high = (first, second) if first <= second else (second, first)
+    return low.quantize(_CENTS, rounding=ROUND_HALF_UP), high.quantize(_CENTS, rounding=ROUND_HALF_UP)
+
+
 # ── Drafted basis-of-estimate ───────────────────────────────────────────────
 
 
@@ -470,7 +941,11 @@ def _money_phrase(amount: Decimal, currency: object = "") -> str:
     return f"{text} {code}" if code else text
 
 
-def _draft_allowance_assumptions(allowances: list[dict]) -> list[Qualification]:
+def _draft_allowance_assumptions(
+    allowances: list[dict],
+    *,
+    markup_contingency: bool = False,
+) -> list[Qualification]:
     """Draft one assumption per allowance plus a contingency-inclusion note.
 
     Each allowance the estimate carries - a provisional sum, a prime-cost sum or
@@ -483,6 +958,10 @@ def _draft_allowance_assumptions(allowances: list[dict]) -> list[Qualification]:
         allowances: Allowance dicts, each optionally carrying ``id``, ``label``,
             ``allowance_type``, ``held_amount`` and ``currency``. All keys are
             defended - a sparse dict is handled, not assumed.
+        markup_contingency: Whether the bill applies a contingency MARKUP. A
+            register with no contingency in it does not mean the estimate holds
+            none - the money may sit in the markup stack instead - so the "not
+            included" note is only written when neither source carries one.
 
     Returns:
         The drafted assumption lines, in input order, with the contingency note
@@ -518,6 +997,10 @@ def _draft_allowance_assumptions(allowances: list[dict]) -> list[Qualification]:
             contingency_total += amount
             contingency_currencies.add(currency)
 
+    if not has_contingency and markup_contingency:
+        # The markup line already drafted its own inclusion; say nothing that
+        # would read as a denial of it.
+        return lines
     if not has_contingency:
         note = "Contingency is not included in the estimate total."
     elif len(contingency_currencies) == 1:
@@ -590,6 +1073,140 @@ def _draft_pricing_base_date_assumption(pricing_base_date: str | None) -> Qualif
     )
 
 
+# How each provenance family reads in the drafted prose. The UI labels the same
+# families from its own translated strings; these are only for the exported
+# document, which follows the estimate's English qualification text.
+_FAMILY_PHRASES: dict[str, str] = {
+    "measured": "measured from a drawing or model",
+    "imported": "imported from a supplied bill or spreadsheet",
+    "catalogue": "generated from a cost database or assembly",
+    "manual": "entered by hand",
+}
+
+
+def _draft_provenance_assumptions(provenance: ProvenanceSummary) -> list[Qualification]:
+    """Draft the "where the numbers came from" assumptions.
+
+    Args:
+        provenance: The derived :class:`ProvenanceSummary`.
+
+    Returns:
+        Up to three lines: the family split, the AI lines still awaiting review,
+        and the model bindings that have drifted. A summary over no lines drafts
+        nothing.
+    """
+    if provenance.total_positions <= 0:
+        return []
+
+    lines: list[Qualification] = []
+    noun = "value" if provenance.share_basis == "value" else "line items"
+    parts = [
+        f"{fmt_pct(entry.share_pct)}% {_FAMILY_PHRASES.get(entry.family, entry.family)}"
+        for entry in provenance.families
+        if entry.share_pct > 0
+    ]
+    if parts:
+        lines.append(
+            Qualification(
+                id="asm-provenance",
+                category="assumption",
+                text=f"Of the estimate's {noun}: {', '.join(parts)}.",
+                basis="provenance",
+            )
+        )
+
+    if provenance.low_confidence_count:
+        count = provenance.low_confidence_count
+        item_word = "line carries" if count == 1 else "lines carry"
+        lines.append(
+            Qualification(
+                id="asm-low-confidence",
+                category="assumption",
+                text=(
+                    f"{count} machine-proposed {item_word} a confidence below "
+                    f"{LOW_CONFIDENCE_THRESHOLD} and is qualified pending an estimator's review."
+                ),
+                basis="provenance",
+            )
+        )
+
+    if provenance.stale_links or provenance.broken_links:
+        drifted = provenance.stale_links + provenance.broken_links
+        item_word = "quantity is" if drifted == 1 else "quantities are"
+        lines.append(
+            Qualification(
+                id="asm-stale-links",
+                category="assumption",
+                text=(
+                    f"{drifted} model-driven {item_word} out of step with the current model "
+                    "and were priced from the last applied take-off."
+                ),
+                basis="provenance",
+            )
+        )
+    return lines
+
+
+def _markup_phrase(fact: MarkupFact) -> str:
+    """Render one markup line as ``"Overhead 8%"`` / ``"Bond 12500.00"``."""
+    name = fact.name or fact.category or "Markup"
+    if fact.markup_type == "fixed":
+        return f"{name} {fmt_decimal(fact.fixed_amount)}"
+    return f"{name} {fmt_decimal(fact.percentage)}%"
+
+
+def _draft_markup_qualifications(picture: MarkupPicture) -> list[Qualification]:
+    """Draft the lines that state what the bill's markups actually did.
+
+    Args:
+        picture: The derived :class:`MarkupPicture`.
+
+    Returns:
+        One assumption naming every active markup, plus an inclusion for each of
+        tax and escalation when the bill applies them - those two replace
+        standard exclusions that would otherwise contradict the bill.
+    """
+    if not picture.lines:
+        return []
+
+    lines: list[Qualification] = [
+        Qualification(
+            id="asm-markups",
+            category="assumption",
+            text=f"Markups applied to the direct cost: {', '.join(_markup_phrase(f) for f in picture.lines)}.",
+            basis="markup",
+        )
+    ]
+    if picture.has_tax:
+        lines.append(
+            Qualification(
+                id="inc-tax",
+                category="inclusion",
+                text="Value added tax is included, as priced by the bill's tax markup.",
+                basis="markup",
+            )
+        )
+    if picture.has_escalation:
+        lines.append(
+            Qualification(
+                id="inc-escalation",
+                category="inclusion",
+                text="Price escalation is included, as priced by the bill's escalation markup.",
+                basis="markup",
+            )
+        )
+    if picture.has_contingency:
+        lines.append(
+            Qualification(
+                id="inc-contingency-markup",
+                category="inclusion",
+                text="A contingency is included in the estimate total, as priced by the bill's contingency markup.",
+                basis="markup",
+            )
+        )
+    return lines
+
+
 def draft_basis(
     coverage: TradeCoverage,
     *,
@@ -598,6 +1215,8 @@ def draft_basis(
     allowances: list[dict] | None = None,
     preliminaries: dict | None = None,
     pricing_base_date: str | None = None,
+    provenance: ProvenanceSummary | None = None,
+    markups: MarkupPicture | None = None,
 ) -> BasisDraft:
     """Draft the inclusions, exclusions and assumptions from trade coverage.
 
@@ -613,11 +1232,26 @@ def draft_basis(
         pricing_base_date: Optional date the priced rates are current to; drafts
             a price-currency assumption (see
             :func:`_draft_pricing_base_date_assumption`).
+        provenance: Optional line-provenance summary; drafts the "where the
+            numbers came from" assumptions (see
+            :func:`_draft_provenance_assumptions`).
+        markups: Optional picture of the bill's active markups. A bill that
+            prices tax or escalation SUPPRESSES the matching standard exclusion
+            and states the inclusion instead, so the document never denies what
+            the bill charges for.
 
     Returns:
         A :class:`BasisDraft` of deterministic, editable qualification lines.
     """
     draft = BasisDraft()
+    picture = markups or MarkupPicture()
+    # A standard exclusion the bill itself disproves is dropped rather than
+    # drafted and left for the estimator to notice.
+    suppressed: set[str] = set()
+    if picture.has_tax:
+        suppressed.add("vat")
+    if picture.has_escalation:
+        suppressed.add("escalation")
 
     # Inclusions - one per present trade, richest first.
     for trade in coverage.present:
@@ -647,6 +1281,8 @@ def draft_basis(
             )
         )
     for key, text in _STANDARD_EXCLUSIONS:
+        if key in suppressed:
+            continue
         draft.exclusions.append(
             Qualification(
                 id=f"exc-{key}",
@@ -708,10 +1344,23 @@ def draft_basis(
             )
         )
 
+    # Where the numbers came from, before the sibling-module lines: it is the
+    # first thing a second estimator asks and belongs above the detail.
+    if provenance is not None:
+        draft.assumptions.extend(_draft_provenance_assumptions(provenance))
+
+    # What the bill's markups did. The inclusions it drafts are appended to the
+    # inclusion list; the assumption stays with the other assumptions.
+    for line in _draft_markup_qualifications(picture):
+        if line.category == "inclusion":
+            draft.inclusions.append(line)
+        else:
+            draft.assumptions.append(line)
+
     # Sibling estimating-module assumptions - allowances / contingency, the
     # preliminaries roll-up and the pricing base date. Each degrades gracefully:
     # an absent source contributes no line.
-    draft.assumptions.extend(_draft_allowance_assumptions(allowances or []))
+    draft.assumptions.extend(_draft_allowance_assumptions(allowances or [], markup_contingency=picture.has_contingency))
     prelim_line = _draft_preliminaries_assumption(preliminaries or {})
     if prelim_line is not None:
         draft.assumptions.append(prelim_line)

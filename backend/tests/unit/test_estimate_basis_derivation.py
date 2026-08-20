@@ -27,9 +27,17 @@ _spec.loader.exec_module(derivation)
 
 to_decimal = derivation.to_decimal
 fmt_decimal = derivation.fmt_decimal
+fmt_pct = derivation.fmt_pct
 normalize_din276_main_group = derivation.normalize_din276_main_group
 derive_trades = derivation.derive_trades
 draft_basis = derivation.draft_basis
+derive_provenance = derivation.derive_provenance
+source_family = derivation.source_family
+parse_confidence = derivation.parse_confidence
+parse_accuracy_pct = derivation.parse_accuracy_pct
+accuracy_range = derivation.accuracy_range
+summarise_markups = derivation.summarise_markups
+suggest_estimate_class = derivation.suggest_estimate_class
 
 
 def _pos(
@@ -340,3 +348,372 @@ def test_sibling_module_assumptions_omitted_when_absent() -> None:
     ids2 = {q.id for q in draft2.assumptions}
     assert "asm-contingency" not in ids2
     assert "asm-preliminaries" not in ids2
+
+
+# ── Line provenance: where the estimate's lines came from ───────────────────
+
+
+def _prov(source: str, count: int, total: str, confidence: str | None = None) -> dict:
+    return {"source": source, "confidence": confidence, "position_count": count, "total": total}
+
+
+def test_source_family_folds_the_fifteen_values_into_four() -> None:
+    assert source_family("cad_import") == "measured"
+    assert source_family("ai_takeoff") == "measured"
+    assert source_family("gaeb_import") == "imported"
+    assert source_family("cost_database") == "catalogue"
+    assert source_family("manual") == "manual"
+    # Case and padding are folded; an unknown value reads as hand-entered, the
+    # conservative answer - nothing about it evidences a measurement.
+    assert source_family("  CAD_Import ") == "measured"
+    assert source_family("something_new") == "manual"
+    assert source_family(None) == "manual"
+    assert source_family("") == "manual"
+
+
+def test_parse_confidence_accepts_both_vocabularies() -> None:
+    assert parse_confidence("0.85") == Decimal("0.85")
+    assert parse_confidence(0.4) == Decimal("0.4")
+    # Legacy word-shaped scores map to representative numbers.
+    assert parse_confidence("high") == Decimal("0.9")
+    assert parse_confidence("MEDIUM") == Decimal("0.6")
+    assert parse_confidence("low") == Decimal("0.3")
+    # Nothing readable yields None rather than a fabricated score, so an
+    # unreadable value is reported as "no confidence" instead of as a good one.
+    assert parse_confidence(None) is None
+    assert parse_confidence("") is None
+    assert parse_confidence("probably fine") is None
+    assert parse_confidence("1.4") is None
+    assert parse_confidence("-0.2") is None
+
+
+def test_provenance_shares_are_by_value_and_roll_up_to_families() -> None:
+    summary = derive_provenance(
+        [
+            _prov("cad_import", 40, "6000"),
+            _prov("ai_takeoff", 10, "2000", confidence="0.9"),
+            _prov("gaeb_import", 20, "1000"),
+            _prov("manual", 5, "1000"),
+        ]
+    )
+
+    assert summary.share_basis == "value"
+    assert summary.total_positions == 75
+    assert summary.priced_total == Decimal("10000")
+    # measured = cad_import + ai_takeoff = 8000 of 10000.
+    assert summary.family_share("measured") == Decimal("80.0")
+    assert summary.family_share("imported") == Decimal("10.0")
+    assert summary.family_share("manual") == Decimal("10.0")
+    assert summary.family_positions("measured") == 50
+    # Families come back in evidence order, strongest first.
+    assert [f.family for f in summary.families] == ["measured", "imported", "manual"]
+
+
+def test_provenance_falls_back_to_counts_when_the_bill_carries_no_money() -> None:
+    summary = derive_provenance([_prov("cad_import", 3, "0"), _prov("manual", 1, "0")])
+
+    # A value share over a zero total would read as "nothing is measured"
+    # rather than "there is nothing to measure". The basis is named instead.
+    assert summary.share_basis == "count"
+    assert summary.family_share("measured") == Decimal("75.0")
+    assert summary.family_share("manual") == Decimal("25.0")
+
+
+def test_provenance_counts_ai_lines_and_low_confidence_separately() -> None:
+    summary = derive_provenance(
+        [
+            _prov("ai_takeoff", 4, "400", confidence="0.95"),
+            _prov("ai_takeoff", 3, "300", confidence="0.4"),
+            _prov("cad_import_ai", 2, "200", confidence="low"),
+            _prov("manual", 1, "100"),
+        ]
+    )
+
+    assert summary.ai_position_count == 9
+    assert summary.ai_total == Decimal("900")
+    assert summary.scored_position_count == 9
+    # 0.4 and "low" both sit under the 0.7 threshold; 0.95 does not.
+    assert summary.low_confidence_count == 5
+    assert summary.low_confidence_total == Decimal("500")
+
+
+def test_provenance_reads_the_model_link_statuses() -> None:
+    summary = derive_provenance(
+        [_prov("cad_import", 10, "1000")],
+        link_counts={"active": 7, "stale": 2, "broken": 1},
+    )
+
+    assert summary.model_linked_positions == 10
+    assert summary.stale_links == 2
+    assert summary.broken_links == 1
+
+
+def test_empty_provenance_is_handled() -> None:
+    summary = derive_provenance([])
+
+    assert summary.total_positions == 0
+    assert summary.families == []
+    assert summary.buckets == []
+    assert summary.share_basis == "value"
+    assert summary.family_share("measured") == Decimal("0")
+    assert summary.family_positions("measured") == 0
+
+
+def test_provenance_ignores_groups_with_no_rows() -> None:
+    summary = derive_provenance([_prov("cad_import", 0, "999"), _prov("manual", 2, "100")])
+
+    # A zero-count group contributes neither lines nor money.
+    assert summary.total_positions == 2
+    assert summary.priced_total == Decimal("100")
+    assert [b.source for b in summary.buckets] == ["manual"]
+
+
+# ── Markups: the bill's own answer about tax, escalation and contingency ────
+
+
+def test_summarise_markups_reads_the_three_flags() -> None:
+    picture = summarise_markups(
+        [
+            {"name": "Overhead", "category": "overhead", "markup_type": "percentage", "percentage": "8"},
+            {"name": "VAT", "category": "tax", "markup_type": "percentage", "percentage": "19"},
+            {"name": "Risk", "category": "contingency", "markup_type": "percentage", "percentage": "5"},
+            {"name": "Indexation", "category": "other", "markup_type": "escalation", "percentage": "2"},
+        ]
+    )
+
+    assert picture.has_tax is True
+    assert picture.has_contingency is True
+    assert picture.has_escalation is True
+    assert len(picture.lines) == 4
+
+
+def test_summarise_markups_on_an_empty_bill_claims_nothing() -> None:
+    picture = summarise_markups([])
+
+    assert picture.lines == []
+    assert picture.has_tax is False
+    assert picture.has_contingency is False
+    assert picture.has_escalation is False
+
+
+def test_a_bill_that_prices_tax_does_not_also_exclude_it() -> None:
+    coverage = derive_trades([_pos(din276="330", total="1000")])
+    picture = summarise_markups([{"name": "VAT", "category": "tax", "markup_type": "percentage", "percentage": "19"}])
+    draft = draft_basis(coverage, markups=picture)
+
+    exclusion_ids = {q.id for q in draft.exclusions}
+    inclusion_ids = {q.id for q in draft.inclusions}
+    assert "exc-vat" not in exclusion_ids
+    assert "inc-tax" in inclusion_ids
+    # The escalation exclusion is untouched - that markup is not on this bill.
+    assert "exc-escalation" in exclusion_ids
+
+
+def test_a_bill_that_prices_escalation_does_not_also_exclude_it() -> None:
+    coverage = derive_trades([_pos(din276="330", total="1000")])
+    picture = summarise_markups(
+        [{"name": "Indexation", "category": "other", "markup_type": "escalation", "percentage": "3"}]
+    )
+    draft = draft_basis(coverage, markups=picture)
+
+    assert "exc-escalation" not in {q.id for q in draft.exclusions}
+    assert "inc-escalation" in {q.id for q in draft.inclusions}
+    assert "exc-vat" in {q.id for q in draft.exclusions}
+
+
+def test_markup_contingency_stops_the_register_denying_it() -> None:
+    coverage = derive_trades([_pos(din276="330", total="1000")])
+    picture = summarise_markups(
+        [{"name": "Risk", "category": "contingency", "markup_type": "percentage", "percentage": "5"}]
+    )
+    allowances = [
+        {
+            "id": "a1",
+            "label": "Ground PS",
+            "allowance_type": "provisional_sum",
+            "held_amount": "500",
+            "currency": "EUR",
+        }
+    ]
+    draft = draft_basis(coverage, allowances=allowances, markups=picture)
+
+    # The register holds no contingency, but the bill does: the "not included"
+    # note would contradict the inclusion the markup drafts.
+    assert "asm-contingency" not in {q.id for q in draft.assumptions}
+    assert "inc-contingency-markup" in {q.id for q in draft.inclusions}
+
+
+def test_a_register_contingency_still_states_its_amount() -> None:
+    coverage = derive_trades([_pos(din276="330", total="1000")])
+    allowances = [
+        {
+            "id": "c1",
+            "label": "Design risk",
+            "allowance_type": "contingency",
+            "held_amount": "7500",
+            "currency": "EUR",
+        }
+    ]
+    draft = draft_basis(coverage, allowances=allowances)
+
+    note = _by_id(draft)["asm-contingency"]
+    assert note.text == "Contingency of 7500.00 EUR is included in the estimate total."
+
+
+def test_markups_are_named_in_an_assumption() -> None:
+    coverage = derive_trades([_pos(din276="330", total="1000")])
+    picture = summarise_markups(
+        [
+            {"name": "Overhead", "category": "overhead", "markup_type": "percentage", "percentage": "8"},
+            {"name": "Bond", "category": "bond", "markup_type": "fixed", "fixed_amount": "12500"},
+        ]
+    )
+    draft = draft_basis(coverage, markups=picture)
+
+    assert _by_id(draft)["asm-markups"].text == "Markups applied to the direct cost: Overhead 8.00%, Bond 12500.00."
+
+
+# ── Provenance in the drafted prose ─────────────────────────────────────────
+
+
+def test_provenance_drafts_the_where_it_came_from_assumption() -> None:
+    coverage = derive_trades([_pos(din276="330", total="1000")])
+    provenance = derive_provenance([_prov("cad_import", 8, "800"), _prov("manual", 2, "200")])
+    draft = draft_basis(coverage, provenance=provenance)
+
+    assert _by_id(draft)["asm-provenance"].text == (
+        "Of the estimate's value: 80.0% measured from a drawing or model, 20.0% entered by hand."
+    )
+
+
+def test_low_confidence_and_stale_links_each_draft_their_own_line() -> None:
+    coverage = derive_trades([_pos(din276="330", total="1000")])
+    provenance = derive_provenance(
+        [_prov("ai_takeoff", 3, "300", confidence="0.4"), _prov("manual", 1, "700")],
+        link_counts={"active": 5, "stale": 2},
+    )
+    draft = draft_basis(coverage, provenance=provenance)
+    by_id = _by_id(draft)
+
+    assert "3 machine-proposed lines carry a confidence below 0.7" in by_id["asm-low-confidence"].text
+    assert "2 model-driven quantities are out of step" in by_id["asm-stale-links"].text
+
+
+def test_a_clean_estimate_drafts_no_provenance_warnings() -> None:
+    coverage = derive_trades([_pos(din276="330", total="1000")])
+    provenance = derive_provenance([_prov("cad_import", 10, "1000")])
+    draft = draft_basis(coverage, provenance=provenance)
+    asm_ids = {q.id for q in draft.assumptions}
+
+    assert "asm-provenance" in asm_ids
+    assert "asm-low-confidence" not in asm_ids
+    assert "asm-stale-links" not in asm_ids
+
+
+def test_provenance_over_no_lines_drafts_nothing() -> None:
+    coverage = derive_trades([_pos(din276="330", total="1000")])
+    draft = draft_basis(coverage, provenance=derive_provenance([]))
+
+    assert "asm-provenance" not in {q.id for q in draft.assumptions}
+
+
+# ── Estimate class: suggested from the evidence, never applied ──────────────
+
+
+def test_a_well_measured_estimate_keeps_its_completeness_class() -> None:
+    provenance = derive_provenance([_prov("cad_import", 90, "9000"), _prov("manual", 10, "1000")])
+    suggestion = suggest_estimate_class(1, provenance)
+
+    assert suggestion.suggested_class == 1
+    assert suggestion.base_class == 1
+    assert "capped_by_measurement" not in {r.code for r in suggestion.reasons}
+
+
+def test_a_hand_typed_bill_cannot_be_suggested_as_definitive() -> None:
+    # 100% filled in, so the completeness rule says class 1 - but not one
+    # quantity was taken off anything.
+    provenance = derive_provenance([_prov("manual", 200, "20000")])
+    suggestion = suggest_estimate_class(1, provenance)
+
+    assert suggestion.suggested_class == 3
+    assert suggestion.base_class == 1
+    codes = {r.code for r in suggestion.reasons}
+    assert "capped_by_measurement" in codes
+    assert "measured_share" in codes
+
+
+def test_a_partly_measured_bill_is_capped_one_step_lower() -> None:
+    # 30% of the value measured: firm enough for control, not for definitive.
+    provenance = derive_provenance([_prov("cad_import", 30, "3000"), _prov("manual", 70, "7000")])
+    suggestion = suggest_estimate_class(1, provenance)
+
+    assert suggestion.suggested_class == 2
+
+
+def test_poor_measurement_never_tightens_a_class() -> None:
+    # The completeness rule already said class 5; good measurement must not
+    # talk it up. The cap only ever widens.
+    provenance = derive_provenance([_prov("cad_import", 100, "10000")])
+    suggestion = suggest_estimate_class(5, provenance)
+
+    assert suggestion.suggested_class == 5
+
+
+def test_class_reasons_are_enum_keys_not_prose() -> None:
+    provenance = derive_provenance(
+        [_prov("ai_takeoff", 5, "500", confidence="0.3"), _prov("manual", 5, "500")],
+        link_counts={"stale": 1},
+    )
+    coverage = derive_trades([_pos(din276="330", total="0", unit_rate="0")])
+    suggestion = suggest_estimate_class(2, provenance, coverage)
+
+    reasons = {r.code: r.value for r in suggestion.reasons}
+    assert reasons["completeness_class"] == "2"
+    assert reasons["measured_share"] == "50.0"
+    assert reasons["manual_share"] == "50.0"
+    assert reasons["low_confidence_lines"] == "5"
+    assert reasons["stale_model_links"] == "1"
+    assert reasons["unpriced_lines"] == "1"
+    # Every value is a plain number - nothing here needs translating.
+    for value in reasons.values():
+        assert value.replace(".", "").replace("-", "").isdigit()
+
+
+def test_class_suggestion_clamps_a_nonsense_base() -> None:
+    provenance = derive_provenance([_prov("cad_import", 10, "1000")])
+
+    assert suggest_estimate_class(0, provenance).base_class == 1
+    assert suggest_estimate_class(9, provenance).base_class == 5
+
+
+# ── Accuracy band ───────────────────────────────────────────────────────────
+
+
+def test_parse_accuracy_pct_reads_the_published_forms() -> None:
+    assert parse_accuracy_pct("-20%") == Decimal("-20")
+    assert parse_accuracy_pct("+30%") == Decimal("30")
+    assert parse_accuracy_pct("15") == Decimal("15")
+    # Unreadable collapses the bound to zero rather than inventing one.
+    assert parse_accuracy_pct("") == Decimal("0")
+    assert parse_accuracy_pct(None) == Decimal("0")
+    assert parse_accuracy_pct("wide") == Decimal("0")
+
+
+def test_accuracy_range_applies_the_band_to_the_total() -> None:
+    low, high = accuracy_range(Decimal("1000000"), Decimal("-20"), Decimal("30"))
+
+    assert low == Decimal("800000.00")
+    assert high == Decimal("1300000.00")
+
+
+def test_accuracy_range_orders_the_bounds_whichever_way_they_arrive() -> None:
+    low, high = accuracy_range(Decimal("1000"), Decimal("30"), Decimal("-20"))
+
+    assert low == Decimal("800.00")
+    assert high == Decimal("1300.00")
+
+
+def test_fmt_pct_is_one_place_plain() -> None:
+    assert fmt_pct(Decimal("33.333")) == "33.3"
+    assert fmt_pct(Decimal("0")) == "0.0"
+    assert fmt_pct(Decimal("-20")) == "-20.0"

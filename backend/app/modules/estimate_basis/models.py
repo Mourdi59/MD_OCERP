@@ -11,7 +11,7 @@ Tables:
 
 import uuid
 
-from sqlalchemy import JSON, ForeignKey, Index, String, Text
+from sqlalchemy import JSON, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import GUID, Base
@@ -35,6 +35,14 @@ class EstimateBasis(Base):
         coverage - JSON snapshot of the present/absent trade picture and quality
             flags at generation time, so the export shows the basis even after
             the source estimate moves on.
+        currency / financials / provenance / pricing_date - the derived half of
+            the document: the money it qualifies, where its lines came from, and
+            the date its rates are current to. All snapshots, for the same
+            reason ``coverage`` is one.
+        estimate_class / accuracy_low_pct / accuracy_high_pct /
+            market_conditions / contingency_rationale - the human half. The
+            platform suggests a class from the evidence; only an estimator
+            stores one.
         generated_at - ISO-8601 UTC timestamp of the derivation.
         created_by - the user who generated the document (provenance).
         metadata_ - module-extensible blob.
@@ -88,6 +96,52 @@ class EstimateBasis(Base):
     generated_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(GUID(), nullable=True, index=True)
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+
+    # ── The number the document qualifies ────────────────────────────────
+    # A basis of estimate that does not carry the estimate's own figure makes
+    # the reader open a second screen to learn what is being qualified, and
+    # leaves the exported document unreadable on its own. ``financials`` is the
+    # money snapshot taken at generation time (direct cost, markups, grand
+    # total, and the two "this total is not final" flags the BOQ roll-up
+    # raises); ``currency`` is resolved from the project when the caller does
+    # not state one, so the figures on screen carry a symbol.
+    currency: Mapped[str] = mapped_column(String(8), nullable=False, default="", server_default="")
+    financials: Mapped[dict] = mapped_column(  # type: ignore[assignment]
+        JSON,
+        nullable=False,
+        default=dict,
+        server_default="{}",
+    )
+    # Where the estimate's lines came from - the source families, the
+    # machine-proposed lines and their confidence, and the model bindings that
+    # have drifted. Derived, never typed. Also carries the class SUGGESTION and
+    # its evidence, which is a proposal and not the decision below.
+    provenance: Mapped[dict] = mapped_column(  # type: ignore[assignment]
+        JSON,
+        nullable=False,
+        default=dict,
+        server_default="{}",
+    )
+    # The date the priced rates are current to, derived from the freshest cost
+    # item actually applied or the bill's stated base date.
+    pricing_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
+    # ── Human judgement ──────────────────────────────────────────────────
+    # The estimate class is an AACE 18R-97 class 1-5 (lower is more defined),
+    # the same 1-5 space the BOQ module's classification endpoint returns.
+    # NULL means "not stated yet": the platform suggests a class from the
+    # evidence but never writes one on the estimator's behalf, so an unanswered
+    # document reads as unanswered rather than as a machine's opinion.
+    estimate_class: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Signed accuracy bounds as percentages, Decimal-as-string (e.g. "-20" /
+    # "30"). Seeded from the chosen class's published range and editable, since
+    # a house may run tighter or wider bands than the standard's.
+    accuracy_low_pct: Mapped[str] = mapped_column(String(20), nullable=False, default="", server_default="")
+    accuracy_high_pct: Mapped[str] = mapped_column(String(20), nullable=False, default="", server_default="")
+    # The two judgements no derivation can make: what the market was doing when
+    # the estimate was priced, and why the contingency is the size it is.
+    market_conditions: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    contingency_rationale: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
     metadata_: Mapped[dict] = mapped_column(  # type: ignore[assignment]
         "metadata",
         JSON,

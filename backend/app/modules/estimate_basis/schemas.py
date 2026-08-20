@@ -60,6 +60,114 @@ class CoverageSummary(BaseModel):
     by_others_positions: int = 0
 
 
+class FinancialsSummary(BaseModel):
+    """The money the document qualifies, snapshotted at generation time.
+
+    Every amount is a Decimal-as-string. The two trailing flags come straight
+    from the BOQ roll-up and mean the same thing they mean there: the total
+    below is not safe to read as final.
+    """
+
+    direct_cost: str = "0.00"
+    markups_total: str = "0.00"
+    grand_total: str = "0.00"
+    currency: str = ""
+    is_mixed_currency: bool = False
+    has_unresolved_escalation: bool = False
+    markup_count: int = 0
+    boq_count: int = 0
+
+
+class ProvenanceBucketOut(BaseModel):
+    """One ``Position.source`` value, with its line count and share."""
+
+    source: str
+    family: str
+    position_count: int = 0
+    total: str = "0.00"
+    share_pct: str = "0.0"
+
+
+class ProvenanceFamilyOut(BaseModel):
+    """One provenance family, rolled up across its sources."""
+
+    family: str
+    position_count: int = 0
+    total: str = "0.00"
+    share_pct: str = "0.0"
+
+
+class ClassReasonOut(BaseModel):
+    """One piece of evidence behind the suggested class.
+
+    ``code`` is an enum key the client translates; ``value`` is the number that
+    goes in the sentence. Nothing here is prose, so the reasoning survives
+    translation.
+    """
+
+    code: str
+    value: str = ""
+
+
+class ClassSuggestionOut(BaseModel):
+    """The class the platform suggests, and why.
+
+    A suggestion is never the decision: :attr:`EstimateBasisResponse.estimate_class`
+    stays ``None`` until an estimator confirms or overrides it.
+    """
+
+    suggested_class: int = 0
+    base_class: int = 0
+    reasons: list[ClassReasonOut] = Field(default_factory=list)
+
+
+class ProvenanceSummaryOut(BaseModel):
+    """Where the estimate's lines came from, by count and by value.
+
+    ``share_basis`` names what the percentages are a share OF - ``value``
+    normally, ``count`` for a bill that carries no money and could not be shared
+    out by value. A reader is never left to guess which.
+    """
+
+    buckets: list[ProvenanceBucketOut] = Field(default_factory=list)
+    families: list[ProvenanceFamilyOut] = Field(default_factory=list)
+    total_positions: int = 0
+    priced_total: str = "0.00"
+    share_basis: str = "value"
+    ai_position_count: int = 0
+    ai_total: str = "0.00"
+    scored_position_count: int = 0
+    low_confidence_count: int = 0
+    low_confidence_total: str = "0.00"
+    model_linked_positions: int = 0
+    stale_links: int = 0
+    broken_links: int = 0
+    suggestion: ClassSuggestionOut = Field(default_factory=ClassSuggestionOut)
+
+
+class EstimateClassOption(BaseModel):
+    """One AACE 18R-97 estimate class, as the platform publishes it.
+
+    Served so the client never hardcodes a standard's numbers. The label and
+    methodology are English source strings; the client keys its own translated
+    copy off ``estimate_class`` and falls back to these.
+    """
+
+    estimate_class: int = Field(..., ge=1, le=5)
+    label: str = ""
+    accuracy_low: str = ""
+    accuracy_high: str = ""
+    definition_level_low: int = 0
+    definition_level_high: int = 0
+    methodology: str = ""
+
+
+class EstimateClassCatalog(BaseModel):
+    """The five estimate classes, most defined first."""
+
+    items: list[EstimateClassOption] = Field(default_factory=list)
+
+
 class GenerateRequest(BaseModel):
     """Draft a fresh basis-of-estimate from a project's estimate contents."""
 
@@ -69,7 +177,11 @@ class GenerateRequest(BaseModel):
         description="Restrict the derivation to one BOQ; omit to span the whole project.",
     )
     title: str | None = Field(default=None, max_length=255)
-    currency: str = Field(default="", max_length=8)
+    currency: str = Field(
+        default="",
+        max_length=8,
+        description="Override the estimate currency; blank resolves it from the project.",
+    )
     base_date: str | None = Field(default=None, max_length=40)
 
 
@@ -86,6 +198,19 @@ class UpdateRequest(BaseModel):
     inclusions: list[QualificationItem] | None = None
     exclusions: list[QualificationItem] | None = None
     assumptions: list[QualificationItem] | None = None
+    # The human half of the document. ``estimate_class`` accepts 0 as the way to
+    # say "unstate it" - a client cannot send a bare ``None`` through an
+    # all-optional patch and mean anything but "leave it alone".
+    estimate_class: int | None = Field(
+        default=None,
+        ge=0,
+        le=5,
+        description="AACE class 1-5, lower is more defined. 0 clears the answer; omit to leave it alone.",
+    )
+    accuracy_low_pct: str | None = Field(default=None, max_length=20)
+    accuracy_high_pct: str | None = Field(default=None, max_length=20)
+    market_conditions: str | None = Field(default=None, max_length=8000)
+    contingency_rationale: str | None = Field(default=None, max_length=8000)
 
 
 class EstimateBasisResponse(BaseModel):
@@ -101,6 +226,23 @@ class EstimateBasisResponse(BaseModel):
     exclusions: list[QualificationItem]
     assumptions: list[QualificationItem]
     coverage: CoverageSummary
+    financials: FinancialsSummary = Field(default_factory=FinancialsSummary)
+    provenance: ProvenanceSummaryOut = Field(default_factory=ProvenanceSummaryOut)
+    currency: str = ""
+    pricing_date: str | None = None
+    estimate_class: int | None = Field(
+        default=None,
+        description="AACE class the estimator stated. None means nobody has stated one.",
+    )
+    accuracy_low_pct: str = ""
+    accuracy_high_pct: str = ""
+    accuracy_low_amount: str = Field(
+        default="",
+        description="The accuracy band applied to the grand total. Blank when no class is stated.",
+    )
+    accuracy_high_amount: str = ""
+    market_conditions: str = ""
+    contingency_rationale: str = ""
     generated_at: str | None
     created_at: str | None
     updated_at: str | None
@@ -117,6 +259,9 @@ class EstimateBasisSummary(BaseModel):
     inclusion_count: int
     exclusion_count: int
     assumption_count: int
+    estimate_class: int | None = None
+    grand_total: str = ""
+    currency: str = ""
     generated_at: str | None
     created_at: str | None
     updated_at: str | None
