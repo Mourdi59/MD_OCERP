@@ -19,9 +19,17 @@
  *   the named teams, plus the project owner and system admins. A restriction
  *   can only ever take a record away from someone, never hand one out, so no
  *   team assignment can widen what a user reaches.
+ *
+ * Roster
+ *   Who is actually on the job: name, firm, trade, site role, dates on the
+ *   project, allocation and tickets. A roster line is a record of a person,
+ *   not a permission - most of a site has no login at all, and putting
+ *   somebody on the roster gives them nothing. That is what lets the roster
+ *   hold subcontractors and client staff next to platform users.
  */
 
 import { apiGet, apiPost, apiPatch, apiPut, apiDelete } from '@/shared/lib/api';
+import type { Page } from '@/shared/lib/api';
 
 const BASE = '/v1/teams';
 
@@ -290,4 +298,209 @@ export async function getAccessMatrix(projectId: string): Promise<AccessMatrix> 
 
 export async function validateProjectTeams(projectId: string): Promise<TeamsValidationReport> {
   return apiGet<TeamsValidationReport>(`${BASE}/project/${projectId}/validate`);
+}
+
+/* ── Roster ────────────────────────────────────────────────────────────── */
+
+/** Where a roster line came from. `manual` is somebody typed in by hand. */
+export type RosterSource = 'user' | 'contact' | 'manual';
+
+/** One ticket or competency, as read back with its expiry already resolved. */
+export interface CertificationState {
+  kind: string;
+  number: string;
+  issued_by: string;
+  /** ISO date, or null for a ticket that does not run out. */
+  valid_until: string | null;
+  expired: boolean;
+  /** Negative once it has passed, null when open-ended. */
+  days_remaining: number | null;
+}
+
+export interface RosterMember {
+  id: string;
+  project_id: string;
+  team_id: string | null;
+  team_name: string;
+  /**
+   * The platform account behind this person, when there is one.
+   *
+   * This - never `id` - is what goes into an assignee field. `id` identifies
+   * the roster line, and a module that stores it in an `assigned_to` column
+   * writes a value no reader can resolve back to a person.
+   */
+  user_id: string | null;
+  contact_id: string | null;
+  resource_id: string | null;
+  source: RosterSource;
+  display_name: string;
+  company_name: string;
+  trade: string;
+  /** English source label from the backend vocabulary; the UI translates it. */
+  trade_label: string;
+  site_role: string;
+  site_role_label: string;
+  email: string;
+  phone: string;
+  starts_on: string | null;
+  ends_on: string | null;
+  allocation_percent: number | null;
+  certifications: CertificationState[];
+  notes: string;
+  is_active: boolean;
+  /** Whether this person also holds project access. A roster line never grants it. */
+  has_project_access: boolean;
+  user_is_inactive: boolean;
+  /** Today falls outside the start/end window this person is booked for. */
+  off_window: boolean;
+  expired_certification_count: number;
+}
+
+export interface RosterCount {
+  key: string;
+  label: string;
+  count: number;
+}
+
+export interface RosterSummary {
+  project_id: string;
+  headcount: number;
+  active_headcount: number;
+  company_count: number;
+  /** On the roster, no project access. Normal for site staff, not a fault. */
+  without_access_count: number;
+  /** Holds project access, is on nobody's roster. The gap worth closing. */
+  unrostered_member_count: number;
+  expired_certification_count: number;
+  off_window_count: number;
+  by_trade: RosterCount[];
+  by_site_role: RosterCount[];
+}
+
+export interface RosterCandidate {
+  /** A user id or a contact id, depending on `source`. */
+  id: string;
+  source: 'user' | 'contact';
+  name: string;
+  email: string;
+  phone: string;
+  company_name: string;
+  on_roster: boolean;
+  has_project_access: boolean;
+}
+
+export interface RosterVocabularyEntry {
+  key: string;
+  label: string;
+  supervisory: boolean;
+}
+
+export interface RosterVocabulary {
+  trades: RosterVocabularyEntry[];
+  site_roles: RosterVocabularyEntry[];
+}
+
+export interface CertificationInput {
+  kind: string;
+  number?: string;
+  issued_by?: string;
+  valid_until?: string | null;
+}
+
+export interface RosterMemberInput {
+  user_id?: string | null;
+  contact_id?: string | null;
+  display_name?: string;
+  team_id?: string | null;
+  company_name?: string;
+  trade?: string;
+  site_role?: string;
+  email?: string;
+  phone?: string;
+  starts_on?: string | null;
+  ends_on?: string | null;
+  allocation_percent?: number | null;
+  certifications?: CertificationInput[];
+  notes?: string;
+  /** False for somebody who has left. The line stays as a record of who was here. */
+  is_active?: boolean;
+  /** Links this person to a planning resource, when the project uses them. */
+  resource_id?: string | null;
+  /** Only honoured for a caller who may change project access; 403 otherwise. */
+  grant_project_access?: boolean;
+  access_role?: string;
+}
+
+/**
+ * How much of a roster one read asks for.
+ *
+ * Every caller in the app wants the whole roster rather than a page of it -
+ * the tab renders it as a table, the pickers filter it - so the request names
+ * a size no site reaches instead of taking the route's default of 50, which
+ * would silently drop the fifty-first person off screens that never paged.
+ * The envelope still reports the truth: `total` above `items.length` means
+ * even this was not everybody, and `isTruncated` from shared/lib/api answers
+ * that in one call.
+ */
+export const ROSTER_PAGE_SIZE = 500;
+
+export async function listRoster(
+  projectId: string,
+  opts: { includeInactive?: boolean; limit?: number; offset?: number } = {},
+): Promise<Page<RosterMember>> {
+  const qs = new URLSearchParams();
+  if (opts.includeInactive === false) qs.set('include_inactive', 'false');
+  qs.set('limit', String(opts.limit ?? ROSTER_PAGE_SIZE));
+  if (opts.offset) qs.set('offset', String(opts.offset));
+  return apiGet<Page<RosterMember>>(`${BASE}/project/${projectId}/roster?${qs.toString()}`);
+}
+
+export async function getRosterSummary(projectId: string): Promise<RosterSummary> {
+  return apiGet<RosterSummary>(`${BASE}/project/${projectId}/roster/summary`);
+}
+
+export async function listRosterCandidates(
+  projectId: string,
+  opts: { q?: string; limit?: number } = {},
+): Promise<Page<RosterCandidate>> {
+  const qs = new URLSearchParams();
+  if (opts.q) qs.set('q', opts.q);
+  if (opts.limit) qs.set('limit', String(opts.limit));
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return apiGet<Page<RosterCandidate>>(`${BASE}/project/${projectId}/roster/candidates${suffix}`);
+}
+
+export async function getRosterVocabulary(): Promise<RosterVocabulary> {
+  return apiGet<RosterVocabulary>(`${BASE}/roster/vocabulary`);
+}
+
+/**
+ * Add people to the roster. Always a list: the picker is a multi-select, and
+ * adding one person is the same call with a shorter list. Anybody already on
+ * the roster is skipped by the backend rather than failing the batch.
+ */
+export async function addRosterMembers(
+  projectId: string,
+  members: RosterMemberInput[],
+): Promise<RosterMember[]> {
+  return apiPost<RosterMember[], { members: RosterMemberInput[] }>(
+    `${BASE}/project/${projectId}/roster`,
+    { members },
+  );
+}
+
+/** Only the fields named in `payload` are written. */
+export async function updateRosterMember(
+  projectId: string,
+  memberId: string,
+  payload: Partial<RosterMemberInput>,
+): Promise<RosterMember> {
+  return apiPatch<RosterMember, Partial<RosterMemberInput>>(
+    `${BASE}/project/${projectId}/roster/${memberId}`,
+    payload,
+  );
+}
+
+export async function removeRosterMember(projectId: string, memberId: string): Promise<void> {
+  await apiDelete(`${BASE}/project/${projectId}/roster/${memberId}`);
 }

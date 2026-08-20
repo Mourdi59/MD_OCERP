@@ -7,6 +7,7 @@
  */
 
 import { apiGet, apiPost, apiPatch, apiDelete, type Page } from '@/shared/lib/api';
+import { listRoster, type RosterMember } from '@/features/teams/api';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -148,10 +149,21 @@ export interface UpdatePunchPayload {
 }
 
 export interface TeamMember {
+  /**
+   * The value written to `assigned_to`. Always a user id for anybody who can
+   * be assigned; a `roster:` sentinel for the people who cannot, so a stray
+   * write is visible rather than silently unresolvable.
+   */
   id: string;
   name: string;
   email: string;
   avatar_url: string | null;
+  /** Firm and site role, for telling two people with the same name apart. */
+  detail?: string;
+  /** False for a person on the roster who holds no account. */
+  assignable?: boolean;
+  /** True for somebody written down on this project, false for the rest of the workspace. */
+  on_roster?: boolean;
 }
 
 /* ── API Functions ─────────────────────────────────────────────────────── */
@@ -331,18 +343,72 @@ interface UserListEntry {
   is_active?: boolean;
 }
 
+/**
+ * The people who can be handed a snag on this project.
+ *
+ * Reads the project roster and falls back to the whole workspace. Two things
+ * are deliberate:
+ *
+ * `id` carries the roster line's `user_id`, never the line's own id. This
+ * value lands in `punchlist.assigned_to`, a bare `String(36)` with no foreign
+ * key, and a roster-line id written there resolves to nobody on every screen
+ * that prints an assignee - a silent write, not an error.
+ *
+ * Roster people with no account come back with `assignable: false` rather than
+ * being dropped. Most of a site holds no login, and a foreman who is simply
+ * missing from the list reads as a bug; a foreman shown greyed out reads as
+ * the fact it is.
+ *
+ * The fallback triggers on "nobody here can be assigned", not on "the roster
+ * is empty" - a roster full of subcontractors without accounts has rows and no
+ * assignable person, and that is exactly the project the list must not go
+ * blank on.
+ */
 export async function fetchTeamMembers(projectId: string): Promise<TeamMember[]> {
   if (!projectId) return [];
-  // No project-scoped /members endpoint exists (frontend was 404'ing on it);
-  // fall back to the tenant-wide user list and map onto the assignment shape.
-  const users = await apiGet<UserListEntry[] | { items: UserListEntry[] }>('/v1/users/?limit=100');
+
+  const [roster, users] = await Promise.all([
+    listRoster(projectId, { includeInactive: false })
+      .then((page) => page.items)
+      .catch(() => [] as RosterMember[]),
+    apiGet<UserListEntry[] | { items: UserListEntry[] }>('/v1/users/?limit=100').catch(
+      () => [] as UserListEntry[],
+    ),
+  ]);
+
   const list = Array.isArray(users) ? users : users.items ?? [];
-  return list
+  const workspace: TeamMember[] = list
     .filter((u) => u.is_active !== false)
     .map((u) => ({
       id: u.id,
       name: u.full_name?.trim() || u.email,
       email: u.email,
       avatar_url: null,
+      detail: u.email,
+      assignable: true,
+      on_roster: false,
     }));
+
+  // The roster only leads when somebody on it can actually hold a snag. A
+  // project whose roster is all subcontractor gangs without accounts has plenty
+  // of rows and nobody assignable, and keying on row count instead of on
+  // assignability would leave the list empty on exactly that project.
+  if (!roster.some((m) => m.user_id && !m.user_is_inactive)) return workspace;
+
+  const rostered = new Set(roster.map((m) => m.user_id).filter((id): id is string => !!id));
+  const rosterRows: TeamMember[] = roster.map((m) => ({
+    id: m.user_id && !m.user_is_inactive ? m.user_id : `roster:${m.id}`,
+    name: m.display_name,
+    email: m.email,
+    avatar_url: null,
+    detail: [m.company_name, m.site_role_label || m.trade_label].filter(Boolean).join(' · '),
+    assignable: !!m.user_id && !m.user_is_inactive,
+    on_roster: true,
+  }));
+
+  // Accounts nobody wrote down are kept, after the roster. A snag assigned
+  // before anybody filled the roster in points at one of them, and an option
+  // that is missing makes the editor read "Unassigned" for an item that is
+  // assigned to somebody.
+  return [...rosterRows, ...workspace.filter((u) => !rostered.has(u.id))];
 }
