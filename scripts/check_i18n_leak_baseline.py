@@ -164,7 +164,7 @@ ALLOWLIST_PATH = "scripts/i18n_leak_allowlist.json"
 PENDING_PATH = "scripts/i18n_leak_pending_review.json"
 CLUSTER_SNAPSHOT_PATH = "scripts/i18n_leak_cluster_snapshot.json"
 
-THRESHOLD = 24  # of 28 non-en locales
+THRESHOLD = 24  # hard count of locales rendering the en string, out of 42 non-en
 CLUSTER_MIN_KEYS = 3  # locale-set coherence detector: >=N keys sharing one exact set
 
 # A locale part-way through its first translation pass, and the number of en
