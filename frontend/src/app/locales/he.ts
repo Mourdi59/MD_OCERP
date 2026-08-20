@@ -32684,7 +32684,7 @@ const resource = {
     "update.open_release_page": "פתיחת דף הגרסה",
     "update.download_installer": "הורדת תוכנית ההתקנה",
     "update.download_installer_hint": "זו תוכנית ההתקנה למחשב שבו אתם קוראים את זה. הפעילו אותה בתום ההורדה - איננו מתקינים אותה עבורכם.",
-    "update.installer_size": "{{size}} MB",
+    "update.installer_size": "{{size}} מ\"ב",
     "users.access": "גישה",
     "users.access_saved": "הגדרות הגישה נשמרו",
     "users.cannot_change_own_role": "לא ניתן לשנות את התפקיד שלך.",

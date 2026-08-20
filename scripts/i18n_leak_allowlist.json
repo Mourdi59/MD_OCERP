@@ -1254,6 +1254,11 @@
     "note": "es/es-MX/id/nl.ts genuinely keep 'Transmittal' unchanged as their own word for this document-control term; corroborated by correspondence.field_link_transmittal, the only app-wide sibling for this bare word, which independently agrees in all four locales. ru.ts itself transliterates rather than translates this term (Трансмиттал), treating it as an established industry loanword, not an untranslated leak.",
     "reason_category": "cognate_loanword"
   },
+  "update.installer_size": {
+    "en_value": "{{size}} MB",
+    "note": "unit abbreviation (megabytes) beside a download size. The identical English string is already settled for the sibling bim.converter_panel_size, and the two leaked sets now differ by nothing: he and ur were the only locales that kept MB here while spelling the unit in their own script for that sibling, and both have been corrected to the form their own file already attests. bn, bg, kk, ky, mn, ru and uk chose their own rendering and are not in the leaked set. What remains is Latin-script locales plus el, hi, ja, ko, th and zh, all of which write MB literally.",
+    "reason_category": "abbreviation"
+  },
   "update.method_pip": {
     "en_value": "pip / PyPI",
     "note": "brand/service name, functional interop reference",

@@ -32659,7 +32659,7 @@ const resource = {
     "update.open_release_page": "ریلیز کا صفحہ کھولیں",
     "update.download_installer": "انسٹالر ڈاؤن لوڈ کریں",
     "update.download_installer_hint": "یہ اُسی کمپیوٹر کا انسٹالر ہے جس پر آپ یہ پڑھ رہے ہیں۔ ڈاؤن لوڈ مکمل ہونے پر اسے چلائیں - ہم آپ کی جگہ اسے انسٹال نہیں کرتے۔",
-    "update.installer_size": "{{size}} MB",
+    "update.installer_size": "{{size}} ایم بی",
     "users.access": "رسائی",
     "users.access_saved": "رسائی سیٹنگز محفوظ ہوئیں",
     "users.cannot_change_own_role": "آپ اپنا کردار تبدیل نہیں کر سکتے۔",
