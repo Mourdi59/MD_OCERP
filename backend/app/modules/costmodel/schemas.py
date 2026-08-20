@@ -828,3 +828,83 @@ class SpineLinkRequest(BaseModel):
         description="One of: boq_position, budget_line, po_item, contract_line, rfq",
     )
     target_id: UUID
+
+
+# ── Position actuals ──────────────────────────────────────────────────────────
+
+
+class PositionActualsRow(BaseModel):
+    """One bill position with everything the site has recorded against it.
+
+    The Cost Spine rollup answers the same question keyed by cost line, in the
+    language of money. This is the estimator's side of it: one row per item of
+    work, carrying the position's own ordinal and unit, with physical progress
+    and material consumption beside the money.
+
+    ``on_cost_spine`` distinguishes the two reasons a money column reads zero.
+    False means the position has no cost line, so nothing could have been
+    attributed to it; true means nothing has been.
+    """
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    boq_position_id: UUID
+    ordinal: str = ""
+    description: str = ""
+    unit: str = ""
+    cost_line_id: UUID | None = None
+    cost_line_code: str = ""
+    on_cost_spine: bool = False
+
+    estimate_quantity: Decimal = Decimal("0")
+    estimate_unit_rate: Decimal = Decimal("0")
+    estimate_amount: Decimal = Decimal("0")
+
+    budget_planned: Decimal = Decimal("0")
+    budget_actual: Decimal = Decimal("0")
+    committed_amount: Decimal = Decimal("0")
+    contracted_amount: Decimal = Decimal("0")
+    claimed_amount: Decimal = Decimal("0")
+    uncommitted_amount: Decimal = Decimal("0")
+
+    #: None when the crew has never reported on this position, which is not the
+    #: same as reporting zero and must not be drawn as a 0 percent bar.
+    installed_percent: Decimal | None = None
+    installed_amount: Decimal = Decimal("0")
+
+    consumed_quantity: Decimal = Decimal("0")
+    consumed_amount: Decimal = Decimal("0")
+
+    @field_serializer(
+        "estimate_quantity",
+        "estimate_unit_rate",
+        "estimate_amount",
+        "budget_planned",
+        "budget_actual",
+        "committed_amount",
+        "contracted_amount",
+        "claimed_amount",
+        "uncommitted_amount",
+        "installed_percent",
+        "installed_amount",
+        "consumed_quantity",
+        "consumed_amount",
+        when_used="json",
+    )
+    def _ser_money(self, v: Decimal | None) -> str | None:
+        return _serialise_money(v)
+
+
+class PositionActualsResponse(BaseModel):
+    """Position actuals for a project, with the totals over the rows returned.
+
+    ``positions_off_spine`` counts the rows whose money is zero because they
+    carry no cost line. It is reported rather than left to be counted, because
+    a page of zeros has two causes and this is the one the reader can act on by
+    generating the spine from the bill.
+    """
+
+    currency: str = ""
+    rows: list[PositionActualsRow] = Field(default_factory=list)
+    totals: dict[str, str] = Field(default_factory=dict)
+    positions_off_spine: int = 0
