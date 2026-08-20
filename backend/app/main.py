@@ -1854,6 +1854,17 @@ def create_app() -> FastAPI:
             out.append(int(num) if num else 0)
         return tuple(out)
 
+    def _same_version(a: str, b: str) -> bool:
+        """Whether two version strings name the same release.
+
+        The shorter side is zero-padded, so ``15.1`` and ``15.1.0`` compare
+        equal. They have to: one of these numbers is written by a git tag and
+        the other by a packaging tool, and neither owes the other its shape.
+        """
+        left, right = _semver_tuple(a), _semver_tuple(b)
+        width = max(len(left), len(right))
+        return left + (0,) * (width - len(left)) == right + (0,) * (width - len(right))
+
     @app.get("/api/system/version-check", tags=["System"])
     async def check_version() -> dict:
         """Return current vs latest published version.
@@ -1864,6 +1875,17 @@ def create_app() -> FastAPI:
         releases if PyPI is unreachable. Both lookups are cached on
         ``app.state`` for 4 hours so the settings panel can poll cheaply
         without burning the unauthenticated GitHub rate limit.
+
+        ``release_notes``, ``release_url``, ``published_at`` and ``assets``
+        are answered only when the GitHub release they were read from names
+        the same version as ``latest_version``. Two sources that can
+        legitimately be a release apart must not be spliced into one sentence.
+
+        ``assets`` lists the published installers as ``{name, url, size}`` so
+        a client can offer the one that fits the machine it is running on.
+        Matching is the caller's job, not this endpoint's: the desktop build
+        answers this route to any browser that reaches it, so the platform
+        this process runs on is not reliably the reader's.
         """
         import httpx
 
@@ -1876,9 +1898,13 @@ def create_app() -> FastAPI:
             return cached["data"]
 
         latest: str | None = None
-        release_url = f"https://github.com/{repo}/releases/latest"
-        release_notes = ""
-        published_at = ""
+        # Held apart from what we will publish until we know the release this
+        # metadata came from is the release we are going to name.
+        gh_tag = ""
+        gh_url = ""
+        gh_notes = ""
+        gh_published = ""
+        gh_assets: list[dict] = []
 
         try:
             async with httpx.AsyncClient(timeout=10) as client:
@@ -1899,16 +1925,55 @@ def create_app() -> FastAPI:
                 if gh.status_code == 200:
                     release = gh.json()
                     gh_tag = release.get("tag_name", "").lstrip("v")
+                    gh_url = release.get("html_url", "")
+                    gh_notes = (release.get("body") or "")[:500]
+                    gh_published = release.get("published_at", "")
+                    # The installers themselves. A reader on a desktop build
+                    # cannot pip-upgrade and has to fetch one by hand, and the
+                    # release page lists every platform at once, so naming the
+                    # file that fits the machine in front of them is the
+                    # difference between an action and a hunt. Only the three
+                    # fields that decide "which file, how big, from where" are
+                    # carried: the rest of a GitHub asset object is download
+                    # counters and uploader identity, which no caller reads.
+                    for asset in release.get("assets") or []:
+                        name = asset.get("name") or ""
+                        url = asset.get("browser_download_url") or ""
+                        if not name or not url:
+                            continue
+                        gh_assets.append({"name": name, "url": url, "size": int(asset.get("size") or 0)})
                     if not latest:
                         latest = gh_tag
-                    release_url = release.get("html_url", release_url)
-                    release_notes = (release.get("body") or "")[:500]
-                    published_at = release.get("published_at", "")
         except Exception:  # noqa: BLE001
             pass
 
         if not latest:
             latest = current
+
+        # The number and the notes have to describe the same release. PyPI is
+        # the source of truth for the number, and the reason it is - a hotfix
+        # publishes a wheel without a GitHub release object being created - is
+        # exactly the case where the newest release here describes an OLDER
+        # version than the one we are about to name. Pairing them files 15.0.0's
+        # notes under the heading "15.1.0 is available", and on a desktop build
+        # it sends the reader to a page that does not carry the build they were
+        # just told to install. So when they disagree we keep the number, drop
+        # what we cannot stand behind, and point at the release list, which is
+        # somewhere to go rather than somewhere wrong.
+        # The installers are gated here for the same reason and more sharply.
+        # Notes filed under the wrong heading mislead; an installer offered
+        # under the wrong heading is downloaded and run, and the reader ends up
+        # with the version they were just told to move off.
+        if gh_tag and _same_version(gh_tag, latest):
+            release_url = gh_url or f"https://github.com/{repo}/releases/latest"
+            release_notes = gh_notes
+            published_at = gh_published
+            assets = gh_assets
+        else:
+            release_url = f"https://github.com/{repo}/releases"
+            release_notes = ""
+            published_at = ""
+            assets = []
 
         update_available = _semver_tuple(latest) > _semver_tuple(current)
         # A frozen build has no pip to upgrade itself with, so advertising the
@@ -1921,6 +1986,12 @@ def create_app() -> FastAPI:
             "release_url": release_url,
             "release_notes": release_notes,
             "published_at": published_at,
+            # Every installer on the release, unfiltered. Which one fits is a
+            # question about the reader's machine, and this process is not
+            # standing on it: the desktop build serves this API to any browser
+            # that can reach the port, so a server-side match would answer for
+            # the wrong computer. The client picks.
+            "assets": assets,
             "self_upgrade_supported": not frozen,
             # Both spellings kept exactly as they were; only the decision moves.
             # This was the second hand-written copy of "which advice does this
