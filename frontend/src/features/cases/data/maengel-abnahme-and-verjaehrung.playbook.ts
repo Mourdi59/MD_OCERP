@@ -18,6 +18,7 @@ const playbook: Playbook = {
   order: 1056,
   category: "handover",
   companyTypes: ["general-contractor", "project-manager", "developer-client"],
+  roles: ["contract-administrator", "site-manager", "project-manager"],
   region: "DE",
   icon: "Gavel",
   titleKey: "cases.maengel_abnahme_and_verjaehrung.title",

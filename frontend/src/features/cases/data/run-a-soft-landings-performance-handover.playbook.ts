@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1027,
   category: "handover",
   companyTypes: ["general-contractor", "owner-operator", "project-manager"],
+  roles: ["project-manager", "site-manager", "design-lead"],
   stage: "operate",
   icon: "HeartHandshake",
   titleKey: "cases.run_a_soft_landings_performance_handover.title",

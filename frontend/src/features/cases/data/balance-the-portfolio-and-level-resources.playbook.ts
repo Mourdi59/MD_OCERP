@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 322,
   category: "planning",
   companyTypes: ["general-contractor", "project-manager"],
+  roles: ["planner", "project-manager"],
   icon: "Boxes",
   titleKey: "cases.balance_the_portfolio_and_level_resources.title",
   titleDefault: "Balance the portfolio and level resources",

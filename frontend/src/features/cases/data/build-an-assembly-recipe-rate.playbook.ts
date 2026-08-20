@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 135,
   category: "estimating",
   companyTypes: ["cost-consultant", "general-contractor", "subcontractor"],
+  roles: ["estimator", "quantity-surveyor"],
   icon: "Combine",
   titleKey: "cases.build_an_assembly_recipe_rate.title",
   titleDefault: "Build an assembly (recipe rate)",

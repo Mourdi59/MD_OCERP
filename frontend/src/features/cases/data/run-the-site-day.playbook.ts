@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 50,
   category: "site",
   companyTypes: ["general-contractor", "subcontractor", "project-manager"],
+  roles: ["site-manager", "foreman"],
   icon: "HardHat",
   titleKey: "cases.run_the_site_day.title",
   titleDefault: "Run the site day",

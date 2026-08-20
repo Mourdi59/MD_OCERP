@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 294,
   category: "planning",
   companyTypes: ["general-contractor", "project-manager"],
+  roles: ["planner", "procurement-buyer", "project-manager"],
   icon: "CalendarClock",
   titleKey: "cases.protect_the_programme_from_a_long_lead_item.title",
   titleDefault: "Protect the programme from a long-lead item",

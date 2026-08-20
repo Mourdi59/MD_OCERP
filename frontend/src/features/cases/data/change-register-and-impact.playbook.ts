@@ -19,6 +19,7 @@ const playbook: Playbook = {
     "cost-consultant",
     "developer-client",
   ],
+  roles: ["commercial-manager", "project-manager", "quantity-surveyor"],
   icon: "GitCompare",
   titleKey: "cases.change_register_and_impact.title",
   titleDefault: "Change register and impact",

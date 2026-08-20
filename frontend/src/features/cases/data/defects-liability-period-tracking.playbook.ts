@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 210,
   category: "handover",
   companyTypes: ["owner-operator", "general-contractor", "project-manager"],
+  roles: ["project-manager", "site-manager", "contract-administrator"],
   icon: "ShieldCheck",
   titleKey: "cases.defects_liability_period_tracking.title",
   titleDefault: "Manage the defects liability period after occupation",

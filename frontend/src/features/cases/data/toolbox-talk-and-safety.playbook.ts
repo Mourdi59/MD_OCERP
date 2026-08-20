@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 105,
   category: "quality",
   companyTypes: ["general-contractor", "subcontractor", "project-manager"],
+  roles: ["hse-officer", "foreman", "site-manager"],
   icon: "HardHat",
   titleKey: "cases.toolbox_talk_and_safety.title",
   titleDefault: "Toolbox talk and safety check",

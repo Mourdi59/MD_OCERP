@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 288,
   category: "tendering",
   companyTypes: ["subcontractor"],
+  roles: ["estimator", "quantity-surveyor", "commercial-manager"],
   icon: "Send",
   titleKey: "cases.respond_to_an_invitation_to_tender_as_a_subcontractor.title",
   titleDefault: "Respond to an invitation to tender as a subcontractor",

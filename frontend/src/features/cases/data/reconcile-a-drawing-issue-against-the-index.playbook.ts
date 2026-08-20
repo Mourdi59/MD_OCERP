@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1045,
   category: "bim",
   companyTypes: ["general-contractor", "bim-consultant", "project-manager"],
+  roles: ["document-controller", "bim-coordinator"],
   stage: "build",
   icon: "GitCompare",
   titleKey: "cases.reconcile_a_drawing_issue_against_the_index.title",

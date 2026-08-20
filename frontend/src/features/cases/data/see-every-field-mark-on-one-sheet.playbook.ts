@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 1043,
   category: "site",
   companyTypes: ["general-contractor", "subcontractor", "project-manager"],
+  roles: ["site-manager", "foreman", "document-controller"],
   stage: "build",
   icon: "Layers",
   titleKey: "cases.see_every_field_mark_on_one_sheet.title",

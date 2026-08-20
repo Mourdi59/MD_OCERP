@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 130,
   category: "planning",
   companyTypes: ["general-contractor", "project-manager", "developer-client"],
+  roles: ["project-manager", "planner", "quantity-surveyor"],
   icon: "Building2",
   titleKey: "cases.set_up_a_new_project.title",
   titleDefault: "Set up a new project",

@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1015,
   category: "bim",
   companyTypes: ["cost-consultant", "general-contractor", "bim-consultant"],
+  roles: ["quantity-surveyor", "bim-coordinator", "estimator"],
   icon: "Ruler",
   titleKey: "cases.measure_from_a_point_cloud_survey.title",
   titleDefault: "Measure from a point cloud survey",

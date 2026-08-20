@@ -19,6 +19,7 @@ const playbook: Playbook = {
     "project-manager",
     "developer-client",
   ],
+  roles: ["estimator", "procurement-buyer", "commercial-manager"],
   icon: "Gavel",
   titleKey: "cases.compare_bids_and_award.title",
   titleDefault: "Compare bids and award",

@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 310,
   category: "site",
   companyTypes: ["general-contractor", "subcontractor"],
+  roles: ["site-manager", "foreman", "procurement-buyer"],
   icon: "Boxes",
   titleKey: "cases.manage_the_plant_and_equipment_register.title",
   titleDefault: "Manage the plant and equipment register",

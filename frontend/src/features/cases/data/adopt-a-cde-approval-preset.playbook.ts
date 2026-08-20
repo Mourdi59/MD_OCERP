@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 1036,
   category: "bim",
   companyTypes: ["general-contractor", "bim-consultant", "project-manager"],
+  roles: ["bim-coordinator", "document-controller", "project-manager"],
   stage: "plan",
   icon: "ShieldCheck",
   titleKey: "cases.adopt_a_cde_approval_preset.title",

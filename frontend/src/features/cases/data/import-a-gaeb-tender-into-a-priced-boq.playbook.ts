@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1000,
   category: "estimating",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["estimator", "quantity-surveyor"],
   icon: "FileInput",
   titleKey: "cases.import_a_gaeb_tender_into_a_priced_boq.title",
   titleDefault: "Import a GAEB tender into a priced BOQ",

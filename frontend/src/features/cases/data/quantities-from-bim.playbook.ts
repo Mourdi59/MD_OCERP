@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 40,
   category: "bim",
   companyTypes: ["designer", "bim-consultant", "cost-consultant"],
+  roles: ["quantity-surveyor", "bim-coordinator", "estimator"],
   icon: "Box",
   titleKey: "cases.quantities_from_bim.title",
   titleDefault: "Get quantities from a BIM model",

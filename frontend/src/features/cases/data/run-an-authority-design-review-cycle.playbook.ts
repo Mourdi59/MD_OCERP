@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 1031,
   category: "quality",
   companyTypes: ["designer", "bim-consultant", "project-manager"],
+  roles: ["design-lead", "document-controller", "project-manager"],
   stage: "design",
   icon: "FileSearch",
   titleKey: "cases.run_an_authority_design_review_cycle.title",

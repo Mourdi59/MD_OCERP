@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1002,
   category: "estimating",
   companyTypes: ["cost-consultant", "general-contractor", "developer-client"],
+  roles: ["quantity-surveyor", "estimator", "commercial-manager"],
   icon: "Coins",
   titleKey: "cases.manage_provisional_sums_and_allowances.title",
   titleDefault: "Manage provisional sums and allowances",

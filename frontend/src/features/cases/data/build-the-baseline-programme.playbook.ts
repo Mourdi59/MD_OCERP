@@ -16,6 +16,7 @@ const playbook: Playbook = {
   order: 263,
   category: "planning",
   companyTypes: ["general-contractor", "project-manager"],
+  roles: ["planner", "project-manager"],
   icon: "CalendarClock",
   titleKey: "cases.build_the_baseline_programme.title",
   titleDefault: "Build the baseline programme",

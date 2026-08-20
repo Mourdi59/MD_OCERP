@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 1033,
   category: "planning",
   companyTypes: ["project-manager", "designer", "general-contractor"],
+  roles: ["planner", "document-controller", "project-manager"],
   stage: "plan",
   icon: "DatabaseZap",
   titleKey: "cases.register_source_data_before_it_blocks_the_schedule.title",

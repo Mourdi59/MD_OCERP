@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 15,
   category: "estimating",
   companyTypes: ["general-contractor", "cost-consultant", "subcontractor"],
+  roles: ["estimator", "quantity-surveyor"],
   icon: "Calculator",
   titleKey: "cases.validate_estimate.title",
   titleDefault: "Check an estimate before you send it",

@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 1041,
   category: "site",
   companyTypes: ["general-contractor", "subcontractor", "project-manager"],
+  roles: ["document-controller", "project-manager"],
   icon: "ClipboardList",
   titleKey: "cases.turn_a_document_into_a_tracked_action.title",
   titleDefault: "Turn a document into a tracked action",

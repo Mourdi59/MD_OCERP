@@ -16,6 +16,7 @@ const playbook: Playbook = {
   category: "tendering",
   region: "DE",
   companyTypes: ["general-contractor", "project-manager", "cost-consultant"],
+  roles: ["procurement-buyer", "estimator", "commercial-manager"],
   icon: "Table2",
   titleKey: "cases.build_a_preisspiegel_and_award.title",
   titleDefault: "Build a Preisspiegel and award",

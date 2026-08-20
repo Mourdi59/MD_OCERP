@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 80,
   category: "estimating",
   companyTypes: ["cost-consultant", "general-contractor", "developer-client"],
+  roles: ["estimator", "quantity-surveyor", "commercial-manager"],
   icon: "Dice5",
   titleKey: "cases.cost_risk_and_contingency.title",
   titleDefault: "Set contingency from cost risk",

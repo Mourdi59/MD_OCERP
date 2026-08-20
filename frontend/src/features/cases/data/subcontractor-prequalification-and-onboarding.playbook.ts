@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 245,
   category: "quality",
   companyTypes: ["subcontractor", "general-contractor", "project-manager"],
+  roles: ["procurement-buyer", "hse-officer", "contract-administrator"],
   icon: "BadgeCheck",
   titleKey: "cases.subcontractor_prequalification_and_onboarding.title",
   titleDefault: "Get prequalified and onboarded as a subcontractor",

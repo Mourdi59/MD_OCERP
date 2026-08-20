@@ -21,6 +21,7 @@ const playbook: Playbook = {
   order: 30,
   category: "bim",
   companyTypes: ["designer", "bim-consultant", "owner-operator"],
+  roles: ["bim-coordinator", "design-lead"],
   icon: "Layers",
   titleKey: "cases.carbon_from_bim_6d.title",
   titleDefault: "Get 6D carbon from a BIM model",

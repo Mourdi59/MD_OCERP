@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 235,
   category: "commercial",
   companyTypes: ["developer-client", "project-manager", "cost-consultant"],
+  roles: ["quantity-surveyor", "project-manager", "finance-manager"],
   icon: "Flag",
   titleKey: "cases.milestone_progress_before_drawdown.title",
   titleDefault: "Check milestone progress before a valuation is approved",

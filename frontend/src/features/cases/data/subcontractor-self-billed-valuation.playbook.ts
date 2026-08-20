@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 215,
   category: "commercial",
   companyTypes: ["subcontractor", "cost-consultant", "general-contractor"],
+  roles: ["quantity-surveyor", "commercial-manager", "accountant"],
   icon: "Banknote",
   titleKey: "cases.subcontractor_self_billed_valuation.title",
   titleDefault: "Submit a subcontractor valuation and get paid",

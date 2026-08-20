@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 1030,
   category: "quality",
   companyTypes: ["general-contractor", "project-manager", "designer"],
+  roles: ["document-controller", "design-lead", "project-manager"],
   stage: "define",
   icon: "Landmark",
   titleKey: "cases.submit_a_permit_package_to_the_authority.title",

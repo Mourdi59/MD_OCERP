@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 110,
   category: "commercial",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["quantity-surveyor", "commercial-manager", "accountant"],
   icon: "Receipt",
   titleKey: "cases.payment_application_and_reconciliation.title",
   titleDefault: "Payment application and reconciliation",

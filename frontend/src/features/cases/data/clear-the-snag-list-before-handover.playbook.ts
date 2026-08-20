@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 278,
   category: "quality",
   companyTypes: ["general-contractor", "project-manager"],
+  roles: ["site-manager", "project-manager", "foreman"],
   stage: "handover",
   icon: "ListChecks",
   titleKey: "cases.clear_the_snag_list_before_handover.title",

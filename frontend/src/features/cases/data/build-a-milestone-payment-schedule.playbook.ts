@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1012,
   category: "planning",
   companyTypes: ["general-contractor", "cost-consultant", "developer-client"],
+  roles: ["quantity-surveyor", "planner", "commercial-manager"],
   icon: "Milestone",
   titleKey: "cases.build_a_milestone_payment_schedule.title",
   titleDefault: "Build a milestone payment schedule",

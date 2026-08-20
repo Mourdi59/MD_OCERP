@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1016,
   category: "bim",
   companyTypes: ["bim-consultant", "general-contractor", "designer"],
+  roles: ["bim-coordinator", "design-lead"],
   icon: "Crosshair",
   titleKey: "cases.run_a_clash_profile_audit.title",
   titleDefault: "Run a clash profile audit",

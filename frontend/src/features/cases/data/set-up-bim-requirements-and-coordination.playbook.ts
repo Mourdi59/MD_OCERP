@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 324,
   category: "bim",
   companyTypes: ["bim-consultant", "designer", "general-contractor"],
+  roles: ["bim-coordinator", "design-lead", "project-manager"],
   icon: "Combine",
   titleKey: "cases.set_up_bim_requirements_and_coordination.title",
   titleDefault: "Set up BIM requirements and coordination",

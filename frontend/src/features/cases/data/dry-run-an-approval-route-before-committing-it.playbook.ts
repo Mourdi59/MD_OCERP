@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 1046,
   category: "quality",
   companyTypes: ["general-contractor", "project-manager", "bim-consultant"],
+  roles: ["document-controller", "project-manager"],
   stage: "plan",
   icon: "Workflow",
   titleKey: "cases.dry_run_an_approval_route_before_committing_it.title",

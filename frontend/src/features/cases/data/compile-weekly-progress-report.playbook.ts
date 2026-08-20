@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 170,
   category: "planning",
   companyTypes: ["general-contractor", "project-manager", "developer-client"],
+  roles: ["project-manager", "planner", "site-manager"],
   icon: "FileBarChart",
   titleKey: "cases.compile_weekly_progress_report.title",
   titleDefault: "Compile the weekly progress report",

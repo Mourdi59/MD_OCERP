@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 270,
   category: "handover",
   companyTypes: ["owner-operator", "developer-client"],
+  roles: ["document-controller", "bim-coordinator", "project-manager"],
   icon: "Boxes",
   titleKey: "cases.set_up_the_asset_register_for_fm.title",
   titleDefault: "Set up the asset register for FM",

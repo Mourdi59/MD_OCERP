@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1020,
   category: "site",
   companyTypes: ["general-contractor", "project-manager", "subcontractor"],
+  roles: ["site-manager", "project-manager", "hse-officer"],
   stage: "plan",
   icon: "MapPin",
   titleKey: "cases.mobilise_the_site_and_set_up_logistics.title",

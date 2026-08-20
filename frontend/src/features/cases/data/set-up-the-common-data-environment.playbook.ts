@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 316,
   category: "bim",
   companyTypes: ["general-contractor", "bim-consultant", "designer"],
+  roles: ["bim-coordinator", "document-controller", "design-lead"],
   icon: "Database",
   titleKey: "cases.set_up_the_common_data_environment.title",
   titleDefault: "Set up the common data environment",

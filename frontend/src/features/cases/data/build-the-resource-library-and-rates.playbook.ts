@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 318,
   category: "estimating",
   companyTypes: ["cost-consultant", "general-contractor", "subcontractor"],
+  roles: ["estimator", "quantity-surveyor", "planner"],
   icon: "Calculator",
   titleKey: "cases.build_the_resource_library_and_rates.title",
   titleDefault: "Build the resource library and rates",

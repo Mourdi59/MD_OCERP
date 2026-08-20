@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 1044,
   category: "estimating",
   companyTypes: ["cost-consultant", "general-contractor", "subcontractor"],
+  roles: ["estimator", "quantity-surveyor"],
   stage: "estimate",
   icon: "Calculator",
   titleKey: "cases.build_a_parametric_assembly.title",

@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 230,
   category: "bim",
   companyTypes: ["designer", "bim-consultant", "project-manager"],
+  roles: ["bim-coordinator", "design-lead"],
   icon: "MessageSquare",
   titleKey: "cases.design_query_from_bim_coordination.title",
   titleDefault: "Raise a design query from BIM coordination",

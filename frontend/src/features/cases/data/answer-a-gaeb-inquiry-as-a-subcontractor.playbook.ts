@@ -16,6 +16,7 @@ const playbook: Playbook = {
   order: 1058,
   category: "tendering",
   companyTypes: ["subcontractor"],
+  roles: ["estimator", "quantity-surveyor", "commercial-manager"],
   region: "DE",
   icon: "FileOutput",
   titleKey: "cases.answer_a_gaeb_inquiry_as_a_subcontractor.title",

@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 250,
   category: "estimating",
   companyTypes: ["cost-consultant", "developer-client", "designer"],
+  roles: ["quantity-surveyor", "estimator"],
   icon: "Scale",
   titleKey: "cases.independent_cost_check_on_a_design.title",
   titleDefault: "Provide an independent cost check on a design",

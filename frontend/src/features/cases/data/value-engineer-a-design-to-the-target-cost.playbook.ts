@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 286,
   category: "estimating",
   companyTypes: ["cost-consultant", "general-contractor", "developer-client"],
+  roles: ["quantity-surveyor", "design-lead", "estimator"],
   icon: "TrendingUp",
   titleKey: "cases.value_engineer_a_design_to_the_target_cost.title",
   titleDefault: "Value engineer a design to the target cost",

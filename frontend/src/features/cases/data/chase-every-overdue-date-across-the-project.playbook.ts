@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 1040,
   category: "site",
   companyTypes: ["general-contractor", "project-manager", "developer-client"],
+  roles: ["project-manager", "contract-administrator"],
   icon: "CalendarClock",
   titleKey: "cases.chase_every_overdue_date_across_the_project.title",
   titleDefault: "Chase every overdue date in one place",

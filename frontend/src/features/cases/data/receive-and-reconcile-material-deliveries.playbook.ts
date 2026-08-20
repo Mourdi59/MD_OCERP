@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1017,
   category: "site",
   companyTypes: ["general-contractor", "subcontractor", "project-manager"],
+  roles: ["foreman", "site-manager", "procurement-buyer"],
   icon: "Truck",
   titleKey: "cases.receive_and_reconcile_material_deliveries.title",
   titleDefault: "Receive and reconcile material deliveries",

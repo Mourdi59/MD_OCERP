@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 280,
   category: "quality",
   companyTypes: ["general-contractor", "owner-operator"],
+  roles: ["site-manager", "project-manager", "design-lead"],
   stage: "handover",
   icon: "ClipboardCheck",
   titleKey: "cases.witness_and_record_mep_commissioning.title",

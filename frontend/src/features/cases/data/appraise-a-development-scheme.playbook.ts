@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 342,
   category: "estimating",
   companyTypes: ["developer-client", "cost-consultant"],
+  roles: ["quantity-surveyor", "finance-manager"],
   icon: "Building2",
   titleKey: "cases.appraise_a_development_scheme.title",
   titleDefault: "Appraise a development scheme",

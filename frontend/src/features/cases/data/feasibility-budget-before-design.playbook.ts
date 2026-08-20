@@ -16,6 +16,7 @@ const playbook: Playbook = {
   order: 205,
   category: "estimating",
   companyTypes: ["developer-client", "cost-consultant", "general-contractor"],
+  roles: ["quantity-surveyor", "estimator", "finance-manager"],
   icon: "Calculator",
   titleKey: "cases.feasibility_budget_before_design.title",
   titleDefault: "Estimate a feasibility budget before design",

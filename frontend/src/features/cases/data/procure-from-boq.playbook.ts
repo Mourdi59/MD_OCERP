@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 25,
   category: "tendering",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["procurement-buyer", "quantity-surveyor"],
   icon: "PackageCheck",
   titleKey: "cases.procure_from_boq.title",
   titleDefault: "Procure materials from the BOQ",

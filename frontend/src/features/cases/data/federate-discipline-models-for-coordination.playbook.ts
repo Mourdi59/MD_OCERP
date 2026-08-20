@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1013,
   category: "bim",
   companyTypes: ["bim-consultant", "general-contractor", "designer"],
+  roles: ["bim-coordinator", "design-lead", "document-controller"],
   icon: "Network",
   titleKey: "cases.federate_discipline_models_for_coordination.title",
   titleDefault: "Federate discipline models for coordination",

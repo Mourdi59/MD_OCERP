@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 1035,
   category: "site",
   companyTypes: ["general-contractor", "project-manager", "subcontractor"],
+  roles: ["site-manager", "project-manager"],
   stage: "build",
   icon: "ClipboardCheck",
   titleKey: "cases.run_a_site_supervision_visit.title",

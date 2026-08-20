@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1008,
   category: "tendering",
   companyTypes: ["general-contractor", "cost-consultant", "project-manager"],
+  roles: ["estimator", "document-controller", "contract-administrator"],
   icon: "Send",
   titleKey: "cases.issue_a_tender_addendum_and_reissue.title",
   titleDefault: "Issue a tender addendum and reissue",

@@ -16,6 +16,7 @@ const playbook: Playbook = {
   order: 1055,
   category: "estimating",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["estimator", "quantity-surveyor", "commercial-manager"],
   region: "DE",
   icon: "Calculator",
   titleKey: "cases.calculate_with_your_own_efb_rates.title",

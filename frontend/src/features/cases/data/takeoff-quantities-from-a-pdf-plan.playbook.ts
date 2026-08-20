@@ -16,6 +16,7 @@ const playbook: Playbook = {
   order: 1048,
   category: "estimating",
   companyTypes: ["subcontractor", "general-contractor", "cost-consultant"],
+  roles: ["estimator", "quantity-surveyor"],
   region: "DE",
   icon: "Ruler",
   titleKey: "cases.takeoff_quantities_from_a_pdf_plan.title",

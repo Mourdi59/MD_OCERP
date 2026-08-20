@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 225,
   category: "planning",
   companyTypes: ["project-manager", "general-contractor", "subcontractor"],
+  roles: ["planner", "site-manager", "foreman"],
   icon: "HardHat",
   titleKey: "cases.crew_and_plant_lookahead_balance.title",
   titleDefault: "Balance crews and plant across the programme",

@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 312,
   category: "site",
   companyTypes: ["general-contractor", "subcontractor"],
+  roles: ["hse-officer", "site-manager", "foreman"],
   icon: "ShieldCheck",
   titleKey: "cases.issue_a_permit_to_work.title",
   titleDefault: "Issue a permit to work",

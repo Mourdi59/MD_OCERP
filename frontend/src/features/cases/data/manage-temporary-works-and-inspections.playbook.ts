@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1018,
   category: "site",
   companyTypes: ["general-contractor", "subcontractor", "project-manager"],
+  roles: ["site-manager", "hse-officer", "design-lead"],
   icon: "Wrench",
   titleKey: "cases.manage_temporary_works_and_inspections.title",
   titleDefault: "Manage temporary works and inspections",

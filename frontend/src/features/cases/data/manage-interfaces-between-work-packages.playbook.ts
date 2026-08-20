@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1022,
   category: "planning",
   companyTypes: ["general-contractor", "project-manager", "bim-consultant"],
+  roles: ["project-manager", "planner", "bim-coordinator"],
   stage: "build",
   icon: "Waypoints",
   titleKey: "cases.manage_interfaces_between_work_packages.title",

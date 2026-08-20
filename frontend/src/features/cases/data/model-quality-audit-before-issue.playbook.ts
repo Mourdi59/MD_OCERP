@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 240,
   category: "bim",
   companyTypes: ["bim-consultant", "designer", "general-contractor"],
+  roles: ["bim-coordinator", "design-lead"],
   icon: "Crosshair",
   titleKey: "cases.model_quality_audit_before_issue.title",
   titleDefault: "Audit a model before it goes out",

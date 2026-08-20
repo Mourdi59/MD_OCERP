@@ -16,6 +16,7 @@ const playbook: Playbook = {
   order: 1052,
   category: "site",
   companyTypes: ["general-contractor", "subcontractor", "project-manager"],
+  roles: ["site-manager", "foreman", "commercial-manager"],
   region: "DE",
   icon: "NotebookPen",
   titleKey: "cases.keep_a_court_proof_bautagebuch.title",

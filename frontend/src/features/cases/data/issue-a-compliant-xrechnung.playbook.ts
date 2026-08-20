@@ -16,6 +16,7 @@ const playbook: Playbook = {
   order: 1049,
   category: "commercial",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["accountant", "commercial-manager", "finance-manager"],
   region: "DE",
   icon: "ReceiptEuro",
   titleKey: "cases.issue_a_compliant_xrechnung.title",

@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 90,
   category: "planning",
   companyTypes: ["general-contractor", "project-manager", "cost-consultant"],
+  roles: ["planner", "commercial-manager", "project-manager"],
   icon: "TrendingUp",
   titleKey: "cases.earned_value_and_forecast.title",
   titleDefault: "Earned value and forecast",

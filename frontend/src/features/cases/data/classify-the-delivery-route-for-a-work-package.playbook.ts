@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 1034,
   category: "planning",
   companyTypes: ["project-manager", "designer", "developer-client"],
+  roles: ["project-manager", "design-lead", "contract-administrator"],
   stage: "define",
   icon: "SignpostBig",
   titleKey: "cases.classify_the_delivery_route_for_a_work_package.title",

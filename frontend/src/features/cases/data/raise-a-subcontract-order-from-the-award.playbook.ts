@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1009,
   category: "tendering",
   companyTypes: ["general-contractor", "project-manager", "cost-consultant"],
+  roles: ["procurement-buyer", "contract-administrator", "commercial-manager"],
   icon: "Handshake",
   titleKey: "cases.raise_a_subcontract_order_from_the_award.title",
   titleDefault: "Raise a subcontract order from the award",

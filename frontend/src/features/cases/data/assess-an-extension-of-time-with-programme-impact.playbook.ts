@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1024,
   category: "commercial",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["planner", "commercial-manager", "contract-administrator"],
   icon: "CalendarClock",
   titleKey: "cases.assess_an_extension_of_time_with_programme_impact.title",
   titleDefault: "Assess an extension of time with programme impact",

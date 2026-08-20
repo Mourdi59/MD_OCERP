@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1004,
   category: "estimating",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["estimator", "quantity-surveyor"],
   icon: "Users",
   titleKey: "cases.build_an_all_in_labour_rate.title",
   titleDefault: "Build an all-in labour rate",

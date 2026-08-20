@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1011,
   category: "planning",
   companyTypes: ["general-contractor", "project-manager", "bim-consultant"],
+  roles: ["planner", "bim-coordinator", "project-manager"],
   icon: "CalendarClock",
   titleKey: "cases.build_a_4d_construction_sequence.title",
   titleDefault: "Build a 4D construction sequence",

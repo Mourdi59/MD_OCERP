@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 276,
   category: "handover",
   companyTypes: ["bim-consultant", "owner-operator"],
+  roles: ["bim-coordinator", "document-controller"],
   icon: "FileCheck",
   titleKey: "cases.check_the_asset_data_drop_before_handover.title",
   titleDefault: "Check the asset data drop before handover",

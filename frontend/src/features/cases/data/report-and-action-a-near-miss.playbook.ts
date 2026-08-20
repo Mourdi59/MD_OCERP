@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 190,
   category: "site",
   companyTypes: ["general-contractor", "subcontractor", "project-manager"],
+  roles: ["hse-officer", "site-manager", "foreman"],
   icon: "ShieldAlert",
   titleKey: "cases.report_and_action_a_near_miss.title",
   titleDefault: "Report and action a near-miss",

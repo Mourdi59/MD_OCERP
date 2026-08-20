@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 180,
   category: "commercial",
   companyTypes: ["general-contractor", "cost-consultant", "project-manager"],
+  roles: ["commercial-manager", "quantity-surveyor", "finance-manager"],
   icon: "Scale",
   titleKey: "cases.cost_value_reconciliation.title",
   titleDefault: "Run the cost-value reconciliation",

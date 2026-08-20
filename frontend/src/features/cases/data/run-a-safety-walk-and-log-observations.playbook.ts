@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 290,
   category: "quality",
   companyTypes: ["general-contractor", "subcontractor"],
+  roles: ["hse-officer", "site-manager", "foreman"],
   icon: "ShieldCheck",
   titleKey: "cases.run_a_safety_walk_and_log_observations.title",
   titleDefault: "Run a safety walk and log observations",

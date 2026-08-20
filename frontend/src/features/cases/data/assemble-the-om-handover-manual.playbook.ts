@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 269,
   category: "handover",
   companyTypes: ["general-contractor", "project-manager", "owner-operator"],
+  roles: ["document-controller", "project-manager", "site-manager"],
   icon: "BookOpen",
   titleKey: "cases.assemble_the_om_handover_manual.title",
   titleDefault: "Assemble the O&M handover manual",

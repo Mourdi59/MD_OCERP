@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 100,
   category: "site",
   companyTypes: ["general-contractor", "designer", "project-manager"],
+  roles: ["design-lead", "project-manager", "document-controller"],
   icon: "MessageSquare",
   titleKey: "cases.answer_an_rfi.title",
   titleDefault: "Answer an RFI",

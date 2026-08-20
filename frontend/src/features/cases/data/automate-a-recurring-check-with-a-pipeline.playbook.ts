@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 1038,
   category: "quality",
   companyTypes: ["general-contractor", "cost-consultant", "bim-consultant"],
+  roles: ["bim-coordinator", "quantity-surveyor"],
   icon: "Workflow",
   titleKey: "cases.automate_a_recurring_check_with_a_pipeline.title",
   titleDefault: "Automate a check you keep doing by hand",

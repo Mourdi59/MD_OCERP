@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 220,
   category: "estimating",
   companyTypes: ["cost-consultant", "designer", "developer-client"],
+  roles: ["quantity-surveyor", "estimator", "design-lead"],
   icon: "Table2",
   titleKey: "cases.elemental_cost_plan_and_classification.title",
   titleDefault: "Build an elemental cost plan",

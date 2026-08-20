@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1026,
   category: "commercial",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["accountant", "procurement-buyer", "commercial-manager"],
   icon: "Scale",
   titleKey: "cases.reconcile_a_supplier_statement.title",
   titleDefault: "Reconcile a supplier statement",

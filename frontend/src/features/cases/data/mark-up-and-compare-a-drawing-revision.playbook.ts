@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 330,
   category: "site",
   companyTypes: ["general-contractor", "designer", "bim-consultant"],
+  roles: ["design-lead", "document-controller", "site-manager"],
   icon: "Layers",
   titleKey: "cases.mark_up_and_compare_a_drawing_revision.title",
   titleDefault: "Mark up and compare a drawing revision",

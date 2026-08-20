@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 65,
   category: "commercial",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["commercial-manager", "procurement-buyer", "contract-administrator"],
   icon: "PackageCheck",
   titleKey: "cases.subcontractor_package.title",
   titleDefault: "Run a subcontractor package",

@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 272,
   category: "handover",
   companyTypes: ["owner-operator", "developer-client"],
+  roles: ["site-manager", "project-manager"],
   stage: "operate",
   icon: "CalendarClock",
   titleKey: "cases.plan_preventive_maintenance_from_the_asset_register.title",

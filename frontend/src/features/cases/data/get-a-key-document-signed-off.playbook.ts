@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 1032,
   category: "handover",
   companyTypes: ["general-contractor", "project-manager", "owner-operator"],
+  roles: ["document-controller", "contract-administrator", "project-manager"],
   stage: "handover",
   icon: "PenTool",
   titleKey: "cases.get_a_key_document_signed_off.title",

@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 75,
   category: "estimating",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["estimator", "quantity-surveyor"],
   icon: "Database",
   titleKey: "cases.estimate_from_cost_database.title",
   titleDefault: "Estimate from a cost database",

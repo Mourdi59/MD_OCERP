@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1005,
   category: "estimating",
   companyTypes: ["cost-consultant", "general-contractor", "subcontractor"],
+  roles: ["estimator", "quantity-surveyor", "commercial-manager"],
   icon: "NotebookPen",
   titleKey: "cases.write_the_basis_of_estimate.title",
   titleDefault: "Write the basis of estimate",

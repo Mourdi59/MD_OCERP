@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 140,
   category: "estimating",
   companyTypes: ["cost-consultant", "general-contractor", "developer-client"],
+  roles: ["estimator", "quantity-surveyor"],
   icon: "Ruler",
   titleKey: "cases.localize_an_estimate_to_a_region.title",
   titleDefault: "Localize an estimate to a region",

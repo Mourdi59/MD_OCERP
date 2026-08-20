@@ -23,6 +23,7 @@ const playbook: Playbook = {
   order: 20,
   category: "tendering",
   companyTypes: ["general-contractor", "cost-consultant", "project-manager"],
+  roles: ["estimator", "quantity-surveyor", "procurement-buyer"],
   icon: "Handshake",
   titleKey: "cases.tender_from_boq.title",
   titleDefault: "Run a tender from a BOQ",

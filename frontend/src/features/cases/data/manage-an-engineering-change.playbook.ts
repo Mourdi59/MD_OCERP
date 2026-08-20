@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 338,
   category: "quality",
   companyTypes: ["general-contractor", "designer", "owner-operator"],
+  roles: ["design-lead", "project-manager", "contract-administrator"],
   icon: "GitCompareArrows",
   titleKey: "cases.manage_an_engineering_change.title",
   titleDefault: "Manage an engineering change",

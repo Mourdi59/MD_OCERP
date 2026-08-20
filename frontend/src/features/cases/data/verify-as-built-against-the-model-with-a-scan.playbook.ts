@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 332,
   category: "bim",
   companyTypes: ["bim-consultant", "general-contractor", "designer"],
+  roles: ["bim-coordinator", "site-manager"],
   icon: "Crosshair",
   titleKey: "cases.verify_as_built_against_the_model_with_a_scan.title",
   titleDefault: "Verify as-built against the model with a scan",

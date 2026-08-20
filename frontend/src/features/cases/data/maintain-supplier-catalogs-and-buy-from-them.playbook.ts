@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 328,
   category: "tendering",
   companyTypes: ["general-contractor", "subcontractor"],
+  roles: ["procurement-buyer", "estimator"],
   icon: "Database",
   titleKey: "cases.maintain_supplier_catalogs_and_buy_from_them.title",
   titleDefault: "Maintain supplier catalogs and buy from them",

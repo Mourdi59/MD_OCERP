@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 314,
   category: "quality",
   companyTypes: ["general-contractor", "subcontractor", "designer"],
+  roles: ["document-controller", "design-lead", "procurement-buyer"],
   icon: "ClipboardList",
   titleKey: "cases.run_the_submittals_register.title",
   titleDefault: "Run the submittals register",

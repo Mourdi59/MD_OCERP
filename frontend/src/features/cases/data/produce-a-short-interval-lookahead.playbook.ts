@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 200,
   category: "planning",
   companyTypes: ["general-contractor", "subcontractor", "project-manager"],
+  roles: ["planner", "site-manager", "foreman"],
   icon: "CalendarClock",
   titleKey: "cases.produce_a_short_interval_lookahead.title",
   titleDefault: "Produce a short-interval lookahead",

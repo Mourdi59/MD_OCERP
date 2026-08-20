@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 95,
   category: "bim",
   companyTypes: ["designer", "bim-consultant", "project-manager"],
+  roles: ["bim-coordinator", "design-lead"],
   icon: "Combine",
   titleKey: "cases.coordinate_models_and_clashes.title",
   titleDefault: "Coordinate models and resolve clashes",

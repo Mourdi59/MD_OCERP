@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 292,
   category: "handover",
   companyTypes: ["owner-operator", "developer-client"],
+  roles: ["quantity-surveyor", "finance-manager"],
   stage: "operate",
   icon: "Calculator",
   titleKey: "cases.draft_the_first_year_maintenance_budget.title",

@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 45,
   category: "bim",
   companyTypes: ["cost-consultant", "general-contractor", "bim-consultant"],
+  roles: ["quantity-surveyor", "estimator", "bim-coordinator"],
   icon: "Ruler",
   titleKey: "cases.takeoff_from_dwg.title",
   titleDefault: "Measure quantities from a DWG",

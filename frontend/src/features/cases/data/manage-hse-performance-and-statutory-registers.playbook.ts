@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1021,
   category: "quality",
   companyTypes: ["general-contractor", "subcontractor", "project-manager"],
+  roles: ["hse-officer", "site-manager"],
   icon: "ShieldCheck",
   titleKey: "cases.manage_hse_performance_and_statutory_registers.title",
   titleDefault: "Manage HSE performance and statutory registers",

@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 334,
   category: "estimating",
   companyTypes: ["cost-consultant", "general-contractor"],
+  roles: ["quantity-surveyor", "bim-coordinator", "estimator"],
   icon: "LineChart",
   titleKey: "cases.build_a_5d_cost_loaded_model.title",
   titleDefault: "Build a 5D cost-loaded model",

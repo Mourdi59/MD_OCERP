@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 1039,
   category: "commercial",
   companyTypes: ["cost-consultant", "general-contractor", "subcontractor"],
+  roles: ["quantity-surveyor", "estimator"],
   icon: "Globe",
   titleKey: "cases.export_a_boq_to_fiebdc3.title",
   titleDefault: "Send a bill to Spain in FIEBDC-3",

@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1010,
   category: "planning",
   companyTypes: ["general-contractor", "project-manager", "subcontractor"],
+  roles: ["planner", "project-manager"],
   icon: "FileInput",
   titleKey: "cases.import_a_programme_and_set_the_baseline.title",
   titleDefault: "Import a programme and set the baseline",

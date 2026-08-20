@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1037,
   category: "estimating",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["estimator", "quantity-surveyor"],
   icon: "ListChecks",
   titleKey: "cases.review_ai_takeoff_proposals.title",
   titleDefault: "Review what the AI read off the drawing",

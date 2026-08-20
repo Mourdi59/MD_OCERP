@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 271,
   category: "handover",
   companyTypes: ["general-contractor", "bim-consultant"],
+  roles: ["document-controller", "bim-coordinator"],
   icon: "FileStack",
   titleKey: "cases.manage_the_drawing_register_and_transmittals.title",
   titleDefault: "Manage the drawing register and transmittals",

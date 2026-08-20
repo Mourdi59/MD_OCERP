@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 255,
   category: "site",
   companyTypes: ["designer", "general-contractor", "bim-consultant"],
+  roles: ["design-lead", "site-manager", "document-controller"],
   icon: "GitCompare",
   titleKey: "cases.track_a_design_change_to_site_record.title",
   titleDefault: "Track a design change through to the site record",

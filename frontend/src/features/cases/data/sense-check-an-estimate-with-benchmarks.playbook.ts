@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 195,
   category: "estimating",
   companyTypes: ["cost-consultant", "general-contractor", "developer-client"],
+  roles: ["estimator", "quantity-surveyor"],
   icon: "Scale",
   titleKey: "cases.sense_check_an_estimate_with_benchmarks.title",
   titleDefault: "Sense-check an estimate against benchmarks",

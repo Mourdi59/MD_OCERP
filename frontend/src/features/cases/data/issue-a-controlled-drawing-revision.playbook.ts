@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 175,
   category: "site",
   companyTypes: ["designer", "general-contractor", "bim-consultant"],
+  roles: ["document-controller", "design-lead", "bim-coordinator"],
   icon: "FolderOpen",
   titleKey: "cases.issue_a_controlled_drawing_revision.title",
   titleDefault: "Issue a controlled drawing revision",

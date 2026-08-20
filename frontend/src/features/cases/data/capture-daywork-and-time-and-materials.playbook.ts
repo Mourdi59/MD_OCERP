@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 150,
   category: "site",
   companyTypes: ["subcontractor", "general-contractor", "cost-consultant"],
+  roles: ["foreman", "site-manager", "quantity-surveyor"],
   icon: "Clock",
   titleKey: "cases.capture_daywork_and_time_and_materials.title",
   titleDefault: "Capture daywork and time and materials",

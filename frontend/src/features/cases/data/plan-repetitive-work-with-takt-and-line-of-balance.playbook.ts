@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 306,
   category: "planning",
   companyTypes: ["general-contractor", "project-manager", "subcontractor"],
+  roles: ["planner", "site-manager", "project-manager"],
   icon: "LineChart",
   titleKey: "cases.plan_repetitive_work_with_takt_and_line_of_balance.title",
   titleDefault: "Plan repetitive work with takt and line of balance",

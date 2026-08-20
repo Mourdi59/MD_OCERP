@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 260,
   category: "planning",
   companyTypes: ["project-manager", "general-contractor", "owner-operator"],
+  roles: ["project-manager", "commercial-manager", "planner"],
   icon: "ShieldAlert",
   titleKey: "cases.review_and_mitigate_project_risks.title",
   titleDefault: "Review and mitigate the risk register",

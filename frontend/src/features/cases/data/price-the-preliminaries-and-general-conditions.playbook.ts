@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1001,
   category: "estimating",
   companyTypes: ["general-contractor", "cost-consultant", "project-manager"],
+  roles: ["estimator", "quantity-surveyor", "project-manager"],
   icon: "Container",
   titleKey: "cases.price_the_preliminaries_and_general_conditions.title",
   titleDefault: "Price the preliminaries and general conditions",

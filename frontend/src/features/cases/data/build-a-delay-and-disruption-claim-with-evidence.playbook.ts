@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 326,
   category: "commercial",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["commercial-manager", "planner", "contract-administrator"],
   icon: "Scale",
   titleKey: "cases.build_a_delay_and_disruption_claim_with_evidence.title",
   titleDefault: "Build a delay and disruption claim with evidence",

@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 304,
   category: "estimating",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["estimator", "quantity-surveyor", "bim-coordinator"],
   icon: "Sparkles",
   titleKey: "cases.draft_an_estimate_with_ai_element_matching.title",
   titleDefault: "Draft an estimate with AI element matching",

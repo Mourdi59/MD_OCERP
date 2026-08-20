@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1007,
   category: "tendering",
   companyTypes: ["general-contractor", "cost-consultant", "project-manager"],
+  roles: ["estimator", "quantity-surveyor", "procurement-buyer"],
   icon: "Scale",
   titleKey: "cases.level_bids_to_a_common_scope.title",
   titleDefault: "Level bids to a common scope",

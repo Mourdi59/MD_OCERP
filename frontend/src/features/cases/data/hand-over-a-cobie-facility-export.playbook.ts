@@ -15,6 +15,7 @@ const playbook: Playbook = {
   order: 1042,
   category: "handover",
   companyTypes: ["general-contractor", "owner-operator", "bim-consultant"],
+  roles: ["bim-coordinator", "document-controller"],
   stage: "handover",
   icon: "FileSpreadsheet",
   titleKey: "cases.hand_over_a_cobie_facility_export.title",

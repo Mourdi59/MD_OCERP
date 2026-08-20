@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 320,
   category: "commercial",
   companyTypes: ["general-contractor", "subcontractor"],
+  roles: ["accountant", "foreman", "finance-manager"],
   icon: "Banknote",
   titleKey: "cases.turn_field_time_into_payroll_and_labour_cost.title",
   titleDefault: "Turn field time into payroll and labour cost",

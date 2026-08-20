@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1028,
   category: "handover",
   companyTypes: ["general-contractor", "project-manager", "developer-client"],
+  roles: ["project-manager", "document-controller", "contract-administrator"],
   icon: "Landmark",
   titleKey: "cases.close_out_permits_and_statutory_approvals.title",
   titleDefault: "Close out permits and statutory approvals",

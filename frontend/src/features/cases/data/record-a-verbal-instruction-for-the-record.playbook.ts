@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 340,
   category: "site",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["site-manager", "contract-administrator", "commercial-manager"],
   icon: "ClipboardList",
   titleKey: "cases.record_a_verbal_instruction_for_the_record.title",
   titleDefault: "Record a verbal instruction for the record",

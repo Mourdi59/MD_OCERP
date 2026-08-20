@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 125,
   category: "commercial",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["accountant", "commercial-manager"],
   icon: "ReceiptText",
   titleKey: "cases.issue_an_electronic_invoice.title",
   titleDefault: "Issue an electronic invoice",

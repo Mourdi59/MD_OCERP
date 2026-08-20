@@ -23,6 +23,7 @@ const playbook: Playbook = {
   order: 5,
   category: "planning",
   companyTypes: ["general-contractor", "project-manager", "developer-client"],
+  roles: ["project-manager", "site-manager", "quantity-surveyor"],
   icon: "Layers",
   titleKey: "cases.project_end_to_end.title",
   titleDefault: "Set up a project and hand it over",

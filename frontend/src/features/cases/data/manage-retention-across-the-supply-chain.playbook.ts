@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1025,
   category: "commercial",
   companyTypes: ["general-contractor", "cost-consultant", "subcontractor"],
+  roles: ["commercial-manager", "quantity-surveyor", "accountant"],
   icon: "Percent",
   titleKey: "cases.manage_retention_across_the_supply_chain.title",
   titleDefault: "Manage retention across the supply chain",

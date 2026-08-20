@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 284,
   category: "commercial",
   companyTypes: ["general-contractor", "cost-consultant", "subcontractor"],
+  roles: ["commercial-manager", "quantity-surveyor", "contract-administrator"],
   stage: "handover",
   icon: "Handshake",
   titleKey: "cases.agree_the_final_account_and_release_retention.title",

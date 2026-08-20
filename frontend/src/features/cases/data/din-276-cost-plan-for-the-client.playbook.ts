@@ -17,6 +17,7 @@ const playbook: Playbook = {
   order: 1057,
   category: "estimating",
   companyTypes: ["cost-consultant", "general-contractor", "developer-client"],
+  roles: ["quantity-surveyor", "estimator", "design-lead"],
   region: "DE",
   icon: "Layers",
   titleKey: "cases.din_276_cost_plan_for_the_client.title",

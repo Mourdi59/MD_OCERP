@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 282,
   category: "commercial",
   companyTypes: ["general-contractor", "subcontractor"],
+  roles: ["accountant", "procurement-buyer", "finance-manager"],
   icon: "Scale",
   titleKey: "cases.run_a_three_way_match_before_paying_a_supplier.title",
   titleDefault: "Run a three-way match before paying a supplier",

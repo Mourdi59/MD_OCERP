@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1003,
   category: "estimating",
   companyTypes: ["cost-consultant", "general-contractor", "developer-client"],
+  roles: ["estimator", "quantity-surveyor", "commercial-manager"],
   icon: "TrendingUp",
   titleKey: "cases.escalate_an_estimate_with_price_indices.title",
   titleDefault: "Escalate an estimate with price indices",

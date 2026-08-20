@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 60,
   category: "commercial",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["quantity-surveyor", "commercial-manager", "contract-administrator"],
   icon: "FileSignature",
   titleKey: "cases.change_to_paid_variation.title",
   titleDefault: "Turn a change into a paid variation",

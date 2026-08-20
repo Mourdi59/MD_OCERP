@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 308,
   category: "commercial",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["commercial-manager", "estimator"],
   icon: "TrendingUp",
   titleKey: "cases.track_an_opportunity_from_enquiry_to_tender.title",
   titleDefault: "Track an opportunity from enquiry to tender",

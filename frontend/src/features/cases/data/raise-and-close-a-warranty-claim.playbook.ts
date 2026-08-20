@@ -13,6 +13,7 @@ const playbook: Playbook = {
   order: 274,
   category: "handover",
   companyTypes: ["owner-operator"],
+  roles: ["contract-administrator", "site-manager"],
   stage: "operate",
   icon: "ShieldCheck",
   titleKey: "cases.raise_and_close_a_warranty_claim.title",

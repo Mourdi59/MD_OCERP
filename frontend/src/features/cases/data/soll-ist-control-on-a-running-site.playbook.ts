@@ -16,6 +16,7 @@ const playbook: Playbook = {
   order: 1051,
   category: "commercial",
   companyTypes: ["general-contractor", "subcontractor", "project-manager"],
+  roles: ["commercial-manager", "quantity-surveyor", "project-manager"],
   region: "DE",
   icon: "Gauge",
   titleKey: "cases.soll_ist_control_on_a_running_site.title",

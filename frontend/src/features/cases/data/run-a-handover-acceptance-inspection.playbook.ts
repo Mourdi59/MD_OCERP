@@ -19,6 +19,7 @@ const playbook: Playbook = {
     "owner-operator",
     "developer-client",
   ],
+  roles: ["project-manager", "site-manager", "contract-administrator"],
   icon: "ClipboardCheck",
   titleKey: "cases.run_a_handover_acceptance_inspection.title",
   titleDefault: "Run a handover acceptance inspection",

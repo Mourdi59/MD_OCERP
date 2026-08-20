@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1006,
   category: "estimating",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["estimator", "planner", "quantity-surveyor"],
   icon: "Combine",
   titleKey: "cases.expand_production_norms_into_resource_quantities.title",
   titleDefault: "Expand production norms into resource quantities",

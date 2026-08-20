@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 145,
   category: "commercial",
   companyTypes: ["general-contractor", "developer-client", "cost-consultant"],
+  roles: ["finance-manager", "commercial-manager", "quantity-surveyor"],
   icon: "LineChart",
   titleKey: "cases.forecast_project_cash_flow.title",
   titleDefault: "Forecast project cash flow",

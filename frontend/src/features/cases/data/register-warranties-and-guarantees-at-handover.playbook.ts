@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1029,
   category: "handover",
   companyTypes: ["general-contractor", "owner-operator", "developer-client"],
+  roles: ["document-controller", "contract-administrator", "project-manager"],
   icon: "ShieldCheck",
   titleKey: "cases.register_warranties_and_guarantees_at_handover.title",
   titleDefault: "Register warranties and guarantees at handover",

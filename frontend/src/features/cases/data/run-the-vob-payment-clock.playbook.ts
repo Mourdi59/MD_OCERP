@@ -21,6 +21,7 @@ const playbook: Playbook = {
   region: "DE",
   category: "commercial",
   companyTypes: ["general-contractor", "subcontractor", "cost-consultant"],
+  roles: ["contract-administrator", "commercial-manager", "quantity-surveyor"],
   icon: "CalendarClock",
   titleKey: "cases.run_the_vob_payment_clock.title",
   titleDefault: "Run the VOB/B payment clock",

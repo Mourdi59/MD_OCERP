@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1014,
   category: "bim",
   companyTypes: ["bim-consultant", "developer-client", "project-manager"],
+  roles: ["bim-coordinator", "design-lead", "document-controller"],
   icon: "BadgeCheck",
   titleKey: "cases.check_a_model_against_the_eir_and_raise_issues.title",
   titleDefault: "Check a model against the EIR and raise issues",

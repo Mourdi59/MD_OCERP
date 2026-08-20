@@ -16,6 +16,7 @@ const playbook: Playbook = {
   order: 264,
   category: "planning",
   companyTypes: ["general-contractor", "project-manager"],
+  roles: ["planner", "project-manager"],
   icon: "CalendarClock",
   titleKey: "cases.update_the_programme_and_reforecast.title",
   titleDefault: "Update the programme and reforecast",

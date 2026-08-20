@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 35,
   category: "planning",
   companyTypes: ["general-contractor", "project-manager", "subcontractor"],
+  roles: ["planner", "project-manager", "site-manager"],
   icon: "CalendarClock",
   titleKey: "cases.schedule_and_track.title",
   titleDefault: "Build a baseline and track progress",

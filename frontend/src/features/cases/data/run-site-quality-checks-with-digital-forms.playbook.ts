@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1023,
   category: "quality",
   companyTypes: ["general-contractor", "subcontractor", "project-manager"],
+  roles: ["site-manager", "foreman"],
   icon: "ClipboardCheck",
   titleKey: "cases.run_site_quality_checks_with_digital_forms.title",
   titleDefault: "Run site quality checks with digital forms",

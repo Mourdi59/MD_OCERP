@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 1019,
   category: "site",
   companyTypes: ["general-contractor", "subcontractor", "project-manager"],
+  roles: ["foreman", "site-manager"],
   icon: "ClipboardCheck",
   titleKey: "cases.run_a_concrete_pour_from_request_to_record.title",
   titleDefault: "Run a concrete pour from request to record",

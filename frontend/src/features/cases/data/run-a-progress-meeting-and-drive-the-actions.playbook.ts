@@ -14,6 +14,7 @@ const playbook: Playbook = {
   order: 302,
   category: "planning",
   companyTypes: ["general-contractor", "project-manager", "subcontractor"],
+  roles: ["project-manager", "planner", "site-manager"],
   icon: "Users",
   titleKey: "cases.run_a_progress_meeting_and_drive_the_actions.title",
   titleDefault: "Run a progress meeting and drive the actions",
