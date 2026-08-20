@@ -99,6 +99,8 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
         from app.modules.schedule_advanced.models import MasterSchedule
         from app.modules.schedule_advanced.seed import seed_schedule_advanced_demo
         from app.modules.service.seed import seed_service_demo
+        from app.modules.site_inventory.seed import seed_site_inventory_demo
+        from app.modules.site_logistics.demo import seed_site_logistics_demo
         from app.modules.site_prep.seed import seed_site_prep_demo
         from app.modules.supplier_catalogs.seed import seed_supplier_catalogs
         from app.modules.takeoff.seed import seed_takeoff_demo
@@ -281,6 +283,25 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
             # one already closed out. Self-guards per project on an existing plan
             # or item.
             ("site_prep", None, lambda s: seed_site_prep_demo(s, _demo_pids)),
+            # Gates, laydown zones and a working week of deliveries, each one
+            # booked against a real position of the project's own bill - which is
+            # what gives the delivery board its estimate coverage table something
+            # to cover. Runs after the installer has priced a bill; a project
+            # without a deliverable position is skipped rather than given
+            # deliveries of nothing. Self-guards per project on an existing gate
+            # or delivery, so a board in use is never added to.
+            ("site_logistics", None, lambda s: seed_site_logistics_demo(s, _demo_pids)),
+            # The yard and the material ledger: deliveries into stock, material
+            # installed against the position that priced it, off-cuts and a
+            # relocation. Demo estate only - a consumption booked against a bill
+            # states what a job really used, which is an earned record. Reads the
+            # priced bill and the progress readings the installer wrote, so it
+            # runs after both; a project with no priced material line is skipped
+            # rather than given stock of nothing. Self-guards per project on an
+            # existing item or movement. Post-calculation reads this ledger for
+            # its material actuals, so an unseeded yard leaves that report
+            # honestly saying it does not know what the material cost.
+            ("site_inventory", None, lambda s: seed_site_inventory_demo(s, _demo_pids)),
             ("forms", None, lambda s: seed_forms_submissions_demo(s, _demo_pids)),
             ("construction_control", None, lambda s: seed_construction_control_demo(s, _demo_pids)),
             ("commissioning", None, lambda s: seed_commissioning_demo(s, _demo_pids)),
@@ -333,6 +354,20 @@ async def enrich_projects(project_ids: list[uuid.UUID]) -> None:
                         logger.info("%s demo seed: %s", _name, _counts)
             except Exception:
                 logger.warning("%s demo seed skipped (non-fatal)", _name, exc_info=True)
+
+        # The project roster seeds one project at a time and guards itself on
+        # the project already having roster lines, so a re-run is a no-op.
+        for _pid in _all_pids:
+            try:
+                from app.modules.teams.seed import seed_teams_roster
+
+                async with async_session_factory() as _rs:
+                    _written = await seed_teams_roster(_rs, project_id=_pid)
+                    await _rs.commit()
+                    if _written:
+                        logger.info("teams roster demo seed: %s", _written)
+            except Exception:
+                logger.warning("teams roster demo seed skipped for %s (non-fatal)", _pid, exc_info=True)
 
         # QMS seeds one project at a time and is not internally idempotent; loop
         # the projects, skipping any that already carry an ITP plan so a re-run

@@ -13,11 +13,15 @@ manifest = ModuleManifest(
         "hours and slot capacity, material laydown zones, and a delivery "
         "booking board with approve/reject scheduling. Windows are validated "
         "against gate hours and checked for clashes so two approved deliveries "
-        "never fight for the same gate."
+        "never fight for the same gate. Deliveries are booked against the bill "
+        "positions they carry, so every estimate line reads back as booked, "
+        "delivered and outstanding."
     ),
     author="OpenConstructionERP",
     category="business",
-    depends=["oe_projects", "oe_users"],
+    # oe_boq: a delivery line points at the BOQ position it delivers, and the
+    # bill-coverage table reads the estimate directly.
+    depends=["oe_projects", "oe_users", "oe_boq"],
     auto_install=True,
     enabled=True,
 )

@@ -15,26 +15,35 @@ Both checks reuse the pure helpers in ``validators.py`` and raise
 import logging
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import event_bus
 from app.core.json_merge import merge_metadata
+from app.modules.site_logistics.coverage import BillLine, DeliveredLine, coverage_by_position, to_decimal
 from app.modules.site_logistics.events import (
     DELIVERY_APPROVED,
     DELIVERY_BOOKED,
     DELIVERY_REJECTED,
 )
-from app.modules.site_logistics.models import DeliveryBooking, Gate, LaydownZone
+from app.modules.site_logistics.models import DeliveryBooking, DeliveryLine, Gate, LaydownZone
 from app.modules.site_logistics.repository import (
+    BillPositionRepository,
+    DeliveryLineRepository,
     DeliveryRepository,
     GateRepository,
     LaydownZoneRepository,
 )
 from app.modules.site_logistics.schemas import (
+    BILL_COVERAGE_LIMIT,
+    BillCoverageResponse,
+    BillCoverageRow,
     DeliveryCreate,
+    DeliveryLineInput,
     DeliveryUpdate,
     GateCreate,
     GateUpdate,
@@ -72,6 +81,8 @@ class SiteLogisticsService:
         self.gate_repo = GateRepository(session)
         self.zone_repo = LaydownZoneRepository(session)
         self.delivery_repo = DeliveryRepository(session)
+        self.line_repo = DeliveryLineRepository(session)
+        self.bill_repo = BillPositionRepository(session)
 
     # ── Gates ─────────────────────────────────────────────────────────────
 
@@ -189,6 +200,8 @@ class SiteLogisticsService:
             if data.status == "approved":
                 await self._assert_no_overlap(data.gate_id, window_start, window_end, exclude_id=None)
 
+        lines = await self._build_lines(data.project_id, data.lines)
+
         delivery = DeliveryBooking(
             project_id=data.project_id,
             gate_id=data.gate_id,
@@ -203,6 +216,7 @@ class SiteLogisticsService:
             po_ref=data.po_ref,
             notes=data.notes,
             created_by=user_id,
+            lines=lines,
             metadata_=data.metadata,
         )
         delivery = await self.delivery_repo.create(delivery)
@@ -256,7 +270,10 @@ class SiteLogisticsService:
         delivery = await self.get_delivery(delivery_id)
         previous_status = delivery.status
         fields = self._merge_metadata_fields(data.model_dump(exclude_unset=True), delivery)
-        if not fields:
+        # Lines are their own rows, so they never travel in the column update.
+        line_inputs = data.lines if "lines" in fields else None
+        fields.pop("lines", None)
+        if not fields and line_inputs is None:
             return delivery
 
         if "window_start" in fields:
@@ -280,7 +297,13 @@ class SiteLogisticsService:
             if new_status == "approved":
                 await self._assert_no_overlap(new_gate_id, new_start, new_end, exclude_id=delivery_id)
 
-        await self.delivery_repo.update_fields(delivery_id, **fields)
+        if line_inputs is not None:
+            lines = await self._build_lines(delivery.project_id, line_inputs)
+            await self.line_repo.replace_for_delivery(delivery_id, lines)
+        if fields:
+            await self.delivery_repo.update_fields(delivery_id, **fields)
+        # A full refresh reloads the ``lines`` collection through its selectin
+        # loader, so the response carries the list that was just written.
         await self.session.refresh(delivery)
         await self.session.commit()
 
@@ -290,9 +313,13 @@ class SiteLogisticsService:
         return delivery
 
     async def delete_delivery(self, delivery_id: uuid.UUID) -> None:
-        """Delete a delivery booking."""
+        """Delete a delivery booking and the bill lines it carried."""
         delivery = await self.get_delivery(delivery_id)
         await self.delivery_repo.delete(delivery)
+        # Committed here like every sibling delete. The request-scoped session
+        # dependency also commits on the way out, so this was never a lost
+        # write - it just left this one path relying on the caller.
+        await self.session.commit()
         logger.info("Delivery deleted: %s", delivery_id)
 
     async def approve_delivery(
@@ -357,6 +384,93 @@ class SiteLogisticsService:
         self._emit(DELIVERY_REJECTED, delivery, user_id)
         return delivery
 
+    # ── Bill coverage ─────────────────────────────────────────────────────
+
+    async def get_bill_coverage(
+        self,
+        project_id: uuid.UUID,
+        *,
+        boq_id: uuid.UUID | None = None,
+        search: str | None = None,
+        limit: int = BILL_COVERAGE_LIMIT,
+    ) -> BillCoverageResponse:
+        """Read the project's bill as a delivery ledger.
+
+        One query serves two screens: the coverage table on the logistics page,
+        and the position picker in the booking dialog - which is why the picker
+        can show how much of a line is still outstanding while you pick it.
+
+        Args:
+            project_id: Project whose bill is being read.
+            boq_id: Optional single bill to narrow to.
+            search: Optional ordinal / description filter.
+            limit: Maximum rows returned; the response reports the full count
+                and raises ``truncated`` when the cap bit.
+
+        Returns:
+            The coverage rows plus the project-wide totals that do not depend
+            on the filter (linked positions, detached lines).
+        """
+        limit = max(1, min(limit, BILL_COVERAGE_LIMIT))
+        rows = await self.bill_repo.list_deliverable(project_id, boq_id=boq_id, search=search, limit=limit)
+        total = await self.bill_repo.count_deliverable(project_id, boq_id=boq_id, search=search)
+        facts = await self.line_repo.list_project_line_facts(project_id)
+        detached = await self.line_repo.count_detached_lines(project_id)
+        _, positions_covered = await self.line_repo.count_linked_deliveries(project_id)
+        currency = await self._project_currency(project_id)
+
+        bill = [
+            BillLine(
+                position_id=str(position.id),
+                boq_id=str(owning_boq_id),
+                ordinal=position.ordinal or "",
+                description=position.description or "",
+                unit=position.unit or "",
+                quantity=to_decimal(position.quantity),
+                unit_rate=to_decimal(position.unit_rate),
+            )
+            for position, owning_boq_id in rows
+        ]
+        delivered = [
+            DeliveredLine(position_id=str(position_id), quantity=to_decimal(quantity), status=str(delivery_status))
+            for position_id, quantity, delivery_status in facts
+        ]
+        coverage = coverage_by_position(bill, delivered)
+
+        out: list[BillCoverageRow] = []
+        value_total = Decimal("0")
+        for entry in bill:
+            cov = coverage[entry.position_id]
+            value_total += cov.delivered_value
+            out.append(
+                BillCoverageRow(
+                    position_id=uuid.UUID(entry.position_id),
+                    boq_id=uuid.UUID(entry.boq_id),
+                    ordinal=entry.ordinal,
+                    description=entry.description,
+                    unit=entry.unit,
+                    bill_quantity=str(entry.quantity),
+                    unit_rate=str(entry.unit_rate),
+                    bill_total=str(entry.quantity * entry.unit_rate),
+                    delivered_quantity=str(cov.delivered_quantity),
+                    booked_quantity=str(cov.booked_quantity),
+                    outstanding_quantity=str(cov.outstanding_quantity),
+                    delivered_value=str(cov.delivered_value),
+                    delivery_line_count=cov.delivery_line_count,
+                    over_delivered=cov.over_delivered,
+                )
+            )
+
+        return BillCoverageResponse(
+            rows=out,
+            total=total,
+            truncated=total > len(out),
+            currency=currency,
+            linked_position_count=positions_covered,
+            delivered_value_total=str(value_total),
+            detached_line_count=detached,
+        )
+
     # ── Stats ─────────────────────────────────────────────────────────────
 
     async def get_stats(self, project_id: uuid.UUID) -> SiteLogisticsStatsResponse:
@@ -365,15 +479,94 @@ class SiteLogisticsService:
         gates = await self.gate_repo.list_for_project(project_id)
         zones = await self.zone_repo.list_for_project(project_id)
         upcoming = await self.delivery_repo.count_upcoming_approved(project_id, datetime.now(UTC))
+        linked_deliveries, positions_covered = await self.line_repo.count_linked_deliveries(project_id)
         return SiteLogisticsStatsResponse(
             total_deliveries=sum(by_status.values()),
             by_status=by_status,
             gate_count=len(gates),
             laydown_zone_count=len(zones),
             upcoming_approved=upcoming,
+            deliveries_linked_to_bill=linked_deliveries,
+            positions_covered=positions_covered,
         )
 
     # ── Internal helpers ──────────────────────────────────────────────────
+
+    async def _build_lines(
+        self,
+        project_id: uuid.UUID,
+        inputs: list[DeliveryLineInput],
+    ) -> list[DeliveryLine]:
+        """Turn line payloads into rows, resolving each against the project's bill.
+
+        A position from another project is refused outright: a delivery board
+        must not be able to book against a bill its own site cannot see.
+
+        Description and unit are taken from the position rather than from the
+        request, and so is the ordinal. The bill is the source of truth for what the work is, and the
+        unit in particular has to match or the coverage table would sum tonnes
+        against a cubic-metre line. The platform's unit conversion
+        (``app.core.unit_conversion``) only restates a quantity between the
+        metric and imperial spelling of the SAME dimension, so there is nothing
+        in the tree that could convert a delivered tonne into a billed m3;
+        letting the requester type a free unit would produce a total that looks
+        right and is not. A line with no position keeps whatever ordinal the
+        request carries, which is how a detached line survives an edit made for
+        an unrelated reason.
+
+        Args:
+            project_id: Project the delivery belongs to.
+            inputs: The line payloads from the request, in display order.
+
+        Returns:
+            Unattached :class:`DeliveryLine` rows, ready to be persisted.
+
+        Raises:
+            HTTPException 400: A referenced position is missing or belongs to
+                another project.
+        """
+        position_ids = [item.boq_position_id for item in inputs if item.boq_position_id is not None]
+        positions: dict[uuid.UUID, Any] = {}
+        if position_ids:
+            owners = await self.bill_repo.project_ids_for_positions(position_ids)
+            missing = [str(pid) for pid in position_ids if pid not in owners]
+            if missing:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Bill position not found: {', '.join(sorted(set(missing)))}",
+                )
+            foreign = [str(pid) for pid in position_ids if owners[pid] != project_id]
+            if foreign:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A bill position on this delivery belongs to a different project",
+                )
+            positions = await self.bill_repo.get_positions(position_ids)
+
+        lines: list[DeliveryLine] = []
+        for index, item in enumerate(inputs):
+            position = positions.get(item.boq_position_id) if item.boq_position_id is not None else None
+            description = (position.description if position else item.description) or ""
+            unit = (position.unit if position else item.unit) or ""
+            lines.append(
+                DeliveryLine(
+                    boq_position_id=item.boq_position_id,
+                    position_ordinal=position.ordinal if position else item.position_ordinal,
+                    description=description[:500],
+                    quantity=Decimal(item.quantity),
+                    unit=unit[:20],
+                    note=item.note,
+                    sort_order=index,
+                )
+            )
+        return lines
+
+    async def _project_currency(self, project_id: uuid.UUID) -> str:
+        """Return the project's currency code, or an empty string when unset."""
+        from app.modules.projects.models import Project
+
+        stmt = select(Project.currency).where(Project.id == project_id)
+        return (await self.session.execute(stmt)).scalar_one_or_none() or ""
 
     async def _load_project_gate(self, gate_id: uuid.UUID, project_id: uuid.UUID) -> Gate:
         """Load a gate and confirm it belongs to the delivery's project."""

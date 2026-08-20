@@ -6,13 +6,15 @@ Tables:
     oe_site_logistics_gate          - site access gates with daily hours + slot capacity
     oe_site_logistics_laydown_zone  - material laydown / storage areas on site
     oe_site_logistics_delivery      - inbound delivery bookings scheduled against a gate
+    oe_site_logistics_delivery_line - the bill positions a delivery carries
 """
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import GUID, Base
 
@@ -128,5 +130,74 @@ class DeliveryBooking(Base):
         server_default="{}",
     )
 
+    # What the truck is carrying, expressed as bill positions. Always read with
+    # the booking (the delivery board renders them on every row), hence selectin.
+    lines: Mapped[list["DeliveryLine"]] = relationship(
+        "app.modules.site_logistics.models.DeliveryLine",
+        back_populates="delivery",
+        cascade="all, delete-orphan",
+        order_by="DeliveryLine.sort_order",
+        lazy="selectin",
+    )
+
     def __repr__(self) -> str:
         return f"<DeliveryBooking {self.supplier_name} {self.window_start:%Y-%m-%d %H:%M} ({self.status})>"
+
+
+class DeliveryLine(Base):
+    """One bill position a delivery carries, with the quantity being delivered.
+
+    A delivery is the arrival of work the estimate already priced, so a line
+    points at the BOQ position instead of repeating its description in free
+    text. That is what lets the board answer "how much of position 03.10.020 is
+    still to come" without anyone re-typing the bill.
+
+    ``boq_position_id`` is ``ON DELETE SET NULL`` on purpose, and this is the
+    module's orphan discipline: a delivery is a physical event that happened, so
+    deleting an estimate line must never erase the record that 200 m3 arrived on
+    site. The line keeps its own ``description`` / ``position_ordinal``
+    snapshot, taken when the link was made, and simply reads as detached from
+    the bill afterwards. The schedule module solves the same problem for its
+    JSON ``Activity.boq_position_ids`` array with a best-effort scrub
+    (``BOQService._scrub_activity_position_refs``); a real foreign key does not
+    need one, because the database performs it inside the delete transaction.
+    """
+
+    __tablename__ = "oe_site_logistics_delivery_line"
+    __table_args__ = (
+        Index("ix_site_logistics_line_delivery", "delivery_id"),
+        Index("ix_site_logistics_line_position", "boq_position_id"),
+    )
+
+    delivery_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("oe_site_logistics_delivery.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    # NULL means the bill position was deleted after the delivery was booked -
+    # the physical record survives, detached. See the class docstring.
+    boq_position_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(),
+        ForeignKey("oe_boq_position.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    # Snapshot of the bill line as it read when the link was made. Kept so a
+    # detached line still says what arrived, and so a printed delivery note does
+    # not change retroactively when the estimator rewords the position.
+    position_ordinal: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    # A quantity, never money: the value on site is derived from the position's
+    # current unit rate so the bill stays the single source of price truth.
+    quantity: Mapped[Decimal] = mapped_column(Numeric(18, 4), nullable=False, default=Decimal("0"))
+    unit: Mapped[str] = mapped_column(String(20), nullable=False, default="")
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    delivery: Mapped["DeliveryBooking"] = relationship(
+        "app.modules.site_logistics.models.DeliveryBooking",
+        back_populates="lines",
+        lazy="raise_on_sql",
+    )
+
+    def __repr__(self) -> str:
+        return f"<DeliveryLine {self.position_ordinal or '-'} {self.quantity} {self.unit}>"

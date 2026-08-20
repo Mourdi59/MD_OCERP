@@ -24,6 +24,10 @@ Route prefix: /api/v1/site-logistics
     POST   /deliveries/{delivery_id}/approve/ - approve delivery
     POST   /deliveries/{delivery_id}/reject/  - reject delivery
 
+    GET    /bill-coverage/                - the project's bill read as a
+                                            delivery ledger (booked, delivered,
+                                            outstanding per position)
+
     GET    /stats/                         - aggregate delivery stats
 """
 
@@ -40,8 +44,11 @@ from app.dependencies import (
     verify_project_access,
 )
 from app.modules.site_logistics.schemas import (
+    BILL_COVERAGE_LIMIT,
+    BillCoverageResponse,
     DeliveryCreate,
     DeliveryDecisionRequest,
+    DeliveryLineResponse,
     DeliveryResponse,
     DeliveryUpdate,
     GateCreate,
@@ -96,6 +103,20 @@ def _zone_to_response(zone: object) -> LaydownZoneResponse:
     )
 
 
+def _line_to_response(line: object) -> DeliveryLineResponse:
+    return DeliveryLineResponse(
+        id=line.id,  # type: ignore[attr-defined]
+        delivery_id=line.delivery_id,  # type: ignore[attr-defined]
+        boq_position_id=line.boq_position_id,  # type: ignore[attr-defined]
+        position_ordinal=line.position_ordinal,  # type: ignore[attr-defined]
+        description=line.description,  # type: ignore[attr-defined]
+        quantity=str(line.quantity),  # type: ignore[attr-defined]
+        unit=line.unit,  # type: ignore[attr-defined]
+        note=line.note,  # type: ignore[attr-defined]
+        sort_order=line.sort_order,  # type: ignore[attr-defined]
+    )
+
+
 def _delivery_to_response(delivery: object) -> DeliveryResponse:
     return DeliveryResponse(
         id=delivery.id,  # type: ignore[attr-defined]
@@ -112,6 +133,7 @@ def _delivery_to_response(delivery: object) -> DeliveryResponse:
         po_ref=delivery.po_ref,  # type: ignore[attr-defined]
         notes=delivery.notes,  # type: ignore[attr-defined]
         created_by=delivery.created_by,  # type: ignore[attr-defined]
+        lines=[_line_to_response(line) for line in getattr(delivery, "lines", [])],
         metadata=getattr(delivery, "metadata_", {}),
         created_at=delivery.created_at,  # type: ignore[attr-defined]
         updated_at=delivery.updated_at,  # type: ignore[attr-defined]
@@ -461,6 +483,39 @@ async def reject_delivery(
         user_id=user_id,
     )
     return _delivery_to_response(delivery)
+
+
+# ── Bill coverage ──────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/bill-coverage",
+    response_model=BillCoverageResponse,
+    dependencies=[Depends(RequirePermission("site_logistics.read"))],
+    include_in_schema=False,
+)
+@router.get(
+    "/bill-coverage/",
+    response_model=BillCoverageResponse,
+    dependencies=[Depends(RequirePermission("site_logistics.read"))],
+)
+async def bill_coverage(
+    user_id: CurrentUserId,
+    session: SessionDep,
+    project_id: uuid.UUID = Query(...),
+    boq_id: uuid.UUID | None = Query(default=None, description="Narrow to a single bill"),
+    search: str | None = Query(default=None, max_length=120, description="Filter by ordinal or description"),
+    limit: int = Query(default=BILL_COVERAGE_LIMIT, ge=1, le=BILL_COVERAGE_LIMIT),
+    service: SiteLogisticsService = Depends(_get_service),
+) -> BillCoverageResponse:
+    """Read the project's bill with what has been booked and delivered against it.
+
+    Backs both the coverage table on the logistics page and the position picker
+    in the booking dialog, so the picker can show what is still outstanding on a
+    line at the moment somebody books a lorry against it.
+    """
+    await verify_project_access(project_id, user_id, session)
+    return await service.get_bill_coverage(project_id, boq_id=boq_id, search=search, limit=limit)
 
 
 # ── Stats ──────────────────────────────────────────────────────────────────────

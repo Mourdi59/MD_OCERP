@@ -7,9 +7,11 @@ Two layers share the pure helpers in this file:
 * The service (``service.py``) calls the helpers directly to *enforce* the
   rules at write time, raising ``HTTPException(400)`` with a clear message so a
   bad booking is never persisted.
-* Two first-class :class:`ValidationRule` classes wrap the same helpers for the
-  platform validation pipeline / traffic-light dashboard, satisfying the "no
-  module without validation" requirement.
+* Three first-class :class:`ValidationRule` classes wrap the same helpers for
+  the platform validation pipeline / traffic-light dashboard, satisfying the
+  "no module without validation" requirement. The third one reaches across to
+  the estimate: a delivery is booked against bill positions, so a position
+  taking delivery of more than it prices is a finding.
 
 The helpers are deliberately pure (stdlib ``datetime`` only, no ORM, no DB) so
 they are trivially unit-testable and run on every deployment.
@@ -29,6 +31,12 @@ from app.core.validation.engine import (
     ValidationContext,
     ValidationRule,
     rule_registry,
+)
+from app.modules.site_logistics.coverage import (
+    BillLine,
+    DeliveredLine,
+    coverage_by_position,
+    to_decimal,
 )
 
 logger = logging.getLogger(__name__)
@@ -158,6 +166,55 @@ def _gates(context: ValidationContext) -> dict[str, dict[str, Any]]:
     return {}
 
 
+def _bill_positions(context: ValidationContext) -> list[BillLine]:
+    """Read the bill positions out of a validation context, if it carries any."""
+    data = context.data
+    if not isinstance(data, dict):
+        return []
+    rows = data.get("bill_positions", [])
+    if not isinstance(rows, list):
+        return []
+    out: list[BillLine] = []
+    for row in rows:
+        if not isinstance(row, dict) or not row.get("id"):
+            continue
+        out.append(
+            BillLine(
+                position_id=str(row.get("id")),
+                boq_id=str(row.get("boq_id") or ""),
+                ordinal=str(row.get("ordinal") or ""),
+                description=str(row.get("description") or ""),
+                unit=str(row.get("unit") or ""),
+                quantity=to_decimal(row.get("quantity")),
+                unit_rate=to_decimal(row.get("unit_rate")),
+            )
+        )
+    return out
+
+
+def _delivery_lines(context: ValidationContext) -> list[DeliveredLine]:
+    """Flatten every delivery's lines into ``(position, quantity, status)`` facts."""
+    out: list[DeliveredLine] = []
+    for delivery in _deliveries(context):
+        lines = delivery.get("lines") or []
+        if not isinstance(lines, list):
+            continue
+        for line in lines:
+            if not isinstance(line, dict):
+                continue
+            position_id = line.get("boq_position_id")
+            if not position_id:
+                continue
+            out.append(
+                DeliveredLine(
+                    position_id=str(position_id),
+                    quantity=to_decimal(line.get("quantity")),
+                    status=str(delivery.get("status") or ""),
+                )
+            )
+    return out
+
+
 class SiteLogisticsGateHoursRule(ValidationRule):
     """Every delivery must fall inside its gate's operating hours."""
 
@@ -246,8 +303,59 @@ class SiteLogisticsDeliveryOverlapRule(ValidationRule):
         return results
 
 
+class SiteLogisticsOverDeliveryRule(ValidationRule):
+    """No bill position may take delivery of more than the estimate priced."""
+
+    rule_id = "site_logistics.no_over_delivery"
+    name = "Deliveries stay within the bill"
+    standard = "site_logistics"
+    severity = Severity.WARNING
+    category = RuleCategory.COMPLETENESS
+    description = "The quantity delivered against a bill position must not exceed the quantity it prices"
+
+    async def validate(self, context: ValidationContext) -> list[RuleResult]:
+        bill = _bill_positions(context)
+        if not bill:
+            return []
+        coverage = coverage_by_position(bill, _delivery_lines(context))
+        results: list[RuleResult] = []
+        for entry in bill:
+            cov = coverage[str(entry.position_id)]
+            if cov.delivery_line_count == 0:
+                # Nothing booked against this line yet - the rule has nothing
+                # to say, and a row per untouched position would drown the
+                # report in noise.
+                continue
+            ordinal = entry.ordinal or entry.position_id
+            results.append(
+                RuleResult(
+                    rule_id=self.rule_id,
+                    rule_name=self.name,
+                    severity=self.severity,
+                    category=self.category,
+                    passed=not cov.over_delivered,
+                    message=(
+                        "OK"
+                        if not cov.over_delivered
+                        else (
+                            f"{ordinal}: {cov.delivered_quantity} {entry.unit} delivered against "
+                            f"{entry.quantity} {entry.unit} in the bill"
+                        )
+                    ),
+                    element_ref=str(entry.position_id),
+                    suggestion=(
+                        None
+                        if not cov.over_delivered
+                        else "Check the delivery quantities, or raise a variation for the extra quantity"
+                    ),
+                )
+            )
+        return results
+
+
 def register_site_logistics_validation_rules() -> None:
     """Register the site-logistics rules with the platform rule registry."""
     rule_registry.register(SiteLogisticsGateHoursRule(), ["site_logistics"])
     rule_registry.register(SiteLogisticsDeliveryOverlapRule(), ["site_logistics"])
-    logger.debug("site_logistics: registered 2 validation rules")
+    rule_registry.register(SiteLogisticsOverDeliveryRule(), ["site_logistics"])
+    logger.debug("site_logistics: registered 3 validation rules")

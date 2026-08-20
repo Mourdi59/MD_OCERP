@@ -11435,6 +11435,46 @@ async def _seed_module_data(
     except Exception:
         logger.debug("Payment clock module not loaded, skipping demo clocks", exc_info=True)
 
+    # ── Site logistics (gates, laydown zones, bill-linked deliveries) ───
+    # Seeded last among the module blocks because it reads the project's own
+    # bill: every delivery is booked against a real position, which is what
+    # makes the bill-coverage table on the logistics page show anything.
+    # Supplier names come from the template's own tender companies, so no new
+    # firm name enters the product here.
+    try:
+        from app.modules.site_logistics.demo import seed_demo_site_logistics
+
+        delivery_count = await seed_demo_site_logistics(
+            session,
+            project_id=project_id,
+            created_by=owner_str,
+            suppliers=[name for name, _email in _firms_list],
+        )
+        if delivery_count:
+            results["site_logistics_deliveries"] = delivery_count
+    except Exception:
+        logger.debug("Site logistics module not loaded, skipping demo deliveries", exc_info=True)
+
+    # ── Formwork (catalogue + this project's priced assignments) ────────
+    # Nothing seeded the formwork catalogue before, so the system chooser had
+    # no systems in it on any demo project - including the one whose own header
+    # calls formwork "the hero of the BOQ". The block installs the starter
+    # catalogue once (globally, idempotent by name) and gives the project
+    # assignments across several element types, so the comparison the module
+    # exists for has something to compare.
+    try:
+        from app.modules.formwork.demo import seed_demo_formwork
+
+        formwork_count = await seed_demo_formwork(
+            session,
+            project_id=project_id,
+            demo_id=demo_id,
+        )
+        if formwork_count:
+            results["formwork_assignments"] = formwork_count
+    except Exception:
+        logger.debug("Formwork module not loaded, skipping demo assignments", exc_info=True)
+
     # ── Project photos ──────────────────────────────────────────────────
     # Real construction photos are seeded centrally by
     # ``app.modules.documents.photos_seed.seed_photos`` (wired into the demo
