@@ -217,9 +217,15 @@ function readInstallerPlatform(): InstallerPlatform {
  * `.app.tar.gz`: that second file is the updater bundle, not something a
  * person installs, and a substring test would hand it over. Linux has up to
  * three, and one button can only be one of them - `.AppImage` leads because
- * it runs on any distribution where `.deb` is Debian and Ubuntu only, and
- * the `.rpm` is last because its build routinely runs out of job time and is
- * simply absent from a release. Windows has shipped one installer, the NSIS
+ * it runs on any distribution where `.deb` is Debian and Ubuntu only, and the
+ * `.rpm` is last because it reaches the fewest readers, not because it is
+ * unreliable. It used to be both: the rpm build ran out of job time often
+ * enough to be absent from a release, and 15.1.0 spent five hours fifty
+ * minutes producing nothing. Setting the packer's compression to none took
+ * that to nineteen minutes in 15.2.0, so treat an absent `.rpm` as a fault to
+ * look into rather than as the normal case. The fallback below stays either
+ * way: a release genuinely short of a platform should answer with the release
+ * page, not with a broken link. Windows has shipped one installer, the NSIS
  * `.exe`, since 15.2.0.
  */
 const INSTALLER_SUFFIXES: Record<Exclude<InstallerPlatform, null>, string[]> = {
