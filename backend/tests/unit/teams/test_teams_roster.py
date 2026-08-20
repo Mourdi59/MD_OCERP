@@ -127,7 +127,8 @@ async def test_candidates_offer_users_and_contacts_together_and_mark_who_is_alre
     service = RosterService(session)
     await service.add_members(project.id, [RosterMemberCreate(contact_id=contact.id)], actor_id=owner.id)
 
-    candidates = await service.list_candidates(project.id, actor_id=owner.id)
+    candidates, total = await service.list_candidates(project.id, actor_id=owner.id)
+    assert total == len(candidates)
     by_source = {c.source for c in candidates}
     assert by_source == {"user", "contact"}
     contact_row = next(c for c in candidates if c.source == "contact" and c.id == contact.id)
@@ -154,7 +155,7 @@ async def test_the_same_person_is_not_added_twice(session):
     )
 
     assert [line.display_name for line in second] == ["New Person"]
-    roster = await service.list_roster(project.id, actor_id=owner.id)
+    roster, _ = await service.list_roster(project.id, actor_id=owner.id)
     assert sum(1 for line in roster if line.user_id == engineer.id) == 1
 
 
@@ -240,7 +241,7 @@ async def test_deleting_a_team_detaches_its_people_instead_of_deleting_them(sess
 
     await TeamService(session).delete_team(team.id, actor_id=owner.id)
 
-    remaining = await roster.list_roster(project.id, actor_id=owner.id)
+    remaining, _ = await roster.list_roster(project.id, actor_id=owner.id)
     assert [line.display_name for line in remaining] == ["Tomasz W."]
     assert remaining[0].team_id is None
 
@@ -310,7 +311,7 @@ async def test_an_expired_ticket_is_reported_on_the_line_and_in_the_summary(sess
         actor_id=owner.id,
     )
 
-    roster = await service.list_roster(project.id, actor_id=owner.id)
+    roster, _ = await service.list_roster(project.id, actor_id=owner.id)
     line = roster[0]
     assert line.expired_certification_count == 1
     lapsed = next(c for c in line.certifications if c.expired)
@@ -335,7 +336,7 @@ async def test_somebody_whose_last_day_has_passed_is_flagged(session):
         actor_id=owner.id,
     )
 
-    roster = await service.list_roster(project.id, actor_id=owner.id)
+    roster, _ = await service.list_roster(project.id, actor_id=owner.id)
     assert roster[0].off_window is True
     summary = await service.summary(project.id, actor_id=owner.id)
     assert summary.off_window_count == 1
@@ -424,7 +425,10 @@ async def test_the_roster_endpoints_answer_and_gate(session):
 
         listed = await client.get(f"{API_PREFIX}/project/{project.id}/roster")
         assert listed.status_code == 200
-        assert [row["display_name"] for row in listed.json()] == ["Jens Brandt"]
+        page = listed.json()
+        assert [row["display_name"] for row in page["items"]] == ["Jens Brandt"]
+        assert page["total"] == 1
+        assert page["offset"] == 0
 
         patched = await client.patch(
             f"{API_PREFIX}/project/{project.id}/roster/{member_id}",
@@ -445,6 +449,86 @@ async def test_the_roster_endpoints_answer_and_gate(session):
     async with http_client(stranger_app) as client:
         denied = await client.get(f"{API_PREFIX}/project/{project.id}/roster")
         assert denied.status_code == 404
+
+
+async def test_a_short_roster_page_says_how_many_people_it_left_out(session):
+    """What the envelope is for: a page that cannot be mistaken for the roster.
+
+    ``total`` is asserted against the number of people put on the project, not
+    against ``len(items)``. Comparing the page to itself passes just as happily
+    when ``total`` is the page length, which is the defect being guarded here,
+    so a test written that way would prove nothing.
+    """
+    owner = await make_user(session, full_name="Ada Owner")
+    project = await make_project(session, owner.id)
+
+    service = RosterService(session)
+    await service.add_members(
+        project.id,
+        [RosterMemberCreate(display_name=f"Person {index:02d}", site_role="operative") for index in range(7)],
+        actor_id=owner.id,
+    )
+
+    app = build_app(session, caller_id=owner.id)
+    async with http_client(app) as client:
+        first = await client.get(f"{API_PREFIX}/project/{project.id}/roster", params={"limit": 3})
+        assert first.status_code == 200, first.text
+        page = first.json()
+        assert len(page["items"]) == 3
+        assert page["total"] == 7
+        assert page["offset"] == 0
+        assert page["limit"] == 3
+
+        second = await client.get(
+            f"{API_PREFIX}/project/{project.id}/roster",
+            params={"limit": 3, "offset": 3},
+        )
+        assert second.status_code == 200, second.text
+        rest = second.json()
+        assert rest["total"] == 7
+        assert rest["offset"] == 3
+
+    # Page two continues page one instead of repeating it, which is what the
+    # slice being taken after the reading-order sort buys. Sliced in SQL, both
+    # pages would be ordered by the database and sorted only within themselves.
+    assert [row["display_name"] for row in page["items"]] == ["Person 00", "Person 01", "Person 02"]
+    assert [row["display_name"] for row in rest["items"]] == ["Person 03", "Person 04", "Person 05"]
+
+
+async def test_the_candidate_picker_states_how_many_people_it_did_not_show(session):
+    """The defect this route shipped with: fifty names and silence about the rest.
+
+    Somebody whose colleague sorted fifty-first read that silence as "the
+    platform does not know them" and typed a duplicate contact. The total has
+    to come from a count, because both searches apply the limit in the database
+    and the rows in hand are already cut short - so this asserts it against the
+    number of people created rather than against what came back.
+    """
+    owner = await make_user(session, full_name="Ada Owner")
+    project = await make_project(session, owner.id)
+    for index in range(6):
+        await _make_contact(session, first="Zwiebel", last=f"Kandidat{index}", company="Zwiebel Bau GmbH")
+
+    service = RosterService(session)
+    shown, total = await service.list_candidates(project.id, actor_id=owner.id, query="Zwiebel", limit=2)
+    assert len(shown) == 2
+    assert total == 6
+
+    app = build_app(session, caller_id=owner.id)
+    async with http_client(app) as client:
+        response = await client.get(
+            f"{API_PREFIX}/project/{project.id}/roster/candidates",
+            params={"q": "Zwiebel", "limit": 2},
+        )
+    assert response.status_code == 200, response.text
+    page = response.json()
+    assert len(page["items"]) == 2
+    assert page["total"] == 6
+    assert page["limit"] == 2
+    # No offset is offered, so the body states the one it served. See
+    # RosterService.list_candidates for why a second page over two
+    # independently ordered sources cannot be served honestly.
+    assert page["offset"] == 0
 
 
 async def test_an_unknown_trade_is_refused(session):

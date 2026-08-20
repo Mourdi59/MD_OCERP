@@ -25,7 +25,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.dependencies import CurrentUserId, SessionDep
 from app.modules.teams.roster_schemas import (
     RosterBulkCreate,
-    RosterCandidate,
+    RosterCandidateListResponse,
+    RosterMemberListResponse,
     RosterMemberResponse,
     RosterMemberUpdate,
     RosterSummary,
@@ -66,18 +67,20 @@ async def get_roster_vocabulary(user_id: CurrentUserId) -> RosterVocabularyRespo
 # ── Roster ───────────────────────────────────────────────────────────────
 
 
-@roster_router.get("/project/{project_id}/roster", response_model=list[RosterMemberResponse])
+@roster_router.get("/project/{project_id}/roster", response_model=RosterMemberListResponse)
 @roster_router.get(
     "/project/{project_id}/roster/",
-    response_model=list[RosterMemberResponse],
+    response_model=RosterMemberListResponse,
     include_in_schema=False,
 )
 async def list_roster(
     project_id: uuid.UUID,
     user_id: CurrentUserId,
     include_inactive: bool = Query(default=True),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=500),
     service: RosterService = Depends(_get_service),
-) -> list[RosterMemberResponse]:
+) -> RosterMemberListResponse:
     """Who is on this project: name, firm, trade, role, dates, tickets.
 
     This is the read other modules consume when they need to offer "the people
@@ -85,9 +88,21 @@ async def list_roster(
     access inside the service; a caller who cannot see the project gets 404.
 
     ``include_inactive`` defaults to true because somebody who has left is
-    still part of the record of who was here.
+    still part of the record of who was here. ``total`` counts the lines that
+    filter matched, so a caller can tell a page from the whole roster.
+
+    ``limit`` reaches 500 rather than the 100 the register routes stop at: a
+    caller wanting the roster in one read is the normal case here, not paging
+    through it, and a large site can put several hundred people on a job.
     """
-    return await service.list_roster(project_id, actor_id=user_id, include_inactive=include_inactive)
+    items, total = await service.list_roster(
+        project_id,
+        actor_id=user_id,
+        include_inactive=include_inactive,
+        offset=offset,
+        limit=limit,
+    )
+    return RosterMemberListResponse(items=items, total=total, offset=offset, limit=limit)
 
 
 @roster_router.get("/project/{project_id}/roster/summary", response_model=RosterSummary)
@@ -105,10 +120,10 @@ async def get_roster_summary(
     return await service.summary(project_id, actor_id=user_id)
 
 
-@roster_router.get("/project/{project_id}/roster/candidates", response_model=list[RosterCandidate])
+@roster_router.get("/project/{project_id}/roster/candidates", response_model=RosterCandidateListResponse)
 @roster_router.get(
     "/project/{project_id}/roster/candidates/",
-    response_model=list[RosterCandidate],
+    response_model=RosterCandidateListResponse,
     include_in_schema=False,
 )
 async def list_roster_candidates(
@@ -117,14 +132,26 @@ async def list_roster_candidates(
     q: str = Query(default="", max_length=120),
     limit: int = Query(default=50, ge=1, le=200),
     service: RosterService = Depends(_get_service),
-) -> list[RosterCandidate]:
+) -> RosterCandidateListResponse:
     """People the platform already knows, for the "add people" picker.
 
     Platform users and address-book contacts in one list, each flagged with
     whether they are already on the roster. This is what makes assembling a
     team a matter of ticking names rather than retyping them.
+
+    ``total`` is what this route exists to report. The picker used to answer
+    with fifty names and no way to say there were more, so somebody whose
+    colleague sorted fifty-first read the silence as "the platform does not
+    know them" and typed a duplicate contact. The count is real, taken over
+    the same filters as the page.
+
+    There is no ``offset`` parameter, and ``offset`` in the body is always 0.
+    :meth:`RosterService.list_candidates` explains why a second page over two
+    independently ordered sources cannot be served honestly; narrowing ``q`` is
+    how a caller reaches the names beyond the first page.
     """
-    return await service.list_candidates(project_id, actor_id=user_id, query=q, limit=limit)
+    items, total = await service.list_candidates(project_id, actor_id=user_id, query=q, limit=limit)
+    return RosterCandidateListResponse(items=items, total=total, offset=0, limit=limit)
 
 
 @roster_router.post(

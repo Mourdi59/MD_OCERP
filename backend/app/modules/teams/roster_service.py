@@ -34,7 +34,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlalchemy import or_, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit_log import log_activity
@@ -121,8 +121,27 @@ class RosterService:
         *,
         actor_id: str | uuid.UUID | None = None,
         include_inactive: bool = True,
-    ) -> list[RosterMemberResponse]:
-        """The project roster, resolved for display and ordered for reading."""
+        offset: int = 0,
+        limit: int | None = None,
+    ) -> tuple[list[RosterMemberResponse], int]:
+        """One page of the project roster, resolved for display and ordered for reading.
+
+        Returns the page and the number of lines matching ``include_inactive``,
+        which is the only filter this read has. ``limit=None`` means the whole
+        matched set, which is what an in-process caller wanting the roster
+        rather than a page asks for; the route always passes a number.
+
+        The page is cut in Python rather than in SQL, and that is not laziness.
+        Reading order is :meth:`_reading_order` - supervisory roles first, then
+        trade, then name - and it is computed from resolved rows, not from
+        columns: the team name and the contact name are fetched separately and
+        the role rank is a Python dict. Pushing OFFSET/LIMIT into the query
+        would page in the database's order and then sort only within the page,
+        so page two would hold names that belong on page one.
+
+        Slicing after the sort means every matched row is already in hand, so
+        ``total`` is ``len()`` of them and costs no COUNT query.
+        """
         await self._assert_project_access(project_id, actor_id)
         rows = await self.repo.list_for_project(project_id, include_inactive=include_inactive)
         access_user_ids = await self._project_access_user_ids(project_id)
@@ -132,7 +151,10 @@ class RosterService:
             self._to_response(member, team, user, access_user_ids, contact_names, today) for member, team, user in rows
         ]
         responses.sort(key=self._reading_order)
-        return responses
+        total = len(responses)
+        if limit is None:
+            return responses[offset:], total
+        return responses[offset : offset + limit], total
 
     async def summary(
         self,
@@ -205,12 +227,30 @@ class RosterService:
         actor_id: str | uuid.UUID | None = None,
         query: str = "",
         limit: int = 50,
-    ) -> list[RosterCandidate]:
+    ) -> tuple[list[RosterCandidate], int]:
         """People the platform already knows, offered for this project's roster.
 
         Users and contacts in one list, each marked with whether they are
         already on the roster, so the drawer that assembles a team never asks
         anybody to retype a name the database is holding.
+
+        Returns the page and how many people matched ``query``. The total is
+        counted, not measured: both searches apply ``limit`` in the database,
+        so the rows in hand are already cut short and reporting their length
+        would state a wrong number confidently. Somebody who is both a user and
+        a contact counts twice, because they appear in ``items`` twice too -
+        deduplicating one side alone would make the total disagree with what
+        the caller can see.
+
+        There is no offset, and the envelope's ``offset`` is always 0. Serving
+        a second page would mean re-sorting the union of two sources that are
+        ordered independently in SQL - users by name and email, contacts by
+        company and surname - by a key neither of them carries
+        (``on_roster``, then the display name). The true page two of that union
+        is not contained in the two per-source windows, so it would drop names
+        and repeat others. A picker that shows the first page and states the
+        real size is honest; one that pages wrongly is not. Narrowing ``query``
+        is how a caller reaches the rest today.
         """
         await self._assert_project_access(project_id, actor_id)
         rostered_users, rostered_contacts = await self.repo.linked_ids(project_id)
@@ -229,11 +269,12 @@ class RosterService:
             for user in await self._search_users(needle, limit)
         ]
         candidates.extend(await self._search_contacts(needle, limit, rostered_contacts))
+        total = await self._count_users(needle) + await self._count_contacts(needle)
         # Somebody already on the roster stays in the list, ticked, rather than
         # disappearing: a name that is absent from a search reads as "we do not
         # have them" and sends the user off to create a duplicate.
         candidates.sort(key=lambda c: (c.on_roster, c.name.casefold()))
-        return candidates[:limit]
+        return candidates[:limit], total
 
     # ── Writes ───────────────────────────────────────────────────────────
 
@@ -501,14 +542,66 @@ class RosterService:
             for contact_id, row in rows.items()
         }
 
-    async def _search_users(self, needle: str, limit: int) -> list[User]:
-        """Active users matching ``needle`` in their name or email."""
+    # The two candidate searches are each written as a filter builder plus the
+    # two things done to it, a page read and a count. Splitting them that way
+    # is what makes the total trustworthy: one WHERE clause serves both, so a
+    # filter added later cannot land on the page query alone and leave the
+    # total describing a wider set than the rows it is attached to.
+
+    def _users_stmt(self, needle: str) -> Select[Any]:
+        """Active users matching ``needle`` in their name or email, unpaged."""
         stmt = select(User).where(User.is_active.is_(True))
         if needle:
             pattern = f"%{needle}%"
             stmt = stmt.where(or_(User.full_name.ilike(pattern), User.email.ilike(pattern)))
-        stmt = stmt.order_by(User.full_name, User.email).limit(limit)
+        return stmt
+
+    async def _search_users(self, needle: str, limit: int) -> list[User]:
+        """One page of the active users matching ``needle``."""
+        stmt = self._users_stmt(needle).order_by(User.full_name, User.email).limit(limit)
         return list((await self.session.execute(stmt)).scalars().all())
+
+    async def _count_users(self, needle: str) -> int:
+        """How many users match ``needle``, whatever the page size."""
+        stmt = select(func.count()).select_from(self._users_stmt(needle).subquery())
+        return int((await self.session.execute(stmt)).scalar_one())
+
+    @staticmethod
+    def _contact_model() -> Any | None:
+        """The Contact model, or None where the contacts module is not installed.
+
+        The candidate list then offers platform users only, which is still a
+        working screen, and the total counts users only for the same reason -
+        so it keeps describing exactly the set ``items`` was drawn from.
+        """
+        try:
+            from app.modules.contacts.models import Contact
+        except ImportError:  # pragma: no cover - deployment without the contacts module
+            return None
+        return Contact
+
+    def _contacts_stmt(self, needle: str, contact_model: Any) -> Select[Any]:
+        """Active address-book contacts matching ``needle``, unpaged."""
+        stmt = select(contact_model).where(contact_model.is_active.is_(True))
+        if needle:
+            pattern = f"%{needle}%"
+            stmt = stmt.where(
+                or_(
+                    contact_model.first_name.ilike(pattern),
+                    contact_model.last_name.ilike(pattern),
+                    contact_model.company_name.ilike(pattern),
+                    contact_model.primary_email.ilike(pattern),
+                )
+            )
+        return stmt
+
+    async def _count_contacts(self, needle: str) -> int:
+        """How many contacts match ``needle``; zero without the contacts module."""
+        contact_model = self._contact_model()
+        if contact_model is None:
+            return 0
+        stmt = select(func.count()).select_from(self._contacts_stmt(needle, contact_model).subquery())
+        return int((await self.session.execute(stmt)).scalar_one())
 
     async def _search_contacts(
         self,
@@ -516,27 +609,19 @@ class RosterService:
         limit: int,
         rostered_contacts: set[uuid.UUID],
     ) -> list[RosterCandidate]:
-        """Address-book contacts matching ``needle``.
+        """One page of the address-book contacts matching ``needle``.
 
         Silent when the contacts module is not installed - the candidate list
         then offers platform users only, which is still a working screen.
         """
-        try:
-            from app.modules.contacts.models import Contact
-        except ImportError:  # pragma: no cover - deployment without the contacts module
+        contact_model = self._contact_model()
+        if contact_model is None:
             return []
-        stmt = select(Contact).where(Contact.is_active.is_(True))
-        if needle:
-            pattern = f"%{needle}%"
-            stmt = stmt.where(
-                or_(
-                    Contact.first_name.ilike(pattern),
-                    Contact.last_name.ilike(pattern),
-                    Contact.company_name.ilike(pattern),
-                    Contact.primary_email.ilike(pattern),
-                )
-            )
-        stmt = stmt.order_by(Contact.company_name, Contact.last_name).limit(limit)
+        stmt = (
+            self._contacts_stmt(needle, contact_model)
+            .order_by(contact_model.company_name, contact_model.last_name)
+            .limit(limit)
+        )
         return [
             RosterCandidate(
                 id=contact.id,

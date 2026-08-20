@@ -276,6 +276,26 @@ class RosterMemberResponse(BaseModel):
     expired_certification_count: int = 0
 
 
+class RosterMemberListResponse(BaseModel):
+    """One page of the roster plus the size of the whole set.
+
+    ``total`` is the number of roster lines matching the filters, not the
+    length of ``items``. A caller holding fewer rows than ``total`` is holding
+    a page and can ask for the rest; a caller deciding whether a project has
+    anybody on it has to test ``total == 0`` with no filters applied, because
+    a filtered zero means "nobody matched", not "nobody is here".
+
+    The total costs no query. The service resolves and sorts every matched row
+    in Python before it slices, so it is holding the whole filtered set and
+    ``len()`` of it is exact - there is nothing here for a COUNT to add.
+    """
+
+    items: list[RosterMemberResponse] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50
+
+
 class RosterTradeCount(BaseModel):
     """Headcount for one trade or one role, for the roster summary."""
 
@@ -316,6 +336,27 @@ class RosterCandidate(BaseModel):
     on_roster: bool = False
     #: Already holds project access (users only).
     has_project_access: bool = False
+
+
+class RosterCandidateListResponse(BaseModel):
+    """One page of candidates plus how many people actually matched.
+
+    ``total`` is a real count: two COUNT queries over the same filters the page
+    query uses, summed. It is deliberately not ``len(items)``, because the two
+    searches behind this list apply their limit in the database, so the rows
+    held here are already cut short and their length would state a wrong number
+    with confidence - worse than the bare array this replaced, which at least
+    said nothing.
+
+    ``offset`` is always 0 and no offset can be requested. See
+    :meth:`RosterService.list_candidates` for why a merged list of two
+    independently ordered sources cannot serve a second page honestly.
+    """
+
+    items: list[RosterCandidate] = Field(default_factory=list)
+    total: int = 0
+    offset: int = 0
+    limit: int = 50
 
 
 class RosterVocabularyEntry(BaseModel):
