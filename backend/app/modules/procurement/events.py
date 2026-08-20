@@ -47,6 +47,7 @@ import logging
 import uuid
 from decimal import Decimal, InvalidOperation
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -58,6 +59,7 @@ from app.modules.bid_management.models import (
     BidSubmission,
     BidSubmissionLine,
 )
+from app.modules.procurement.cost_spine import resolve_cost_line_ids
 from app.modules.procurement.models import PurchaseOrder, PurchaseOrderItem
 from app.modules.procurement.repository import (
     POItemRepository,
@@ -202,6 +204,7 @@ async def _create_po_from_award(event: Event) -> None:
             # with description / unit / quantity / unit_rate / position_id.
             line_items_raw = bid.line_items if isinstance(bid.line_items, list) else []
             po_items: list[PurchaseOrderItem] = []
+            position_refs: list[tuple[str | None, str | None]] = []
             running_subtotal = Decimal("0")
             for idx, line in enumerate(line_items_raw):
                 if not isinstance(line, dict):
@@ -214,6 +217,7 @@ async def _create_po_from_award(event: Event) -> None:
                 unit = str(line.get("unit") or "")[:20] or None
                 pos_id = line.get("position_id")
                 wbs_id = str(pos_id)[:36] if pos_id else None
+                position_refs.append((None, str(pos_id) if pos_id else None))
                 po_items.append(
                     PurchaseOrderItem(
                         description=desc,
@@ -226,6 +230,30 @@ async def _create_po_from_award(event: Event) -> None:
                         sort_order=idx,
                     )
                 )
+
+            # An award is the largest single commitment the system makes, and
+            # the bid line already names the position it was priced against, so
+            # the money link is derivable here exactly as it is for an order a
+            # buyer types. Without this the whole package lands on the project
+            # total and nowhere in the breakdown.
+            #
+            # Best effort on purpose. Resolution raises when a position has
+            # moved out of the project, and failing to record an award because
+            # one line points at stale scope would lose the commitment itself,
+            # which is far worse than losing its attribution.
+            if any(ref[1] for ref in position_refs):
+                try:
+                    resolved = await resolve_cost_line_ids(session, package.project_id, position_refs)
+                except HTTPException as exc:
+                    logger.warning(
+                        "tender.awarded: cost spine resolution failed for package %s (%s); "
+                        "the order is recorded without its money link",
+                        package_id,
+                        exc.detail,
+                    )
+                else:
+                    for item, cost_line_id in zip(po_items, resolved, strict=False):
+                        item.cost_line_id = cost_line_id
 
             # Fall back to bid.total_amount if line items don't sum to it
             # (suppliers occasionally include lump sums above the lines).
