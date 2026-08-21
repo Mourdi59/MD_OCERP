@@ -1575,11 +1575,24 @@ happening, send the log file to info@datadrivenconstruction.io.",
             tauri::async_runtime::spawn(async move {
                 // A first run that has to recover a large local database (WAL
                 // replay + fsync) can take several minutes, so allow a generous
-                // window. The backend retries embedded-PG bring-up internally
-                // for up to ~10 minutes; keep the health wait comfortably above
-                // its own previous 240s so we never abandon a backend that is
-                // still legitimately recovering.
-                match wait_for_backend(&handle_clone, port, 600).await {
+                // window. This number has one hard requirement: it must exceed
+                // the backend's own budget for bringing embedded PostgreSQL up,
+                // which is OE_PG_BOOT_TIMEOUT and defaults to 600s. It used to
+                // be 600 as well, so the two were equal and a database that
+                // spent its whole budget recovering left nothing at all for the
+                // work that follows it: migrations, the module load, table
+                // creation and first-run seeding. That is not a hypothetical
+                // ordering. The installer stops a running instance by killing
+                // the process tree, which crash-stops the embedded database, so
+                // the next start after every upgrade is exactly the WAL replay
+                // the 600s budget exists for. The user then saw a healthy,
+                // still-working backend reported as one that had not started,
+                // and retrying reproduced it because nothing had gone wrong to
+                // clear. Doubling it keeps a comfortable margin above the inner
+                // budget and costs nothing when a backend has genuinely failed,
+                // because that path reports itself the moment the sidecar dies
+                // rather than waiting for this window to close.
+                match wait_for_backend(&handle_clone, port, 1200).await {
                     StartupOutcome::Ready => {
                         ready_flag.store(true, Ordering::SeqCst);
                         log_line("backend healthy; navigating to app");
