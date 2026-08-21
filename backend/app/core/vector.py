@@ -137,6 +137,19 @@ def _candidate_sources(name: str) -> list[str]:
     The bare hub id stays as the second candidate so an installation that
     never ran the installer behaves exactly as it did before - the loader
     resolves it through its own cache, and downloads it if it must.
+
+    That last clause is exactly what an operator switches off with a falsy
+    ``OE_DOWNLOAD_EMBEDDING_MODEL``, so the hub id is dropped when the lock is
+    set. Without this the lock governed only the explicit installer while this
+    loader still reached the network on first embed: measured on a first run
+    with the lock set, the log carried thirty-four requests to the model hub.
+    They were fast only because a cache happened to be warm, and on the
+    air-gapped unit the lock exists for they are a stall, not a fetch.
+
+    With the lock set and no local copy there is nothing left to try, and
+    returning nothing is the honest answer: the caller logs that no model could
+    be loaded and semantic search stays off, which beats a slow failure that
+    looks like a hang.
     """
     try:
         from app.core.embedding_installer import find_installed_model
@@ -144,7 +157,17 @@ def _candidate_sources(name: str) -> list[str]:
         local = find_installed_model(name)
     except Exception:  # noqa: BLE001 - a missing installer is not a reason to stop loading
         local = None
-    return [str(local), name] if local is not None else [name]
+
+    try:
+        from app.core.embedding_installer import download_locked_off
+
+        locked = download_locked_off()
+    except Exception:  # noqa: BLE001 - same reasoning as above
+        locked = False
+
+    if local is not None:
+        return [str(local)] if locked else [str(local), name]
+    return [] if locked else [name]
 
 
 def get_embedder():

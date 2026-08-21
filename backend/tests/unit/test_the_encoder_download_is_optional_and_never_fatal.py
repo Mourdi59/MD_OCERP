@@ -671,3 +671,43 @@ def _await_state(state: str, timeout_s: float = 30.0) -> None:
             return
         time.sleep(0.02)
     raise AssertionError(f"installer never reached {state!r}; last state was {last!r}")
+
+
+def test_the_lock_keeps_the_loader_off_the_hub_as_well(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """The download lock has to reach the loader, not only the installer.
+
+    ``download_locked_off`` tells an operator that a production unit will not
+    fetch the model. The installer honoured that and ``_candidate_sources`` did
+    not: it kept the bare hub id as a candidate, so ``SentenceTransformer``
+    resolved it over the network on the first embed anyway. Measured on a first
+    run of a shipped build with the lock set, the log carried thirty-four
+    requests to the model hub. They returned quickly only because a cache was
+    warm; on the air-gapped unit the lock exists for, they are a stall.
+
+    Both polarities are asserted on purpose. A test that only checked the
+    locked case would also pass on a function that never offers the hub id at
+    all, and that would quietly take semantic search away from every ordinary
+    deployment, which is the larger of the two mistakes.
+    """
+    monkeypatch.setattr(installer, "find_installed_model", lambda name: None)
+
+    # Unlocked and nothing installed: the hub id is the one candidate, exactly
+    # as before this behaviour existed.
+    monkeypatch.delenv(installer.ENV_DOWNLOAD, raising=False)
+    assert vector._candidate_sources(REPO) == [REPO]
+
+    # Locked and nothing installed: nothing is left to try, and saying so beats
+    # a slow network failure that reads as a hang.
+    monkeypatch.setenv(installer.ENV_DOWNLOAD, "0")
+    assert vector._candidate_sources(REPO) == []
+
+    local = tmp_path / "weights"
+    local.mkdir()
+    monkeypatch.setattr(installer, "find_installed_model", lambda name: local)
+
+    # Locked with a local copy: the copy is used and the hub is not consulted.
+    assert vector._candidate_sources(REPO) == [str(local)]
+
+    # Unlocked with a local copy: the copy first, the hub still available.
+    monkeypatch.delenv(installer.ENV_DOWNLOAD, raising=False)
+    assert vector._candidate_sources(REPO) == [str(local), REPO]
