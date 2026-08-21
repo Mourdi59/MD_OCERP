@@ -72,6 +72,17 @@ MISTRAL_MODEL = "mistral-large-latest"
 GROQ_MODEL = "llama-3.3-70b-versatile"
 DEEPSEEK_MODEL = "deepseek-chat"
 
+#: The runtimes a user hosts themselves rather than calling over the internet.
+#: Naming the pair once is not tidiness: three separate decisions read it, and
+#: while it was written out as a literal at four call sites nothing tied them
+#: together. These are the only providers that accept a base URL supplied by
+#: the user, the only ones allowed to run with no stored key, and the ones that
+#: have to be matched before the generic "llama" keyword, since "ollama"
+#: contains it. A fifth runtime added to three of the four would have looked
+#: like it worked.
+SELF_HOSTED_PROVIDERS: tuple[str, ...] = ("ollama", "vllm")
+
+
 # Per-provider default model id. This is the single source of truth for the
 # model name sent to each provider's API. Users can override any of these via
 # Settings > AI (stored in AISettings.metadata_["model_overrides"][provider])
@@ -552,7 +563,7 @@ def self_hosted_endpoints(saved_meta: dict | None) -> dict[str, str]:
     """
     meta = saved_meta if isinstance(saved_meta, dict) else {}
     found: dict[str, str] = {}
-    for provider in ("ollama", "vllm"):
+    for provider in SELF_HOSTED_PROVIDERS:
         candidate = meta.get(f"{provider}_base_url")
         if isinstance(candidate, str) and candidate.strip():
             found[provider] = _normalise_self_hosted_url(candidate)
@@ -648,7 +659,7 @@ async def _post_openai_compat(
     # re-resolve and re-check it at this single dispatch choke point (every
     # Ollama / vLLM call funnels through here). Loopback / private stay allowed;
     # link-local and cloud-metadata are blocked, plus any configured allowlist.
-    if provider in ("ollama", "vllm"):
+    if provider in SELF_HOSTED_PROVIDERS:
         from app.config import get_settings
         from app.core.url_safety import resolve_and_validate_ai_provider_url
 
@@ -1288,8 +1299,7 @@ def resolve_provider_and_key(
         # Self-hosted keyless runtimes must be matched BEFORE the generic
         # "llama" keyword below: "ollama" contains "llama", so a user picking
         # preferred_model=ollama would otherwise be routed to Groq.
-        (["ollama"], "ollama", None),  # self-hosted: no stored key
-        (["vllm"], "vllm", None),  # self-hosted: no stored key
+        *[([name], name, None) for name in SELF_HOSTED_PROVIDERS],
         (["groq", "llama"], "groq", "groq_api_key"),
         (["deepseek"], "deepseek", "deepseek_api_key"),
         (["together"], "together", "together_api_key"),
@@ -1342,8 +1352,7 @@ def resolve_provider_and_key(
         ("baidu", "baidu_api_key"),
         ("yandex", "yandex_api_key"),
         ("gigachat", "gigachat_api_key"),
-        ("ollama", None),  # keyless, skipped below
-        ("vllm", None),  # keyless, skipped below
+        *[(name, None) for name in SELF_HOSTED_PROVIDERS],  # keyless, skipped below
         ("kimi", "kimi_api_key"),  # Moonshot AI
     ]
 
@@ -1366,12 +1375,14 @@ def resolve_provider_and_key(
     # local-only setup is genuinely usable rather than collapsing into the
     # "No AI API key configured" error. An explicit cloud key still wins (above).
     if settings:
-        meta = getattr(settings, "metadata_", None)
-        if isinstance(meta, dict):
-            for local_provider in ("ollama", "vllm"):
-                candidate = meta.get(f"{local_provider}_base_url")
-                if isinstance(candidate, str) and candidate.strip():
-                    return local_provider, ""  # keyless local runtime
+        # Read through the same helper the dispatch uses rather than walking
+        # the metadata a second time here. The two copies could disagree about
+        # what counts as a configured endpoint, and the one that decides
+        # whether a local-only setup works at all is this one.
+        configured = self_hosted_endpoints(getattr(settings, "metadata_", None))
+        for local_provider in SELF_HOSTED_PROVIDERS:
+            if local_provider in configured:
+                return local_provider, ""  # keyless local runtime
 
     # Fallback to environment variables / ~/.openestimate/config.json. Tried
     # AFTER the DB (an explicitly-saved key wins) but BEFORE raising - a working
