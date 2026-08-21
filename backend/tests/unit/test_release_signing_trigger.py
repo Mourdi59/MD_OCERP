@@ -37,9 +37,14 @@ WORKFLOW = Path(__file__).resolve().parents[3] / ".github" / "workflows" / "rele
 #: desktop-release.yml builds it in a job of its own because it can run for
 #: hours where the .deb takes seconds, and that job states its own absence is
 #: survivable ("Fedora and openSUSE users have no package for this version").
-#: Requiring it here would withhold the signature from five installers over a
-#: sixth that is documented as optional, which is the trade v15.0.0 lost.
-REQUIRED_FORMATS = frozenset({"exe", "msi", "dmg", "deb", "AppImage"})
+#: Requiring it here would withhold the signature from four installers over a
+#: fifth that is documented as optional, which is the trade v15.0.0 lost.
+#:
+#: The .msi left this set in 15.2.0, when Windows stopped shipping a second
+#: installer for the same platform. It has to leave here in the same change: the
+#: assertion below is an equality against what the workflow requires, so a
+#: format listed here that nobody builds would fail every release.
+REQUIRED_FORMATS = frozenset({"exe", "dmg", "deb", "AppImage"})
 OPTIONAL_FORMATS = frozenset({"rpm"})
 
 

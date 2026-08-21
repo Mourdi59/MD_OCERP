@@ -177,8 +177,22 @@ def test_a_scan_that_reads_too_little_refuses_to_report_success(script, monkeypa
 
 
 def test_the_live_tree_has_no_unallowed_bare_list_route(script):
-    """Asserted here, not only in CI, so a red gate is visible from the test suite."""
+    """Asserted here, not only in CI, so a red gate is visible from the test suite.
+
+    Through ``classify``, the function ``main`` calls, rather than by subtracting
+    the lists a second time here. The hand-written version knew only about
+    ``ALLOWED``; the day the first ``CANNOT_TRUNCATE`` entry landed it reported a
+    route the gate itself was happy with, and the finding was about this test
+    rather than about the tree. Two copies of the same arithmetic are two things
+    to keep in step, and this copy had already drifted.
+
+    ``classify`` also answers a third question the hand-written pair never asked:
+    an exempt entry that no longer names a bare-list route. ``--dump`` does not
+    print that list and so cannot prune it, which leaves nothing else to say so.
+    """
     found, files = script.scan()
     assert files >= script.MIN_FILES_SCANNED, f"only {files} files read, the scan is broken rather than the tree clean"
-    assert not (found - script.ALLOWED), "a new bare-list GET route landed without an envelope"
-    assert not (script.ALLOWED - found), "ALLOWED names routes that no longer exist, prune it with --dump"
+    added, departed, stale_exempt = script.classify(found, script.ALLOWED, script.CANNOT_TRUNCATE)
+    assert added == [], "a new bare-list GET route landed without an envelope"
+    assert departed == [], "ALLOWED names routes that no longer exist, prune it with --dump"
+    assert stale_exempt == [], "CANNOT_TRUNCATE names a route that is no longer bare, edit it by hand"

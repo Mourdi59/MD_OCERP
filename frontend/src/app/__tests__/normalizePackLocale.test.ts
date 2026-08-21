@@ -9,12 +9,22 @@ import { describe, expect, it } from 'vitest';
 import { normalizePackLocale } from '../i18n';
 
 describe('normalizePackLocale', () => {
-  it('strips the region subtag to a supported base language', () => {
+  it('strips the region subtag when the UI does not ship that region', () => {
     expect(normalizePackLocale('fr-CA')).toBe('fr'); // batimatech-ca
     expect(normalizePackLocale('en-GB')).toBe('en'); // uk-jct
-    expect(normalizePackLocale('en-US')).toBe('en'); // us-costdata
     expect(normalizePackLocale('en-AU')).toBe('en'); // aus
     expect(normalizePackLocale('en-NZ')).toBe('en'); // nzs
+  });
+
+  it('keeps the region when the UI ships it, because the pack asked for it', () => {
+    // A pack that names a region has named it deliberately. Stripping en-US left
+    // commercial-denver asking for American English and being handed the British
+    // strings, which is the one thing the locale exists to prevent.
+    expect(normalizePackLocale('en-US')).toBe('en-US'); // commercial-denver, us-costdata
+    expect(normalizePackLocale('es-MX')).toBe('es-MX');
+    expect(normalizePackLocale('pt-BR')).toBe('pt-BR');
+    expect(normalizePackLocale('es-CL')).toBe('es-CL');
+    expect(normalizePackLocale('es-CO')).toBe('es-CO');
   });
 
   it('passes through base codes the UI ships', () => {
@@ -27,6 +37,11 @@ describe('normalizePackLocale', () => {
   it('is case-insensitive and trims', () => {
     expect(normalizePackLocale('FR-ca')).toBe('fr');
     expect(normalizePackLocale(' de ')).toBe('de');
+    // A manifest is free to write the region in any case; i18next writes it in
+    // one, and that is the one the resource bundle is registered under.
+    expect(normalizePackLocale('en-us')).toBe('en-US');
+    expect(normalizePackLocale('EN-US')).toBe('en-US');
+    expect(normalizePackLocale(' en-Us ')).toBe('en-US');
   });
 
   it('falls back to English for unsupported or empty locales', () => {

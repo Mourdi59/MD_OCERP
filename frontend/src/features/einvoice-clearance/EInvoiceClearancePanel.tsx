@@ -73,6 +73,17 @@ import {
   statusVariant,
 } from './documentStatus';
 
+// English fallbacks for the computed `einvoice_clearance.event.*` keys. The default used to be
+// the raw value, so until the key lands in a locale the screen shows the bare
+// enum token to every reader, English included. Unknown values still fall
+// through to the previous default.
+const CLEARANCE_EVENT_LABELS: Record<string, string> = {
+  created: 'Created', updated: 'Updated', validated: 'Validated', queued: 'Queued', submitted: 'Submitted',
+  cleared: 'Cleared', reported: 'Reported', delivered: 'Delivered', rejected: 'Rejected',
+  cancelled: 'Cancelled', note: 'Note'
+};
+
+
 export function EInvoiceClearancePanel() {
   const { t } = useTranslation();
   const activeProjectId = useProjectContextStore((s) => s.activeProjectId);
@@ -174,7 +185,7 @@ export function EInvoiceClearancePanel() {
           a country can be withdrawn from at all, so without it the screen
           quietly offers no withdrawal anywhere. Say so rather than look empty. */}
       {metaQuery.isError && (
-        <p className="rounded border border-semantic-warning bg-semantic-warning-subtle p-2 text-xs">
+        <p className="rounded border border-semantic-warning bg-semantic-warning-bg p-2 text-xs">
           {t('einvoice_clearance.meta_unavailable', {
             defaultValue:
               'The country registry could not be read, so this screen cannot say which platform a document belongs to or whether that country accepts a withdrawal. Statuses and documents below are still the real ones.',
@@ -465,7 +476,7 @@ function DocumentDetail({
       <AuthorityAnswer doc={doc} regime={regime} />
 
       {isInDoubt(doc.status) && (
-        <p className="rounded border border-semantic-warning bg-semantic-warning-subtle p-2 text-xs">
+        <p className="rounded border border-semantic-warning bg-semantic-warning-bg p-2 text-xs">
           {t('einvoice_clearance.in_doubt_body', {
             defaultValue:
               'This document was sent and no answer was recorded against it, so nobody here knows whether it arrived. Sending it again risks a second cleared invoice for one sale. Read the outcome off the platform and record it below.',
@@ -651,7 +662,7 @@ function AuthorityAnswer({
   return (
     <div className="space-y-2">
       {doc.authority_identifier && (
-        <div className="rounded border border-semantic-success bg-semantic-success-subtle p-3">
+        <div className="rounded border border-semantic-success bg-semantic-success-bg p-3">
           <p className="text-xs uppercase tracking-wide text-content-tertiary">
             {/* The registry names this in the words the accountant hears it
                 called: "UUID (Folio Fiscal)", "chave de acesso", "IRN". */}
@@ -663,7 +674,7 @@ function AuthorityAnswer({
       )}
 
       {hasRejection && (
-        <div className="rounded border border-semantic-error bg-semantic-error-subtle p-3">
+        <div className="rounded border border-semantic-error bg-semantic-error-bg p-3">
           <p className="text-xs uppercase tracking-wide text-content-tertiary">
             {t('einvoice_clearance.rejection_title', { defaultValue: 'What the authority answered' })}
           </p>
@@ -887,7 +898,7 @@ function TrailList({ events, loading }: { events: ClearanceEvent[]; loading: boo
           <li key={ev.id} className="flex flex-wrap items-start gap-2 text-sm">
             <span className="font-mono text-xs text-content-tertiary">{ev.sequence}</span>
             <Badge variant={statusVariant(ev.to_status)} size="sm">
-              {t(`einvoice_clearance.event.${ev.event_type}`, { defaultValue: ev.event_type })}
+              {t(`einvoice_clearance.event.${ev.event_type}`, { defaultValue: CLEARANCE_EVENT_LABELS[ev.event_type] ?? ev.event_type })}
             </Badge>
             <span className="text-xs text-content-tertiary">
               {ev.from_status || '-'}

@@ -730,3 +730,49 @@ async def qdrant_health(_current_user_id: CurrentUserId) -> dict[str, object]:
         "message": getattr(health, "message", ""),
         "install_hint": getattr(health, "install_hint", ""),
     }
+
+
+@router.get(
+    "/embedding-model/status",
+    dependencies=[Depends(RequirePermission("ai_estimator.read"))],
+)
+async def embedding_model_status(_current_user_id: CurrentUserId) -> dict[str, object]:
+    """Report whether the semantic-search encoder is here, coming, or absent.
+
+    Sits beside ``/qdrant/health`` because it answers the same kind of question
+    about the other half of semantic search, and the onboarding wizard already
+    reads its readiness from this router.
+
+    Five states, because the remedies differ: ``library_missing`` (install the
+    extra), ``downloading`` (wait), ``failed`` (retry or read ``error``),
+    ``ready`` (use it), ``not_requested`` (turn it on). Cheap by construction -
+    it never loads a model, so polling it costs nothing.
+    """
+    from app.core.embedding_installer import download_status
+
+    return download_status()
+
+
+@router.post(
+    "/embedding-model/install",
+    dependencies=[Depends(RequirePermission("ai_estimator.run"))],
+)
+async def embedding_model_install(_current_user_id: CurrentUserId) -> dict[str, object]:
+    """Start the encoder download in the background and return the live state.
+
+    Returns immediately: the transfer runs on a daemon thread and nothing here
+    waits for it. Safe to call repeatedly - a download already running is not
+    joined by a second one, and weights already installed are not fetched
+    again.
+
+    This never fails the request. A deployment that cannot download (no
+    semantic library, or the operator turned it off) says so in the returned
+    ``state`` rather than through an error code, because the caller's next move
+    is to render that state either way.
+    """
+    from app.core.embedding_installer import download_status, start_background_download
+
+    started = start_background_download(requested=True)
+    payload = download_status()
+    payload["started"] = started
+    return payload

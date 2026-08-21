@@ -147,9 +147,6 @@ REGISTRY = [
         # the subject, "weather", without listing the conditions under it,
         # which is the spelling that cannot go stale.
         prose_keys=(),
-        # Three words this module gained after the family was already in
-        # every locale. English has them; the sweep has not run yet.
-        awaiting_translation=("partly_cloudy", "overcast", "hazy"),
     ),
 ]
 

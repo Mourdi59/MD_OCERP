@@ -6,9 +6,10 @@
 // not a rounding choice, they are a quantity the currency cannot express, and
 // this is the figure that goes into a public tender.
 //
-// Both sources in the tree already knew it - `money.py` carries CLP at zero
-// decimals and `formatCurrency` asks the CLDR data directly. The assembly
-// screens reached past both and wrote a literal 2, so the number a Chilean
+// Both currency tables in the tree already knew it - `money.py` carries CLP at
+// zero decimals, `currencyMinorUnits.ts` lists it under ZERO_DECIMAL, and
+// `formatCurrency` asks the CLDR data directly. The assembly screens reached
+// past all three and wrote a literal 2, so the one number a Chilean estimator
 // actually reads was the one place none of that applied.
 //
 // The tests are split deliberately. The first pins the helper, which is cheap
@@ -18,6 +19,12 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { currencyFractionDigits } from '@/shared/lib/money';
+// The expected totals are built with the same formatter the footer uses, so
+// they state the thing under test - how many decimal places a currency gets -
+// without also pinning how the reader's language groups the thousands. Written
+// out as `'82000 CLP'` these assertions failed the day those figures started
+// being grouped, which is a different question and one this file never asked.
+import { fmtFixed } from '@/shared/lib/formatters';
 import { PreviewTotalsFooter } from '../AssemblyLibraryPage';
 import type { AppliedTemplateCurrencySubtotal } from '../api';
 
@@ -69,9 +76,9 @@ describe('the assembly preview total in a zero-decimal currency', () => {
   it('prints whole pesos, not pesos and cents', () => {
     const cellText = cells(82000, [{ currency: 'CLP', amount: 82000, component_count: 3, is_target: true }], 'CLP');
 
-    expect(cellText).toContain('82000 CLP');
-    // The exact string the report came in about.
-    expect(cellText.join('|')).not.toContain('82000.00');
+    expect(cellText).toContain(`${fmtFixed(82000, 0)} CLP`);
+    // The shape the report came in about: the same figure carrying cents.
+    expect(cellText.join('|')).not.toContain(fmtFixed(82000, 2));
   });
 
   it('gives each bucket the precision of its own currency in a mixed preview', () => {
@@ -86,7 +93,7 @@ describe('the assembly preview total in a zero-decimal currency', () => {
 
     // One row rounds to whole units and the next keeps its cents, from the
     // same render. A single page-wide digit setting cannot produce this.
-    expect(cellText).toContain('82000 CLP');
-    expect(cellText).toContain('91.50 USD');
+    expect(cellText).toContain(`${fmtFixed(82000, 0)} CLP`);
+    expect(cellText).toContain(`${fmtFixed(91.5, 2)} USD`);
   });
 });

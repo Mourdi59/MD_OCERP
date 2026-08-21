@@ -187,9 +187,7 @@ async def test_an_unknown_cost_line_resolves_to_nothing(session: AsyncSession, p
 # ── The response ─────────────────────────────────────────────────────────────
 
 
-async def test_the_response_carries_the_position_of_a_linked_line(
-    session: AsyncSession, project_id: uuid.UUID
-) -> None:
+async def test_the_response_carries_the_position_of_a_linked_line(session: AsyncSession, project_id: uuid.UUID) -> None:
     """The whole point: an edit form can put the buyer's choice back on screen."""
     cost_line, position = await make_cost_line(session, project_id)
     assert position is not None
