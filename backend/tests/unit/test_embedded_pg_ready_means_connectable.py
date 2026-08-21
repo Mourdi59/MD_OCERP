@@ -14,6 +14,22 @@ The recovery path already proved readiness by opening a socket. The happy path
 did not, which is the whole defect: the check existed and was wired only to the
 branch where something had already gone visibly wrong.
 
+Second iteration, and the reason several cases here changed shape. Wiring the
+probe everywhere was not enough, because the probe itself answered the wrong
+question. Opening a socket proves a process is holding a port, not that a
+database is behind it, and those come apart in the case that actually reaches
+users: a run that dies after starting the cluster leaves the postmaster alive,
+and a live postmaster keeps its listen socket whether or not it can still serve.
+A user on a released build hit exactly that. The ready stage passed instantly,
+by attaching to a postmaster an earlier crash had orphaned, and every connection
+after it died mid-handshake with a reset.
+
+So readiness is now decided by speaking the protocol and reading a reply, and a
+bare listener is no longer a stand-in for a healthy cluster anywhere in this
+file - it is the broken state. One case here asserted the opposite outright and
+has been inverted rather than removed, since the question it asked was the right
+one and only its expected answer was wrong.
+
 The blind spot of this file: it stubs the attach, so it tests the decision this
 module makes about a returned server, not pixeltable's behaviour when it
 returns one. Whether a real cluster comes back after the retry clears the
@@ -24,6 +40,7 @@ from __future__ import annotations
 
 import os
 import socket
+import threading
 import time
 from pathlib import Path
 from types import ModuleType
@@ -79,17 +96,90 @@ class _StubPgserver:
         return object()
 
 
+class _AnsweringServer:
+    """A listener that answers a StartupMessage the way a live postmaster does.
+
+    A bare ``listen`` used to be an adequate stand-in for a healthy cluster here,
+    because readiness was decided by whether a connection could be opened. It is
+    not one any more, and that is not a change of convenience: a socket that
+    accepts and never speaks is now the *broken* state this module has to catch,
+    so using it to represent a healthy cluster would assert the defect.
+
+    Answers with an ErrorResponse rather than an authentication request, to pin
+    the deliberate half of the rule: a refusal proves a server is there to
+    refuse, and a cluster that says "starting up" or "too many clients" is alive.
+    """
+
+    def __init__(self, family: int = socket.AF_INET, address: object | None = None) -> None:
+        self._sock = socket.socket(family, socket.SOCK_STREAM)
+        if family == socket.AF_INET:
+            self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self._sock.bind(("127.0.0.1", 0))
+            self.port = int(self._sock.getsockname()[1])
+        else:
+            self._sock.bind(str(address))
+            self.port = 0
+        self._sock.listen(8)
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._serve, daemon=True)
+        self._thread.start()
+
+    def _serve(self) -> None:
+        body = b"SFATAL\x00C57P03\x00Mthe database system is starting up\x00\x00"
+        reply = b"E" + (len(body) + 4).to_bytes(4, "big") + body
+        while not self._stop.is_set():
+            try:
+                self._sock.settimeout(0.3)
+                conn, _ = self._sock.accept()
+            except OSError:
+                continue
+            with conn:
+                try:
+                    conn.recv(1024)
+                    conn.sendall(reply)
+                except OSError:
+                    continue
+
+    def __enter__(self) -> _AnsweringServer:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self._stop.set()
+        self._thread.join(timeout=3)
+        self._sock.close()
+
+
 def test_a_closed_port_is_not_an_answer() -> None:
     assert _cluster_answers.__doc__  # the helper is documented, not incidental
     pgdata = Path(os.environ.get("TEMP", ".")) / "does-not-matter"
     assert _cluster_answers(pgdata, 0.0) is False
 
 
-def test_an_open_socket_is_an_answer(tmp_path: Path) -> None:
+def test_an_open_socket_alone_is_not_an_answer(tmp_path: Path) -> None:
+    """Reversed on evidence: this case used to assert the bug.
+
+    It read "an open socket is an answer", which was the rule the module had and
+    the reason it shipped a false ready. A postmaster keeps its listen socket
+    for as long as the process lives, so a run that died after starting the
+    cluster leaves one that accepts and cannot serve. A real user's launcher
+    attached to exactly that, announced the database ready, and then failed
+    every connection it made.
+
+    Kept rather than deleted, and inverted, because the case is the right one to
+    ask; only the expected answer was wrong.
+    """
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", 0))
         listener.listen(1)
-        _write_pidfile(tmp_path, int(listener.getsockname()[1]))
+        # A pid nothing owns: this must not reach the path that stops a process.
+        _write_pidfile(tmp_path, int(listener.getsockname()[1]), pid=999_999_999)
+        assert _cluster_answers(tmp_path, 1.0) is False
+
+
+def test_a_server_that_answers_is_an_answer(tmp_path: Path) -> None:
+    """The other half, now that answering means speaking rather than accepting."""
+    with _AnsweringServer() as server:
+        _write_pidfile(tmp_path, server.port, pid=999_999_999)
         assert _cluster_answers(tmp_path, 5.0) is True
 
 
@@ -119,24 +209,25 @@ def test_a_server_that_does_not_answer_is_not_returned_as_a_live_cluster(tmp_pat
 
 def test_a_server_that_answers_is_returned(tmp_path: Path) -> None:
     """The opposite mistake would refuse every healthy boot."""
-    with socket.socket() as listener:
-        listener.bind(("127.0.0.1", 0))
-        listener.listen(1)
-        _write_pidfile(tmp_path, int(listener.getsockname()[1]))
+    with _AnsweringServer() as server:
+        _write_pidfile(tmp_path, server.port, pid=999_999_999)
         stub = _StubPgserver()
 
-        server, exc = _boot_once(cast(ModuleType, stub), tmp_path, tmp_path, None, time.monotonic() + 10.0)
+        returned, exc = _boot_once(cast(ModuleType, stub), tmp_path, tmp_path, None, time.monotonic() + 10.0)
 
-    assert server is not None, "A healthy cluster was refused"
+    assert returned is not None, "A healthy cluster was refused"
     assert exc is None
 
 
 def test_a_healthy_attach_is_not_slowed_down(tmp_path: Path) -> None:
-    """The probe is on the path of every desktop start, so it has to be cheap."""
-    with socket.socket() as listener:
-        listener.bind(("127.0.0.1", 0))
-        listener.listen(1)
-        _write_pidfile(tmp_path, int(listener.getsockname()[1]))
+    """The probe is on the path of every desktop start, so it has to be cheap.
+
+    Guards the cost of the handshake specifically. Proving readiness by speaking
+    the protocol reads one byte more than opening a socket did, and this is the
+    assertion that keeps that from turning into a wait every user pays.
+    """
+    with _AnsweringServer() as server:
+        _write_pidfile(tmp_path, server.port, pid=999_999_999)
         started = time.monotonic()
         _boot_once(cast(ModuleType, _StubPgserver()), tmp_path, tmp_path, None, time.monotonic() + 10.0)
         elapsed = time.monotonic() - started
@@ -196,21 +287,25 @@ def test_a_unix_only_cluster_is_never_asked_for_a_tcp_connection(
 
 
 def test_a_unix_socket_that_answers_is_enough(tmp_path: Path) -> None:
-    """And the other half: a listening unix socket makes the cluster ready."""
+    """And the other half: a unix socket that speaks makes the cluster ready.
+
+    This case runs only where PostgreSQL uses unix sockets, which is the
+    platform the PostgreSQL lane runs on and not the one this file is usually
+    edited on. It answers the protocol for the same reason the TCP cases do: a
+    bare ``listen`` is now the broken state, so a stand-in that only listened
+    would take the lane red on Linux while passing as a skip on Windows.
+    """
     if not hasattr(socket, "AF_UNIX"):
         pytest.skip("no unix domain sockets on this platform")
 
     port = 5432
     sock_path = tmp_path / f".s.PGSQL.{port}"
-    listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     try:
-        listener.bind(str(sock_path))
-        listener.listen(1)
-        _write_unix_only_pidfile(tmp_path, port, tmp_path)
+        with _AnsweringServer(family=socket.AF_UNIX, address=sock_path):
+            _write_unix_only_pidfile(tmp_path, port, tmp_path)
 
-        assert _cluster_answers(tmp_path, 1.0) is True
+            assert _cluster_answers(tmp_path, 5.0) is True
     finally:
-        listener.close()
         sock_path.unlink(missing_ok=True)
 
 

@@ -29,6 +29,8 @@ from __future__ import annotations
 
 import logging
 import os
+import socket
+import struct
 import subprocess
 import time
 from pathlib import Path
@@ -458,6 +460,14 @@ def _boot_once(
                 f"on port {port} within {probe_window:.0f}s"
             )
             logger.warning("embedded PostgreSQL attached but did not answer: %s", last_exc)
+            # A cluster that accepts and never speaks is a postmaster left alive
+            # by a run that died after starting it. Nothing else in this module
+            # can clear it: the pidfile names a live process, so the stale-pidfile
+            # sweep correctly leaves it alone, and every retry attaches straight
+            # back onto it. Stopping it here is what turns this from a clearer
+            # error into a machine that starts, which is the difference the user
+            # actually experiences.
+            _stop_mute_postmaster(resolved_pgdata)
             # Drop the handle pixeltable cached for this data directory, or the
             # next attempt is given the same unusable one straight back.
             if ps_cls is not None:
@@ -587,6 +597,171 @@ def _clear_stale_pidfile(pgdata: Path) -> None:
         logger.info("removed stale postmaster.pid (%s) in %s", reason, pgdata)
     except OSError as exc:
         logger.warning("could not remove stale postmaster.pid in %s: %r", pgdata, exc)
+
+
+def _pg_ctl_path() -> Path | None:
+    """The bundled ``pg_ctl``, or ``None`` when it cannot be located.
+
+    Lives in the same ``pginstall/bin`` directory as initdb and the postmaster,
+    so it is present wherever they are, including the frozen desktop bundle.
+    """
+    try:
+        from pixeltable_pgserver.utils import POSTGRES_BIN_PATH
+    except Exception:  # noqa: BLE001
+        return None
+    exe = Path(POSTGRES_BIN_PATH) / ("pg_ctl.exe" if os.name == "nt" else "pg_ctl")
+    return exe if exe.is_file() else None
+
+
+def _owns_the_blocked_port(pid: int, pgdata: Path) -> bool:
+    """Whether ``pid`` actually holds the port this cluster's pidfile names.
+
+    The identity question asked causally rather than by reputation. "Is this
+    process called postgres" is a guess about a name; "is this the process
+    holding the port we cannot use" is the thing that matters, and it is the
+    reason we would end it at all.
+
+    Falls back to the process name where the socket table cannot be read: a
+    unix-socket cluster has no inet listener to find, and macOS often refuses
+    the socket table to a non-root caller. Both readings fail CLOSED, unlike
+    :func:`_pid_alive` which fails open. The asymmetry is deliberate - failing
+    open there means keeping a pidfile, failing open here means killing a
+    process we could not identify.
+    """
+    port = _port_from_pidfile(pgdata)
+    if port is None:
+        return False
+    try:
+        import psutil
+    except Exception:  # noqa: BLE001
+        return False
+
+    # The system-wide socket table, deliberately, not ``Process.net_connections``.
+    # Measured on Windows: the per-process view returns an EMPTY LIST for a
+    # process whose handle we do not hold, without raising. That reads as "owns
+    # no ports" and is indistinguishable from a true negative, so a check built
+    # on it would quietly answer "not the owner" for every cluster on the
+    # platform where this defect happens, and hand the whole decision to the
+    # name guess below. The system-wide call names the owning pid correctly.
+    try:
+        for conn in psutil.net_connections(kind="inet"):
+            if getattr(conn, "status", None) != psutil.CONN_LISTEN:
+                continue
+            if getattr(getattr(conn, "laddr", None), "port", None) != port:
+                continue
+            # Somebody owns this port. If it is our pid the identification is
+            # positive; if it is another process then the pidfile is not
+            # describing the thing blocking us, and stopping it would be wrong.
+            return conn.pid == pid
+    except Exception:  # noqa: BLE001
+        pass
+
+    # No inet listener found, or the table could not be read. A unix-socket
+    # cluster legitimately has no TCP listener, so fall back to asking what the
+    # process is. Still fails closed when even that cannot be answered.
+    try:
+        return "postgres" in psutil.Process(pid).name().lower()
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _stop_mute_postmaster(pgdata: Path) -> bool:
+    """Stop a postmaster that holds the port and no longer answers on it.
+
+    This is the recovery half of the mute case, and without it the detection is
+    only a better error message. A previous run that died after starting the
+    cluster leaves the postmaster alive; the pidfile keeps naming a live process
+    so :func:`_clear_stale_pidfile` correctly refuses to touch it, pixeltable
+    attaches to it instantly, and every retry attaches to the same unusable
+    server. The user is stuck until they reboot, and reinstalling does not help
+    because nothing about the installation is wrong. That is the shape of a real
+    report: a release crashed after bringing the cluster up, the next release
+    fixed the crash, and the machines the first one had already poisoned still
+    could not start.
+
+    Only ever called once :func:`_probe_cluster` has answered ``mute``, and it
+    re-asks here rather than trusting the caller, because this is the one place
+    in the module that ends a process. The three states it must not act on all
+    fail that check:
+
+    * A cluster replaying WAL has not opened its listen socket, so it probes
+      ``closed`` and is waited out patiently exactly as before.
+    * A cluster too busy to take another client answers "sorry, too many clients
+      already", which is an answer, so it probes ``answering``.
+    * A cluster that is merely slow answers late, and the reply budget is set
+      for that.
+
+    Ending a postmaster is the same event as the crash PostgreSQL is designed to
+    survive: the next start replays WAL and comes up consistent. A fast shutdown
+    is tried first anyway, because it checkpoints and spares the user a recovery
+    they would otherwise sit through.
+    """
+    pid = _read_pidfile_pid(pgdata)
+    if pid is None or not _pid_alive(pid):
+        return False
+    if _probe_cluster(pgdata) != _MUTE:
+        return False
+    # Operating systems reuse process identifiers, and Windows reuses them
+    # quickly. A pidfile left behind by a force-killed postmaster keeps naming a
+    # number, and once the system hands that number to an unrelated service the
+    # file describes a process that has nothing to do with this cluster. Every
+    # other reader in this module already refuses on that evidence; the one that
+    # ends a process must refuse on it hardest, because being wrong here does
+    # not mean a failed boot, it means killing a stranger.
+    if _pid_was_recycled(pid, _read_pidfile_start_time(pgdata)):
+        logger.warning("refusing to stop pid %s for %s: it no longer belongs to this cluster", pid, pgdata)
+        return False
+    if not _owns_the_blocked_port(pid, pgdata):
+        logger.warning("refusing to stop pid %s for %s: it does not hold the port this cluster names", pid, pgdata)
+        return False
+
+    logger.warning(
+        "the postmaster at %s (pid %s) holds its port and does not answer on it; stopping it so a "
+        "working cluster can be started in its place",
+        pgdata,
+        pid,
+    )
+    emit_stage("pg", "progress", "Clearing a database left behind by an earlier run")
+
+    pg_ctl = _pg_ctl_path()
+    if pg_ctl is not None:
+        for mode, wait in (("fast", 20), ("immediate", 15)):
+            try:
+                subprocess.run(  # noqa: S603
+                    [str(pg_ctl), "-D", str(pgdata), "-m", mode, "-w", "-t", str(wait), "stop"],
+                    capture_output=True,
+                    text=True,
+                    timeout=wait + 10,
+                    check=False,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("pg_ctl stop -m %s failed at %s: %r", mode, pgdata, exc)
+            if not _pid_alive(pid):
+                logger.info("stopped the unresponsive postmaster (pid %s) with pg_ctl -m %s", pid, mode)
+                _clear_stale_pidfile(pgdata)
+                return True
+
+    # pg_ctl is the right tool and it is bundled, but a postmaster wedged badly
+    # enough to stop answering can also be wedged badly enough to ignore it.
+    try:
+        import psutil
+
+        proc = psutil.Process(pid)
+        proc.terminate()
+        try:
+            proc.wait(timeout=10)
+        except psutil.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=10)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("could not stop the unresponsive postmaster (pid %s) at %s: %r", pid, pgdata, exc)
+        return False
+
+    if _pid_alive(pid):
+        return False
+    logger.info("stopped the unresponsive postmaster (pid %s)", pid)
+    _clear_stale_pidfile(pgdata)
+    return True
 
 
 def _postmaster_recovering(pgdata: Path) -> bool:
@@ -1010,8 +1185,80 @@ def _listens_on_tcp(pgdata: Path) -> bool:
     return bool(lines[5].strip())
 
 
-def _accepts_a_connection(pgdata: Path) -> bool:
-    """One attempt to reach this cluster, on whichever family it listens on.
+#: What a liveness probe found. The middle answer is the whole reason these
+#: three exist rather than a bool.
+#:
+#: ``closed``    nothing accepted a connection: no postmaster at all, or one
+#:               still replaying WAL that has not opened its listen socket yet.
+#: ``mute``      the listen socket accepted a connection and then said nothing.
+#: ``answering`` the cluster spoke the PostgreSQL protocol back to us.
+_CLOSED = "closed"
+_MUTE = "mute"
+_ANSWERING = "answering"
+
+#: Seconds allowed for the connect itself, and for the server's first protocol
+#: byte. The reply gets the longer budget on purpose: a healthy cluster answers
+#: a startup packet in milliseconds, but a machine in the middle of an antivirus
+#: scan can be slow enough that a tight timeout would convict a working server.
+_PROBE_CONNECT_SECONDS = 2
+_PROBE_REPLY_SECONDS = 5
+
+#: Protocol version 3.0 as PostgreSQL encodes it in a StartupMessage.
+_PG_PROTOCOL_3 = 196608
+
+
+def _startup_packet() -> bytes:
+    """A minimal PostgreSQL v3 StartupMessage.
+
+    The credentials in it do not have to be usable. The probe reads whatever
+    comes back and counts a refusal as proof of life, so this only has to be a
+    packet a server is willing to answer.
+    """
+    body = struct.pack("!i", _PG_PROTOCOL_3) + b"user\x00postgres\x00database\x00postgres\x00\x00"
+    return struct.pack("!i", len(body) + 4) + body
+
+
+def _speaks_postgres(sock: socket.socket) -> bool:
+    """Whether an already-open socket has a PostgreSQL server still talking on it.
+
+    Sends a StartupMessage and waits for the first response byte. Which byte it
+    is does not matter: ``R`` (an authentication request), ``E`` (an error, such
+    as "the database system is starting up" or "sorry, too many clients
+    already") and anything else all prove a server is there to say so. Only
+    silence, EOF or a reset mean the thing behind the socket cannot serve.
+
+    Counting an error as healthy is the deliberate half. This asks whether a
+    server is alive, not whether we may log in, and the two failures are not
+    equally bad: refusing to boot because a probe could not authenticate would
+    break working machines, while trusting a socket that never speaks is what
+    shipped.
+
+    A postmaster keeps its listen socket open for as long as the process lives,
+    so a bare ``connect`` succeeds against one that can no longer start a
+    backend and reports it healthy. That is how a launcher announces the
+    database ready and fails to connect to it in the same breath, which is what
+    a user saw on a released build: the ready stage passed and every asyncpg
+    connect after it died with a reset mid-handshake.
+    """
+    try:
+        sock.settimeout(_PROBE_REPLY_SECONDS)
+        sock.sendall(_startup_packet())
+        first = sock.recv(1)
+    except OSError:
+        return False
+    if not first:
+        return False
+    try:
+        # Leave the way a client should, so a probe does not litter the server
+        # log with an incomplete-startup-packet warning on every attempt.
+        sock.sendall(b"X\x00\x00\x00\x04")
+    except OSError:
+        pass
+    return True
+
+
+def _probe_cluster(pgdata: Path) -> str:
+    """How this cluster answers right now: ``closed``, ``mute`` or ``answering``.
 
     The unix socket is tried first where the cluster has one. That order is not
     a preference, it is the only reading that cannot be answered by a stranger:
@@ -1023,16 +1270,22 @@ def _accepts_a_connection(pgdata: Path) -> bool:
     short to say. Windows clusters answer here; on Linux and macOS the
     postmaster pixeltable-pgserver starts has no TCP listener at all, and asking
     it for one is how a healthy cluster gets reported dead.
+
+    ``mute`` is reported only when something did accept a connection, so the
+    distinction survives a cluster that offers two families and answers on
+    neither: an open socket anywhere outranks a closed one everywhere.
     """
-    import socket
+    saw_open_socket = False
 
     sock_path = _unix_socket_path(pgdata)
     if sock_path is not None and hasattr(socket, "AF_UNIX"):
         try:
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                s.settimeout(2)
+                s.settimeout(_PROBE_CONNECT_SECONDS)
                 s.connect(str(sock_path))
-                return True
+                saw_open_socket = True
+                if _speaks_postgres(s):
+                    return _ANSWERING
         except OSError:
             pass
 
@@ -1040,11 +1293,24 @@ def _accepts_a_connection(pgdata: Path) -> bool:
         port = _port_from_pidfile(pgdata)
         if port is not None:
             try:
-                with socket.create_connection(("127.0.0.1", port), timeout=2):
-                    return True
+                with socket.create_connection(("127.0.0.1", port), timeout=_PROBE_CONNECT_SECONDS) as s:
+                    saw_open_socket = True
+                    if _speaks_postgres(s):
+                        return _ANSWERING
             except OSError:
                 pass
-    return False
+
+    return _MUTE if saw_open_socket else _CLOSED
+
+
+def _accepts_a_connection(pgdata: Path) -> bool:
+    """One attempt to reach this cluster, answered only by the cluster itself.
+
+    Kept as the yes/no reading the waiting loops want. It is true only for
+    ``answering``: an open socket with nothing behind it is not a database, and
+    treating it as one is the defect this module carried into a release.
+    """
+    return _probe_cluster(pgdata) == _ANSWERING
 
 
 def _cluster_answers(pgdata: Path, timeout_seconds: float) -> bool:
