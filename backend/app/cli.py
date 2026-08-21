@@ -1284,6 +1284,17 @@ def cmd_init_db(args: argparse.Namespace) -> None:
                 await repair_progress_entry_seq(conn)
         except Exception as exc:  # noqa: BLE001
             logger.warning("init-db: progress seq repair skipped: %s", exc)
+        # An upgraded database keeps the naive classified_at that this version
+        # declares aware, because the auto-migrator above only adds, never
+        # retypes. Widen it here so the column matches the model on the
+        # installations that have one already.
+        try:
+            from app.modules.project_route.tz_repair import widen_classified_at
+
+            async with engine.begin() as conn:
+                await widen_classified_at(conn)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("init-db: classified_at widening skipped: %s", exc)
         # Provision row-level-security roles + policies when enabled. No-op
         # while settings.rls_enforce is off, so a default init-db is unchanged.
         try:

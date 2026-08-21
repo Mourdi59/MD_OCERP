@@ -99,7 +99,12 @@ class RouteAssessment(Base):
     )
 
     # ── Audit ──────────────────────────────────────────────────────────
-    classified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # ``timezone=True`` is not decoration: the service stamps this with an
+    # aware ``datetime.now(UTC)``, and asyncpg refuses an aware value on a
+    # naive ``timestamp`` column ("can't subtract offset-naive and
+    # offset-aware datetimes"). Every other timestamp in the platform,
+    # including ``created_at`` / ``updated_at`` on the Base, is aware.
+    classified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     classified_by: Mapped[str | None] = mapped_column(
         String(36),
         nullable=True,

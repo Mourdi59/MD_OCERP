@@ -2785,6 +2785,19 @@ def create_app() -> FastAPI:
             except Exception:
                 logger.warning("Progress seq order repair skipped (non-fatal)", exc_info=True)
 
+            # Same shape, different column. classified_at was declared naive
+            # while the service stamped it aware, so every database built before
+            # this version carries a column asyncpg will not write to. The heal
+            # cannot fix it: it adds columns and never retypes them. Idempotent,
+            # and a no-op the moment the reflected type comes back aware.
+            try:
+                from app.modules.project_route.tz_repair import widen_classified_at
+
+                async with engine.begin() as conn:
+                    await widen_classified_at(conn)
+            except Exception:
+                logger.warning("classified_at widening skipped (non-fatal)", exc_info=True)
+
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
             logger.info("PostgreSQL tables created/verified")
