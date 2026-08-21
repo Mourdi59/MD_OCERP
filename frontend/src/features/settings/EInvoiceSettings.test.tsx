@@ -19,6 +19,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { renderToString } from 'react-dom/server';
 
 // Only the two calls this panel makes are replaced. The rest of the module
 // stays real because <Button> comes from the shared barrel, which drags in
@@ -116,6 +117,35 @@ describe('EInvoiceSettings', () => {
     expect(name.value).toBe('Hochbau Nord GmbH');
     const iban = screen.getByLabelText('settings.einvoice.field.payee_iban') as HTMLInputElement;
     expect(iban.value).toBe('DE02120300000000202051');
+  });
+
+  // What this pins is that the very first render is already consistent with the
+  // answer, rather than becoming consistent afterwards. It cannot be checked by
+  // rendering into the DOM and looking: every helper here runs inside act, which
+  // flushes effects before it returns, so a panel that fills itself from an
+  // effect looks identical to one that does not. Rendering to a string is the
+  // one place effects do not run at all, so it separates the two by
+  // construction instead of by timing.
+  //
+  // The defect it stands for is one frame long. The panel used to fill the form
+  // from an effect, so on the frame between the answer arriving and the effect
+  // running, every field differed from an empty form, the panel believed it held
+  // unsaved edits, and the save button offered to save a change nobody had made.
+  // A fast machine never showed it and the CI runner did.
+  it('is already consistent with the stored values on its first render', () => {
+    apiGetMock.mockResolvedValue(CONFIGURED);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(['finance', 'einvoice-settings'], CONFIGURED);
+    const html = renderToString(
+      <QueryClientProvider client={client}>
+        <EInvoiceSettings />
+      </QueryClientProvider>,
+    );
+
+    expect(html).toContain('Hochbau Nord GmbH');
+    // The button carries the attribute only while it refuses to be pressed, so
+    // its absence is the defect rather than a difference in how it is spelled.
+    expect(html).toMatch(/<button[^>]*\sdisabled/);
   });
 
   it('does not offer to save until something has changed', async () => {

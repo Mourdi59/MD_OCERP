@@ -14,7 +14,7 @@
  * carrying a second copy of it.
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Building2, Landmark, AlertTriangle, Check } from 'lucide-react';
@@ -105,10 +105,19 @@ export function EInvoiceSettings() {
     queryFn: () => apiGet('/api/v1/finance/einvoice-settings'),
   });
 
-  useEffect(() => {
-    if (!data) return;
+  // The form is seeded while rendering rather than from an effect, and the state
+  // it was seeded from is remembered so this runs once per answer. An effect runs
+  // after the frame has been handed to the browser, and on that frame the answer
+  // has arrived while the form is still empty, so every field differs, the panel
+  // believes it holds unsaved edits, and it offers to save a change nobody made.
+  // Adjusting the state here lets React re-run this component before it commits
+  // anything, so that button is never painted. The same holds when the answer is
+  // fetched again after a save.
+  const [seededFrom, setSeededFrom] = useState<EInvoiceSettingsPayload | null>(null);
+  if (data && data !== seededFrom) {
+    setSeededFrom(data);
     setForm(ALL_FIELDS.reduce((acc, f) => ({ ...acc, [f]: data[f] ?? '' }), {} as FormState));
-  }, [data]);
+  }
 
   const save = useMutation({
     mutationFn: (body: FormState) => apiPut('/api/v1/finance/einvoice-settings', body),
