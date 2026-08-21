@@ -174,8 +174,22 @@ def boot(data_dir: Path | str) -> bool:
         return False
 
     pgdata = Path(data_dir).expanduser() / "pgdata"
+    # Create the directory that HOLDS the cluster, and stop there: initdb makes
+    # ``pgdata`` itself. It used to be created here too, and on Windows that is
+    # what broke it. initdb re-executes itself under a restricted token (it drops
+    # the Administrators SID so a cluster is never created by an administrator),
+    # and that child then cannot always write a directory the parent process
+    # made. Handed an existing directory it takes its "fixing permissions on
+    # existing directory" path and dies on the chmod - observed on every Windows
+    # shard of the backend matrix, where the run account is an elevated
+    # administrator: ``could not change permissions of directory "...": Permission
+    # denied``. Handed a path that is not there yet it creates it, owns what it
+    # created, and never chmods anything of ours.
+    #
+    # Everything downstream already tolerates an absent cluster dir, because it
+    # had to: on a fresh machine none of this exists until initdb has run.
     try:
-        pgdata.mkdir(parents=True, exist_ok=True)
+        pgdata.parent.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
         logger.error("embedded PostgreSQL data dir unavailable at %s: %r", pgdata, exc)
         return False
