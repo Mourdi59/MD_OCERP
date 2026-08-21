@@ -39,7 +39,9 @@ leftovers is covered where a real cluster is started.
 from __future__ import annotations
 
 import os
+import shutil
 import socket
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -299,14 +301,27 @@ def test_a_unix_socket_that_answers_is_enough(tmp_path: Path) -> None:
         pytest.skip("no unix domain sockets on this platform")
 
     port = 5432
-    sock_path = tmp_path / f".s.PGSQL.{port}"
+    # The socket goes somewhere short. A unix address carries its whole path
+    # inside a fixed field - 104 bytes on macOS, 108 on Linux - and pytest's
+    # tmp_path on a macOS runner has already spent most of that on this test's
+    # own name before the socket file is appended, so binding raised
+    # "AF_UNIX path too long" and every macOS shard failed on it. Only the
+    # socket directory moves: the pidfile stays in tmp_path, and its fifth line
+    # is what names the socket directory, so the code under test is asked the
+    # same question it was asked before.
+    sock_dir = Path(tempfile.mkdtemp(prefix="oe-sock-", dir="/tmp" if os.path.isdir("/tmp") else None))
+    sock_path = sock_dir / f".s.PGSQL.{port}"
+    # Assert the address fits rather than discovering it did not from an OSError
+    # that names no limit. 100 leaves room under the smaller of the two caps.
+    assert len(str(sock_path).encode("utf-8")) < 100, f"socket address is too long to bind: {sock_path}"
     try:
         with _AnsweringServer(family=socket.AF_UNIX, address=sock_path):
-            _write_unix_only_pidfile(tmp_path, port, tmp_path)
+            _write_unix_only_pidfile(tmp_path, port, sock_dir)
 
             assert _cluster_answers(tmp_path, 5.0) is True
     finally:
         sock_path.unlink(missing_ok=True)
+        shutil.rmtree(sock_dir, ignore_errors=True)
 
 
 def test_the_socket_is_the_one_postgresql_names(tmp_path: Path) -> None:
