@@ -9,9 +9,10 @@ Covers the three endpoints registered on the ``oe_projects`` router:
 Test matrix:
 
     * owner can list / add / remove
-    * non-owner gets 404 (the router's verify_project_owner shape — 403 is
-      reserved for the owner endpoint; non-owner access is rejected as
-      404 to avoid leaking the existence of project UUIDs they may not see)
+    * a user with no access gets 404 on the read (``_verify_project_access``,
+      so the status code never confirms that a project UUID exists) and 403
+      on the writes (``_verify_project_owner``, whose usual caller is a
+      member who already knows the project is there)
     * cannot add the same user twice (409)
     * cannot remove the project owner (400)
 
@@ -234,15 +235,26 @@ async def test_cannot_remove_owner(owner_client: AsyncClient, seeded_ids: dict[s
 
 @pytest.mark.asyncio
 async def test_non_owner_cannot_access_members(other_client: AsyncClient, seeded_ids: dict[str, str]):
-    """A logged-in user that is NOT the project owner gets 403 on every verb.
+    """A logged-in user that is NOT the project owner is rejected on every verb.
 
-    The router's ``_verify_project_owner`` raises 403 directly (not 404) for
-    non-owners — see ``backend/app/modules/projects/router.py``.
+    The two guards in ``backend/app/modules/projects/router.py`` deny with
+    different codes on purpose, so the expected status differs per verb.
+
+    The listing is a read and runs through ``_verify_project_access``, which
+    raises 404, not 403: "missing" and "denied" have to be indistinguishable
+    or the status code itself becomes an oracle telling an outsider that a
+    given project UUID exists. That is the same policy the shared
+    ``verify_project_access`` helper applies platform-wide.
+
+    The writes run through ``_verify_project_owner``, which raises 403. It is
+    reached by project members who are not the owner, and to them the project
+    is no secret, so the code can say plainly that ownership is what is
+    missing.
     """
     pid = seeded_ids["project_id"]
 
     listing = await other_client.get(f"/api/v1/projects/{pid}/members/")
-    assert listing.status_code == 403, listing.text
+    assert listing.status_code == 404, listing.text
 
     add = await other_client.post(
         f"/api/v1/projects/{pid}/members/",
