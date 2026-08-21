@@ -5,7 +5,7 @@ All notable changes to OpenConstructionERP are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [15.2.1] - 2026-08-21
+## [15.3.0] - 2026-08-21
 
 A desktop application that had stopped starting, on a machine where nothing was wrong with the installation, starts again. A run that fails after bringing the local database up leaves that database running behind it. The next start found it and asked whether it was there by opening a connection, and opening a connection proves that something is holding the address rather than that a database is behind it. Those two come apart in exactly this case: the process was still there and could no longer answer. So the application announced the local database as ready and then failed every request it made to it in the same breath, and it did so on every start after that, because nothing it could do would clear what was in the way. Reinstalling did not help, since nothing about the installation was wrong. The database is now asked a question it has to answer rather than one it only has to accept, and every answer counts, including a refusal to serve, because a refusal is still proof that something is there to refuse. One that has stopped answering is cleared away so a working one can take its place. A database still replaying its log after an unclean shutdown is not touched by any of this and is waited for exactly as before. Anyone whose application stopped starting after the upgrade to 15.0.0 gets it back without having to do anything.
 

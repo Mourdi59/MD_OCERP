@@ -38,7 +38,7 @@ interface ChangelogEntry {
 // date, title and meaning intact; trim the prose, not the facts.
 const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '15.2.1',
+    version: '15.3.0',
     date: '2026-08-21',
     tag: 'FIX',
     summary:
