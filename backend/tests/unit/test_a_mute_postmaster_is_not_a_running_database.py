@@ -187,6 +187,54 @@ def test_the_recovery_refuses_when_the_pid_is_already_gone(tmp_path: Path) -> No
     assert embedded_pg._stop_mute_postmaster(tmp_path) is False
 
 
+def _pid_listening_on(psutil, port: int, spawned_pid: int) -> int | None:
+    """The pid holding *port*, asked of the machine and then of our own process.
+
+    The machine-wide socket table is the direct question and the only one that
+    can answer without assuming who the listener is. macOS refuses it: psutil
+    needs root for a system-wide ``net_connections`` there and raises
+    ``AccessDenied`` instead, which is not "no listener" and must not be read
+    as one. Every macOS shard of the backend matrix failed on that raise.
+
+    So the fallback asks the processes we started ourselves, which the same
+    platform does allow, walking the spawned child and its descendants. The
+    indirection is why this is a fallback rather than the primary: a virtualenv
+    launcher re-executes, so the listener can be a grandchild, and PostgreSQL's
+    postmaster is its own listener, so a pidfile names the owner. Naming the
+    owner is what the guard under test checks, which is why the test has to
+    name it rather than assume it is the pid Popen returned.
+
+    Returns the pid, or None when neither route can name one, which the caller
+    turns into a skip rather than a failure.
+    """
+    try:
+        for conn in psutil.net_connections(kind="inet"):
+            if conn.status == psutil.CONN_LISTEN and getattr(conn.laddr, "port", None) == port and conn.pid:
+                return conn.pid
+    except (psutil.AccessDenied, PermissionError):
+        pass
+
+    try:
+        spawned = psutil.Process(spawned_pid)
+        candidates = [spawned, *spawned.children(recursive=True)]
+    except psutil.Error:
+        return None
+    for proc in candidates:
+        # psutil 6 renamed ``Process.connections`` to ``net_connections`` and
+        # kept the old name as a deprecated alias. Ask for whichever this
+        # installation has rather than pinning the suite to one of them.
+        reader = getattr(proc, "net_connections", None) or getattr(proc, "connections", None)
+        if reader is None:
+            return None
+        try:
+            for conn in reader(kind="inet"):
+                if conn.status == psutil.CONN_LISTEN and getattr(conn.laddr, "port", None) == port:
+                    return proc.pid
+        except (psutil.Error, PermissionError):
+            continue
+    return None
+
+
 def test_the_recovery_stops_a_real_process_that_only_listens(tmp_path: Path) -> None:
     """End to end on the half that makes the user's machine start again.
 
@@ -227,14 +275,7 @@ def test_the_recovery_stops_a_real_process_that_only_listens(tmp_path: Path) -> 
         # names the owner - and naming the owner is exactly what the guard
         # checks, so the test has to name it too rather than assume.
         psutil = pytest.importorskip("psutil")
-        owner = next(
-            (
-                c.pid
-                for c in psutil.net_connections(kind="inet")
-                if c.status == psutil.CONN_LISTEN and getattr(c.laddr, "port", None) == port and c.pid
-            ),
-            None,
-        )
+        owner = _pid_listening_on(psutil, port, child.pid)
         if owner is None:
             pytest.skip("the socket table does not name a listener for this port on this machine")
 
