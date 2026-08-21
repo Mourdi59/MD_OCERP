@@ -557,8 +557,11 @@ jobs:
             bundles: ""
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            # Everything Linux ships except the rpm. See build-linux-rpm.
-            bundles: "--bundles deb,appimage"
+            # The deb only. The AppImage follows in a step of its own and the
+            # rpm in a job of its own, both for the same reason: neither is
+            # allowed to cost us a package that had already been built. See
+            # "Bundle the AppImage" below and build-linux-rpm.
+            bundles: "--bundles deb"
 
     steps:
       - uses: actions/checkout@v7
@@ -762,6 +765,56 @@ jobs:
             Docs: https://openconstructionerp.com/docs  .  Report an issue: https://github.com/datadrivenconstruction/OpenConstructionERP/issues
           releaseDraft: true
           prerelease: false
+
+      # The AppImage, on its own, and allowed to fail.
+      #
+      # It used to be bundled by the same command as the deb, and on v15.3.0
+      # that is what cost us the deb. linuxdeploy failed, so the whole
+      # "tauri build --bundles deb,appimage" invocation exited 1, and the deb
+      # it had finished writing twenty seconds earlier never reached the
+      # release. Debian and Ubuntu users had nothing for that version while a
+      # working package sat in the runner's target directory, thrown away by
+      # the failure of a different package.
+      #
+      # The AppImage is also the likeliest thing here to break without us
+      # having changed anything. Its bundler downloads linuxdeploy and three
+      # plugins from upstream at bundle time, one of them from a rolling
+      # "continuous" tag, so an upstream publish lands in our release run. And
+      # it is the least downloaded thing we ship: 4 against 9 for the deb and
+      # 15 for the rpm on v14.8.1.
+      #
+      # So the same treatment as build-linux-rpm. Keep it, and keep it out of
+      # the path of the packages that do not depend on it. tauri reuses the
+      # binary the step above compiled, so this costs bundling time only.
+      - name: Bundle the AppImage
+        if: matrix.os == 'ubuntu-22.04'
+        continue-on-error: true
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: desktop
+          tauriScript: npx --yes @tauri-apps/cli@${{ env.TAURI_CLI_VERSION }}
+          args: --bundles appimage
+          # No releaseBody here. The step above already wrote it, and this one
+          # has only an asset to add.
+          tagName: ${{ env.RELEASE_REF }}
+          releaseName: "OpenConstructionERP ${{ env.RELEASE_REF }}"
+          releaseDraft: true
+          prerelease: false
+
+      - name: Say whether the AppImage was produced
+        if: matrix.os == 'ubuntu-22.04'
+        shell: bash
+        run: |
+          set -uo pipefail
+          IMG=$(find desktop/src-tauri/target -path '*/bundle/appimage/*.AppImage' -type f 2>/dev/null | head -1)
+          if [ -z "${IMG:-}" ]; then
+            echo "::warning title=No AppImage was produced::The appimage bundler failed. The deb built by the step before it is unaffected and is on the release. Distribution-agnostic Linux users have no AppImage for this version."
+            echo "No AppImage was produced by this run." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "Built $(basename "$IMG"), $(du -h "$IMG" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
 
       # Read-only diagnostic: confirm the macOS .app carries a valid ad-hoc
       # code signature. With the sidecar pre-signed and signingIdentity "-",
@@ -1687,11 +1740,23 @@ jobs:
           # packages and no macOS one.
           missing=""
           for expected in 'Windows .exe:\.exe$' 'macOS .dmg:\.dmg$' \
-                          'macOS .app.tar.gz:\.app\.tar\.gz$' 'Linux .deb:\.deb$' \
-                          'Linux .AppImage:\.AppImage$'; do
+                          'macOS .app.tar.gz:\.app\.tar\.gz$' 'Linux .deb:\.deb$'; do
             have "${expected#*:}" || missing="${missing} ${expected%%:*},"
           done
           missing="${missing%,}"
+
+          # The AppImage left that list when it moved into a step of its own,
+          # for the same reason the rpm was never in it: it is allowed to be
+          # absent. Its bundler downloads linuxdeploy and three plugins from
+          # upstream at bundle time, so it can fail on a day we changed
+          # nothing, and on v15.3.0 it took the already-written deb down with
+          # it because the two shared one command. Reported, not gated.
+          if have '\.AppImage$'; then
+            img_line="present"
+          else
+            img_line="**absent** (the appimage bundler did not deliver)"
+            echo "::warning title=This release has no AppImage::${TAG} carries no AppImage, so Linux users who want neither a deb nor an rpm have nothing to download. The other Linux packages are unaffected."
+          fi
 
           # The rpm is the one platform allowed to be absent. Its job is
           # continue-on-error on purpose, because the bundler is roughly four
@@ -1750,6 +1815,7 @@ jobs:
             echo "| --- | --- |"
             echo "| Assets on the release | $(printf '%s\n' "$assets" | grep -c . || true) |"
             echo "| rpm | ${rpm_line} |"
+            echo "| AppImage | ${img_line} |"
             echo "| Build Sidecar | \`${SIDECAR_RESULT}\` |"
             echo "| Build Desktop | \`${TAURI_RESULT}\` |"
             echo "| Windows signing job | \`${SIGN_RESULT}\` |"
