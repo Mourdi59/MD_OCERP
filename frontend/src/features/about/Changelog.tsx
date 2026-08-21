@@ -38,6 +38,13 @@ interface ChangelogEntry {
 // date, title and meaning intact; trim the prose, not the facts.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '15.3.1',
+    date: '2026-08-21',
+    tag: 'FIX',
+    summary:
+      'The screen shown while the application starts now names the version it is running. Someone whose application will not open has no other way to find that out, since the About screen lives inside the application they cannot reach and the installer is usually long gone by then. It matters because the message shown when starting fails is deliberately general: the same sentence is produced by a fault corrected several releases ago and by one still open, so a report could arrive complete and carefully written and still not be answerable. The version now appears on the screen itself and as the second line of the details the copy button produces, directly under the heading and above the path to the log file, and it is written from the moment the screen first appears rather than only once something has gone wrong. An application that was starting normally is also no longer given up on while it is still working: the window allowed for the whole of startup was the same length as the budget the backend allows for bringing the local database up by itself, so a database that spent that budget recovering left nothing for the migrations, the modules, the tables and the first-run data that follow it. The first start after an upgrade is exactly that case, because the installer ends the running process tree and the database does not get to close cleanly. The window is now twice the budget it waits on, and it costs nothing when a start has genuinely failed, since that is reported the moment it happens.',
+  },
+  {
     version: '15.3.0',
     date: '2026-08-21',
     tag: 'FIX',
