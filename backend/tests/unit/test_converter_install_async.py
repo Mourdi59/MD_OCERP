@@ -86,6 +86,14 @@ async def test_install_converter_returns_immediately(monkeypatch: pytest.MonkeyP
 
     monkeypatch.setattr(cad_import, "find_converter", lambda _ext: None)
 
+    # The platform is pinned because the endpoint answers differently on one
+    # that has no native build: it returns synchronously and says so, and there
+    # is no background task to observe. Left unpinned this test asserts the
+    # background behaviour on Windows and Linux and fails on macOS with a
+    # KeyError, which reads as a broken feature rather than as a test running on
+    # a platform the feature does not claim. The other branch is pinned below.
+    monkeypatch.setattr("sys.platform", "linux")
+
     ran = asyncio.Event()
 
     async def _fake_impl(converter_id: str, force: bool, app: object) -> dict[str, object]:
@@ -115,6 +123,39 @@ async def test_install_converter_returns_immediately(monkeypatch: pytest.MonkeyP
     assert prog["installed"] is True
     tk._clear_install_progress(cid)
     tk._INSTALL_TASKS.pop(cid, None)
+
+
+@pytest.mark.asyncio
+async def test_install_converter_on_a_platform_without_a_build_answers_at_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No native build means an answer, not a download that cannot happen.
+
+    This is the branch a macOS runner used to reach by accident while the test
+    above assumed the other one. Asserting it here means both answers are
+    pinned on every platform instead of depending on which machine ran them.
+    """
+    from app.modules.boq import cad_import
+
+    cid = "ifc"
+    tk._INSTALL_TASKS.pop(cid, None)
+    tk._clear_install_progress(cid)
+
+    monkeypatch.setattr(cad_import, "find_converter", lambda _ext: None)
+    monkeypatch.setattr("sys.platform", "darwin")
+
+    async def _must_not_run(converter_id: str, force: bool, app: object) -> dict[str, object]:
+        raise AssertionError("no background install may start where there is nothing to install")
+
+    monkeypatch.setattr(tk, "_install_converter_impl", _must_not_run)
+
+    fake_request = types.SimpleNamespace(app=types.SimpleNamespace(state=types.SimpleNamespace()))
+    result = await tk.install_converter(cid, fake_request, "user-1", force=False)
+
+    assert result["platform_unsupported"] is True
+    assert result["installed"] is False
+    assert "async_install" not in result
+    assert cid not in tk._INSTALL_TASKS
 
 
 @pytest.mark.asyncio
