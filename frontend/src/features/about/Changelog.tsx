@@ -38,6 +38,13 @@ interface ChangelogEntry {
 // date, title and meaning intact; trim the prose, not the facts.
 const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '15.2.1',
+    date: '2026-08-21',
+    tag: 'FIX',
+    summary:
+      'A desktop application that had stopped starting begins working again without anyone doing anything. A run that fails after starting the local database leaves it running, and the next start proved the database was there by opening a connection to it, which shows that something holds the address rather than that a database is behind it. The two come apart when the process is still there and can no longer answer, so the application called the database ready and then failed every request to it, on that start and on every one after, and reinstalling could not help because nothing about the installation was wrong. Readiness now means the database answered, a refusal counts as an answer, and one that has stopped answering is cleared so a working one can replace it. A database replaying its log after an unclean shutdown is untouched and still waited for. An entry that cannot be written to the activity record also stops discarding the work it was describing, and an installation told not to fetch the search model no longer goes looking for it.',
+  },
+  {
     version: '15.2.0',
     date: '2026-08-20',
     tag: 'NEW',
