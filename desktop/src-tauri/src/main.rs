@@ -337,6 +337,22 @@ fn report_log_path(handle: &tauri::AppHandle) {
     }
 }
 
+/// Tell the splash which build it is, so a startup failure carries its version.
+///
+/// This is the one screen a user with a backend that will not start can still
+/// read, and the version is the first thing anyone answering their report has to
+/// know: the same message is produced by faults that were fixed releases ago and
+/// by faults that are still open. Without it a report cannot be triaged at all.
+/// Every other place that names the version lives behind a running application,
+/// which is precisely what these users do not have.
+fn report_app_version(handle: &tauri::AppHandle) {
+    let v = js_escape(env!("CARGO_PKG_VERSION"));
+    eval_in_splash(
+        handle,
+        format!("(function(){{if(typeof setAppVersion==='function'){{setAppVersion('{v}');}}}})()"),
+    );
+}
+
 /// Advance one step of the visible boot checklist on the splash screen.
 ///
 /// `status` is one of "pending" | "active" | "done" | "failed". Never panics;
@@ -359,6 +375,7 @@ fn boot_stage(handle: &tauri::AppHandle, id: &str, status: &str, detail: &str) {
 fn report_fatal_stage(handle: &tauri::AppHandle, stage: &str, message: &str) {
     log_line(&format!("FATAL [{stage}]: {message}"));
     report_log_path(handle);
+    report_app_version(handle);
     // Every way startup can fail comes through here, so this is the one place
     // that has to carry the offer of a newer version. For a user whose
     // installed build cannot start at all, that sentence is the entire fix, and
@@ -1062,6 +1079,9 @@ fn main() {
             // so the user sees a live boot screen the instant the window paints.
             report_log_path(&handle);
             boot_stage(&handle, "launcher", "done", "");
+            // Show the version from the first frame, not only once something has
+            // failed, so a user who is merely puzzled can also read it off.
+            report_app_version(&handle);
             boot_stage(&handle, "sidecar", "active", "Locating the backend");
 
             // Ask, in the background, whether a newer release exists. Started

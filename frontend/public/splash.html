@@ -307,6 +307,7 @@
     <div class="checklist" id="checklist" aria-live="polite"></div>
 
     <p class="hint" id="hint">First run sets up your local database. This can take a minute or two, please wait.</p>
+    <p class="logpath" id="appversion"></p>
     <p class="logpath" id="logpath"></p>
     <button class="copybtn" id="copybtn" type="button">Copy details</button>
 
@@ -419,6 +420,19 @@
       LOG_PATH = p || '';
       var el = document.getElementById('logpath');
       if (el && LOG_PATH) { el.textContent = 'Log file: ' + LOG_PATH; }
+    }
+
+    // setAppVersion is the same idea for the build number. A user whose app
+    // cannot start has no other way to tell anyone which build they are on:
+    // the app itself never opens, so the About screen is out of reach, and the
+    // installer is long gone from their downloads. Startup failures are the one
+    // moment the version matters most and is hardest to obtain, which is why it
+    // is written here rather than only inside the running application.
+    var APP_VERSION = '';
+    function setAppVersion(v) {
+      APP_VERSION = v || '';
+      var el = document.getElementById('appversion');
+      if (el && APP_VERSION) { el.textContent = 'Version: ' + APP_VERSION; }
     }
 
     function setError(t) {
@@ -552,6 +566,9 @@
       if (btn) {
         btn.addEventListener('click', function () {
           var parts = ['OpenConstructionERP startup diagnostics'];
+          // Version first: it is the question every one of these reports has to
+          // answer before anything else in the list can be interpreted.
+          if (APP_VERSION) { parts.push('Version: ' + APP_VERSION); }
           if (LOG_PATH) { parts.push('Log file: ' + LOG_PATH); }
           for (var i = 0; i < STEPS.length; i++) {
             var id = STEPS[i].id;
