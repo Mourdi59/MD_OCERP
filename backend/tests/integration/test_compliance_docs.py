@@ -117,13 +117,19 @@ async def _create_project(owner_user_id: str, name: str) -> str:
     return str(pid)
 
 
-async def _promote_to_editor(client: AsyncClient, email: str, password: str) -> dict[str, str]:
-    """Force ``role='editor'`` so B can write its own project's rows.
+async def _promote_to_role(client: AsyncClient, email: str, password: str, role: str) -> dict[str, str]:
+    """Force ``role`` on a freshly registered user and re-issue its JWT.
 
-    Default registration role is ``viewer`` which doesn't carry
-    ``compliance_docs.create``. The IDOR audit needs B to be a normal
-    editor in its own project, not a viewer — so we promote and refresh
-    the JWT so the new role claim is in flight.
+    Default registration role is ``viewer``, which carries none of the
+    ``compliance_docs`` write permissions. Registration only hands out
+    ``admin`` to the very first account in the database, so a fixture that
+    wants a privileged actor has to say so rather than hope it registered
+    first: this module shares one database with every other module in the
+    shard, and whichever one runs first takes the bootstrap admin.
+
+    The role goes straight into the users table and then the user logs in
+    again, because the role travels in the JWT claims and the token issued
+    before the promotion still carries the old one.
     """
     from sqlalchemy import update
 
@@ -131,7 +137,7 @@ async def _promote_to_editor(client: AsyncClient, email: str, password: str) -> 
     from app.modules.users.models import User
 
     async with async_session_factory() as s:
-        await s.execute(update(User).where(User.email == email.lower()).values(role="editor"))
+        await s.execute(update(User).where(User.email == email.lower()).values(role=role))
         await s.commit()
 
     resp = await client.post(
@@ -173,19 +179,25 @@ async def _register_login_with_creds(
 async def two_tenants(http_client):
     """A owns one project, B owns another. Both authenticated.
 
-    A is the first user → admin (bootstrap). B is promoted to editor
-    so B can create rows in B's *own* project; the IDOR audit then
+    A is promoted to admin so it can create and delete its own docs, and B
+    to editor so B can create rows in B's *own* project. The IDOR audit then
     checks that B cannot reach into A's project.
+
+    Both promotions are explicit. A used to rely on being the first
+    registered account and getting admin from the bootstrap path, which held
+    only while this module happened to run before every other module that
+    registers a user against the same database.
     """
-    a_uid, _a_email, _a_pw, a_hdr = await _register_login_with_creds(
+    a_uid, a_email, a_password, _a_hdr_initial = await _register_login_with_creds(
         http_client,
         tenant="a",
     )
+    a_hdr = await _promote_to_role(http_client, a_email, a_password, "admin")
     b_uid, b_email, b_password, _b_hdr_initial = await _register_login_with_creds(
         http_client,
         tenant="b",
     )
-    b_hdr = await _promote_to_editor(http_client, b_email, b_password)
+    b_hdr = await _promote_to_role(http_client, b_email, b_password, "editor")
 
     a_project = await _create_project(a_uid, "A's project")
     b_project = await _create_project(b_uid, "B's project")

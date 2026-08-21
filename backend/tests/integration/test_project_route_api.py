@@ -67,14 +67,14 @@ async def _activate_user(email: str) -> None:
         await s.commit()
 
 
-async def _promote_to_editor(client: AsyncClient, email: str, password: str) -> dict[str, str]:
+async def _promote(client: AsyncClient, email: str, password: str, role: str) -> dict[str, str]:
     from sqlalchemy import update
 
     from app.database import async_session_factory
     from app.modules.users.models import User
 
     async with async_session_factory() as s:
-        await s.execute(update(User).where(User.email == email.lower()).values(role="editor"))
+        await s.execute(update(User).where(User.email == email.lower()).values(role=role))
         await s.commit()
 
     resp = await client.post(
@@ -123,12 +123,14 @@ async def two_tenants(http_client):
     # job shares one database, so exactly one of them wins that slot and the rest
     # get a viewer with no <module>.create permission. A was then refused 403 in
     # its own project and the cross-tenant probe below never ran. Promote it the
-    # same way B is promoted. Editor, not admin, so A passes verify_project_access
+    # same way B is promoted. Manager, not admin, so A passes verify_project_access
     # on the ownership branch a real tenant would use rather than an admin bypass.
+    # Manager rather than editor because project_route.delete sits at manager
+    # while create and update sit at editor, and A exercises all three.
     a_uid, a_email, a_pw, _a_hdr = await _register_login(http_client, tenant="a")
-    a_hdr = await _promote_to_editor(http_client, a_email, a_pw)
+    a_hdr = await _promote(http_client, a_email, a_pw, "manager")
     b_uid, b_email, b_pw, _b_hdr = await _register_login(http_client, tenant="b")
-    b_hdr = await _promote_to_editor(http_client, b_email, b_pw)
+    b_hdr = await _promote(http_client, b_email, b_pw, "editor")
     a_project = await _create_project(a_uid, "A's project")
     b_project = await _create_project(b_uid, "B's project")
     return {
