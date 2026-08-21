@@ -44,15 +44,27 @@ from app.modules.boq.router import _run_import_validation
 # SINAPI + GESN + GB/T + CPWD + Birim Fiyat + Sekisan onto the global
 # ``rule_registry``. ``app.main`` does this at app startup; unit tests
 # that bypass the FastAPI lifecycle have to do it themselves.
+#
+# Register unconditionally, the way the three product call sites do
+# (``app.main``, ``demo_projects``, ``validation.seed``). The call is
+# idempotent, it costs 0.1 ms, and every cheaper-looking guard here has been
+# wrong: "the registry is empty" is not the same question as "the built-in
+# rules are registered". Modules register into shared set names as an import
+# side effect, ``app.modules.esg.validators`` puts a rule into
+# ``["esg_site", "boq_quality"]`` at import time, so in any process that has
+# imported it the registry is not empty and holds ``boq_quality`` while
+# ``din276`` and ``gaeb`` are still missing. The engine then reports those two
+# as unsupported, runs the one ESG rule, which has nothing to say about BOQ
+# positions, and returns an empty ``skipped`` report. That reads exactly like
+# a clean bill of health, so the guard did not just fail to help, it turned
+# both tests below into tests of nothing.
 
 
 @pytest.fixture(autouse=True)
 def _ensure_rules_registered() -> None:
-    from app.core.validation.engine import rule_registry
     from app.core.validation.rules import register_builtin_rules
 
-    if not rule_registry.list_rule_sets():
-        register_builtin_rules()
+    register_builtin_rules()
 
 
 # ── Test doubles ────────────────────────────────────────────────────────────

@@ -21,9 +21,16 @@ from app.core.validation.engine import validation_engine
 
 #: Sets that ship built in and that other suites rely on being reachable.
 EXPECTED_RULE_SETS = [
+    # ``boq_quality`` is a shared set name: modules register into it too, so it
+    # is the one entry here that can be present while the built-in pack is not.
+    # It stays because suites request it, but it can never stand in for the
+    # pack, which is why the rest of this list has to be checked alongside it.
     "boq_quality",
     "ai_estimator",
     "din276",
+    # Inline BOQ-import validation asks for ``gaeb`` on any DACH project, and
+    # it went missing on a shard while ``boq_quality`` was present.
+    "gaeb",
     "pipeline",
     "procurement",
     "subcontract",

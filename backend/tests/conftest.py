@@ -459,24 +459,32 @@ def _keep_validation_rules_registered():
     depended on where pytest happened to order it. Measured 2026-07-27 with
     ``tests/unit/test_validation_registry_populated.py``, which saw the registry
     holding ``[]`` at the first test and every built-in set present by the second.
+
+    Both calls used to be guarded by ``"boq_quality" not in list_rule_sets()``,
+    and that sentinel is not a property of the built-in pack alone. Modules
+    register into the same shared set name as an import side effect:
+    ``app.modules.esg.validators`` registers its rule into
+    ``["esg_site", "boq_quality"]`` when the module is imported. In a process
+    that imported it first, the sentinel reads as satisfied while ``din276``,
+    ``gaeb`` and the rest of the built-ins are still absent, so the repair never
+    runs and the engine answers a request for them with an empty ``skipped``
+    report that is indistinguishable from a pass. That is the shape of the
+    2026-08-21 shard failure in ``tests/unit/test_boq_import_validation.py``.
+    Register unconditionally instead. The call is idempotent, it costs 0.1 ms,
+    and it is what the product itself does at all three of its call sites.
     """
     import app.core.validation.engine as _eng
+    from app.core.validation.rules import register_builtin_rules
 
     engine = _eng.validation_engine
     registry = engine.registry
-    if "boq_quality" not in registry.list_rule_sets():
-        from app.core.validation.rules import register_builtin_rules
-
-        register_builtin_rules()
+    register_builtin_rules()
     try:
         yield
     finally:
         _eng.validation_engine = engine
         engine.registry = registry
-        if "boq_quality" not in registry.list_rule_sets():
-            from app.core.validation.rules import register_builtin_rules
-
-            register_builtin_rules()
+        register_builtin_rules()
 
 
 @pytest.fixture
