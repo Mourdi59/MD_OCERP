@@ -1,0 +1,312 @@
+"""The Windows installer hook must stop our database, and only ours.
+
+The hook is a PowerShell one-liner embedded in an NSIS macro. Nothing compiles
+it, nothing type-checks it, and a mistake inside it does not fail a build: it
+becomes a silent no-op on a user's machine, which is exactly how the previous
+version of this hook spent five releases matching zero of the processes it was
+written to match. So the file that ships is read here directly, and the parts
+that carry the meaning are asserted one by one.
+
+There are two ways for this hook to be wrong and they pull in opposite
+directions. Stopping too little leaves the embedded postmaster running after the
+app is gone, holding the data directory and the port, which is the defect this
+hook exists to fix. Stopping too much reaches into an unrelated PostgreSQL that
+happens to share an image name, which is the older and worse defect the previous
+hook had. A test that only checks one direction cannot tell a working guard from
+a guard that refuses everything, so on Windows both directions are executed
+against real processes.
+
+The data directory the hook looks in has to be the one the backend actually
+uses. That agreement is asserted against the backend's own source rather than
+against a constant repeated here, because a constant repeated here is just a
+second place to forget.
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+from collections.abc import Iterator
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[3]
+HOOK = ROOT / "desktop" / "src-tauri" / "windows" / "hooks.nsh"
+STORAGE = ROOT / "backend" / "app" / "core" / "storage.py"
+DEMO_SEED = ROOT / "backend" / "app" / "core" / "demo_seed.py"
+
+#: NSIS truncates strings past this length, silently. The default build limit is
+#: 1024; a command line that grows past it would be cut mid-expression and the
+#: result would still be a valid-looking script that does the wrong thing.
+NSIS_MAX_STRLEN = 1024
+
+
+@pytest.fixture(scope="module")
+def hook_text() -> str:
+    assert HOOK.is_file(), f"the installer hook is not at {HOOK}"
+    text = HOOK.read_text(encoding="utf-8")
+    print(f"\nread {HOOK.name}: {len(text.splitlines())} lines")
+    return text
+
+
+@pytest.fixture(scope="module")
+def postmaster_command(hook_text: str) -> str:
+    """The PowerShell body of the postmaster stop, as PowerShell will see it.
+
+    NSIS writes a literal dollar sign as ``$$``, so the file carries ``$$env``
+    where the shell receives ``$env``. Undoing that doubling is the only change
+    made to the text; everything else is what ships.
+    """
+    macro = re.search(r"!macro OE_STOP_OUR_POSTMASTER(.*?)!macroend", hook_text, re.S)
+    assert macro is not None, "the hook no longer defines OE_STOP_OUR_POSTMASTER"
+    call = re.search(r"-Command \"(.*)\"`", macro.group(1), re.S)
+    assert call is not None, "OE_STOP_OUR_POSTMASTER no longer runs a powershell -Command"
+    command = call.group(1).replace("$$", "$")
+    print(f"the postmaster stop is {len(command)} characters of PowerShell")
+    return command
+
+
+def _env_names(source: Path, pattern: str) -> list[str]:
+    """Pull the data-dir environment variable names out of a source file."""
+    text = source.read_text(encoding="utf-8")
+    line = re.search(pattern, text, re.M)
+    assert line is not None, f"could not find the data-dir resolution in {source.name}"
+    return re.findall(r"[\"']([A-Z_]+)[\"']", line.group(0))
+
+
+def test_the_hook_looks_where_the_backend_actually_keeps_its_data(postmaster_command: str) -> None:
+    """The hook, storage.py and demo_seed.py must name the same variables in order.
+
+    If the backend gains a fourth override or reorders the three it has, the hook
+    starts looking in a directory nobody uses, finds no pid file, and quietly
+    stops stopping anything. Deriving the expected order from the backend's own
+    source is what makes that a failure here instead of a support ticket later.
+    """
+    canonical = _env_names(STORAGE, r"override = os\.environ\.get\(.*?\)\s*$")
+    mirrored = _env_names(DEMO_SEED, r"for env_name in \([^)]*\)")
+    print(f"storage.py resolves {canonical}")
+    print(f"demo_seed.py resolves {mirrored}")
+    assert canonical == mirrored, (
+        "the backend's two data-dir resolvers disagree with each other, so the "
+        "installer cannot be made to agree with both"
+    )
+
+    found = re.findall(r"\$env:([A-Z_]+)", postmaster_command)
+    ordered = [name for name in found if name in set(canonical)]
+    print(f"the installer hook resolves {ordered}")
+    assert ordered == canonical, (
+        f"the hook reads {ordered} but the backend reads {canonical}; the "
+        f"installer would look for the cluster in the wrong directory"
+    )
+
+    default_dir = re.search(r"DEFAULT_DATA_DIR = Path\.home\(\) / \"([^\"]+)\"", DEMO_SEED.read_text(encoding="utf-8"))
+    assert default_dir is not None, "demo_seed.py no longer declares DEFAULT_DATA_DIR"
+    assert f"'{default_dir.group(1)}'" in postmaster_command, (
+        f"the hook does not fall back to {default_dir.group(1)}, which is where "
+        f"an install with no overrides set actually keeps its cluster"
+    )
+
+
+def test_the_hook_finds_the_postmaster_through_its_own_pid_file(postmaster_command: str) -> None:
+    """Identity comes from the pid file, not from the image name.
+
+    The filter on ``$INSTDIR`` in the other macro cannot see the postmaster: it
+    runs out of the temporary directory the onefile bundle unpacks into. The pid
+    file inside our own data directory names exactly one process and it is by
+    construction ours.
+    """
+    assert "postmaster.pid" in postmaster_command, "the hook no longer reads the cluster's pid file"
+    assert "pgdata" in postmaster_command, "the hook no longer looks inside the pgdata directory"
+    assert "-TotalCount 3" in postmaster_command, (
+        "the hook must read three lines of the pid file: the pid is line 1 and "
+        "the start time it is verified against is line 3"
+    )
+
+
+def test_the_hook_refuses_a_pid_it_cannot_confirm(postmaster_command: str) -> None:
+    """Both guards against a stale pid file have to be present.
+
+    A pid file outlives the process that wrote it, and Windows reuses pids. The
+    name check rejects the common case where the pid now belongs to something
+    else entirely; the start-time check rejects the case where it belongs to a
+    different PostgreSQL. Neither alone is enough.
+    """
+    assert "ProcessName -eq 'postgres'" in postmaster_command, (
+        "the hook would stop whatever process now holds that pid, which is how "
+        "the previous hook killed processes that were not ours"
+    )
+    assert "StartTime" in postmaster_command and "ToUnixTimeSeconds" in postmaster_command, (
+        "the hook does not compare the running process's start time against the "
+        "one the pid file recorded, so a recycled pid passes the name check"
+    )
+
+
+def test_no_taskkill_reaches_beyond_this_user(hook_text: str) -> None:
+    """The fallback may not match by bare image name.
+
+    ``taskkill /IM`` matches across every session on the machine. An elevated
+    installer running it stopped the process in other users' sessions and in
+    other installations of the product. Every shipped release from 15.0.0 to
+    15.3.1 does this.
+    """
+    # Only executed lines count. The comment block above the macro quotes the
+    # old blunt command on purpose, to record what it did and why it changed,
+    # and a check that reads prose would convict the file for explaining itself.
+    executed = re.findall(r"nsExec::Exec `([^`]*)`", hook_text)
+    kills = [command for command in executed if "taskkill" in command]
+    print(f"the hook runs {len(executed)} commands, {len(kills)} of them taskkill fallbacks")
+    assert kills, "the taskkill fallback is gone; a machine without PowerShell now has no path"
+    for kill in kills:
+        assert re.search(r"/IM\s", kill) is None, f"bare /IM matches every session on the machine: {kill}"
+        assert "IMAGENAME eq" in kill, f"taskkill is not filtered by image name: {kill}"
+        assert "USERNAME eq" in kill, f"taskkill is not scoped to this user: {kill}"
+
+
+def test_both_install_and_uninstall_stop_the_cluster(hook_text: str) -> None:
+    """Uninstall matters as much as install, and for a worse reason.
+
+    An install that leaves the postmaster running produces a confusing upgrade.
+    An uninstall that leaves it running produces a process with no application
+    left on disk to explain it, still holding the port.
+    """
+    for hook in ("NSIS_HOOK_PREINSTALL", "NSIS_HOOK_PREUNINSTALL"):
+        body = re.search(rf"!macro {hook}(.*?)!macroend", hook_text, re.S)
+        assert body is not None, f"{hook} is not defined"
+        assert "OE_STOP_THIS_INSTALL" in body.group(1), f"{hook} does not stop the running install"
+    stop_all = re.search(r"!macro OE_STOP_THIS_INSTALL(.*?)!macroend", hook_text, re.S)
+    assert stop_all is not None
+    assert "OE_STOP_OUR_POSTMASTER" in stop_all.group(1), (
+        "the postmaster stop is defined but never inserted, so it runs nowhere"
+    )
+
+
+def test_every_command_line_survives_nsis_string_truncation(hook_text: str) -> None:
+    """A command longer than NSIS can hold is truncated, not rejected.
+
+    The result still looks like a script and still runs; it just stops partway
+    through an expression. This is the failure mode that would be hardest to
+    recognise from a bug report, so it is bounded here.
+    """
+    for command in re.findall(r"nsExec::Exec `([^`]*)`", hook_text):
+        length = len(command)
+        print(f"  {length:>4} chars: {command[:60]}...")
+        assert length < NSIS_MAX_STRLEN, (
+            f"a {length} character command exceeds the {NSIS_MAX_STRLEN} character "
+            f"NSIS string limit and would be silently cut"
+        )
+
+
+# The static assertions above describe the hook. The test below runs it.
+
+pytestmark_windows = pytest.mark.skipif(
+    sys.platform != "win32",
+    reason="the hook is PowerShell in a Windows installer; there is nothing to execute elsewhere",
+)
+
+
+def _spawn(exe: Path) -> subprocess.Popen:
+    return subprocess.Popen(
+        [str(exe), "-NoProfile", "-NonInteractive", "-Command", "Start-Sleep -Seconds 120"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def _write_pid_file(data_dir: Path, pid: int, start_epoch: int) -> None:
+    """Write a pid file in PostgreSQL's own layout: pid, data dir, start time."""
+    pgdata = data_dir / "pgdata"
+    pgdata.mkdir(parents=True, exist_ok=True)
+    (pgdata / "postmaster.pid").write_text(f"{pid}\n{pgdata}\n{start_epoch}\n5432\n", encoding="ascii")
+
+
+def _run(command: str, data_dir: Path) -> None:
+    env = dict(os.environ)
+    env["OE_DATA_DIR"] = str(data_dir)
+    env.pop("DATA_DIR", None)
+    env.pop("OE_CLI_DATA_DIR", None)
+    subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+
+def _still_running(proc: subprocess.Popen) -> bool:
+    time.sleep(1.0)
+    return proc.poll() is None
+
+
+@pytest.fixture
+def impostor_postgres() -> Iterator[Path]:
+    """A real executable actually named postgres.exe.
+
+    The guard reads the process name Windows reports, so a test that fakes the
+    name in a string proves nothing. Copying an executable is the cheapest way
+    to make Windows report the name for real.
+    """
+    staging = Path(tempfile.mkdtemp(prefix="oe-hook-test-"))
+    source = Path(os.environ["SYSTEMROOT"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"
+    target = staging / "postgres.exe"
+    shutil.copy2(source, target)
+    yield target
+    shutil.rmtree(staging, ignore_errors=True)
+
+
+@pytestmark_windows
+def test_it_stops_the_postmaster_its_pid_file_names(postmaster_command: str, impostor_postgres: Path) -> None:
+    """The positive control, without which the two refusals below prove nothing."""
+    with tempfile.TemporaryDirectory() as directory:
+        proc = _spawn(impostor_postgres)
+        try:
+            _write_pid_file(Path(directory), proc.pid, int(time.time()))
+            _run(postmaster_command, Path(directory))
+            stopped = not _still_running(proc)
+            print(f"postmaster pid {proc.pid}: stopped={stopped}")
+            assert stopped, "the hook left the cluster running that its own pid file named"
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+
+
+@pytestmark_windows
+def test_it_leaves_a_process_that_is_not_a_postmaster_alone(postmaster_command: str) -> None:
+    """A stale pid file whose pid now belongs to something else entirely."""
+    with tempfile.TemporaryDirectory() as directory:
+        real_powershell = Path(os.environ["SYSTEMROOT"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"
+        proc = _spawn(real_powershell)
+        try:
+            _write_pid_file(Path(directory), proc.pid, int(time.time()))
+            _run(postmaster_command, Path(directory))
+            survived = _still_running(proc)
+            print(f"unrelated pid {proc.pid}: survived={survived}")
+            assert survived, "the hook stopped a process that was never a postmaster"
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+
+
+@pytestmark_windows
+def test_it_leaves_a_recycled_pid_alone(postmaster_command: str, impostor_postgres: Path) -> None:
+    """Right name, wrong process: the start time is what tells them apart."""
+    with tempfile.TemporaryDirectory() as directory:
+        proc = _spawn(impostor_postgres)
+        try:
+            _write_pid_file(Path(directory), proc.pid, int(time.time()) - 9000)
+            _run(postmaster_command, Path(directory))
+            survived = _still_running(proc)
+            print(f"recycled pid {proc.pid}: survived={survived}")
+            assert survived, (
+                "the hook stopped a process whose start time did not match the pid "
+                "file, which is another PostgreSQL that inherited the pid"
+            )
+        finally:
+            if proc.poll() is None:
+                proc.kill()
