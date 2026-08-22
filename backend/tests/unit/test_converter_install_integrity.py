@@ -38,6 +38,23 @@ from app.modules.takeoff import router
 _X64 = 0x8664
 _X86 = 0x014C
 
+# Stand-in bytes for any file in a converter folder that is not a PE image.
+#
+# This is DELIBERATELY not the name of a real licence, and it must stay that
+# way. Three sites used to spell out a real permissive licence name, chosen
+# only because a licence file is the obvious example of a text file the
+# architecture sweep has to skip. A later licence audit read those three
+# literals as a description of what upstream actually ships, reported that the
+# converters carry an Apache 2.0 LICENSE next to LGPL Qt DLLs, and filed the
+# mismatch as a compliance finding. There is no such mismatch: the real
+# ``LICENSE`` in every converter folder is a DataDrivenConstruction proprietary
+# notice that defers third-party terms to ``THIRD-PARTY-NOTICES``.
+#
+# The sweep only ever asks "does this parse as a PE image", so the content is
+# free. Keep it self-describing, so the next reader has nothing to mistake for
+# a claim about upstream.
+_NOT_A_PE_IMAGE = b"placeholder text, not a binary and not a licence\n"
+
 
 def _pe_bytes(machine: int = _X64, *, pe_off: int = 0x80, size: int = 512) -> bytes:
     """Smallest buffer that parses as a PE image for the given machine.
@@ -80,7 +97,7 @@ def test_a_file_that_is_not_a_binary_is_reported_as_neither(tmp_path: Path) -> N
     fails an install over the licence text.
     """
     path = tmp_path / "LICENSE"
-    path.write_bytes(b"Apache License\nVersion 2.0\n")
+    path.write_bytes(_NOT_A_PE_IMAGE)
     assert router._read_pe_machine(path) == (None, None)
 
 
@@ -187,7 +204,7 @@ def test_the_licence_and_the_readme_do_not_fail_an_install(tmp_path: Path) -> No
         {
             "DgnExporter.exe": _pe_bytes(_X64),
             "Qt6Core.dll": _pe_bytes(_X64),
-            "LICENSE": b"Apache License\nVersion 2.0\n",
+            "LICENSE": _NOT_A_PE_IMAGE,
             "ReadMe_DGN_DDC_Converter.pdf": b"%PDF-1.7\n%\xe2\xe3\xcf\xd3\n",
             "THIRD-PARTY-NOTICES": b"Qt is licensed under the LGPL.\n",
         },
@@ -223,7 +240,7 @@ _PUBLISHED: dict[str, bytes] = {
     "Qt6Core.dll": _pe_bytes(_X64),
     "Qt6Gui.dll": _pe_bytes(_X64),
     "Qt6Widgets.dll": _pe_bytes(_X64),
-    "LICENSE": b"Apache License\nVersion 2.0\n",
+    "LICENSE": _NOT_A_PE_IMAGE,
     "platforms/qwindows.dll": _pe_bytes(_X64),
     "datadrivenlibs/ddcdgn.exe": _pe_bytes(_X64),
 }

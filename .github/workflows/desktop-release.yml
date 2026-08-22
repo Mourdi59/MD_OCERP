@@ -645,9 +645,18 @@ jobs:
         shell: pwsh
         env:
           # Same override knobs the runtime auto-installer honours, so a fork or
-          # a pinned release branch can be selected without editing this file.
+          # a newer commit can be selected without editing this file.
+          #
+          # The ref default is a COMMIT SHA and must stay one, and it must stay
+          # equal to ``_DDC_DEFAULT_REF`` in backend/app/modules/takeoff/router.py.
+          # This step bakes the IFC converter into the Windows installer, so the
+          # bytes we ship and the bytes the runtime installer downloads have to
+          # come from the same commit - otherwise a user who installs DWG on a
+          # machine that already has the bundled IFC converter gets two different
+          # builds of the same Qt DLLs side by side. The gate that keeps the two
+          # literals equal is backend/tests/unit/test_converter_ref_is_pinned.py.
           OE_CONVERTER_REPO: ${{ vars.OE_CONVERTER_REPO || 'datadrivenconstruction/cad2data-Revit-IFC-DWG-DGN' }}
-          OE_CONVERTER_REF: ${{ vars.OE_CONVERTER_REF || 'main' }}
+          OE_CONVERTER_REF: ${{ vars.OE_CONVERTER_REF || '45498426fd225c36a2a2a3a67993fd39c5d9d0ff' }}
           # Lifts the unauthenticated API rate limit on the runner. The converter
           # repo is public, so a read with the default job token is enough.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -657,8 +666,9 @@ jobs:
           $ref  = $env:OE_CONVERTER_REF
           $subPath = 'DDC_WINDOWS_Converters/DDC_CONVERTER_IFC'
           $destRoot = 'desktop/src-tauri/resources/converters/ifc_windows'
-          # The API zipball endpoint accepts any ref - branch, tag, or SHA - so a
-          # pinned tag works the same as the default branch with no URL change.
+          # The API zipball endpoint accepts any ref - branch, tag, or SHA - so
+          # the pinned SHA works with no URL change. Verified against the live
+          # endpoint on 2026-08-22: zipball/<sha> answers 200.
           $zipUrl = "https://api.github.com/repos/$repo/zipball/$ref"
           $tmpZip = Join-Path $env:RUNNER_TEMP 'ddc_ifc.zip'
           $tmpDir = Join-Path $env:RUNNER_TEMP 'ddc_ifc_extract'

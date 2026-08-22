@@ -41,6 +41,7 @@ import random as _random
 import threading
 import time as _time
 import uuid as _uuid
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from statistics import mean as _mean
@@ -307,13 +308,44 @@ async def verify_converter(converter_id: str) -> dict[str, Any]:
 # users get separate `.deb` packages from the apt source maintained at
 # `pkg.datadrivenconstruction.io` (handled separately below).
 #
-# Both the repo slug and the branch can be overridden via environment so
-# an operator can point the auto-installer at a fork or a pinned release
-# branch without a code change. ``OE_CONVERTER_REPO`` /
-# ``OE_CONVERTER_BRANCH`` are the canonical names; the defaults are the
-# real, publicly-readable upstream repository.
+# The ref is a COMMIT SHA and must stay one. It used to read ``"main"``,
+# which meant every install fetched whatever the branch tip happened to
+# be at that moment: no tag, no pin, no checksum, and native executables
+# at the other end. A ref is not a cosmetic detail here, because the
+# `download_url` the Contents API hands back carries the ref, so a
+# SHA-pinned listing resolves to SHA-addressed `raw.githubusercontent.com`
+# blobs that a later force-push cannot change. A branch name resolves to
+# whatever that branch points at today.
+#
+# The upstream repository publishes no tags and no releases (measured:
+# `/tags` returns an empty array, `/releases/latest` returns 404), so a
+# commit SHA is the only pinnable ref available. This one is the tree the
+# 2026-08-22 licence audit enumerated - 1266 entries, verified identical
+# to `main` at the time of pinning.
+#
+# Moving the pin is a deliberate act: bump the literal below, or set
+# ``OE_CONVERTER_REF`` (``OE_CONVERTER_BRANCH`` is still honoured as the
+# older name) to point a fork or a newer commit at the installer without
+# a code change. ``tests/unit/test_converter_ref_is_pinned.py`` fails if
+# the default goes back to a branch name, or if this literal and the
+# desktop release workflow drift apart.
+_DDC_DEFAULT_REF = "45498426fd225c36a2a2a3a67993fd39c5d9d0ff"
 _DDC_REPO = os.environ.get("OE_CONVERTER_REPO", "datadrivenconstruction/cad2data-Revit-IFC-DWG-DGN")
-_DDC_BRANCH = os.environ.get("OE_CONVERTER_BRANCH", "main")
+
+
+def _resolve_converter_ref(env: Mapping[str, str] | None = None) -> str:
+    """Pick the converter ref: new env name, old env name, then the pin.
+
+    Takes ``env`` so the precedence is testable without touching the real
+    process environment. An empty string is treated as unset - a CI runner
+    that exports ``OE_CONVERTER_REF=`` from an undefined variable should get
+    the pin, not an empty ref that would make every Contents API call 404.
+    """
+    source = os.environ if env is None else env
+    return source.get("OE_CONVERTER_REF") or source.get("OE_CONVERTER_BRANCH") or _DDC_DEFAULT_REF
+
+
+_DDC_REF = _resolve_converter_ref()
 
 # Per-format directory inside the repo for Windows binaries. Each
 # directory contains the small `*Exporter.exe`, the matching
@@ -991,7 +1023,7 @@ def _github_list_directory(repo_path: str) -> list[dict[str, Any]]:
     import urllib.error
     import urllib.request
 
-    api_url = f"https://api.github.com/repos/{_DDC_REPO}/contents/{repo_path}?ref={_DDC_BRANCH}"
+    api_url = f"https://api.github.com/repos/{_DDC_REPO}/contents/{repo_path}?ref={_DDC_REF}"
     req = urllib.request.Request(
         api_url,
         headers={
@@ -1876,7 +1908,7 @@ async def _install_converter_impl(converter_id: str, force: bool, app: Any) -> d
                     "message": (
                         f"Could not install {meta['name']}: {exc}. "
                         f"You can install it manually from "
-                        f"https://github.com/{_DDC_REPO}/tree/{_DDC_BRANCH}/"
+                        f"https://github.com/{_DDC_REPO}/tree/{_DDC_REF}/"
                         f"{_WINDOWS_CONVERTER_DIRS[converter_id]}"
                     ),
                 }
@@ -1925,7 +1957,7 @@ async def _install_converter_impl(converter_id: str, force: bool, app: Any) -> d
                         f"a required DLL is missing (Windows error 0x{rc & 0xFFFFFFFF:08x}). "
                         f"This usually means the Qt6 plugins didn't download correctly. "
                         f"Try uninstalling and reinstalling, or install manually from "
-                        f"https://github.com/{_DDC_REPO}/tree/{_DDC_BRANCH}/"
+                        f"https://github.com/{_DDC_REPO}/tree/{_DDC_REF}/"
                         f"{_WINDOWS_CONVERTER_DIRS[converter_id]}"
                     )
             except subprocess.TimeoutExpired:
@@ -2077,7 +2109,7 @@ async def _install_converter_impl(converter_id: str, force: bool, app: Any) -> d
             "message": (
                 f"Could not install {meta['name']}: {type(exc).__name__}: {exc}. "
                 f"Check the server logs for the full traceback. You can install "
-                f"manually from https://github.com/{_DDC_REPO}/tree/{_DDC_BRANCH}/"
+                f"manually from https://github.com/{_DDC_REPO}/tree/{_DDC_REF}/"
                 f"{_WINDOWS_CONVERTER_DIRS.get(converter_id, '')}"
             ),
         }
