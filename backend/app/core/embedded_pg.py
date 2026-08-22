@@ -143,6 +143,33 @@ def is_running() -> bool:
     return _server is not None
 
 
+def cluster_postmaster_pid(data_dir: Path | str) -> int | None:
+    """The live postmaster serving ``data_dir``, or ``None`` when there is none.
+
+    :func:`is_running` answers about *this* process. This answers about the
+    machine, which is a different question and the one an upgrade has to ask: it
+    runs in its own short-lived interpreter, and the cluster it is about to
+    overwrite the binaries of was started by somebody else's, a launcher or a
+    desktop build or an earlier ``serve``.
+
+    A recorded pid whose process is gone reads as no cluster, which is the point
+    of asking the operating system rather than trusting the file. The pidfile
+    outlives an unclean stop and is exactly the leftover that would otherwise
+    make an upgrade refuse for no reason.
+    """
+    try:
+        pgdata = Path(data_dir) / "pgdata"
+        pid = _read_pidfile_pid(pgdata)
+        if pid is None or not _pid_alive(pid):
+            return None
+        return pid
+    except Exception:  # noqa: BLE001
+        # Never let this answer be the reason an upgrade cannot start. Unknown
+        # means "no reason to refuse", and the plain upgrade path is safe.
+        logger.debug("could not read the embedded cluster pidfile in %s", data_dir, exc_info=True)
+        return None
+
+
 def last_fatal_detail() -> str | None:
     """Return the specific reason the last :func:`boot` refused, when it had one.
 

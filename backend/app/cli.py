@@ -1471,6 +1471,36 @@ def cmd_upgrade(args: argparse.Namespace) -> None:
         print(_dim("Your projects and settings stay where they are."))
         sys.exit(1)
 
+    # pip is about to replace files in site-packages, and on this install some
+    # of those files are executing right now: the embedded PostgreSQL binaries
+    # live under pixeltable_pgserver, and compiled extensions are loaded into
+    # any running server. On Windows the running image is locked, so pip fails
+    # partway and leaves an install that is neither the old version nor the new
+    # one. Elsewhere it succeeds and the running process quietly becomes a
+    # mixture of both, because this codebase imports inside functions in many
+    # places and every later import reads the new file.
+    #
+    # Asking first costs nothing and turns a torn install into one clear line.
+    data_dir = DEFAULT_DATA_DIR
+    if getattr(args, "data_dir", None):
+        data_dir = Path(args.data_dir)
+    try:
+        from app.core.embedded_pg import cluster_postmaster_pid
+
+        live_pid = cluster_postmaster_pid(data_dir)
+    except Exception:  # noqa: BLE001
+        live_pid = None
+
+    if live_pid is not None:
+        print()
+        print(_red(_bold("  The application is still running.")))
+        print(_dim(f"The local database is being served by process {live_pid} from:"))
+        print(_dim(f"  {data_dir / 'pgdata'}"))
+        print()
+        print(_dim("Upgrading now would replace files that process is executing from."))
+        print(_dim("Close the app (or stop `openconstructionerp serve`), then run this again."))
+        sys.exit(1)
+
     target = "openconstructionerp"
     if args.version:
         target = f"openconstructionerp=={args.version}"

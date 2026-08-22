@@ -72,6 +72,46 @@ from app.dependencies import RequireRole, get_current_user_id, rls_request_conte
 
 logger = logging.getLogger(__name__)
 
+# (alembic.ini path, head revision) for this process, filled on first use by
+# ``_expected_alembic_head``. The path is part of the key so a test pointed at a
+# different tree is never answered from the previous one.
+_ALEMBIC_HEAD_CACHE: tuple[str, str | None] | None = None
+
+
+def _expected_alembic_head(ini_path: os.PathLike[str] | str) -> str | None:
+    """The head revision the installed migration tree declares, parsed once.
+
+    The tree cannot change under a running process: it is installed inside the
+    package next to this file, and a new one only arrives with a new process.
+    Repeating the parse is not cheap either, since
+    ``ScriptDirectory.from_config`` opens and compiles every revision file and
+    there are over three hundred of them.
+
+    That mattered because of who calls it. Health is polled on a timer by the
+    desktop shell, by container healthchecks and by whatever watches the
+    deployment, so this ran on a loop rather than on a rare diagnostic path.
+
+    The database revision it gets compared against is deliberately not cached.
+    That one does change while the process runs, and caching it would turn "has
+    the schema fallen behind" into "was it behind when this process started",
+    which is a different and much less useful question.
+    """
+    global _ALEMBIC_HEAD_CACHE
+
+    key = str(ini_path)
+    cached = _ALEMBIC_HEAD_CACHE
+    if cached is not None and cached[0] == key:
+        return cached[1]
+
+    from alembic.config import Config as _AlembicConfig
+    from alembic.script import ScriptDirectory as _ScriptDir
+
+    head = _ScriptDir.from_config(_AlembicConfig(key)).get_current_head()
+    # Only reached when the parse succeeded. A failure is left uncached so the
+    # next call tries again instead of reporting a permanent unknown.
+    _ALEMBIC_HEAD_CACHE = (key, head)
+    return head
+
 
 def _database_target() -> str:
     """Describe where the database connection was aimed, without the password.
@@ -1538,18 +1578,14 @@ def create_app() -> FastAPI:
         # new column. ``None`` if the check itself blew up (no alembic.ini
         # nearby, broken script tree, etc.) - visible but non-fatal.
         try:
-            from alembic.config import Config as _AlembicConfig
             from alembic.runtime.migration import MigrationContext as _MigCtx
-            from alembic.script import ScriptDirectory as _ScriptDir
             from sqlalchemy import text as _text  # noqa: F401
 
             from app.database import engine as _engine
 
             _ini = _Path(__file__).resolve().parent.parent / "alembic.ini"
             if _ini.is_file():
-                _cfg = _AlembicConfig(str(_ini))
-                _script = _ScriptDir.from_config(_cfg)
-                _expected = _script.get_current_head()
+                _expected = _expected_alembic_head(_ini)
 
                 async with _engine.connect() as _conn:
                     _actual = await _conn.run_sync(
@@ -2120,6 +2156,28 @@ def create_app() -> FastAPI:
 
         cmd = [sys.executable, "-m", "pip", "install", "--upgrade", target]
         if force:
+            # ``--force-reinstall`` does not stop at our own package. It
+            # reinstalls the whole dependency set, and that set contains
+            # pixeltable-pgserver, whose ``pginstall/bin/postgres`` binary is
+            # the process serving this very request. Replacing it under a live
+            # postmaster is a torn install on Windows, where the running image
+            # is locked and pip fails halfway, and a mixed one everywhere else.
+            #
+            # The plain upgrade above is left alone: it only moves what changed,
+            # and the ordinary case moves pure Python.
+            from app.core import embedded_pg as _embedded_pg
+
+            if _embedded_pg.is_running():
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        "A forced reinstall would replace the PostgreSQL binaries this "
+                        "application is currently running from. Stop the application "
+                        "first and run `pip install --force-reinstall --upgrade "
+                        "openconstructionerp` from your shell, or upgrade without the "
+                        "force option, which does not touch them."
+                    ),
+                )
             cmd.insert(-1, "--force-reinstall")
 
         job, started = claim_upgrade(cmd, settings.app_version)
