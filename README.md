@@ -393,18 +393,7 @@ A quick tour of the main workspaces. Every screen is the real application runnin
 
 Build professional cost estimates with a powerful BOQ editor. The full lifecycle - from first sketch to final tender submission:
 
-```mermaid
-flowchart LR
-    UP["<b>Upload</b><br/>PDF, CAD, photo, text"] --> EX["<b>Convert</b><br/>extract quantities + AI"]
-    EX --> VAL["<b>Validate</b><br/>42 rules, DIN / NRM / MasterFormat"]
-    VAL --> ED["<b>Estimate</b><br/>BOQ editor + AI + costs"]
-    ED --> TN["<b>Tender</b><br/>bid packages, compare, award"]
-    ED --> DS["4D schedule, 5D costs<br/>risk register, reports"]
-    classDef step fill:#1f6feb,stroke:#0d3885,color:#fff
-    classDef side fill:#8250df,stroke:#4a2c7d,color:#fff
-    class UP,EX,VAL,ED,TN step
-    class DS side
-```
+<img src="docs/readme-diagrams/01-bill-of-quantities-boq.svg" alt="Bill of quantities boq diagram" width="900" />
 
 - **Hierarchical BOQ structure** - Sections, positions, sub-positions with drag-and-drop reordering
 - **Inline editing** - Click any cell to edit. Tab between fields. Undo/redo with Ctrl+Z
@@ -432,22 +421,7 @@ Access the world's construction pricing data:
 
 Extract quantities from any source - drawings, models, text, or photos:
 
-```mermaid
-flowchart LR
-    CAD["<b>CAD / BIM</b><br/>RVT, IFC, DWG, DGN"] --> DDC["<b>DDC cad2data</b><br/>element extraction"]
-    DDC --> CAN["<b>Canonical</b><br/>elements + quantities + props"]
-    CAN --> MATCH["<b>Match</b><br/>classify DIN / NRM, price"]
-    MATCH --> BOQ["<b>BOQ</b><br/>positions + linked geometry"]
-    DOC["<b>PDF, photo, text</b>"] --> CV["<b>CV / OCR / AI</b><br/>PaddleOCR + YOLOv11"]
-    CV --> PICK["<b>BIM pick</b><br/>area, volume, length"]
-    PICK --> BOQ
-    classDef src fill:#57606a,stroke:#32383f,color:#fff
-    classDef conv fill:#238636,stroke:#104822,color:#fff
-    classDef out fill:#8250df,stroke:#4a2c7d,color:#fff
-    class CAD,DOC src
-    class DDC,CAN,MATCH,CV,PICK conv
-    class BOQ out
-```
+<img src="docs/readme-diagrams/02-cad-bim-takeoff-ai.svg" alt="Cad bim takeoff ai diagram" width="900" />
 
 
 - **CAD/BIM takeoff** - Upload RVT, IFC, DWG, or DGN files. DDC converters extract elements with volumes, areas, and lengths automatically
@@ -466,19 +440,7 @@ flowchart LR
 
 Anchor every project on a real spherical earth - Cesium 3D Tiles 1.1 with live HUD and pin layers:
 
-```mermaid
-flowchart LR
-    AN["<b>Anchor</b><br/>project, plot, CAD model"] --> GL["<b>Globe</b><br/>Cesium 3D Tiles, live HUD"]
-    GL --> MODE["<b>Mode</b><br/>Global, Project, Development"]
-    MODE --> DL["<b>Deeplink</b><br/>?model= ?plot= ?dev_id="]
-    DL --> FLY["<b>Fly-to</b><br/>BIM scene, PropDev, Daily Diary"]
-    FLY -. "HSE, punch list, diary" .-> PINS["<b>Pin layers</b>"]
-    PINS -.-> GL
-    classDef step fill:#1f6feb,stroke:#0d3885,color:#fff
-    classDef side fill:#8250df,stroke:#4a2c7d,color:#fff
-    class AN,GL,MODE,DL,FLY step
-    class PINS side
-```
+<img src="docs/readme-diagrams/03-geo-hub-3d-globe.svg" alt="Geo hub 3d globe diagram" width="900" />
 
 
 - **Three-mode picker** - Global (planet-wide portfolio), Project (job-site scale), Development (plot-level masterplan)
@@ -496,20 +458,7 @@ flowchart LR
 
 End-to-end real-estate developer workflow - from first lead to handover snags to warranty close-out:
 
-```mermaid
-flowchart LR
-    L["<b>Lead</b><br/>CRM inbox, brokers"] --> R["<b>Reservation</b><br/>hold + deposit schedule"]
-    R --> S["<b>SPA</b><br/>contract + escrow schedule"]
-    S --> H["<b>Handover</b><br/>snags, photos, sign-off"]
-    H --> W["<b>Warranty</b><br/>defects liability, promote"]
-    R -.-> PM["<b>Price matrix</b><br/>phases, blocks,<br/>house types, plots"]
-    L -.-> CB["<b>Contact bridge</b><br/>idempotent tags"]
-    W -.-> CB
-    classDef step fill:#238636,stroke:#104822,color:#fff
-    classDef side fill:#57606a,stroke:#32383f,color:#fff
-    class L,R,S,H,W step
-    class PM,CB side
-```
+<img src="docs/readme-diagrams/04-property-development.svg" alt="Property development diagram" width="900" />
 
 
 - **Lead → Reservation → SPA → Handover → Warranty** - Full lifecycle FSM with auto-creation of ContractParty on SPA conversion, Payment Schedule state machine, idempotent stage transitions
@@ -529,18 +478,7 @@ flowchart LR
 
 One module for three lodging kinds - worker camps for site crews, rentals for staff, hotels for visiting consultants - with rooms, bookings and charges in a unified data model:
 
-```mermaid
-flowchart LR
-    PD["<b>PropDev block</b><br/>plots 1..N"] -- "one-click bootstrap" --> ACC["<b>Accommodation</b><br/>worker camp, rental, hotel"]
-    ACC --> RM["<b>Rooms</b><br/>available, occupied,<br/>maintenance, blocked"]
-    RM --> BK["<b>Bookings</b><br/>reserved, checked in,<br/>checked out, cancelled"]
-    BK --> CH["<b>Charges</b><br/>rent, extras,<br/>deposits, refunds"]
-    HR["<b>HR autobook</b><br/>suggest + confirm"] -. "lowest labelled free room" .-> BK
-    classDef step fill:#238636,stroke:#104822,color:#fff
-    classDef side fill:#57606a,stroke:#32383f,color:#fff
-    class PD,ACC,RM,BK,CH step
-    class HR side
-```
+<img src="docs/readme-diagrams/05-accommodation.svg" alt="Accommodation diagram" width="900" />
 
 - **Three kinds, one module** - `worker_camp` · `rental` · `hotel`, with tab filter and per-kind capacity counters on every card
 - **Rooms with status** - `available` · `occupied` · `maintenance` · `blocked`; 409 prevents booking into a blocked or maintenance room
@@ -559,17 +497,7 @@ flowchart LR
 
 Bottom-right floating chat on every page - talks to the entire ERP database through 17 typed tools (projects, BOQ items, schedule, validation, risks, CWICR search, BIM elements, full semantic search):
 
-```mermaid
-flowchart LR
-    P["<b>Any page</b><br/>/projects /boq /geo"] --> FAB["<b>Floating button</b><br/>bottom right"]
-    FAB --> T["<b>Chat panel</b><br/>17 typed tools"]
-    T --> ST["<b>Streamed answer</b><br/>tool cards inline"]
-    T -.-> DB[("<b>Live ERP data</b><br/>projects, BOQ, schedule")]
-    classDef step fill:#db6d28,stroke:#7a3c14,color:#fff
-    classDef side fill:#8250df,stroke:#4a2c7d,color:#fff
-    class P,FAB,T,ST step
-    class DB side
-```
+<img src="docs/readme-diagrams/06-floating-chat-with-the.svg" alt="Floating chat with the diagram" width="900" />
 
 - **Always-on** - Mounted in `AppLayout`, available on every route (Dashboard, BOQ, BIM, Geo, PropDev, Accommodation, all 180 modules)
 - **Real ERP access** - Reads/writes through tools, not LLM guesswork: `get_all_projects`, `get_project_summary`, `get_boq_items`, `get_schedule`, `get_validation_results`, `get_risk_register`, `search_cwicr_database`, `get_cost_model`, `compare_projects`, `run_validation`, `create_boq_item`, `search_boq_positions`, `search_documents`, `search_tasks`, `search_risks`, `search_bim_elements`, `search_anything`
@@ -582,21 +510,7 @@ flowchart LR
 
 Multi-disciplinary BIM coordination with AI-assisted issue triage:
 
-```mermaid
-flowchart LR
-    FED["<b>Federation</b><br/>ARC, STR, MEP models"] --> RAW["<b>Raw clashes</b><br/>thousands of pairs"]
-    RAW --> SI["<b>Smart issues</b><br/>clustered by zone + discipline"]
-    SI --> AI["<b>AI triage</b><br/>severity, rework cost, confidence"]
-    AI --> BCF["<b>BCF 3.0</b><br/>any viewer or tool"]
-    SI -.-> SV["<b>Smart views</b><br/>RFI, tasks, cost impact"]
-    IDS["IDS + COBie<br/>owner drops"] -.-> BCF
-    classDef step fill:#1f6feb,stroke:#0d3885,color:#fff
-    classDef ai fill:#db6d28,stroke:#7a3c14,color:#fff
-    classDef side fill:#57606a,stroke:#32383f,color:#fff
-    class FED,RAW,SI,BCF step
-    class AI ai
-    class SV,IDS side
-```
+<img src="docs/readme-diagrams/07-coordination-hub-clash-ai.svg" alt="Coordination hub clash ai diagram" width="900" />
 
 
 - **Coordination Hub** - Single dashboard fusing clashes, RFIs, submittals, action items per model federation
@@ -623,19 +537,7 @@ Plan your project timeline and track costs over time:
 
 Complete your estimation workflow:
 
-```mermaid
-flowchart LR
-    B["<b>BOQ</b><br/>priced sections"] --> PKG["<b>Bid package</b><br/>scope + instructions"]
-    PKG --> DIST["<b>Distribute</b><br/>mail + portal"]
-    DIST --> CMP["<b>Compare</b><br/>price mirror, anomalies"]
-    CMP --> AW["<b>Award</b><br/>winner + change orders"]
-    CMP -.-> REP["<b>Reports</b><br/>GAEB X83, risk register, EAC"]
-    AW -.-> REP
-    classDef step fill:#1f6feb,stroke:#0d3885,color:#fff
-    classDef side fill:#8250df,stroke:#4a2c7d,color:#fff
-    class B,PKG,DIST,CMP,AW step
-    class REP side
-```
+<img src="docs/readme-diagrams/08-tendering-risk-reporting.svg" alt="Tendering risk reporting diagram" width="900" />
 
 
 - **Tendering** - Create bid packages, distribute to subcontractors, collect and compare bids with side-by-side price mirror
@@ -960,51 +862,7 @@ This pipeline is the reason OpenConstructionERP can replace several commercial p
 
 ### Technical stack
 
-```mermaid
-flowchart TB
-    UI["Frontend SPA<br>React 18, TypeScript, Vite<br>AG Grid, Tailwind, PDF.js"]
-
-    subgraph Backend ["FastAPI Backend, 180 modules"]
-        CORE["Core<br>Module loader, Event bus, Hooks, RBAC<br>Validation, FSM + audit log"]
-        ESTIM["Estimating<br>BOQ, Costs, Catalog, Assemblies<br>Takeoff, BIM Hub, Match-Elements, 5D"]
-        FIELD["Field Operations<br>Service, Equipment, Daily Diary<br>Portal, Resources & Crew"]
-        COMM["Commercial<br>CRM, Contracts, Subcontractors<br>Bid Management, Variations, Suppliers, Property Dev"]
-        QSAFE["Schedule & Quality<br>Advanced Schedule (LPS/CPM/EVM)<br>QMS, HSE, Carbon & ESG, BI Dashboards"]
-        AIS["AI<br>AI Chat SSE, AI Estimate, Cost Intelligence<br>7 LLM providers"]
-        CORE --> ESTIM
-        CORE --> FIELD
-        CORE --> COMM
-        CORE --> QSAFE
-        CORE --> AIS
-    end
-
-    subgraph Data ["Data layer"]
-        PG[("PostgreSQL 16<br>embedded in dev")]
-        VEC[("Vector DB<br>LanceDB / Qdrant")]
-        S3[("MinIO / S3<br>files, CAD, PDFs")]
-    end
-
-    subgraph Pipelines ["Pipelines"]
-        CAD["DDC cad2data<br>RVT, IFC, DWG, DGN to canonical JSON"]
-        CV["CV / OCR<br>PaddleOCR 3.0, YOLOv11<br>PDF takeoff, symbol detection"]
-    end
-
-    UI -- "REST, SSE" --> CORE
-    Backend --> PG
-    Backend --> VEC
-    Backend --> S3
-    CAD --> Backend
-    CV --> Backend
-
-    classDef fe fill:#1f6feb,stroke:#0d3885,color:#fff;
-    classDef be fill:#238636,stroke:#104822,color:#fff;
-    classDef ai fill:#db6d28,stroke:#7a3c14,color:#fff;
-    classDef data fill:#8250df,stroke:#4a2c7d,color:#fff;
-    class UI fe
-    class CORE,ESTIM,FIELD,COMM,QSAFE be
-    class AIS ai
-    class PG,VEC,S3,CAD,CV data
-```
+<img src="docs/readme-diagrams/09-technical-stack.svg" alt="Technical stack diagram" width="900" />
 
 <details>
 <summary>Plain-text version (for screen readers or non-Mermaid renderers)</summary>
