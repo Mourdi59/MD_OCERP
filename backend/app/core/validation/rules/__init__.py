@@ -1610,6 +1610,20 @@ _METRIC_BOQ_UNITS: frozenset[str] = frozenset(
         "litre",
         "liter",
         "ha",  # hectare
+        # Cyrillic spellings. russia_pack declares its default_units in this
+        # script and units.py preserves non-Latin units verbatim rather than
+        # folding them to Latin, so a bill written the way a Russian-market
+        # estimator writes it reached this rule as an unrecognised token - and
+        # an unrecognised unit is silently ignored, never flagged. That made
+        # the metric half of the check blind on exactly the market whose pack
+        # declares these. The digit forms sit beside the glyph forms because
+        # both are typed in practice (units.py cites "м3" as a real input).
+        "м",
+        "м2",
+        "м²",
+        "м3",
+        "м³",
+        "кг",
     },
 )
 # Units that are definitively imperial (US/UK) - ft, lb, etc.
@@ -1620,6 +1634,14 @@ _IMPERIAL_BOQ_UNITS: frozenset[str] = frozenset(
         "ft3",
         "sqft",
         "cuft",
+        # The everyday US abbreviations, and the area and volume defaults
+        # us_pack itself declares. Without them a US bill written in the very
+        # units its own pack prescribes read as unrecognised here, so the pack
+        # failed its own rule. units.py folds both to ft2 / ft3 on write, which
+        # is why only rows that bypass that path (imports, legacy data) carried
+        # them - and those are precisely the rows this rule exists to judge.
+        "sf",
+        "cf",
         "in",
         "inch",
         "yd",

@@ -2,8 +2,32 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """Integration test: BOQUnitSystemConsistencyRule fires WARNING for mismatched units.
 
-Wave 24 (#167) — task: seed a project with unit_system='imperial', create a
-BOQ position with unit 'm³', assert the validation rule fires a WARNING.
+Wave 24 (#167) — task: seed an imperial project, create a BOQ position with a
+metric unit, assert the validation rule fires a WARNING.
+
+Repointed at the shipped mechanism. The first test used to create a project
+with ``unit_system='imperial'`` and assert the API echoed it back. No such
+field was ever implemented — not on the model, not in the schema — so the
+assertion could not pass, and the test then went on to validate a hand-built
+context that ignored the project and BOQ it had just created. It proved the
+rule could be called, not that anything reaches it.
+
+The unit system now comes from the project's regional pack: the project
+carries ``country_code``, ``app.core.regional_packs`` resolves that to the
+pack claiming the country, and the pack's declared ``measurement_system``
+becomes ``project_unit_system`` for the run. So the imperial project below is
+created by setting ``country_code='US'`` — us_pack declares imperial — and the
+assertion runs through ``POST /validation/run/`` against the stored BOQ rather
+than against a dict written in the test. The behaviour being asserted is
+unchanged: a metric unit in an imperial project is exactly one WARNING, not an
+ERROR and not a pass.
+
+Open question, deliberately not settled here: whether a project should also be
+able to override its pack's measurement system directly. The abandoned
+``unit_system`` field was that design. Repointing these tests at the pack is
+not a decision against the override — it is only a statement of what ships
+today. If a per-project override lands later, this file is where its
+precedence over the pack belongs.
 
 Pattern mirrors test_boq_bim_qty_source_roundtrip.py: register + promote +
 login + project + BOQ + position + validate.
@@ -70,20 +94,22 @@ async def auth_headers(shared_client: AsyncClient) -> dict[str, str]:
 async def test_boq_unit_system_consistency_rule_fires_warning(
     shared_client: AsyncClient, auth_headers: dict[str, str]
 ) -> None:
-    """Seed an imperial project, add a m³ BOQ position, run the unit-system
-    consistency rule directly; assert WARNING is returned (not ERROR, not pass).
+    """Seed an imperial project, add a m³ BOQ position, run validation over the
+    stored BOQ; assert WARNING is returned (not ERROR, not pass).
 
-    We use the rule directly (pure in-memory) rather than the HTTP validation
-    endpoint so the test is fast and independent of routing. The project and
-    BOQ position DO exist in the DB — this gives us a realistic ordinal/unit
-    pair while keeping the rule assertion straightforward.
+    The project is imperial because ``country_code='US'`` resolves to us_pack,
+    which declares ``measurement_system: "imperial"``. Nothing in this test
+    tells the engine which system to use — that is the point. The request body
+    carries only the project, the BOQ and the rule set.
     """
     # ── Create an imperial project ────────────────────────────────────────────
+    # Imperial by country, not by a per-project flag: us_pack claims "US" and
+    # declares imperial, and that is what the run below has to pick up.
     proj = await shared_client.post(
         "/api/v1/projects/",
         json={
             "name": f"Imperial Project {uuid.uuid4().hex[:6]}",
-            "unit_system": "imperial",
+            "country_code": "US",
         },
         headers=auth_headers,
     )
@@ -91,9 +117,10 @@ async def test_boq_unit_system_consistency_rule_fires_warning(
     project_data = proj.json()
     project_id = project_data["id"]
 
-    # Verify the project was stored with imperial unit_system.
-    assert project_data.get("unit_system") == "imperial", (
-        f"Expected unit_system='imperial', got: {project_data.get('unit_system')}"
+    # The stored country is what the resolver reads, so a silently dropped
+    # country_code would make the rest of this test vacuous.
+    assert project_data.get("country_code") == "US", (
+        f"Expected country_code='US', got: {project_data.get('country_code')}"
     )
 
     # ── Create a BOQ for the project ─────────────────────────────────────────
@@ -120,28 +147,33 @@ async def test_boq_unit_system_consistency_rule_fires_warning(
     )
     assert pos.status_code in (200, 201), pos.text
 
-    # ── Run the rule directly (pure in-memory, no extra HTTP) ────────────────
-    from app.core.validation.engine import Severity, ValidationContext
-    from app.core.validation.rules import BOQUnitSystemConsistencyRule
-
-    rule = BOQUnitSystemConsistencyRule()
-    ctx = ValidationContext(
-        data={
-            "positions": [{"ordinal": "01.001", "unit": "m3"}],
-            "project_unit_system": "imperial",
-        }
+    # ── Validate the stored BOQ through the real endpoint ────────────────────
+    # Note what is NOT in this body: no unit system. The service derives it
+    # from the project's country via the regional pack.
+    run = await shared_client.post(
+        "/api/v1/validation/run/",
+        json={"project_id": project_id, "boq_id": boq_id, "rule_sets": ["boq_quality"]},
+        headers=auth_headers,
     )
-    results = await rule.validate(ctx)
+    assert run.status_code in (200, 201), run.text
 
     # ── Assertions ────────────────────────────────────────────────────────────
-    assert len(results) == 1, f"Expected 1 result, got {len(results)}"
+    results = [r for r in run.json()["results"] if r["rule_id"] == "boq_quality.unit_system_consistency"]
+    assert len(results) == 1, f"Expected 1 unit-system result, got {len(results)}"
     result = results[0]
-    assert result.passed is False, f"Rule should have fired a WARNING, but passed=True. message={result.message}"
-    assert result.severity == Severity.WARNING, f"Expected WARNING severity, got {result.severity}"
-    assert "imperial" in result.message.lower() or "metric" in result.message.lower(), (
-        f"Expected unit system name in message: {result.message}"
+    # The endpoint reports one ``status`` per result: "pass" when the rule
+    # passed, otherwise the severity. So "warning" asserts both halves of what
+    # this test is for - it fired, and it fired as a WARNING rather than an
+    # ERROR that would block the bill.
+    assert result["status"] == "warning", f"Expected a WARNING, got status={result['status']}: {result['message']}"
+    assert "imperial" in result["message"].lower() or "metric" in result["message"].lower(), (
+        f"Expected unit system name in message: {result['message']}"
     )
-    assert result.details.get("mismatch_count") == 1, f"Expected 1 mismatch, got: {result.details}"
+    assert result["details"].get("mismatch_count") == 1, f"Expected 1 mismatch, got: {result['details']}"
+    # The pack's declared value, not anything this test sent.
+    assert result["details"].get("project_unit_system") == "imperial", (
+        f"Unit system should have come from us_pack, got: {result['details']}"
+    )
 
 
 @pytest.mark.asyncio

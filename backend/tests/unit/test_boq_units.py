@@ -404,3 +404,77 @@ def test_us_pack_weight_default_resolves_to_the_pound() -> None:
     from app.modules.us_pack.config import PACK_CONFIG
 
     assert normalise_unit(PACK_CONFIG["default_units"]["weight"]) == "lb"
+
+
+# ── A pack's own units must satisfy the rule that judges that pack ─────
+#
+# The gate above proves a declared default is a *well-formed* unit. It does
+# not prove anything reads it as the measurement system the pack claims, and
+# those are different questions. ``BOQUnitSystemConsistencyRule`` decides
+# whether a position belongs to the other system by set membership, and a
+# unit in neither set is silently ignored rather than flagged. So a pack
+# whose own declared units were missing from its own system's set made the
+# rule blind on exactly that market: us_pack's "sf" / "cf" and russia_pack's
+# Cyrillic spellings were all absent.
+#
+# Written as a property over every pack rather than as literals for the six
+# that were wrong, so a pack added later cannot reintroduce the defect.
+
+
+def _pack_measurement_systems() -> dict[str, str]:
+    """Return ``{pack module name: declared measurement_system}``."""
+    import importlib
+    from pathlib import Path
+
+    modules_dir = Path(__file__).resolve().parents[2] / "app" / "modules"
+    systems: dict[str, str] = {}
+    for pack_dir in sorted(modules_dir.glob("*_pack")):
+        if not (pack_dir / "config.py").is_file():
+            continue
+        config = importlib.import_module(f"app.modules.{pack_dir.name}.config")
+        declared = getattr(config, "PACK_CONFIG", {}).get("measurement_system")
+        if isinstance(declared, str) and declared.strip():
+            systems[pack_dir.name] = declared.strip().lower()
+    return systems
+
+
+_PACK_MEASUREMENT_SYSTEMS = _pack_measurement_systems()
+
+
+def test_every_pack_declares_a_measurement_system() -> None:
+    """Guard the property below: a pack missing the field would be skipped.
+
+    The property is parametrized over declared units, so a pack whose
+    ``measurement_system`` is absent would quietly drop out of the check
+    rather than fail it.
+    """
+    packs = {pack for pack, _, _ in _PACK_DEFAULT_UNITS}
+    missing = packs - set(_PACK_MEASUREMENT_SYSTEMS)
+    assert not missing, f"packs declaring units but no measurement_system: {sorted(missing)}"
+    assert set(_PACK_MEASUREMENT_SYSTEMS.values()) <= {"metric", "imperial"}
+
+
+@pytest.mark.parametrize(
+    ("pack", "dimension", "declared"),
+    [row for row in _PACK_DEFAULT_UNITS if row[1] in _QUANTITY_DIMENSIONS],
+    ids=[f"{row[0]}-{row[1]}" for row in _PACK_DEFAULT_UNITS if row[1] in _QUANTITY_DIMENSIONS],
+)
+def test_pack_default_units_are_recognised_by_the_unit_system_rule(pack: str, dimension: str, declared: str) -> None:
+    """Every declared quantity default belongs to its own pack's system.
+
+    Membership, not absence, is what is asserted: the unit has to be *in* the
+    set for the system the pack declares. Being in neither set is the failure
+    this exists to catch, because the rule treats an unknown unit as nothing
+    to say rather than as a mismatch.
+    """
+    from app.core.validation.rules import _IMPERIAL_BOQ_UNITS, _METRIC_BOQ_UNITS
+
+    system = _PACK_MEASUREMENT_SYSTEMS[pack]
+    expected = _IMPERIAL_BOQ_UNITS if system == "imperial" else _METRIC_BOQ_UNITS
+    other = _METRIC_BOQ_UNITS if system == "imperial" else _IMPERIAL_BOQ_UNITS
+    unit = declared.strip().lower()
+
+    assert unit in expected, f"{pack}.{dimension} = {declared!r} is not a recognised {system} unit"
+    # The two sets must not overlap on this unit either, or the rule would
+    # flag a pack's own default as belonging to the opposite system.
+    assert unit not in other, f"{pack}.{dimension} = {declared!r} counts as both systems"

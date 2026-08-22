@@ -2,9 +2,24 @@
 # Copyright (c) 2026 Artem Boiko / DataDrivenConstruction
 """app.core.tax - unified VAT/GST rate lookup.
 
-Aggregates ``vat_rates`` dicts from all regional pack configs and exposes a
-single :func:`get_vat_rate` entry point so callers never need to know which
-pack owns a given country code.
+Exposes a single :func:`get_vat_rate` entry point so callers never need to
+know which pack owns a given country code.
+
+The rate table below is **hand-maintained here**, not read from anywhere. It
+was transcribed from the regional packs' ``vat_rates`` dicts and has to be
+kept in step with them by hand: this module imports :mod:`decimal` and
+nothing else, so editing a pack's ``vat_rates`` does not change what
+:func:`get_vat_rate` returns, and editing this table does not change what a
+pack's ``GET /config/`` reports.
+
+Nothing currently checks that the two agree - ``test_vat_lookup`` covers this
+table against hardcoded expectations and ``test_regional_pack_vat_completeness``
+covers the packs against theirs, but no test compares one to the other, so the
+two can drift apart silently. Treat that as a known gap, not as a guarantee.
+
+Said plainly because the previous wording ("aggregates ``vat_rates`` dicts
+from all regional pack configs") described a registry that does not exist,
+and a reader could reasonably have built on it.
 
 Design rules (Wave 25 / task #168):
 - Rates are returned as :class:`decimal.Decimal` (not float).
@@ -89,7 +104,9 @@ class VATNotApplicable(Exception):
 # Structure: {ISO-2 country code: {kind: Decimal-as-string}}
 # 'kind' values: 'standard' | 'reduced' | 'zero'
 #
-# Populated from each regional pack's ``vat_rates`` dict (Wave 25).
+# Transcribed by hand from each regional pack's ``vat_rates`` dict (Wave 25)
+# and maintained here since - the packs are not read at runtime. Changing a
+# rate means changing it in both places.
 # Rate values are stored as strings and coerced to Decimal on first access
 # (lazy - avoids import-time Decimal allocation for unused entries).
 #
