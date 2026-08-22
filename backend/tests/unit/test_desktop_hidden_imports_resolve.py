@@ -24,11 +24,24 @@ pycparser's generated lextab / yacctab, scipy's _cdflib, torch's optional
 tensorboard, nvcuda.dll on a machine with no CUDA) and none of that is ours to
 declare.
 
+The last test covers the other route into the bundle. ``module_loader`` imports
+some layers by name under ``contextlib.suppress(ModuleNotFoundError)``, so if
+one of those does not resolve inside the frozen sidecar the module simply never
+registers its subscribers, with no error and no log line. Measured against the
+published 15.4.0 Windows installer, 23 ``events.py``, 3 ``validators.py`` and
+the single ``pipeline_nodes.py`` are absent from the PYZ and reach the bundle
+only as source, carried by the ``backend/app`` tree in ``datas``. They do
+resolve: PyInstaller's frozen path finder falls back to python's FileFinder on
+the same directory, which is where that tree lands. That makes the ``datas``
+line load-bearing for imports and not only for data, which is not what it says
+about itself, so the test below fails if it is ever narrowed.
+
 It is a pure file-parsing test - the spec is executed with PyInstaller's own
 symbols stubbed out, no application import, no build - so it runs anywhere the
 suite is collected.
 """
 
+import re
 import sys
 import types
 from pathlib import Path
@@ -37,6 +50,7 @@ _BACKEND = Path(__file__).resolve().parents[2]
 _DESKTOP = _BACKEND.parent / "desktop"
 _SPEC = _DESKTOP / "pyinstaller.spec"
 _MODULES = _BACKEND / "app" / "modules"
+_LOADER = _BACKEND / "app" / "core" / "module_loader.py"
 
 # A floor on how many names this guard actually looked at. Without it the whole
 # file passes green the day the discovery loop moves out of the spec or an
@@ -239,3 +253,80 @@ def test_the_checker_reports_the_layers_the_pre_fix_loop_invented() -> None:
         "the disk-driven loop did not simply drop the names that no file backs. Dropped but still "
         f"backed: {sorted((set(pre_fix) - flagged) - kept)}. Added and not backed: {sorted(kept - set(pre_fix))}"
     )
+
+
+def _loader_dynamic_layers() -> set[str]:
+    """Layer names ``module_loader`` imports by name, read out of the loader.
+
+    Read rather than listed, so a layer the loader learns tomorrow widens this
+    guard instead of quietly falling outside it. A scope defined by the names
+    somebody remembered to type here is blind to the one they did not.
+    """
+    source = _LOADER.read_text(encoding="utf-8")
+    layers = set(re.findall(r'import_module\(f"\{package_path\}\.([a-z_]+)"\)', source))
+    layers |= set(re.findall(r'router_module_name = f"\{package_path\}\.([a-z_]+)"', source))
+    assert layers, (
+        f"parsed no dynamically imported layer names out of {_LOADER}. The loader's import calls were "
+        "rewritten and this guard is now reading nothing, which would let it pass on any tree."
+    )
+    return layers
+
+
+def _app_tree_ships_as_data() -> bool:
+    """True when the spec ships the whole ``backend/app`` tree at bundle path ``app``.
+
+    That is the route by which a layer with no frozen module still imports: the
+    tree lands at ``sys._MEIPASS/app/...``, which is exactly the ``__path__``
+    PyInstaller gives the frozen ``app.modules.<name>`` package, and its path
+    finder falls back to python's FileFinder for names it has no PYZ entry for.
+    """
+    datas = _run_spec()[0].get("datas") or []
+    wanted = (_BACKEND / "app").resolve()
+    for entry in datas:
+        if not isinstance(entry, tuple) or len(entry) != 2:
+            continue
+        source, target = entry
+        if Path(str(source)).resolve() == wanted and str(target).replace("\\", "/").strip("/") == "app":
+            return True
+    return False
+
+
+def test_every_layer_the_loader_imports_by_name_can_be_imported_from_the_bundle() -> None:
+    """A layer that reaches the sidecar by neither route fails silently at runtime.
+
+    ``module_loader`` wraps these imports in ``contextlib.suppress``, so a
+    module whose ``events.py`` is missing loads, logs nothing and never
+    registers a subscriber. On the published 15.4.0 sidecar 27 of these files
+    have no frozen module and arrive only through the ``datas`` tree, so
+    narrowing that entry - an obvious way to slim a bundle that carries 2333
+    source files next to 2176 frozen modules - would silence 27 modules and no
+    gate we own would notice.
+    """
+    layers = _loader_dynamic_layers()
+    declared = set(_app_hidden_imports())
+    ships_tree = _app_tree_ships_as_data()
+
+    unreachable = []
+    covered = 0
+    for layer in sorted(layers):
+        for path in sorted(_MODULES.glob(f"*/{layer}.py")):
+            dotted = f"app.modules.{path.parent.name}.{layer}"
+            covered += 1
+            if dotted not in declared and not ships_tree:
+                unreachable.append(dotted)
+
+    assert covered, (
+        f"found no {sorted(layers)} file under {_MODULES}, so this guard examined nothing. Either the "
+        "layers were renamed or the module tree moved."
+    )
+    assert not unreachable, (
+        f"{len(unreachable)} layer(s) that module_loader imports by name reach the frozen sidecar by "
+        "neither route this guard can check - they are not named as hidden imports, and the "
+        f"backend/app tree is no longer shipped whole in datas:\n  " + "\n  ".join(unreachable) + "\n"
+        "Some of these may still arrive because another module imports them with a plain import "
+        "statement, which nothing here can see without running PyInstaller. Every one that does not "
+        "loads under contextlib.suppress(ModuleNotFoundError), so its module starts, logs nothing and "
+        "registers no subscribers. Restore the datas entry (backend/app -> 'app'), or name these "
+        "layers in the spec's _MODULE_LAYERS so they are frozen."
+    )
+    print(f"loader-dynamic layers {sorted(layers)}: {covered} files, app tree in datas: {ships_tree}")
