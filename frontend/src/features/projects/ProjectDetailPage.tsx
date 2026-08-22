@@ -79,7 +79,7 @@ import { useRecentStore } from '@/stores/useRecentStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useToastStore } from '@/stores/useToastStore';
 import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
+import { formatCurrency as formatMoney } from '@/shared/lib/money';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -208,7 +208,7 @@ async function smartImportFile(boqId: string, file: File): Promise<ImportResult>
   return res.json();
 }
 
-function formatCurrency(value: number, currency?: string): string {
+export function formatCurrency(value: number, currency?: string): string {
   // Strict-currency policy (mirrors <MoneyDisplay>): never guess EUR when
   // the project has no currency configured, which would silently mislabel
   // a Saudi/UK/US project's money in Euros. Surface an em-dash instead so
@@ -217,16 +217,13 @@ function formatCurrency(value: number, currency?: string): string {
   if (!/^[A-Z]{3}$/.test(trimmed)) {
     return '—';
   }
-  try {
-    return new Intl.NumberFormat(getNumberLocale(), {
-      style: 'currency',
-      currency: trimmed,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  } catch {
-    return `${value.toFixed(2)} ${trimmed}`;
-  }
+  // Past that gap check the shared formatter owns the rendering, because how
+  // many decimals a currency has is a property of the currency. The pair of
+  // literal 2s that used to stand here overrode it, so a project budgeted in a
+  // currency with no minor unit carried cents on every tile of the dashboard,
+  // the forint reading "1 235,00 Ft" on a whole amount. Nothing about which
+  // currency gets how many decimals is decided here.
+  return formatMoney(value, trimmed);
 }
 
 function formatDate(iso: string, locale = 'en-US'): string {

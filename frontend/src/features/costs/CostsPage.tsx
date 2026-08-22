@@ -41,6 +41,7 @@ import { PageHeader } from '@/shared/ui/PageHeader';
 import { useConfirm } from '@/shared/hooks/useConfirm';
 import { ApiError, apiGet, apiPost, apiPatch, apiDelete, triggerDownload, extractErrorMessageFromBody } from '@/shared/lib/api';
 import { fmtPercent, fmtFixed } from '@/shared/lib/formatters';
+import { formatCurrency, type FormatCurrencyOptions } from '@/shared/lib/money';
 import { copyToClipboard } from '@/shared/lib/browser';
 import { useToastStore } from '@/stores/useToastStore';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
@@ -195,6 +196,45 @@ async function downloadExcelExport(): Promise<void> {
     disposition?.match(/filename="?([^";]+)"?/)?.[1] ||
     'cost_database_export.xlsx';
   triggerDownload(blob, filename);
+}
+
+/* ── Money ─────────────────────────────────────────────────────────────── */
+
+/**
+ * Render a catalogue amount in the currency that amount is actually in.
+ *
+ * The cost database mixes currencies row by row, a EUR catalogue sitting next
+ * to an AED one, so every figure here carries its own ISO code. How many
+ * decimals that code has is a property of the currency, not a choice this
+ * screen gets to make, and the two inline formatters this replaces made it
+ * anyway: both passed a literal 2 for the floor and the ceiling, which
+ * overrides the currency table for whatever code was passed in. A catalogue
+ * priced in a currency with no minor unit therefore printed decimals it
+ * cannot express, the forint reading "1 235,00 Ft" on a whole amount.
+ *
+ * The shared formatter reads the minor units and this function does not
+ * second-guess the number it gets back. Nothing here decides how many
+ * decimals a currency has; the fix is only that this screen stopped
+ * contradicting the place that does.
+ *
+ * A blank or malformed code still renders a bare grouped number with no
+ * symbol, which is what both inline versions did, so an unpriced row never
+ * acquires a Euro sign it did not earn.
+ *
+ * At module scope, and exported, so the screens below share one answer and
+ * the decimals can be checked without mounting the page.
+ *
+ * `options` is the shared formatter's own override, forwarded untouched, for
+ * the one caller that legitimately needs a different ceiling. Overriding the
+ * ceiling is a statement about the figure being shown; overriding the floor
+ * was the bug, and no caller here does that.
+ */
+export function formatCostMoney(
+  value: number,
+  currency?: string | null,
+  options?: FormatCurrencyOptions,
+): string {
+  return formatCurrency(value, currency, undefined, options);
 }
 
 /* ── Favourites & Recently Used (localStorage) ────────────────────────── */
@@ -1129,26 +1169,12 @@ export function CostsPage() {
       maximumFractionDigits: 2,
     }).format(n);
 
-  // Currency-aware money formatter. Catalogues mix EUR / AED / SAR / USD,
-  // so a bare number is ambiguous — always render the ISO code. Falls
-  // back to the plain number formatter only when no currency is known at
-  // all (so we never crash on an unknown / empty code).
-  const fmtMoney = (n: number, currency?: string | null) => {
-    const code = (currency || regionCurrency || '').trim().toUpperCase();
-    if (!code) return fmt(n);
-    try {
-      return new Intl.NumberFormat(getNumberLocale(), {
-        style: 'currency',
-        currency: code,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(n);
-    } catch {
-      // Non-ISO / unsupported code — keep the figure legible and still
-      // show the raw code rather than dropping it silently.
-      return `${fmt(n)} ${code}`;
-    }
-  };
+  // Currency-aware money formatter. Catalogues mix EUR / AED / SAR / USD, so
+  // a bare number is ambiguous and the ISO code is always rendered. A row that
+  // carries no currency of its own falls back to the region's, and only a row
+  // with neither renders bare, which formatCostMoney handles without throwing
+  // on an unknown or empty code.
+  const fmtMoney = (n: number, currency?: string | null) => formatCostMoney(n, currency || regionCurrency);
 
   // Localized label for a category dropdown entry. CWICR ships the
   // `collection` token as frozen-German all-caps (e.g. "BAUARBEITEN").
@@ -2081,25 +2107,10 @@ function AddToBOQModal({
     }
   }, [boqId, sectionId, items, addToast, onSuccess]);
 
-  const fmt = (n: number) =>
-    new Intl.NumberFormat(getNumberLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-
-  // Currency-aware money formatter for the preview — selected items can
-  // span EUR / AED / SAR / USD, so always render the ISO code.
-  const fmtMoney = (n: number, currency: string) => {
-    const code = (currency || '').trim().toUpperCase();
-    if (!code) return fmt(n);
-    try {
-      return new Intl.NumberFormat(getNumberLocale(), {
-        style: 'currency',
-        currency: code,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(n);
-    } catch {
-      return `${fmt(n)} ${code}`;
-    }
-  };
+  // Currency-aware money formatter for the preview. Selected items can span
+  // EUR / AED / SAR / USD, so the ISO code is always rendered, and each item
+  // gets the decimals its own currency has rather than a fixed two.
+  const fmtMoney = (n: number, currency: string) => formatCostMoney(n, currency);
   const itemCurrencyOf = (it: CostItem) =>
     (it.currency || REGION_MAP[it.region ?? '']?.currency || '').trim().toUpperCase();
 
@@ -2620,18 +2631,14 @@ function MassPricingFields({
   const { t } = useTranslation();
   const enabled = massBasis === 't' || massBasis === 'kg';
   const effective = massEffectiveUnitRate(rate, massPerUnit, massBasis);
-  const previewFmt = (n: number) => {
-    const code = (currency || '').trim().toUpperCase();
-    try {
-      return new Intl.NumberFormat(getNumberLocale(), {
-        ...(code ? { style: 'currency' as const, currency: code } : {}),
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 4,
-      }).format(n);
-    } catch {
-      return n.toFixed(2);
-    }
-  };
+  // A mass-derived unit rate earns more precision than a posted amount, hence
+  // the ceiling of four: a rate per kilogram is a working figure. The floor is
+  // a separate question and this used to answer it with a literal 2, which
+  // forced two decimals onto currencies that have none. Only the ceiling is
+  // declared now; the shared formatter takes the floor from the currency's own
+  // minor units, so a two-decimal currency still shows both and a zero-decimal
+  // one shows none until the rate itself has a fraction to show.
+  const previewFmt = (n: number) => formatCostMoney(n, currency, { maximumFractionDigits: 4 });
 
   return (
     <div className="rounded-lg border border-border-light bg-surface-secondary/30 p-3">

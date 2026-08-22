@@ -42,8 +42,8 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { Button, Badge } from '@/shared/ui';
+import { formatCurrency } from '@/shared/lib/money';
 import type { CostVariant, VariantStats } from './api';
-import { getNumberLocale } from '@/stores/usePreferencesStore';
 
 /* ── Types ────────────────────────────────────────────────────────────── */
 
@@ -99,30 +99,22 @@ interface MultiVariantPickerProps {
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 
-function formatPrice(value: number, currency: string): string {
-  // Currency-style formatting requires an ISO code — when the caller passes
-  // an empty string, render the bare number. Never substitute USD/EUR —
-  // see the architecture guide "no hardcoded currency fallbacks".
-  if (!currency) {
-    return new Intl.NumberFormat(getNumberLocale(), {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  }
-  try {
-    return new Intl.NumberFormat(getNumberLocale(), {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  } catch {
-    const n = new Intl.NumberFormat(getNumberLocale(), {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-    return `${n} ${currency}`;
-  }
+/** Format one slot's price in that slot's currency.
+ *
+ *  Same delegation, and the same reason, as the single-slot picker: the
+ *  shared formatter reads the currency's own minor units, where the literal 2
+ *  this passed overrode them and printed cents on a currency that has none.
+ *  A batch modal makes that worse than a single row, because every slot and
+ *  the running subtotal repeat the same impossible precision.
+ *
+ *  An empty or malformed code still renders a bare number rather than a
+ *  substituted USD/EUR one, per the architecture guide "no hardcoded currency
+ *  fallbacks"; that is the shared formatter's own rule.
+ *
+ *  Exported so the decimals can be pinned directly as well as through a
+ *  render of the modal. */
+export function formatPrice(value: number, currency: string): string {
+  return formatCurrency(value, currency);
 }
 
 function cheapest(variants: CostVariant[]): CostVariant | null {

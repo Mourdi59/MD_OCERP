@@ -1331,12 +1331,17 @@ const label = (site: Site) => `${site.file}:${site.line}`;
  * anywhere new fails wherever it lands. Fixing one of the five lowers a count
  * and keeps passing, which is the direction this is meant to move.
  */
-const PINS_TWO_DECIMALS: Readonly<Record<string, number>> = {
-  'features/costs/CostsPage.tsx': 2,
-  'features/costs/MultiVariantPicker.tsx': 1,
-  'features/costs/VariantPicker.tsx': 1,
-  'features/projects/ProjectDetailPage.tsx': 1,
-};
+// Empty on purpose, and this is the whole point of a ratchet. It once budgeted
+// five sites across four files, which was honest while those five existed. They
+// are gone: all four surfaces now go through the shared resolver, so the census
+// below finds nothing. A budget that outlives the thing it was budgeting for is
+// worse than no budget, because the assertion is `count > ceiling` and a
+// ceiling of five over a real count of zero passes while five regressions walk
+// back in unremarked. The gate was green and toothless at the same time.
+//
+// With no entries every file has a ceiling of zero, so the first site to
+// reappear anywhere fails, which is what this test was written to do.
+const PINS_TWO_DECIMALS: Readonly<Record<string, number>> = {};
 
 describe('one module decides how many decimals a currency gets', () => {
   it('nothing but the resolver asks an engine for a currency digit count', () => {
@@ -1390,11 +1395,31 @@ describe('one module decides how many decimals a currency gets', () => {
         `in ${perFile.size} file(s): ${sites.map(label).join(', ') || 'none'}\n`,
     );
 
+    // The probe has to be shown to still recognise the shape. An empty result
+    // is the answer this test gives when it passes, and it is also the answer a
+    // matcher gives after it has quietly stopped matching, so the two are
+    // indistinguishable from the count alone. PRODUCT_FILES.length guards the
+    // walker in the test above; this guards the probe, by handing it the exact
+    // thing it exists to catch and requiring it to catch it.
+    // Both polarities, because a probe that says yes to everything is as
+    // useless as one that says no to everything, and the census alone cannot
+    // tell either of them from a clean tree.
+    const offending =
+      "new Intl.NumberFormat(locale, { style: 'currency', currency, " +
+      'minimumFractionDigits: 2, maximumFractionDigits: 2 })';
+    const innocent =
+      "new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR', " +
+      'minimumFractionDigits: 2, maximumFractionDigits: 2 })';
+    const flags = (source: string) => numberFormatCalls(source).filter((c) => pinsTwoDecimalsOnAnyCurrency(c.text));
+    expect(flags(offending)).toHaveLength(1);
+    // A literal code is a statement about one currency by someone who knew
+    // which. Flagging it too would make the probe unusable and the ceiling of
+    // zero unmeetable.
+    expect(flags(innocent)).toHaveLength(0);
+
     // A ratchet, not an allowlist: one comparison that pins which files may
-    // carry this shape and how many each may carry. Five sites in four files
-    // when this was written. An unlisted file has a ceiling of zero, so a new
-    // one fails wherever it lands, and so does a site that moves from a listed
-    // file into another listed file.
+    // carry this shape and how many each may carry. The budget is empty now, so
+    // every file has a ceiling of zero and any site fails wherever it lands.
     const overBudget = [...perFile]
       .filter(([file, count]) => count > (PINS_TWO_DECIMALS[file] ?? 0))
       .map(([file, count]) => `${file}: ${count} of at most ${PINS_TWO_DECIMALS[file] ?? 0}`);

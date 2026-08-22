@@ -28,6 +28,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { X, Search, ArrowUpDown, ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge, Button, KvList, Kv, QtyTile } from '@/shared/ui';
+import { formatCurrency } from '@/shared/lib/money';
 import type { CostVariant, VariantStats } from './api';
 import { getNumberLocale } from '@/stores/usePreferencesStore';
 
@@ -62,32 +63,24 @@ type SortMode = 'default' | 'price_asc' | 'price_desc' | 'label';
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 
-/** Format a price in the given currency using the active i18n locale. */
-function formatPrice(value: number, currency: string): string {
-  // Currency-style formatting requires an ISO code — when the caller passes
-  // an empty string (no project currency context, no per-row currency in the
-  // CWICR row), skip the currency style entirely and render the bare number.
-  // Never substitute USD/EUR — see the architecture guide "no hardcoded currency fallbacks".
-  if (!currency) {
-    return new Intl.NumberFormat(getNumberLocale(), {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  }
-  try {
-    return new Intl.NumberFormat(getNumberLocale(), {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  } catch {
-    const n = new Intl.NumberFormat(getNumberLocale(), {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-    return `${n} ${currency}`;
-  }
+/** Format a price in the given currency using the active i18n locale.
+ *
+ *  Hands the whole job to the shared money formatter, which reads how many
+ *  minor units the currency actually has instead of assuming two. The literal
+ *  2 this used to pass was an override of that table, so a variant priced in a
+ *  currency with no minor unit was shown decimals it cannot express: a whole
+ *  forint amount read as "1 235,00 Ft", a yen price the same way. Which
+ *  currencies get how many decimals is not decided here and is not decided by
+ *  this function; the only change is that it stops contradicting the answer.
+ *
+ *  The rest of the policy this function already had is the shared formatter's
+ *  policy too, so nothing else about the output moves: an empty or malformed
+ *  code renders a bare grouped number with no symbol, never a substituted
+ *  USD/EUR one - see the architecture guide "no hardcoded currency fallbacks".
+ *
+ *  Exported so the decimals can be pinned without mounting the popover. */
+export function formatPrice(value: number, currency: string): string {
+  return formatCurrency(value, currency);
 }
 
 /** Resolve the initial selected index per the design rule. */
