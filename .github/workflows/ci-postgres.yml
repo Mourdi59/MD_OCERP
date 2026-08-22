@@ -42,6 +42,27 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev,server]"
+      # The desktop sidecar's hidden imports. First thing after the install,
+      # ahead of every step that needs a database: it needs none, it takes
+      # about three seconds, and a step that fails skips every step below it,
+      # so a guard placed last only runs on the days nothing else is broken.
+      #
+      # It is here at all because tests/unit runs in no lane that blocks a
+      # merge, and because what it guards is otherwise observable only on a tag
+      # build, by which point the artefact is published. The sidecar build for
+      # 15.4.0 printed 167 lines of "ERROR: Hidden import
+      # 'app.modules.<name>.<layer>' not found", every one of them a name
+      # desktop/pyinstaller.spec invented for a file that was never on disk. A
+      # dependency genuinely absent from the frozen bundle reports itself on
+      # the same channel in the same words, so the line worth reading would
+      # have arrived as one of 168 and been read by nobody - a broken install
+      # on a user's machine with a build log that could not warn us. The spec
+      # now asks the disk before it names a layer; this holds that open and
+      # fails on the first name it cannot back. It executes the spec with
+      # PyInstaller's symbols stubbed out and stats what the spec declares, so
+      # it runs anywhere the suite is collected and never builds anything.
+      - name: Run the desktop sidecar hidden-import guard
+        run: pytest tests/unit/test_desktop_hidden_imports_resolve.py -q -p no:cacheprovider
       - name: Run dedicated PostgreSQL dialect suite (embedded PG, no Docker)
         # A per-test ceiling so a lock that never gets released names the test
         # that hung instead of killing the job anonymously at the wall clock.

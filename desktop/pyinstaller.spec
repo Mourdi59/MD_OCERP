@@ -123,20 +123,40 @@ hidden_imports += collect_submodules("qdrant_client")
 hidden_imports += collect_submodules("sentence_transformers")
 hidden_imports += ["torch", "transformers"]
 
-# Auto-discover modules
+# Auto-discover modules.
+#
+# The layers below are the ones the module loader reaches for by name rather
+# than by import statement, so they have to be declared here. Not every module
+# has every layer: 191 module packages carry 188 manifests, 187 routers, 173
+# services, 171 schemas, 150 models and 110 repositories. Naming all six for
+# all of them regardless produced 167 lines of
+#
+#   ERROR: Hidden import 'app.modules.<name>.repository' not found
+#
+# on every desktop build, one per name that was never on disk. They were
+# harmless - PyInstaller carries on and the bundle is complete - and that was
+# the problem: a genuinely missing dependency reports itself with the same
+# words, so the one line worth reading arrived as line 168 of a list nobody
+# could read. The count is not a coincidence; the set of errors in the CI log
+# for the 15.4.0 sidecar build is exactly the set of these names that no file
+# backs.
+#
+# So ask the disk. A layer is declared when it exists as ``<layer>.py`` or as a
+# ``<layer>/`` package, and is not mentioned at all otherwise, which leaves the
+# hidden-import channel free to mean what it says. Excluding the absent names
+# instead would have been wrong twice over: the ``excludes`` list below means
+# "nothing in the sidecar imports this", and the list would need editing every
+# time a module gained a file.
+_MODULE_LAYERS = ("models", "schemas", "router", "service", "repository", "manifest")
+
 if modules_dir.is_dir():
     for mod_dir in sorted(modules_dir.iterdir()):
         if mod_dir.is_dir() and (mod_dir / "__init__.py").exists():
             mod_name = mod_dir.name
-            hidden_imports.extend([
-                f"app.modules.{mod_name}",
-                f"app.modules.{mod_name}.models",
-                f"app.modules.{mod_name}.schemas",
-                f"app.modules.{mod_name}.router",
-                f"app.modules.{mod_name}.service",
-                f"app.modules.{mod_name}.repository",
-                f"app.modules.{mod_name}.manifest",
-            ])
+            hidden_imports.append(f"app.modules.{mod_name}")
+            for layer in _MODULE_LAYERS:
+                if (mod_dir / f"{layer}.py").is_file() or (mod_dir / layer / "__init__.py").is_file():
+                    hidden_imports.append(f"app.modules.{mod_name}.{layer}")
 
 # Data files to include
 datas = []
