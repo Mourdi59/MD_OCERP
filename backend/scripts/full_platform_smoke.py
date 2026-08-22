@@ -1,28 +1,29 @@
 """
-OpenEstimate — Full Platform Integration Test Suite
-====================================================
+OpenEstimate - Full Platform Smoke Script
+=========================================
 
-170+ endpoints × 5 languages × 6 regions.
-Tests every module, every CRUD flow, validation, i18n, edge cases.
+170+ endpoints x 5 languages x 6 regions.
+Exercises every module, every CRUD flow, validation, i18n, edge cases.
+
+This is a script, not a pytest suite, and it lives here rather than under
+``tests/`` for that reason. Its ``test_*`` functions are sequential steps that
+take a live API client and a result collector and hand their ids on to the next
+step, so pytest can only report them as fixture errors; it spent several
+releases sitting in the test tree behind a module-level skip that made 35
+collected errors look like 35 healthy tests.
+
+It needs a server already listening on ``BASE_URL`` and the demo account seeded.
+It prints a summary and exits non-zero when anything failed, so it can be used
+as a post-deploy smoke gate.
 
 Run:
     cd backend
-    python -m pytest tests/integration/test_full_platform.py -v --tb=short
-
-Or standalone:
-    cd backend
-    python tests/integration/test_full_platform.py
+    python scripts/full_platform_smoke.py
 """
 
 import json
 import sys
 import time
-
-import pytest
-
-# This file is a standalone test script, not pytest-compatible.
-# It requires a running server and custom fixtures (api, suite) not in conftest.
-pytestmark = pytest.mark.skip(reason="Standalone test script — requires running server, not pytest fixtures")
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
