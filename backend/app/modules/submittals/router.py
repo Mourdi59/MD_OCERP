@@ -37,8 +37,8 @@ from app.core.file_signature import (
     require as require_signature,
 )
 from app.core.i18n import get_locale
-from app.core.storage import module_uploads_dir
 from app.core.rate_limiter import approval_limiter
+from app.core.storage import module_uploads_dir
 from app.core.validation.messages import translate
 from app.dependencies import (
     CurrentUserId,

@@ -39,10 +39,10 @@ from app.core.file_signature import (
     require as require_signature,
 )
 from app.core.i18n import get_locale
-from app.core.storage import module_uploads_dir
 from app.core.json_merge import merge_metadata
 from app.core.pdf_fonts import BODY_FONT, register_pdf_fonts
 from app.core.sanitize import strip_dangerous_html
+from app.core.storage import module_uploads_dir
 from app.core.validation.messages import translate
 from app.dependencies import CurrentUserPayload, RequirePermission, SessionDep
 from app.modules.portal.dependencies import RequirePortalSession

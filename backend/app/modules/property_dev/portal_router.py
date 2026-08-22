@@ -54,7 +54,6 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select
 
 from app.core.events import event_bus
-from app.core.storage import find_existing_upload, module_uploads_dir
 from app.core.file_signature import (
     SIGNATURE_BYTES_REQUIRED,
     FileSignatureMismatch,
@@ -64,6 +63,7 @@ from app.core.file_signature import (
     require as require_signature,
 )
 from app.core.rate_limiter import approval_limiter
+from app.core.storage import find_existing_upload, module_uploads_dir
 from app.dependencies import (
     CurrentUserPayload,
     RequirePermission,
