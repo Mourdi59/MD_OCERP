@@ -36539,7 +36539,7 @@ const resource = {
     "settings.modules_cat_regional": "Regionalt",
     "settings.modules_cat_extension": "Tillägg",
     "settings.modules_cat_controls": "Projektstyrning",
-    "settings.modules_cat_enterprise": "Enterprise",
+    "settings.modules_cat_enterprise": "Företag",
     "settings.modules_cat_integration": "Integrationer",
     "settings.modules_cat_infra": "Plattform",
     "settings.modules_cat_estimation": "Kalkylering",

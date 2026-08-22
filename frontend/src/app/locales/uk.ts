@@ -37146,7 +37146,7 @@ const resource = {
     "settings.modules_cat_regional": "Регіональні",
     "settings.modules_cat_extension": "Розширення",
     "settings.modules_cat_controls": "Контроль проєкту",
-    "settings.modules_cat_enterprise": "Enterprise",
+    "settings.modules_cat_enterprise": "Корпоративні",
     "settings.modules_cat_integration": "Інтеграції",
     "settings.modules_cat_infra": "Платформа",
     "settings.modules_cat_estimation": "Кошторисна справа",

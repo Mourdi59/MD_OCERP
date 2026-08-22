@@ -36601,7 +36601,7 @@ const resource = {
     "settings.modules_cat_regional": "Regionalno",
     "settings.modules_cat_extension": "Proširenja",
     "settings.modules_cat_controls": "Kontrola projekta",
-    "settings.modules_cat_enterprise": "Enterprise",
+    "settings.modules_cat_enterprise": "Korporativno",
     "settings.modules_cat_integration": "Integracije",
     "settings.modules_cat_infra": "Platforma",
     "settings.modules_cat_estimation": "Troškovnik",

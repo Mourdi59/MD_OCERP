@@ -36515,7 +36515,7 @@ const resource = {
     "settings.modules_cat_regional": "Regional",
     "settings.modules_cat_extension": "Ekstensi",
     "settings.modules_cat_controls": "Kontrol proyek",
-    "settings.modules_cat_enterprise": "Enterprise",
+    "settings.modules_cat_enterprise": "Perusahaan",
     "settings.modules_cat_integration": "Integrasi",
     "settings.modules_cat_infra": "Platform",
     "settings.modules_cat_estimation": "Estimasi biaya",

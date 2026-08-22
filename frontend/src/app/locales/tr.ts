@@ -36543,7 +36543,7 @@ const resource = {
     "settings.modules_cat_regional": "Bölgesel",
     "settings.modules_cat_extension": "Uzantılar",
     "settings.modules_cat_controls": "Proje kontrolü",
-    "settings.modules_cat_enterprise": "Enterprise",
+    "settings.modules_cat_enterprise": "Kurumsal",
     "settings.modules_cat_integration": "Entegrasyonlar",
     "settings.modules_cat_infra": "Platform",
     "settings.modules_cat_estimation": "Maliyet hesaplama",

@@ -36641,7 +36641,7 @@ const resource = {
     "settings.modules_cat_regional": "Regionální",
     "settings.modules_cat_extension": "Rozšíření",
     "settings.modules_cat_controls": "Řízení projektu",
-    "settings.modules_cat_enterprise": "Enterprise",
+    "settings.modules_cat_enterprise": "Podnikové",
     "settings.modules_cat_integration": "Integrace",
     "settings.modules_cat_infra": "Platforma",
     "settings.modules_cat_estimation": "Kalkulace",

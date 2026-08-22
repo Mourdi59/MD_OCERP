@@ -36542,7 +36542,7 @@ const resource = {
     "settings.modules_cat_regional": "Регионални",
     "settings.modules_cat_extension": "Разширения",
     "settings.modules_cat_controls": "Контрол на проекта",
-    "settings.modules_cat_enterprise": "Enterprise",
+    "settings.modules_cat_enterprise": "Корпоративни",
     "settings.modules_cat_integration": "Интеграции",
     "settings.modules_cat_infra": "Платформа",
     "settings.modules_cat_estimation": "Остойностяване",

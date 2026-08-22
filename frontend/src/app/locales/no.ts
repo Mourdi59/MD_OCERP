@@ -36538,7 +36538,7 @@ const resource = {
     "settings.modules_cat_regional": "Regionalt",
     "settings.modules_cat_extension": "Utvidelser",
     "settings.modules_cat_controls": "Prosjektstyring",
-    "settings.modules_cat_enterprise": "Enterprise",
+    "settings.modules_cat_enterprise": "Bedrift",
     "settings.modules_cat_integration": "Integrasjoner",
     "settings.modules_cat_infra": "Plattform",
     "settings.modules_cat_estimation": "Kalkulasjon",

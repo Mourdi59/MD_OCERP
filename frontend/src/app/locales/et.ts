@@ -36505,7 +36505,7 @@ const resource = {
     "settings.modules_cat_regional": "Regionaalsätted",
     "settings.modules_cat_extension": "Laiendused",
     "settings.modules_cat_controls": "Projektijuhtimine",
-    "settings.modules_cat_enterprise": "Enterprise",
+    "settings.modules_cat_enterprise": "Ettevõte",
     "settings.modules_cat_integration": "Integratsioonid",
     "settings.modules_cat_infra": "Platvorm",
     "settings.modules_cat_estimation": "Hinnakalkulatsioon",

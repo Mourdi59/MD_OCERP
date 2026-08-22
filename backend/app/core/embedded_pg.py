@@ -382,6 +382,12 @@ def boot(data_dir: Path | str) -> bool:
         return False
 
     _server = srv
+    # Also prune on the way in, not only on the way out. A machine whose
+    # graceful stop keeps failing falls back to ending the process tree and
+    # never reaches the shutdown path, so shutdown-only pruning would leave it
+    # accumulating holders forever. Starting is the one moment every install
+    # reaches.
+    _prune_dead_holders(srv)
     logger.info("embedded PostgreSQL ready (data dir: %s)", pgdata)
     return True
 
@@ -522,15 +528,87 @@ def _read_pidfile_pid(pgdata: Path) -> int | None:
         return None
 
 
+def _pid_alive_windows(pid: int) -> bool | None:
+    """Ask Windows whether ``pid`` names a process. ``None`` when it will not say.
+
+    Opening the process answers directly. A refusal that names an invalid
+    parameter is Windows saying no such process; a refusal that names access
+    denied is Windows saying the process exists and belongs to someone else,
+    which for our purposes is alive. When the handle opens, the exit code
+    distinguishes a running process from one that has ended but is still held
+    open by its parent, which is a case a name-based check gets wrong.
+    """
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        process_query_limited_information = 0x1000
+        still_active = 259
+        error_invalid_parameter = 87
+        error_access_denied = 5
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        handle = kernel32.OpenProcess(process_query_limited_information, False, pid)
+        if not handle:
+            err = ctypes.get_last_error()
+            if err == error_invalid_parameter:
+                return False
+            if err == error_access_denied:
+                return True
+            return None
+        try:
+            code = wintypes.DWORD()
+            if kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
+                # A process that genuinely exited with 259 reads as alive here.
+                # That is the harmless direction: the entry is kept.
+                return code.value == still_active
+            return None
+        finally:
+            kernel32.CloseHandle(handle)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _pid_alive(pid: int) -> bool:
-    """Best-effort check whether a process with ``pid`` currently exists."""
+    """Best-effort check whether a process with ``pid`` currently exists.
+
+    ``psutil`` answers this well and is not a declared dependency of this
+    project. Measured on this tree, nothing in the runtime requirement set
+    pulls it in, so an install that has it is carrying it by accident and an
+    install that does not lost the check without saying so. Both callers of
+    this function guard something around a live postmaster, and a check that
+    quietly stops checking is worse than one that is merely approximate, so ask
+    the standard library first and treat psutil as a refinement rather than the
+    answer.
+
+    Uncertainty answers yes. Both callers do something destructive when told
+    no, deleting a pidfile and forgetting a recorded holder, and doing either
+    to a live postmaster is far worse than doing neither.
+    """
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        answer = _pid_alive_windows(pid)
+        if answer is not None:
+            return answer
+    else:
+        try:
+            os.kill(pid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            # It exists and belongs to another user.
+            return True
+        except OSError:
+            pass
     try:
         import psutil
 
         return psutil.pid_exists(pid)
     except Exception:  # noqa: BLE001
-        # Without psutil, assume the process may be alive so we never delete a
-        # pidfile for a live postmaster.
         return True
 
 
@@ -1617,6 +1695,66 @@ def retain() -> None:
     _retained = True
 
 
+def _prune_dead_holders(server: object) -> int:
+    """Forget recorded holders of the cluster whose processes no longer exist.
+
+    ``pixeltable-pgserver`` keeps one process identifier per process that opened
+    the cluster, in ``.handle_pids.json`` beside the data directory, and stops
+    the postmaster on the way out only when the list it reads back names this
+    process and nothing else. The list is appended to on the way in and edited
+    on the way out, so a holder that was killed rather than allowed to exit
+    never removes itself and every later process reads a list that still names
+    it. Nothing in the library prunes the leftovers.
+
+    That turns a clean stop into a one-time event. Until this release the only
+    way this application stopped on Windows was by ending its process tree, so
+    every machine that has run it already carries identifiers that will never be
+    removed: measured on an upgraded install, nine recorded holders of which
+    eight belonged to processes that no longer existed. Without this prune the
+    graceful stop below would be skipped on exactly the machines it was written
+    for, and skipped silently, because a skipped stop and a completed one look
+    identical from outside.
+
+    Only identifiers whose process demonstrably does not exist are dropped, and
+    never this process's own. The opposite mistake is the dangerous one: drop a
+    holder that is alive and the cluster is stopped underneath a process still
+    using it, so anything uncertain, including :mod:`psutil` being unavailable,
+    counts as alive and is kept. Removal goes through the library's own list
+    object rather than rewriting the file, so the two cannot disagree about the
+    format, and the whole thing is advisory: a failure here leaves the previous
+    behaviour rather than preventing the stop from being attempted.
+
+    Returns the number of identifiers dropped.
+    """
+    try:
+        pid_list = getattr(server, "global_process_id_list", None)
+        if pid_list is None:
+            return 0
+        recorded = list(pid_list.get())
+        mine = os.getpid()
+        dead = [pid for pid in recorded if pid != mine and not _pid_alive(pid)]
+        for pid in dead:
+            pid_list.get_and_remove(pid)
+        if dead:
+            logger.debug("dropped %d recorded holder(s) of the embedded cluster that no longer exist", len(dead))
+        else:
+            others = [pid for pid in recorded if pid != mine]
+            if others:
+                # Say this out loud. A stop that is skipped and a stop that
+                # completed look identical from outside, which is how the
+                # skipped case went unnoticed in the first place, and the two
+                # reasons to skip need telling apart: another process really is
+                # using the cluster, or this machine cannot tell.
+                logger.info(
+                    "the embedded cluster is recorded as held by %d other live process(es), leaving it running",
+                    len(others),
+                )
+        return len(dead)
+    except Exception:  # noqa: BLE001
+        logger.debug("could not prune the embedded PostgreSQL holder list", exc_info=True)
+        return 0
+
+
 def shutdown(*, force: bool = False) -> None:
     """Stop the embedded cluster if this process booted one (safe to always call).
 
@@ -1631,6 +1769,10 @@ def shutdown(*, force: bool = False) -> None:
         return
     _retained = False
     try:
+        # The library stops the postmaster only when the holders it reads back
+        # are this process alone, and it never drops one a killed holder left
+        # behind. Prune those first or the stop below is quietly skipped.
+        _prune_dead_holders(_server)
         _server.cleanup()
         # Routine stop: keep it at debug so a shutdown that happens BECAUSE
         # startup failed cannot add log noise on top of the real cause. Genuine

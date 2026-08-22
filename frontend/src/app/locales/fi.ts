@@ -36544,7 +36544,7 @@ const resource = {
     "settings.modules_cat_regional": "Alueelliset",
     "settings.modules_cat_extension": "Laajennukset",
     "settings.modules_cat_controls": "Projektinohjaus",
-    "settings.modules_cat_enterprise": "Enterprise",
+    "settings.modules_cat_enterprise": "Yritystaso",
     "settings.modules_cat_integration": "Integraatiot",
     "settings.modules_cat_infra": "Alusta",
     "settings.modules_cat_estimation": "Kustannuslaskenta",

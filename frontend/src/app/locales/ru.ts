@@ -36715,7 +36715,7 @@ const resource = {
     "settings.modules_cat_regional": "Региональные",
     "settings.modules_cat_extension": "Расширения",
     "settings.modules_cat_controls": "Контроль проекта",
-    "settings.modules_cat_enterprise": "Enterprise",
+    "settings.modules_cat_enterprise": "Корпоративные",
     "settings.modules_cat_integration": "Интеграции",
     "settings.modules_cat_infra": "Платформа",
     "settings.modules_cat_estimation": "Сметное дело",

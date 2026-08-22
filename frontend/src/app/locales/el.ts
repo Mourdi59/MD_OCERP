@@ -35944,7 +35944,7 @@ const resource = {
     "settings.modules_cat_regional": "Περιφερειακά",
     "settings.modules_cat_extension": "Επεκτάσεις",
     "settings.modules_cat_controls": "Έλεγχος έργου",
-    "settings.modules_cat_enterprise": "Enterprise",
+    "settings.modules_cat_enterprise": "Επιχειρησιακά",
     "settings.modules_cat_integration": "Ενσωματώσεις",
     "settings.modules_cat_infra": "Πλατφόρμα",
     "settings.modules_cat_estimation": "Προμέτρηση",

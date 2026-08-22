@@ -36597,7 +36597,7 @@ const resource = {
     "settings.modules_cat_regional": "Regionale",
     "settings.modules_cat_extension": "Estensioni",
     "settings.modules_cat_controls": "Controllo di progetto",
-    "settings.modules_cat_enterprise": "Enterprise",
+    "settings.modules_cat_enterprise": "Aziendale",
     "settings.modules_cat_integration": "Integrazioni",
     "settings.modules_cat_infra": "Piattaforma",
     "settings.modules_cat_estimation": "Preventivazione",
