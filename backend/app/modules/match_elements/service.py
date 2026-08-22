@@ -36,6 +36,7 @@ from typing import Any
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.boq_target import BOQTargetRefused, require_project_boq
 from app.core.i18n import get_locale
 from app.core.match_service.boosts import prior_pick
 from app.core.match_service.config import (
@@ -3463,6 +3464,17 @@ class MatchElementsService:
               the CWICR position carries them, scaling each component
               quantity by ``factor × parent_quantity``. Components without
               a factor field default to factor=1.0.
+
+        The target bill is ``spec.target_boq_id`` when the caller names one
+        (``design_options`` does, to keep an option's lines in its own bill),
+        the project's single unlocked bill when it holds exactly one, and a
+        freshly created bill when it holds none at all. A project holding
+        several is refused rather than guessed at, on the dry run too.
+
+        Raises:
+            HTTPException: 404 when the named bill does not exist or belongs
+                to another project, 409 when the project cannot say which of
+                its bills this apply belongs in.
         """
         from fastapi import HTTPException
 
@@ -3494,44 +3506,53 @@ class MatchElementsService:
         fx_map = _project_fx_map(project)
 
         # ── 1. Resolve target BOQ ────────────────────────────────────
-        boq_id = spec.target_boq_id
-        if boq_id is not None:
-            # Cross-tenant guard: the caller-supplied ``target_boq_id`` must
-            # belong to THIS session's project. The router already verified
-            # the caller has access to the session's project, but without
-            # this check a caller could redirect the apply into another
-            # tenant's BOQ by passing its id. Reject the mismatch as 404 so
-            # we don't leak whether the foreign BOQ exists.
-            target_boq = await db.get(BOQ, boq_id)
-            if target_boq is None or target_boq.project_id != sess.project_id:
+        # An explicit ``target_boq_id`` decides. Without one the project's
+        # unlocked bills decide, and the shared rule in ``core.boq_target``
+        # says how: no bill at all means this apply creates the one it needs
+        # (unchanged - that is a deliberate answer, not a guess), one bill is
+        # the answer, and several is a question. It used to be answered by
+        # "the oldest bill in the project", which on a project holding two
+        # wrote priced positions into whichever happened to be created first,
+        # and which ignored the lock, so an approved estimate could receive
+        # them. The refusal fires on a dry run too: a preview that cannot
+        # reveal the ambiguity promises a destination the apply won't honour.
+        #
+        # The cross-tenant guard survives the move: a ``target_boq_id`` on
+        # another tenant's project comes back as ``boq_project_mismatch`` and
+        # is answered 404, not 409, so we don't leak whether it exists.
+        try:
+            target_boq = await require_project_boq(
+                db,
+                sess.project_id,
+                spec.target_boq_id,
+                writable=True,
+                allow_missing=True,
+            )
+        except BOQTargetRefused as exc:
+            if exc.reason in ("boq_not_found", "boq_project_mismatch"):
                 raise HTTPException(
                     status_code=404,
                     detail=translate("errors.boq_not_found", locale=get_locale()),
-                )
-        if boq_id is None:
-            stmt = select(BOQ).where(BOQ.project_id == sess.project_id).order_by(BOQ.created_at.asc())
-            existing_boq = (await db.execute(stmt)).scalars().first()
-            if existing_boq is None:
-                if spec.dry_run:
-                    boq_id = None
-                else:
-                    # Name the new BOQ after the project + source so a
-                    # workspace with N projects doesn't end up with N
-                    # rows literally named "BOQ from BIM matches".
-                    project_label = getattr(project, "name", None) or f"Project {str(sess.project_id)[:8]}"
-                    new_boq = BOQ(
-                        project_id=sess.project_id,
-                        name=f"{project_label} - {sess.source.upper()}",
-                        description=(
-                            f"Auto-created by Match Elements module (session {str(sess.id)[:8]}, source={sess.source})"
-                        ),
-                        status="draft",
-                    )
-                    db.add(new_boq)
-                    await db.flush()
-                    boq_id = new_boq.id
-            else:
-                boq_id = existing_boq.id
+                ) from exc
+            raise HTTPException(status_code=409, detail=exc.detail) from exc
+
+        boq_id = target_boq.id if target_boq is not None else None
+        if boq_id is None and not spec.dry_run:
+            # Name the new BOQ after the project + source so a
+            # workspace with N projects doesn't end up with N
+            # rows literally named "BOQ from BIM matches".
+            project_label = getattr(project, "name", None) or f"Project {str(sess.project_id)[:8]}"
+            new_boq = BOQ(
+                project_id=sess.project_id,
+                name=f"{project_label} - {sess.source.upper()}",
+                description=(
+                    f"Auto-created by Match Elements module (session {str(sess.id)[:8]}, source={sess.source})"
+                ),
+                status="draft",
+            )
+            db.add(new_boq)
+            await db.flush()
+            boq_id = new_boq.id
 
         # ── 2. Load confirmed groups + their candidates ──────────────
         stmt = select(MatchGroup).where(

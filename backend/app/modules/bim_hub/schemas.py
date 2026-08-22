@@ -733,6 +733,17 @@ class QuantityMapApplyRequest(BaseModel):
             "persist links and auto-created positions."
         ),
     )
+    target_boq_id: UUID | None = Field(
+        default=None,
+        description=(
+            "Which bill of quantities auto-created positions are written "
+            "into. Optional: a project holding a single unlocked bill needs "
+            "no answer here. A project holding several has no default - the "
+            "apply is refused with the candidates rather than writing into "
+            "whichever bill happens to be oldest - and naming one here is "
+            "how that refusal is answered."
+        ),
+    )
 
 
 class QuantityMapApplyResult(BaseModel):
@@ -756,6 +767,17 @@ class QuantityMapApplyResult(BaseModel):
     skipped_count: int = 0
     results: list[dict[str, Any]] = Field(default_factory=list)
     skipped: list[dict[str, Any]] = Field(default_factory=list)
+    target_boq_ambiguous: bool = Field(
+        default=False,
+        description=(
+            "Set on a dry run when at least one rule would auto-create a "
+            "position and the project cannot say which bill of quantities it "
+            "would land in - it holds more than one unlocked bill, or none "
+            "that can be written to. The apply itself refuses with 409 rather "
+            "than guessing; this flag is how the preview says so ahead of "
+            "time instead of promising a destination it cannot keep."
+        ),
+    )
 
 
 # ── BIMModelDiff schemas ─────────────────────────────────────────────────────

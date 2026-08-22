@@ -13,6 +13,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.boq_target import BOQTargetRefused, require_project_boq
+
 logger = logging.getLogger(__name__)
 
 
@@ -213,21 +215,44 @@ def _to_uuid(value: str) -> uuid.UUID:
 async def _find_project_boq(
     session: AsyncSession,
     project_id: str,
+    *,
+    writable: bool = True,
 ):
-    """Return the first (oldest) BOQ for a project, or None.
+    """Return the one BOQ this action operates on, or None if there is none.
 
-    Used by every action that operates on "the project's main BOQ". We pick
-    the oldest BOQ deterministically so repeated action runs hit the same
-    target. Callers must handle the None case.
+    Used by every action that operates on "the project's main BOQ". There is
+    no such thing as *the* project's BOQ: a project may hold any number, and
+    this used to return the oldest one, so on a project holding two the action
+    ran against whichever bill happened to be created first and said nothing
+    about it. The shared rule in ``app.core.boq_target`` decides instead - one
+    candidate is the answer, several is a question - and the question is
+    refused rather than guessed.
+
+    Args:
+        session: Async DB session.
+        project_id: Project the action was invoked on.
+        writable: Whether the action mutates the bill. Price matching does and
+            passes True, so a locked estimate is never rewritten. Validation
+            and schedule generation only read it and pass False, because
+            running either against a locked, approved estimate is the normal
+            case, not an error.
+
+    Returns:
+        The resolved BOQ, or None when the project holds no bill at all -
+        callers must still handle the None case.
+
+    Raises:
+        BOQTargetRefused: The project holds more than one candidate bill, or
+            the only bills it holds are locked and the caller intends to
+            write. Callers turn this into a failed ``ActionResult`` naming
+            the bills to choose from.
     """
-    from sqlalchemy import select
-
-    from app.modules.boq.models import BOQ
-
-    pid = _to_uuid(project_id)
-    stmt = select(BOQ).where(BOQ.project_id == pid).order_by(BOQ.created_at.asc()).limit(1)
-    result = await session.execute(stmt)
-    return result.scalar_one_or_none()
+    return await require_project_boq(
+        session,
+        _to_uuid(project_id),
+        writable=writable,
+        allow_missing=True,
+    )
 
 
 # ── Backend action implementations ────────────────────────────────────────
@@ -245,7 +270,10 @@ async def _run_validation(
     simple redirect - if the service fails, we surface the error.
     """
     try:
-        boq = await _find_project_boq(session, project_id)
+        # Read-only: the report is written against the bill, the bill is not
+        # touched, so a locked, approved estimate is a legitimate target and
+        # still counts as a candidate.
+        boq = await _find_project_boq(session, project_id, writable=False)
         if boq is None:
             return ActionResult(
                 success=False,
@@ -285,6 +313,11 @@ async def _run_validation(
                 "boq_id": str(boq.id),
             },
         )
+    except BOQTargetRefused as exc:
+        # The caller reads ``message``; ``data`` carries the code to branch on
+        # and the bills to choose from, so the question can be answered where
+        # it was asked.
+        return ActionResult(success=False, message=exc.message, data=exc.detail)
     except Exception as exc:
         logger.exception("_run_validation failed for project %s", project_id)
         return ActionResult(
@@ -309,7 +342,10 @@ async def _match_cwicr_prices(
     ``skipped``. No redirect fallback.
     """
     try:
-        boq = await _find_project_boq(session, project_id)
+        # Writes rates and totals into the bill, so a locked estimate is not a
+        # candidate: rewriting prices inside an approved bill is the defect,
+        # not the feature.
+        boq = await _find_project_boq(session, project_id, writable=True)
         if boq is None:
             return ActionResult(
                 success=False,
@@ -420,6 +456,8 @@ async def _match_cwicr_prices(
                 "updated_position_ids": updated_ids[:50],
             },
         )
+    except BOQTargetRefused as exc:
+        return ActionResult(success=False, message=exc.message, data=exc.detail)
     except Exception as exc:
         logger.exception("_match_cwicr_prices failed for project %s", project_id)
         return ActionResult(
@@ -440,7 +478,10 @@ async def _generate_schedule(
     activities from BOQ sections. No redirect fallback.
     """
     try:
-        boq = await _find_project_boq(session, project_id)
+        # Read-only: activities are derived from the bill's sections and the
+        # bill itself is untouched, so a locked, approved estimate is exactly
+        # the thing a master schedule is usually generated from.
+        boq = await _find_project_boq(session, project_id, writable=False)
         if boq is None:
             return ActionResult(
                 success=False,
@@ -509,6 +550,8 @@ async def _generate_schedule(
                 "start_date": start_iso,
             },
         )
+    except BOQTargetRefused as exc:
+        return ActionResult(success=False, message=exc.message, data=exc.detail)
     except Exception as exc:
         logger.exception("_generate_schedule failed for project %s", project_id)
         return ActionResult(

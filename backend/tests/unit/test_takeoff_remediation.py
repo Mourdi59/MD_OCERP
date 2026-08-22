@@ -352,9 +352,10 @@ async def test_qr004_prefilled_rate_clamped(session) -> None:
     session.add(rule)
     await session.flush()
 
+    # The bill is decided by the caller now, not looked up in here.
     new_pos = await svc._auto_create_position_for_rule(
         rule=rule,
-        project_id=project_id,
+        boq=boq,
         matches=[(elem, __import__("decimal").Decimal("10"), __import__("decimal").Decimal("10"))],
     )
     assert new_pos is not None

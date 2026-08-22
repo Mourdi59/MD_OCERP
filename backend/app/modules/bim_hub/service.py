@@ -27,6 +27,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import noload, selectinload
 
+from app.core.boq_target import BOQTargetRefused, require_project_boq
 from app.core.events import event_bus
 from app.modules.bim_hub import file_storage as bim_file_storage
 from app.modules.bim_hub.models import (
@@ -2726,9 +2727,20 @@ class BIMHubService:
               (position_id, element_id) pair that already exists.
             * If a rule's ``boq_target`` does not resolve to an existing
               position **and** the target dict has ``auto_create: True``,
-              a new ``Position`` is inserted into the project's first BOQ
+              a new ``Position`` is inserted into the run's target bill
               with quantity = Σ(adjusted quantity across matched elements)
               and then the links are created against the new position.
+
+        The target bill is ``request.target_boq_id`` when the caller names
+        one, and otherwise the project's single unlocked bill. A project
+        holding several has no default: the apply is refused with 409 and the
+        candidates rather than writing priced positions into whichever bill
+        happens to be oldest. A dry run reports the same fact as
+        ``target_boq_ambiguous`` instead of raising, since it writes nothing.
+
+        Raises:
+            HTTPException: 409 when a rule would auto-create a position and
+                the project cannot say which bill it belongs in.
             * Each rule's writes run inside a single savepoint
               (``session.begin_nested``) - a failure while processing one
               rule rolls that rule back cleanly without aborting the
@@ -2830,10 +2842,50 @@ class BIMHubService:
         rules_applied = sum(1 for matches in per_rule_matches.values() if matches)
         links_created = 0
         positions_created = 0
+        rules_by_id = {rule.id: rule for rule in rules}
+
+        # ── Step 1b: decide once which bill auto-created positions land in ─
+        # This is a property of the run, not of a rule, and it is settled here
+        # rather than inside ``_auto_create_position_for_rule`` for two
+        # reasons. It used to be settled per rule by "the oldest bill in the
+        # project", which on a project holding two wrote priced positions into
+        # whichever was created first and never looked at the lock. And the
+        # per-rule savepoint below swallows every exception by design, so a
+        # refusal raised in there would be logged and forgotten - exactly the
+        # silence the guess had.
+        auto_create_boq: BOQ | None = None
+        target_boq_ambiguous = False
+        if await self._run_needs_auto_create_boq(per_rule_matches, rules_by_id, model):
+            try:
+                auto_create_boq = await require_project_boq(
+                    self.session,
+                    model.project_id,
+                    request.target_boq_id,
+                    writable=True,
+                    allow_missing=True,
+                )
+            except BOQTargetRefused as exc:
+                explicit = request.target_boq_id is not None
+                if request.dry_run and not explicit:
+                    # A preview writes nothing, so it has nothing to refuse;
+                    # what it owes the caller is the truth that the apply will
+                    # not pick a bill for them. A caller who named a bill and
+                    # named it wrong is told at once, dry run or not, because
+                    # that is their own input being wrong.
+                    target_boq_ambiguous = True
+                    logger.info(
+                        "Quantity-map preview on project %s cannot name a bill for auto-created positions (%s)",
+                        model.project_id,
+                        exc.reason,
+                    )
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=exc.detail,
+                    ) from exc
 
         # ── Step 2: persist (only when dry_run is False) ───────────────
         if not request.dry_run and per_rule_matches:
-            rules_by_id = {rule.id: rule for rule in rules}
             for rule_id, matches in per_rule_matches.items():
                 rule = rules_by_id.get(rule_id)
                 if rule is None or not matches:
@@ -2850,6 +2902,7 @@ class BIMHubService:
                             model=model,
                             matches=matches,
                             confidence=confidence,
+                            auto_create_boq=auto_create_boq,
                         )
                         links_created += created_links
                         positions_created += created_positions
@@ -2897,7 +2950,45 @@ class BIMHubService:
             skipped_count=len(skipped),
             results=results,
             skipped=skipped,
+            target_boq_ambiguous=target_boq_ambiguous,
         )
+
+    async def _run_needs_auto_create_boq(
+        self,
+        per_rule_matches: dict[uuid.UUID, list[tuple[BIMElement, Decimal, Decimal]]],
+        rules_by_id: dict[uuid.UUID, BIMQuantityMap],
+        model: BIMModel,
+    ) -> bool:
+        """Whether this apply run has to know which bill to create positions in.
+
+        Only a rule that both matched something and would fall through to
+        ``auto_create`` needs one. A rule whose ``boq_target`` names a position
+        that resolves does not, so a project holding two bills is not refused
+        over rules that were never going to create anything.
+
+        Args:
+            per_rule_matches: Matches computed for each rule in this run.
+            rules_by_id: The active rules, keyed by id.
+            model: The BIM model being applied, for its project scope.
+
+        Returns:
+            True as soon as one rule is found that would auto-create.
+        """
+        for rule_id, matches in per_rule_matches.items():
+            rule = rules_by_id.get(rule_id)
+            if rule is None or not matches:
+                continue
+            target = rule.boq_target if isinstance(rule.boq_target, dict) else {}
+            if not target.get("auto_create"):
+                continue
+            if target.get("position_id") or target.get("position_ordinal"):
+                # An explicit position wins when it resolves; only a rule that
+                # falls past it into auto-create needs a bill named.
+                resolved = await self._resolve_boq_target_position(target=target, project_id=model.project_id)
+                if resolved is not None:
+                    continue
+            return True
+        return False
 
     async def _persist_rule_matches(
         self,
@@ -2906,6 +2997,7 @@ class BIMHubService:
         model: BIMModel,
         matches: list[tuple[BIMElement, Decimal, Decimal]],
         confidence: str | None = None,
+        auto_create_boq: BOQ | None = None,
     ) -> tuple[int, int]:
         """Create BOQElementLink (and optionally a Position) for one rule.
 
@@ -2914,6 +3006,10 @@ class BIMHubService:
 
         ``confidence`` is the rule's match-quality bucket (``high`` / ``medium``
         / ``low``); it is stamped onto an auto-created Position as provenance.
+
+        ``auto_create_boq`` is the bill auto-created positions land in, decided
+        once for the whole run by the caller. ``None`` means the project has no
+        bill to attach to, so a rule that wanted one is skipped.
         """
         if not matches:
             return 0, 0
@@ -2938,9 +3034,17 @@ class BIMHubService:
                 )
                 return 0, 0
 
+            if auto_create_boq is None:
+                logger.warning(
+                    "Auto-create requested for rule %s but project %s has no bill to attach it to",
+                    rule.id,
+                    model.project_id,
+                )
+                return 0, 0
+
             position = await self._auto_create_position_for_rule(
                 rule=rule,
-                project_id=model.project_id,
+                boq=auto_create_boq,
                 matches=matches,
                 confidence=confidence,
             )
@@ -2991,8 +3095,12 @@ class BIMHubService:
 
         Supports two lookup keys:
             - ``position_id``: direct UUID lookup (scoped to project).
-            - ``position_ordinal``: match by ordinal within any BOQ of the
-              given project (returns the first match).
+            - ``position_ordinal``: match by ordinal across the project's
+              bills. An ordinal is unique inside one bill but says nothing
+              across two, so a match found in more than one bill is a question
+              rather than an answer and resolves to ``None``. It used to take
+              the first row of an unordered ``LIMIT 1``, which meant the
+              database's row order decided which bill a rule wrote into.
         """
         raw_pid = target.get("position_id")
         if raw_pid:
@@ -3011,14 +3119,27 @@ class BIMHubService:
 
         ordinal = target.get("position_ordinal")
         if ordinal:
+            # Two rows settle the only question worth asking here - whether
+            # the ordinal names one position or picks between bills.
             stmt = (
                 select(Position)
                 .join(BOQ, BOQ.id == Position.boq_id)
                 .where(BOQ.project_id == project_id, Position.ordinal == str(ordinal))
-                .limit(1)
+                .order_by(BOQ.created_at, Position.sort_order)
+                .limit(2)
             )
-            result = await self.session.execute(stmt)
-            return result.scalar_one_or_none()
+            rows = list((await self.session.execute(stmt)).scalars().all())
+            if not rows:
+                return None
+            if len(rows) > 1 and rows[0].boq_id != rows[1].boq_id:
+                logger.warning(
+                    "Ordinal %s matches positions in more than one bill of project %s; "
+                    "the rule target is left unresolved rather than guessed",
+                    ordinal,
+                    project_id,
+                )
+                return None
+            return rows[0]
 
         return None
 
@@ -3026,33 +3147,29 @@ class BIMHubService:
         self,
         *,
         rule: BIMQuantityMap,
-        project_id: uuid.UUID,
+        boq: BOQ,
         matches: list[tuple[BIMElement, Decimal, Decimal]],
         confidence: str | None = None,
     ) -> Position | None:
-        """Insert a new Position in the project's first/default BOQ.
+        """Insert a new Position in ``boq``.
 
         Quantity = sum of adjusted quantities across all matches for this
         rule. Unit = rule.unit (fallback "pcs"). Classification is lifted
         from ``rule.metadata_["classification"]`` when present.
-        Returns ``None`` if the project has no BOQ to attach to.
+
+        ``boq`` is decided once per apply run by ``apply_quantity_maps``, not
+        here. This used to run its own ``ORDER BY created_at LIMIT 1`` and
+        write into whatever came back, which on a project holding two bills
+        put priced positions into whichever was created first, and which never
+        looked at the lock, so an approved estimate could receive them. The
+        decision moved out because it is a property of the run, not of the
+        rule, and because a refusal raised in here would be swallowed by the
+        per-rule savepoint handler and degrade into a log line.
 
         ``source`` is always ``"cad_import"`` (the position is derived from a
         BIM model) and ``confidence`` carries the rule's match-quality bucket so
         the estimator can audit how trustworthy the auto-generated quantity is.
         """
-        # Find the project's first BOQ (oldest created_at, same as
-        # ``BOQRepository.list_for_project`` order inverted).
-        stmt = select(BOQ).where(BOQ.project_id == project_id).order_by(BOQ.created_at.asc()).limit(1)
-        boq = (await self.session.execute(stmt)).scalar_one_or_none()
-        if boq is None:
-            logger.warning(
-                "Auto-create requested for rule %s but project %s has no BOQ",
-                rule.id,
-                project_id,
-            )
-            return None
-
         # Aggregate the adjusted quantity across all matched elements.
         total_qty = sum((adjusted for _, _, adjusted in matches), Decimal("0"))
 
