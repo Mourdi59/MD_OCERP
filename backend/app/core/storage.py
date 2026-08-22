@@ -1523,8 +1523,12 @@ def resolve_data_dir() -> Path:
     ``app/core/storage.py`` -> ``parents[3]`` == repo/package root.
     """
     override = os.environ.get("OE_DATA_DIR") or os.environ.get("DATA_DIR") or os.environ.get("OE_CLI_DATA_DIR")
-    if override:
-        return Path(override)
+    # Trim, and treat whitespace as unset, the way the other two resolvers of
+    # these same variables already do. A compose file spells "not set" as an
+    # empty value, and taking that literally would resolve the data root to a
+    # directory named a space rather than falling back.
+    if override and override.strip():
+        return Path(override.strip())
     here = Path(__file__).resolve()
     lowered_parts = {part.lower() for part in here.parts}
     if {"site-packages", "dist-packages"} & lowered_parts:

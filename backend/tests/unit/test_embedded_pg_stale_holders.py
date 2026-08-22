@@ -104,14 +104,16 @@ def live_pid() -> Iterator[int]:
 def dead_pid() -> Iterator[int]:
     """A process that genuinely no longer exists.
 
-    The finished handle is held for the length of the test, which on Windows
-    also stops the identifier being handed to something else while we look at
-    it, so the premise cannot drift underneath the assertions.
+    The yield is what keeps ``proc`` referenced for the length of the test, and
+    with it the process handle Windows uses to reserve the identifier. Return
+    the number instead and the handle can be collected, the identifier becomes
+    reusable, and the premise these tests rest on can quietly stop holding part
+    way through one of them. So the yield here is the point, not a habit.
     """
     proc = subprocess.Popen([sys.executable, "-c", "pass"])
     proc.wait(timeout=60)
     assert not embedded_pg._pid_alive(proc.pid), "a process that has exited still reads as alive"
-    yield proc.pid
+    yield proc.pid  # noqa: PT022
 
 
 def _install(monkeypatch: pytest.MonkeyPatch, server: object) -> None:
@@ -137,9 +139,7 @@ def test_a_holder_that_no_longer_exists_does_not_block_the_stop(
     assert not server.skipped
 
 
-def test_the_stop_still_happens_without_psutil(
-    monkeypatch: pytest.MonkeyPatch, pid_file: Path, dead_pid: int
-) -> None:
+def test_the_stop_still_happens_without_psutil(monkeypatch: pytest.MonkeyPatch, pid_file: Path, dead_pid: int) -> None:
     """psutil is not a declared dependency, so the fix must not rest on it.
 
     Before this release the liveness check answered "may be alive" whenever
@@ -155,9 +155,7 @@ def test_the_stop_still_happens_without_psutil(
     assert server.stopped, "without psutil the prune stopped working"
 
 
-def test_several_dead_holders_are_all_dropped(
-    monkeypatch: pytest.MonkeyPatch, pid_file: Path, dead_pid: int
-) -> None:
+def test_several_dead_holders_are_all_dropped(monkeypatch: pytest.MonkeyPatch, pid_file: Path, dead_pid: int) -> None:
     """A machine that has been upgraded a few times carries more than one."""
     extra = []
     for _ in range(3):
@@ -250,9 +248,7 @@ def test_pruning_is_skipped_when_the_holder_list_cannot_be_reached(
     assert server.cleanup_calls == 1
 
 
-def test_a_retained_cluster_is_still_left_alone(
-    monkeypatch: pytest.MonkeyPatch, pid_file: Path, dead_pid: int
-) -> None:
+def test_a_retained_cluster_is_still_left_alone(monkeypatch: pytest.MonkeyPatch, pid_file: Path, dead_pid: int) -> None:
     """The prune must not run for a cluster this process does not own."""
     server = _FakeServer(pid_file, [dead_pid, os.getpid()])
     _install(monkeypatch, server)
@@ -300,9 +296,7 @@ class TestPidLiveness:
         _hide_psutil(monkeypatch)
         assert not embedded_pg._pid_alive(dead_pid)
 
-    def test_a_running_child_is_alive_without_psutil(
-        self, monkeypatch: pytest.MonkeyPatch, live_pid: int
-    ) -> None:
+    def test_a_running_child_is_alive_without_psutil(self, monkeypatch: pytest.MonkeyPatch, live_pid: int) -> None:
         _hide_psutil(monkeypatch)
         assert embedded_pg._pid_alive(live_pid)
 

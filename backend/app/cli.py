@@ -52,7 +52,34 @@ def _stdout_supports_unicode() -> bool:
     return "utf" in enc
 
 
-DEFAULT_DATA_DIR = Path.home() / ".openestimate"
+def _default_data_dir() -> Path:
+    """Where the CLI keeps its data when nothing on the command line says otherwise.
+
+    Everything else in the platform that resolves a data directory honours the
+    same three overrides in the same order: ``OE_DATA_DIR``, then ``DATA_DIR``,
+    then ``OE_CLI_DATA_DIR``. The uploads root does, the JWT secret does, the
+    demo seed does, the partner pack state does. This one did not, and the
+    result was a split: an operator who set ``OE_DATA_DIR`` to a mounted volume
+    got their uploads and their signing secret on the volume and their database,
+    their cluster and their config file left behind in the home directory, which
+    on a container is the layer that disappears on redeploy. The override was
+    documented and half honoured, which is worse than not honouring it, because
+    nothing reports the half that was ignored.
+
+    An explicit ``--data-dir`` still wins: this only supplies the default.
+    """
+    override = os.environ.get("OE_DATA_DIR") or os.environ.get("DATA_DIR") or os.environ.get("OE_CLI_DATA_DIR")
+    if override and override.strip():
+        return Path(override.strip())
+    try:
+        return Path.home() / ".openestimate"
+    except RuntimeError:
+        # No home directory can be resolved (a minimal container with HOME
+        # unset and no passwd entry). A relative path beats aborting the CLI.
+        return Path(".openestimate")
+
+
+DEFAULT_DATA_DIR = _default_data_dir()
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8080
 MIN_PYTHON = (3, 12)
@@ -1397,7 +1424,16 @@ def cmd_version(_args: argparse.Namespace) -> None:
 
     print(f"OpenConstructionERP v{version}")
     print(f"Python {sys.version.split()[0]} ({sys.platform})")
-    print(f"Site-packages: {Path(sys.executable).parent}")
+    # This is the line people paste when something is wrong with an install, so
+    # each label has to name what it actually shows. "Site-packages" used to be
+    # printed against the interpreter's own directory, which is Scripts on
+    # Windows and bin elsewhere, so anyone who followed it went looking for the
+    # package where the package is not. The data directory is here for the same
+    # reason: it is the other thing support asks for, and printing it is also
+    # how an operator confirms their data-dir override was taken.
+    print(f"Installed at: {Path(__file__).resolve().parent.parent}")
+    print(f"Interpreter: {sys.executable}")
+    print(f"Data directory: {DEFAULT_DATA_DIR}")
     print(f"Docs: {DOCS_URL}")
 
 
