@@ -31,9 +31,12 @@ import {
   FileText,
   History,
   Landmark,
+  Pencil,
+  Plus,
   Receipt,
   Send,
   ShieldCheck,
+  Trash2,
 } from 'lucide-react';
 
 import { Badge } from '@/shared/ui/Badge';
@@ -45,6 +48,8 @@ import { getErrorMessage, triggerDownload } from '@/shared/lib/api';
 import { useProjectContextStore } from '@/stores/useProjectContextStore';
 import { useToastStore } from '@/stores/useToastStore';
 
+import { ClearanceDocumentForm } from './ClearanceDocumentForm';
+import { ClearanceRegistrationForm } from './ClearanceRegistrationForm';
 import {
   type ClearanceDocument,
   type ClearanceEvent,
@@ -52,8 +57,13 @@ import {
   type ClearanceMeta,
   type ClearanceProfile,
   type CountryRegime,
+  type DocumentCreateBody,
+  type ProfileWriteBody,
   type ResolveBody,
   cancelDocument,
+  createDocument,
+  createProfile,
+  deleteProfile,
   fetchDocumentPayload,
   getMeta,
   listDocumentEvents,
@@ -61,6 +71,7 @@ import {
   listProfiles,
   resolveDocument,
   submitDocument,
+  updateProfile,
   validateDocument,
 } from './api';
 import {
@@ -114,6 +125,43 @@ export function EInvoiceClearancePanel() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Above the early return, with every other hook. React counts hooks per
+  // render and the no-project branch below returns before this line, so a hook
+  // placed after it is called on one branch and not the other.
+  const [creating, setCreating] = useState(false);
+  const panelToast = useToastStore((s) => s.addToast);
+
+  const createDoc = useMutation({
+    mutationFn: (body: DocumentCreateBody) => createDocument(body),
+    onSuccess: (result) => {
+      setCreating(false);
+      setSelectedId(result.document.id);
+      panelToast({
+        type: result.findings.length > 0 ? 'warning' : 'success',
+        title: t('einvoice_clearance.document_created', { defaultValue: 'Document prepared' }),
+        // The server checks on the way in. Saying how many things it found is
+        // the difference between a document that is ready and one that is not.
+        message:
+          result.findings.length > 0
+            ? t('einvoice_clearance.document_created_findings', {
+                defaultValue: 'The country check named {{count}} thing to fix before sending.',
+                count: result.findings.length,
+              })
+            : undefined,
+      });
+      void queryClient.invalidateQueries({ queryKey: ['einvoice-clearance'] });
+    },
+    onError: (err) => {
+      panelToast({
+        type: 'error',
+        title: t('einvoice_clearance.document_create_failed', {
+          defaultValue: 'The document was not prepared',
+        }),
+        message: getErrorMessage(err),
+      });
+    },
+  });
+
   if (!activeProjectId) {
     return (
       <EmptyState
@@ -130,6 +178,10 @@ export function EInvoiceClearancePanel() {
   const meta = metaQuery.data;
   const documents = documentsQuery.data ?? [];
   const profiles = profilesQuery.data ?? [];
+  // A document can only be filed under a registration that is switched on and
+  // has an adapter. Offering the others would produce a document that cannot be
+  // sent, and the reason would only surface at submission time.
+  const filingProfiles = profiles.filter((p) => p.is_active && p.adapter_key !== '');
   const selected = documents.find((d) => d.id === selectedId) ?? null;
   const inDoubtCount = documents.filter((d) => isInDoubt(d.status)).length;
   const rejectedCount = documents.filter((d) => d.status === 'rejected').length;
@@ -195,6 +247,31 @@ export function EInvoiceClearancePanel() {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
         <section aria-label={t('einvoice_clearance.list_label', { defaultValue: 'Clearance documents' })}>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold">
+              {t('einvoice_clearance.list_title', { defaultValue: 'Documents on this project' })}
+            </h3>
+            {!creating && (
+              <Button size="sm" onClick={() => setCreating(true)} disabled={filingProfiles.length === 0}>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                {t('einvoice_clearance.document_new', { defaultValue: 'Prepare a document' })}
+              </Button>
+            )}
+          </div>
+
+          {creating && (
+            <div className="mb-3">
+              <ClearanceDocumentForm
+                meta={meta}
+                profiles={filingProfiles}
+                projectId={activeProjectId}
+                pending={createDoc.isPending}
+                onCancel={() => setCreating(false)}
+                onSubmit={(body) => createDoc.mutate(body)}
+              />
+            </div>
+          )}
+
           {documentsQuery.isLoading ? (
             <p className="text-sm text-content-secondary">
               {t('common.loading', { defaultValue: 'Loading...' })}
@@ -207,6 +284,23 @@ export function EInvoiceClearancePanel() {
                 defaultValue:
                   'A clearance document is one invoice prepared for one country platform. It is created from the invoice it clears, then checked, sent and answered here.',
               })}
+              action={
+                creating ? undefined : filingProfiles.length > 0 ? (
+                  <Button size="sm" onClick={() => setCreating(true)}>
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    {t('einvoice_clearance.document_new', { defaultValue: 'Prepare a document' })}
+                  </Button>
+                ) : (
+                  // Not a button that would open a form with nothing to choose
+                  // in it. Say which step is actually missing.
+                  <p className="text-xs text-content-tertiary">
+                    {t('einvoice_clearance.document_needs_profile', {
+                      defaultValue:
+                        'A document is filed under a registration, and there is no active one with an adapter yet. Register a country below first.',
+                    })}
+                  </p>
+                )
+              }
             />
           ) : (
             <ul className="divide-y divide-border-subtle rounded-lg border border-border-subtle">
@@ -280,7 +374,12 @@ export function EInvoiceClearancePanel() {
         </section>
       </div>
 
-      <ProfilesSection profiles={profiles} loading={profilesQuery.isLoading} />
+      <ProfilesSection
+        profiles={profiles}
+        loading={profilesQuery.isLoading}
+        meta={meta}
+        onChanged={onChanged}
+      />
     </div>
   );
 }
@@ -1137,18 +1236,86 @@ function ResolveForm({
 function ProfilesSection({
   profiles,
   loading,
+  meta,
+  onChanged,
 }: {
   profiles: ClearanceProfile[];
   loading: boolean;
+  meta: ClearanceMeta | undefined;
+  onChanged: () => void;
 }) {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
+
+  // `null` is closed, `'new'` is the create form, a profile is the edit form.
+  // One piece of state rather than two booleans, because the three are
+  // mutually exclusive and two booleans can express a fourth state that is not.
+  const [editing, setEditing] = useState<'new' | ClearanceProfile | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<ClearanceProfile | null>(null);
+
+  const done = (title: string) => {
+    setEditing(null);
+    addToast({ type: 'success', title });
+    onChanged();
+  };
+  const failed = (err: unknown) => {
+    addToast({
+      type: 'error',
+      title: t('einvoice_clearance.registration_failed', {
+        defaultValue: 'The registration was not saved',
+      }),
+      message: getErrorMessage(err),
+    });
+  };
+
+  const create = useMutation({
+    mutationFn: (body: ProfileWriteBody) => createProfile(body),
+    onSuccess: () =>
+      done(t('einvoice_clearance.registration_created', { defaultValue: 'Registration added' })),
+    onError: failed,
+  });
+
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: ProfileWriteBody }) => updateProfile(id, body),
+    onSuccess: () =>
+      done(t('einvoice_clearance.registration_saved', { defaultValue: 'Registration saved' })),
+    onError: failed,
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteProfile(id),
+    onSuccess: () => {
+      setConfirmRemove(null);
+      addToast({
+        type: 'success',
+        title: t('einvoice_clearance.registration_removed', {
+          defaultValue: 'Registration removed',
+        }),
+      });
+      onChanged();
+    },
+    onError: (err) => {
+      // The server refuses while documents are filed under it, and that refusal
+      // is the useful part: it names why. Keep the dialog open with it shown.
+      setConfirmRemove(null);
+      failed(err);
+    },
+  });
 
   return (
     <section aria-label={t('einvoice_clearance.profiles_label', { defaultValue: 'Registrations' })}>
-      <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold">
-        <Building2 className="h-4 w-4 text-content-secondary" />
-        {t('einvoice_clearance.profiles_title', { defaultValue: 'Registrations' })}
-      </h3>
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <Building2 className="h-4 w-4 text-content-secondary" />
+          {t('einvoice_clearance.profiles_title', { defaultValue: 'Registrations' })}
+        </h3>
+        {editing === null && (
+          <Button size="sm" onClick={() => setEditing('new')}>
+            <Plus className="mr-1 h-3.5 w-3.5" />
+            {t('einvoice_clearance.register_country', { defaultValue: 'Register a country' })}
+          </Button>
+        )}
+      </div>
       <p className="mb-2 text-xs text-content-tertiary">
         {t('einvoice_clearance.profiles_note', {
           defaultValue:
@@ -1156,11 +1323,32 @@ function ProfilesSection({
         })}
       </p>
 
+      {editing !== null && (
+        <div className="mb-3">
+          <ClearanceRegistrationForm
+            /* Remounts on the target, so switching from one registration to
+               another does not leave the previous one's answers in the boxes. */
+            key={editing === 'new' ? 'new' : editing.id}
+            meta={meta}
+            initial={editing === 'new' ? null : editing}
+            pending={create.isPending || update.isPending}
+            onCancel={() => setEditing(null)}
+            onSubmit={(body) => {
+              if (editing === 'new') create.mutate(body);
+              else update.mutate({ id: editing.id, body });
+            }}
+          />
+        </div>
+      )}
+
       {loading ? (
         <p className="text-sm text-content-secondary">
           {t('common.loading', { defaultValue: 'Loading...' })}
         </p>
       ) : profiles.length === 0 ? (
+        // The empty state used to describe the blockage and offer no way past
+        // it, which is why the page read as a dead end. The way past it is the
+        // button, so the button belongs here.
         <EmptyState
           icon={<Building2 className="h-8 w-8" />}
           title={t('einvoice_clearance.profiles_empty_title', { defaultValue: 'No registrations yet' })}
@@ -1168,6 +1356,14 @@ function ProfilesSection({
             defaultValue:
               'Nothing can be prepared for a country platform until the entity that issues the invoice is registered with it.',
           })}
+          action={
+            editing === null ? (
+              <Button size="sm" onClick={() => setEditing('new')}>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                {t('einvoice_clearance.register_country', { defaultValue: 'Register a country' })}
+              </Button>
+            ) : undefined
+          }
         />
       ) : (
         <ul className="divide-y divide-border-subtle rounded-lg border border-border-subtle">
@@ -1200,10 +1396,59 @@ function ProfilesSection({
                   {t('einvoice_clearance.no_adapter', { defaultValue: 'No adapter' })}
                 </Badge>
               )}
+
+              <span className="ml-auto flex gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditing(p)}
+                  aria-label={t('einvoice_clearance.registration_edit', {
+                    defaultValue: 'Edit registration',
+                  })}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setConfirmRemove(p)}
+                  aria-label={t('einvoice_clearance.registration_remove', {
+                    defaultValue: 'Remove registration',
+                  })}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </span>
             </li>
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={confirmRemove !== null}
+        variant="danger"
+        loading={remove.isPending}
+        title={t('einvoice_clearance.registration_remove_title', {
+          defaultValue: 'Remove this registration?',
+        })}
+        /* Says what is lost rather than asking whether they are sure. The
+           registration is the only record of the identity its documents were
+           sent under, and that is what an authority asks about. */
+        message={t('einvoice_clearance.registration_remove_body', {
+          defaultValue:
+            '{{company}} in {{country}} on {{platform}}. This is refused while documents are filed under it. To retire one that has history, clear Active instead and it stops being offered without losing what it recorded.',
+          company: confirmRemove?.company_key ?? '',
+          country: confirmRemove?.country ?? '',
+          platform: confirmRemove?.platform ?? '',
+        })}
+        confirmLabel={t('einvoice_clearance.registration_remove_confirm', {
+          defaultValue: 'Remove',
+        })}
+        onCancel={() => setConfirmRemove(null)}
+        onConfirm={() => {
+          if (confirmRemove) remove.mutate(confirmRemove.id);
+        }}
+      />
     </section>
   );
 }

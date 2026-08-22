@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { ApiError, apiGet, getErrorMessage } from '@/shared/lib/api';
 import { Badge, EmptyState } from '@/shared/ui';
+import { CollapsibleSection } from '@/shared/ui/CollapsibleSection';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { Breadcrumb } from '@/shared/ui/Breadcrumb';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -254,6 +255,58 @@ export function PlanRoomPage({ documentId: documentIdProp, initialPage }: PlanRo
             'Every mark on a drawing sheet in one place - pins, markups, measurements and photos as toggleable layers',
         })}
       />
+
+      {/* The page had no explainer, and it is the page that needs one most.
+          Nearly everything on a sheet here is owned by another module, so a
+          reader who tries to add a markup finds no control and concludes the
+          screen is broken rather than that they are in the wrong room. Saying
+          which module owns what is the whole answer. */}
+      <CollapsibleSection
+        storageKey="plan_room.how"
+        icon={<MapIcon size={15} className="text-oe-blue" />}
+        title={t('plan_room.flow_title', {
+          defaultValue: 'What the Plan Room is, and where each mark comes from',
+        })}
+      >
+        <p className="text-xs text-content-tertiary">
+          {t('plan_room.flow_intro', {
+            defaultValue:
+              'A drawing sheet collects marks from several trades and several weeks, and each kind of mark is made somewhere else in the platform. Nobody wants to open four screens to find out what is on one sheet. This room puts all of them back on the sheet at once, as layers you can switch off one at a time.',
+          })}
+        </p>
+        <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-content-tertiary">
+          <li>
+            {t('plan_room.flow_step1', {
+              defaultValue:
+                'Pick a drawing. The list holds the project documents that have a sheet to render, so a project with no drawings uploaded yet has nothing to open here.',
+            })}
+          </li>
+          <li>
+            {t('plan_room.flow_step2', {
+              defaultValue:
+                'Everything already recorded against that page is drawn on it: defect pins from the punch list, markups from the drawing review, measurements from takeoff and site photos. Switch a layer off to read the sheet underneath.',
+            })}
+          </li>
+          <li>
+            {t('plan_room.flow_step3', {
+              defaultValue:
+                'Drop a plan pin to put a note or a photo at an exact spot. This is the one mark that belongs to the Plan Room itself, and the only thing created here.',
+            })}
+          </li>
+          <li>
+            {t('plan_room.flow_step4', {
+              defaultValue:
+                'The other layers are read-only on purpose. A markup is edited where markups are made, a measurement where the takeoff is done, a defect in the punch list. Editing them from here would put the same record in two places with two owners.',
+            })}
+          </li>
+        </ol>
+        <p className="mt-2 text-xs text-content-tertiary">
+          {t('plan_room.flow_empty_note', {
+            defaultValue:
+              'An empty sheet is the ordinary state of a new project rather than a fault. Marks appear here as the work that makes them happens elsewhere.',
+          })}
+        </p>
+      </CollapsibleSection>
 
       {/* Document picker + revision indicator */}
       <div className="flex flex-wrap items-center gap-3">
