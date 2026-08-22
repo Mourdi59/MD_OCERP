@@ -156,11 +156,19 @@ def cluster_postmaster_pid(data_dir: Path | str) -> int | None:
     of asking the operating system rather than trusting the file. The pidfile
     outlives an unclean stop and is exactly the leftover that would otherwise
     make an upgrade refuse for no reason.
+
+    A pid that is alive but belongs to something else reads as no cluster too,
+    for the same reason and more sharply. Refusing wrongly is the expensive
+    error here, because the user can never upgrade at all, while allowing
+    wrongly is recoverable. Operating systems reuse process identifiers and
+    Windows reuses them quickly, so a pidfile naming a number some unrelated
+    service now holds would otherwise refuse every upgrade, permanently, on
+    exactly the machines most in need of one.
     """
     try:
         pgdata = Path(data_dir) / "pgdata"
         pid = _read_pidfile_pid(pgdata)
-        if pid is None or not _pid_alive(pid):
+        if pid is None or not _pidfile_owner_is_live(pgdata, pid):
             return None
         return pid
     except Exception:  # noqa: BLE001
@@ -601,14 +609,22 @@ def _pid_alive_windows(pid: int) -> bool | None:
 def _pid_alive(pid: int) -> bool:
     """Best-effort check whether a process with ``pid`` currently exists.
 
-    ``psutil`` answers this well and is not a declared dependency of this
-    project. Measured on this tree, nothing in the runtime requirement set
-    pulls it in, so an install that has it is carrying it by accident and an
-    install that does not lost the check without saying so. Both callers of
-    this function guard something around a live postmaster, and a check that
+    ``psutil`` answers this well, and it arrives transitively rather than by our
+    own declaration: ``pixeltable-pgserver`` is a base dependency of this
+    project and requires ``psutil>=5.9.0`` outright, so every install that has
+    the embedded cluster has psutil with it. That makes it present, not
+    promised. No requirement of ours names it: the one place it is pinned,
+    ``requirements-desktop.lock``, records it as resolved *via*
+    ``pixeltable-pgserver``, and would stop pinning it the next time that lock
+    is compiled against an upstream that no longer wants it. So it lasts exactly
+    as long as a requirement we do not control, and the day that changes this
+    function would stop being able to answer with no line changing here.
+
+    Both callers guard something around a live postmaster, and a check that
     quietly stops checking is worse than one that is merely approximate, so ask
-    the standard library first and treat psutil as a refinement rather than the
-    answer.
+    the standard library first - it answers the same question and needs nothing
+    installed - and treat psutil as the refinement that fills in what it cannot
+    reach.
 
     Uncertainty answers yes. Both callers do something destructive when told
     no, deleting a pidfile and forgetting a recorded holder, and doing either
@@ -694,6 +710,31 @@ def _pid_was_recycled(pid: int, recorded_start: float | None) -> bool:
     return bool(name) and "postgres" not in name and "postmaster" not in name
 
 
+def _pidfile_owner_is_live(pgdata: Path, pid: int) -> bool:
+    """True when ``pid`` is running and is still the process that wrote the pidfile.
+
+    This is the question every reader of ``postmaster.pid`` in this module is
+    actually asking, and it has two halves that are easy to separate by
+    accident: is the number alive, and is the thing holding it the postmaster
+    that recorded it. A caller that asks only the first half is not asking a
+    weaker version of this question, it is asking a different one, and on
+    Windows it gets a different answer often enough to matter.
+
+    It lives in one function so the readers cannot drift apart again. They had:
+    the deletion path and the shutdown path both refused on recycling while the
+    upgrade guard checked liveness alone, so an absent cluster whose pid had
+    been handed to another service read as live and refused the upgrade
+    forever.
+
+    Uncertainty answers yes, matching :func:`_pid_alive` and
+    :func:`_pid_was_recycled`, because every caller that acts on a no does
+    something a live postmaster must never receive.
+    """
+    if not _pid_alive(pid):
+        return False
+    return not _pid_was_recycled(pid, _read_pidfile_start_time(pgdata))
+
+
 def _clear_stale_pidfile(pgdata: Path) -> None:
     """Delete ``postmaster.pid`` when the process it names is gone or is no longer it.
 
@@ -714,10 +755,9 @@ def _clear_stale_pidfile(pgdata: Path) -> None:
     pid = _read_pidfile_pid(pgdata)
     if pid is None:
         return
-    recycled = _pid_was_recycled(pid, _read_pidfile_start_time(pgdata))
-    if _pid_alive(pid) and not recycled:
+    if _pidfile_owner_is_live(pgdata, pid):
         return
-    reason = f"pid {pid} belongs to another process" if recycled else f"dead pid {pid}"
+    reason = f"dead pid {pid}" if not _pid_alive(pid) else f"pid {pid} belongs to another process"
     try:
         pidfile.unlink()
         logger.info("removed stale postmaster.pid (%s) in %s", reason, pgdata)

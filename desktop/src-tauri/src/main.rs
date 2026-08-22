@@ -780,19 +780,81 @@ fn show_main_window(handle: &tauri::AppHandle) {
 /// simply attach to the healthy instance that is already there.
 const ATTACH_CANDIDATE_PORTS: [u16; 4] = [8000, 8080, 8732, 8765];
 
+/// The faults that make a backend unusable, asked once for both callers.
+///
+/// Two decisions in this launcher rest on one health body, and they used to
+/// answer it differently. `judge_health` let a backend reporting stale
+/// migrations open the application, which is right: the schema being behind is
+/// a real problem the user can see and act on from inside the app.
+/// `is_our_backend_healthy` refused to attach to that same backend, which sent
+/// the launcher off to start a SECOND backend against the same
+/// `~/.openestimate/pgdata` - the precise accident the attach path exists to
+/// avoid. One running backend was simultaneously fit to be used and unfit to be
+/// used, on one field, because the two judgements were written apart.
+///
+/// So there is one question now, and both ask it. `None` means nothing here
+/// stops a user working. `Some(reason)` names a fault that leaves nothing
+/// working at all, in words fit to show someone: no database, or an
+/// installation with no application files, which answers every route in the app
+/// with a 404.
+///
+/// Everything else stays open on purpose, including a stale migration head and
+/// a failed schema heal. This decides whether anyone may use the application at
+/// all, so a missing field, a renamed field or a status word we do not know all
+/// mean no fault. Only something the backend positively reports may hold a user
+/// out of their own installation.
+///
+/// Takes the parsed body, not the text. What an unreadable body means differs
+/// between the two callers and must keep differing: for one it is a stranger to
+/// be refused, for the other it is the user's own backend to be trusted. That
+/// asymmetry is deliberate, lives at each call site, and is not a bug to tidy.
+fn blocking_fault(json: &serde_json::Value) -> Option<String> {
+    let status = json.get("status").and_then(|v| v.as_str()).unwrap_or("");
+    if status != "degraded" {
+        return None;
+    }
+
+    let database_down = json
+        .get("database")
+        .and_then(|v| v.as_str())
+        .map(|s| s != "ok")
+        .unwrap_or(false);
+    if database_down {
+        return Some("the local database is not answering".to_string());
+    }
+
+    let frontend_missing = json
+        .get("frontend_dist_present")
+        .and_then(|v| v.as_bool())
+        .map(|present| !present)
+        .unwrap_or(false);
+    if frontend_missing {
+        return Some("this installation is missing the application files it serves".to_string());
+    }
+
+    None
+}
+
 /// Probe ``127.0.0.1:<port>/api/health`` and decide whether we may attach to it.
 ///
-/// Returns ``true`` only when the responder is unambiguously a HEALTHY backend
-/// of EXACTLY OUR version. Attaching to anything less is dangerous: a stale dev
-/// backend of a different version (the founder-machine case is a degraded
-/// v6.10.0 on :8000) would serve the desktop app the wrong frontend/schema, and
-/// a merely "degraded" instance may not actually work. So all of the following
-/// must hold, and every rejected candidate is logged with its port, version and
-/// status so attach decisions are auditable from the launcher log:
-///   * HTTP 2xx
-///   * ``status`` is "ok" or "healthy" (NOT "degraded"/"unhealthy")
+/// Returns ``true`` only when the responder is a backend of EXACTLY OUR version
+/// with no fault that would stop us using it. Attaching to anything less is
+/// dangerous: a stale dev backend of a different version (the founder-machine
+/// case is a degraded v6.10.0 on :8000) would serve the desktop app the wrong
+/// frontend and schema. So all of the following must hold, and every rejected
+/// candidate is logged with its port, version and status so attach decisions
+/// are auditable from the launcher log:
+///   * HTTP 2xx, and a body that parses as JSON
 ///   * ``version`` equals our own ``CARGO_PKG_VERSION`` exactly
-///   * ``alembic_head_matches`` is not ``false`` (migrations not known-stale)
+///   * ``blocking_fault`` names nothing
+///
+/// What is deliberately NOT checked here any more is bare ``status ==
+/// "degraded"`` and ``alembic_head_matches``. Both rejected a backend that was
+/// serving its users perfectly well, and the cost of rejecting was not "we look
+/// elsewhere", it was "we start a second backend on the running one's data
+/// directory". The founder-machine case that motivated the status check is
+/// still rejected, on the check that actually described it: a v6.10.0 responder
+/// is not our version. Version equality is what made the status test redundant.
 async fn is_our_backend_healthy(client: &reqwest::Client, port: u16) -> bool {
     let url = format!("http://127.0.0.1:{port}/api/health");
     let resp = match client
@@ -840,27 +902,34 @@ async fn is_our_backend_healthy(client: &reqwest::Client, port: u16) -> bool {
 
     let status = json.get("status").and_then(|v| v.as_str()).unwrap_or("");
     let version = json.get("version").and_then(|v| v.as_str()).unwrap_or("");
-    // Missing key is treated as "not known false" (acceptable); only an explicit
-    // false rejects.
-    let alembic_ok = json
-        .get("alembic_head_matches")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(true);
     let our_version = env!("CARGO_PKG_VERSION");
 
-    let status_ok = matches!(status, "ok" | "healthy");
     let version_ok = version == our_version;
+    let fault = blocking_fault(&json);
 
-    if status_ok && version_ok && alembic_ok {
+    if version_ok && fault.is_none() {
         log_line(&format!(
             "attach: accepted candidate on port {port}: status={status} version={version}"
         ));
         return true;
     }
 
+    // Name the reason we actually consulted, and name both when both applied. A
+    // log that reports a field the decision no longer reads is the same kind of
+    // dishonesty as a health flag that reports false when it means unknown.
+    let reason = match (version_ok, fault) {
+        (false, Some(fault)) => format!("version mismatch, and {fault}"),
+        (false, None) => "version mismatch".to_string(),
+        (true, Some(fault)) => fault,
+        // Not reachable today: this arm is the accepted case, which returned
+        // above. It is written out rather than left as a panic because the only
+        // thing downstream of it is a log line, and a launcher that aborts while
+        // deciding which port to attach to is a worse outcome than a vague one.
+        (true, None) => "no fault found".to_string(),
+    };
     log_line(&format!(
         "attach: rejected candidate on port {port}: status={status:?} version={version:?} \
-(ours={our_version}) alembic_head_matches={alembic_ok}"
+(ours={our_version}) reason={reason}"
     ));
     false
 }
@@ -1001,38 +1070,22 @@ const DEGRADED_GRACE: Duration = Duration::from_secs(30);
 /// backend positively reports may hold a user out of their own installation,
 /// and stale migrations do not qualify: that is a real problem, and it is one
 /// the user can still see and act on from inside the app.
+///
+/// The fault test itself is `blocking_fault`, shared with the attach probe so
+/// the two cannot drift apart again. Only the unreadable-body case is decided
+/// here, and it stays decided here: this is the user's own backend, so a body
+/// we cannot parse means open the app. The attach probe reaches the opposite
+/// conclusion on the same input, because there the responder is a stranger.
 fn judge_health(body: &str) -> HealthProbe {
     let json: serde_json::Value = match serde_json::from_str(body) {
         Ok(v) => v,
         Err(_) => return HealthProbe::Ready,
     };
 
-    let status = json.get("status").and_then(|v| v.as_str()).unwrap_or("");
-    if status != "degraded" {
-        return HealthProbe::Ready;
+    match blocking_fault(&json) {
+        Some(reason) => HealthProbe::Broken(reason),
+        None => HealthProbe::Ready,
     }
-
-    let database_down = json
-        .get("database")
-        .and_then(|v| v.as_str())
-        .map(|s| s != "ok")
-        .unwrap_or(false);
-    if database_down {
-        return HealthProbe::Broken("the local database is not answering".to_string());
-    }
-
-    let frontend_missing = json
-        .get("frontend_dist_present")
-        .and_then(|v| v.as_bool())
-        .map(|present| !present)
-        .unwrap_or(false);
-    if frontend_missing {
-        return HealthProbe::Broken(
-            "this installation is missing the application files it serves".to_string(),
-        );
-    }
-
-    HealthProbe::Ready
 }
 
 /// How long the backend may say nothing at all before the wait gives up.
@@ -2210,6 +2263,208 @@ fn show_startup_failure_dialog(_message: &str) {}
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Parse a health body the way both judgements do, for the tests below.
+    fn body(json: &str) -> serde_json::Value {
+        serde_json::from_str(json).expect("the test body has to be valid JSON")
+    }
+
+    /// Is this body one `judge_health` would open the application on?
+    fn judged_ready(json: &str) -> bool {
+        matches!(judge_health(json), HealthProbe::Ready)
+    }
+
+    /// Serve one canned `/api/health` body on an ephemeral loopback port.
+    ///
+    /// The probe under test takes a port and builds its own URL, so the only way
+    /// to exercise it for real is to put something on a port. One request is all
+    /// it makes, so the task ends after one.
+    async fn serve_one_health_body(body: String) -> u16 {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("could not bind a loopback port");
+        let port = listener.local_addr().expect("no local address").port();
+        tokio::spawn(async move {
+            if let Ok((mut socket, _)) = listener.accept().await {
+                use tokio::io::{AsyncReadExt, AsyncWriteExt};
+                let mut scratch = [0_u8; 2048];
+                let _ = socket.read(&mut scratch).await;
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\
+Content-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    body.len(),
+                    body
+                );
+                let _ = socket.write_all(response.as_bytes()).await;
+                let _ = socket.shutdown().await;
+            }
+        });
+        port
+    }
+
+    /// A health body of our own version, so only the fault question can decide.
+    fn our_backend_saying(fields: &str) -> String {
+        format!(r#"{{"version":"{}",{fields}}}"#, env!("CARGO_PKG_VERSION"))
+    }
+
+    #[tokio::test]
+    async fn the_attach_probe_and_the_startup_judgement_agree_on_the_same_backend() {
+        // The defect, tested end to end rather than through the shared helper.
+        // One backend, two decisions: may the user open the app, and may we
+        // attach instead of starting another one. They used to be written apart
+        // and answered differently, and the disagreement was not academic - it
+        // put a second backend on a live cluster's data directory.
+        //
+        // This drives the real probe over a real socket, so it still fails if
+        // somebody puts an independent check back inside it. The bodies all
+        // carry our own version, because version equality is the one question
+        // the attach probe asks and the startup judgement rightly does not.
+        //
+        // Writes a few lines to the launcher log, like every other call to the
+        // attach probe. That is the probe being itself; there is nothing to
+        // stub that would not also stub what is under test.
+        let client = reqwest::Client::new();
+        let bodies = [
+            r#""status":"healthy","database":"ok","frontend_dist_present":true"#,
+            // Behind on migrations, and serving its users perfectly well.
+            r#""status":"degraded","database":"ok","frontend_dist_present":true,
+               "alembic_head_matches":false"#,
+            // Could not heal its schema, and likewise still serving.
+            r#""status":"degraded","database":"ok","frontend_dist_present":true,
+               "schema_heal_failed":true"#,
+            // The two that really do leave nothing working.
+            r#""status":"degraded","database":"error","frontend_dist_present":true"#,
+            r#""status":"degraded","database":"ok","frontend_dist_present":false"#,
+        ];
+
+        for fields in bodies {
+            let body = our_backend_saying(fields);
+            let port = serve_one_health_body(body.clone()).await;
+            let attachable = is_our_backend_healthy(&client, port).await;
+            let openable = judged_ready(&body);
+            assert_eq!(
+                attachable, openable,
+                "the two judgements disagree about this backend: {body}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn the_one_disagreement_left_is_the_one_that_belongs_there() {
+        // A backend of somebody else's version is fit for its own users and
+        // unfit for us, and the two answers must stay different. Reaching
+        // agreement here would mean attaching to a stranger's backend and
+        // serving our users its frontend and its schema.
+        let client = reqwest::Client::new();
+        let body = r#"{"version":"0.0.1-not-ours","status":"healthy",
+            "database":"ok","frontend_dist_present":true}"#
+            .to_string();
+        let port = serve_one_health_body(body.clone()).await;
+
+        assert!(judged_ready(&body), "its own users can still open it");
+        assert!(
+            !is_our_backend_healthy(&client, port).await,
+            "we must not attach to a backend that is not our version"
+        );
+    }
+
+    #[test]
+    fn the_shared_question_answers_the_same_way_for_both_callers() {
+        // The content of the shared decision, pinned. Agreement between the two
+        // callers is now structural - both delegate here - so what is worth
+        // testing is WHAT it decides, and that it does not reach agreement by
+        // finding nothing wrong with anything.
+        let bodies = [
+            r#"{"status":"healthy","database":"ok","frontend_dist_present":true}"#,
+            r#"{"status":"ok","database":"ok","frontend_dist_present":true}"#,
+            // Degraded for a reason that leaves the app usable.
+            r#"{"status":"degraded","database":"ok","frontend_dist_present":true,
+                "alembic_head_matches":false}"#,
+            r#"{"status":"degraded","database":"ok","frontend_dist_present":true,
+                "schema_heal_failed":true}"#,
+            // Degraded for a reason that does not.
+            r#"{"status":"degraded","database":"error","frontend_dist_present":true}"#,
+            r#"{"status":"degraded","database":"ok","frontend_dist_present":false}"#,
+            // Fields absent, renamed or of an unexpected type.
+            r#"{"status":"degraded"}"#,
+            r#"{"status":"something-new","database":"error"}"#,
+            r#"{}"#,
+        ];
+
+        for json in bodies {
+            let ready = judged_ready(json);
+            let attachable = blocking_fault(&body(json)).is_none();
+            assert_eq!(
+                ready, attachable,
+                "the two judgements disagree about this backend: {json}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_stale_migration_head_does_not_cost_a_user_a_second_backend() {
+        // The regression, named. A backend whose schema is behind reports
+        // status=degraded and alembic_head_matches=false, and it is serving its
+        // users. Rejecting it did not mean looking elsewhere; it meant starting
+        // a second backend against the first one's data directory.
+        let json = r#"{"status":"degraded","version":"1.0.0","database":"ok",
+            "frontend_dist_present":true,"alembic_head_matches":false}"#;
+
+        assert!(judged_ready(json), "the app must still open");
+        assert!(
+            blocking_fault(&body(json)).is_none(),
+            "and the launcher must attach to it rather than start another backend"
+        );
+    }
+
+    #[test]
+    fn a_head_that_cannot_be_determined_is_not_a_fault() {
+        // What the desktop build actually reports. It ships no migration tree,
+        // so the head comparison answers null forever. Null is "I could not
+        // tell", and I-could-not-tell must never be the reason a second backend
+        // is started.
+        for json in [
+            r#"{"status":"healthy","database":"ok","frontend_dist_present":true,
+                "alembic_head_matches":null}"#,
+            r#"{"status":"healthy","database":"ok","frontend_dist_present":true}"#,
+        ] {
+            assert!(judged_ready(json), "got a fault for: {json}");
+            assert!(blocking_fault(&body(json)).is_none(), "got a fault for: {json}");
+        }
+    }
+
+    #[test]
+    fn the_faults_that_stop_everything_still_stop_it() {
+        // The other polarity. A shared question that never finds a fault would
+        // pass the agreement test above and put users in front of an
+        // application shell with every request inside it failing.
+        let no_database = r#"{"status":"degraded","database":"error","frontend_dist_present":true}"#;
+        let reason = blocking_fault(&body(no_database)).expect("a dead database is a fault");
+        assert!(reason.contains("database"), "got: {reason}");
+        assert!(!judged_ready(no_database));
+
+        let no_frontend = r#"{"status":"degraded","database":"ok","frontend_dist_present":false}"#;
+        let reason = blocking_fault(&body(no_frontend)).expect("no application files is a fault");
+        assert!(reason.contains("application files"), "got: {reason}");
+        assert!(!judged_ready(no_frontend));
+    }
+
+    #[test]
+    fn an_unreadable_body_keeps_meaning_two_different_things() {
+        // Not an oversight, and not to be tidied. A body that will not parse
+        // means "open the user's own installation" to judge_health and "do not
+        // trust this stranger" to the attach probe, because the two are asking
+        // about different machines. The shared question sits below the parse in
+        // both, so it never gets the chance to flatten them.
+        assert!(
+            judged_ready("not json at all"),
+            "a body we cannot read must not hold a user out of their own install"
+        );
+        assert!(
+            serde_json::from_str::<serde_json::Value>("not json at all").is_err(),
+            "and the attach probe rejects on exactly this parse failing"
+        );
+    }
 
     #[test]
     fn the_timeout_message_names_the_step_the_backend_was_on() {

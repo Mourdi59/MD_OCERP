@@ -18,12 +18,20 @@ refuses.
 Both directions are asserted here. A checker that never refuses is the bug
 being fixed; a checker that always refuses replaces a torn install with an
 install nobody can perform.
+
+"Is the machine running a postmaster" has a second half that is easy to miss:
+the number in the pidfile has to still belong to the postmaster that wrote it.
+Operating systems reuse process identifiers, Windows quickly, so a pidfile left
+by a force-killed postmaster eventually names an unrelated service. Reading
+that as a live cluster is the always-refuses failure in its worst form, because
+it never clears on its own. Both polarities of that are asserted too.
 """
 
 from __future__ import annotations
 
 import subprocess
 import sys
+import time
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -60,13 +68,38 @@ def dead_pid() -> Iterator[int]:
     yield proc.pid  # noqa: PT022
 
 
-def _write_pidfile(data_dir: Path, pid: int) -> Path:
-    """Lay down the first line of a postmaster.pid the way PostgreSQL does."""
+def _real_start_time(pid: int) -> float:
+    """The epoch second ``pid`` actually started, as PostgreSQL would record it.
+
+    Line three of the pidfile is not decoration. It is what tells a live
+    postmaster apart from a live stranger holding a recycled number, so a
+    fixture that writes an arbitrary constant there is describing a recycled
+    pid whatever it meant to describe.
+
+    Falls back to now when :mod:`psutil` is missing, which is consistent:
+    without it the recycling check has no evidence and answers no anyway.
+    """
+    try:
+        import psutil
+
+        return float(psutil.Process(pid).create_time())
+    except Exception:
+        return time.time()
+
+
+def _write_pidfile(data_dir: Path, pid: int, start: float | None = None) -> Path:
+    """Lay down a postmaster.pid the way PostgreSQL does.
+
+    ``start`` defaults to the time ``pid`` really started, which is what makes
+    this a live postmaster rather than a stranger. Pass one explicitly to
+    describe a recycled pid.
+    """
     pgdata = data_dir / "pgdata"
     pgdata.mkdir(parents=True, exist_ok=True)
     pidfile = pgdata / "postmaster.pid"
+    recorded = _real_start_time(pid) if start is None else start
     pidfile.write_text(
-        f"{pid}\n{pgdata}\n1787348407\n56139\n\n127.0.0.1\n  5432001         0\nready   \n",
+        f"{pid}\n{pgdata}\n{recorded:.0f}\n56139\n\n127.0.0.1\n  5432001         0\nready   \n",
         encoding="utf-8",
     )
     return pidfile
@@ -138,3 +171,62 @@ def test_it_asks_about_the_machine_not_about_this_process(
     assert embedded_pg.cluster_postmaster_pid(tmp_path) == live_pid, (
         "the machine-wide answer should still find the cluster"
     )
+
+
+def test_a_recycled_pid_does_not_block_an_upgrade(tmp_path: Path, live_pid: int) -> None:
+    """A live number is not a live cluster, and the difference is line three.
+
+    This is the permanent version of the always-refuses failure. A stale
+    pidfile whose number has been handed to some unrelated service names a
+    process that really is running, so a liveness-only check reads a cluster
+    that does not exist and refuses the upgrade. Nothing clears it: the service
+    keeps running, the pidfile keeps naming it, and the machine can never be
+    upgraded again by the one command that would repair it.
+    """
+    pytest.importorskip("psutil", reason="recycling can only be detected with psutil")
+    _write_pidfile(tmp_path, live_pid, start=1_600_000_000.0)
+
+    assert embedded_pg.cluster_postmaster_pid(tmp_path) is None
+    assert embedded_pg._pid_alive(live_pid), "the reading must not disturb the process"
+
+
+def test_the_same_live_pid_answers_differently_depending_on_who_it_is(tmp_path: Path, live_pid: int) -> None:
+    """Both polarities on one process, which is the whole claim in one place.
+
+    The pid, the machine and the data directory are identical across the two
+    halves; only the recorded start time differs. So this cannot pass by the
+    guard having stopped blocking, which is the way a one-sided test would be
+    satisfied by deleting the protection instead of correcting it.
+    """
+    pytest.importorskip("psutil", reason="recycling can only be detected with psutil")
+
+    _write_pidfile(tmp_path, live_pid)
+    assert embedded_pg.cluster_postmaster_pid(tmp_path) == live_pid, (
+        "a genuinely live postmaster must still block the upgrade"
+    )
+
+    _write_pidfile(tmp_path, live_pid, start=1_600_000_000.0)
+    assert embedded_pg.cluster_postmaster_pid(tmp_path) is None, (
+        "the same number held by something else must not block the upgrade"
+    )
+
+
+def test_an_unreadable_start_time_falls_back_to_what_the_process_is(tmp_path: Path, live_pid: int) -> None:
+    """The other half of the recycling check, which the timestamp tests never reach.
+
+    With line three intact the recorded time settles the question on its own.
+    Corrupt it and the check falls back to asking what the process actually is,
+    a branch nothing else in the suite exercises. A live process that is plainly
+    not a postmaster is not this cluster whatever the pidfile says, and a real
+    postmaster survives this because it is named like one.
+    """
+    pytest.importorskip("psutil", reason="the fallback needs a process name")
+    pgdata = tmp_path / "pgdata"
+    pgdata.mkdir(parents=True, exist_ok=True)
+    (pgdata / "postmaster.pid").write_text(
+        f"{live_pid}\n{pgdata}\nNOT-A-TIME\n56139\n\n127.0.0.1\n  5432001         0\nready   \n",
+        encoding="utf-8",
+    )
+
+    assert embedded_pg._read_pidfile_start_time(pgdata) is None, "the fixture must reach the fallback"
+    assert embedded_pg.cluster_postmaster_pid(tmp_path) is None
