@@ -98,14 +98,45 @@ jobs:
         run: |
           ls -lh dist/
           python - <<'PY'
-          import os, zipfile
+          import os, re, zipfile
+
+          # This check used to ask whether any member's name contained the
+          # string "_frontend_dist". It could not fail. The build hook creates
+          # frontend/dist/.placeholder whenever that file is missing, precisely
+          # so the force-include map always resolves, so a wheel whose entire
+          # user interface is one 123-byte placeholder satisfied it and printed
+          # "wheel OK". The substring also matched _frontend_dist_prev, so a
+          # wheel carrying nothing but a stale bundle passed too.
+          #
+          # Ask instead for the thing the check exists to prove: that the page
+          # the server serves is in the wheel, and that everything that page
+          # asks for is in the wheel with it.
           whl = next(f for f in os.listdir('dist') if f.endswith('.whl'))
           path = os.path.join('dist', whl)
           with zipfile.ZipFile(path) as z:
-              files = z.namelist()
-          has_dist = any('_frontend_dist' in f for f in files)
-          assert has_dist, f'wheel {whl} missing _frontend_dist payload'
-          print(f'wheel OK: {whl} — {len(files)} files, _frontend_dist present')
+              files = set(z.namelist())
+              index = 'app/_frontend_dist/index.html'
+              assert index in files, f'wheel {whl} has no {index}; the built frontend did not reach it'
+              html = z.read(index).decode('utf-8')
+
+          refs = re.findall(r'(?:src|href)="([^"]+)"', html)
+          local = [r for r in refs if not r.startswith(('http://', 'https://', 'data:', '//', '#'))]
+          assert local, f'{index} asks for nothing; it is not a built page'
+          missing = [r for r in local if 'app/_frontend_dist/' + r.lstrip('/').split('?')[0] not in files]
+          assert not missing, f'wheel {whl} is missing {len(missing)} asset(s) index.html asks for: {missing[:5]}'
+
+          # The migration tree and the translations are the other two payloads a
+          # pip install cannot work without, and neither had a check at all.
+          revisions = [f for f in files if f.startswith('alembic/versions/') and f.endswith('.py')]
+          assert 'alembic.ini' in files, f'wheel {whl} has no alembic.ini, so alembic cannot run after install'
+          assert len(revisions) > 100, f'wheel {whl} carries only {len(revisions)} migration revisions'
+          locales = [f for f in files if f.startswith('locales/') and f.endswith('.json')]
+          assert len(locales) >= 20, f'wheel {whl} carries only {len(locales)} locale files'
+
+          print(
+              f'wheel OK: {whl} - {len(files)} files, index.html plus all {len(local)} assets it asks for, '
+              f'{len(revisions)} migrations, {len(locales)} locales'
+          )
           PY
 
       - name: Repo hygiene - no internal-only files in the wheel
