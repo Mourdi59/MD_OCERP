@@ -976,3 +976,146 @@ jobs:
             echo "::error::vitest ran ${ran:-no} test files but $expected were named. A renamed or mistyped filter matches nothing and would otherwise leave this job green."
             exit 1
           fi
+
+
+  # ── The upgrade nobody was testing ─────────────────────────────────────────
+  # Every other lane in this repository, and in every other workflow file,
+  # starts from an empty database. So the only thing any of them has ever
+  # tested is a fresh install, while almost every real user is upgrading.
+  #
+  # That gap is not theoretical. Nothing in this codebase calls
+  # ``alembic upgrade``; the schema moves at boot through a helper that issues
+  # ADD COLUMN and CREATE INDEX IF NOT EXISTS, plus create_all for tables that
+  # are wholly absent. A revision made of nullable columns survives that. A
+  # NOT NULL, a rename, a type change or a backfill does not, and until this
+  # job existed nothing anywhere would have said so.
+  #
+  # The trap this job is written to avoid: an EMPTY database plus
+  # ``alembic upgrade head`` runs NOTHING. ``alembic/env.py`` short-circuits a
+  # blank database to create_all followed by a stamp at head (env.py:285-297),
+  # so a lane that creates an empty database, stamps it and reports success is
+  # a green gate that has tested nothing at all. The only honest shape is to
+  # build the database with the PREVIOUS release's own code first.
+  #
+  # Which is also why the previous release is installed from PyPI into its own
+  # virtualenv and BOOTED rather than migrated. Wheels before 15.4.0 ship no
+  # alembic.ini and no revision tree at all, so there is no migration entry
+  # point in that interpreter to call - and booting is what a real install of
+  # that release does anyway.
+  #
+  # What this job can see, and what it cannot. It compares the tables and
+  # columns the current metadata declares against the ones the aged database
+  # has, plus their nullability - so it catches an absent table, an absent
+  # column, and a NOT NULL that was quietly added nullable. It does NOT
+  # compare types, it cannot tell a rename from an addition (the new name is
+  # added, the old one keeps the data, and the comparison goes green), and a
+  # revision whose work is a data backfill produces no schema signal at all.
+  # Those three shapes still need a test of their own.
+  #
+  # Runs in parallel with the three jobs above, so it adds no wall-clock time
+  # to this workflow as long as it stays inside their runtime.
+  upgrade-from-previous-release:
+    name: Upgrade from the previous release
+    runs-on: ubuntu-latest
+    # Two dependency installs, two application boots and a schema comparison.
+    # The two boots were measured at six to seven minutes each on a developer
+    # Windows machine against an embedded cluster; on a Linux runner with a
+    # postgres service container they are unmeasured and expected to be
+    # faster. The ceiling is deliberately generous, and is there so a database
+    # that never becomes ready fails in minutes instead of inheriting the six
+    # hour default and blocking merges for the rest of the day. If this job
+    # ever does become the slowest in the workflow, the lever is seeding fewer
+    # rows in the aging half, not seeding none: an empty table would let the
+    # one change this job exists to catch pass straight through.
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    # A real external PostgreSQL rather than the embedded cluster, because two
+    # different interpreters have to reach the same database in turn, and
+    # because an operator-supplied database is the population where a failed
+    # schema heal does the most damage.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: oe
+          POSTGRES_PASSWORD: oe
+          POSTGRES_DB: openconstructionerp_upgrade
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U oe -d openconstructionerp_upgrade"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # The release the database is aged to. Deliberately the last patch of the
+      # PREVIOUS minor rather than the newest release: a user who upgrades has
+      # almost always skipped patches, and the newest release is frequently
+      # identical in schema to the working tree. Measured, at the time this job
+      # was written: v15.4.0..HEAD adds zero migration revisions and changes
+      # zero model files, so a pin at 15.4.0 would leave this job with nothing
+      # at all to heal. From 15.3.1 there are eight columns across six tables.
+      #
+      # Moving this pin BACKWARDS is always safe; it only widens what is
+      # covered. Moving it FORWARDS has two failure modes, and both are loud
+      # rather than silent:
+      #   * No schema difference left, and the verifier fails on its first
+      #     check rather than passing vacuously.
+      #   * A pin at 15.4.0 or later will make the alembic_head_matches check
+      #     read false, and that is a finding about the product rather than a
+      #     bug in this job. Wheels before 15.4.0 ship no alembic.ini, so a
+      #     real install of one records no revision at all and the current
+      #     code's stamp_head_if_unstamped lands it at head. From 15.4.0 the
+      #     wheel does ship the tree, the database arrives already stamped at
+      #     that older revision, the stamp helper returns early because a
+      #     revision is present, and nothing ever advances it. Read that red as
+      #     "the stamp does not move on upgrade", which is true.
+      OE_UPGRADE_FROM_VERSION: "15.3.1"
+      OE_UPGRADE_AGED_STATE: ${{ github.workspace }}/aged-database-state.json
+      DATABASE_URL: postgresql+asyncpg://oe:oe@localhost:5432/openconstructionerp_upgrade
+      DATABASE_SYNC_URL: postgresql+psycopg2://oe:oe@localhost:5432/openconstructionerp_upgrade
+      OE_DATA_DIR: ${{ runner.temp }}/oe-data
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Create empty frontend dist (hatchling force-include)
+        run: |
+          mkdir -p ../frontend/dist
+          touch ../frontend/dist/.gitkeep
+      - name: Install the previous release into a virtualenv of its own
+        # Its own interpreter, with no path into this working tree. The aging
+        # script asserts that ``app`` resolves outside the repository before it
+        # touches the database, because an ``app`` that resolved back here
+        # would build the CURRENT schema and every check below would pass on a
+        # database that was never old.
+        #
+        # Full dependencies on purpose. ``alembic/env.py`` and the boot path
+        # both swallow a per-module import failure, so a thin install produces
+        # FEWER tables rather than an error - and the current code's create_all
+        # would then quietly supply the difference, turning an upgrade test
+        # into a fresh install. The aging script's table floor is the backstop.
+        run: |
+          python -m venv "$RUNNER_TEMP/venv-previous"
+          "$RUNNER_TEMP/venv-previous/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/venv-previous/bin/python" -m pip install "openconstructionerp==$OE_UPGRADE_FROM_VERSION"
+      - name: Install the current code
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,server]"
+      - name: Build the database with the previous release, and put rows in it
+        # The rows are load-bearing. PostgreSQL accepts
+        # ADD COLUMN ... NOT NULL with no default on an EMPTY table and rejects
+        # it only once rows exist, so an unseeded database would let the exact
+        # change the heal cannot perform pass straight through this job.
+        run: |
+          "$RUNNER_TEMP/venv-previous/bin/python" scripts/age_database_to_previous_release.py
+      - name: Run the current code against the aged database
+        # Proves five things, and fails loudly rather than vacuously on each:
+        # the database really was old, it was at an older revision than the
+        # code, the schema moved, /api/health agrees that it moved, and an
+        # authenticated read of the affected register answers 200.
+        run: python scripts/verify_upgrade_from_previous_release.py
